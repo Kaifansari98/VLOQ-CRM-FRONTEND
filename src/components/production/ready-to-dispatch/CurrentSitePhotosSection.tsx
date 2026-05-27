@@ -133,7 +133,16 @@ export default function CurrentSitePhotosSection({
         queryKey: ["currentSitePhotosCount", vendorId, leadId],
       });
     } catch (error: any) {
-      toastManager.add({ title: error?.response?.data?.message || "Failed to upload photos.", type: "error" });
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to upload photos.";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
     }
   };
 

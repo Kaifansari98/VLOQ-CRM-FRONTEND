@@ -230,17 +230,30 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
       return;
     }
 
-    await uploadDocs({
-      leadId,
-      accountId,
-      vendorId,
-      createdBy,
-      productStructureInstanceId: resolvedInstanceId || undefined,
-      pptDocuments: activeSection.id === "project" ? selectedFiles : [],
-      pythaDocuments: activeSection.id === "pytha" ? selectedFiles : [],
-    });
+    try {
+      await uploadDocs({
+        leadId,
+        accountId,
+        vendorId,
+        createdBy,
+        productStructureInstanceId: resolvedInstanceId || undefined,
+        pptDocuments: activeSection.id === "project" ? selectedFiles : [],
+        pythaDocuments: activeSection.id === "pytha" ? selectedFiles : [],
+      });
 
-    setSelectedFiles([]);
+      setSelectedFiles([]);
+    } catch (e: any) {
+      const errorMessage =
+        e?.response?.data?.error ||
+        e?.response?.data?.message ||
+        e?.message ||
+        "Failed to upload files";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
+    }
   };
 
   const handleConfirmDelete = () => {

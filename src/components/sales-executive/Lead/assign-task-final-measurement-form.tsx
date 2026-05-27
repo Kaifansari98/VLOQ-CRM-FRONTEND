@@ -895,11 +895,29 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
           }
         },
         onError: (error: any) => {
-          toastManager.add({ title: error?.response?.data?.message || "Failed to assign task", type: "error" });
+          const errorMessage =
+            error?.response?.data?.error ||
+            error?.response?.data?.message ||
+            error?.message ||
+            "Failed to assign task";
+
+          toastManager.add({
+            title: errorMessage,
+            type: "error",
+          });
         },
       });
     } catch (error: any) {
-      toastManager.add({ title: error?.message || "Failed to upload site photos", type: "error" });
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to upload site photos";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
     }
   };
 

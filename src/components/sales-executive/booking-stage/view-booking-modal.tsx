@@ -153,7 +153,7 @@ const designsSchema = z.object({
     .refine(
       (files: File[]) =>
         files.every((f) =>
-          /\.(pdf|zip|pyo|pytha|dwg|dxf|stl|step|stp|iges|igs|3ds|obj|skp|sldprt|sldasm|prt|catpart|catproduct)$/i.test(
+          /\.(pdf|zip|pyo|pytha|dwg|dxf|stl|step|stp|iges|igs|3ds|obj|skp|sldprt|sldasm|prt|catpart|catproduct|jpg)$/i.test(
             f.name,
           ),
         ),
@@ -1760,7 +1760,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                       <DocumentsUploader
                         value={field.value}
                         onChange={field.onChange}
-                        accept=".pdf,.pyo,.pytha,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip"
+                        accept=".pdf,.pyo,.pytha,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip,.jpg"
                       />
                     </FormControl>
                     <FormMessage />

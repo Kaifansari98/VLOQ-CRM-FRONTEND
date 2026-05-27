@@ -393,6 +393,18 @@ export default function InstallationMiscellaneous({
         resetForm();
         refetch();
       },
+      onError: (error: any) => {
+        const errorMessage =
+          error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          error?.message ||
+          "Failed to create miscellaneous entry.";
+
+        toastManager.add({
+          title: errorMessage,
+          type: "error",
+        });
+      },
     });
   });
 
@@ -515,6 +527,18 @@ export default function InstallationMiscellaneous({
               queryKey: ["miscellaneousEntries", vendorId, leadId],
             });
           }
+        },
+        onError: (error: any) => {
+          const errorMessage =
+            error?.response?.data?.error ||
+            error?.response?.data?.message ||
+            error?.message ||
+            "Failed to upload documents.";
+
+          toastManager.add({
+            title: errorMessage,
+            type: "error",
+          });
         },
       },
     );

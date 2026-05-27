@@ -105,12 +105,26 @@ export function FileUploadField({
     [multiple, onChange, maxSizeMB, finalMaxFiles]
   );
 
+  // Keep track of the last time we showed a max files toast to avoid spam
+  const lastMaxFilesToast = React.useRef<number>(0);
+
   const onFileReject = React.useCallback(
     (file: File, message: string) => {
       const lower = message.toLowerCase();
 
-      if (!multiple && lower.includes("max")) {
-        toastManager.add({ title: "Only 1 file is allowed", type: "error" });
+      if (lower.includes("max")) {
+        const now = Date.now();
+        if (now - lastMaxFilesToast.current > 1000) {
+          if (!multiple) {
+            toastManager.add({ title: "Only 1 file is allowed", type: "error" });
+          } else {
+            toastManager.add({
+              title: `Maximum files upload limit of ${finalMaxFiles} reached.`,
+              type: "error",
+            });
+          }
+          lastMaxFilesToast.current = now;
+        }
       } else if (lower.includes("type") && finalAccept !== "*/*") {
         toastManager.add({ title: "This file type is not allowed", type: "error" });
       } else if (lower.includes("size") || lower.includes("large")) {
@@ -124,7 +138,7 @@ export function FileUploadField({
         toastManager.add({ title: message, type: "error" });
       }
     },
-    [multiple, finalAccept, maxSizeMB]
+    [multiple, finalAccept, maxSizeMB, finalMaxFiles]
   );
 
   // Build human-readable accept hint

@@ -183,6 +183,18 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
           window.location.reload();
         }, 1000);
       },
+      onError: (error: any) => {
+        const errorMessage =
+          error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          error?.message ||
+          "Failed to submit client approval";
+
+        toastManager.add({
+          title: errorMessage,
+          type: "error",
+        });
+      },
     });
   };
 

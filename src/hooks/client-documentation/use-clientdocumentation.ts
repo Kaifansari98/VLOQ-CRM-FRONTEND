@@ -105,7 +105,10 @@ export const useUploadMoreClientDocumentation = () => {
     },
     onError: (error: any) => {
       const message =
-        error?.response?.data?.message || error?.message || "Upload failed";
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Upload failed";
       toastManager.add({ title: message, type: "error" });
     },
   });
@@ -140,7 +143,10 @@ export const useMoveLeadToClientApproval = () => {
     },
     onError: (error: any) => {
       const message =
-        error?.response?.data?.message || error?.message || "Failed to move lead";
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to move lead";
       toastManager.add({ title: message, type: "error" });
     },
   });

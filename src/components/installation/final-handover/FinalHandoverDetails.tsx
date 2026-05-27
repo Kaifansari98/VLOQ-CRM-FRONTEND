@@ -359,22 +359,35 @@ export default function FinalHandover({
       formData.append(activeSection.fieldName, file);
     });
 
-    if (activeSection.id === "amc_contract_documents") {
-      await uploadServicingMutation.mutateAsync(formData);
-    } else {
-      await uploadMutation.mutateAsync(formData);
-    }
-    setSelectedFiles([]);
+    try {
+      if (activeSection.id === "amc_contract_documents") {
+        await uploadServicingMutation.mutateAsync(formData);
+      } else {
+        await uploadMutation.mutateAsync(formData);
+      }
+      setSelectedFiles([]);
 
-    queryClient.invalidateQueries({
-      queryKey: ["finalHandoverDocuments", vendorId, leadId],
-    });
-    queryClient.invalidateQueries({
-      queryKey: ["allLeadDocuments"],
-    });
-    queryClient.invalidateQueries({
-      queryKey: ["servicingDocuments", vendorId, leadId],
-    });
+      queryClient.invalidateQueries({
+        queryKey: ["finalHandoverDocuments", vendorId, leadId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["allLeadDocuments"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["servicingDocuments", vendorId, leadId],
+      });
+    } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to upload documents.";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
+    }
   };
 
   const handleConfirmDelete = () => {
