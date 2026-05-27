@@ -96,7 +96,16 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
       form.reset();
       onOpenChange(false);
     } catch (error: any) {
-      toastManager.add({ title: error?.message || "Failed to upload design files.", type: "error" });
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Something went wrong";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
     }
   };
 

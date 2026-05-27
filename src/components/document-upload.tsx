@@ -76,7 +76,7 @@ export function DocumentsUploader({
       multiple
       accept={
         accept ??
-        ".pdf,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct"
+        ".pdf,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.jpg"
       }
       className="w-full"
     >

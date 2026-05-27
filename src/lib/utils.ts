@@ -62,9 +62,18 @@ export function logError(context: string, err: unknown) {
   console.error(`${context}:`, getErrorMessage(err), err);
 }
 
-export function toastError(err: unknown) {
-  toastManager.add({ title: getErrorMessage(err), type: "error" });
-}
+export const toastError = (error: any) => {
+  const message =
+    error?.response?.data?.error ||
+    error?.response?.data?.message ||
+    error?.message ||
+    "Something went wrong";
+
+  toastManager.add({
+    title: message,
+    type: "error",
+  });
+};
 
 export function getCssVariable(name: string) {
   if (typeof window === "undefined") return "";
