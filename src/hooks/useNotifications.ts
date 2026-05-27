@@ -109,7 +109,9 @@ export const useNotifications = () => {
     const setupForegroundListener = async () => {
       try {
         const { onMessage } = await import("firebase/messaging")
-        const { messaging } = await import("@/utils/firebase")
+        const { getFirebaseMessaging } = await import("@/utils/firebase")
+        const messaging = await getFirebaseMessaging()
+        if (!messaging) return
 
         unsubscribe = onMessage(messaging, (payload) => {
           const notificationId = Number(payload.data?.notification_id)
@@ -167,6 +169,18 @@ export const useNotifications = () => {
           }
         })
       } catch (error) {
+        const message =
+          error instanceof Error ? error.message.toLowerCase() : ""
+        const name = error instanceof Error ? error.name : ""
+
+        if (
+          name === "AbortError" ||
+          message.includes("push service not available") ||
+          message.includes("messaging is not supported")
+        ) {
+          return
+        }
+
         console.error("Failed to setup notifications listener", error)
       }
     }
