@@ -297,6 +297,7 @@ export const getClientVisits = async (leadId: number) => {
 export const createLead = async (
   payload: CreateLeadPayload,
   files: File[] = [],
+  onUploadProgress?: (info: UploadProgressInfo) => void,
 ) => {
   const formData = new FormData();
 
@@ -322,15 +323,29 @@ export const createLead = async (
     formData.append("documents", file);
   });
 
-  for (const pair of formData.entries()) {
-    console.log(pair[0] + ": " + pair[1]);
-  }
+  // Pre-calculate total file bytes for accurate progress reporting
+  const totalBytes = files.reduce((sum, f) => sum + f.size, 0);
 
   try {
     const response = await apiClient.post("leads/create", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
+      onUploadProgress: onUploadProgress
+        ? (progressEvent) => {
+            const serverTotal = progressEvent.total ?? totalBytes;
+            const loaded = progressEvent.loaded ?? 0;
+            const percent =
+              serverTotal > 0
+                ? Math.min(99, Math.round((loaded / serverTotal) * 100))
+                : 0;
+            onUploadProgress({
+              percent,
+              uploadedBytes: Math.min(loaded, totalBytes),
+              totalBytes,
+            });
+          }
+        : undefined,
     });
 
     return response.data;
