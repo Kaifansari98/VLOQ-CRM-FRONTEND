@@ -445,18 +445,14 @@ export default function LeadsGenerationForm({
     const productTypes = (form.getValues("product_types") || [])
       .map((value) => Number(value))
       .filter((value) => Number.isFinite(value));
-    const productStructures = (form.getValues("product_structures") || [])
-      .map((value) => Number(value))
-      .filter((value) => Number.isFinite(value));
 
-    if (!phoneNumber || productTypes.length === 0 || productStructures.length === 0) {
+    if (!phoneNumber || productTypes.length === 0) {
       return null;
     }
 
     const signature = [
       phoneNumber,
       [...productTypes].sort((a, b) => a - b).join(","),
-      [...productStructures].sort((a, b) => a - b).join(","),
     ].join("|");
 
     return {
@@ -464,7 +460,6 @@ export default function LeadsGenerationForm({
       payload: {
         phone_number: phoneNumber,
         product_types: productTypes,
-        product_structures: productStructures,
       },
     };
   }, [form]);
@@ -1073,7 +1068,6 @@ export default function LeadsGenerationForm({
           items={structureQuantityItems}
           className="mt-2"
           onRemove={(removeIndex) => {
-            resetSimilarLeadValidation();
             const current = form.getValues("product_structures") || [];
             const next = current.filter((_, index) => index !== removeIndex);
             form.setValue("product_structures", next, {
@@ -1165,14 +1159,10 @@ export default function LeadsGenerationForm({
                   <FormControl>
                   <Tooltip {...(shouldShowMaxTooltip ? { open: true } : {})}>
                       <TooltipTrigger asChild>
-                        <div
-                          className="w-full"
-                          onBlurCapture={handleSimilarityFieldBlur}
-                        >
+                        <div className="w-full">
                           <MultipleSelector
                             value={selectedOptions} // Pass Option[] with proper labels
                             onChange={(selectedOptions) => {
-                              resetSimilarLeadValidation();
                               const nextOptions = isKitchenSingleSelect
                                 ? selectedOptions.slice(-1)
                                 : selectedOptions;
@@ -1213,11 +1203,6 @@ export default function LeadsGenerationForm({
                   </Tooltip>
                 </FormControl>
                 <FormMessage />
-                {similarLeadWarning && (
-                  <p className="text-sm font-medium text-destructive">
-                    {similarLeadErrorMessage}
-                  </p>
-                )}
               </FormItem>
             );
           }}

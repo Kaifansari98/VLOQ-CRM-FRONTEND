@@ -137,7 +137,6 @@ export interface ContactOrEmailCheckResult {
 export interface SimilarLeadCheckPayload {
   phone_number: string;
   product_types: number[];
-  product_structures: number[];
 }
 
 export interface SimilarLeadCheckResult {
