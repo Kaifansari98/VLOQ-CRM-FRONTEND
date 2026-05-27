@@ -540,8 +540,13 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
         queryKey: ["csp-booking-photos", vendorId, leadId],
       });
     } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message;
+
       toastManager.add({
-        title: error?.response?.data?.message || "Failed to upload site photos",
+        title: errorMessage,
         type: "error",
       });
     }
