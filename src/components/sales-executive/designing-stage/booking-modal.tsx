@@ -176,9 +176,6 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       franchiseId ?? undefined,
       hasMultipleSupervisors
     );
-
-
-  console.log("headSupervisorMapping,................", headSupervisorMapping)
   const { data: franchises = [] } = useFranchisesByVendorId(
     vendorId ?? 0,
     !!vendorId
@@ -351,7 +348,16 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
         router.push("/dashboard/leads/booking-stage");
       },
       onError: (err: any) => {
-        toastManager.add({ title: err?.response?.data?.message || "Failed to save booking", type: "error" });
+        const errorMessage =
+          err?.response?.data?.error ||
+          err?.response?.data?.message ||
+          err?.message ||
+          "Something went wrong";
+
+        toastManager.add({
+          title: errorMessage,
+          type: "error",
+        });
         console.error("❌ Booking error:", err);
       },
     });
