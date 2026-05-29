@@ -58,6 +58,9 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
   const { leadId, accountId } = useDetails();
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id)!;
   const userId = useAppSelector((s) => s.auth.user?.id)!;
+  const isCustomUserTypeOnlyVendor = useAppSelector(
+    (s) => s.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
+  );
   const { data: structureInstances = [] } = useLeadProductStructureInstances(
     leadId,
     vendorId,
@@ -89,7 +92,9 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
         vendorId,
         leadId,
         userId,
-        productStructureInstanceIds: data.selected_instance_ids ?? [],
+        productStructureInstanceIds: isCustomUserTypeOnlyVendor
+          ? (data.selected_instance_ids ?? [])
+          : [],
       });
 
       toastManager.add({ title: "Design files uploaded successfully!", type: "success" });
@@ -141,7 +146,7 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
                 )}
               />
 
-              {structureInstances.length > 0 && (
+              {isCustomUserTypeOnlyVendor && (
                 <FormField
                   control={form.control}
                   name="selected_instance_ids"
@@ -163,52 +168,60 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
                         <div className="space-y-3">
                           <div className="flex items-center justify-between gap-3">
                             <FormLabel>Select Product Instances</FormLabel>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-auto px-0 text-xs"
-                              onClick={() =>
-                                field.onChange(
-                                  allSelected
-                                    ? []
-                                    : structureInstances.map(
-                                        (instance: LeadProductStructureInstance) =>
-                                          instance.id,
-                                      ),
-                                )
-                              }
-                            >
-                              {allSelected ? "Deselect All" : "Select All"}
-                            </Button>
+                            {structureInstances.length > 0 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-auto px-0 text-xs"
+                                onClick={() =>
+                                  field.onChange(
+                                    allSelected
+                                      ? []
+                                      : structureInstances.map(
+                                          (instance: LeadProductStructureInstance) =>
+                                            instance.id,
+                                        ),
+                                  )
+                                }
+                              >
+                                {allSelected ? "Deselect All" : "Select All"}
+                              </Button>
+                            )}
                           </div>
 
-                          <div className="grid gap-3">
-                            {structureInstances.map((instance) => {
-                              const isChecked = selectedIds.includes(instance.id);
-                              return (
-                                <label
-                                  key={instance.id}
-                                  className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer"
-                                >
-                                  <Checkbox
-                                    checked={isChecked}
-                                    onCheckedChange={(checked) =>
-                                      toggleInstance(instance.id, checked === true)
-                                    }
-                                  />
-                                  <div className="space-y-1 leading-tight">
-                                    <div className="text-sm font-medium">
-                                      {instance.title}
+                          {structureInstances.length > 0 ? (
+                            <div className="grid gap-3">
+                              {structureInstances.map((instance) => {
+                                const isChecked = selectedIds.includes(instance.id);
+                                return (
+                                  <label
+                                    key={instance.id}
+                                    className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer"
+                                  >
+                                    <Checkbox
+                                      checked={isChecked}
+                                      onCheckedChange={(checked) =>
+                                        toggleInstance(instance.id, checked === true)
+                                      }
+                                    />
+                                    <div className="space-y-1 leading-tight">
+                                      <div className="text-sm font-medium">
+                                        {instance.title}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">
+                                        {instance.productStructure?.type || "Product Structure"}
+                                      </div>
                                     </div>
-                                    <div className="text-xs text-muted-foreground">
-                                      {instance.productStructure?.type || "Product Structure"}
-                                    </div>
-                                  </div>
-                                </label>
-                              );
-                            })}
-                          </div>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+                              No product instances found for this lead.
+                            </div>
+                          )}
 
                           <p className="text-xs text-muted-foreground">
                             Selected instances will be used in design file naming.
