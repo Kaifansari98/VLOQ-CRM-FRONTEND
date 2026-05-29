@@ -191,6 +191,7 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
                       ) : canAssignDesigner ? (
                         <Button
                           size="sm"
+                          variant="default"
                           className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
                           onClick={() => setOpenAssignDesignerModal(true)}
                         >
