@@ -1135,7 +1135,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                   <FileUploadField
                     value={approvalFiles}
                     onChange={setApprovalFiles}
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.zip"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.zip,.pyo"
                     multiple
                     maxFiles={10}
                   />
