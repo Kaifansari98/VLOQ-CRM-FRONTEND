@@ -39,17 +39,18 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
       className,
       bookingBtn = true,
     },
-    ref
+    ref,
   ) => {
     const { leadId, accountId, canBook } = useDetails();
     const vendorId = useAppSelector((state) => state.auth?.user?.vendor_id);
     const userId = useAppSelector((state) => state.auth?.user?.id);
     const userType = useAppSelector(
-      (state) => state.auth.user?.user_type.user_type
+      (state) => state.auth.user?.user_type.user_type,
     );
     const vendorCustomUserTypeOnly = useAppSelector(
       (state) =>
-        state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
+        state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only ===
+        true,
     );
     const customPrivilegeCodes = useAppSelector(
       (state) => state.customPrivileges.codes,
@@ -61,8 +62,8 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
     const [openDesignsModal, setOpenDesignsModal] = useState(false);
     const [openMeetingsModal, setOpenMeetingsModal] = useState(false);
     const [openBookingModal, setOpenBookingModal] = useState(false);
-    const [openAssignDesignerModal, setOpenAssignDesignerModal] = useState(false);
-
+    const [openAssignDesignerModal, setOpenAssignDesignerModal] =
+      useState(false);
 
     const leadCurrentStatus = leadStatus?.status_tag;
     const lead = leadDetailsData?.data?.lead;
@@ -90,7 +91,9 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
     const canAssignDesigner =
       vendorCustomUserTypeOnly &&
       (isSuperAdmin ||
-        customPrivilegeCodes.includes("leads.open_leads.details_of_lead.add_lead"));
+        customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.add_lead",
+        ));
 
     const handleClick = (id: string) => {
       setActiveTab(id);
@@ -108,7 +111,7 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
             className={cn(
               "flex items-center gap-1 p-1 bg-background rounded-full border",
               "max-w-full sm:max-w-none",
-              className
+              className,
             )}
           >
             <div className="flex gap-1">
@@ -122,7 +125,7 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
                     "text-xs sm:text-sm font-medium",
                     activeTab === tab.id
                       ? "text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground"
+                      : "text-muted-foreground hover:text-foreground",
                   )}
                 >
                   {activeTab === tab.id && (
@@ -169,15 +172,18 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
                 {activeTab === "designs" &&
                   vendorCustomUserTypeOnly &&
                   (assignedDesigner || canAssignDesigner) && (
-                  <>
-                    {assignedDesigner ? (
+                    <>
+                      {assignedDesigner ? (
                         <div className="h-9 rounded-md border bg-background px-3 flex items-center gap-2 whitespace-nowrap">
-                          <Palette size={16} className="text-muted-foreground" />
+                          <Palette
+                            size={16}
+                            className="text-muted-foreground"
+                          />
                           <div className="flex flex-col leading-tight">
                             <span className="text-xs font-medium">
                               {assignedDesigner.user_name}
                             </span>
-                            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                            <span className="text-[8px] uppercase tracking-wide text-muted-foreground">
                               Designer
                             </span>
                           </div>
@@ -192,8 +198,8 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
                           <span>Assign Designer</span>
                         </Button>
                       ) : null}
-                  </>
-                )}
+                    </>
+                  )}
                 {activeTab === "designs" && canUploadDesigns && (
                   <>
                     <Button
@@ -255,7 +261,7 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
         />
       </div>
     );
-  }
+  },
 );
 
 PillTabs.displayName = "PillTabs";
