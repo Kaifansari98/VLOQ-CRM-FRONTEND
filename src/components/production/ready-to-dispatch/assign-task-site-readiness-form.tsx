@@ -287,13 +287,17 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     userId,
   ]);
 
-  const mappedData =
-    isApprovalRequestTask
-      ? approvalRequestUsers.map((user) => ({
-          id: user.id,
-          label: user.user_name,
-        }))
-      : isSelfAssignTask
+  const followUpAssignableUsers = (followUpUsersData?.data?.users ?? []).filter(
+    (u: any) =>
+      String(u.user_type?.user_type ?? "").toLowerCase() !== "master-admin",
+  );
+
+  const mappedData = isApprovalRequestTask
+    ? approvalRequestUsers.map((user) => ({
+        id: user.id,
+        label: user.user_name,
+      }))
+    : isSelfAssignTask
       ? normalizedUserType === "master-admin"
         ? []
         : [
@@ -302,27 +306,15 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
               label: loggedInUserName,
             },
           ]
-      : normalizedUserType === "custom"
-      ? (followUpUsersData?.data?.users ?? [])
-          .filter(
-            (u: any) =>
-              String(u.user_type?.user_type ?? "").toLowerCase() !==
-              "master-admin",
-          )
-          .map((u: any) => ({
+    : normalizedUserType === "custom"
+      ? followUpAssignableUsers.map((u: any) => ({
           id: u.id,
           label: u.user_name,
           disabled: false,
           tooltip: undefined,
         }))
       : taskType === "Follow Up"
-        ? (followUpUsersData?.data?.users ?? [])
-            .filter(
-              (u: any) =>
-                String(u.user_type?.user_type ?? "").toLowerCase() !==
-                "master-admin",
-            )
-            .map((u: any) => ({
+        ? followUpAssignableUsers.map((u: any) => ({
             id: u.id,
             label: u.user_name,
             disabled:

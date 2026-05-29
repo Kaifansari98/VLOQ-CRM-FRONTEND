@@ -450,6 +450,11 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     userId,
   ]);
 
+  const followUpAssignableUsers = (followUpUsersData?.data?.users ?? []).filter(
+    (u: any) =>
+      String(u.user_type?.user_type ?? "").toLowerCase() !== "master-admin",
+  );
+
   const mappedData = React.useMemo(() => {
     if (taskType === "Approval Request") {
       return approvalRequestUsers.map((user) => ({
@@ -497,13 +502,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     }
 
     if (taskType === "Follow Up") {
-      return (followUpUsersData?.data?.users ?? [])
-        .filter(
-          (u: any) =>
-            String(u.user_type?.user_type ?? "").toLowerCase() !==
-            "master-admin",
-        )
-        .map((u: any) => ({
+      return followUpAssignableUsers.map((u: any) => ({
         id: u.id,
         label: u.user_name,
         disabled:
@@ -540,7 +539,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     finalMeasurementUsers,
     followUpConflicts,
     followUpTooltip,
-    followUpUsersData,
+    followUpAssignableUsers,
     isCustomUser,
     isSelfAssignTask,
     loggedInUserName,

@@ -315,6 +315,14 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     franchiseId,
   ]);
 
+  const followUpAssignableUsers = isCustomUser
+    ? eligibleCustomUsers
+    : (followUpUsersData?.data?.users ?? []).filter(
+        (u: any) =>
+          String(u.user_type?.user_type ?? "").toLowerCase() !==
+          "master-admin",
+      );
+
   const mappedData = isApprovalRequestTask
     ? approvalRequestUsers.map((user) => ({
         id: user.id,
@@ -324,20 +332,13 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
       ? normalizedUserType === "master-admin"
         ? []
         : [
-            {
-              id: userId ?? 0,
-              label: loggedInUserName,
-            },
-          ]
+          {
+            id: userId ?? 0,
+            label: loggedInUserName,
+          },
+        ]
     : isFollowUp
-      ? (isCustomUser
-          ? eligibleCustomUsers
-          : (followUpUsersData?.data?.users ?? []).filter(
-              (u: any) =>
-                String(u.user_type?.user_type ?? "").toLowerCase() !==
-                "master-admin",
-            ))
-        ).map((u: any) => ({
+      ? followUpAssignableUsers.map((u: any) => ({
           id: u.id,
           label: u.user_name,
           disabled:
