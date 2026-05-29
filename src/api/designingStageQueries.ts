@@ -111,6 +111,7 @@ export interface SubmitDesignPayload {
   vendorId: number;
   leadId: number;
   userId: number;
+  productStructureInstanceIds?: number[];
 }
 
 export const submitMeeting = async (payload: SubmitMeetingPayload) => {
@@ -129,6 +130,10 @@ export const submitMeeting = async (payload: SubmitMeetingPayload) => {
 
   payload.files.forEach((file) => {
     formData.append("files", file);
+  });
+
+  payload.productStructureInstanceIds?.forEach((instanceId) => {
+    formData.append("product_structure_instance_ids", String(instanceId));
   });
 
   const { data } = await apiClient.post(
