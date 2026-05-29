@@ -8,6 +8,7 @@ import QuotationTab from "../sales-executive/designing-stage/pill-tabs-component
 import MeetingsTab from "../sales-executive/designing-stage/pill-tabs-component/meetings";
 import DesigningTab from "../sales-executive/designing-stage/pill-tabs-component/designs";
 import { useAppSelector } from "@/redux/store";
+import { useLeadById } from "@/hooks/useLeadsQueries";
 
 type props = {
   leadId: number;
@@ -25,13 +26,16 @@ const containerVariants = {
 };
 
 export default function DesigningLeadsDetails({ leadId }: props) {
-  const accountId = leadId;
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const userId = useAppSelector((state) => state.auth.user?.id);
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type?.toLowerCase(),
   );
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
+  const { data: leadData } = useLeadById(leadId, vendorId, userId);
+  const accountId = leadData?.data?.lead?.account_id ?? leadId;
 
   const tabs = React.useMemo(() => {
     const baseTabs = [

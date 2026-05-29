@@ -185,7 +185,6 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
                       ) : canAssignDesigner ? (
                         <Button
                           size="sm"
-                          variant="outline"
                           className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
                           onClick={() => setOpenAssignDesignerModal(true)}
                         >
@@ -240,7 +239,7 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
           onOpenChange={setOpenAssignDesignerModal}
           data={{
             id: leadId,
-            accountId,
+            accountId: lead?.account_id ?? accountId,
             franchiseId: lead?.franchise_id ?? null,
           }}
         />
