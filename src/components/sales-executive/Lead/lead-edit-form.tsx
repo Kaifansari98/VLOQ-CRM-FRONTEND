@@ -263,7 +263,6 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
   }
   const allowDuplicatesForWardrobe =
     parentFilter === "Wardrobe" || parentFilter === "Others";
-  const isKitchenSingleSelect = parentFilter === "Kitchen";
 
   const structureOptions: Option[] = useMemo(
     () =>
@@ -1037,11 +1036,8 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                           <MultipleSelector
                             value={selectedOptions}
                             onChange={(opts) => {
-                              const nextOptions = isKitchenSingleSelect
-                                ? opts.slice(-1)
-                                : opts;
                               field.onChange(
-                                nextOptions.map((opt) => opt.value),
+                                opts.map((opt) => opt.value),
                               );
                             }}
                             options={structureOptions}

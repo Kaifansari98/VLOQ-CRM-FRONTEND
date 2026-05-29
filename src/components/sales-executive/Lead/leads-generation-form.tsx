@@ -236,7 +236,6 @@ export default function LeadsGenerationForm({
   }
   const allowDuplicatesForWardrobe =
     parentFilter === "Wardrobe" || parentFilter === "Others";
-  const isKitchenSingleSelect = parentFilter === "Kitchen";
 
   useEffect(() => {
     return () => {
@@ -1163,10 +1162,7 @@ export default function LeadsGenerationForm({
                           <MultipleSelector
                             value={selectedOptions} // Pass Option[] with proper labels
                             onChange={(selectedOptions) => {
-                              const nextOptions = isKitchenSingleSelect
-                                ? selectedOptions.slice(-1)
-                                : selectedOptions;
-                              const selectedIds = nextOptions.map(
+                              const selectedIds = selectedOptions.map(
                                 (opt) => opt.value
                               );
                               field.onChange(selectedIds);
