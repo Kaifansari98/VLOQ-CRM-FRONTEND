@@ -22,6 +22,7 @@ import { useSubmitDesigns } from "@/api/designingStageQueries";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 import { Checkbox } from "@/components/ui/checkbox";
+import type { LeadProductStructureInstance } from "@/api/leads";
 
 const designsSchema = z.object({
   upload_pdf: z
@@ -60,7 +61,7 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
   const { data: structureInstances = [] } = useLeadProductStructureInstances(
     leadId,
     vendorId,
-  );
+  ) as { data: LeadProductStructureInstance[] | undefined };
 
   const queryClient = useQueryClient();
   const form = useForm<DesignsFormValues>({
@@ -171,7 +172,10 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
                                 field.onChange(
                                   allSelected
                                     ? []
-                                    : structureInstances.map((instance) => instance.id),
+                                    : structureInstances.map(
+                                        (instance: LeadProductStructureInstance) =>
+                                          instance.id,
+                                      ),
                                 )
                               }
                             >
