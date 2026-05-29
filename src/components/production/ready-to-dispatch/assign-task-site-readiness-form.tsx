@@ -250,10 +250,16 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   const isSelfAssignTask = selfAssignTaskTypeNames.includes(taskType);
 
   const siteSupervisorList =
-    vendorUsers?.data?.site_supervisors?.map((user: any) => ({
-      id: user.id,
-      label: user.user_name,
-    })) ?? [];
+    (vendorUsers?.data?.site_supervisors ?? [])
+      .filter(
+        (user: any) =>
+          String(user.user_type?.user_type ?? "").toLowerCase() !==
+          "master-admin",
+      )
+      .map((user: any) => ({
+        id: user.id,
+        label: user.user_name,
+      }));
   const followUpTooltip =
     "A Follow Up Task is already assigned to this user, which is not yet completed.";
   const approvalRequestUsers = React.useMemo(() => {
@@ -263,7 +269,12 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
       normalizedUserType === "sales-executive";
 
     return users.filter((user) => {
+      const normalizedAssignableUserType = String(
+        user.user_type?.user_type ?? "",
+      ).toLowerCase();
+
       if (user.id === userId) return false;
+      if (normalizedAssignableUserType === "master-admin") return false;
       if (shouldRestrictToFranchise) {
         return user.franchise_id === franchiseId;
       }
@@ -283,21 +294,35 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
           label: user.user_name,
         }))
       : isSelfAssignTask
-      ? [
-          {
-            id: userId ?? 0,
-            label: loggedInUserName,
-          },
-        ]
+      ? normalizedUserType === "master-admin"
+        ? []
+        : [
+            {
+              id: userId ?? 0,
+              label: loggedInUserName,
+            },
+          ]
       : normalizedUserType === "custom"
-      ? (followUpUsersData?.data?.users ?? []).map((u: any) => ({
+      ? (followUpUsersData?.data?.users ?? [])
+          .filter(
+            (u: any) =>
+              String(u.user_type?.user_type ?? "").toLowerCase() !==
+              "master-admin",
+          )
+          .map((u: any) => ({
           id: u.id,
           label: u.user_name,
           disabled: false,
           tooltip: undefined,
         }))
       : taskType === "Follow Up"
-        ? (followUpUsersData?.data?.users ?? []).map((u: any) => ({
+        ? (followUpUsersData?.data?.users ?? [])
+            .filter(
+              (u: any) =>
+                String(u.user_type?.user_type ?? "").toLowerCase() !==
+                "master-admin",
+            )
+            .map((u: any) => ({
             id: u.id,
             label: u.user_name,
             disabled:

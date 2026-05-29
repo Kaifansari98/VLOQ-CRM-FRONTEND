@@ -247,9 +247,17 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     "A Follow Up Task is already assigned to this user, which is not yet completed.";
 
   const franchiseSalesExecutives =
-    salesExecutiveUsers?.data?.sales_executives ?? [];
+    (salesExecutiveUsers?.data?.sales_executives ?? []).filter(
+      (user: any) =>
+        String(user.user_type?.user_type ?? "").toLowerCase() !==
+        "master-admin",
+    );
   const eligibleCustomUsers =
-    customPrivilegeUsers?.data?.sales_executives ?? [];
+    (customPrivilegeUsers?.data?.sales_executives ?? []).filter(
+      (user: any) =>
+        String(user.user_type?.user_type ?? "").toLowerCase() !==
+        "master-admin",
+    );
 
   const initialSiteMeasurementUsers = React.useMemo(() => {
     if (vendorCustomUserTypeMode === true) {
@@ -282,7 +290,15 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
       normalizedUserType === "sales-executive";
 
     return users.filter((user) => {
+      const normalizedAssignableUserType = String(
+        user.user_type?.user_type ?? "",
+      ).toLowerCase();
+
       if (user.id === userId) {
+        return false;
+      }
+
+      if (normalizedAssignableUserType === "master-admin") {
         return false;
       }
 
@@ -305,16 +321,22 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
         label: user.user_name,
       }))
     : isSelfAssignTask
-      ? [
-          {
-            id: userId ?? 0,
-            label: loggedInUserName,
-          },
-        ]
+      ? normalizedUserType === "master-admin"
+        ? []
+        : [
+            {
+              id: userId ?? 0,
+              label: loggedInUserName,
+            },
+          ]
     : isFollowUp
       ? (isCustomUser
           ? eligibleCustomUsers
-          : (followUpUsersData?.data?.users ?? [])
+          : (followUpUsersData?.data?.users ?? []).filter(
+              (u: any) =>
+                String(u.user_type?.user_type ?? "").toLowerCase() !==
+                "master-admin",
+            ))
         ).map((u: any) => ({
           id: u.id,
           label: u.user_name,

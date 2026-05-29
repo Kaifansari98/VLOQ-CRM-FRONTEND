@@ -370,19 +370,35 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   } = useApprovalRequestAssignableUsers(vendorId, leadId);
   const followUpTooltip =
     "A Follow Up Task is already assigned to this user, which is not yet completed.";
-  const eligibleCustomUsers = salesExecutives?.data?.sales_executives ?? [];
+  const eligibleCustomUsers = (salesExecutives?.data?.sales_executives ?? []).filter(
+    (user: any) =>
+      String(user.user_type?.user_type ?? "").toLowerCase() !==
+      "master-admin",
+  );
   const eligibleFinalMeasurementCustomUsers =
-    customFinalMeasurementUsers?.data?.sales_executives ?? [];
+    (customFinalMeasurementUsers?.data?.sales_executives ?? []).filter(
+      (user: any) =>
+        String(user.user_type?.user_type ?? "").toLowerCase() !==
+        "master-admin",
+    );
 
   const baseFinalMeasurementUsers = React.useMemo(() => {
     if (assignedSiteSupervisorId) {
-      const assigned = siteSupervisors?.data?.site_supervisors?.find(
+      const assigned = (siteSupervisors?.data?.site_supervisors ?? []).find(
         (user: any) => user.id === assignedSiteSupervisorId
       );
-      return assigned ? [assigned] : [];
+      return assigned &&
+        String(assigned.user_type?.user_type ?? "").toLowerCase() !==
+          "master-admin"
+        ? [assigned]
+        : [];
     }
 
-    return siteSupervisors?.data?.site_supervisors ?? [];
+    return (siteSupervisors?.data?.site_supervisors ?? []).filter(
+      (user: any) =>
+        String(user.user_type?.user_type ?? "").toLowerCase() !==
+        "master-admin",
+    );
   }, [assignedSiteSupervisorId, siteSupervisors]);
 
   const finalMeasurementUsers = React.useMemo(() => {
@@ -416,7 +432,12 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       normalizedUserRole === "sales-executive";
 
     return users.filter((user) => {
+      const normalizedAssignableUserType = String(
+        user.user_type?.user_type ?? "",
+      ).toLowerCase();
+
       if (user.id === userId) return false;
+      if (normalizedAssignableUserType === "master-admin") return false;
       if (shouldRestrictToFranchise) {
         return user.franchise_id === franchiseId;
       }
@@ -438,12 +459,14 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     }
 
     if (isSelfAssignTask) {
-      return [
-        {
-          id: userId ?? 0,
-          label: loggedInUserName,
-        },
-      ];
+      return normalizedUserRole === "master-admin"
+        ? []
+        : [
+            {
+              id: userId ?? 0,
+              label: loggedInUserName,
+            },
+          ];
     }
 
     if (
@@ -474,7 +497,13 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     }
 
     if (taskType === "Follow Up") {
-      return (followUpUsersData?.data?.users ?? []).map((u: any) => ({
+      return (followUpUsersData?.data?.users ?? [])
+        .filter(
+          (u: any) =>
+            String(u.user_type?.user_type ?? "").toLowerCase() !==
+            "master-admin",
+        )
+        .map((u: any) => ({
         id: u.id,
         label: u.user_name,
         disabled:
@@ -490,7 +519,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
 
     if (taskType === "BookingDone - ISM") {
       return (
-        salesExecutives?.data?.sales_executives?.map((user: any) => ({
+        eligibleCustomUsers.map((user: any) => ({
           id: user.id,
           label: user.user_name,
         })) ?? []
@@ -515,7 +544,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     isCustomUser,
     isSelfAssignTask,
     loggedInUserName,
-    salesExecutives,
+    normalizedUserRole,
     taskType,
     userId,
   ]);
