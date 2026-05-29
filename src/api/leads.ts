@@ -83,6 +83,11 @@ export interface Lead {
   activity_status?: string;
   count?: number;
   site_map_link: string;
+  assigned_designer_from_mapping?: {
+    user_id: number;
+    user_name: string | null;
+    created_at: string;
+  } | null;
 }
 
 export interface LeadProductStructureInstance {
@@ -406,6 +411,22 @@ export const getVendorSalesExecutiveUsers = async (
   const response = await apiClient.get(
     `/leads/sales-executives/vendor/${vendorId}`,
     Object.keys(params).length > 0 ? { params } : undefined,
+  );
+  return response.data;
+};
+
+export const assignDesignerToLead = async (
+  vendorId: number,
+  leadId: number,
+  payload: {
+    account_id: number;
+    assign_to_user_id: number;
+    created_by: number;
+  },
+) => {
+  const response = await apiClient.post(
+    `/leads/vendorId/${vendorId}/leadId/${leadId}/assign-designer`,
+    payload,
   );
   return response.data;
 };

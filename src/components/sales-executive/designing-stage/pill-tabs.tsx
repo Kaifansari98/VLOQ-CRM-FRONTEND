@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { CloudUpload, Plus } from "lucide-react";
+import { CloudUpload, Palette, Plus } from "lucide-react";
 import React, { useState } from "react";
 import AddQuotationModal from "./pill-tabs-component/modals/add-quotation-modal";
 import DesignsModal from "./pill-tabs-component/modals/designs-modal";
@@ -12,6 +12,8 @@ import BookingModal from "./booking-modal";
 import { useAppSelector } from "@/redux/store";
 import { useDetails } from "./pill-tabs-component/details-context";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import { useLeadById } from "@/hooks/useLeadsQueries";
+import AssignDesignerModal from "./assign-designer-modal";
 
 type TabItemType = {
   id: string;
@@ -41,21 +43,30 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
   ) => {
     const { leadId, accountId, canBook } = useDetails();
     const vendorId = useAppSelector((state) => state.auth?.user?.vendor_id);
+    const userId = useAppSelector((state) => state.auth?.user?.id);
     const userType = useAppSelector(
       (state) => state.auth.user?.user_type.user_type
+    );
+    const vendorCustomUserTypeOnly = useAppSelector(
+      (state) =>
+        state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
     );
     const customPrivilegeCodes = useAppSelector(
       (state) => state.customPrivileges.codes,
     );
     const { data: leadStatus } = useLeadStatus(leadId, vendorId);
+    const { data: leadDetailsData } = useLeadById(leadId, vendorId, userId);
     const [activeTab, setActiveTab] = React.useState(defaultActiveId);
     const [openQuotationModal, setOpenQuotationModal] = useState(false);
     const [openDesignsModal, setOpenDesignsModal] = useState(false);
     const [openMeetingsModal, setOpenMeetingsModal] = useState(false);
     const [openBookingModal, setOpenBookingModal] = useState(false);
+    const [openAssignDesignerModal, setOpenAssignDesignerModal] = useState(false);
 
 
     const leadCurrentStatus = leadStatus?.status_tag;
+    const lead = leadDetailsData?.data?.lead;
+    const assignedDesigner = lead?.assigned_designer_from_mapping;
 
     const isAdmin =
       userType?.toLowerCase() === "admin" ||
@@ -75,6 +86,9 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
       userType?.toLowerCase() === "custom"
         ? customPrivilegeCodes.includes("leads.designing_stage.designs.upload")
         : true;
+    const canAssignDesigner =
+      vendorCustomUserTypeOnly &&
+      customPrivilegeCodes.includes("leads.open_leads.details_of_lead.add_lead");
 
     const handleClick = (id: string) => {
       setActiveTab(id);
@@ -150,15 +164,46 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
                     <span>Add Meetings</span>
                   </Button>
                 )}
+                {activeTab === "designs" &&
+                  vendorCustomUserTypeOnly &&
+                  (assignedDesigner || canAssignDesigner) && (
+                  <>
+                    {assignedDesigner ? (
+                        <div className="h-9 rounded-md border bg-background px-3 flex items-center gap-2 whitespace-nowrap">
+                          <Palette size={16} className="text-muted-foreground" />
+                          <div className="flex flex-col leading-tight">
+                            <span className="text-xs font-medium">
+                              {assignedDesigner.user_name}
+                            </span>
+                            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                              Designer
+                            </span>
+                          </div>
+                        </div>
+                      ) : canAssignDesigner ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
+                          onClick={() => setOpenAssignDesignerModal(true)}
+                        >
+                          <Palette size={16} className="sm:mr-1" />
+                          <span>Assign Designer</span>
+                        </Button>
+                      ) : null}
+                  </>
+                )}
                 {activeTab === "designs" && canUploadDesigns && (
-                  <Button
-                    size="sm"
-                    className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
-                    onClick={() => setOpenDesignsModal(true)}
-                  >
-                    <CloudUpload size={16} className="sm:mr-1" />
-                    <span>Upload Designs</span>
-                  </Button>
+                  <>
+                    <Button
+                      size="sm"
+                      className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
+                      onClick={() => setOpenDesignsModal(true)}
+                    >
+                      <CloudUpload size={16} className="sm:mr-1" />
+                      <span>Upload Designs</span>
+                    </Button>
+                  </>
                 )}
                 {bookingBtn && (
                   <Button
@@ -187,6 +232,15 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
         <DesignsModal
           open={openDesignsModal}
           onOpenChange={setOpenDesignsModal}
+        />
+        <AssignDesignerModal
+          open={openAssignDesignerModal}
+          onOpenChange={setOpenAssignDesignerModal}
+          data={{
+            id: leadId,
+            accountId,
+            franchiseId: lead?.franchise_id ?? null,
+          }}
         />
         <AddMeetingsModal
           open={openMeetingsModal}

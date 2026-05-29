@@ -37,24 +37,15 @@ interface LeadViewModalProps {
   };
 }
 
-const documentMimeTypes = [
-  "application/pdf",
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/gif",
-];
-const documentAccept = ".pdf,.png,.jpg,.jpeg,.gif";
-
 const formSchema = z
   .object({
     current_site_photos: z.any().optional(),
 
     upload_pdf: z
-      .instanceof(File, { message: "Please upload a document" })
-      .refine((file) => documentMimeTypes.includes(file.type), {
-        message: "Only PDF or image files are allowed",
-      }),
+      .array(
+        z.instanceof(File),
+      )
+      .min(1, { message: "Please upload at least one document" }),
 
     amount: z.number().optional(),
     payment_date: z.string().optional(),
@@ -119,7 +110,7 @@ const BookingDoneIsmForm: React.FC<LeadViewModalProps> = ({
     resolver: zodResolver(formSchema),
     defaultValues: {
       current_site_photos: [],
-      upload_pdf: undefined,
+      upload_pdf: [],
       payment_image: [],
     },
   });
@@ -136,7 +127,7 @@ const BookingDoneIsmForm: React.FC<LeadViewModalProps> = ({
   const handleReset = () => {
     form.reset({
       current_site_photos: [],
-      upload_pdf: undefined,
+      upload_pdf: [],
       amount: undefined,
       payment_date: undefined,
       payment_image: [],
@@ -179,7 +170,9 @@ const BookingDoneIsmForm: React.FC<LeadViewModalProps> = ({
       formData.append("current_site_photos", file);
     });
 
-    formData.append("upload_pdf", values.upload_pdf);
+    values.upload_pdf.forEach((file: File) => {
+      formData.append("upload_pdf", file);
+    });
 
     if (values.amount) {
       formData.append("amount", values.amount.toString());
@@ -246,11 +239,13 @@ const BookingDoneIsmForm: React.FC<LeadViewModalProps> = ({
                     <SinglePdfUploadField
                       value={field.value}
                       onChange={field.onChange}
-                      allowedMimeTypes={documentMimeTypes}
-                      accept={documentAccept}
+                      allowedMimeTypes={[]}
+                      accept="*/*"
                       title="Upload Booking Document"
-                      description="PDF or image allowed. Upload one file."
+                      description="Any file type allowed. Upload one or more files."
                       buttonLabel="Select File"
+                      multiple
+                      maxFiles={10}
                     />
                   </FormControl>
                   <FormMessage />

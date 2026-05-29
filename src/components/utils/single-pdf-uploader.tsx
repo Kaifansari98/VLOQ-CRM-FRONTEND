@@ -18,13 +18,15 @@ import { Upload, X } from "lucide-react";
 import { toastManager } from "@/components/ui/toast";
 
 interface SinglePdfUploadFieldProps {
-  value: File | null;
-  onChange: (file: File | null) => void;
+  value: File | File[] | null;
+  onChange: (file: File | File[] | null) => void;
   allowedMimeTypes?: string[];
   accept?: string;
   title?: string;
   description?: string;
   buttonLabel?: string;
+  multiple?: boolean;
+  maxFiles?: number;
 }
 
 export function SinglePdfUploadField({
@@ -35,13 +37,17 @@ export function SinglePdfUploadField({
   title = "Upload PDF Document",
   description = "Only 1 PDF allowed. Drag & drop or click below.",
   buttonLabel = "Select PDF",
+  multiple = false,
+  maxFiles = 1,
 }: SinglePdfUploadFieldProps) {
+  const shouldValidateMimeTypes = (allowedMimeTypes?.length ?? 0) > 0;
+
   // Upload simulation
   const onUpload: NonNullable<FileUploadProps["onUpload"]> = React.useCallback(
     async (files, { onProgress, onSuccess, onError }) => {
       try {
         for (const file of files) {
-          if (!allowedMimeTypes.includes(file.type)) {
+          if (shouldValidateMimeTypes && !allowedMimeTypes.includes(file.type)) {
             toastManager.add({ title: "Only supported document types are allowed", type: "error" });
             onError(file, new Error("Invalid file type"));
             continue;
@@ -62,7 +68,7 @@ export function SinglePdfUploadField({
         console.error("Unexpected error during upload:", err);
       }
     },
-    [allowedMimeTypes]
+    [allowedMimeTypes, shouldValidateMimeTypes]
   );
 
   const onFileReject = React.useCallback((file: File, message: string) => {
@@ -74,19 +80,30 @@ export function SinglePdfUploadField({
   // ✅ Handle value change properly
   const handleValueChange = React.useCallback(
     (files: File[]) => {
+      if (multiple) {
+        onChange(files);
+        return;
+      }
       onChange(files[0] ?? null);
     },
-    [onChange]
+    [multiple, onChange]
   );
+
+  const selectedFiles = React.useMemo(() => {
+    if (Array.isArray(value)) {
+      return value;
+    }
+    return value ? [value] : [];
+  }, [value]);
 
   return (
     <FileUpload
-      value={value ? [value] : []}
+      value={selectedFiles}
       onValueChange={handleValueChange}
       onUpload={onUpload}
       onFileReject={onFileReject}
-      multiple={false}
-      maxFiles={1}
+      multiple={multiple}
+      maxFiles={maxFiles}
       accept={accept}
       className="w-full"
     >
@@ -107,8 +124,8 @@ export function SinglePdfUploadField({
 
       {/* ✅ MUST wrap with FileUploadList */}
       <FileUploadList>
-        {value && (
-          <FileUploadItem value={value} className="flex-col">
+        {selectedFiles.map((file) => (
+          <FileUploadItem key={`${file.name}-${file.size}-${file.lastModified}`} value={file} className="flex-col">
             <div className="flex w-full items-center gap-2">
               <FileUploadItemPreview />
               <FileUploadItemMetadata />
@@ -117,7 +134,13 @@ export function SinglePdfUploadField({
                   variant="ghost"
                   size="icon"
                   className="size-7"
-                  onClick={() => onChange(null)}
+                  onClick={() => {
+                    if (multiple) {
+                      onChange(selectedFiles.filter((selected) => selected !== file));
+                      return;
+                    }
+                    onChange(null);
+                  }}
                 >
                   <X />
                 </Button>
@@ -125,7 +148,7 @@ export function SinglePdfUploadField({
             </div>
             <FileUploadItemProgress />
           </FileUploadItem>
-        )}
+        ))}
       </FileUploadList>
     </FileUpload>
   );
