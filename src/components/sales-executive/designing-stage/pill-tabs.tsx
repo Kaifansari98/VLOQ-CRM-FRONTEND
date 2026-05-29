@@ -86,9 +86,11 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
       userType?.toLowerCase() === "custom"
         ? customPrivilegeCodes.includes("leads.designing_stage.designs.upload")
         : true;
+    const isSuperAdmin = userType?.toLowerCase() === "super-admin";
     const canAssignDesigner =
       vendorCustomUserTypeOnly &&
-      customPrivilegeCodes.includes("leads.open_leads.details_of_lead.add_lead");
+      (isSuperAdmin ||
+        customPrivilegeCodes.includes("leads.open_leads.details_of_lead.add_lead"));
 
     const handleClick = (id: string) => {
       setActiveTab(id);
