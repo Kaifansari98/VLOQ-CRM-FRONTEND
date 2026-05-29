@@ -150,6 +150,13 @@ export default function LeadsGenerationForm({
   const [files, setFiles] = useState<File[]>([]);
   const vendorId = useAppSelector((state: any) => state.auth.user?.vendor_id);
   const franchiseId = useAppSelector((state: any) => state.auth.user?.franchise_id);
+  const vendorCustomUserTypeMode = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only as
+        | boolean
+        | null
+        | undefined,
+  );
   const userId = useAppSelector((state) => state.auth.user?.id);
   const createdBy = useAppSelector((state: any) => state.auth.user?.id);
   const [mapOpen, setMapOpen] = useState(false);
@@ -373,7 +380,17 @@ export default function LeadsGenerationForm({
 
   // fetch data once at top of component (after form etc.)
   const { data: vendorUsers, isLoading: isVendorUsersLoading } =
-    useVendorSalesExecutiveUsers(vendorId, franchiseId);
+    useVendorSalesExecutiveUsers(
+      vendorId,
+      franchiseId,
+      vendorCustomUserTypeMode === true
+        ? {
+            assigneeUserType: "custom",
+            requiredPrivilegeCode:
+              "leads.open_leads.details_of_lead.add_lead",
+          }
+        : undefined,
+    );
   const router = useRouter();
 
   const vendorUserss = vendorUsers?.data?.sales_executives ?? [];
