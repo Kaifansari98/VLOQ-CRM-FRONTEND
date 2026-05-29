@@ -132,10 +132,6 @@ export const submitMeeting = async (payload: SubmitMeetingPayload) => {
     formData.append("files", file);
   });
 
-  payload.productStructureInstanceIds?.forEach((instanceId) => {
-    formData.append("product_structure_instance_ids", String(instanceId));
-  });
-
   const { data } = await apiClient.post(
     "/leads/designing-stage/design-meeting",
     formData,
@@ -176,6 +172,10 @@ export const submitDesigns = async (payload: SubmitDesignPayload) => {
 
   payload.files.forEach((file) => {
     formData.append("files", file);
+  });
+
+  payload.productStructureInstanceIds?.forEach((instanceId) => {
+    formData.append("product_structure_instance_ids", String(instanceId));
   });
 
   const { data } = await apiClient.post(
