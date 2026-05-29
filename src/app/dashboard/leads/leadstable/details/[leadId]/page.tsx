@@ -172,7 +172,12 @@ export default function LeadDetails() {
           "leads.open_leads.details_of_lead.payment_information.enable_disable",
         )
       : canViewPaymentTab(userType);
-  const canViewSiteHistory = canViewSiteHistoryTab(userType);
+  const canViewSiteHistory =
+    normalizedUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.site_history.enable_disable",
+        )
+      : canViewSiteHistoryTab(userType);
   const canViewChats =
     normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(

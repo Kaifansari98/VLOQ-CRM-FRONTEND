@@ -157,7 +157,12 @@ export default function DesigningStageLead() {
 
   const canMoveToBooking =
     countsData?.QuotationDoc > 0 && countsData?.DesignsDoc > 0;
-  const canViewSiteHistory = canViewSiteHistoryTab(userType);
+  const canViewSiteHistory =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.site_history.enable_disable",
+        )
+      : canViewSiteHistoryTab(userType);
   const canPerformMoveToBooking =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
