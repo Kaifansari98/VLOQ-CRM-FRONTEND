@@ -319,12 +319,6 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
           }
         `}
       >
-        {isLatest && (
-          <div className="absolute left-3 top-3 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
-            Latest
-          </div>
-        )}
-
         {/* Delete Button */}
         {canDelete && (
           <button
@@ -378,7 +372,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
         {/* File Info */}
         <div className="flex flex-col justify-between flex-1 min-w-0">
           <div>
-            <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-200 truncate pr-6 pt-5">
+            <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-200 truncate pr-6">
               {doc.originalName}
             </h3>
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">

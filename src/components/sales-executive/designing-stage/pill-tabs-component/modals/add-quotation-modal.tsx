@@ -21,6 +21,7 @@ import { DocumentsUploader } from "@/components/document-upload";
 import { useAppSelector } from "@/redux/store";
 import {
   useDesignsDoc,
+  useQuotationDoc,
   useSubmitQuotation,
 } from "@/hooks/designing-stage/designing-leads-hooks";
 import { useQueryClient } from "@tanstack/react-query";
@@ -49,6 +50,17 @@ interface LeadViewModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const getRevisionKey = (fileName: string, prefix: "R" | "Q") => {
+  const parsedName = fileName.replace(/\.[^/.]+$/, "");
+  const match = parsedName.match(
+    new RegExp(`^${prefix}(\\d+)-(.+)-\\d{4}-\\d{2}-\\d{2}$`, "i"),
+  );
+
+  if (!match) return null;
+
+  return `${match[1]}-${match[2].toLowerCase()}`;
+};
+
 const AddQuotationModal: React.FC<LeadViewModalProps> = ({
   open,
   onOpenChange,
@@ -59,7 +71,28 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
   const userId = useAppSelector((s) => s.auth.user?.id)!;
   const { data: designDocsResponse, isLoading: isLoadingDesignDocs } =
     useDesignsDoc(vendorId, leadId);
+  const { data: quotationDocsResponse, isLoading: isLoadingQuotationDocs } =
+    useQuotationDoc(vendorId, leadId);
   const designDocs: DesignsDocument[] = designDocsResponse?.data?.documents ?? [];
+  const quotationDocs: DesignsDocument[] =
+    quotationDocsResponse?.data?.documents ?? [];
+  const usedQuotationKeys = React.useMemo(
+    () =>
+      new Set(
+        quotationDocs
+          .map((doc) => getRevisionKey(doc.doc_og_name, "Q"))
+          .filter((key): key is string => Boolean(key)),
+      ),
+    [quotationDocs],
+  );
+  const availableDesignDocs = React.useMemo(
+    () =>
+      designDocs.filter((doc) => {
+        const designKey = getRevisionKey(doc.doc_og_name, "R");
+        return !designKey || !usedQuotationKeys.has(designKey);
+      }),
+    [designDocs, usedQuotationKeys],
+  );
 
   const { mutate: uploadQuotation, isPending } = useSubmitQuotation();
 
@@ -73,6 +106,16 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
       form.reset({ upload_pdf: [], design_document_id: "" });
     }
   }, [open, form]);
+
+  React.useEffect(() => {
+    const selectedDesignDocId = form.getValues("design_document_id");
+    if (
+      selectedDesignDocId &&
+      !availableDesignDocs.some((doc) => String(doc.id) === selectedDesignDocId)
+    ) {
+      form.setValue("design_document_id", "");
+    }
+  }, [availableDesignDocs, form]);
 
   const onSubmit = (data: QuotationFormValues) => {
     if (!data.upload_pdf?.length) {
@@ -146,21 +189,25 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
                   <Select
                     value={field.value}
                     onValueChange={field.onChange}
-                    disabled={isLoadingDesignDocs || designDocs.length === 0}
+                    disabled={
+                      isLoadingDesignDocs ||
+                      isLoadingQuotationDocs ||
+                      availableDesignDocs.length === 0
+                    }
                   >
                     <SelectTrigger className="w-full">
                       <SelectValue
                         placeholder={
-                          isLoadingDesignDocs
+                          isLoadingDesignDocs || isLoadingQuotationDocs
                             ? "Loading design files..."
-                            : designDocs.length === 0
+                            : availableDesignDocs.length === 0
                               ? "No design files available"
                               : "Select one design file"
                         }
                       />
                     </SelectTrigger>
                     <SelectContent>
-                      {designDocs.map((doc) => (
+                      {availableDesignDocs.map((doc) => (
                         <SelectItem key={doc.id} value={String(doc.id)}>
                           {doc.doc_og_name}
                         </SelectItem>
@@ -179,7 +226,12 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
           <div className="flex justify-end">
             <Button
               type="submit"
-              disabled={isPending || isLoadingDesignDocs || designDocs.length === 0}
+              disabled={
+                isPending ||
+                isLoadingDesignDocs ||
+                isLoadingQuotationDocs ||
+                availableDesignDocs.length === 0
+              }
             >
               {isPending ? "Uploading..." : "Submit Quotation"}
             </Button>
