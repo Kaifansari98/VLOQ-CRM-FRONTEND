@@ -40,7 +40,7 @@ const quotationSchema = z.object({
   upload_pdf: z
     .array(z.instanceof(File))
     .min(1, "At least one quotation file is required"),
-  design_document_id: z.string().min(1, "Please select a design file"),
+  design_document_id: z.string().optional(),
 });
 
 type QuotationFormValues = z.infer<typeof quotationSchema>;
@@ -69,6 +69,9 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
   const { leadId } = useDetails();
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id)!;
   const userId = useAppSelector((s) => s.auth.user?.id)!;
+  const vendorCustomUserTypeMode = useAppSelector(
+    (s) => s.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
+  );
   const { data: designDocsResponse, isLoading: isLoadingDesignDocs } =
     useDesignsDoc(vendorId, leadId);
   const { data: quotationDocsResponse, isLoading: isLoadingQuotationDocs } =
@@ -123,13 +126,23 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
       return;
     }
 
+    if (vendorCustomUserTypeMode && !data.design_document_id) {
+      form.setError("design_document_id", {
+        type: "manual",
+        message: "Please select a design file",
+      });
+      return;
+    }
+
     uploadQuotation(
       {
         files: data.upload_pdf,
         vendorId,
         leadId,
         userId,
-        designDocumentId: Number(data.design_document_id),
+        designDocumentId: data.design_document_id
+          ? Number(data.design_document_id)
+          : undefined,
       },
       {
         onSuccess: () => {
@@ -179,58 +192,61 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="design_document_id"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Select Design File</FormLabel>
-                <FormControl>
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    disabled={
-                      isLoadingDesignDocs ||
-                      isLoadingQuotationDocs ||
-                      availableDesignDocs.length === 0
-                    }
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue
-                        placeholder={
-                          isLoadingDesignDocs || isLoadingQuotationDocs
-                            ? "Loading design files..."
-                            : availableDesignDocs.length === 0
-                              ? "No design files available"
-                              : "Select one design file"
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableDesignDocs.map((doc) => (
-                        <SelectItem key={doc.id} value={String(doc.id)}>
-                          {doc.doc_og_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormControl>
-                <FormDescription className="text-xs">
-                  Select the design file this quotation belongs to.
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {vendorCustomUserTypeMode && (
+            <FormField
+              control={form.control}
+              name="design_document_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Select Design File</FormLabel>
+                  <FormControl>
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      disabled={
+                        isLoadingDesignDocs ||
+                        isLoadingQuotationDocs ||
+                        availableDesignDocs.length === 0
+                      }
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue
+                          placeholder={
+                            isLoadingDesignDocs || isLoadingQuotationDocs
+                              ? "Loading design files..."
+                              : availableDesignDocs.length === 0
+                                ? "No design files available"
+                                : "Select one design file"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableDesignDocs.map((doc) => (
+                          <SelectItem key={doc.id} value={String(doc.id)}>
+                            {doc.doc_og_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormDescription className="text-xs">
+                    Select the design file this quotation belongs to.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
 
           <div className="flex justify-end">
             <Button
               type="submit"
               disabled={
                 isPending ||
-                isLoadingDesignDocs ||
-                isLoadingQuotationDocs ||
-                availableDesignDocs.length === 0
+                (vendorCustomUserTypeMode &&
+                  (isLoadingDesignDocs ||
+                    isLoadingQuotationDocs ||
+                    availableDesignDocs.length === 0))
               }
             >
               {isPending ? "Uploading..." : "Submit Quotation"}

@@ -58,7 +58,7 @@ export const useSubmitQuotation = () => {
       vendorId: number;
       leadId: number;
       userId: number;
-      designDocumentId: number;
+      designDocumentId?: number;
     }) =>
       submitQuotation(files, vendorId, leadId, userId, designDocumentId),
     onSuccess: (_, variables) => {

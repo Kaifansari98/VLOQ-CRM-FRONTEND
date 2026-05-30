@@ -80,14 +80,16 @@ export const submitQuotation = async (
   vendorId: number,
   leadId: number,
   userId: number,
-  designDocumentId: number,
+  designDocumentId?: number,
 ) => {
   const formData = new FormData();
   files.forEach((file) => formData.append("files", file)); // must match multer field name
   formData.append("vendorId", vendorId.toString());
   formData.append("leadId", leadId.toString());
   formData.append("userId", userId.toString());
-  formData.append("designDocumentId", designDocumentId.toString());
+  if (designDocumentId != null) {
+    formData.append("designDocumentId", designDocumentId.toString());
+  }
 
   const response = await apiClient.post(
     "/leads/designing-stage/upload-quotation",
