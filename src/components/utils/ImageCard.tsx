@@ -7,6 +7,7 @@ import ImageViewerModal from "./ImageViewerModal";
 import { useState } from "react";
 import Image from "next/image";
 import { apiClient } from "@/lib/apiClient";
+import { formatDate } from "@/lib/format";
 
 interface DocumentCardProps {
   doc: {
@@ -172,14 +173,11 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
             </h3>
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
               {doc.created_at
-                ? `Uploaded on ${new Date(doc.created_at).toLocaleDateString(
-                    "en-IN",
-                    {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    },
-                  )}`
+                ? `Uploaded on ${formatDate(doc.created_at, {
+                    month: "short",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}`
                 : "Uploaded date not available"}
             </p>
           </div>

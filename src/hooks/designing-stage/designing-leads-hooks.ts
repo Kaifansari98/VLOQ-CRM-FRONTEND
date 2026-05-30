@@ -52,12 +52,15 @@ export const useSubmitQuotation = () => {
       vendorId,
       leadId,
       userId,
+      designDocumentId,
     }: {
       files: File[];
       vendorId: number;
       leadId: number;
       userId: number;
-    }) => submitQuotation(files, vendorId, leadId, userId),
+      designDocumentId: number;
+    }) =>
+      submitQuotation(files, vendorId, leadId, userId, designDocumentId),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ["getQuotationDoc", variables.vendorId, variables.leadId],

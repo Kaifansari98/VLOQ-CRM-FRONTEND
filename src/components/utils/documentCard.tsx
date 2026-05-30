@@ -370,7 +370,11 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
             </h3>
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
               {doc.created_at
-                ? `Uploaded on ${formatDate(doc.created_at, { month: "short" })}`
+                ? `Uploaded on ${formatDate(doc.created_at, {
+                    month: "short",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}`
                 : "Uploaded date not available"}
             </p>
           </div>
