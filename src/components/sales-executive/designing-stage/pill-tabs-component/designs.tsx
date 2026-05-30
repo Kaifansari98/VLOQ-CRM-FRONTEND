@@ -30,6 +30,16 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.2 } },
 };
 
+const getSortedLatestFirst = <T extends { created_at?: string; id: number }>(
+  docs: T[],
+) =>
+  [...docs].sort((a, b) => {
+    const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    if (timeB !== timeA) return timeB - timeA;
+    return b.id - a.id;
+  });
+
 const DesigningTab = () => {
   const { leadId } = useDetails();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -48,6 +58,7 @@ const DesigningTab = () => {
   // ✅ Fetch design documents
   const { data, error, isLoading } = useDesignsDoc(vendorId!, leadId);
   const designDocs = data?.data?.documents || [];
+  const sortedDesignDocs = getSortedLatestFirst(designDocs);
 
   // ✅ Delete document mutation
   const { mutate: deleteDocument, isPending: deleting } =
@@ -149,9 +160,9 @@ const DesigningTab = () => {
 
         {/* Body */}
         <div className="p-6">
-          {designDocs.length > 0 ? (
+          {sortedDesignDocs.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {designDocs.map((doc: any) => (
+              {sortedDesignDocs.map((doc: any, index: number) => (
                 <DocumentCard
                   key={doc.id}
                   doc={{
@@ -160,6 +171,7 @@ const DesigningTab = () => {
                     created_at: doc.created_at,
                     signedUrl: doc.signedUrl,
                   }}
+                  isLatest={index === 0}
                   canDelete={canDelete}
                   onDelete={(id) => setConfirmDelete(id)}
                 />

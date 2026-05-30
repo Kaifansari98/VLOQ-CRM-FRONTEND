@@ -24,7 +24,15 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import ComingSoon from "@/components/generics/ComingSoon";
 
-
+const getSortedLatestFirst = <T extends { created_at?: string; id: number }>(
+  docs: T[],
+) =>
+  [...docs].sort((a, b) => {
+    const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    if (timeB !== timeA) return timeB - timeA;
+    return b.id - a.id;
+  });
 
 const QuotationTab = () => {
   const { leadId } = useDetails();
@@ -58,6 +66,7 @@ const QuotationTab = () => {
     }
   };
   const designQuotationDocs = data?.data?.documents || [];
+  const sortedQuotationDocs = getSortedLatestFirst(designQuotationDocs);
 
   // ✅ Delete confirmation handler
 
@@ -139,9 +148,9 @@ const QuotationTab = () => {
 
         {/* Body */}
         <div className="p-6">
-          {designQuotationDocs.length > 0 ? (
+          {sortedQuotationDocs.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {designQuotationDocs.map((doc: any) => (
+              {sortedQuotationDocs.map((doc: any, index: number) => (
                 <DocumentCard
                   key={doc.id}
                   doc={{
@@ -150,6 +159,7 @@ const QuotationTab = () => {
                     created_at: doc.created_at,
                     signedUrl: doc.signedUrl,
                   }}
+                  isLatest={index === 0}
                   canDelete={canDelete}
                   onDelete={(id) => setConfirmDelete(id)}
                 />

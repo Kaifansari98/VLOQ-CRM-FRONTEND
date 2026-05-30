@@ -29,6 +29,7 @@ interface DocumentCardProps {
   canDelete?: boolean;
   onDelete?: (id: number) => void;
   status?: "APPROVED" | "REJECTED" | "PENDING" | string;
+  isLatest?: boolean;
 }
 
 const PREVIEWABLE_EXTENSIONS = ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx"];
@@ -201,6 +202,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
   canDelete = false,
   onDelete,
   status,
+  isLatest = false,
 }) => {
   const fileExt = doc.originalName?.split(".").pop()?.toLowerCase() || "file";
   const { icon: Icon } = getFileIcon(fileExt);
@@ -304,14 +306,25 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
     <>
       <motion.div
         transition={{ duration: 0.25 }}
-        className="
+        className={`
           group relative flex items-center gap-4 rounded-xl p-4
-          border border-border 
+          border bg-white dark:bg-neutral-900
           bg-white dark:bg-neutral-900
           hover:bg-muted/40 dark:hover:bg-neutral-800
           transition-all duration-200
-        "
+          ${
+            isLatest
+              ? "border-emerald-400 ring-1 ring-emerald-200 dark:border-emerald-500/70 dark:ring-emerald-500/20"
+              : "border-border"
+          }
+        `}
       >
+        {isLatest && (
+          <div className="absolute left-3 top-3 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
+            Latest
+          </div>
+        )}
+
         {/* Delete Button */}
         {canDelete && (
           <button
@@ -365,7 +378,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
         {/* File Info */}
         <div className="flex flex-col justify-between flex-1 min-w-0">
           <div>
-            <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-200 truncate pr-6">
+            <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-200 truncate pr-6 pt-5">
               {doc.originalName}
             </h3>
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
