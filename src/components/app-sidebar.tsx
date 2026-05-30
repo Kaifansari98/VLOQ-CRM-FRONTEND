@@ -563,10 +563,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       return item;
     });
 
-    const finalTrackTraceItems = isTrackTraceEnabled
+    const finalTrackTraceItems = isSuperAdmin && isTrackTraceEnabled
       ? data.trackTraceNav
       : [];
-    const finalInventoryItems = isInventoryEnabled
+    const finalInventoryItems = isSuperAdmin && isInventoryEnabled
       ? data.inventoryTraceNav
       : [];
     const finalMastersItems = isSuperAdmin
