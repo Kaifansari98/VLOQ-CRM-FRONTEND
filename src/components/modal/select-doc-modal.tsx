@@ -188,7 +188,7 @@ const SelectDocumentModal: React.FC<Props> = ({
       onOpenChange={onOpenChange}
       title="Select Documents"
       description="Choose documents for the lead"
-      size="md"
+      size={vendorCustomUserTypeMode === true ? "lg" : "md"}
     >
       <div className="p-5 space-y-6">
         {vendorCustomUserTypeMode === true ? (
