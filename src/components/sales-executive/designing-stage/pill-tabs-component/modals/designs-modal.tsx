@@ -20,9 +20,6 @@ import { useDetails } from "../details-context";
 import { useAppSelector } from "@/redux/store";
 import { useSubmitDesigns } from "@/api/designingStageQueries";
 import { useQueryClient } from "@tanstack/react-query";
-import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
-import { Checkbox } from "@/components/ui/checkbox";
-import type { LeadProductStructureInstance } from "@/api/leads";
 
 const designsSchema = z.object({
   upload_pdf: z
@@ -44,7 +41,6 @@ const designsSchema = z.object({
         message: "Only PDF, ZIP or supported design formats are allowed.",
       }
     ),
-  selected_instance_ids: z.array(z.number()).optional(),
 });
 
 type DesignsFormValues = z.infer<typeof designsSchema>;
@@ -58,23 +54,16 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
   const { leadId, accountId } = useDetails();
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id)!;
   const userId = useAppSelector((s) => s.auth.user?.id)!;
-  const isCustomUserTypeOnlyVendor = useAppSelector(
-    (s) => s.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
-  );
-  const { data: structureInstances = [] } = useLeadProductStructureInstances(
-    leadId,
-    vendorId,
-  ) as { data: LeadProductStructureInstance[] | undefined };
 
   const queryClient = useQueryClient();
   const form = useForm<DesignsFormValues>({
     resolver: zodResolver(designsSchema),
-    defaultValues: { upload_pdf: [], selected_instance_ids: [] },
+    defaultValues: { upload_pdf: [] },
   });
 
   React.useEffect(() => {
     if (!open) {
-      form.reset({ upload_pdf: [], selected_instance_ids: [] });
+      form.reset({ upload_pdf: [] });
     }
   }, [open, form]);
 
@@ -92,9 +81,6 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
         vendorId,
         leadId,
         userId,
-        productStructureInstanceIds: isCustomUserTypeOnlyVendor
-          ? (data.selected_instance_ids ?? [])
-          : [],
       });
 
       toastManager.add({ title: "Design files uploaded successfully!", type: "success" });
@@ -107,7 +93,7 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
         queryKey: ["designingStageCounts", vendorId, leadId],
       });
 
-      form.reset({ upload_pdf: [], selected_instance_ids: [] });
+      form.reset({ upload_pdf: [] });
       onOpenChange(false);
     } catch (error: any) {
       toastManager.add({ title: error?.message || "Failed to upload design files.", type: "error" });
@@ -145,95 +131,6 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
                   </FormItem>
                 )}
               />
-
-              {isCustomUserTypeOnlyVendor && (
-                <FormField
-                  control={form.control}
-                  name="selected_instance_ids"
-                  render={({ field }) => {
-                    const selectedIds = field.value ?? [];
-                    const allSelected =
-                      structureInstances.length > 0 &&
-                      selectedIds.length === structureInstances.length;
-
-                    const toggleInstance = (instanceId: number, checked: boolean) => {
-                      const nextValues = checked
-                        ? [...selectedIds, instanceId]
-                        : selectedIds.filter((id) => id !== instanceId);
-                      field.onChange(nextValues);
-                    };
-
-                    return (
-                      <FormItem>
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between gap-3">
-                            <FormLabel>Select Product Instances</FormLabel>
-                            {structureInstances.length > 0 && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-auto px-0 text-xs"
-                                onClick={() =>
-                                  field.onChange(
-                                    allSelected
-                                      ? []
-                                      : structureInstances.map(
-                                          (instance: LeadProductStructureInstance) =>
-                                            instance.id,
-                                        ),
-                                  )
-                                }
-                              >
-                                {allSelected ? "Deselect All" : "Select All"}
-                              </Button>
-                            )}
-                          </div>
-
-                          {structureInstances.length > 0 ? (
-                            <div className="grid gap-3">
-                              {structureInstances.map((instance) => {
-                                const isChecked = selectedIds.includes(instance.id);
-                                return (
-                                  <label
-                                    key={instance.id}
-                                    className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer"
-                                  >
-                                    <Checkbox
-                                      checked={isChecked}
-                                      onCheckedChange={(checked) =>
-                                        toggleInstance(instance.id, checked === true)
-                                      }
-                                    />
-                                    <div className="space-y-1 leading-tight">
-                                      <div className="text-sm font-medium">
-                                        {instance.title}
-                                      </div>
-                                      <div className="text-xs text-muted-foreground">
-                                        {instance.productStructure?.type || "Product Structure"}
-                                      </div>
-                                    </div>
-                                  </label>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
-                              No product instances found for this lead.
-                            </div>
-                          )}
-
-                          <p className="text-xs text-muted-foreground">
-                            Selected instances will be used in design file naming.
-                            If none are selected, all product instances will be considered.
-                          </p>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    );
-                  }}
-                />
-              )}
 
               <div className="flex justify-end gap-2 pt-2">
                 <Button
