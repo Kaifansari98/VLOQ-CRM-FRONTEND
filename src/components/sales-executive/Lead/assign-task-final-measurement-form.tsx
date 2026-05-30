@@ -427,9 +427,6 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
 
   const approvalRequestUsers = React.useMemo(() => {
     const users = approvalRequestAssignableUsersData?.users ?? [];
-    const shouldRestrictToFranchise =
-      normalizedUserRole === "admin" ||
-      normalizedUserRole === "sales-executive";
 
     return users.filter((user) => {
       const normalizedAssignableUserType = String(
@@ -438,15 +435,10 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
 
       if (user.id === userId) return false;
       if (normalizedAssignableUserType === "master-admin") return false;
-      if (shouldRestrictToFranchise) {
-        return user.franchise_id === franchiseId;
-      }
       return true;
     });
   }, [
     approvalRequestAssignableUsersData?.users,
-    franchiseId,
-    normalizedUserRole,
     userId,
   ]);
 

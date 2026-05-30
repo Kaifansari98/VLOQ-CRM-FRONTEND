@@ -236,7 +236,6 @@ const data = {
         // { title: "Category", url: "/dashboard/track-trace/master/category" }
       ],
     },
-    
   ],
   mastersNav: [
     {
