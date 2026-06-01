@@ -297,6 +297,7 @@ export default function DesigningStageLead() {
     userType === "sales-executive" ? "todo" : "details",
   );
   useChatTabFromUrl(setActiveTab);
+  useChatTabFromUrl(setActiveTab, "meetings");
 
   if (isLoading && !lead) {
     return <p className="p-6">Loading lead details...</p>;

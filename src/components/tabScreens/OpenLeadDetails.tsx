@@ -187,14 +187,20 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         instanceId: number;
       }) => deleteLeadProductStructureInstance(vendorId, leadId, instanceId),
       onSuccess: () => {
-        toastManager.add({ title: "Product structure instance deleted.", type: "success" });
+        toastManager.add({
+          title: "Product structure instance deleted.",
+          type: "success",
+        });
         queryClient.invalidateQueries({
           queryKey: ["lead-product-structure-instances", leadId, vendorId],
         });
         setConfirmStructureDelete(null);
       },
       onError: (error: any) => {
-        toastManager.add({ title: error?.response?.data?.message || "Failed to delete instance.", type: "error" });
+        toastManager.add({
+          title: error?.response?.data?.message || "Failed to delete instance.",
+          type: "error",
+        });
       },
     });
   const { mutate: createStructureInstance, isPending: creatingStructure } =
@@ -214,14 +220,20 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         };
       }) => createLeadProductStructureInstance(vendorId, leadId, payload),
       onSuccess: () => {
-        toastManager.add({ title: "Product structure instance added.", type: "success" });
+        toastManager.add({
+          title: "Product structure instance added.",
+          type: "success",
+        });
         queryClient.invalidateQueries({
           queryKey: ["lead-product-structure-instances", leadId, vendorId],
         });
         setAddStructure(null);
       },
       onError: (error: any) => {
-        toastManager.add({ title: error?.response?.data?.message || "Failed to add instance.", type: "error" });
+        toastManager.add({
+          title: error?.response?.data?.message || "Failed to add instance.",
+          type: "error",
+        });
       },
     });
   const { mutate: updateStructureInstance, isPending: updatingStructure } =
@@ -249,34 +261,48 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
           payload,
         ),
       onSuccess: () => {
-        toastManager.add({ title: "Product instance updated.", type: "success" });
+        toastManager.add({
+          title: "Product instance updated.",
+          type: "success",
+        });
         queryClient.invalidateQueries({
           queryKey: ["lead-product-structure-instances", leadId, vendorId],
         });
         setEditStructure(null);
       },
       onError: (error: any) => {
-        toastManager.add({ title: error?.response?.data?.message || "Failed to update instance.", type: "error" });
+        toastManager.add({
+          title: error?.response?.data?.message || "Failed to update instance.",
+          type: "error",
+        });
       },
     });
   const { mutate: updateLeadProductTypeMutation, isPending: updatingLeadType } =
     useMutation({
       mutationFn: (nextProductTypeId: number) => {
-        const nextTypeLabel =
-          productTypes?.data?.find((t: any) => t.id === nextProductTypeId)?.type;
+        const nextTypeLabel = productTypes?.data?.find(
+          (t: any) => t.id === nextProductTypeId,
+        )?.type;
         return updateLeadProductType(leadId, userId || 0, {
           productType: nextTypeLabel,
         });
       },
       onSuccess: async () => {
-        toastManager.add({ title: "Product type updated successfully.", type: "success" });
+        toastManager.add({
+          title: "Product type updated successfully.",
+          type: "success",
+        });
         setEditProductTypeOpen(false);
         await queryClient.invalidateQueries({
           queryKey: ["lead", leadId, vendorId, userId],
         });
       },
       onError: (error: any) => {
-        toastManager.add({ title: error?.response?.data?.message || "Failed to update product type.", type: "error" });
+        toastManager.add({
+          title:
+            error?.response?.data?.message || "Failed to update product type.",
+          type: "error",
+        });
       },
     });
   const { mutateAsync: uploadMoreSitePhotos, isPending: uploading } =
@@ -448,7 +474,10 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 
   const handleSaveProductType = () => {
     if (!selectedProductTypeId) {
-      toastManager.add({ title: "Please select a product type.", type: "error" });
+      toastManager.add({
+        title: "Please select a product type.",
+        type: "error",
+      });
       return;
     }
     if (selectedProductTypeId === currentProductTypeId) {
@@ -566,7 +595,10 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 
   const handleUploadFilesChange = (files: File[]) => {
     if (files.length > 10) {
-      toastManager.add({ title: "You can upload up to 10 site photos.", type: "error" });
+      toastManager.add({
+        title: "You can upload up to 10 site photos.",
+        type: "error",
+      });
       setUploadFiles(files.slice(0, 10));
       return;
     }
@@ -575,11 +607,17 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 
   const handleUploadMoreSitePhotos = async () => {
     if (!vendorId || !userId) {
-      toastManager.add({ title: "Vendor or user information is missing.", type: "error" });
+      toastManager.add({
+        title: "Vendor or user information is missing.",
+        type: "error",
+      });
       return;
     }
     if (uploadFiles.length === 0) {
-      toastManager.add({ title: "Please select at least one photo to upload.", type: "error" });
+      toastManager.add({
+        title: "Please select at least one photo to upload.",
+        type: "error",
+      });
       return;
     }
     try {
@@ -589,14 +627,21 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         createdBy: userId,
         files: uploadFiles,
       });
-      toastManager.add({ title: "Site photos uploaded successfully!", type: "success" });
+      toastManager.add({
+        title: "Site photos uploaded successfully!",
+        type: "success",
+      });
       setUploadFiles([]);
       setUploadOpen(false);
       queryClient.invalidateQueries({
         queryKey: ["lead", leadId, vendorId, userId],
       });
     } catch (error: any) {
-      toastManager.add({ title: error?.response?.data?.message || "Failed to upload site photos.", type: "error" });
+      toastManager.add({
+        title:
+          error?.response?.data?.message || "Failed to upload site photos.",
+        type: "error",
+      });
     }
   };
 
@@ -856,11 +901,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                 value={lead.siteType?.type}
               />
               <InfoRow icon={Magnet} label="Source" value={lead.source?.type} />
-              <InfoRow
-                icon={Package}
-                label="Priority"
-                value={lead.priority}
-              />
+              <InfoRow icon={Package} label="Priority" value={lead.priority} />
             </div>
           </SectionCard>
 
@@ -1107,7 +1148,9 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                 setSelectedProductTypeId(currentProductTypeId);
               }
             }}
-            title={currentProductTypeId ? "Edit Product Type" : "Set Product Type"}
+            title={
+              currentProductTypeId ? "Edit Product Type" : "Set Product Type"
+            }
             description="Select the product type for this lead."
             size="sm"
           >
@@ -1157,7 +1200,9 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>
-                  {currentProductTypeId ? "Confirm Product Type Change?" : "Set Product Type?"}
+                  {currentProductTypeId
+                    ? "Confirm Product Type Change?"
+                    : "Set Product Type?"}
                 </AlertDialogTitle>
                 <AlertDialogDescription>
                   {currentProductTypeId
