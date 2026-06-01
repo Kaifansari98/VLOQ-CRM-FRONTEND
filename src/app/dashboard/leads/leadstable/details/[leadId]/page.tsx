@@ -32,6 +32,8 @@ import {
   History,
   IndianRupee,
   FolderOpen,
+  Lock,
+  LockOpen,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -62,7 +64,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useDeleteLead } from "@/hooks/useDeleteLead";
 import { useQueryClient } from "@tanstack/react-query";
-import { useLeadById } from "@/hooks/useLeadsQueries";
+import {
+  useBlockLead,
+  useLeadBlockStatus,
+  useLeadById,
+  useUnblockLead,
+} from "@/hooks/useLeadsQueries";
 import {
   canAssignISM,
   canReassignLeadButton,
@@ -85,6 +92,22 @@ import {
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
 import AddVisitModal from "@/components/sales-executive/Lead/add-visit-modal";
+
+const formatBlockedAt = (value?: string | null) => {
+  if (!value) return "";
+
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) return "";
+
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  }).format(parsedDate);
+};
 
 export default function LeadDetails() {
   const router = useRouter();
@@ -110,9 +133,13 @@ export default function LeadDetails() {
   );
 
   const [openDelete, setOpenDelete] = useState(false);
+  const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
   const deleteLeadMutation = useDeleteLead();
+  const blockLeadMutation = useBlockLead();
+  const unblockLeadMutation = useUnblockLead();
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
+  const { data: leadBlockStatus } = useLeadBlockStatus(leadIdNum, vendorId);
   const lead = data?.data?.lead;
   const isDraftLead = !!lead?.is_draft;
   const leadCode = lead?.lead_code ?? "";
@@ -121,6 +148,14 @@ export default function LeadDetails() {
   console.log("Lead Stage :- ", LeadStage);
 
   const uiDisabled = isLoading || !lead;
+  const isLeadBlocked = leadBlockStatus?.is_blocked ?? !!lead?.is_blocked;
+  const blockedAtTooltip = isLeadBlocked
+    ? `This lead has been blocked at ${formatBlockedAt(
+        leadBlockStatus?.lead_blocked_at ?? lead?.lead_blocked_at ?? null,
+      )}`
+    : "";
+  const isBlockActionPending =
+    blockLeadMutation.isPending || unblockLeadMutation.isPending;
 
   const updateActivityStatusMutation = useUpdateActivityStatus();
 
@@ -135,6 +170,7 @@ export default function LeadDetails() {
   );
 
   const normalizedUserType = userType?.trim().toLowerCase();
+  const isSuperAdmin = normalizedUserType === "super-admin";
   const shouldDirectlyMarkLost =
     normalizedUserType === "admin" || normalizedUserType === "super-admin";
   const canReassign =
@@ -190,6 +226,60 @@ export default function LeadDetails() {
           "leads.open_leads.details_of_lead.chat.enable_disable",
         )
       : true;
+
+  const handleToggleLeadBlock = () => {
+    if (!vendorId || !userId || !leadIdNum) {
+      toastManager.add({
+        title: "Vendor, user, or lead information is missing!",
+        type: "error",
+      });
+      return;
+    }
+
+    const mutation = isLeadBlocked ? unblockLeadMutation : blockLeadMutation;
+    mutation.mutate(
+      {
+        vendorId,
+        leadId: leadIdNum,
+        updatedBy: userId,
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: isLeadBlocked
+              ? "Lead unblocked successfully!"
+              : "Lead blocked successfully!",
+            type: "success",
+          });
+          setOpenBlockConfirm(false);
+          queryClient.invalidateQueries({
+            queryKey: ["lead", leadIdNum, vendorId, userId],
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["leadBlockStatus", vendorId, leadIdNum],
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["vendorUserLeadsOpen", vendorId, userId],
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["vendorUserLeadsOpen", vendorId, userId, null],
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["vendorUserLeadsOpenuniversal-stage-leads"],
+          });
+        },
+        onError: (error: any) => {
+          toastManager.add({
+            title:
+              error?.response?.data?.message ||
+              error?.message ||
+              "Failed to update lead block status!",
+            type: "error",
+          });
+        },
+      },
+    );
+  };
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
@@ -357,6 +447,27 @@ export default function LeadDetails() {
                   <Users className="h-4 w-4" />
                   Reassign Lead
                 </DropdownMenuItem>
+              )}
+
+              {isSuperAdmin && (
+                <CustomeTooltip
+                  value={blockedAtTooltip}
+                  side="left"
+                  contentClassName="max-w-64"
+                  truncateValue={
+                    <DropdownMenuItem
+                      onSelect={() => setOpenBlockConfirm(true)}
+                      disabled={uiDisabled || isBlockActionPending}
+                    >
+                      {isLeadBlocked ? (
+                        <LockOpen className="h-4 w-4" />
+                      ) : (
+                        <Lock className="h-4 w-4" />
+                      )}
+                      {isLeadBlocked ? "Unblock Lead" : "Block Lead"}
+                    </DropdownMenuItem>
+                  }
+                />
               )}
 
               <DropdownMenuSub>
@@ -612,6 +723,38 @@ export default function LeadDetails() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteLead}>
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={openBlockConfirm} onOpenChange={setOpenBlockConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isLeadBlocked ? "Unblock Lead?" : "Block Lead?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {isLeadBlocked
+                ? "This will unblock the lead and allow it to proceed normally."
+                : "This will block the lead and mark the block time in the system."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBlockActionPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleToggleLeadBlock}
+              disabled={isBlockActionPending}
+            >
+              {isBlockActionPending
+                ? isLeadBlocked
+                  ? "Unblocking..."
+                  : "Blocking..."
+                : isLeadBlocked
+                  ? "Unblock"
+                  : "Block"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

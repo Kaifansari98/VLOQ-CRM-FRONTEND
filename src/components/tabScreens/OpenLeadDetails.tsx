@@ -49,6 +49,11 @@ import { FileUploadField } from "@/components/custom/file-upload";
 import { Input } from "@/components/ui/input";
 import TextAreaInput from "@/components/origin-text-area";
 import AssignToPicker from "@/components/assign-to-picker";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toastManager } from "@/components/ui/toast";
 import {
@@ -290,6 +295,10 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const leadStage = lead?.statusType?.type;
   const isBookingStage = leadStage?.toLowerCase() === "booking-stage";
   const leadStatusTag = lead?.statusType?.tag;
+  const isLeadBlocked = !!lead?.is_blocked;
+  const blockedAtTooltip = isLeadBlocked
+    ? `This lead has been blocked at ${formatDateTime(lead?.lead_blocked_at || undefined)}`
+    : "";
   const normalizedUserType = (userType || "").toLowerCase();
   const canEditLeadDetailsForCustomUser = customPrivilegeCodes.includes(
     "leads.open_leads.details_of_lead.edit",
@@ -631,15 +640,27 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
             title="Product Information"
             action={
               canEditStructures && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="default"
-                  onClick={handleAddOpen}
-                >
-                  <Plus />
-                  Add Furniture Structure
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="inline-flex">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="default"
+                        onClick={handleAddOpen}
+                        disabled={isLeadBlocked}
+                      >
+                        <Plus />
+                        Add Furniture Structure
+                      </Button>
+                    </div>
+                  </TooltipTrigger>
+                  {isLeadBlocked && blockedAtTooltip && (
+                    <TooltipContent side="top" className="max-w-64">
+                      {blockedAtTooltip}
+                    </TooltipContent>
+                  )}
+                </Tooltip>
               )
             }
           >
