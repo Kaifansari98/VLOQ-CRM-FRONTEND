@@ -957,8 +957,11 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                       address,
                     });
                   }
-                  form.setValue("site_map_link", link);
-                  form.trigger("site_map_link");
+                  form.setValue("site_map_link", link, {
+                    shouldDirty: true,
+                    shouldTouch: true,
+                    shouldValidate: true,
+                  });
                 }}
               />
             </FormItem>
