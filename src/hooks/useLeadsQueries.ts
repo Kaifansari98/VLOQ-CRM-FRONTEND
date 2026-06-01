@@ -27,7 +27,9 @@ import {
   SimilarLeadCheckPayload,
   SimilarLeadCheckResult,
   getLeadProductStructureInstances,
+  getClientVisits,
   uploadMoreSitePhotos,
+  ClientVisit,
 } from "@/api/leads";
 import {
   assignToFinalMeasurement,
@@ -162,6 +164,16 @@ export function useLeadProductStructureInstances(
     queryKey: ["lead-product-structure-instances", leadId, vendorId],
     queryFn: () => getLeadProductStructureInstances(vendorId!, leadId!),
     enabled: !!leadId && !!vendorId,
+  });
+}
+
+export function useClientVisits(leadId?: number) {
+  return useQuery<ClientVisit[]>({
+    queryKey: ["clientVisits", leadId],
+    queryFn: () => getClientVisits(leadId!),
+    enabled: !!leadId,
+    staleTime: 1000 * 60 * 2,
+    refetchOnWindowFocus: false,
   });
 }
 

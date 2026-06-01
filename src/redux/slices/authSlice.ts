@@ -15,6 +15,7 @@ export interface User {
     vendor_name?: string
     vendor_code?: string
     is_year_wise_lead_code_enabled?: boolean | null
+    is_client_visit_enabled?: boolean | null
     vendor_report_code?: string | null
     eligible_booking_days?: number | null
     is_self_assign_task_type_master_enabed?: boolean | null

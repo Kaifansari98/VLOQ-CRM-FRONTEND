@@ -77,12 +77,14 @@ import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import PaymentComingSoon from "@/components/generics/PaymentComingSoon";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
+import SiteVisitsTab from "@/components/tabScreens/SiteVisitsTab";
 import {
   useChatTabFromUrl,
   useIsChatNotification,
 } from "@/hooks/useChatTabFromUrl";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
+import AddVisitModal from "@/components/sales-executive/Lead/add-visit-modal";
 
 export default function LeadDetails() {
   const router = useRouter();
@@ -96,6 +98,9 @@ export default function LeadDetails() {
 
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
+  const isClientVisitEnabled = useAppSelector(
+    (s) => s.auth.user?.vendor?.is_client_visit_enabled === true,
+  );
 
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
@@ -121,6 +126,7 @@ export default function LeadDetails() {
 
   // modals
   const [assignOpen, setAssignOpen] = useState(false);
+  const [visitOpen, setVisitOpen] = useState(false);
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
@@ -270,6 +276,17 @@ export default function LeadDetails() {
           </Breadcrumb>
         </div>
         <div className="flex items-center space-x-2">
+          {isClientVisitEnabled && (
+            <Button
+              size="sm"
+              className="hidden sm:flex"
+              onClick={() => setVisitOpen(true)}
+              disabled={uiDisabled}
+            >
+              Add Visit
+            </Button>
+          )}
+
           {canAccessAssignTask &&
             (isDraftLead ? (
               <CustomeTooltip
@@ -307,6 +324,17 @@ export default function LeadDetails() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {isClientVisitEnabled && (
+                <DropdownMenuItem
+                  className="sm:hidden"
+                  onClick={() => setVisitOpen(true)}
+                  disabled={uiDisabled}
+                >
+                  <FolderOpen size={20} />
+                  Add Visit
+                </DropdownMenuItem>
+              )}
+
               {canAccessAssignTask && (
                 <DropdownMenuItem
                   className="sm:hidden"
@@ -446,6 +474,13 @@ export default function LeadDetails() {
                 Chats
               </TabsTrigger>
             )}
+
+            {isClientVisitEnabled && (
+              <TabsTrigger value="site-visits" disabled={uiDisabled}>
+                <FolderOpen size={16} className="mr-1 opacity-60" />
+                Site Visits
+              </TabsTrigger>
+            )}
           </TabsList>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
@@ -474,6 +509,12 @@ export default function LeadDetails() {
             <LeadWiseChatScreen leadId={leadIdNum} />
           </TabsContent>
         )}
+
+        {isClientVisitEnabled && (
+          <TabsContent value="site-visits">
+            <SiteVisitsTab leadId={leadIdNum} />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* ✅ Modals */}
@@ -488,6 +529,15 @@ export default function LeadDetails() {
         }}
         data={{ id: leadIdNum, name: "" }}
       />
+      {isClientVisitEnabled && (
+        <AddVisitModal
+          open={visitOpen}
+          onOpenChange={setVisitOpen}
+          leadId={leadIdNum}
+          vendorId={vendorId ?? 0}
+          userId={userId ?? 0}
+        />
+      )}
       <AssignLeadModal
         open={assignOpenLead}
         onOpenChange={setAssignOpenLead}

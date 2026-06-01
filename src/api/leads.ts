@@ -177,6 +177,49 @@ export interface EditLeadPayload {
   initial_site_measurement_date?: string;
 }
 
+export interface CreateClientVisitPayload {
+  leadId: number;
+  created_by: number;
+  visit_type: "physical_visit" | "follow_up_call";
+  date: string;
+  meeting_type_id: number;
+  remark: string;
+  location?: string;
+  expense_incurred?: number;
+  documents?: File[];
+  payment_proof_documents?: File[];
+}
+
+export interface ClientVisitDocument {
+  id: number;
+  role: "supporting_document" | "payment_proof";
+  original_name: string;
+  signedUrl: string;
+  created_at: string;
+}
+
+export interface ClientVisit {
+  id: number;
+  visit_type: "physical_visit" | "follow_up_call";
+  date: string;
+  location: string | null;
+  remark: string;
+  expense_incurred: number | null;
+  created_at: string;
+  meeting_type: {
+    id: number;
+    type: string;
+  } | null;
+  created_by: {
+    id: number;
+    user_name: string | null;
+    user_email: string | null;
+  } | null;
+  documents: ClientVisitDocument[];
+  supporting_documents: ClientVisitDocument[];
+  payment_proof_documents: ClientVisitDocument[];
+}
+
 export const uploadMoreSitePhotos = async ({
   vendorId,
   leadId,
@@ -201,6 +244,54 @@ export const uploadMoreSitePhotos = async ({
   );
 
   return response.data;
+};
+
+export const createClientVisit = async (payload: CreateClientVisitPayload) => {
+  const formData = new FormData();
+
+  formData.append("created_by", payload.created_by.toString());
+  formData.append("visit_type", payload.visit_type);
+  formData.append("date", new Date(payload.date).toISOString());
+  formData.append("meeting_type_id", payload.meeting_type_id.toString());
+  formData.append("remark", payload.remark);
+
+  if (payload.location?.trim()) {
+    formData.append("location", payload.location.trim());
+  }
+
+  if (payload.expense_incurred != null) {
+    formData.append("expense_incurred", payload.expense_incurred.toString());
+  }
+
+  (payload.documents ?? []).forEach((file) => {
+    formData.append("documents", file);
+  });
+
+  (payload.payment_proof_documents ?? []).forEach((file) => {
+    formData.append("payment_proof_documents", file);
+  });
+
+  const response = await apiClient.post(
+    `/leads/client-visits/leadId/${payload.leadId}`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    },
+  );
+
+  return response.data;
+};
+
+export const getClientVisits = async (leadId: number) => {
+  const response = await apiClient.get<{
+    success: boolean;
+    message: string;
+    data: ClientVisit[];
+  }>(`/leads/client-visits/leadId/${leadId}`);
+
+  return response.data.data ?? [];
 };
 
 export const createLead = async (
