@@ -14,10 +14,13 @@ import {
   InitialSiteMeasurementTaskConflict,
   fetchLeadLogs,
   getLeadById,
+  getLeadBlockStatus,
   getVendorLeads,
   getVendorUserLeads,
   getVendorUserLeadsOpen,
+  blockLead,
   Lead,
+  LeadBlockStatus,
   VendorLeadsResponse,
   VendorUserLeadsResponse,
   checkContactOrEmailExists,
@@ -29,6 +32,7 @@ import {
   getLeadProductStructureInstances,
   getClientVisits,
   uploadMoreSitePhotos,
+  unblockLead,
   ClientVisit,
 } from "@/api/leads";
 import {
@@ -153,6 +157,44 @@ export function useLeadById(leadId?: number, vendorId?: number, userId?: number)
     staleTime: 1000 * 60 * 5,        // 5 min — baar baar refetch nahi hoga
     refetchOnWindowFocus: false,      // ← YEH SABSE IMPORTANT FIX HAI
     refetchOnReconnect: false,
+  });
+}
+
+export function useLeadBlockStatus(leadId?: number, vendorId?: number) {
+  return useQuery<LeadBlockStatus>({
+    queryKey: ["leadBlockStatus", vendorId, leadId],
+    queryFn: () => getLeadBlockStatus(vendorId!, leadId!),
+    enabled: !!leadId && !!vendorId,
+    staleTime: 1000 * 60,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useBlockLead() {
+  return useMutation({
+    mutationFn: ({
+      vendorId,
+      leadId,
+      updatedBy,
+    }: {
+      vendorId: number;
+      leadId: number;
+      updatedBy: number;
+    }) => blockLead(vendorId, leadId, updatedBy),
+  });
+}
+
+export function useUnblockLead() {
+  return useMutation({
+    mutationFn: ({
+      vendorId,
+      leadId,
+      updatedBy,
+    }: {
+      vendorId: number;
+      leadId: number;
+      updatedBy: number;
+    }) => unblockLead(vendorId, leadId, updatedBy),
   });
 }
 

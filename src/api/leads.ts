@@ -49,6 +49,8 @@ export interface Lead {
   id: number;
   lead_code?: string;
   is_draft?: boolean;
+  is_blocked?: boolean;
+  lead_blocked_at?: string | null;
   firstname: string;
   lastname: string;
   country_code: string;
@@ -218,6 +220,13 @@ export interface ClientVisit {
   documents: ClientVisitDocument[];
   supporting_documents: ClientVisitDocument[];
   payment_proof_documents: ClientVisitDocument[];
+}
+
+export interface LeadBlockStatus {
+  id: number;
+  vendor_id: number;
+  is_blocked: boolean;
+  lead_blocked_at: string | null;
 }
 
 export const uploadMoreSitePhotos = async ({
@@ -565,6 +574,40 @@ export const getLeadById = async (
     `/leads/get-lead/${leadId}/vendor/${vendorId}/user/${userId}`,
   );
   return response.data;
+};
+
+export const getLeadBlockStatus = async (
+  vendorId: number,
+  leadId: number,
+): Promise<LeadBlockStatus> => {
+  const response = await apiClient.get(
+    `/leads/vendorId/${vendorId}/leadId/${leadId}/block-status`,
+  );
+  return response.data?.data as LeadBlockStatus;
+};
+
+export const blockLead = async (
+  vendorId: number,
+  leadId: number,
+  updatedBy: number,
+): Promise<LeadBlockStatus> => {
+  const response = await apiClient.patch(
+    `/leads/vendorId/${vendorId}/leadId/${leadId}/block`,
+    { updated_by: updatedBy },
+  );
+  return response.data?.data as LeadBlockStatus;
+};
+
+export const unblockLead = async (
+  vendorId: number,
+  leadId: number,
+  updatedBy: number,
+): Promise<LeadBlockStatus> => {
+  const response = await apiClient.patch(
+    `/leads/vendorId/${vendorId}/leadId/${leadId}/unblock`,
+    { updated_by: updatedBy },
+  );
+  return response.data?.data as LeadBlockStatus;
 };
 
 export const checkContactOrEmailExists = async (
