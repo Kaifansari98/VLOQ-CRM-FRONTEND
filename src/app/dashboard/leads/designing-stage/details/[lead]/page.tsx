@@ -435,7 +435,7 @@ export default function DesigningStageLead() {
                   </div>
                 }
                 value={moveToBookingTooltip}
-                contentClassName="max-w-80 text-center"
+                contentClassName="max-w-80 text-left"
               />
             ) : (
               <Button
@@ -492,7 +492,7 @@ export default function DesigningStageLead() {
                     </div>
                   }
                   value={moveToBookingTooltip}
-                  contentClassName="max-w-80 text-center"
+                  contentClassName="max-w-80 text-left"
                 />
               )}
 
