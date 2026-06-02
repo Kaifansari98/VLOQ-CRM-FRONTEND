@@ -372,7 +372,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                   </p>
                 </div>
 
-                <div className="grid gap-4">
+                <div className="grid gap-2">
                   {structureInstances.map((instance) => {
                     const uploads = instanceUploads[instance.id] ?? {
                       current_site_photos: [],
@@ -381,7 +381,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
 
                     return (
                       <Card key={instance.id}>
-                        <CardContent className="space-y-4 pt-6">
+                        <CardContent className="space-y-4">
                           <div>
                             <h4 className="text-sm font-semibold">
                               {instance.title}
