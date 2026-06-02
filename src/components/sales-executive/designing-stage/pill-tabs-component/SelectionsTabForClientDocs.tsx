@@ -20,6 +20,7 @@ import { toastManager } from "@/components/ui/toast";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -116,6 +117,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const userId = useAppSelector((s) => s.auth.user?.id);
   const rawUserType = useAppSelector((s) => s.auth.user?.user_type.user_type);
   const userType = rawUserType?.toLowerCase() ?? "";
+  const isCustomVendorFlow = useAppSelector(
+    (s) => s.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
+  );
   const customPrivilegeCodes = useAppSelector((s) => s.customPrivileges.codes);
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -1216,6 +1220,13 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                               disabled={!canUploadProjectFiles}
                             />
                           </FormControl>
+                          {isCustomVendorFlow && (
+                            <FormDescription className="text-xs">
+                              Files are auto-renamed to the `CD...-Document`
+                              format based on client and instance or furniture
+                              type.
+                            </FormDescription>
+                          )}
                           <FormMessage />
                         </FormItem>
                       )}
@@ -1239,6 +1250,13 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                               disabled={!canUploadDesignFiles}
                             />
                           </FormControl>
+                          {isCustomVendorFlow && (
+                            <FormDescription className="text-xs">
+                              Files are auto-renamed to the `CD...-Design`
+                              format based on client and instance or furniture
+                              type.
+                            </FormDescription>
+                          )}
                           <FormMessage />
                         </FormItem>
                       )}
