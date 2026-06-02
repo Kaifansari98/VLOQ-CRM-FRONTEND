@@ -133,9 +133,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     vendorId,
     leadId,
   );
-  const chsMappings: any[] = Array.isArray(chsMappingsData?.data)
-    ? chsMappingsData.data
-    : [];
+  const chsMappings: any[] = React.useMemo(
+    () => (Array.isArray(chsMappingsData?.data) ? chsMappingsData.data : []),
+    [chsMappingsData?.data],
+  );
   const {
     data: selectionsData,
     isLoading,
@@ -160,9 +161,13 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const manufacturingDaysByInstance: {
     instance_id: number | null;
     max_days: number | null;
-  }[] = Array.isArray(manufacturingDaysData?.data)
-    ? manufacturingDaysData.data
-    : [];
+  }[] = React.useMemo(
+    () =>
+      Array.isArray(manufacturingDaysData?.data)
+        ? manufacturingDaysData.data
+        : [],
+    [manufacturingDaysData?.data],
+  );
 
   const getManufacturingDaysForInstance = (instanceId: number | null) =>
     manufacturingDaysByInstance.find((d) => d.instance_id === instanceId)
@@ -248,11 +253,13 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         )
       : true;
 
-  const structureInstances: LeadProductStructureInstance[] = Array.isArray(
-    structureInstancesData?.data,
-  )
-    ? structureInstancesData.data
-    : [];
+  const structureInstances: LeadProductStructureInstance[] = React.useMemo(
+    () =>
+      Array.isArray(structureInstancesData?.data)
+        ? structureInstancesData.data
+        : [],
+    [structureInstancesData?.data],
+  );
 
   const carcassOptions = React.useMemo<ClientDocsSelectionOption[]>(
     () =>
