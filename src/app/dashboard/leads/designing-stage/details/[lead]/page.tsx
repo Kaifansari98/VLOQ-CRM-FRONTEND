@@ -109,6 +109,48 @@ const formatDisplayDate = (value?: string | Date | null) => {
   }).format(date);
 };
 
+const getInvalidPhoneReason = (value?: string | null) => {
+  const phone = String(value ?? "").trim();
+
+  if (!/^\d{10}$/.test(phone)) {
+    return "Client phone number must contain exactly 10 digits only.";
+  }
+
+  if (!/^[6-9]/.test(phone)) {
+    return "Client phone number must start with 6, 7, 8, or 9.";
+  }
+
+  if (/^(\d)\1{9}$/.test(phone)) {
+    return "Client phone number cannot contain the same digit repeated 10 times.";
+  }
+
+  if (phone === "1234567890" || phone === "9876543210") {
+    return "Client phone number cannot be a sequential number pattern.";
+  }
+
+  if (/^(\d)\1{4}(\d)\2{4}$/.test(phone)) {
+    return "Client phone number cannot follow a repeated block pattern.";
+  }
+
+  if (/^(\d)(\d)\1\2\1\2\1\2\1\2$/.test(phone)) {
+    return "Client phone number cannot follow an alternating digit pattern.";
+  }
+
+  const digitCounts = new Map<string, number>();
+  for (const digit of phone) {
+    digitCounts.set(digit, (digitCounts.get(digit) ?? 0) + 1);
+  }
+  if ([...digitCounts.values()].some((count) => count > 6)) {
+    return "Client phone number contains too many repeating digits.";
+  }
+
+  if (/(\d)\1{3,}$/.test(phone)) {
+    return "Client phone number cannot end with a long repeated digit sequence.";
+  }
+
+  return null;
+};
+
 export default function DesigningStageLead() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -193,6 +235,7 @@ export default function DesigningStageLead() {
       ? null
       : Number(eligibleBookingDaysValue);
   const leadCreatedAt = lead?.created_at ? new Date(lead.created_at) : null;
+  const invalidPhoneReason = getInvalidPhoneReason(lead?.contact_no);
   const hasEligibleBookingWindow =
     typeof eligibleBookingDays === "number" &&
     Number.isFinite(eligibleBookingDays) &&
@@ -217,11 +260,14 @@ export default function DesigningStageLead() {
       ? bookingLockTooltip
       : !canPerformMoveToBooking
         ? "You don't have permission to move this lead to booking stage"
+        : invalidPhoneReason
+          ? `Client phone number is not valid. ${invalidPhoneReason}`
         : "";
   const canOpenBookingModal =
     canMoveToBooking &&
     canPerformMoveToBooking &&
-    !isBookingLockedByEligibleDays;
+    !isBookingLockedByEligibleDays &&
+    !invalidPhoneReason;
 
   useEffect(() => {
     if (isLoading || isChatNotification) return;
