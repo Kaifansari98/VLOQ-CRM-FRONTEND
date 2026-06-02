@@ -426,7 +426,7 @@ export default function DesigningStageLead() {
         <div className="flex items-center space-x-2">
           <div>
             {/* Move to Booking */}
-            {!canMoveToBooking || isBookingLockedByEligibleDays ? (
+            {!canOpenBookingModal ? (
               <CustomeTooltip
                 truncateValue={
                   <div className="flex items-center opacity-50 cursor-not-allowed px-2">
@@ -437,7 +437,7 @@ export default function DesigningStageLead() {
                 value={moveToBookingTooltip}
                 contentClassName="max-w-80 text-center"
               />
-            ) : canPerformMoveToBooking ? (
+            ) : (
               <Button
                 size="sm"
                 className="hidden md:block"
@@ -445,17 +445,6 @@ export default function DesigningStageLead() {
               >
                 Move To Booking
               </Button>
-            ) : (
-              <CustomeTooltip
-                truncateValue={
-                  <div className="hidden md:flex items-center opacity-50 cursor-not-allowed px-2">
-                    <ClipboardCheck className="mr-2 h-4 w-4" />
-                    Move To Booking
-                  </div>
-                }
-                value={moveToBookingTooltip}
-                contentClassName="max-w-80 text-center"
-              />
             )}
           </div>
           <Button
