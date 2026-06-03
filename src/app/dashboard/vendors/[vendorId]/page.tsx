@@ -134,7 +134,7 @@ export default function VendorDetailPage() {
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
-                <BreadcrumbPage>Vendor #{vendorId}</BreadcrumbPage>
+                <BreadcrumbPage>{vendorName}</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>

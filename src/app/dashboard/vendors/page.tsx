@@ -25,7 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useCreateVendorLoginLaunch } from "@/api/auth";
-import { useOnboardVendor } from "@/api/vendors";
+import { useOnboardVendor, useUpdateVendor } from "@/api/vendors";
 import { toastManager } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { z } from "zod";
@@ -62,6 +62,7 @@ const createVendorSchema = z.object({
     .trim()
     .regex(/^\d{10}$/, "Primary contact number must be 10 digits"),
   primary_contact_email: z.email("Enter a valid primary contact email"),
+  is_crm_enabled: z.boolean(),
   is_inventory_enabled: z.boolean(),
   is_tracktrace_enabled: z.boolean(),
 });
@@ -71,6 +72,7 @@ type CreateVendorFieldErrors = Partial<Record<keyof CreateVendorForm, string>>;
 
 export default function VendorsPage() {
   const [openCreateVendor, setOpenCreateVendor] = React.useState(false);
+  const [editingVendorId, setEditingVendorId] = React.useState<number | null>(null);
   const [form, setForm] = React.useState<CreateVendorForm>({
     vendor_name: "",
     vendor_code: "",
@@ -78,12 +80,14 @@ export default function VendorsPage() {
     primary_contact_name: "",
     primary_contact_number: "",
     primary_contact_email: "",
+    is_crm_enabled: true,
     is_inventory_enabled: false,
     is_tracktrace_enabled: false,
   });
   const [fieldErrors, setFieldErrors] = React.useState<CreateVendorFieldErrors>({});
 
   const onboardVendorMutation = useOnboardVendor();
+  const updateVendorMutation = useUpdateVendor();
   const createVendorLoginLaunchMutation = useCreateVendorLoginLaunch();
   const handleLoginToVendor = React.useCallback(
     async (row: { id: number; vendor_name: string }) => {
@@ -127,7 +131,13 @@ export default function VendorsPage() {
     };
 
   const handleBooleanFieldChange =
-    (field: "is_inventory_enabled" | "is_tracktrace_enabled", value: boolean) =>
+    (
+      field:
+        | "is_crm_enabled"
+        | "is_inventory_enabled"
+        | "is_tracktrace_enabled",
+      value: boolean,
+    ) =>
     () => {
       setForm((prev) => ({
         ...prev,
@@ -143,13 +153,51 @@ export default function VendorsPage() {
       primary_contact_name: "",
       primary_contact_number: "",
       primary_contact_email: "",
+      is_crm_enabled: true,
       is_inventory_enabled: false,
       is_tracktrace_enabled: false,
     });
     setFieldErrors({});
+    setEditingVendorId(null);
   };
 
-  const handleCreateVendor = async (event: React.FormEvent) => {
+  const handleOpenCreateVendor = () => {
+    resetForm();
+    setOpenCreateVendor(true);
+  };
+
+  const handleOpenConfigureVendor = React.useCallback(
+    (row: {
+      id: number;
+      vendor_name: string;
+      vendor_code: string;
+      subdomain_url: string;
+      primary_contact_name: string;
+      primary_contact_number: string;
+      primary_contact_email: string;
+      is_crm_enabled: boolean;
+      is_inventory_enabled: boolean;
+      is_tracktrace_enabled: boolean;
+    }) => {
+      setEditingVendorId(row.id);
+      setForm({
+        vendor_name: row.vendor_name,
+        vendor_code: row.vendor_code,
+        subdomain_url: row.subdomain_url,
+        primary_contact_name: row.primary_contact_name,
+        primary_contact_number: row.primary_contact_number,
+        primary_contact_email: row.primary_contact_email,
+        is_crm_enabled: row.is_crm_enabled,
+        is_inventory_enabled: row.is_inventory_enabled,
+        is_tracktrace_enabled: row.is_tracktrace_enabled,
+      });
+      setFieldErrors({});
+      setOpenCreateVendor(true);
+    },
+    [],
+  );
+
+  const handleSubmitVendor = async (event: React.FormEvent) => {
     event.preventDefault();
 
     const validatedForm = createVendorSchema.safeParse(form);
@@ -171,28 +219,53 @@ export default function VendorsPage() {
     }
 
     try {
-      await onboardVendorMutation.mutateAsync({
-        vendor_name: validatedForm.data.vendor_name,
-        vendor_code: validatedForm.data.vendor_code.toUpperCase(),
-        subdomain_url: validatedForm.data.subdomain_url,
-        primary_contact_name: validatedForm.data.primary_contact_name,
-        primary_contact_number: validatedForm.data.primary_contact_number,
-        primary_contact_email: validatedForm.data.primary_contact_email,
-        country_code: "+91",
-        head_office_id: null,
-        status: "active",
-        logo: "https://example.com/logo.png",
-        time_zone: "Asia/Kolkata",
-        is_inventory_enabled: validatedForm.data.is_inventory_enabled,
-        is_tracktrace_enabled: validatedForm.data.is_tracktrace_enabled,
-      });
+      if (editingVendorId) {
+        await updateVendorMutation.mutateAsync({
+          vendorId: editingVendorId,
+          payload: {
+            vendor_name: validatedForm.data.vendor_name,
+            vendor_code: validatedForm.data.vendor_code.toUpperCase(),
+            subdomain_url: validatedForm.data.subdomain_url,
+            primary_contact_name: validatedForm.data.primary_contact_name,
+            primary_contact_number: validatedForm.data.primary_contact_number,
+            primary_contact_email: validatedForm.data.primary_contact_email,
+            status: "active",
+            time_zone: "Asia/Kolkata",
+            is_crm_enabled: validatedForm.data.is_crm_enabled,
+            is_inventory_enabled: validatedForm.data.is_inventory_enabled,
+            is_tracktrace_enabled: validatedForm.data.is_tracktrace_enabled,
+          },
+        });
+      } else {
+        await onboardVendorMutation.mutateAsync({
+          vendor_name: validatedForm.data.vendor_name,
+          vendor_code: validatedForm.data.vendor_code.toUpperCase(),
+          subdomain_url: validatedForm.data.subdomain_url,
+          primary_contact_name: validatedForm.data.primary_contact_name,
+          primary_contact_number: validatedForm.data.primary_contact_number,
+          primary_contact_email: validatedForm.data.primary_contact_email,
+          country_code: "+91",
+          head_office_id: null,
+          status: "active",
+          logo: "https://example.com/logo.png",
+          time_zone: "Asia/Kolkata",
+          is_crm_enabled: validatedForm.data.is_crm_enabled,
+          is_inventory_enabled: validatedForm.data.is_inventory_enabled,
+          is_tracktrace_enabled: validatedForm.data.is_tracktrace_enabled,
+        });
+      }
 
-      toastManager.add({ title: "Vendor created successfully", type: "success" });
+      toastManager.add({
+        title: editingVendorId ? "Vendor updated successfully" : "Vendor created successfully",
+        type: "success",
+      });
       setOpenCreateVendor(false);
       resetForm();
     } catch (error: any) {
       toastManager.add({
-        title: error?.response?.data?.message || "Failed to create vendor",
+        title:
+          error?.response?.data?.message ||
+          (editingVendorId ? "Failed to update vendor" : "Failed to create vendor"),
         type: "error",
       });
     }
@@ -217,7 +290,7 @@ export default function VendorsPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button onClick={() => setOpenCreateVendor(true)}>Create Vendor</Button>
+          <Button onClick={handleOpenCreateVendor}>Create Vendor</Button>
           <NotificationBell />
           <AnimatedThemeToggler />
         </div>
@@ -231,7 +304,10 @@ export default function VendorsPage() {
           </p>
         </div>
 
-        <VendorsTable onLoginToVendor={handleLoginToVendor} />
+        <VendorsTable
+          onLoginToVendor={handleLoginToVendor}
+          onConfigureVendor={handleOpenConfigureVendor}
+        />
       </div>
 
       <Dialog
@@ -245,13 +321,17 @@ export default function VendorsPage() {
       >
         <DialogContent>
           <DialogHeader className="border-b pb-4">
-            <DialogTitle className="text-base">Create Vendor</DialogTitle>
+            <DialogTitle className="text-base">
+              {editingVendorId ? "Configure Vendor" : "Create Vendor"}
+            </DialogTitle>
             <DialogDescription className="text-xs">
-              Add the basic vendor details to onboard a new vendor.
+              {editingVendorId
+                ? "Update the basic vendor details."
+                : "Add the basic vendor details to onboard a new vendor."}
             </DialogDescription>
           </DialogHeader>
 
-          <form className="space-y-4 mt-2" onSubmit={handleCreateVendor}>
+          <form className="space-y-4 mt-2" onSubmit={handleSubmitVendor}>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
                 <Label htmlFor="vendor_name">Vendor Name</Label>
@@ -356,6 +436,32 @@ export default function VendorsPage() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
+                <Label>CRM Enabled</Label>
+                <div className="flex items-center gap-6 pt-1">
+                  {[
+                    { label: "Yes", value: true },
+                    { label: "No", value: false },
+                  ].map((option) => (
+                    <label
+                      key={`crm-${String(option.value)}`}
+                      className="flex items-center gap-2 cursor-pointer"
+                      htmlFor={`crm-${String(option.value)}`}
+                    >
+                      <Checkbox
+                        id={`crm-${String(option.value)}`}
+                        checked={form.is_crm_enabled === option.value}
+                        onCheckedChange={handleBooleanFieldChange(
+                          "is_crm_enabled",
+                          option.value,
+                        )}
+                      />
+                      <span className="text-sm font-medium">{option.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-2">
                 <Label>Inventory Enabled</Label>
                 <div className="flex items-center gap-6 pt-1">
                   {[
@@ -419,8 +525,17 @@ export default function VendorsPage() {
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={onboardVendorMutation.isPending}>
-                {onboardVendorMutation.isPending ? "Creating..." : "Confirm"}
+              <Button
+                type="submit"
+                disabled={onboardVendorMutation.isPending || updateVendorMutation.isPending}
+              >
+                {editingVendorId
+                  ? updateVendorMutation.isPending
+                    ? "Updating..."
+                    : "Update"
+                  : onboardVendorMutation.isPending
+                    ? "Creating..."
+                    : "Confirm"}
               </Button>
             </DialogFooter>
           </form>

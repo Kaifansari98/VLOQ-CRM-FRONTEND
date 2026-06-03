@@ -33,10 +33,12 @@ type VendorRow = {
   id: number;
   vendor_name: string;
   vendor_code: string;
+  subdomain_url: string;
   primary_contact_email: string;
   primary_contact_number: string;
   primary_contact_name: string;
   status: string;
+  is_crm_enabled: boolean;
   is_inventory_enabled: boolean;
   is_tracktrace_enabled: boolean;
   createdAt: string;
@@ -215,9 +217,13 @@ const columns: ColumnDef<VendorRow>[] = [
 
 interface VendorsTableProps {
   onLoginToVendor?: (row: VendorRow) => void;
+  onConfigureVendor?: (row: VendorRow) => void;
 }
 
-export default function VendorsTable({ onLoginToVendor }: VendorsTableProps) {
+export default function VendorsTable({
+  onLoginToVendor,
+  onConfigureVendor,
+}: VendorsTableProps) {
   const router = useRouter();
 
   const [pagination, setPagination] = React.useState<PaginationState>({
@@ -240,10 +246,12 @@ export default function VendorsTable({ onLoginToVendor }: VendorsTableProps) {
         id: item.id,
         vendor_name: item.vendor_name ?? "",
         vendor_code: item.vendor_code ?? "",
+        subdomain_url: item.subdomain_url ?? "",
         primary_contact_name: item.primary_contact_name ?? "",
         primary_contact_email: item.primary_contact_email ?? "",
         primary_contact_number: item.primary_contact_number ?? "",
         status: item.status ?? "",
+        is_crm_enabled: item.is_crm_enabled !== false,
         is_inventory_enabled: item.is_inventory_enabled === true,
         is_tracktrace_enabled: item.is_tracktrace_enabled === true,
         createdAt: item.createdAt ?? "",
@@ -321,6 +329,9 @@ export default function VendorsTable({ onLoginToVendor }: VendorsTableProps) {
               onRowDoubleClick={handleRowDoubleClick}
               renderRowContextMenu={(row) => (
                 <>
+                  <ContextMenuItem onClick={() => onConfigureVendor?.(row)}>
+                    Configure Vendor
+                  </ContextMenuItem>
                   <ContextMenuItem onClick={() => onLoginToVendor?.(row)}>
                     {`Login to ${row.vendor_name}`}
                   </ContextMenuItem>

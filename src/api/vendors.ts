@@ -62,6 +62,20 @@ export interface OnboardVendorPayload {
   is_tracktrace_enabled: boolean;
 }
 
+export interface UpdateVendorPayload {
+  vendor_name: string;
+  vendor_code: string;
+  subdomain_url: string;
+  primary_contact_name: string;
+  primary_contact_number: string;
+  primary_contact_email: string;
+  status: "active";
+  time_zone: string;
+  is_crm_enabled: boolean;
+  is_inventory_enabled: boolean;
+  is_tracktrace_enabled: boolean;
+}
+
 // ─── API fn ──────────────────────────────────────────────────────────────────
 
 export const fetchVendors = async (
@@ -73,6 +87,14 @@ export const fetchVendors = async (
 
 export const onboardVendor = async (payload: OnboardVendorPayload) => {
   const { data } = await apiClient.post("/vendors/onboard", payload);
+  return data;
+};
+
+export const updateVendor = async (
+  vendorId: number,
+  payload: UpdateVendorPayload,
+) => {
+  const { data } = await apiClient.patch(`/vendors/${vendorId}`, payload);
   return data;
 };
 
@@ -102,6 +124,24 @@ export const useOnboardVendor = () => {
     mutationFn: onboardVendor,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vendors"] });
+    },
+  });
+};
+
+export const useUpdateVendor = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      vendorId,
+      payload,
+    }: {
+      vendorId: number;
+      payload: UpdateVendorPayload;
+    }) => updateVendor(vendorId, payload),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["vendor", variables.vendorId] });
     },
   });
 };
