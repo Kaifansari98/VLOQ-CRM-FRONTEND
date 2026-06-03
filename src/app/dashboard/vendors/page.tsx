@@ -24,6 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useCreateVendorLoginLaunch } from "@/api/auth";
 import { useOnboardVendor } from "@/api/vendors";
 import { toastManager } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
@@ -83,9 +84,30 @@ export default function VendorsPage() {
   const [fieldErrors, setFieldErrors] = React.useState<CreateVendorFieldErrors>({});
 
   const onboardVendorMutation = useOnboardVendor();
-  const handleLoginToVendor = React.useCallback(() => {
-    // Intentionally left blank until the vendor-login flow is finalized.
-  }, []);
+  const createVendorLoginLaunchMutation = useCreateVendorLoginLaunch();
+  const handleLoginToVendor = React.useCallback(
+    async (row: { id: number; vendor_name: string }) => {
+      try {
+        const response = await createVendorLoginLaunchMutation.mutateAsync(row.id);
+        const launchUrl = response?.data?.launch_url;
+
+        if (!launchUrl) {
+          throw new Error("Vendor launch URL not found");
+        }
+
+        window.open(launchUrl, "_blank", "noopener,noreferrer");
+      } catch (error: any) {
+        toastManager.add({
+          title:
+            error?.response?.data?.message ||
+            error?.message ||
+            `Failed to login to ${row.vendor_name}`,
+          type: "error",
+        });
+      }
+    },
+    [createVendorLoginLaunchMutation],
+  );
 
   const handleFieldChange =
     (field: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement>) => {

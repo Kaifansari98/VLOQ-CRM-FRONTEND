@@ -31,3 +31,34 @@ export const validateSessionApi = async () => {
   const { data } = await apiClient.get("/auth/session");
   return data;
 };
+
+export const createVendorLoginLaunchApi = async (vendorId: number) => {
+  const { data } = await apiClient.post(`/auth/vendor-login-launch/${vendorId}`);
+  return data as {
+    message: string;
+    data: {
+      vendor_id: number;
+      vendor_name: string;
+      subdomain_url: string;
+      launch_url: string;
+    };
+  };
+};
+
+export const exchangeVendorLoginApi = async (token: string) => {
+  const { data } = await apiClient.post("/auth/vendor-login-exchange", { token });
+  return data as {
+    message: string;
+    token: string;
+    session_id: number;
+    franchise_id: number | null;
+    customPrivileges?: string[];
+    user: any;
+  };
+};
+
+export const useCreateVendorLoginLaunch = () => {
+  return useMutation({
+    mutationFn: createVendorLoginLaunchApi,
+  });
+};

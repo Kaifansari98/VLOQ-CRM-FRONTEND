@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useLogin } from "@/hooks/useLogin";
-import { useSelector } from "react-redux";
-import { useRouter } from "next/navigation";
+import { useDispatch, useSelector } from "react-redux";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toastManager } from "@/components/ui/toast";
 import { RootState } from "@/redux/store";
 import { PhoneInput } from "@/components/ui/phone-input";
@@ -13,6 +13,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { apiClient } from "@/lib/apiClient";
+import { exchangeVendorLoginApi } from "@/api/auth";
+import { setCredentials } from "@/redux/slices/authSlice";
+import { setCustomPrivileges } from "@/redux/slices/customPrivilegesSlice";
+import { setActiveTheme } from "@/redux/slices/themeSlice";
 
 const getLoginErrorMessage = (message?: string) => {
   if (!message) {
@@ -76,15 +81,19 @@ export function LoginForm({
 
   const loginMutation = useLogin();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const dispatch = useDispatch();
+  const vendorLoginToken = searchParams.get("vendorLoginToken");
+  const [isVendorLoginInProgress, setIsVendorLoginInProgress] = useState(false);
 
   const { user, token } = useSelector((state: RootState) => state.auth);
 
   // ✅ Redirect if already logged in
   useEffect(() => {
     if (user && token) {
-      router.replace("/dashboard/leads/leadstable");
+      router.replace(vendorLoginToken ? "/dashboard" : "/dashboard/leads/leadstable");
     }
-  }, [user, token, router]);
+  }, [router, token, user, vendorLoginToken]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,6 +124,51 @@ export function LoginForm({
       router.push("/dashboard");
     }
   }, [loginMutation.isSuccess, loginMutation.data, router]);
+
+  useEffect(() => {
+    const exchangeVendorLogin = async () => {
+      if (!vendorLoginToken || user || token || isVendorLoginInProgress) {
+        return;
+      }
+
+      setIsVendorLoginInProgress(true);
+
+      try {
+        const response = await exchangeVendorLoginApi(vendorLoginToken);
+        dispatch(setCredentials({ user: response.user, token: response.token }));
+        dispatch(
+          setCustomPrivileges(
+            Array.isArray(response.customPrivileges) ? response.customPrivileges : [],
+          ),
+        );
+
+        try {
+          const vendorId = response.user?.vendor_id;
+          if (vendorId) {
+            const themeRes = await apiClient.get(`/themes/vendorId/${vendorId}/active`);
+            dispatch(setActiveTheme(themeRes.data?.data ?? null));
+          }
+        } catch {
+          // Theme fetch failure is non-blocking
+        }
+
+        toastManager.add({ title: "Login successful!", type: "success" });
+        router.replace("/dashboard");
+      } catch (error: any) {
+        toastManager.add({
+          title:
+            error?.response?.data?.message ||
+            error?.message ||
+            "Vendor login failed",
+          type: "error",
+        });
+      } finally {
+        setIsVendorLoginInProgress(false);
+      }
+    };
+
+    exchangeVendorLogin();
+  }, [dispatch, isVendorLoginInProgress, router, token, user, vendorLoginToken]);
 
   useEffect(() => {
     if (loginMutation.isError) {
@@ -205,9 +259,13 @@ export function LoginForm({
       <Button
         type="submit"
         className="w-full"
-        disabled={loginMutation.isPending}
+        disabled={loginMutation.isPending || isVendorLoginInProgress}
       >
-        {loginMutation.isPending ? "Logging in..." : "Login"}
+        {isVendorLoginInProgress
+          ? "Redirecting..."
+          : loginMutation.isPending
+            ? "Logging in..."
+            : "Login"}
       </Button>
    {/* <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
     <span className="bg-background text-muted-foreground relative z-10 px-2">
