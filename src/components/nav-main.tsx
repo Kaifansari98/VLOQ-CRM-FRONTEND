@@ -132,6 +132,9 @@ export function NavMain({
 }) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const isCrmEnabled = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_crm_enabled !== false,
+  );
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type as string | undefined,
   );
@@ -404,10 +407,12 @@ export function NavMain({
   return (
     <>
       {/* ── CRM Platform Group ── */}
-      <SidebarGroup>
-        <SidebarGroupLabel>CRM Platform</SidebarGroupLabel>
-        <SidebarMenu>{items.map((item) => renderItem(item))}</SidebarMenu>
-      </SidebarGroup>
+      {isCrmEnabled && items.length > 0 && (
+        <SidebarGroup>
+          <SidebarGroupLabel>CRM Platform</SidebarGroupLabel>
+          <SidebarMenu>{items.map((item) => renderItem(item))}</SidebarMenu>
+        </SidebarGroup>
+      )}
 
       {/* ── Track & Trace Group — sirf jab trackTraceItems ho ── */}
       {trackTraceItems && trackTraceItems.length > 0 && (
