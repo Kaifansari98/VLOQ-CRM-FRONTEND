@@ -17,9 +17,9 @@ import { canCreateLead } from "@/components/utils/privileges";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useActivityStatusCounts } from "@/hooks/useActivityStatus";
-import { useVendorUserLeadsOpen } from "@/hooks/useLeadsQueries";
 import ViewOpenLeadTable from "@/app/_components/view-leads-table";
 import PendingLeadsTable from "../../../_components/pending-leads-table";
+import { useUniversalStageLeadsPost } from "@/api/universalstage";
 import {
   Popover,
   PopoverContent,
@@ -116,14 +116,40 @@ export default function LeadsGenerationPage() {
   const [openPopover, setOpenPopover] = useState(false);
 
   const { data: counts } = useActivityStatusCounts(vendorId, franchiseId);
-  const { data: myOpenLeads } = useVendorUserLeadsOpen(
+  const customOpenTabPayload = useMemo(
+    () => ({
+      userId: userId ?? 0,
+      franchise_id: franchiseId ?? undefined,
+      tag: "Type 1",
+      page: 1,
+      limit: 1,
+      filter_name: "",
+      filter_lead_code: "",
+      contact: "",
+      alt_contact_no: "",
+      email: "",
+      site_address: "",
+      archetech_name: "",
+      designer_remark: "",
+      furniture_type: [],
+      furniture_structure: [],
+      site_type: [],
+      source: [],
+      assign_to: [],
+      priority: [],
+      site_map_link: null,
+      created_at: "desc" as const,
+      global_search: "",
+    }),
+    [franchiseId, userId],
+  );
+  const { data: customOpenTableData } = useUniversalStageLeadsPost(
     vendorId!,
-    userId!,
-    franchiseId,
+    customOpenTabPayload,
   );
   const openLeadsCountForTab =
     normalizedUserType === "custom"
-      ? (myOpenLeads?.count ?? 0)
+      ? (customOpenTableData?.count ?? 0)
       : (counts?.open ?? 0);
 
   const tabItems: TabItem[] = [
