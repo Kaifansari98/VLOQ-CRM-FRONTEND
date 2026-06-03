@@ -109,9 +109,23 @@ const InputComponent = React.forwardRef<
       "ArrowLeft",
       "ArrowRight",
       "Tab",
+      "Home",
+      "End",
     ];
 
+    if (e.ctrlKey || e.metaKey) {
+      onKeyDown?.(e);
+      return;
+    }
+
     if (allowedKeys.includes(e.key)) {
+      onKeyDown?.(e);
+      return;
+    }
+
+    if (!/^\d$/.test(e.key)) {
+      e.preventDefault();
+      onKeyDown?.(e);
       return;
     }
 
@@ -125,9 +139,16 @@ const InputComponent = React.forwardRef<
 
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     const pasted = e.clipboardData.getData("Text");
-    const digitsOnly = pasted.replace(/\D/g, "");
+    const trimmed = pasted.trim();
+    const currentDigits = e.currentTarget.value.replace(/\D/g, "");
 
-    if (digitsOnly.length > 10) {
+    if (!/^\d+$/.test(trimmed)) {
+      e.preventDefault();
+      onPaste?.(e);
+      return;
+    }
+
+    if (currentDigits.length + trimmed.length > 10) {
       e.preventDefault();
     }
 
