@@ -163,14 +163,14 @@ export default function VendorsPage() {
         }}
       >
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create Vendor</DialogTitle>
-            <DialogDescription>
+          <div className="flex flex-col border-b pb-4">
+            <p className="text-base font-semibold">Create Vendor</p>
+            <p className="text-xs text-muted-foreground">
               Add the basic vendor details to onboard a new vendor.
-            </DialogDescription>
-          </DialogHeader>
+            </p>
+          </div>
 
-          <form className="space-y-4" onSubmit={handleCreateVendor}>
+          <form className="space-y-4 mt-2" onSubmit={handleCreateVendor}>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
                 <Label htmlFor="vendor_name">Vendor Name</Label>
@@ -284,7 +284,7 @@ export default function VendorsPage() {
               </div>
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="border-t pt-4">
               <Button
                 type="button"
                 variant="outline"
