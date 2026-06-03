@@ -27,18 +27,60 @@ import {
 import { useOnboardVendor } from "@/api/vendors";
 import { toastManager } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { z } from "zod";
+
+const subdomainHostRegex =
+  /^(?=.{4,253}$)(?!.*\.\.)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
+
+const createVendorSchema = z.object({
+  vendor_name: z.string().trim().min(1, "Vendor name is required"),
+  vendor_code: z.string().trim().min(1, "Vendor code is required"),
+  subdomain_url: z
+    .string()
+    .trim()
+    .min(1, "Domain is required")
+    .max(253, "Domain is too long")
+    .refine((value) => value === value.toLowerCase(), {
+      message: "Domain must be in lowercase",
+    })
+    .refine((value) => !/^https?:\/\//.test(value), {
+      message: "Enter domain only, without http:// or https://",
+    })
+    .refine((value) => !/[/?#:]/.test(value), {
+      message: "Domain cannot contain paths, ports, query strings, or fragments",
+    })
+    .refine((value) => subdomainHostRegex.test(value), {
+      message: "Enter a valid subdomain like durian.shambhala.com",
+    }),
+  primary_contact_name: z
+    .string()
+    .trim()
+    .min(1, "Primary contact name is required"),
+  primary_contact_number: z
+    .string()
+    .trim()
+    .regex(/^\d{10}$/, "Primary contact number must be 10 digits"),
+  primary_contact_email: z.email("Enter a valid primary contact email"),
+  is_inventory_enabled: z.boolean(),
+  is_tracktrace_enabled: z.boolean(),
+});
+
+type CreateVendorForm = z.infer<typeof createVendorSchema>;
+type CreateVendorFieldErrors = Partial<Record<keyof CreateVendorForm, string>>;
 
 export default function VendorsPage() {
   const [openCreateVendor, setOpenCreateVendor] = React.useState(false);
-  const [form, setForm] = React.useState({
+  const [form, setForm] = React.useState<CreateVendorForm>({
     vendor_name: "",
     vendor_code: "",
+    subdomain_url: "",
     primary_contact_name: "",
     primary_contact_number: "",
     primary_contact_email: "",
     is_inventory_enabled: false,
     is_tracktrace_enabled: false,
   });
+  const [fieldErrors, setFieldErrors] = React.useState<CreateVendorFieldErrors>({});
 
   const onboardVendorMutation = useOnboardVendor();
   const handleLoginToVendor = React.useCallback(() => {
@@ -50,6 +92,8 @@ export default function VendorsPage() {
       const nextValue =
         field === "primary_contact_number"
           ? event.target.value.replace(/\D/g, "").slice(0, 10)
+          : field === "subdomain_url"
+            ? event.target.value.trim().toLowerCase()
           : event.target.value;
 
       setForm((prev) => ({
@@ -57,37 +101,48 @@ export default function VendorsPage() {
         [field]:
           field === "vendor_code" ? nextValue.toUpperCase() : nextValue,
       }));
+      setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
+    };
+
+  const handleBooleanFieldChange =
+    (field: "is_inventory_enabled" | "is_tracktrace_enabled", value: boolean) =>
+    () => {
+      setForm((prev) => ({
+        ...prev,
+        [field]: value,
+      }));
     };
 
   const resetForm = () => {
     setForm({
       vendor_name: "",
       vendor_code: "",
+      subdomain_url: "",
       primary_contact_name: "",
       primary_contact_number: "",
       primary_contact_email: "",
       is_inventory_enabled: false,
       is_tracktrace_enabled: false,
     });
+    setFieldErrors({});
   };
 
   const handleCreateVendor = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (
-      !form.vendor_name.trim() ||
-      !form.vendor_code.trim() ||
-      !form.primary_contact_name.trim() ||
-      !form.primary_contact_number.trim() ||
-      !form.primary_contact_email.trim()
-    ) {
-      toastManager.add({ title: "Please fill all required fields", type: "error" });
-      return;
-    }
-
-    if (form.primary_contact_number.trim().length !== 10) {
+    const validatedForm = createVendorSchema.safeParse(form);
+    if (!validatedForm.success) {
+      const nextFieldErrors = validatedForm.error.flatten().fieldErrors;
+      setFieldErrors({
+        vendor_name: nextFieldErrors.vendor_name?.[0],
+        vendor_code: nextFieldErrors.vendor_code?.[0],
+        subdomain_url: nextFieldErrors.subdomain_url?.[0],
+        primary_contact_name: nextFieldErrors.primary_contact_name?.[0],
+        primary_contact_number: nextFieldErrors.primary_contact_number?.[0],
+        primary_contact_email: nextFieldErrors.primary_contact_email?.[0],
+      });
       toastManager.add({
-        title: "Primary contact number must be 10 digits",
+        title: nextFieldErrors.subdomain_url?.[0] || "Please fix the form errors",
         type: "error",
       });
       return;
@@ -95,18 +150,19 @@ export default function VendorsPage() {
 
     try {
       await onboardVendorMutation.mutateAsync({
-        vendor_name: form.vendor_name.trim(),
-        vendor_code: form.vendor_code.trim().toUpperCase(),
-        primary_contact_name: form.primary_contact_name.trim(),
-        primary_contact_number: form.primary_contact_number.trim(),
-        primary_contact_email: form.primary_contact_email.trim(),
+        vendor_name: validatedForm.data.vendor_name,
+        vendor_code: validatedForm.data.vendor_code.toUpperCase(),
+        subdomain_url: validatedForm.data.subdomain_url,
+        primary_contact_name: validatedForm.data.primary_contact_name,
+        primary_contact_number: validatedForm.data.primary_contact_number,
+        primary_contact_email: validatedForm.data.primary_contact_email,
         country_code: "+91",
         head_office_id: null,
         status: "active",
         logo: "https://example.com/logo.png",
         time_zone: "Asia/Kolkata",
-        is_inventory_enabled: form.is_inventory_enabled,
-        is_tracktrace_enabled: form.is_tracktrace_enabled,
+        is_inventory_enabled: validatedForm.data.is_inventory_enabled,
+        is_tracktrace_enabled: validatedForm.data.is_tracktrace_enabled,
       });
 
       toastManager.add({ title: "Vendor created successfully", type: "success" });
@@ -166,12 +222,12 @@ export default function VendorsPage() {
         }}
       >
         <DialogContent>
-          <div className="flex flex-col border-b pb-4">
-            <p className="text-base font-semibold">Create Vendor</p>
-            <p className="text-xs text-muted-foreground">
+          <DialogHeader className="border-b pb-4">
+            <DialogTitle className="text-base">Create Vendor</DialogTitle>
+            <DialogDescription className="text-xs">
               Add the basic vendor details to onboard a new vendor.
-            </p>
-          </div>
+            </DialogDescription>
+          </DialogHeader>
 
           <form className="space-y-4 mt-2" onSubmit={handleCreateVendor}>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -184,6 +240,9 @@ export default function VendorsPage() {
                   placeholder="Enter vendor name"
                   required
                 />
+                {fieldErrors.vendor_name ? (
+                  <p className="text-xs text-destructive">{fieldErrors.vendor_name}</p>
+                ) : null}
               </div>
 
               <div className="grid gap-2">
@@ -195,7 +254,30 @@ export default function VendorsPage() {
                   placeholder="Enter vendor code"
                   required
                 />
+                {fieldErrors.vendor_code ? (
+                  <p className="text-xs text-destructive">{fieldErrors.vendor_code}</p>
+                ) : null}
               </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="subdomain_url">Domain</Label>
+              <Input
+                id="subdomain_url"
+                value={form.subdomain_url}
+                onChange={handleFieldChange("subdomain_url")}
+                placeholder="durian.shambhala.com"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                Enter domain only. Do not include protocol, path, or query string.
+              </p>
+              {fieldErrors.subdomain_url ? (
+                <p className="text-xs text-destructive">{fieldErrors.subdomain_url}</p>
+              ) : null}
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -208,6 +290,11 @@ export default function VendorsPage() {
                   placeholder="Enter primary contact name"
                   required
                 />
+                {fieldErrors.primary_contact_name ? (
+                  <p className="text-xs text-destructive">
+                    {fieldErrors.primary_contact_name}
+                  </p>
+                ) : null}
               </div>
 
               <div className="grid gap-2">
@@ -220,6 +307,11 @@ export default function VendorsPage() {
                   placeholder="Enter 10 digit number"
                   required
                 />
+                {fieldErrors.primary_contact_number ? (
+                  <p className="text-xs text-destructive">
+                    {fieldErrors.primary_contact_number}
+                  </p>
+                ) : null}
               </div>
             </div>
 
@@ -233,6 +325,11 @@ export default function VendorsPage() {
                 placeholder="Enter primary contact email"
                 required
               />
+              {fieldErrors.primary_contact_email ? (
+                <p className="text-xs text-destructive">
+                  {fieldErrors.primary_contact_email}
+                </p>
+              ) : null}
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -246,14 +343,16 @@ export default function VendorsPage() {
                     <label
                       key={`inventory-${String(option.value)}`}
                       className="flex items-center gap-2 cursor-pointer"
-                      onClick={() =>
-                        setForm((prev) => ({
-                          ...prev,
-                          is_inventory_enabled: option.value,
-                        }))
-                      }
+                      htmlFor={`inventory-${String(option.value)}`}
                     >
-                      <Checkbox checked={form.is_inventory_enabled === option.value} />
+                      <Checkbox
+                        id={`inventory-${String(option.value)}`}
+                        checked={form.is_inventory_enabled === option.value}
+                        onCheckedChange={handleBooleanFieldChange(
+                          "is_inventory_enabled",
+                          option.value,
+                        )}
+                      />
                       <span className="text-sm font-medium">{option.label}</span>
                     </label>
                   ))}
@@ -270,15 +369,15 @@ export default function VendorsPage() {
                     <label
                       key={`tracktrace-${String(option.value)}`}
                       className="flex items-center gap-2 cursor-pointer"
-                      onClick={() =>
-                        setForm((prev) => ({
-                          ...prev,
-                          is_tracktrace_enabled: option.value,
-                        }))
-                      }
+                      htmlFor={`tracktrace-${String(option.value)}`}
                     >
                       <Checkbox
+                        id={`tracktrace-${String(option.value)}`}
                         checked={form.is_tracktrace_enabled === option.value}
+                        onCheckedChange={handleBooleanFieldChange(
+                          "is_tracktrace_enabled",
+                          option.value,
+                        )}
                       />
                       <span className="text-sm font-medium">{option.label}</span>
                     </label>

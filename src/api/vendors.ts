@@ -8,6 +8,7 @@ export interface VendorListItem {
   id: number;
   vendor_name: string;
   vendor_code: string;
+  subdomain_url: string | null;
   primary_contact_email: string;
   primary_contact_number: string;
   primary_contact_name: string;
@@ -40,6 +41,7 @@ export interface VendorListResponse {
 export interface OnboardVendorPayload {
   vendor_name: string;
   vendor_code: string;
+  subdomain_url: string;
   primary_contact_name: string;
   primary_contact_number: string;
   primary_contact_email: string;

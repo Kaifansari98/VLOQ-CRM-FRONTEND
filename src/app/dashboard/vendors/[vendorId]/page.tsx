@@ -21,7 +21,10 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { useCreateFranchise } from "@/api/franchises";
 import { toastManager } from "@/components/ui/toast";
@@ -162,12 +165,12 @@ export default function VendorDetailPage() {
         }}
       >
         <DialogContent>
-          <div className="flex flex-col border-b pb-4">
-            <p className="text-base font-semibold">Create Franchise</p>
-            <p className="text-xs text-muted-foreground">
+          <DialogHeader className="border-b pb-4">
+            <DialogTitle className="text-base">Create Franchise</DialogTitle>
+            <DialogDescription className="text-xs">
               Add the basic franchise details to onboard a new franchise.
-            </p>
-          </div>
+            </DialogDescription>
+          </DialogHeader>
 
           <form className="space-y-4 mt-2" onSubmit={handleSubmit}>
             <div className="grid gap-4 sm:grid-cols-2">
