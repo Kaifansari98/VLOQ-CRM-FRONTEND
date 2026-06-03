@@ -13,6 +13,7 @@ export interface VendorListItem {
   primary_contact_number: string;
   primary_contact_name: string;
   status: string | null;
+  is_crm_enabled: boolean | null;
   is_inventory_enabled: boolean | null;
   is_tracktrace_enabled: boolean | null;
   is_this_vendor_is_custom_usertype_only: boolean | null;
@@ -56,6 +57,7 @@ export interface OnboardVendorPayload {
   status: "active";
   logo: string;
   time_zone: string;
+  is_crm_enabled?: boolean;
   is_inventory_enabled: boolean;
   is_tracktrace_enabled: boolean;
 }
