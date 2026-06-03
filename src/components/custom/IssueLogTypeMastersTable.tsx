@@ -38,13 +38,19 @@ import {
   type SiteMasterRow,
 } from "@/components/utils/column/site-masters-column";
 
-export default function IssueLogTypeMastersTable() {
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+interface IssueLogTypeMastersTableProps {
+  vendorIdOverride?: number;
+}
+
+export default function IssueLogTypeMastersTable({
+  vendorIdOverride,
+}: IssueLogTypeMastersTableProps) {
+  const vendorId = vendorIdOverride ?? useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
-  const { data, isLoading, isError, error, refetch } = useIssueLogTypes();
-  const createIssueTypeMutation = useCreateIssueLogType();
-  const updateIssueTypeMutation = useUpdateIssueLogType();
-  const updateIssueTypeStatusMutation = useUpdateIssueLogTypeStatus();
+  const { data, isLoading, isError, error, refetch } = useIssueLogTypes(vendorId);
+  const createIssueTypeMutation = useCreateIssueLogType(vendorId);
+  const updateIssueTypeMutation = useUpdateIssueLogType(vendorId);
+  const updateIssueTypeStatusMutation = useUpdateIssueLogTypeStatus(vendorId);
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);

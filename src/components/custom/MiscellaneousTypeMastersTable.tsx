@@ -38,13 +38,19 @@ import {
   type SiteMasterRow,
 } from "@/components/utils/column/site-masters-column";
 
-export default function MiscellaneousTypeMastersTable() {
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+interface MiscellaneousTypeMastersTableProps {
+  vendorIdOverride?: number;
+}
+
+export default function MiscellaneousTypeMastersTable({
+  vendorIdOverride,
+}: MiscellaneousTypeMastersTableProps) {
+  const vendorId = vendorIdOverride ?? useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
-  const { data, isLoading, isError, error, refetch } = useMiscellaneousTypes();
-  const createMiscTypeMutation = useCreateMiscellaneousType();
-  const updateMiscTypeMutation = useUpdateMiscellaneousType();
-  const updateMiscTypeStatusMutation = useUpdateMiscellaneousTypeStatus();
+  const { data, isLoading, isError, error, refetch } = useMiscellaneousTypes(vendorId);
+  const createMiscTypeMutation = useCreateMiscellaneousType(vendorId);
+  const updateMiscTypeMutation = useUpdateMiscellaneousType(vendorId);
+  const updateMiscTypeStatusMutation = useUpdateMiscellaneousTypeStatus(vendorId);
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);

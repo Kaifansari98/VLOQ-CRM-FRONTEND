@@ -19,7 +19,12 @@ import { DataTableColumnHeader } from "@/components/data-table/data-table-column
 import ClearInput from "@/components/origin-input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ContextMenuItem } from "@/components/ui/context-menu";
+import {
+  ContextMenuItem,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+} from "@/components/ui/context-menu";
 
 // ─── Row type ────────────────────────────────────────────────────────────────
 
@@ -265,6 +270,14 @@ export default function VendorsTable({ onLoginToVendor }: VendorsTableProps) {
     router.push(`/dashboard/vendors/${row.id}`);
   };
 
+  const handleVendorMasterNavigation = (
+    row: VendorRow,
+    path: "/dashboard/masters-management/field-masters" | "/dashboard/masters-management/user-master",
+  ) => {
+    const params = new URLSearchParams({ vendor_id: String(row.id) });
+    router.push(`${path}?${params.toString()}`);
+  };
+
   return (
     <Card className="rounded-2xl p-0 border-0">
       <CardContent className="space-y-4 p-0">
@@ -307,11 +320,36 @@ export default function VendorsTable({ onLoginToVendor }: VendorsTableProps) {
               table={table}
               onRowDoubleClick={handleRowDoubleClick}
               renderRowContextMenu={(row) => (
-                <ContextMenuItem
-                  onClick={() => onLoginToVendor?.(row)}
-                >
-                  {`Login to ${row.vendor_name}`}
-                </ContextMenuItem>
+                <>
+                  <ContextMenuItem onClick={() => onLoginToVendor?.(row)}>
+                    {`Login to ${row.vendor_name}`}
+                  </ContextMenuItem>
+                  <ContextMenuSub>
+                    <ContextMenuSubTrigger>CRM Masters</ContextMenuSubTrigger>
+                    <ContextMenuSubContent>
+                      <ContextMenuItem
+                        onClick={() =>
+                          handleVendorMasterNavigation(
+                            row,
+                            "/dashboard/masters-management/field-masters",
+                          )
+                        }
+                      >
+                        Field Masters
+                      </ContextMenuItem>
+                      <ContextMenuItem
+                        onClick={() =>
+                          handleVendorMasterNavigation(
+                            row,
+                            "/dashboard/masters-management/user-master",
+                          )
+                        }
+                      >
+                        User Master
+                      </ContextMenuItem>
+                    </ContextMenuSubContent>
+                  </ContextMenuSub>
+                </>
               )}
             />
           </div>

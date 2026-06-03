@@ -151,13 +151,19 @@ const getCompanyVendorColumns = ({
   },
 ];
 
-export default function CompanyVendorMastersTable() {
+interface CompanyVendorMastersTableProps {
+  vendorIdOverride?: number;
+}
+
+export default function CompanyVendorMastersTable({
+  vendorIdOverride,
+}: CompanyVendorMastersTableProps) {
   const userId = useAppSelector((state) => state.auth.user?.id);
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-  const { data, isLoading, isError, error, refetch } = useCompanyVendorsForMaster();
-  const createCompanyVendorMutation = useCreateCompanyVendor();
-  const updateCompanyVendorMutation = useUpdateCompanyVendor();
-  const updateCompanyVendorStatusMutation = useUpdateCompanyVendorStatus();
+  const vendorId = vendorIdOverride ?? useAppSelector((state) => state.auth.user?.vendor_id);
+  const { data, isLoading, isError, error, refetch } = useCompanyVendorsForMaster(vendorId);
+  const createCompanyVendorMutation = useCreateCompanyVendor(vendorId);
+  const updateCompanyVendorMutation = useUpdateCompanyVendor(vendorId);
+  const updateCompanyVendorStatusMutation = useUpdateCompanyVendorStatus(vendorId);
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);

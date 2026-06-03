@@ -12,8 +12,12 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import UserMastersTable from "@/components/custom/UserMastersTable";
+import { useSearchParams } from "next/navigation";
 
 export default function UserMasterPage() {
+  const searchParams = useSearchParams();
+  const vendorIdOverride = Number(searchParams.get("vendor_id") || "") || undefined;
+
   return (
     <>
       <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
@@ -50,7 +54,7 @@ export default function UserMasterPage() {
           </p>
         </div>
 
-        <UserMastersTable />
+        <UserMastersTable vendorIdOverride={vendorIdOverride} />
       </div>
     </>
   );
