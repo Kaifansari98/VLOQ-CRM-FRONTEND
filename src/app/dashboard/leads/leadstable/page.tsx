@@ -17,6 +17,7 @@ import { canCreateLead } from "@/components/utils/privileges";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useActivityStatusCounts } from "@/hooks/useActivityStatus";
+import { useVendorUserLeadsOpen } from "@/hooks/useLeadsQueries";
 import ViewOpenLeadTable from "@/app/_components/view-leads-table";
 import PendingLeadsTable from "../../../_components/pending-leads-table";
 import {
@@ -48,6 +49,7 @@ export default function LeadsGenerationPage() {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type as string | undefined,
   );
+  const userId = useAppSelector((state) => state.auth.user?.id);
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
@@ -114,12 +116,21 @@ export default function LeadsGenerationPage() {
   const [openPopover, setOpenPopover] = useState(false);
 
   const { data: counts } = useActivityStatusCounts(vendorId, franchiseId);
+  const { data: myOpenLeads } = useVendorUserLeadsOpen(
+    vendorId!,
+    userId!,
+    franchiseId,
+  );
+  const openLeadsCountForTab =
+    normalizedUserType === "custom"
+      ? (myOpenLeads?.count ?? 0)
+      : (counts?.open ?? 0);
 
   const tabItems: TabItem[] = [
     {
       value: "open",
       label: "Open",
-      count: counts?.open ?? 0,
+      count: openLeadsCountForTab,
       dotColor: "#3b82f6",
     },
     ...(canShowOnHoldTab
