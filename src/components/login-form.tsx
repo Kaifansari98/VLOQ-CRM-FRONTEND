@@ -33,6 +33,21 @@ const getLoginErrorMessage = (message?: string) => {
   return message;
 };
 
+const getPostLoginPath = (
+  user: RootState["auth"]["user"] | null | undefined,
+  vendorLoginToken?: string | null,
+) => {
+  if (user?.vendor?.is_crm_enabled === false) {
+    return "/dashboard/track-trace";
+  }
+
+  if (vendorLoginToken) {
+    return "/dashboard";
+  }
+
+  return "/dashboard/leads/leadstable";
+};
+
 const getOrCreateAuthDeviceId = () => {
   if (typeof window === "undefined") {
     return undefined;
@@ -91,7 +106,7 @@ export function LoginForm({
   // ✅ Redirect if already logged in
   useEffect(() => {
     if (user && token) {
-      router.replace(vendorLoginToken ? "/dashboard" : "/dashboard/leads/leadstable");
+      router.replace(getPostLoginPath(user, vendorLoginToken));
     }
   }, [router, token, user, vendorLoginToken]);
 
@@ -121,9 +136,11 @@ export function LoginForm({
   useEffect(() => {
     if (loginMutation.isSuccess && loginMutation.data) {
       toastManager.add({ title: "Login successful!", type: "success" });
-      router.push("/dashboard");
+      router.push(
+        getPostLoginPath(loginMutation.data.user, vendorLoginToken),
+      );
     }
-  }, [loginMutation.isSuccess, loginMutation.data, router]);
+  }, [loginMutation.isSuccess, loginMutation.data, router, vendorLoginToken]);
 
   useEffect(() => {
     const exchangeVendorLogin = async () => {
@@ -153,7 +170,7 @@ export function LoginForm({
         }
 
         toastManager.add({ title: "Login successful!", type: "success" });
-        router.replace("/dashboard");
+        router.replace(getPostLoginPath(response.user, vendorLoginToken));
       } catch (error: any) {
         toastManager.add({
           title:
