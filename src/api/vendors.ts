@@ -38,6 +38,12 @@ export interface VendorListResponse {
   };
 }
 
+export interface VendorDetailResponse {
+  success: boolean;
+  message?: string;
+  data: VendorListItem;
+}
+
 export interface OnboardVendorPayload {
   vendor_name: string;
   vendor_code: string;
@@ -68,6 +74,13 @@ export const onboardVendor = async (payload: OnboardVendorPayload) => {
   return data;
 };
 
+export const fetchVendorById = async (
+  vendorId: number,
+): Promise<VendorDetailResponse> => {
+  const { data } = await apiClient.get(`/vendors/${vendorId}`);
+  return data;
+};
+
 // ─── React-Query hook ────────────────────────────────────────────────────────
 
 export const useVendors = (params: VendorListParams, enabled = true) => {
@@ -88,5 +101,15 @@ export const useOnboardVendor = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vendors"] });
     },
+  });
+};
+
+export const useVendorById = (vendorId?: number) => {
+  return useQuery({
+    queryKey: ["vendor", vendorId],
+    queryFn: () => fetchVendorById(vendorId as number),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
   });
 };

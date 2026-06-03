@@ -27,6 +27,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useCreateFranchise } from "@/api/franchises";
+import { useVendorById } from "@/api/vendors";
 import { toastManager } from "@/components/ui/toast";
 import TextAreaInput from "@/components/origin-text-area";
 import MapPicker from "@/components/MapPicker";
@@ -44,6 +45,8 @@ const EMPTY_FORM = {
 export default function VendorDetailPage() {
   const { vendorId } = useParams<{ vendorId: string }>();
   const vendorIdNum = Number(vendorId);
+  const { data: vendorResponse } = useVendorById(vendorIdNum);
+  const vendorName = vendorResponse?.data?.vendor_name?.trim() || `vendor #${vendorId}`;
 
   const [openCreate, setOpenCreate] = React.useState(false);
   const [form, setForm] = React.useState(EMPTY_FORM);
@@ -150,7 +153,7 @@ export default function VendorDetailPage() {
             Vendor Details
           </h1>
           <p className="text-sm text-muted-foreground">
-            View and manage details for vendor #{vendorId}.
+            View and manage details for {vendorName}.
           </p>
         </div>
 
