@@ -10,6 +10,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import { getCommonPinningStyles } from "@/lib/data-table";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +22,7 @@ interface DataTableProps<TData> extends React.ComponentProps<"div"> {
   table: TanstackTable<TData>;
   actionBar?: React.ReactNode;
   onRowDoubleClick?: (row: TData) => void;
+  renderRowContextMenu?: (row: TData) => React.ReactNode;
   showPagination?: boolean; // ✅ Add this prop
 }
 
@@ -26,6 +32,7 @@ export function DataTable<TData>({
   children,
   className,
   onRowDoubleClick,
+  renderRowContextMenu,
   showPagination = true, // ✅ Default to true for backward compatibility
   ...props
 }: DataTableProps<TData>) {
@@ -62,39 +69,58 @@ export function DataTable<TData>({
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                  onDoubleClick={(event) => {
-                    if (
-                      event.target instanceof HTMLElement &&
-                      (event.target.closest('[data-slot="action-button"]') ||
-                        event.target.closest("button") ||
-                        event.target.closest('[role="button"]') ||
-                        event.target.closest("[data-radix-menu-content]"))
-                    ) {
-                      return;
-                    }
-                    onRowDoubleClick?.(row.original);
-                  }}
-                  className={onRowDoubleClick ? "cursor-pointer" : undefined}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
-                      style={{
-                        ...getCommonPinningStyles({ column: cell.column }),
-                      }}
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+              table.getRowModel().rows.map((row) => {
+                const rowNode = (
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && "selected"}
+                    onDoubleClick={(event) => {
+                      if (
+                        event.target instanceof HTMLElement &&
+                        (event.target.closest('[data-slot="action-button"]') ||
+                          event.target.closest("button") ||
+                          event.target.closest('[role="button"]') ||
+                          event.target.closest("[data-radix-menu-content]"))
+                      ) {
+                        return;
+                      }
+                      onRowDoubleClick?.(row.original);
+                    }}
+                    className={cn(
+                      onRowDoubleClick || renderRowContextMenu
+                        ? "cursor-pointer"
+                        : undefined,
+                    )}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell
+                        key={cell.id}
+                        style={{
+                          ...getCommonPinningStyles({ column: cell.column }),
+                        }}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                );
+
+                if (!renderRowContextMenu) {
+                  return rowNode;
+                }
+
+                return (
+                  <ContextMenu key={row.id}>
+                    <ContextMenuTrigger asChild>{rowNode}</ContextMenuTrigger>
+                    <ContextMenuContent>
+                      {renderRowContextMenu(row.original)}
+                    </ContextMenuContent>
+                  </ContextMenu>
+                );
+              })
             ) : (
               <TableRow>
                 <TableCell

@@ -25,6 +25,9 @@ import {
 } from "@/components/ui/dialog";
 import { useCreateFranchise } from "@/api/franchises";
 import { toastManager } from "@/components/ui/toast";
+import TextAreaInput from "@/components/origin-text-area";
+import MapPicker from "@/components/MapPicker";
+import { MapPin } from "lucide-react";
 
 const EMPTY_FORM = {
   franchise_name: "",
@@ -41,6 +44,12 @@ export default function VendorDetailPage() {
 
   const [openCreate, setOpenCreate] = React.useState(false);
   const [form, setForm] = React.useState(EMPTY_FORM);
+  const [mapOpen, setMapOpen] = React.useState(false);
+  const [savedMapLocation, setSavedMapLocation] = React.useState<{
+    lat: number;
+    lng: number;
+    address: string;
+  } | null>(null);
 
   const createFranchiseMutation = useCreateFranchise(vendorIdNum);
 
@@ -53,7 +62,10 @@ export default function VendorDetailPage() {
       setForm((prev) => ({ ...prev, [field]: value }));
     };
 
-  const resetForm = () => setForm(EMPTY_FORM);
+  const resetForm = () => {
+    setForm(EMPTY_FORM);
+    setSavedMapLocation(null);
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -220,13 +232,46 @@ export default function VendorDetailPage() {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="address">Address</Label>
-              <Input
-                id="address"
+              <div className="flex items-center justify-between">
+                <Label>Address</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setMapOpen(true)}
+                  className="flex items-center gap-1"
+                >
+                  <MapPin className="h-4 w-4" />
+                  {savedMapLocation ? "Update Map" : "Open Map"}
+                </Button>
+              </div>
+              <TextAreaInput
                 value={form.address}
-                onChange={handleFieldChange("address")}
-                placeholder="Enter address"
-                required
+                onChange={(value) => {
+                  setForm((prev) => ({ ...prev, address: value }));
+                  if (savedMapLocation) {
+                    setSavedMapLocation((prev) =>
+                      prev ? { ...prev, address: value } : prev
+                    );
+                  }
+                }}
+                placeholder="Enter address or use map"
+              />
+              <MapPicker
+                open={mapOpen}
+                onClose={() => setMapOpen(false)}
+                savedLocation={savedMapLocation}
+                onSelect={(address, link) => {
+                  setForm((prev) => ({ ...prev, address }));
+                  const coords = link.match(/q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+                  if (coords) {
+                    setSavedMapLocation({
+                      lat: parseFloat(coords[1]),
+                      lng: parseFloat(coords[2]),
+                      address,
+                    });
+                  }
+                }}
               />
             </div>
 

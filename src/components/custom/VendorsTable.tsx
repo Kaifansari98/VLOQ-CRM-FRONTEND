@@ -19,6 +19,7 @@ import { DataTableColumnHeader } from "@/components/data-table/data-table-column
 import ClearInput from "@/components/origin-input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ContextMenuItem } from "@/components/ui/context-menu";
 
 // ─── Row type ────────────────────────────────────────────────────────────────
 
@@ -207,7 +208,11 @@ const columns: ColumnDef<VendorRow>[] = [
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function VendorsTable() {
+interface VendorsTableProps {
+  onLoginToVendor?: (row: VendorRow) => void;
+}
+
+export default function VendorsTable({ onLoginToVendor }: VendorsTableProps) {
   const router = useRouter();
 
   const [pagination, setPagination] = React.useState<PaginationState>({
@@ -298,7 +303,17 @@ export default function VendorsTable() {
           </div>
         ) : (
           <div className="select-none">
-            <DataTable table={table} onRowDoubleClick={handleRowDoubleClick} />
+            <DataTable
+              table={table}
+              onRowDoubleClick={handleRowDoubleClick}
+              renderRowContextMenu={(row) => (
+                <ContextMenuItem
+                  onClick={() => onLoginToVendor?.(row)}
+                >
+                  {`Login to ${row.vendor_name}`}
+                </ContextMenuItem>
+              )}
+            />
           </div>
         )}
       </CardContent>

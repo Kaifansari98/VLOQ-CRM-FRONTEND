@@ -41,6 +41,9 @@ export default function VendorsPage() {
   });
 
   const onboardVendorMutation = useOnboardVendor();
+  const handleLoginToVendor = React.useCallback(() => {
+    // Intentionally left blank until the vendor-login flow is finalized.
+  }, []);
 
   const handleFieldChange =
     (field: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -150,7 +153,7 @@ export default function VendorsPage() {
           </p>
         </div>
 
-        <VendorsTable />
+        <VendorsTable onLoginToVendor={handleLoginToVendor} />
       </div>
 
       <Dialog
