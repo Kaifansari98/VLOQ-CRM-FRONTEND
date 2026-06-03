@@ -48,6 +48,8 @@ export interface OnboardVendorPayload {
   status: "active";
   logo: string;
   time_zone: string;
+  is_inventory_enabled: boolean;
+  is_tracktrace_enabled: boolean;
 }
 
 // ─── API fn ──────────────────────────────────────────────────────────────────

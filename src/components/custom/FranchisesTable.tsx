@@ -147,7 +147,7 @@ const columns: ColumnDef<FranchiseRow>[] = [
           Head Office
         </Badge>
       ) : (
-        <span className="text-xs text-muted-foreground">—</span>
+        <span className="text-xs text-muted-foreground">Franchise</span>
       );
     },
     enableSorting: false,

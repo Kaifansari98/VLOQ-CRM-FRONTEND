@@ -15,6 +15,7 @@ import VendorsTable from "@/components/custom/VendorsTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +26,7 @@ import {
 } from "@/components/ui/dialog";
 import { useOnboardVendor } from "@/api/vendors";
 import { toastManager } from "@/components/ui/toast";
+import { cn } from "@/lib/utils";
 
 export default function VendorsPage() {
   const [openCreateVendor, setOpenCreateVendor] = React.useState(false);
@@ -34,6 +36,8 @@ export default function VendorsPage() {
     primary_contact_name: "",
     primary_contact_number: "",
     primary_contact_email: "",
+    is_inventory_enabled: false,
+    is_tracktrace_enabled: false,
   });
 
   const onboardVendorMutation = useOnboardVendor();
@@ -59,6 +63,8 @@ export default function VendorsPage() {
       primary_contact_name: "",
       primary_contact_number: "",
       primary_contact_email: "",
+      is_inventory_enabled: false,
+      is_tracktrace_enabled: false,
     });
   };
 
@@ -96,6 +102,8 @@ export default function VendorsPage() {
         status: "active",
         logo: "https://example.com/logo.png",
         time_zone: "Asia/Kolkata",
+        is_inventory_enabled: form.is_inventory_enabled,
+        is_tracktrace_enabled: form.is_tracktrace_enabled,
       });
 
       toastManager.add({ title: "Vendor created successfully", type: "success" });
@@ -163,49 +171,53 @@ export default function VendorsPage() {
           </DialogHeader>
 
           <form className="space-y-4" onSubmit={handleCreateVendor}>
-            <div className="grid gap-2">
-              <Label htmlFor="vendor_name">Vendor Name</Label>
-              <Input
-                id="vendor_name"
-                value={form.vendor_name}
-                onChange={handleFieldChange("vendor_name")}
-                placeholder="Enter vendor name"
-                required
-              />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="vendor_name">Vendor Name</Label>
+                <Input
+                  id="vendor_name"
+                  value={form.vendor_name}
+                  onChange={handleFieldChange("vendor_name")}
+                  placeholder="Enter vendor name"
+                  required
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="vendor_code">Vendor Code</Label>
+                <Input
+                  id="vendor_code"
+                  value={form.vendor_code}
+                  onChange={handleFieldChange("vendor_code")}
+                  placeholder="Enter vendor code"
+                  required
+                />
+              </div>
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="vendor_code">Vendor Code</Label>
-              <Input
-                id="vendor_code"
-                value={form.vendor_code}
-                onChange={handleFieldChange("vendor_code")}
-                placeholder="Enter vendor code"
-                required
-              />
-            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="primary_contact_name">Primary Contact Name</Label>
+                <Input
+                  id="primary_contact_name"
+                  value={form.primary_contact_name}
+                  onChange={handleFieldChange("primary_contact_name")}
+                  placeholder="Enter primary contact name"
+                  required
+                />
+              </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="primary_contact_name">Primary Contact Name</Label>
-              <Input
-                id="primary_contact_name"
-                value={form.primary_contact_name}
-                onChange={handleFieldChange("primary_contact_name")}
-                placeholder="Enter primary contact name"
-                required
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="primary_contact_number">Primary Contact Number</Label>
-              <Input
-                id="primary_contact_number"
-                inputMode="numeric"
-                value={form.primary_contact_number}
-                onChange={handleFieldChange("primary_contact_number")}
-                placeholder="Enter 10 digit number"
-                required
-              />
+              <div className="grid gap-2">
+                <Label htmlFor="primary_contact_number">Primary Contact Number</Label>
+                <Input
+                  id="primary_contact_number"
+                  inputMode="numeric"
+                  value={form.primary_contact_number}
+                  onChange={handleFieldChange("primary_contact_number")}
+                  placeholder="Enter 10 digit number"
+                  required
+                />
+              </div>
             </div>
 
             <div className="grid gap-2">
@@ -218,6 +230,58 @@ export default function VendorsPage() {
                 placeholder="Enter primary contact email"
                 required
               />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label>Inventory Enabled</Label>
+                <div className="flex items-center gap-6 pt-1">
+                  {[
+                    { label: "Yes", value: true },
+                    { label: "No", value: false },
+                  ].map((option) => (
+                    <label
+                      key={`inventory-${String(option.value)}`}
+                      className="flex items-center gap-2 cursor-pointer"
+                      onClick={() =>
+                        setForm((prev) => ({
+                          ...prev,
+                          is_inventory_enabled: option.value,
+                        }))
+                      }
+                    >
+                      <Checkbox checked={form.is_inventory_enabled === option.value} />
+                      <span className="text-sm font-medium">{option.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                <Label>Track Trace Enabled</Label>
+                <div className="flex items-center gap-6 pt-1">
+                  {[
+                    { label: "Yes", value: true },
+                    { label: "No", value: false },
+                  ].map((option) => (
+                    <label
+                      key={`tracktrace-${String(option.value)}`}
+                      className="flex items-center gap-2 cursor-pointer"
+                      onClick={() =>
+                        setForm((prev) => ({
+                          ...prev,
+                          is_tracktrace_enabled: option.value,
+                        }))
+                      }
+                    >
+                      <Checkbox
+                        checked={form.is_tracktrace_enabled === option.value}
+                      />
+                      <span className="text-sm font-medium">{option.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <DialogFooter>
