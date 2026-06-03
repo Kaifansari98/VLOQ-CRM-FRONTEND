@@ -243,6 +243,7 @@ export default function LeadsGenerationForm({
   }
   const allowDuplicatesForWardrobe =
     parentFilter === "Wardrobe" || parentFilter === "Others";
+  const isKitchenStructureSingleSelect = parentFilter === "Kitchen";
 
   useEffect(() => {
     return () => {
@@ -340,6 +341,17 @@ export default function LeadsGenerationForm({
       }),
     [selectedProductStructures, structureInstanceDetails, structureOptions]
   );
+
+  useEffect(() => {
+    if (!isKitchenStructureSingleSelect) return;
+
+    const currentStructures = form.getValues("product_structures") || [];
+    if (currentStructures.length <= 1) return;
+
+    form.setValue("product_structures", [currentStructures[0]], {
+      shouldValidate: true,
+    });
+  }, [form, isKitchenStructureSingleSelect]);
 
   useEffect(() => {
     if (!hasSelectedFurnitureType) return;
@@ -1163,6 +1175,8 @@ export default function LeadsGenerationForm({
                 showMaxStructureTooltip && hasSelectedFurnitureType;
               const tooltipMessage = !hasSelectedFurnitureType
                 ? "Select a furniture type first."
+                : isKitchenStructureSingleSelect && shouldShowMaxTooltip
+                ? "Kitchen allows only 1 furniture structure."
                 : shouldShowMaxTooltip
                 ? "Maximum limit is 10 per item."
                 : "";
@@ -1189,9 +1203,25 @@ export default function LeadsGenerationForm({
                             disabled={
                               isStructuresLoading || !hasSelectedFurnitureType
                             }
+                            maxSelected={
+                              isKitchenStructureSingleSelect ? 1 : undefined
+                            }
                             hidePlaceholderWhenSelected
                             showSelectedOptionsInDropdown
                             allowDuplicateSelections={allowDuplicatesForWardrobe}
+                            onMaxSelected={() => {
+                              if (!isKitchenStructureSingleSelect) return;
+                              setShowMaxStructureTooltip(true);
+                              if (maxStructureTooltipTimerRef.current) {
+                                window.clearTimeout(
+                                  maxStructureTooltipTimerRef.current
+                                );
+                              }
+                              maxStructureTooltipTimerRef.current =
+                                window.setTimeout(() => {
+                                  setShowMaxStructureTooltip(false);
+                                }, 1500);
+                            }}
                             maxSelectedPerOption={10}
                             onMaxSelectedPerOption={() => {
                               setShowMaxStructureTooltip(true);
