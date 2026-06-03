@@ -560,6 +560,8 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   };
 
   const handleAddOpen = () => {
+    if (isKitchenType) return;
+
     const productTypeId = lead?.productMappings?.[0]?.product_type_id || 0;
     setEditTitleError("");
     setEditStructureError("");
@@ -684,7 +686,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
           <SectionCard
             title="Product Information"
             action={
-              canEditStructures && (
+              canEditStructures && !isKitchenType && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="inline-flex">
