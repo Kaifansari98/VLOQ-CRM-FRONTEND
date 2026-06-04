@@ -299,11 +299,11 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   );
   const customSiteReadinessUsers = React.useMemo(
     () =>
-      (customSiteReadinessUsersData?.data ?? []).filter(
+      (customSiteReadinessUsersData?.data?.sales_executives ?? []).filter(
         (u: any) =>
           String(u.user_type?.user_type ?? "").toLowerCase() === "custom",
       ),
-    [customSiteReadinessUsersData?.data],
+    [customSiteReadinessUsersData?.data?.sales_executives],
   );
   const shouldUseCustomSiteReadinessUsers =
     isCustomUsertypeOnlyVendor && taskType === "Site Readiness";
