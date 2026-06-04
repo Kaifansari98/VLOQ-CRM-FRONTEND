@@ -50,6 +50,10 @@ import { useLeadById } from "@/hooks/useLeadsQueries";
 import { canViewAndWorkFinalHandoverStage } from "@/components/utils/privileges";
 import BaseModal from "@/components/utils/baseModal";
 
+
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import CustomeTooltip from "@/components/custom-tooltip";
+
 interface FinalHandoverProps {
   leadId: number;
   accountId: number;
@@ -108,6 +112,20 @@ export default function FinalHandover({
   const updateAmcOptedMutation = useUpdateAmcOptedStatus();
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
+
+
+
+    const {
+  shouldDisableBlockedActions,
+  blockedTooltip,
+} = useLeadAccessControl({
+  leadId,
+  userType,
+});
+
+const blockedReason = shouldDisableBlockedActions
+  ? blockedTooltip
+  : "";
 
   const canWork = canViewAndWorkFinalHandoverStage(
     effectiveUserType ?? "",
@@ -532,26 +550,36 @@ export default function FinalHandover({
         </div>
 
         {!isSmallOrderLead && (
-          <div className="flex items-center gap-3 px-4 py-3">
-            <Checkbox
-              id="is-amc-opted"
-              checked={isAmcOpted}
-              disabled={!canToggleAmc}
-              onCheckedChange={() => {
-                if (!canToggleAmc) return;
-                setConfirmAmcStatus(!isAmcOpted);
-              }}
-              className="h-4 w-4 data-[state=checked]:bg-black data-[state=checked]:border-black dark:data-[state=checked]:bg-white dark:data-[state=checked]:border-white dark:data-[state=checked]:text-black"
-            />
+          <div className="flex items-center gap-3 px-4 py-3 ">
+           <CustomeTooltip
+  value={blockedReason}
+  truncateValue={
+    <Checkbox
+      checked={isAmcOpted}
+      disabled={
+        shouldDisableBlockedActions ||
+        !canToggleAmc
+      }
+      onCheckedChange={() => {
+        if (shouldDisableBlockedActions) return;
+
+        if (!canToggleAmc) return;
+        setConfirmAmcStatus(!isAmcOpted);
+      }}
+    />
+  }
+/>
             <div className="space-y-1 rounded-md bg-muted/40 px-3 py-2">
               <label
-                htmlFor="is-amc-opted"
-                className={`text-sm font-bold ${
-                  canToggleAmc ? "cursor-pointer" : "cursor-not-allowed opacity-70"
-                }`}
-              >
-                Is AMC Opted in ?
-              </label>
+  htmlFor="is-amc-opted"
+  className={`text-sm font-bold whitespace-nowrap ${
+    canToggleAmc
+      ? "cursor-pointer"
+      : "cursor-not-allowed opacity-70"
+  }`}
+>
+  Is AMC Opted in ?
+</label>
               {isAmcOpted && amcOptedAt && (
                 <p className="text-xs text-muted-foreground">
                   {formatAmcDateTime(amcOptedAt)}
@@ -737,12 +765,25 @@ export default function FinalHandover({
                         </Badge>
                       )}
                     </div>
-                    <FileUploadField
-                      value={selectedFiles}
-                      onChange={setSelectedFiles}
-                      accept={activeSection.accept}
-                      multiple
-                    />
+                 <CustomeTooltip
+  value={blockedReason}
+  truncateValue={
+    <div
+      className={
+        shouldDisableBlockedActions
+          ? "pointer-events-none opacity-60"
+          : ""
+      }
+    >
+      <FileUploadField
+        value={selectedFiles}
+        onChange={setSelectedFiles}
+        accept={activeSection.accept}
+        multiple
+      />
+    </div>
+  }
+/>
                   </>
                 )}
                 {selectedFiles.length > 0 &&

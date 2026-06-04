@@ -41,6 +41,7 @@ import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import CustomeTooltip from "@/components/custom-tooltip";
 
 import BaseModal from "@/components/utils/baseModal";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 
 interface UsableHandoverProps {
   vendorId: number;
@@ -90,49 +91,67 @@ export default function UsableHandover({
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
 
+
+
+  const {
+    shouldDisableBlockedActions,
+    blockedTooltip,
+  } = useLeadAccessControl({
+    leadId,
+    userType,
+  });
+
+  const blockedReason = shouldDisableBlockedActions
+    ? blockedTooltip
+    : "";
+
+
+
+
+
   const canWork = canViewAndWorkUnderInstallationStage(userType, leadStatus);
   const isCustomUser = userType === "custom";
   const canViewFinalSitePhotos = isCustomUser
     ? customPrivilegeCodes.includes(
-        "installation.under_installation.usable_handover.final_site_photo.view",
-      )
+      "installation.under_installation.usable_handover.final_site_photo.view",
+    )
     : true;
   const canViewHandoverDocuments = isCustomUser
     ? customPrivilegeCodes.includes(
-        "installation.under_installation.usable_handover.handover_document.view",
-      )
+      "installation.under_installation.usable_handover.handover_document.view",
+    )
     : true;
   const canUploadFinalSitePhotos = isCustomUser
     ? customPrivilegeCodes.includes(
-        "installation.under_installation.usable_handover.final_site_photo.upload",
-      )
+      "installation.under_installation.usable_handover.final_site_photo.upload",
+    )
     : canWork;
   const canDeleteFinalSitePhotos = isCustomUser
     ? customPrivilegeCodes.includes(
-        "installation.under_installation.usable_handover.final_site_photo.delete",
-      )
+      "installation.under_installation.usable_handover.final_site_photo.delete",
+    )
     : canWork;
   const canUploadHandoverDocuments = isCustomUser
     ? customPrivilegeCodes.includes(
-        "installation.under_installation.usable_handover.handover_document.upload",
-      )
+      "installation.under_installation.usable_handover.handover_document.upload",
+    )
     : canWork;
   const canDeleteHandoverDocuments = isCustomUser
     ? customPrivilegeCodes.includes(
-        "installation.under_installation.usable_handover.handover_document.delete",
-      )
+      "installation.under_installation.usable_handover.handover_document.delete",
+    )
     : canWork;
   const canAccessPendingWork = isCustomUser
     ? customPrivilegeCodes.includes(
-        "installation.under_installation.usable_handover.pending_work.action",
-      )
+      "installation.under_installation.usable_handover.pending_work.action",
+    )
     : true;
   const canMarkCompleted = isCustomUser
     ? [
-        "installation.under_installation.usable_handover.final_site_photo.upload",
-        "installation.under_installation.usable_handover.handover_document.upload",
-        "installation.under_installation.move_to_final_handover.enable_disable_action",
-      ].some((code) => customPrivilegeCodes.includes(code))
+      "installation.under_installation.usable_handover.final_site_photo.upload",
+      "installation.under_installation.usable_handover.handover_document.upload",
+      "installation.under_installation.move_to_final_handover.enable_disable_action",
+    ].some((code) => customPrivilegeCodes.includes(code))
     : userType === "super-admin" || userType === "site-supervisor";
 
   useEffect(() => {
@@ -320,9 +339,21 @@ export default function UsableHandover({
             </Badge>
           )}
 
-          {canMarkCompleted &&
-            !isCompleted &&
-            (canComplete ? (
+          {canMarkCompleted && !isCompleted && (
+            shouldDisableBlockedActions ? (
+              <CustomeTooltip
+                truncateValue={
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled
+                  >
+                    Mark as Completed
+                  </Button>
+                }
+                value={blockedTooltip}
+              />
+            ) : canComplete ? (
               <Button
                 size="sm"
                 onClick={() =>
@@ -341,20 +372,28 @@ export default function UsableHandover({
             ) : (
               <CustomeTooltip
                 truncateValue={
-                  <Button size="sm" variant="outline" disabled>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled
+                  >
                     Mark as Completed
                   </Button>
                 }
-                value={`Required: ${
-                  [
-                    finalSiteCount === 0 ? "Final Site Photos" : null,
-                    handoverCount === 0 ? "Handover Documents" : null,
+                value={`Required: ${[
+                    finalSiteCount === 0
+                      ? "Final Site Photos"
+                      : null,
+                    handoverCount === 0
+                      ? "Handover Documents"
+                      : null,
                   ]
                     .filter(Boolean)
                     .join(", ") || "All documents"
-                }`}
+                  }`}
               />
-            ))}
+            )
+          )}
         </div>
       </div>
 
@@ -524,48 +563,65 @@ export default function UsableHandover({
               {canUploadSection(activeSection.id) && (
                 <>
                   <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold">Upload New Files</h4>
+                    <h4 className="text-sm font-semibold">
+                      Upload New Files
+                    </h4>
+
                     {selectedFiles.length > 0 && (
                       <Badge variant="secondary">
                         {selectedFiles.length} selected
                       </Badge>
                     )}
                   </div>
-                  <FileUploadField
-                    value={selectedFiles}
-                    onChange={setSelectedFiles}
-                    accept={activeSection?.accept}
-                    multiple
+
+                  <CustomeTooltip
+                    value={blockedReason}
+                    truncateValue={
+                      <div
+                        className={
+                          shouldDisableBlockedActions
+                            ? "pointer-events-none opacity-60"
+                            : ""
+                        }
+                      >
+                        <FileUploadField
+                          value={selectedFiles}
+                          onChange={setSelectedFiles}
+                          accept={activeSection?.accept}
+                          multiple
+                        />
+                      </div>
+                    }
                   />
                 </>
               )}
               {selectedFiles.length > 0 &&
                 canUploadSection(activeSection.id) && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  className="flex justify-end"
-                >
-                  <Button
-                    onClick={handleUpload}
-                    disabled={updateMutation.isPending}
-                    className="gap-2"
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    className="flex justify-end"
                   >
-                    {updateMutation.isPending ? (
-                      <>
-                        <Loader2 className="animate-spin w-4 h-4" />
-                        Uploading...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="w-4 h-4" />
-                        Upload {selectedFiles.length} File
-                        {selectedFiles.length > 1 ? "s" : ""}
-                      </>
-                    )}
-                  </Button>
-                </motion.div>
-              )}
+                    <Button
+                      onClick={handleUpload}
+                      disabled={updateMutation.isPending}
+                      className="gap-2"
+                    >
+                      {updateMutation.isPending ? (
+                        <>
+                          <Loader2 className="animate-spin w-4 h-4" />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-4 h-4" />
+                          Upload {selectedFiles.length} File
+                          {selectedFiles.length > 1 ? "s" : ""}
+                        </>
+                      )}
+                    </Button>
+                  </motion.div>
+                )}
             </motion.div>
 
             {/* Existing Files */}

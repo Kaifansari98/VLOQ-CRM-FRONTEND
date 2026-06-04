@@ -37,7 +37,15 @@ import {
   History,
   IndianRupee,
   FolderOpen,
+  LockOpen,
+  Lock,
 } from "lucide-react";
+
+import {
+  useBlockLead,
+  useUnblockLead,
+} from "@/hooks/useLeadsQueries";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 
 import {
   AlertDialog,
@@ -117,9 +125,13 @@ export default function FinalMeasurementLeadDetails() {
 
   // Only MARK ON HOLD
   const [activityModalOpen, setActivityModalOpen] = useState(false);
+  const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
 
   const updateStatusMutation = useUpdateActivityStatus();
   const queryClient = useQueryClient();
+
+  const blockLeadMutation = useBlockLead();
+  const unblockLeadMutation = useUnblockLead();
 
   useEffect(() => {
     if (userType === "site-supervisor" && !isChatNotification) {
@@ -145,6 +157,55 @@ export default function FinalMeasurementLeadDetails() {
     : undefined;
 
   const deleteLeadMutation = useDeleteLead();
+  const {
+    isLeadBlocked,
+    blockedTooltip,
+    shouldDisableBlockedActions,
+  } = useLeadAccessControl({
+    leadId: leadIdNum,
+    userType,
+    lead,
+  });
+
+  const isBlockActionPending =
+    blockLeadMutation.isPending || unblockLeadMutation.isPending;
+
+  const handleToggleLeadBlock = () => {
+    if (!vendorId || !userId || !leadIdNum) {
+      toastManager.add({
+        title: "Vendor, user, or lead information is missing!",
+        type: "error",
+      });
+      return;
+    }
+
+    const mutation = isLeadBlocked ? unblockLeadMutation : blockLeadMutation;
+
+    mutation.mutate(
+      {
+        vendorId,
+        leadId: leadIdNum,
+        updatedBy: userId,
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: isLeadBlocked
+              ? "Lead unblocked successfully!"
+              : "Lead blocked successfully!",
+            type: "success",
+          });
+
+          setOpenBlockConfirm(false);
+
+          queryClient.invalidateQueries({
+            queryKey: ["leadBlockStatus", vendorId, leadIdNum],
+          });
+        },
+      },
+    );
+  };
+
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
       toastManager.add({
@@ -281,6 +342,20 @@ export default function FinalMeasurementLeadDetails() {
                 </DropdownMenuItem>
               )}
 
+              {userType?.toLowerCase() === "super-admin" && (
+                <DropdownMenuItem
+                  onSelect={() => setOpenBlockConfirm(true)}
+                  disabled={isBlockActionPending}
+                >
+                  {isLeadBlocked ? (
+                    <LockOpen className="h-4 w-4" />
+                  ) : (
+                    <Lock className="h-4 w-4" />
+                  )}
+                  {isLeadBlocked ? "Unblock Lead" : "Block Lead"}
+                </DropdownMenuItem>
+              )}
+
               {canReassign && (
                 <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
                   <Users size={20} />
@@ -341,22 +416,34 @@ export default function FinalMeasurementLeadDetails() {
               Lead Details
             </TabsTrigger>
 
-            {canAccessFinalMeasurementTodo ? (
-              <TabsTrigger value="todo">
-                <PencilLine size={16} className="mr-1 opacity-60" />
-                To-Do Task
-              </TabsTrigger>
-            ) : (
-              <CustomeTooltip
-                truncateValue={
-                  <TabsTrigger value="todo" disabled>
-                    <PencilLine size={16} className="mr-1 opacity-60" />
-                    To-Do Task
-                  </TabsTrigger>
-                }
-                value="Only Site Supervisor can access this tab"
-              />
-            )}
+        {canAccessFinalMeasurementTodo ? (
+  shouldDisableBlockedActions ? (
+    <CustomeTooltip
+      value={blockedTooltip}
+      truncateValue={
+        <TabsTrigger value="todo" disabled>
+          <PencilLine size={16} className="mr-1 opacity-60" />
+          To-Do Task
+        </TabsTrigger>
+      }
+    />
+  ) : (
+    <TabsTrigger value="todo">
+      <PencilLine size={16} className="mr-1 opacity-60" />
+      To-Do Task
+    </TabsTrigger>
+  )
+) : (
+  <CustomeTooltip
+    value="Only Site Supervisor can access this tab"
+    truncateValue={
+      <TabsTrigger value="todo" disabled>
+        <PencilLine size={16} className="mr-1 opacity-60" />
+        To-Do Task
+      </TabsTrigger>
+    }
+  />
+)}
 
             {canViewSiteHistory && (
               <TabsTrigger value="history">
@@ -524,6 +611,42 @@ export default function FinalMeasurementLeadDetails() {
         }}
         loading={updateStatusMutation.isPending}
       />
+
+      <AlertDialog
+        open={openBlockConfirm}
+        onOpenChange={setOpenBlockConfirm}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isLeadBlocked ? "Unblock Lead?" : "Block Lead?"}
+            </AlertDialogTitle>
+
+            <AlertDialogDescription>
+              {isLeadBlocked
+                ? "This will unblock the lead and allow it to proceed normally."
+                : "This will block the lead and mark the block time in the system."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBlockActionPending}>
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={handleToggleLeadBlock}
+              disabled={isBlockActionPending}
+            >
+              {isBlockActionPending
+                ? "Processing..."
+                : isLeadBlocked
+                ? "Unblock"
+                : "Block"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

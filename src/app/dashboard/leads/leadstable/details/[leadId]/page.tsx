@@ -92,22 +92,8 @@ import {
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
 import AddVisitModal from "@/components/sales-executive/Lead/add-visit-modal";
+import { formatBlockedAt } from "@/lib/utils";
 
-const formatBlockedAt = (value?: string | null) => {
-  if (!value) return "";
-
-  const parsedDate = new Date(value);
-  if (Number.isNaN(parsedDate.getTime())) return "";
-
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  }).format(parsedDate);
-};
 
 export default function LeadDetails() {
   const router = useRouter();
@@ -149,11 +135,16 @@ export default function LeadDetails() {
 
   const uiDisabled = isLoading || !lead;
   const isLeadBlocked = leadBlockStatus?.is_blocked ?? !!lead?.is_blocked;
-  const blockedAtTooltip = isLeadBlocked
-    ? `This lead has been blocked at ${formatBlockedAt(
-        leadBlockStatus?.lead_blocked_at ?? lead?.lead_blocked_at ?? null,
+
+
+  const blockedAtTooltip =
+    isLeadBlocked &&
+      (leadBlockStatus?.lead_blocked_at || lead?.lead_blocked_at)
+      ? `This lead has been blocked at ${formatBlockedAt(
+        leadBlockStatus?.lead_blocked_at ??
+        lead?.lead_blocked_at,
       )}`
-    : "";
+      : "Lead is blocked";
   const isBlockActionPending =
     blockLeadMutation.isPending || unblockLeadMutation.isPending;
 
@@ -176,17 +167,17 @@ export default function LeadDetails() {
   const canReassign =
     normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.reassign_lead",
-        )
+        "leads.open_leads.details_of_lead.reassign_lead",
+      )
       : canReassignLeadButton(userType);
   const canAccessAssignTask =
     normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.assign_task.ism_assign_task",
-        ) ||
-        customPrivilegeCodes.includes(
-          "leads.open_leads.assign_task.follow_up_task",
-        )
+        "leads.open_leads.assign_task.ism_assign_task",
+      ) ||
+      customPrivilegeCodes.includes(
+        "leads.open_leads.assign_task.follow_up_task",
+      )
       : canAssignISM(userType);
   const canDelete =
     normalizedUserType === "custom"
@@ -195,14 +186,14 @@ export default function LeadDetails() {
   const canMarkOnHold =
     normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.mark_on_hold",
-        )
+        "leads.open_leads.details_of_lead.mark_on_hold",
+      )
       : true;
   const canMarkAsLost =
     normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.mark_as_lost",
-        )
+        "leads.open_leads.details_of_lead.mark_as_lost",
+      )
       : true;
   const canEdit =
     normalizedUserType === "custom"
@@ -211,20 +202,20 @@ export default function LeadDetails() {
   const canViewPayment =
     normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.payment_information.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.payment_information.enable_disable",
+      )
       : canViewPaymentTab(userType);
   const canViewSiteHistory =
     normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.site_history.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.site_history.enable_disable",
+      )
       : canViewSiteHistoryTab(userType);
   const canViewChats =
     normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.chat.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.chat.enable_disable",
+      )
       : true;
 
   const handleToggleLeadBlock = () => {
@@ -346,7 +337,7 @@ export default function LeadDetails() {
   useChatTabFromUrl(setActiveTab);
 
   return (
-    <>  
+    <>
       {/* Header */}
       <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b bg-background">
         <div className="flex items-center gap-2">
@@ -367,14 +358,20 @@ export default function LeadDetails() {
         </div>
         <div className="flex items-center space-x-2">
           {isClientVisitEnabled && (
-            <Button
-              size="sm"
-              className="hidden sm:flex"
-              onClick={() => setVisitOpen(true)}
-              disabled={uiDisabled}
-            >
-              Add Visit
-            </Button>
+            <CustomeTooltip
+              value={blockedAtTooltip}
+              truncateValue={
+                <span>
+                  <Button
+                    size="sm"
+                    onClick={() => setVisitOpen(true)}
+                    disabled={isLeadBlocked || uiDisabled}
+                  >
+                    Add Visit
+                  </Button>
+                </span>
+              }
+            />
           )}
 
           {canAccessAssignTask &&

@@ -39,6 +39,8 @@ import { useInstanceStage } from "@/hooks/designing-stage/designing-leads-hooks"
 import { useSearchParams } from "next/navigation";
 import { canDeletePODocument } from "@/components/utils/privileges";
 import { useAppSelector } from "@/redux/store";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useLeadById } from "@/hooks/useLeadsQueries";
 
 export interface FileBreakUpFieldProps {
   title: string;
@@ -96,6 +98,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
   const [poFiles, setPoFiles] = useState<File[]>([]);
   const [poModalOpen, setPoModalOpen] = useState(false);
   const queryClient = useQueryClient();
+
   const { data: instanceStageData } = useInstanceStage(
     vendorId,
     leadId!,
@@ -122,8 +125,19 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
 
   const leadStatus = instanceStageData?.derived_stage;
 
+  const { data: leadResponse } = useLeadById(leadId!, vendorId, userId);
+  const lead = leadResponse?.data?.lead;
+
+  const { blockedTooltip, shouldDisableBlockedActions } = useLeadAccessControl({
+    leadId: leadId!,
+    userType,
+    lead,
+  });
+
   const canDeletePO =
-    canDeletePODocument(userType, leadStatus!) && !disablePoDelete;
+    !shouldDisableBlockedActions &&
+    canDeletePODocument(userType, leadStatus!) &&
+    !disablePoDelete;
 
   useEffect(() => {
     setTitleDraft(title);
@@ -170,14 +184,15 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
   console.log("ordrlogin by id fielbreadup field: ", orderLoginId);
 
   const hasExistingPoFiles = poFileList && poFileList.length > 0;
-
-  const poButtonLabel = hasExistingPoFiles
-    ? "Manage PO Files"
-    : "Upload PO Files";
-
+  const poButtonLabel = hasExistingPoFiles ? "Manage PO Files" : "Upload PO Files";
   const existingPoMessage = hasExistingPoFiles
     ? `${poFileList.length} PO file${poFileList.length > 1 ? "s" : ""} already uploaded for "${title}". You can manage or add more files for this section.`
     : "";
+
+  // ✅ When blocked → show blockedTooltip, otherwise show existingPoMessage
+  const poTooltipMessage = shouldDisableBlockedActions
+    ? blockedTooltip
+    : existingPoMessage;
 
   const { mutateAsync: uploadPoFiles, isPending: isUploadingPo } =
     useUploadOrderLoginPoFiles(vendorId, leadId, orderLoginId);
@@ -185,7 +200,10 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
   const handlePoUpload = async () => {
     if (!canUsePoUpload) return;
     if (!poFiles || poFiles.length === 0) {
-      toastManager.add({ title: "Please select at least one file.", type: "error" });
+      toastManager.add({
+        title: "Please select at least one file.",
+        type: "error",
+      });
       return;
     }
 
@@ -195,7 +213,10 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
       formData.append("created_by", String(userId || 0));
 
       await uploadPoFiles(formData);
-      toastManager.add({ title: "PO files uploaded successfully!", type: "success" });
+      toastManager.add({
+        title: "PO files uploaded successfully!",
+        type: "success",
+      });
       setPoFiles([]);
       setPoModalOpen(false);
       queryClient.invalidateQueries({
@@ -208,10 +229,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
         error?.message ||
         "Failed to upload PO files.";
 
-      toastManager.add({
-        title: errorMessage,
-        type: "error",
-      });
+      toastManager.add({ title: errorMessage, type: "error" });
     }
   };
 
@@ -225,9 +243,10 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
     setDeleting(true);
     try {
       await deleteFile(confirmDelete);
-
-      toastManager.add({ title: "Document deleted successfully", type: "success" });
-
+      toastManager.add({
+        title: "Document deleted successfully",
+        type: "success",
+      });
       setConfirmDelete(null);
     } catch (err: any) {
       const errorMessage =
@@ -236,10 +255,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
         err?.message ||
         "Failed to delete document";
 
-      toastManager.add({
-        title: errorMessage,
-        type: "error",
-      });
+      toastManager.add({ title: errorMessage, type: "error" });
     } finally {
       setDeleting(false);
     }
@@ -247,7 +263,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
 
   return (
     <div className="rounded-xl border bg-card flex flex-col gap-4">
-      {/* Header */}
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-3 border-b px-4 py-3 bg-muted/30 rounded-t-xl">
         <div className="flex items-center gap-2 min-w-0">
           {isEditingTitle ? (
@@ -256,7 +272,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
               value={titleDraft}
               onChange={(e) => setTitleDraft(e.target.value)}
               className="w-full max-w-55 border rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              disabled={disabled}
+              disabled={disabled || shouldDisableBlockedActions}
             />
           ) : (
             <p className="font-semibold text-sm flex items-center gap-2 truncate">
@@ -268,72 +284,124 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
 
         {(isTitleEditable || canDelete) && (
           <div className="flex items-center gap-1 shrink-0">
+
+            {/* ── Edit (Pencil) ── */}
             {isTitleEditable && !isEditingTitle && (
-              <button
-                type="button"
-                onClick={() => setIsEditingTitle(true)}
-                disabled={disabled}
-                className="p-1 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed"
-                aria-label="Edit section title"
-              >
-                <Pencil className="h-4 w-4" />
-              </button>
+              <CustomeTooltip
+                value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                truncateValue={
+                  <button
+                    type="button"
+                    onClick={
+                      shouldDisableBlockedActions
+                        ? undefined
+                        : () => setIsEditingTitle(true)
+                    }
+                    disabled={disabled || shouldDisableBlockedActions}
+                    className="p-1 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed"
+                    aria-label="Edit section title"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                }
+              />
             )}
+
             {isTitleEditable && isEditingTitle && (
               <>
-                <button
-                  type="button"
-                  onClick={handleTitleSave}
-                  disabled={disabled}
-                  className="p-1 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed"
-                  aria-label="Save section title"
-                >
-                  <Check className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleTitleCancel}
-                  disabled={disabled}
-                  className="p-1 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed"
-                  aria-label="Cancel title edit"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                {/* ── Save (Check) ── */}
+                <CustomeTooltip
+                  value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                  truncateValue={
+                    <button
+                      type="button"
+                      onClick={
+                        shouldDisableBlockedActions
+                          ? undefined
+                          : handleTitleSave
+                      }
+                      disabled={disabled || shouldDisableBlockedActions}
+                      className="p-1 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed"
+                      aria-label="Save section title"
+                    >
+                      <Check className="h-4 w-4" />
+                    </button>
+                  }
+                />
+
+                {/* ── Cancel (X) ── */}
+                <CustomeTooltip
+                  value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                  truncateValue={
+                    <button
+                      type="button"
+                      onClick={
+                        shouldDisableBlockedActions
+                          ? undefined
+                          : handleTitleCancel
+                      }
+                      disabled={disabled || shouldDisableBlockedActions}
+                      className="p-1 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed"
+                      aria-label="Cancel title edit"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  }
+                />
               </>
             )}
+
+            {/* ── Delete section (Trash2) ── */}
             {canDelete && !isEditingTitle && (
-              <button
-                type="button"
-                onClick={onDelete}
-                disabled={disabled}
-                className="p-1 text-destructive/80 hover:text-destructive disabled:cursor-not-allowed"
-                aria-label="Delete section"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+              <CustomeTooltip
+                value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                truncateValue={
+                  <button
+                    type="button"
+                    onClick={
+                      shouldDisableBlockedActions ? undefined : onDelete
+                    }
+                    disabled={disabled || shouldDisableBlockedActions}
+                    className="p-1 text-destructive/80 hover:text-destructive disabled:cursor-not-allowed"
+                    aria-label="Delete section"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                }
+              />
             )}
           </div>
         )}
       </div>
 
-      {/* Body */}
+      {/* ── Body ───────────────────────────────────────────────────────────── */}
       <div className="px-4 pb-4 space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+
+          {/* ── Vendor picker ── */}
           <div className="space-y-1">
             <label className="text-xs font-medium text-muted-foreground block min-h-4">
               Vendor
             </label>
-            <AssignToPicker
-              data={users}
-              groups={shouldGroupVendors ? vendorGroups : undefined}
-              value={value.company_vendor_id ?? undefined}
-              onChange={handleVendorSelect}
-              placeholder="Search vendor..."
-              emptyLabel="Select a vendor"
-              disabled={disabled}
+            <CustomeTooltip
+              value={shouldDisableBlockedActions ? blockedTooltip : ""}
+              truncateValue={
+                <span className="block">
+                  <AssignToPicker
+                    data={users}
+                    groups={shouldGroupVendors ? vendorGroups : undefined}
+                    value={value.company_vendor_id ?? undefined}
+                    onChange={handleVendorSelect}
+                    placeholder="Search vendor..."
+                    emptyLabel="Select a vendor"
+                    disabled={disabled || shouldDisableBlockedActions}
+                  />
+                </span>
+              }
             />
           </div>
 
+          {/* ── PO Files button ── */}
           {showPoUpload && value.company_vendor_id && (
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground block min-h-4">
@@ -345,8 +413,10 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => setPoModalOpen(true)}
-                    disabled={!canUsePoUpload}
+                    onClick={() =>
+                      !shouldDisableBlockedActions && setPoModalOpen(true)
+                    }
+                    disabled={!canUsePoUpload || shouldDisableBlockedActions}
                     className="w-full h-9"
                   >
                     {hasExistingPoFiles ? (
@@ -363,26 +433,34 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
                   </Button>
                 }
                 contentClassName="w-[300px]"
-                value={existingPoMessage}
+                value={poTooltipMessage}
               />
             </div>
           )}
         </div>
 
+        {/* ── Description ── */}
         <div className="space-y-1">
           <label className="text-xs font-medium text-muted-foreground">
             Description
           </label>
-          <TextAreaInput
-            value={value.item_desc}
-            onChange={handleDescriptionChange}
-            placeholder={`Add notes or specs for ${title} (optional)`}
-            disabled={disabled}
+          <CustomeTooltip
+            value={shouldDisableBlockedActions ? blockedTooltip : ""}
+            truncateValue={
+              <span className="block">
+                <TextAreaInput
+                  value={value.item_desc}
+                  onChange={handleDescriptionChange}
+                  placeholder={`Add notes or specs for ${title} (optional)`}
+                  disabled={disabled || shouldDisableBlockedActions}
+                />
+              </span>
+            }
           />
         </div>
       </div>
 
-      {/* PO Files Modal */}
+      {/* ── PO Files Modal ──────────────────────────────────────────────────── */}
       {showPoUpload && (
         <BaseModal
           open={poModalOpen}
@@ -400,31 +478,44 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
                   onChange={setPoFiles}
                   accept=".png,.jpg,.jpeg,.pdf,.pyo,.pytha,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip"
                   multiple
-                  disabled={!canUsePoUpload}
+                  disabled={!canUsePoUpload || shouldDisableBlockedActions}
                   maxFiles={10}
                 />
 
                 <div className="flex justify-end">
-                  <Button
-                    size="sm"
-                    onClick={handlePoUpload}
-                    disabled={
-                      !canUsePoUpload || isUploadingPo || poFiles.length === 0
+                  {/* ✅ Upload button in modal — CustomeTooltip when blocked */}
+                  <CustomeTooltip
+                    value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                    truncateValue={
+                      <Button
+                        size="sm"
+                        onClick={
+                          shouldDisableBlockedActions
+                            ? undefined
+                            : handlePoUpload
+                        }
+                        disabled={
+                          !canUsePoUpload ||
+                          isUploadingPo ||
+                          poFiles.length === 0 ||
+                          shouldDisableBlockedActions
+                        }
+                        className="flex items-center gap-2"
+                      >
+                        {isUploadingPo ? (
+                          <>
+                            <Loader2 className="animate-spin size-4" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Upload size={16} />
+                            Upload Files
+                          </>
+                        )}
+                      </Button>
                     }
-                    className="flex items-center gap-2"
-                  >
-                    {isUploadingPo ? (
-                      <>
-                        <Loader2 className="animate-spin size-4" />
-                        Uploading...
-                      </>
-                    ) : (
-                      <>
-                        <Upload size={16} />
-                        Upload Files
-                      </>
-                    )}
-                  </Button>
+                  />
                 </div>
               </div>
             )}
@@ -483,6 +574,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
         </BaseModal>
       )}
 
+      {/* ── Delete Confirmation ─────────────────────────────────────────────── */}
       <AlertDialog
         open={!!confirmDelete}
         onOpenChange={() => setConfirmDelete(null)}
@@ -495,10 +587,8 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
               permanently removed.
             </AlertDialogDescription>
           </AlertDialogHeader>
-
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-
             <AlertDialogAction
               onClick={handleConfirmDelete}
               disabled={deleting}

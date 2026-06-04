@@ -36,6 +36,10 @@ import {
 } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkProductionStage } from "@/components/utils/privileges";
 
+import CustomeTooltip from "@/components/custom-tooltip";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useLeadById } from "@/hooks/useLeadsQueries";
+
 export default function HardwarePackingDetailsSection({
   leadId,
   accountId,
@@ -60,6 +64,8 @@ export default function HardwarePackingDetailsSection({
   const customPrivilegeCodes = useAppSelector(
     (s) => s.customPrivileges.codes,
   );
+
+  
   const queryClient = useQueryClient();
 
   const { data: packingDetails, isLoading } = useGetHardwarePackingDetails(
@@ -77,6 +83,16 @@ export default function HardwarePackingDetailsSection({
   const leadStatusIns = data?.derived_stage;
   const leadStatus = leadData?.status;
 
+
+  const { data: leadResponse } = useLeadById(
+    leadId,
+    vendorId,
+    userId,
+  );
+
+  const lead = leadResponse?.data?.lead;
+
+
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
 
@@ -92,6 +108,16 @@ export default function HardwarePackingDetailsSection({
     leadId,
     effectiveInstanceId ?? undefined,
   );
+
+
+  const {
+    blockedTooltip,
+    shouldDisableBlockedActions,
+  } = useLeadAccessControl({
+    leadId,
+    userType,
+    lead,
+  });
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const normalizedRemark =
@@ -111,18 +137,30 @@ export default function HardwarePackingDetailsSection({
     (userType === "super-admin" ||
       (userType === "factory" &&
         (leadStatusIns ?? leadStatus) === "production-stage"));
+
+
+
   const canUploadHardwarePackingDetails =
-    userType === "custom"
-      ? customPrivilegeCodes.includes(
+    !shouldDisableBlockedActions &&
+    (
+      userType === "custom"
+        ? customPrivilegeCodes.includes(
           "production.production.post_production_hardware.upload",
         )
-      : canViewAndWork;
+        : canViewAndWork
+    );
+
+
+
   const canDeleteHardwarePackingDetails =
-    userType === "custom"
-      ? customPrivilegeCodes.includes(
+    !shouldDisableBlockedActions &&
+    (
+      userType === "custom"
+        ? customPrivilegeCodes.includes(
           "production.production.post_production_hardware.delete",
         )
-      : canDelete;
+        : canDelete
+    );
 
   useEffect(() => {
     if (normalizedRemark) setRemark(normalizedRemark);
@@ -262,49 +300,89 @@ export default function HardwarePackingDetailsSection({
 
       {/* ---------- UPLOAD AREA ---------- */}
       <div className="p-6 border-b space-y-6">
-        {canUploadHardwarePackingDetails && (
+        {shouldDisableBlockedActions ? (
           <div className="space-y-3">
-            <FileUploadField
-              value={selectedFiles}
-              onChange={setSelectedFiles}
-              accept=".pdf,.jpg,.jpeg,.png,.zip"
-              multiple
+
+            <CustomeTooltip
+              value={blockedTooltip}
+              truncateValue={
+                <div>
+                  <FileUploadField
+                    value={[]}
+                    onChange={() => { }}
+                    accept=".pdf,.jpg,.jpeg,.png,.zip"
+                    multiple
+                    disabled
+                  />
+                </div>
+              }
             />
 
-            <div className="flex justify-end">
-              <Button
-                size="sm"
-                onClick={handleUpload}
-                disabled={isPending || selectedFiles.length === 0}
-                className="flex items-center gap-2"
-              >
-                {isPending ? (
-                  <>
-                    <Loader2 className="animate-spin size-4" />
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <Upload size={16} />
-                    Upload Files
-                  </>
-                )}
-              </Button>
-            </div>
+
+
           </div>
+        ) : (
+          canUploadHardwarePackingDetails && (
+            <div className="space-y-3">
+              <FileUploadField
+                value={selectedFiles}
+                onChange={setSelectedFiles}
+                accept=".pdf,.jpg,.jpeg,.png,.zip"
+                multiple
+              />
+
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  onClick={handleUpload}
+                  disabled={isPending || selectedFiles.length === 0}
+                  className="flex items-center gap-2"
+                >
+                  {isPending ? (
+                    <>
+                      <Loader2 className="animate-spin size-4" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={16} />
+                      Upload Files
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )
         )}
 
         {/* Remark Section */}
         <div className="space-y-2">
           <p className="text-sm font-semibold tracking-tight">Remark</p>
-          <TextAreaInput
-            value={remark}
-            onChange={setRemark}
-            maxLength={500}
-            placeholder="Add any notes related to hardware packing..."
-            className="h-[130px] bg-muted/20 rounded-lg"
-            disabled={!canViewAndWork}
-          />
+          {shouldDisableBlockedActions ? (
+            <CustomeTooltip
+              value={blockedTooltip}
+              truncateValue={
+                <div>
+                  <TextAreaInput
+                    value={remark}
+                    onChange={() => { }}
+                    maxLength={500}
+                    disabled
+                    placeholder="Add any notes related to hardware packing..."
+                    className="h-[130px] bg-muted/20 rounded-lg"
+                  />
+                </div>
+              }
+            />
+          ) : (
+            <TextAreaInput
+              value={remark}
+              onChange={setRemark}
+              maxLength={500}
+              placeholder="Add any notes related to hardware packing..."
+              className="h-[130px] bg-muted/20 rounded-lg"
+            />
+          )}
           <div className="flex justify-end">
             <Button
               size="sm"

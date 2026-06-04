@@ -33,6 +33,7 @@ import BaseModal from "@/components/utils/baseModal";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { useQueryClient } from "@tanstack/react-query";
 import { toastManager } from "@/components/ui/toast";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 
 type Props = {
   leadId: number;
@@ -77,6 +78,10 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
   const { mutateAsync: replacePdf, isPending: replacingPdf } =
     useReplaceInitialSiteMeasurementPdf();
   const queryClient = useQueryClient();
+  const { shouldDisableBlockedActions } = useLeadAccessControl({
+    leadId,
+    userType,
+  });
 
   // 🧩 --- Local State ---
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
@@ -130,6 +135,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
 
   // 🧩 --- Handlers ---
   const handleConfirmDelete = () => {
+    if (shouldDisableBlockedActions) return;
     if (!confirmDelete) return;
     setReplaceDocId(confirmDelete);
     setConfirmDelete(null);
@@ -260,6 +266,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                       signedUrl: doc.signedUrl,
                     }}
                     canDelete={canDelete}
+                    disableActions={shouldDisableBlockedActions}
                     onDelete={(id) => setConfirmDelete(id)}
                   />
                 ))}
@@ -426,6 +433,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                 }}
                 index={index}
                 canDelete={canDelete}
+                disableActions={shouldDisableBlockedActions}
                 onDelete={(id) => setConfirmDelete(Number(id))}
               />
             ))}
@@ -516,6 +524,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                   }}
                   index={index}
                   canDelete={canDelete}
+                  disableActions={shouldDisableBlockedActions}
                   onDelete={(id) => setConfirmDelete(Number(id))}
                 />
               ))}
@@ -609,6 +618,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                         signedUrl: doc.signedUrl,
                       }}
                       canDelete={canDelete}
+                      disableActions={shouldDisableBlockedActions}
                       onDelete={(id) => setConfirmDelete(id)}
                     />
                   ))}
@@ -638,6 +648,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                         }}
                         index={index}
                         canDelete={canDelete}
+                        disableActions={shouldDisableBlockedActions}
                         onDelete={(id) => setConfirmDelete(Number(id))}
                       />
                     )
@@ -666,6 +677,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                       }}
                       index={index}
                       canDelete={canDelete}
+                      disableActions={shouldDisableBlockedActions}
                       onDelete={(id) => setConfirmDelete(Number(id))}
                     />
                   ))}
@@ -722,7 +734,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
             <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDelete}
-              disabled={deleting}
+              disabled={deleting || shouldDisableBlockedActions}
             >
               {deleting ? "Deleting..." : "Delete"}
             </AlertDialogAction>

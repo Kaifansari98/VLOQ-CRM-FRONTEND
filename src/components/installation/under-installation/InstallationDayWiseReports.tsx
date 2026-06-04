@@ -42,12 +42,16 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import VideoCard from "@/components/utils/VideoCard";
+import CustomeTooltip from "@/components/custom-tooltip";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useLeadById } from "@/hooks/useLeadsQueries";
 
 interface InstallationDayWiseReportsProps {
   vendorId: number;
   leadId: number;
   accountId?: number;
   accessBtn?: boolean;
+  disabledReason?: string;
 }
 
 interface ReportDocument {
@@ -70,6 +74,7 @@ export default function InstallationDayWiseReports({
   leadId,
   accountId,
   accessBtn,
+  disabledReason,
 }: InstallationDayWiseReportsProps) {
   const MAX_REPORT_FILES = 20;
   const userId = useAppSelector((s) => s.auth.user?.id);
@@ -94,6 +99,17 @@ export default function InstallationDayWiseReports({
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
+
+  const { data: leadResponse } = useLeadById(leadId, vendorId, userId);
+  const lead = leadResponse?.data?.lead;
+  const { blockedTooltip, shouldDisableBlockedActions } = useLeadAccessControl({
+    leadId,
+    userType,
+    lead,
+  });
+
+  const effectiveDisabledReason = shouldDisableBlockedActions ? blockedTooltip : disabledReason;
+  const isActionDisabled = shouldDisableBlockedActions || !!disabledReason;
 
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
@@ -265,7 +281,7 @@ export default function InstallationDayWiseReports({
     );
   };
 
-  const canDelete = !!accessBtn;
+  const canDelete = !!accessBtn && !isActionDisabled;
 
   const resetAddReportForm = React.useCallback(() => {
     setSelectedDate(undefined);
@@ -314,10 +330,19 @@ export default function InstallationDayWiseReports({
 
         <div className="w-full sm:w-auto flex justify-end">
           {accessBtn && (
-            <Button onClick={() => setIsAddModalOpen(true)} size="sm">
-              <Plus className="w-4 h-4" />
-              Add Day Wise Update
-            </Button>
+            <div className="shrink-0 w-fit">
+              <CustomeTooltip
+                value={effectiveDisabledReason}
+                truncateValue={
+                  <div className={isActionDisabled ? "pointer-events-none opacity-60" : ""}>
+                    <Button onClick={() => setIsAddModalOpen(true)} size="sm" disabled={isActionDisabled}>
+                      <Plus className="w-4 h-4" />
+                      Add Day Wise Update
+                    </Button>
+                  </div>
+                }
+              />
+            </div>
           )}
         </div>
       </div>

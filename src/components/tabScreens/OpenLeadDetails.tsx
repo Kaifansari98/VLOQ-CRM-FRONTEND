@@ -61,6 +61,7 @@ import {
   useProductTypes,
 } from "@/hooks/useTypesMaster";
 import { updateLeadProductType } from "@/api/leads";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 
 type OpenLeadDetailsProps = {
   leadId: number;
@@ -295,10 +296,17 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const leadStage = lead?.statusType?.type;
   const isBookingStage = leadStage?.toLowerCase() === "booking-stage";
   const leadStatusTag = lead?.statusType?.tag;
-  const isLeadBlocked = !!lead?.is_blocked;
-  const blockedAtTooltip = isLeadBlocked
-    ? `This lead has been blocked at ${formatDateTime(lead?.lead_blocked_at || undefined)}`
-    : "";
+  const {
+    isLeadBlocked,
+    blockedTooltip,
+    shouldDisableBlockedActions,
+  } = useLeadAccessControl({
+    leadId,
+    userType,
+    lead,
+  });
+
+
   const normalizedUserType = (userType || "").toLowerCase();
   const canEditLeadDetailsForCustomUser = customPrivilegeCodes.includes(
     "leads.open_leads.details_of_lead.edit",
@@ -652,22 +660,39 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
               canEditStructures && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="inline-flex">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="default"
-                        onClick={handleAddOpen}
-                        disabled={isLeadBlocked}
-                      >
-                        <Plus />
-                        Add Furniture Structure
-                      </Button>
+                    <div>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div>
+                            <Button
+                              onClick={() => {
+                                if (shouldDisableBlockedActions) return;
+                                handleAddOpen();
+                              }}
+                              className={
+                                shouldDisableBlockedActions
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : ""
+                              }
+                            >
+                              <Plus />
+                              Add Furniture Structure
+                            </Button>
+                          </div>
+                        </TooltipTrigger>
+
+                        {shouldDisableBlockedActions && (
+                          <TooltipContent>
+                            <p>{blockedTooltip}</p>
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
                     </div>
                   </TooltipTrigger>
-                  {isLeadBlocked && blockedAtTooltip && (
-                    <TooltipContent side="top" className="max-w-64">
-                      {blockedAtTooltip}
+
+                  {shouldDisableBlockedActions && (
+                    <TooltipContent>
+                      {blockedTooltip}
                     </TooltipContent>
                   )}
                 </Tooltip>
@@ -682,14 +707,34 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                     <span className="inline-flex items-center gap-2">
                       <span>Product Types</span>
                       {canEditProductType && (
-                        <button
-                          type="button"
-                          onClick={handleOpenProductTypeEdit}
-                          className="text-muted-foreground/70 hover:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 inline-flex size-6 items-center justify-center rounded-md border border-transparent transition-[color,box-shadow] outline-none focus-visible:ring-[3px]"
-                          aria-label="Edit product type"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (shouldDisableBlockedActions) return;
+
+                                handleOpenProductTypeEdit();
+                              }}
+                              className="
+        text-muted-foreground/70
+        hover:text-foreground
+        inline-flex size-7 items-center justify-center
+        rounded-md
+        transition
+        disabled:pointer-events-none
+      "
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                          </TooltipTrigger>
+
+                          {shouldDisableBlockedActions && (
+                            <TooltipContent>
+                              {blockedTooltip}
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
                       )}
                     </span>
                   }
@@ -749,31 +794,61 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                             <div className="flex items-center gap-1">
                               {canEditStructures && (
                                 <>
-                                  <button
-                                    type="button"
-                                    className="text-muted-foreground/70 hover:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 inline-flex size-7 items-center justify-center rounded-md border border-transparent transition-[color,box-shadow] outline-none focus-visible:ring-[3px]"
-                                    onClick={() => handleEditOpen(item)}
-                                    aria-label="Edit"
-                                  >
-                                    <Pencil className="h-4 w-4" />
-                                  </button>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <button
+                                        type="button"
+                                        className="text-muted-foreground/70 hover:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 inline-flex size-7 items-center justify-center rounded-md border border-transparent transition-[color,box-shadow] outline-none focus-visible:ring-[3px]"
+                                        onClick={() => {
+                                          if (shouldDisableBlockedActions) return;
+
+                                          handleEditOpen(item);
+                                        }}
+                                        aria-label="Edit"
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                      </button>
+                                    </TooltipTrigger>
+
+                                    {shouldDisableBlockedActions && (
+                                      <TooltipContent>
+                                        {blockedTooltip}
+                                      </TooltipContent>
+                                    )}
+                                  </Tooltip>
                                   {structureInstances.length > 1 && (
-                                    <button
-                                      type="button"
-                                      className="text-muted-foreground/70 hover:text-destructive focus-visible:border-ring focus-visible:ring-ring/50 inline-flex size-7 items-center justify-center rounded-md border border-transparent transition-[color,box-shadow] outline-none focus-visible:ring-[3px]"
-                                      onClick={() =>
-                                        setConfirmStructureDelete({
-                                          id: item.id,
-                                          title:
-                                            item.title ||
-                                            item.productStructure?.type ||
-                                            "this item",
-                                        })
-                                      }
-                                      aria-label="Delete"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </button>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            if (shouldDisableBlockedActions) return;
+
+                                            setConfirmStructureDelete({
+                                              id: item.id,
+                                              title:
+                                                item.title ||
+                                                item.productStructure?.type ||
+                                                "this item",
+                                            });
+                                          }}
+                                          className="
+        text-muted-foreground/70
+        hover:text-destructive
+        inline-flex size-7 items-center justify-center
+        rounded-md
+      "
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </button>
+                                      </TooltipTrigger>
+
+                                      {shouldDisableBlockedActions && (
+                                        <TooltipContent>
+                                          {blockedTooltip}
+                                        </TooltipContent>
+                                      )}
+                                    </Tooltip>
                                   )}
                                 </>
                               )}
@@ -978,27 +1053,44 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                     </motion.div>
                   ))}
                   {canUploadSitePhotos && (
-                    <button
-                      type="button"
-                      onClick={() => setUploadOpen(true)}
-                      className="
-                          flex flex-col items-center justify-center
-                          border border-dashed border-border/70
-                          rounded-xl p-6 text-center
-                          bg-mutedBg/40 dark:bg-neutral-800/40
-                          hover:bg-muted/40 dark:hover:bg-neutral-800/60
-                          transition
-                          w-full h-full
-                        "
-                    >
-                      <ImagePlus className="w-6 h-6 text-muted-foreground mb-1" />
-                      <p className="text-xs font-medium text-muted-foreground">
-                        Add more images
-                      </p>
-                      <p className="text-xs text-subtle">
-                        Upload up to 10 photos
-                      </p>
-                    </button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (shouldDisableBlockedActions) return;
+                            setUploadOpen(true);
+                          }}
+                          className={`
+          flex flex-col items-center justify-center
+          border border-dashed border-border/70
+          rounded-xl p-6 text-center
+          bg-mutedBg/40 dark:bg-neutral-800/40
+          hover:bg-muted/40 dark:hover:bg-neutral-800/60
+          transition
+          w-full h-full
+          ${shouldDisableBlockedActions
+                              ? "opacity-50 cursor-not-allowed"
+                              : ""
+                            }
+        `}
+                        >
+                          <ImagePlus className="w-6 h-6 text-muted-foreground mb-1" />
+                          <p className="text-xs font-medium text-muted-foreground">
+                            Add more images
+                          </p>
+                          <p className="text-xs text-subtle">
+                            Upload up to 10 photos
+                          </p>
+                        </button>
+                      </TooltipTrigger>
+
+                      {shouldDisableBlockedActions && (
+                        <TooltipContent>
+                          {blockedTooltip}
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
                   )}
                 </div>
               ) : (
@@ -1034,20 +1126,37 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                     Photos will appear here once uploaded
                   </p>
                   {canUploadSitePhotos && (
-                    <button
-                      type="button"
-                      onClick={() => setUploadOpen(true)}
-                      className="
-                          mt-4 inline-flex items-center gap-2
-                          rounded-lg border border-border px-3 py-2
-                          text-xs font-medium text-muted-foreground
-                          hover:bg-mutedBg/60 dark:hover:bg-neutral-800/60
-                          transition
-                        "
-                    >
-                      <ImagePlus className="w-4 h-4" />
-                      Add more images
-                    </button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (shouldDisableBlockedActions) return;
+                            setUploadOpen(true);
+                          }}
+                          className={`
+          mt-4 inline-flex items-center gap-2
+          rounded-lg border border-border px-3 py-2
+          text-xs font-medium text-muted-foreground
+          hover:bg-mutedBg/60 dark:hover:bg-neutral-800/60
+          transition
+          ${shouldDisableBlockedActions
+                              ? "opacity-50 cursor-not-allowed"
+                              : ""
+                            }
+        `}
+                        >
+                          <ImagePlus className="w-4 h-4" />
+                          Add more images
+                        </button>
+                      </TooltipTrigger>
+
+                      {shouldDisableBlockedActions && (
+                        <TooltipContent>
+                          {blockedTooltip}
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
                   )}
                 </div>
               )}

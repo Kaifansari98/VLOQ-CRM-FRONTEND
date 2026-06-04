@@ -8,6 +8,9 @@ import { useState } from "react";
 import Image from "next/image";
 import { apiClient } from "@/lib/apiClient";
 import { formatDate } from "@/lib/format";
+import { useParams } from "next/navigation";
+import { useAppSelector } from "@/redux/store";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 
 interface DocumentCardProps {
   doc: {
@@ -22,6 +25,7 @@ interface DocumentCardProps {
   onDelete?: (id: number | string) => void;
   status?: "APPROVED" | "REJECTED" | "PENDING" | string;
   isLoading?: boolean;
+  disableActions?: boolean;
 }
 
 // Skeleton Loading Component
@@ -70,7 +74,20 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
   onDelete,
   status,
   isLoading = false,
+  disableActions = false,
 }) => {
+  const params = useParams();
+  const routeLeadId = Number(params?.lead ?? params?.leadId ?? 0);
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type,
+  );
+  const { shouldDisableBlockedActions: shouldDisableRouteBlockedActions } =
+    useLeadAccessControl({
+      leadId: routeLeadId || undefined,
+      userType,
+    });
+  const shouldHideDelete =
+    disableActions || shouldDisableRouteBlockedActions;
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerUrl, setViewerUrl] = useState("");
 
@@ -98,6 +115,11 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
   const handleView = () => {
     setViewerUrl(imageSrc);
     setViewerOpen(true);
+  };
+
+  const handleDelete = () => {
+    if (shouldHideDelete) return;
+    onDelete?.(doc.id);
   };
 
   if (isLoading) return <DocumentCardSkeleton />;
@@ -133,15 +155,18 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
       "
       >
         {/* Delete Button */}
-        {canDelete && (
+        {canDelete && !shouldHideDelete && (
           <button
-            onClick={() => onDelete?.(doc.id)}
+            type="button"
+            onClick={handleDelete}
+            title="Delete"
             className="
-            absolute top-3 right-3 p-1 rounded-full 
-            border border-border bg-white dark:bg-neutral-900 
-            hover:bg-muted dark:hover:bg-neutral-800 
-            transition-colors
-          "
+              absolute top-3 right-3 p-1 rounded-full 
+              border border-border bg-white dark:bg-neutral-900 
+              hover:bg-muted dark:hover:bg-neutral-800 
+              transition-colors
+            "
+            aria-label="Delete image"
           >
             <Trash2 className="w-4 h-4 text-neutral-600 dark:text-neutral-300" />
           </button>
@@ -174,10 +199,10 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
               {doc.created_at
                 ? `Uploaded on ${formatDate(doc.created_at, {
-                    month: "short",
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })}`
+                  month: "short",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}`
                 : "Uploaded date not available"}
             </p>
           </div>

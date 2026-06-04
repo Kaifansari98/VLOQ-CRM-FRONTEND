@@ -43,6 +43,8 @@ import {
   History,
   IndianRupee,
   FolderOpen,
+  LockOpen,
+  Lock,
 } from "lucide-react";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import {
@@ -86,6 +88,12 @@ import {
 } from "@/hooks/useChatTabFromUrl";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
+import {
+  useBlockLead,
+  useUnblockLead,
+} from "@/hooks/useLeadsQueries";
+
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 
 const startOfDay = (date: Date) =>
   new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -119,11 +127,16 @@ export default function DesigningStageLead() {
   const leadIdNum = Number(leadId);
   const searchParams = useSearchParams();
   const accountId = searchParams.get("accountId");
+  const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
 
   const { data: countsData } = useDesigningStageCounts(vendorId, leadIdNum);
+  const blockLeadMutation = useBlockLead();
+  const unblockLeadMutation = useUnblockLead();
+
+
 
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
@@ -160,26 +173,26 @@ export default function DesigningStageLead() {
   const canViewSiteHistory =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.site_history.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.site_history.enable_disable",
+      )
       : canViewSiteHistoryTab(userType);
   const canPerformMoveToBooking =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.designing_stage.move_to_booking.action",
-        )
+        "leads.designing_stage.move_to_booking.action",
+      )
       : canMoveToBookingStage(userType);
   const canMarkOnHold =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.designing_stage.details.mark_on_hold",
-        )
+        "leads.designing_stage.details.mark_on_hold",
+      )
       : true;
   const canMarkAsLost =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.designing_stage.details.mark_as_lost",
-        )
+        "leads.designing_stage.details.mark_as_lost",
+      )
       : true;
   const canSeeLeadStatusMenu = canMarkOnHold || canMarkAsLost;
 
@@ -199,8 +212,8 @@ export default function DesigningStageLead() {
     eligibleBookingDays > 0;
   const bookingEligibleOn =
     leadCreatedAt &&
-    !Number.isNaN(leadCreatedAt.getTime()) &&
-    hasEligibleBookingWindow
+      !Number.isNaN(leadCreatedAt.getTime()) &&
+      hasEligibleBookingWindow
       ? addDays(startOfDay(leadCreatedAt), eligibleBookingDays + 1)
       : null;
   const isBookingLockedByEligibleDays =
@@ -211,17 +224,29 @@ export default function DesigningStageLead() {
     isBookingLockedByEligibleDays && bookingEligibleOn
       ? `Booking is locked for ${eligibleBookingDays} full day${eligibleBookingDays === 1 ? "" : "s"} and will unlock on ${formatDisplayDate(bookingEligibleOn)}.`
       : "";
-  const moveToBookingTooltip = !canMoveToBooking
-    ? "Requires at least 1 Quotation and 1 Design"
-    : isBookingLockedByEligibleDays
-      ? bookingLockTooltip
-      : !canPerformMoveToBooking
-        ? "You don't have permission to move this lead to booking stage"
-        : "";
+
+
+
+
+
+
+
+  const {
+    isLeadBlocked,
+    blockedTooltip,
+    isPending: isBlockActionPending,
+  } = useLeadAccessControl({
+    leadId: leadIdNum,
+    userType,
+    lead,
+  });
+
+
   const canOpenBookingModal =
     canMoveToBooking &&
     canPerformMoveToBooking &&
-    !isBookingLockedByEligibleDays;
+    !isBookingLockedByEligibleDays &&
+    !(isLeadBlocked && !isSuperAdmin);
 
   useEffect(() => {
     if (isLoading || isChatNotification) return;
@@ -241,11 +266,13 @@ export default function DesigningStageLead() {
     canOpenBookingModal,
   ]);
 
+
+
   const canReassign =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.designing_stage.details.reassign_lead",
-        )
+        "leads.designing_stage.details.reassign_lead",
+      )
       : canReassignLeadButton(userType);
   const canDelete =
     userType?.toLowerCase() === "custom"
@@ -258,26 +285,39 @@ export default function DesigningStageLead() {
   const canViewPayment =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.payment_information.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.payment_information.enable_disable",
+      )
       : canViewPaymentTab(userType);
   const canViewChats =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.chat.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.chat.enable_disable",
+      )
       : true;
   const canViewDocuments =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.some((code) =>
-          code.startsWith(
-            "leads.open_leads.details_of_lead.documents_section.",
-          ),
-        )
+        code.startsWith(
+          "leads.open_leads.details_of_lead.documents_section.",
+        ),
+      )
       : true;
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
+
+
+
+  const moveToBookingTooltip = isLeadBlocked
+    ? blockedTooltip
+    : !canMoveToBooking
+      ? "Requires at least 1 Quotation and 1 Design"
+      : isBookingLockedByEligibleDays
+        ? bookingLockTooltip
+        : !canPerformMoveToBooking
+          ? "You don't have permission to move this lead to booking stage"
+          : "";
+
 
   const [openDelete, setOpenDelete] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
@@ -346,6 +386,50 @@ export default function DesigningStageLead() {
     );
   };
 
+
+
+  const handleToggleLeadBlock = () => {
+    if (!vendorId || !userId || !leadIdNum) {
+      toastManager.add({
+        title: "Vendor, user, or lead information is missing!",
+        type: "error",
+      });
+      return;
+    }
+
+    const mutation = isLeadBlocked
+      ? unblockLeadMutation
+      : blockLeadMutation;
+
+    mutation.mutate(
+      {
+        vendorId,
+        leadId: leadIdNum,
+        updatedBy: userId,
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: isLeadBlocked
+              ? "Lead unblocked successfully!"
+              : "Lead blocked successfully!",
+            type: "success",
+          });
+
+          setOpenBlockConfirm(false);
+
+          queryClient.invalidateQueries({
+            queryKey: ["leadBlockStatus", vendorId, leadIdNum],
+          });
+
+          queryClient.invalidateQueries({
+            queryKey: ["lead", leadIdNum, vendorId, userId],
+          });
+        },
+      },
+    );
+  };
+
   return (
     <>
       {/* Header */}
@@ -379,7 +463,9 @@ export default function DesigningStageLead() {
         <div className="flex items-center space-x-2">
           <div>
             {/* Move to Booking */}
-            {!canMoveToBooking || isBookingLockedByEligibleDays ? (
+            {!canMoveToBooking ||
+              isBookingLockedByEligibleDays ||
+              (isLeadBlocked && !isSuperAdmin) ? (
               <CustomeTooltip
                 truncateValue={
                   <div className="flex items-center opacity-50 cursor-not-allowed px-2">
@@ -496,6 +582,25 @@ export default function DesigningStageLead() {
                 </DropdownMenuSub>
               )}
 
+
+
+
+              {userType?.toLowerCase() === "super-admin" && (
+                <DropdownMenuItem
+                  onSelect={() => setOpenBlockConfirm(true)}
+                  disabled={isBlockActionPending}
+                >
+                  {isLeadBlocked ? (
+                    <LockOpen className="h-4 w-4" />
+                  ) : (
+                    <Lock className="h-4 w-4" />
+                  )}
+
+                  {isLeadBlocked
+                    ? "Unblock Lead"
+                    : "Block Lead"}
+                </DropdownMenuItem>
+              )}
               {canReassign && (
                 <DropdownMenuItem onSelect={() => setAssignOpenLead(true)}>
                   <Users className="h-4 w-4" />
@@ -559,10 +664,22 @@ export default function DesigningStageLead() {
                 </TabsTrigger>
 
                 {canAccessTodoTab ? (
-                  <TabsTrigger value="todo">
-                    <PencilLine size={16} className="mr-1 opacity-60" />
-                    To-Do Task
-                  </TabsTrigger>
+                  isLeadBlocked && !isSuperAdmin ? (
+                    <CustomeTooltip
+                      truncateValue={
+                        <TabsTrigger value="todo" disabled>
+                          <PencilLine size={16} className="mr-1 opacity-60" />
+                          To-Do Task
+                        </TabsTrigger>
+                      }
+                      value={blockedTooltip}
+                    />
+                  ) : (
+                    <TabsTrigger value="todo">
+                      <PencilLine size={16} className="mr-1 opacity-60" />
+                      To-Do Task
+                    </TabsTrigger>
+                  )
                 ) : (
                   <CustomeTooltip
                     truncateValue={
@@ -737,6 +854,51 @@ export default function DesigningStageLead() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteLead}>
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
+
+
+      <AlertDialog
+        open={openBlockConfirm}
+        onOpenChange={setOpenBlockConfirm}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isLeadBlocked
+                ? "Unblock Lead?"
+                : "Block Lead?"}
+            </AlertDialogTitle>
+
+            <AlertDialogDescription>
+              {isLeadBlocked
+                ? "This will unblock the lead and allow it to proceed normally."
+                : "This will block the lead and mark the block time in the system."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={isBlockActionPending}
+            >
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={handleToggleLeadBlock}
+              disabled={isBlockActionPending}
+            >
+              {isBlockActionPending
+                ? isLeadBlocked
+                  ? "Unblocking..."
+                  : "Blocking..."
+                : isLeadBlocked
+                  ? "Unblock"
+                  : "Block"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

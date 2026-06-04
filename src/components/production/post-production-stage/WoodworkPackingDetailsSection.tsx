@@ -38,7 +38,9 @@ import {
   useLeadStatus,
 } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkProductionStage } from "@/components/utils/privileges";
-
+import CustomeTooltip from "@/components/custom-tooltip";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useLeadById } from "@/hooks/useLeadsQueries";
 export default function WoodworkPackingDetailsSection({
   leadId,
   accountId,
@@ -66,6 +68,23 @@ export default function WoodworkPackingDetailsSection({
 
   const queryClient = useQueryClient();
 
+  
+const { data: leadResponse } = useLeadById(
+  leadId,
+  vendorId,
+  userId,
+);
+
+const lead = leadResponse?.data?.lead;
+
+const {
+  blockedTooltip,
+  shouldDisableBlockedActions,
+} = useLeadAccessControl({
+  leadId,
+  userType,
+  lead,
+});
   const { data: packingDetails, isLoading } = useGetWoodworkPackingDetails(
     vendorId,
     leadId,
@@ -117,19 +136,24 @@ export default function WoodworkPackingDetailsSection({
     (userType === "super-admin" ||
       (userType === "factory" &&
         (leadStatusIns ?? leadStatus) === "production-stage"));
-  const canUploadWoodworkPackingDetails =
+const canUploadWoodworkPackingDetails =
+  !shouldDisableBlockedActions &&
+  (
     userType === "custom"
       ? customPrivilegeCodes.includes(
           "production.production.post_production_woodwork.upload",
         )
-      : canViewAndWork;
-  const canDeleteWoodworkPackingDetails =
+      : canViewAndWork
+  );
+const canDeleteWoodworkPackingDetails =
+  !shouldDisableBlockedActions &&
+  (
     userType === "custom"
       ? customPrivilegeCodes.includes(
           "production.production.post_production_woodwork.delete",
         )
-      : canDelete;
-
+      : canDelete
+  );
   useEffect(() => {
     if (normalizedRemark) setRemark(normalizedRemark);
   }, [normalizedRemark]);
@@ -272,7 +296,29 @@ export default function WoodworkPackingDetailsSection({
 
       {/* ---------- UPLOAD AREA ---------- */}
       <div className="p-6 border-b space-y-6">
-        {canUploadWoodworkPackingDetails && (
+
+        {shouldDisableBlockedActions ? (
+  <div className="space-y-3">
+
+    <CustomeTooltip
+      value={blockedTooltip}
+      truncateValue={
+        <div>
+          <FileUploadField
+            value={[]}
+            onChange={() => {}}
+            accept=".pdf,.jpg,.jpeg,.png,.zip"
+            multiple
+            disabled
+          />
+        </div>
+      }
+    />
+
+  </div>
+) : ( 
+ canUploadWoodworkPackingDetails && (
+          
           <div className="space-y-3">
             <FileUploadField
               value={selectedFiles}
@@ -302,20 +348,38 @@ export default function WoodworkPackingDetailsSection({
               </Button>
             </div>
           </div>
-        )}
+        )
+)}
+       
 
         {/* Remark Section */}
         <div className="space-y-2">
           <p className="text-sm font-semibold tracking-tight">Remark</p>
-
-          <TextAreaInput
-            value={remark}
-            onChange={setRemark}
-            maxLength={500}
-            placeholder="Add any notes related to woodwork packing..."
-            className="h-[130px] bg-muted/20 rounded-lg"
-            disabled={!canViewAndWork}
-          />
+{shouldDisableBlockedActions ? (
+  <CustomeTooltip
+    value={blockedTooltip}
+    truncateValue={
+      <div>
+        <TextAreaInput
+          value={remark}
+          onChange={() => {}}
+          maxLength={500}
+          disabled
+          placeholder="Add any notes related to woodwork packing..."
+          className="h-[130px] bg-muted/20 rounded-lg"
+        />
+      </div>
+    }
+  />
+) : (
+  <TextAreaInput
+    value={remark}
+    onChange={setRemark}
+    maxLength={500}
+    placeholder="Add any notes related to woodwork packing..."
+    className="h-[130px] bg-muted/20 rounded-lg"
+  />
+)}
 
           <div className="flex justify-end">
             <Button

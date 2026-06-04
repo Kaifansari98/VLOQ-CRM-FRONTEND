@@ -37,6 +37,10 @@ import { ImageComponent } from "@/components/utils/ImageCard";
 import { useSearchParams } from "next/navigation";
 import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
 
+
+import CustomeTooltip from "@/components/custom-tooltip";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useLeadById } from "@/hooks/useLeadsQueries";
 interface ProductionFilesSectionProps {
   leadId: number;
   accountId: number | null;
@@ -91,6 +95,24 @@ export default function ProductionFilesSection({
   const { mutateAsync: saveRemark, isPending: savingRemark } =
     useUpsertProductionFilesRemark(vendorId, leadId);
   const [remark, setRemark] = useState("");
+
+
+  const { data: leadResponse } = useLeadById(
+    leadId,
+    vendorId,
+    userId,
+  );
+
+  const lead = leadResponse?.data?.lead;
+
+  const {
+    blockedTooltip,
+    shouldDisableBlockedActions,
+  } = useLeadAccessControl({
+    leadId,
+    userType,
+    lead,
+  });
 
   useEffect(() => {
     if (savedRemark && savedRemark !== "N/A") setRemark(savedRemark);
@@ -180,17 +202,24 @@ export default function ProductionFilesSection({
     !readOnly &&
     canUploadOrDeleteOrderLogin(userType ?? "", effectiveStage);
   const canUploadProductionFiles =
-    userType === "custom"
-      ? customPrivilegeCodes.includes(
-        "production.order_login.production_files.upload",
-      )
-      : canManageProductionFiles;
+    !shouldDisableBlockedActions &&
+    (
+      userType === "custom"
+        ? customPrivilegeCodes.includes(
+          "production.order_login.production_files.upload",
+        )
+        : canManageProductionFiles
+    );
+
   const canDeleteProductionFiles =
-    userType === "custom"
-      ? customPrivilegeCodes.includes(
-        "production.order_login.production_files.delete",
-      )
-      : canManageProductionFiles;
+    !shouldDisableBlockedActions &&
+    (
+      userType === "custom"
+        ? customPrivilegeCodes.includes(
+          "production.order_login.production_files.delete",
+        )
+        : canManageProductionFiles
+    );
 
   return (
     <div className="space-y-4">
@@ -220,49 +249,89 @@ export default function ProductionFilesSection({
         </div>
 
         {/* -------------------------------- UPLOAD AREA -------------------------------- */}
-        {canUploadProductionFiles && (
+
+
+        {shouldDisableBlockedActions ? (
           <div className="p-6 border-b space-y-4">
-            <FileUploadField
-              value={selectedFiles}
-              onChange={setSelectedFiles}
-              accept=".png,.jpg,.jpeg,.pdf,.pyo,.pytha,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip"
-              multiple
+            <CustomeTooltip
+              value={blockedTooltip}
+              truncateValue={
+                <div>
+                  <FileUploadField
+                    value={[]}
+                    onChange={() => { }}
+                    multiple
+                    disabled
+                  />
+                </div>
+              }
             />
 
-            <div className="flex justify-end">
-              <Button
-                size="sm"
-                onClick={handleUpload}
-                disabled={isPending || selectedFiles.length === 0}
-                className="flex items-center gap-2"
-              >
-                {isPending ? (
-                  <>
-                    <Loader2 className="animate-spin size-4" />
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <Upload size={16} />
-                    Upload Files
-                  </>
-                )}
-              </Button>
-            </div>
+       
           </div>
+        ) : (
+          canUploadProductionFiles && (
+            <div className="p-6 border-b space-y-4">
+              <FileUploadField
+                value={selectedFiles}
+                onChange={setSelectedFiles}
+                accept=".png,.jpg,.jpeg,.pdf,.pyo,.pytha,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip"
+                multiple
+              />
+
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  onClick={handleUpload}
+                  disabled={isPending || selectedFiles.length === 0}
+                  className="flex items-center gap-2"
+                >
+                  {isPending ? (
+                    <>
+                      <Loader2 className="animate-spin size-4" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={16} />
+                      Upload Files
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )
         )}
+
 
         {/* -------------------------------- REMARK SECTION -------------------------------- */}
         <div className="p-6 border-b space-y-2">
           <p className="text-sm font-semibold tracking-tight">Remark</p>
-          <TextAreaInput
-            value={remark}
-            onChange={setRemark}
-            maxLength={500}
-            placeholder="Add any notes related to production files..."
-            className="h-[130px] bg-muted/20 rounded-lg"
-            disabled={!canUploadProductionFiles}
-          />
+          {shouldDisableBlockedActions ? (
+            <CustomeTooltip
+              value={blockedTooltip}
+              truncateValue={
+                <div>
+                  <TextAreaInput
+                    value={remark}
+                    onChange={() => { }}
+                    disabled
+                    maxLength={500}
+                    placeholder="Add any notes related to production files..."
+                    className="h-[130px] bg-muted/20 rounded-lg"
+                  />
+                </div>
+              }
+            />
+          ) : (
+            <TextAreaInput
+              value={remark}
+              onChange={setRemark}
+              maxLength={500}
+              placeholder="Add any notes related to production files..."
+              className="h-[130px] bg-muted/20 rounded-lg"
+            />
+          )}
           <div className="flex justify-end">
             <Button
               size="sm"

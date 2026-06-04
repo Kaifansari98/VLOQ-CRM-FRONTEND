@@ -81,6 +81,9 @@ import { useChatTabFromUrl } from "@/hooks/useChatTabFromUrl";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useBlockLead, useUnblockLead } from "@/hooks/useLeadsQueries";
+import { Lock, LockOpen } from "lucide-react";
 
 export default function OrderLoginLeadDetails() {
   const { lead: leadId } = useParams();
@@ -114,45 +117,45 @@ export default function OrderLoginLeadDetails() {
   const canMoveToProductionStage =
     userType === "custom"
       ? customPrivilegeCodes.includes(
-          "production.order_login.move_to_production.enable_disable",
-        )
+        "production.order_login.move_to_production.enable_disable",
+      )
       : canMoveToProduction(effectiveUserType);
   const canViewTodoTask =
     userType === "custom"
       ? customPrivilegeCodes.includes(
-          "production.order_login.approved_documents.view",
-        ) ||
-        customPrivilegeCodes.includes(
-          "production.order_login.production_files.view",
-        ) ||
-        customPrivilegeCodes.includes(
-          "production.order_login.order_login_details.enable_disable",
-        )
+        "production.order_login.approved_documents.view",
+      ) ||
+      customPrivilegeCodes.includes(
+        "production.order_login.production_files.view",
+      ) ||
+      customPrivilegeCodes.includes(
+        "production.order_login.order_login_details.enable_disable",
+      )
       : canWorkTodoTaskOrderLoginStage(effectiveUserType);
   const canViewOrderLoginTabByDefault =
     userType === "custom"
       ? customPrivilegeCodes.some((code) =>
-          code.startsWith("production.order_login."),
-        )
+        code.startsWith("production.order_login."),
+      )
       : canOrderLogin(effectiveUserType);
   const canViewSiteHistory =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.site_history.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.site_history.enable_disable",
+      )
       : canViewSiteHistoryTab(effectiveUserType) &&
-        effectiveUserType?.toLowerCase() !== "admin";
+      effectiveUserType?.toLowerCase() !== "admin";
   const canViewChats =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.chat.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.chat.enable_disable",
+      )
       : true;
   const canViewDocuments =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.some((code) =>
-          code.startsWith("leads.open_leads.details_of_lead.documents_section."),
-        )
+        code.startsWith("leads.open_leads.details_of_lead.documents_section."),
+      )
       : true;
 
   const disabledReason = readinessLoading
@@ -182,6 +185,8 @@ export default function OrderLoginLeadDetails() {
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [activityType, setActivityType] = useState<"onHold">("onHold");
 
+
+
   const updateStatusMutation = useUpdateActivityStatus();
   const queryClient = useQueryClient();
   const lead = data?.data?.lead;
@@ -199,26 +204,80 @@ export default function OrderLoginLeadDetails() {
   const instanceSuffix =
     validInstanceId && totalInstanceCount > 1
       ? (
-          instances.find((instance: any) => instance.id === validInstanceId) ??
-          lead?.productStructureInstances?.find(
-            (instance: any) => instance.id === validInstanceId,
-          )
-        )?.quantity_index
+        instances.find((instance: any) => instance.id === validInstanceId) ??
+        lead?.productStructureInstances?.find(
+          (instance: any) => instance.id === validInstanceId,
+        )
+      )?.quantity_index
       : null;
   const displayLeadCode =
     leadCode && instanceSuffix ? `${leadCode}.${instanceSuffix}` : leadCode;
   const instanceName = validInstanceId
     ? ((
-        instances.find((instance: any) => instance.id === validInstanceId) ??
-        lead?.productStructureInstances?.find(
-          (instance: any) => instance.id === validInstanceId,
-        )
-      )?.title ?? "")
+      instances.find((instance: any) => instance.id === validInstanceId) ??
+      lead?.productStructureInstances?.find(
+        (instance: any) => instance.id === validInstanceId,
+      )
+    )?.title ?? "")
     : "";
   const accountId = Number(lead?.account_id);
 
+
+
+
+  const {
+    isLeadBlocked,
+    blockedTooltip,
+    shouldDisableBlockedActions,
+  } = useLeadAccessControl({
+    leadId: leadIdNum,
+    userType,
+    lead,
+  });
+
+  const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
+
+  const blockLeadMutation = useBlockLead();
+  const unblockLeadMutation = useUnblockLead();
+
+  const isBlockActionPending =
+    blockLeadMutation.isPending ||
+    unblockLeadMutation.isPending;
   const deleteLeadMutation = useDeleteLead();
 
+
+
+  const handleToggleLeadBlock = () => {
+    if (!vendorId || !userId || !leadIdNum) return;
+
+    const mutation = isLeadBlocked
+      ? unblockLeadMutation
+      : blockLeadMutation;
+
+    mutation.mutate(
+      {
+        vendorId,
+        leadId: leadIdNum,
+        updatedBy: userId,
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: isLeadBlocked
+              ? "Lead unblocked successfully!"
+              : "Lead blocked successfully!",
+            type: "success",
+          });
+
+          setOpenBlockConfirm(false);
+
+          queryClient.invalidateQueries({
+            queryKey: ["leadBlockStatus", vendorId, leadIdNum],
+          });
+        },
+      },
+    );
+  };
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
       toastManager.add({
@@ -261,8 +320,8 @@ export default function OrderLoginLeadDetails() {
   const canViewPayment =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.payment_information.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.payment_information.enable_disable",
+      )
       : canViewPaymentTab(effectiveUserType ?? "");
   return (
     <>
@@ -326,33 +385,57 @@ export default function OrderLoginLeadDetails() {
           <div className="flex items-center justify-end gap-2">
             {/* ✅ Show only if user has permission */}
             {canMoveToProductionStage &&
-              (canMove ? (
-                <Button
-                  size="sm"
-                  variant="default"
-                  className="hidden md:flex items-center gap-1  "
-                  onClick={() => setOpenMoveToProduction(true)}
-                >
-                  <ArrowUpRight size={16} />
-                  Move To Production
-                </Button>
-              ) : (
-                <CustomeTooltip
-                  truncateValue={
+              (() => {
+
+                if (shouldDisableBlockedActions) {
+                  return (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <Button
+                          variant="outline"
+                          disabled
+                          className="hidden md:flex"
+                        >
+                          <ArrowUpRight size={16} />
+                          Move To Production
+                        </Button>
+                      }
+                    />
+                  );
+                }
+
+                if (canMove) {
+                  return (
                     <Button
-                      variant="outline"
-                      className="hidden md:flex"
-                      disabled={true}
+                      size="sm"
+                      onClick={() => setOpenMoveToProduction(true)}
                     >
                       <ArrowUpRight size={16} />
                       Move To Production
                     </Button>
-                  }
-                  value={
-                    disabledReason || "Not eligible to move to Production yet"
-                  }
-                />
-              ))}
+                  );
+                }
+
+                return (
+                  <CustomeTooltip
+                    value={
+                      disabledReason ||
+                      "Not eligible to move to Production yet"
+                    }
+                    truncateValue={
+                      <Button
+                        variant="outline"
+                        disabled
+                        className="hidden md:flex"
+                      >
+                        <ArrowUpRight size={16} />
+                        Move To Production
+                      </Button>
+                    }
+                  />
+                );
+              })()}
           </div>
           <Button
             size="sm"
@@ -387,27 +470,57 @@ export default function OrderLoginLeadDetails() {
               </DropdownMenuItem>
 
               {canMoveToProductionStage &&
-                (canMove ? (
-                  <DropdownMenuItem
-                    className="md:hidden"
-                    onClick={() => setOpenMoveToProduction(true)}
-                  >
-                    <ArrowUpRight size={16} />
-                    Move To Production
-                  </DropdownMenuItem>
-                ) : (
-                  <CustomeTooltip
-                    truncateValue={
-                      <DropdownMenuItem className="md:hidden" disabled={true}>
+                (() => {
+
+                  if (shouldDisableBlockedActions) {
+                    return (
+                      <CustomeTooltip
+                        value={blockedTooltip}
+                        truncateValue={
+                          <DropdownMenuItem
+                            disabled
+                            className="md:hidden"
+                          >
+                            <ArrowUpRight size={16} />
+                            Move To Production
+                          </DropdownMenuItem>
+                        }
+                      />
+                    );
+                  }
+
+                  if (canMove) {
+                    return (
+                      <DropdownMenuItem
+                        className="md:hidden"
+                        onClick={() =>
+                          setOpenMoveToProduction(true)
+                        }
+                      >
                         <ArrowUpRight size={16} />
                         Move To Production
                       </DropdownMenuItem>
-                    }
-                    value={
-                      disabledReason || "Not eligible to move to Production yet"
-                    }
-                  />
-                ))}
+                    );
+                  }
+
+                  return (
+                    <CustomeTooltip
+                      value={
+                        disabledReason ||
+                        "Not eligible to move to Production yet"
+                      }
+                      truncateValue={
+                        <DropdownMenuItem
+                          className="md:hidden"
+                          disabled
+                        >
+                          <ArrowUpRight size={16} />
+                          Move To Production
+                        </DropdownMenuItem>
+                      }
+                    />
+                  );
+                })()}
               {/* --- NEW: Lead Status submenu (Mark On Hold / Mark As Lost) */}
               <DropdownMenuItem
                 onSelect={() => {
@@ -432,6 +545,24 @@ export default function OrderLoginLeadDetails() {
                   Reassign Lead
                 </DropdownMenuItem>
               )}
+
+
+              {userType?.toLowerCase() === "super-admin" && (
+  <DropdownMenuItem
+    onSelect={() => setOpenBlockConfirm(true)}
+    disabled={isBlockActionPending}
+  >
+    {isLeadBlocked ? (
+      <LockOpen className="h-4 w-4" />
+    ) : (
+      <Lock className="h-4 w-4" />
+    )}
+
+    {isLeadBlocked
+      ? "Unblock Lead"
+      : "Block Lead"}
+  </DropdownMenuItem>
+)}
 
               {canDelete && (
                 <>
@@ -677,6 +808,48 @@ export default function OrderLoginLeadDetails() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+
+
+      <AlertDialog
+  open={openBlockConfirm}
+  onOpenChange={setOpenBlockConfirm}
+>
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>
+        {isLeadBlocked
+          ? "Unblock Lead?"
+          : "Block Lead?"}
+      </AlertDialogTitle>
+
+      <AlertDialogDescription>
+        {isLeadBlocked
+          ? "This will unblock the lead and allow normal actions."
+          : "This will block the lead and disable lead actions."}
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+
+    <AlertDialogFooter>
+      <AlertDialogCancel
+        disabled={isBlockActionPending}
+      >
+        Cancel
+      </AlertDialogCancel>
+
+      <AlertDialogAction
+        onClick={handleToggleLeadBlock}
+        disabled={isBlockActionPending}
+      >
+        {isBlockActionPending
+          ? "Processing..."
+          : isLeadBlocked
+            ? "Unblock"
+            : "Block"}
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
     </>
   );
 }

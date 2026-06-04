@@ -22,9 +22,6 @@ import {
   Users,
   XCircle,
   HouseIcon,
-  PanelsTopLeftIcon,
-  BoxIcon,
-  UsersRoundIcon,
   UserPlus,
   MessageSquare,
   ClipboardCheck,
@@ -32,6 +29,8 @@ import {
   History,
   IndianRupee,
   FolderOpen,
+  LockOpen,
+  Lock,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -83,7 +82,15 @@ import {
   useIsChatNotification,
 } from "@/hooks/useChatTabFromUrl";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
-import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
+
+
+import {
+  useLeadBlockStatus,
+  useBlockLead,
+  useUnblockLead,
+} from "@/hooks/useLeadsQueries";
+import { formatBlockedAt } from "@/lib/utils";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 
 export default function SiteMeasurementLead() {
   const router = useRouter();
@@ -109,6 +116,7 @@ export default function SiteMeasurementLead() {
   const [openDelete, setOpenDelete] = useState(false);
   // Modals
   const [openMeasurement, setOpenMeasurement] = useState(false);
+  const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -120,9 +128,25 @@ export default function SiteMeasurementLead() {
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
 
+  const blockLeadMutation = useBlockLead();
+  const unblockLeadMutation = useUnblockLead();
+  const {
+    isLeadBlocked,
+    blockedTooltip,
+    shouldDisableBlockedActions,
+    isPending: isBlockActionPending
+  } = useLeadAccessControl({
+    leadId: leadIdNum,
+    userType,
+    lead,
+  });
+
   const [activeTab, setActiveTab] = useState("details");
   useChatTabFromUrl(setActiveTab);
   const isChatNotification = useIsChatNotification();
+
+
+
 
   useEffect(() => {
     if (isLoading || !lead || isChatNotification) return;
@@ -177,52 +201,97 @@ export default function SiteMeasurementLead() {
     );
   };
 
+
+  const handleToggleLeadBlock = () => {
+    if (!vendorId || !userId || !leadIdNum) {
+      toastManager.add({
+        title: "Vendor, user, or lead information is missing!",
+        type: "error",
+      });
+      return;
+    }
+
+    const mutation = isLeadBlocked
+      ? unblockLeadMutation
+      : blockLeadMutation;
+
+    mutation.mutate(
+      {
+        vendorId,
+        leadId: leadIdNum,
+        updatedBy: userId,
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: isLeadBlocked
+              ? "Lead unblocked successfully!"
+              : "Lead blocked successfully!",
+            type: "success",
+          });
+
+          setOpenBlockConfirm(false);
+
+          queryClient.invalidateQueries({
+            queryKey: ["leadBlockStatus", vendorId, leadIdNum],
+          });
+
+          queryClient.invalidateQueries({
+            queryKey: ["lead", leadIdNum, vendorId, userId],
+          });
+        },
+      },
+    );
+  };
+
+
+
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
 
   const canReassign =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.ism_leads.ism_details.reassign_lead",
-        )
+        "leads.ism_leads.ism_details.reassign_lead",
+      )
       : canReassignLeadButton(userType);
   const canDelete = canDeleteLeadButton(userType);
   const canEdit = canEditLeadForSalesExecutiveButton(userType);
   const canViewPayment =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.payment_information.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.payment_information.enable_disable",
+      )
       : canViewPaymentTab(userType);
   const canViewSiteHistory =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.site_history.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.site_history.enable_disable",
+      )
       : canViewSiteHistoryTab(userType);
   const canViewChats =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.chat.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.chat.enable_disable",
+      )
       : true;
   const canAccessTodoTask =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.ism_leads.ism_details.upload_measurement",
-        )
+        "leads.ism_leads.ism_details.upload_measurement",
+      )
       : true;
   const canMarkOnHold =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.ism_leads.ism_details.mark_on_hold",
-        )
+        "leads.ism_leads.ism_details.mark_on_hold",
+      )
       : true;
   const canMarkAsLost =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.ism_leads.ism_details.mark_as_lost",
-        )
+        "leads.ism_leads.ism_details.mark_as_lost",
+      )
       : true;
   const canSeeLeadStatusMenu = canMarkOnHold || canMarkAsLost;
 
@@ -350,6 +419,23 @@ export default function SiteMeasurementLead() {
                 </DropdownMenuItem>
               )}
 
+              {userType?.toLowerCase() === "super-admin" && (
+                <DropdownMenuItem
+                  onSelect={() => setOpenBlockConfirm(true)}
+                  disabled={isBlockActionPending}
+                >
+                  {isLeadBlocked ? (
+                    <LockOpen className="h-4 w-4" />
+                  ) : (
+                    <Lock className="h-4 w-4" />
+                  )}
+
+                  {isLeadBlocked
+                    ? "Unblock Lead"
+                    : "Block Lead"}
+                </DropdownMenuItem>
+              )}
+
               {/* Reassign */}
               {canReassign && (
                 <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
@@ -390,12 +476,23 @@ export default function SiteMeasurementLead() {
               <HouseIcon size={16} className="mr-1 opacity-60" />
               Lead Details
             </TabsTrigger>
-            {canAccessTodoTask && (
-              <TabsTrigger value="tasks">
-                <PencilLine size={16} className="mr-1 opacity-60" />
-                To-Do Task
-              </TabsTrigger>
-            )}
+            {canAccessTodoTask &&
+              (shouldDisableBlockedActions ? (
+                <CustomeTooltip
+                  value={blockedTooltip}
+                  truncateValue={
+                    <TabsTrigger value="tasks" disabled>
+                      <PencilLine size={16} className="mr-1 opacity-60" />
+                      To-Do Task
+                    </TabsTrigger>
+                  }
+                />
+              ) : (
+                <TabsTrigger value="tasks">
+                  <PencilLine size={16} className="mr-1 opacity-60" />
+                  To-Do Task
+                </TabsTrigger>
+              ))}
             {canViewSiteHistory && (
               <TabsTrigger value="history">
                 <History size={16} className="mr-1 opacity-60" />
@@ -512,6 +609,49 @@ export default function SiteMeasurementLead() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteLead}>
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
+      <AlertDialog
+        open={openBlockConfirm}
+        onOpenChange={setOpenBlockConfirm}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isLeadBlocked
+                ? "Unblock Lead?"
+                : "Block Lead?"}
+            </AlertDialogTitle>
+
+            <AlertDialogDescription>
+              {isLeadBlocked
+                ? "This will unblock the lead and allow it to proceed normally."
+                : "This will block the lead and mark the block time in the system."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={isBlockActionPending}
+            >
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={handleToggleLeadBlock}
+              disabled={isBlockActionPending}
+            >
+              {isBlockActionPending
+                ? isLeadBlocked
+                  ? "Unblocking..."
+                  : "Blocking..."
+                : isLeadBlocked
+                  ? "Unblock"
+                  : "Block"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

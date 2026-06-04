@@ -28,6 +28,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import CustomeTooltip from "@/components/custom-tooltip";
 import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 interface PendingWorkDetailsProps {
   leadId: number;
   accountId: number;
@@ -104,6 +105,19 @@ export default function PendingWorkDetails({
     ? instanceIdByLabel.get(selectedInstanceLabel)
     : undefined;
 
+
+  const {
+    shouldDisableBlockedActions,
+    blockedTooltip,
+  } = useLeadAccessControl({
+    leadId,
+    userType,
+  });
+
+  const blockedReason = shouldDisableBlockedActions
+    ? blockedTooltip
+    : "";
+
   const filteredWorkTitleOptions = useMemo(() => {
     if (!selectedInstanceId) return workTitleOptions ?? [];
     return (workTitleOptions ?? []).filter(
@@ -119,8 +133,8 @@ export default function PendingWorkDetails({
   const canAccessPendingWorkForCustomUser =
     userType === "custom"
       ? customPrivilegeCodes.includes(
-          "installation.under_installation.usable_handover.pending_work.action",
-        )
+        "installation.under_installation.usable_handover.pending_work.action",
+      )
       : false;
   const canWorkPendingWork = canWork || canAccessPendingWorkForCustomUser;
   const allowForm = canWorkPendingWork && pendingWorkAnswer === "yes";
@@ -177,6 +191,20 @@ export default function PendingWorkDetails({
     }
   };
 
+
+
+
+  const addWorkTooltip = shouldDisableBlockedActions
+    ? blockedTooltip
+    : !allowForm
+      ? "Please select Yes first"
+      : !title.trim()
+        ? "Please select Work Title"
+        : !dueDate
+          ? "Please select Due Date"
+          : "";
+
+
   return (
     <div className="space-y-6">
       {/* Add Work Card */}
@@ -187,28 +215,40 @@ export default function PendingWorkDetails({
 
           <div>
             <div className="flex gap-6 items-center">
-            <h2 className="text-lg font-semibold tracking-tight">
-              Any Pending Work Left ?
-            </h2>
+              <h2 className="text-lg font-semibold tracking-tight">
+                Any Pending Work Left ?
+              </h2>
 
             </div>
             <div className="flex gap-6 items-center mt-2">
-            {canWorkPendingWork ? (
+              {canWorkPendingWork ? (
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={pendingWorkAnswer === "yes"}
-                      onCheckedChange={(checked) =>
-                        setPendingWorkAnswer(checked ? "yes" : null)
+                    <CustomeTooltip
+                      value={blockedReason}
+                      truncateValue={
+                        <Checkbox
+                          disabled={shouldDisableBlockedActions}
+                          checked={pendingWorkAnswer === "yes"}
+                          onCheckedChange={(checked) =>
+                            setPendingWorkAnswer(checked ? "yes" : null)
+                          }
+                        />
                       }
                     />
                     Yes
                   </label>
                   <label className="flex items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={pendingWorkAnswer === "no"}
-                      onCheckedChange={(checked) =>
-                        setPendingWorkAnswer(checked ? "no" : null)
+                    <CustomeTooltip
+                      value={blockedReason}
+                      truncateValue={
+                        <Checkbox
+                          disabled={shouldDisableBlockedActions}
+                          checked={pendingWorkAnswer === "no"}
+                          onCheckedChange={(checked) =>
+                            setPendingWorkAnswer(checked ? "no" : null)
+                          }
+                        />
                       }
                     />
                     No
@@ -231,129 +271,158 @@ export default function PendingWorkDetails({
                   value="Only Factory Users Can Access This Action"
                 />
               )}
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Select Yes to add pending work tasks
-            </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Select Yes to add pending work tasks
+              </p>
             </div>
           </div>
         </div>
 
         {/* ---------------- FORM BODY ---------------- */}
-        <div
-          className={`p-6 transition-all ${
-            allowForm ? "" : "opacity-50 pointer-events-none"
-          }`}
-        >
+       <div
+  className={`p-6 transition-all ${
+    !allowForm ? "opacity-50" : ""
+  }`}
+>
           <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Grid Inputs */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {/* Instance Picker */}
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-1 text-sm font-medium">
-                    <Wrench className="h-4 w-4" />
-                    Instance
-                  </Label>
-
-                  <TextSelectPicker
-                    options={instanceOptions}
-                    value={selectedInstanceLabel}
-                    onChange={(text) => setSelectedInstanceLabel(text)}
-                    placeholder={
-                      loadingInstances ? "Loading instances..." : "Select instance..."
-                    }
-                    emptyLabel={
-                      instanceOptions.length ? "Select instance" : "No instances"
-                    }
-                    disabled={loadingInstances || instanceOptions.length === 0}
-                  />
-                </div>
-
-                {/* Title Picker */}
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-1 text-sm font-medium">
-                    <Wrench className="h-4 w-4" />
-                    Work Title
-                    <span className="text-red-500">*</span>
-                  </Label>
-
-                  <TextSelectPicker
-                    options={
-                      filteredWorkTitleOptions.map(
-                        (item: any) => item.item_type || "Untitled Work"
-                      ) || []
-                    }
-                    value={title}
-                    onChange={(text) => setTitle(text)}
-                    placeholder={
-                      loadingTitles
-                        ? "Loading work titles..."
-                        : "Select work..."
-                    }
-                    emptyLabel="Select Work"
-                    disabled={loadingTitles || !allowForm || !selectedInstanceId}
-                  />
-                </div>
-
-                {/* Due Date */}
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-1 text-sm font-medium">
-                    <Calendar className="h-4 w-4" />
-                    Due Date
-                    <span className="text-red-500">*</span>
-                  </Label>
-
-                  <CustomeDatePicker
-                    value={dueDate || ""}
-                    onChange={(value) => setDueDate(value || null)}
-                    restriction="futureOnly"
-                    disabledReason={
-                      !canWork
-                        ? "You don't have permission to add tasks."
-                        : undefined
-                    }
-                  />
-                </div>
-              </div>
-
-              {/* Remarks */}
+            {/* Grid Inputs */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Instance Picker */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-1 text-sm font-medium">
-                  <FileText className="h-4 w-4" />
-                  Additional Notes
+                  <Wrench className="h-4 w-4" />
+                  Instance
                 </Label>
 
-                  <Textarea
-                    placeholder="Describe the work, issue, or requirements..."
-                    value={remark}
-                    onChange={(e) => setRemark(e.target.value)}
-                    rows={3}
-                    disabled={!allowForm}
-                  />
-                </div>
-
-              {/* Submit Button */}
-              <div className="flex justify-end">
-                <Button
-                  type="submit"
-                  disabled={!allowForm || isPending || !title.trim() || !dueDate}
-                  className="w-full md:w-auto"
-                >
-                  {isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Adding...
-                    </>
-                  ) : (
-                    <>
-                      <PlusCircle size={20} />
-                      Add Work
-                    </>
-                  )}
-                </Button>
+                <TextSelectPicker
+                  options={instanceOptions}
+                  value={selectedInstanceLabel}
+                  onChange={(text) => setSelectedInstanceLabel(text)}
+                  placeholder={
+                    loadingInstances ? "Loading instances..." : "Select instance..."
+                  }
+                  emptyLabel={
+                    instanceOptions.length ? "Select instance" : "No instances"
+                  }
+                 disabled={
+  shouldDisableBlockedActions ||
+  loadingInstances ||
+  instanceOptions.length === 0
+}
+                />
               </div>
-            </form>
-          </div>
+
+              {/* Title Picker */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1 text-sm font-medium">
+                  <Wrench className="h-4 w-4" />
+                  Work Title
+                  <span className="text-red-500">*</span>
+                </Label>
+
+                <TextSelectPicker
+                  options={
+                    filteredWorkTitleOptions.map(
+                      (item: any) => item.item_type || "Untitled Work"
+                    ) || []
+                  }
+                  value={title}
+                  onChange={(text) => setTitle(text)}
+                  placeholder={
+                    loadingTitles
+                      ? "Loading work titles..."
+                      : "Select work..."
+                  }
+                  emptyLabel="Select Work"
+                 disabled={
+  shouldDisableBlockedActions ||
+  loadingTitles ||
+  !allowForm ||
+  !selectedInstanceId
+}
+                />
+              </div>
+
+              {/* Due Date */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1 text-sm font-medium">
+                  <Calendar className="h-4 w-4" />
+                  Due Date
+                  <span className="text-red-500">*</span>
+                </Label>
+
+                <CustomeDatePicker
+                  value={dueDate || ""}
+                  onChange={(value) => setDueDate(value || null)}
+                  restriction="futureOnly"
+                  disabledReason={
+    shouldDisableBlockedActions
+      ? blockedTooltip
+      : !canWork
+        ? "You don't have permission to add tasks."
+        : undefined
+  }
+                />
+              </div>
+            </div>
+
+            {/* Remarks */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1 text-sm font-medium">
+                <FileText className="h-4 w-4" />
+                Additional Notes
+              </Label>
+
+              <Textarea
+                placeholder="Describe the work, issue, or requirements..."
+                value={remark}
+                onChange={(e) => setRemark(e.target.value)}
+                rows={3}
+               disabled={
+  shouldDisableBlockedActions ||
+  !allowForm
+}
+              />
+            </div>
+
+            {/* Submit Button */}
+            <div className="flex justify-end">
+  <div className="inline-flex">
+           <CustomeTooltip
+  value={addWorkTooltip}
+  truncateValue={
+    <span className="inline-flex">
+      <Button
+        type="submit"
+        disabled={
+          shouldDisableBlockedActions ||
+          !allowForm ||
+          isPending ||
+          !title.trim() ||
+          !dueDate
+        }
+        className="w-full md:w-auto"
+      >
+        {isPending ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Adding...
+          </>
+        ) : (
+          <>
+            <PlusCircle size={20} />
+            Add Work
+          </>
+        )}
+      </Button>
+    </span>
+  }
+/>
+            </div>
+            </div>
+          </form>
         </div>
+      </div>
       {/* </div> */}
 
       {/* Pending Work Grid */}
@@ -427,32 +496,34 @@ export default function PendingWorkDetails({
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.25, delay: idx * 0.05 }}
                     >
-                      <Card
-                        onClick={() => {
-                          if (
-                            task.status === "completed" ||
-                            task.status === "cancelled"
-                          )
-                            return;
+                    <Card
+  onClick={() => {
+    if (shouldDisableBlockedActions) {
+      toastManager.add({
+        title: blockedTooltip,
+        type: "error",
+      });
+      return;
+    }
 
-                          setSelectedTask({
-                            id: task.id,
-                            leadId,
-                            accountId,
-                            remark: task.remark,
-                            dueDate: task.due_date,
-                          });
-                          setOpenTaskModal(true);
-                        }}
-                        className="
-                    group h-full rounded-xl 
-                    border 
-                    bg-background/80 
-                    hover:border-primary/40 
-                    hover:shadow-[0_8px_20px_-4px_rgba(0,0,0,0.12)]
-                    transition-all duration-300 cursor-pointer
-                  "
-                      >
+    if (
+      task.status === "completed" ||
+      task.status === "cancelled"
+    ) {
+      return;
+    }
+
+    setSelectedTask({
+      id: task.id,
+      leadId,
+      accountId,
+      remark: task.remark,
+      dueDate: task.due_date,
+    });
+
+    setOpenTaskModal(true);
+  }}
+>
                         <CardContent className="px-5 space-y-3 flex flex-col h-full justify-between">
                           {/* HEADER */}
                           <div>

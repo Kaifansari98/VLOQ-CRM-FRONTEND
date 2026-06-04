@@ -33,6 +33,11 @@ import { canAccessAddNewSectionButton } from "@/components/utils/privileges";
 import FileBreakUpField from "./FileBreakUpField";
 import AddSectionModal from "./AddSectionModal";
 
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useLeadById } from "@/hooks/useLeadsQueries";
+import CustomeTooltip from "@/components/custom-tooltip";
+
+
 interface OrderLoginTabProps {
   leadId: number;
   accountId: number;
@@ -71,6 +76,15 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
     leadId,
     instanceId!,
   );
+
+
+  const { data: leadResponse } = useLeadById(
+    leadId,
+    vendorId,
+    userId,
+  );
+
+  const lead = leadResponse?.data?.lead;
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const { data: instancesResponse } = useLeadProductStructureInstances(leadId, vendorId);
 
@@ -112,6 +126,16 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   // ✅ New: confirmation dialog for "Order Login Completed"
   const [confirmComplete, setConfirmComplete] = useState(false);
 
+
+  const {
+    blockedTooltip,
+    shouldDisableBlockedActions,
+  } = useLeadAccessControl({
+    leadId,
+    userType,
+    lead,
+  });
+
   // Debounce timers for description auto-save
   const descTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
@@ -122,6 +146,8 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
     ? (instanceStageData?.derived_stage ?? leadData?.status ?? "")
     : (leadData?.status ?? "");
 
+
+
   // ─────────────────────────────────────────────────────────
   // ROLE HELPERS
   // ─────────────────────────────────────────────────────────
@@ -131,8 +157,8 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   const canAccessOrderLoginDetailsForCustomUser =
     role === "custom"
       ? customPrivilegeCodes.includes(
-          "production.order_login.order_login_details.enable_disable",
-        )
+        "production.order_login.order_login_details.enable_disable",
+      )
       : true;
   const isBackendLockedAfterOrderLogin = isBackend && isOrderLoginMarked;
 
@@ -462,34 +488,50 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
           </p>
         </div>
 
-        {/* ✅ Badge when already marked complete */}
-        {isOrderLoginMarked ? (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/30 text-green-600 dark:text-green-400 shrink-0">
-            <BadgeCheck className="w-4 h-4" />
-            <span className="text-sm font-medium">Order Login Completed</span>
-          </div>
-        ) : (
-          /* ✅ Button visible ONLY when all 3 mandatory sections are filled */
-          canShowCompletedButton && (
-            <Button
-              onClick={() => setConfirmComplete(true)}
-              disabled={isMarkingComplete}
-              className="flex items-center gap-2 shrink-0 text-white disabled:opacity-60"
-            >
-              {isMarkingComplete ? (
-                <>
-                  <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="w-4 h-4" />
-                  Order Login Completed
-                </>
-              )}
-            </Button>
-          )
-        )}
+   {isOrderLoginMarked ? (
+  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/30 text-green-600 dark:text-green-400 shrink-0">
+    <BadgeCheck className="w-4 h-4" />
+    <span className="text-sm font-medium">
+      Order Login Completed
+    </span>
+  </div>
+) : (
+  canShowCompletedButton &&
+  (shouldDisableBlockedActions ? (
+<div className="ml-auto">
+  <CustomeTooltip
+    value={blockedTooltip}
+    truncateValue={
+      <Button
+        disabled
+        className="flex items-center gap-2 shrink-0 text-white disabled:opacity-60"
+      >
+        <CheckCircle className="w-4 h-4" />
+        Order Login Completed
+      </Button>
+    }
+  />
+</div>
+  ) : (
+    <Button
+      onClick={() => setConfirmComplete(true)}
+      disabled={isMarkingComplete}
+      className="flex items-center gap-2 shrink-0 text-white disabled:opacity-60"
+    >
+      {isMarkingComplete ? (
+        <>
+          <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+          Processing...
+        </>
+      ) : (
+        <>
+          <CheckCircle className="w-4 h-4" />
+          Order Login Completed
+        </>
+      )}
+    </Button>
+  ))
+)}
       </div>
 
       {/* Grid of Breakups */}
@@ -570,77 +612,111 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
 
         {/* Add New Section Card */}
         {canAccessButtons && canAddCustomSection && (
-          <div
-            className="rounded-xl border-2 border-dashed border-primary/30 p-5 bg-primary/5 
-                       hover:bg-primary/10 transition-all cursor-pointer group 
-                       flex flex-col items-center justify-center gap-3 min-h-47.5"
-          >
-            <div className="rounded-full bg-primary/10 p-3 group-hover:bg-primary/20 transition-colors">
-              <Plus className="w-6 h-6 text-primary" />
-            </div>
-            <div className="text-center">
-              <p className="font-medium text-sm text-primary">Add New Section</p>
-              <p className="text-xs text-muted-foreground">
-                Create a new breakup category for this order
-              </p>
-            </div>
-            <AddSectionModal
-              users={users}
-              leadId={leadId}
-              accountId={accountId}
-              instanceId={instanceId}
-              onSectionAdded={() => {
-                queryClient.invalidateQueries({
-                  queryKey: [
-                    "orderLoginByLead",
-                    vendorId,
-                    leadId,
-                    instanceId ?? "all",
-                  ],
-                });
-              }}
+          shouldDisableBlockedActions ? (
+            <CustomeTooltip
+              value={blockedTooltip}
+              truncateValue={
+                <div
+                  className="rounded-xl border-2 border-dashed border-primary/30 p-5 bg-primary/5
+                     opacity-60 cursor-not-allowed
+                     flex flex-col items-center justify-center gap-3 min-h-47.5"
+                >
+                  <div className="rounded-full bg-primary/10 p-3">
+                    <Plus className="w-6 h-6 text-primary" />
+                  </div>
+
+                  <div className="text-center">
+                    <p className="font-medium text-sm text-primary">
+                      Add New Section
+                    </p>
+
+                    <p className="text-xs text-muted-foreground">
+                      Create a new breakup category for this order
+                    </p>
+                  </div>
+
+                  <Button>Click Here</Button>
+                </div>
+              }
             />
-          </div>
+          ) : (
+            <div
+              className="rounded-xl border-2 border-dashed border-primary/30 p-5 bg-primary/5
+                 hover:bg-primary/10 transition-all cursor-pointer group
+                 flex flex-col items-center justify-center gap-3 min-h-47.5"
+            >
+              <div className="rounded-full bg-primary/10 p-3 group-hover:bg-primary/20 transition-colors">
+                <Plus className="w-6 h-6 text-primary" />
+              </div>
+
+              <div className="text-center">
+                <p className="font-medium text-sm text-primary">
+                  Add New Section
+                </p>
+
+                <p className="text-xs text-muted-foreground">
+                  Create a new breakup category for this order
+                </p>
+              </div>
+
+              <AddSectionModal
+                users={users}
+                leadId={leadId}
+                accountId={accountId}
+                instanceId={instanceId}
+                onSectionAdded={() => {
+                  queryClient.invalidateQueries({
+                    queryKey: [
+                      "orderLoginByLead",
+                      vendorId,
+                      leadId,
+                      instanceId ?? "all",
+                    ],
+                  });
+                }}
+              />
+            </div>
+          )
         )}
       </div>
 
       {/* ✅ Order Login Complete — Confirmation Dialog */}
-   <AlertDialog open={confirmComplete} onOpenChange={setConfirmComplete}>
-  <AlertDialogContent>
-    <AlertDialogHeader>
-      <AlertDialogTitle className="flex items-center gap-2">
-   
-        Complete Order Login
-      </AlertDialogTitle>
+      <AlertDialog open={confirmComplete} onOpenChange={setConfirmComplete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
 
-      <AlertDialogDescription className="pt-2 text-sm leading-relaxed">
-        This will mark the order login as completed and move the lead to the next stage.
-        Please confirm to proceed.
-      </AlertDialogDescription>
-    </AlertDialogHeader>
+              Complete Order Login
+            </AlertDialogTitle>
 
-    <AlertDialogFooter>
-      <AlertDialogCancel disabled={isMarkingComplete}>
-        Cancel
-      </AlertDialogCancel>
+            <AlertDialogDescription className="pt-2 text-sm leading-relaxed">
+              This will mark the order login as completed and move the lead to the next stage.
+              Please confirm to proceed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
 
-      <AlertDialogAction
-        onClick={handleConfirmComplete}
-        disabled={isMarkingComplete}
-        
-      >
-        {isMarkingComplete ? (
-          <span className="flex items-center gap-2">
-            <span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full" />
-            Processing...
-          </span>
-        ) : (
-          "Mark as Completed"
-        )}
-      </AlertDialogAction>
-    </AlertDialogFooter>
-  </AlertDialogContent>
-</AlertDialog>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isMarkingComplete}>
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={handleConfirmComplete}
+              disabled={isMarkingComplete}
+
+            >
+              {isMarkingComplete ? (
+                <span className="flex items-center gap-2">
+                  <span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full" />
+                  Processing...
+                </span>
+              ) : (
+                "Mark as Completed"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Section — Confirmation Dialog */}
       <AlertDialog
