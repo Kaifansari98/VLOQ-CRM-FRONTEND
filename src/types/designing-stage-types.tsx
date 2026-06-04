@@ -25,6 +25,7 @@ export interface Vendor {
   status: string;
   logo: string;
   time_zone: string;
+  is_this_vendor_is_custom_usertype_only?: boolean | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -307,6 +308,8 @@ export interface Meeting {
   vendor_id: number;
   meeting_type_id?: number | null;
   date: string;
+  meeting_start_time?: string | null;
+  meeting_end_time?: string | null;
   desc: string;
   created_by: number;
   updated_by: number | null;

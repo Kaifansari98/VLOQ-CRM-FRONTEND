@@ -108,6 +108,8 @@ export interface SubmitMeetingPayload {
   leadId: number;
   userId: number;
   meeting_type_id?: number;
+  meeting_start_time?: string;
+  meeting_end_time?: string;
 }
 
 export interface SubmitDesignPayload {
@@ -130,6 +132,12 @@ export const submitMeeting = async (payload: SubmitMeetingPayload) => {
   }
   if (payload.meeting_type_id) {
     formData.append("meeting_type_id", payload.meeting_type_id.toString());
+  }
+  if (payload.meeting_start_time) {
+    formData.append("meeting_start_time", payload.meeting_start_time);
+  }
+  if (payload.meeting_end_time) {
+    formData.append("meeting_end_time", payload.meeting_end_time);
   }
 
   payload.files.forEach((file) => {
