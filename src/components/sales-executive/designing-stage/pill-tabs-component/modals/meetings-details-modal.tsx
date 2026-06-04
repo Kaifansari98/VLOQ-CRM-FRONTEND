@@ -374,7 +374,7 @@ const MeetingDetailsModal = ({
         open={openAddFilesModal}
         onOpenChange={setOpenAddFilesModal}
         meetingId={meeting.id}
-        
+        existingDocs={meetingDocs}
       />
 
       {/* 🗑️ Delete Confirmation */}
