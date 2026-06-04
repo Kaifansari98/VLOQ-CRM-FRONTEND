@@ -292,20 +292,21 @@ const MeetingDetailsModal = ({
                     </Badge>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                  <div className="flex flex-wrap gap-5">
                     {meetingImages.map((img, index) => (
-                      <ImageComponent
-                        key={img.id}
-                        doc={{
-                          id: img.id,
-                          doc_og_name: img.doc_og_name,
-                          signedUrl: img.signed_url,
-                          created_at: img.created_at,
-                        }}
-                        index={index}
-                        canDelete={canDelete}
-                        onDelete={(id) => setConfirmDelete(Number(id))}
-                      />
+                      <div key={img.id} className="w-fit max-w-full">
+                        <ImageComponent
+                          doc={{
+                            id: img.id,
+                            doc_og_name: img.doc_og_name,
+                            signedUrl: img.signed_url,
+                            created_at: img.created_at,
+                          }}
+                          index={index}
+                          canDelete={canDelete}
+                          onDelete={(id) => setConfirmDelete(Number(id))}
+                        />
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -328,19 +329,20 @@ const MeetingDetailsModal = ({
                     </Badge>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                  <div className="flex flex-wrap gap-5">
                     {docsArray.map((doc) => (
-                      <DocumentCard
-                        key={doc.id}
-                        doc={{
-                          id: doc.id!,
-                          originalName: doc.originalName!,
-                          created_at: doc.created_at,
-                          signedUrl: doc.signedUrl!,
-                        }}
-                        canDelete={canDelete}
-                        onDelete={(id) => setConfirmDelete(id)}
-                      />
+                      <div key={doc.id} className="w-fit max-w-full">
+                        <DocumentCard
+                          doc={{
+                            id: doc.id!,
+                            originalName: doc.originalName!,
+                            created_at: doc.created_at,
+                            signedUrl: doc.signedUrl!,
+                          }}
+                          canDelete={canDelete}
+                          onDelete={(id) => setConfirmDelete(id)}
+                        />
+                      </div>
                     ))}
                   </div>
                 </div>
