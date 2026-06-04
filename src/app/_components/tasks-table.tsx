@@ -428,8 +428,7 @@ const MyTaskTable = () => {
         count:
           (franchiseCountQueries[index]?.data?.summary?.today ?? 0) +
           (franchiseCountQueries[index]?.data?.summary?.upcoming ?? 0) +
-          (franchiseCountQueries[index]?.data?.summary?.overdue ?? 0) +
-          (franchiseCountQueries[index]?.data?.summary?.completed ?? 0),
+          (franchiseCountQueries[index]?.data?.summary?.overdue ?? 0),
         isLoading: franchiseCountQueries[index]?.isLoading,
       })),
     [franchiseCountQueries, franchiseOptions],
@@ -728,14 +727,12 @@ const MyTaskTable = () => {
   const myTaskTotal =
     (vendorUserData?.summary?.overdue ?? 0) +
     (vendorUserData?.summary?.today ?? 0) +
-    (vendorUserData?.summary?.upcoming ?? 0) +
-    (vendorUserData?.summary?.completed ?? 0);
+    (vendorUserData?.summary?.upcoming ?? 0);
 
   const overallTaskTotal = vendorAllData?.summary
     ? (vendorAllData?.summary?.overdue ?? 0) +
       (vendorAllData?.summary?.today ?? 0) +
-      (vendorAllData?.summary?.upcoming ?? 0) +
-      (vendorAllData?.summary?.completed ?? 0)
+      (vendorAllData?.summary?.upcoming ?? 0)
     : 0;
 
   const DueDateTabs = () => {
