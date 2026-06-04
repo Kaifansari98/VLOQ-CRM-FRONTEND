@@ -3,7 +3,16 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock3, FileText, Plus, Tag } from "lucide-react";
+import {
+  Calendar,
+  Clock3,
+  FileImage,
+  FileText,
+  MessageSquareText,
+  Paperclip,
+  Plus,
+  Tag,
+} from "lucide-react";
 import { getFileExtension, isImageExt } from "@/components/utils/filehelper";
 import BaseModal from "@/components/utils/baseModal";
 import { ImageComponent } from "@/components/utils/ImageCard";
@@ -88,6 +97,24 @@ const MeetingDetailsModal = ({
     .map((timeValue) => formatTimeOnly(timeValue))
     .filter(Boolean)
     .join(" - ");
+  const totalAttachments = meetings.length;
+  const detailCards = [
+    formattedMeetingTime
+      ? {
+          key: "time",
+          label: "Meeting Time",
+          value: formattedMeetingTime,
+          icon: Clock3,
+          accent: "from-rose-50 via-white to-white",
+        }
+      : null,
+  ].filter(Boolean) as Array<{
+    key: string;
+    label: string;
+    value: string;
+    icon: typeof Calendar;
+    accent: string;
+  }>;
 
   // 🧩 Images
   const meetingImages = meetings
@@ -163,159 +190,83 @@ const MeetingDetailsModal = ({
         description="View meeting records, attached assets, and submission history."
         size="lg"
       >
-        <div className="px-6 py-5 space-y-4">
-          {/* --- INFO CARDS WRAPPER --- */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* DATE CARD */}
-            <div
-              className="
-          bg-white dark:bg-neutral-900 
-          border border-border 
-          rounded-2xl p-5 shadow-soft
-          flex flex-col gap-3
-        "
-            >
-              <div className="flex items-center gap-2">
-                <Calendar
-                  size={18}
-                  className="text-gray-600 dark:text-gray-400"
-                />
-                <span className="text-sm font-medium text-muted-foreground">
-                  Meeting Date
-                </span>
-              </div>
+        <div className="space-y-5 px-6 py-5">
+          <div className="overflow-hidden rounded-[28px] border border-border/70 bg-gradient-to-br from-stone-50 via-white to-zinc-50 shadow-sm">
+            <div className="border-b border-border/60 px-6 py-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge
+                      variant="secondary"
+                      className="rounded-full bg-black px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-white hover:bg-black"
+                    >
+                      {meeting.meetingType?.type ?? "Meeting"} - Meeting
+                    </Badge>
+                  </div>
 
-              <p className="text-base font-semibold text-heading dark:text-neutral-100">
-                {formatDateOnly(meeting.date)}
+                  <div className="space-y-1">
+                    <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+                      {formatDateOnly(meeting.date)}
+                    </h2>
+                    {formattedMeetingTime && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Clock3 className="h-4 w-4" />
+                        <span>{formattedMeetingTime}</span>
+                      </div>
+                    )}
+                    <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                      Review meeting notes, uploaded documents, and visual references in one place.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className=" bg-white p-6">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-stone-100">
+                <MessageSquareText className="h-5 w-5 text-foreground/75" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-foreground">
+                  Meeting Description
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Summary and discussion context captured for this meeting.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-dashed border-border/70 bg-stone-50/70 p-5">
+              <p className="text-sm leading-7 text-foreground/80">
+                {meeting.desc || "No description available for this meeting."}
               </p>
             </div>
-
-            {/* DOCUMENT COUNT CARD */}
-            <div
-              className="
-          bg-white dark:bg-neutral-900 
-          border border-border 
-          rounded-2xl p-5 shadow-soft
-          flex flex-col gap-3
-        "
-            >
-              <div className="flex items-center gap-2">
-                <FileText
-                  size={18}
-                  className="text-gray-600 dark:text-gray-400"
-                />
-                <span className="text-sm font-medium text-muted-foreground">
-                  Attached Documents
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <p className="text-base font-semibold text-heading dark:text-neutral-100">
-                  {meeting.designMeetingDocsMapping.length}
-                </p>
-
-                <Badge variant="secondary" className="text-xs px-2 py-0.5">
-                  files
-                </Badge>
-              </div>
-            </div>
-
-            {meeting.meetingType && (
-              <div
-                className="
-          bg-white dark:bg-neutral-900 
-          border border-border 
-          rounded-2xl p-5 shadow-soft
-          flex flex-col gap-3
-        "
-              >
-                <div className="flex items-center gap-2">
-                  <Tag
-                    size={18}
-                    className="text-gray-600 dark:text-gray-400"
-                  />
-                  <span className="text-sm font-medium text-muted-foreground">
-                    Meeting Type
-                  </span>
-                </div>
-
-                <p className="text-base font-semibold text-heading dark:text-neutral-100">
-                  {meeting.meetingType.type}
-                </p>
-              </div>
-            )}
-
-            {formattedMeetingTime && (
-              <div
-                className="
-          bg-white dark:bg-neutral-900 
-          border border-border 
-          rounded-2xl p-5 shadow-soft
-          flex flex-col gap-3
-        "
-              >
-                <div className="flex items-center gap-2">
-                  <Clock3
-                    size={18}
-                    className="text-gray-600 dark:text-gray-400"
-                  />
-                  <span className="text-sm font-medium text-muted-foreground">
-                    Meeting Time
-                  </span>
-                </div>
-
-                <p className="text-base font-semibold text-heading dark:text-neutral-100">
-                  {formattedMeetingTime}
-                </p>
-              </div>
-            )}
+          </div>
           </div>
 
-          {/* --- DESCRIPTION SECTION --- */}
-          <div
-            className="
-        bg-white dark:bg-neutral-900 
-        border border-border 
-        rounded-2xl p-5 shadow-soft 
-        space-y-3
-      "
-          >
-            <h3 className="text-sm font-semibold text-heading dark:text-neutral-100">
-              Meeting Description
-            </h3>
-
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {meeting.desc || "No description available for this meeting."}
-            </p>
-          </div>
-
-          {/* --- FILES SECTION --- */}
-          <div
-            className="
-        bg-white dark:bg-neutral-900 
-        border border-border 
-        rounded-2xl p-6 shadow-soft 
-        space-y-6
-      "
-          >
-            {/* Header */}
+          <div className="rounded-[28px] border border-border/70 bg-white p-6 shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h2 className="text-lg font-semibold tracking-tight">
-                  Meeting Files & Images
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  Includes all files uploaded during this meeting.
-                </p>
+                <div className="mb-2 flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100">
+                    <FileText className="h-5 w-5 text-foreground/75" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold tracking-tight">
+                      Meeting Files & Images
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                      Includes all files uploaded during this meeting.
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {canEditMeetingFiles && (
                 <Button
                   onClick={() => setOpenAddFilesModal(true)}
-                  className="
-            gap-2 rounded-lg 
-            h-9 
-          "
+                  className="h-10 gap-2 rounded-xl"
                 >
                   <Plus className="h-4 w-4" />
                   Add More Files
@@ -323,52 +274,95 @@ const MeetingDetailsModal = ({
               )}
             </div>
 
-            {/* --- IMAGES --- */}
-            {meetingImages.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="font-semibold text-sm">Meeting Images</h3>
+            <div className="mt-6 space-y-6">
+              {meetingImages.length > 0 ? (
+                <div className="rounded-3xl border border-border/70 bg-stone-50/60 p-5">
+                  <div className="mb-4 flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white shadow-sm">
+                      <FileImage className="h-4 w-4 text-foreground/75" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-sm">Meeting Images</h3>
+                      <p className="text-xs text-muted-foreground">
+                        Visual references shared during the meeting.
+                      </p>
+                    </div>
+                    <Badge variant="secondary" className="ml-auto rounded-full">
+                      {meetingImages.length}
+                    </Badge>
+                  </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2  gap-5">
-                  {meetingImages.map((img, index) => (
-                    <ImageComponent
-                      key={img.id}
-                      doc={{
-                        id: img.id,
-                        doc_og_name: img.doc_og_name,
-                        signedUrl: img.signed_url,
-                        created_at: img.created_at,
-                      }}
-                      index={index}
-                      canDelete={canDelete}
-                      onDelete={(id) => setConfirmDelete(Number(id))}
-                    />
-                  ))}
+                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    {meetingImages.map((img, index) => (
+                      <ImageComponent
+                        key={img.id}
+                        doc={{
+                          id: img.id,
+                          doc_og_name: img.doc_og_name,
+                          signedUrl: img.signed_url,
+                          created_at: img.created_at,
+                        }}
+                        index={index}
+                        canDelete={canDelete}
+                        onDelete={(id) => setConfirmDelete(Number(id))}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              ) : null}
 
-            {/* --- PDF / OTHER DOCS --- */}
-            {docsArray.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="font-semibold text-sm">Documents</h3>
+              {docsArray.length > 0 ? (
+                <div className="rounded-3xl border border-border/70 bg-stone-50/60 p-5">
+                  <div className="mb-4 flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white shadow-sm">
+                      <FileText className="h-4 w-4 text-foreground/75" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-sm">Documents</h3>
+                      <p className="text-xs text-muted-foreground">
+                        PDFs and supporting files attached to this meeting.
+                      </p>
+                    </div>
+                    <Badge variant="secondary" className="ml-auto rounded-full">
+                      {docsArray.length}
+                    </Badge>
+                  </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-5">
-                  {docsArray.map((doc) => (
-                    <DocumentCard
-                      key={doc.id}
-                      doc={{
-                        id: doc.id!,
-                        originalName: doc.originalName!,
-                        created_at: doc.created_at,
-                        signedUrl: doc.signedUrl!,
-                      }}
-                      canDelete={canDelete}
-                      onDelete={(id) => setConfirmDelete(id)}
-                    />
-                  ))}
+                  <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                    {docsArray.map((doc) => (
+                      <DocumentCard
+                        key={doc.id}
+                        doc={{
+                          id: doc.id!,
+                          originalName: doc.originalName!,
+                          created_at: doc.created_at,
+                          signedUrl: doc.signedUrl!,
+                        }}
+                        canDelete={canDelete}
+                        onDelete={(id) => setConfirmDelete(id)}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              ) : null}
+
+              {meetingImages.length === 0 && docsArray.length === 0 && (
+                <div className="rounded-3xl border border-dashed border-border/70 bg-stone-50/60 px-6 py-10 text-center">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-sm">
+                    <Paperclip className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <h3 className="mt-4 text-base font-semibold text-foreground">
+                    No files added yet
+                  </h3>
+                  <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+                    This meeting does not have any images or documents yet.
+                    {canEditMeetingFiles
+                      ? " Use the add files action to attach them."
+                      : ""}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </BaseModal>

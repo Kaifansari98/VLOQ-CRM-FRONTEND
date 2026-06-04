@@ -32,8 +32,68 @@ import { submitMeeting } from "@/api/designingStageQueries";
 import { toastManager } from "@/components/ui/toast";
 import BaseModal from "@/components/utils/baseModal";
 import { useGetMeetingTypes } from "@/hooks/designing-stage/use-meeting-types";
+import {
+  useLeadById,
+  useLeadProductStructureInstances,
+} from "@/hooks/useLeadsQueries";
+import { LeadProductStructureInstance } from "@/api/leads";
 
 const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+const formatFileDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const sanitizeFileSegment = (value: string) =>
+  value
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const getFileExtension = (fileName: string) => {
+  const lastDotIndex = fileName.lastIndexOf(".");
+  return lastDotIndex >= 0 ? fileName.slice(lastDotIndex) : "";
+};
+
+const isImageFile = (file: File) =>
+  file.type.startsWith("image/") ||
+  /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(file.name);
+
+const renameMeetingFiles = ({
+  files,
+  clientName,
+  targetLabel,
+  uploadDate,
+}: {
+  files: File[];
+  clientName: string;
+  targetLabel: string;
+  uploadDate: string;
+}) => {
+  const safeClientName = sanitizeFileSegment(clientName || "Client");
+  const safeTargetLabel = sanitizeFileSegment(targetLabel || "Instance");
+  let imageIndex = 0;
+  let docIndex = 0;
+
+  return files.map((file) => {
+    const prefix = isImageFile(file) ? "IMG" : "DOC";
+    const fileIndex = prefix === "IMG" ? imageIndex++ : docIndex++;
+
+    return new File(
+      [file],
+      `${prefix}${fileIndex}-Meeting-${safeClientName}-${safeTargetLabel}-${uploadDate}${getFileExtension(
+        file.name,
+      )}`,
+      {
+        type: file.type,
+        lastModified: file.lastModified,
+      },
+    );
+  });
+};
 
 const createMeetingSchema = (requiresTimeRange: boolean) =>
   z
@@ -111,11 +171,26 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
   const showMeetingTimeFields = useAppSelector(
     (s) => s.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
   );
+  const isCustomDocNomenclatureEnabled = useAppSelector(
+    (s) => s.auth.user?.vendor?.is_custom_doc_nomenclature_enabled === true,
+  );
   const { data: meetingTypes = [] } = useGetMeetingTypes(vendorId);
+  const { data: leadById } = useLeadById(leadId, vendorId, userId);
+  const { data: structureInstancesData } = useLeadProductStructureInstances(
+    leadId,
+    vendorId,
+  );
   const hasMeetingTypes = meetingTypes.length > 0;
   const meetingSchema = React.useMemo(
     () => createMeetingSchema(showMeetingTimeFields),
     [showMeetingTimeFields],
+  );
+  const structureInstances: LeadProductStructureInstance[] = React.useMemo(
+    () =>
+      Array.isArray(structureInstancesData?.data)
+        ? structureInstancesData.data
+        : [],
+    [structureInstancesData?.data],
   );
 
   const queryClient = useQueryClient();
@@ -135,7 +210,26 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
   const mutation = useMutation({
     mutationFn: (values: MeetingFormValues) =>
       submitMeeting({
-        files: values.files ?? [],
+        files:
+          isCustomDocNomenclatureEnabled
+            ? renameMeetingFiles({
+                files: values.files ?? [],
+                clientName:
+                  [
+                    leadById?.data?.lead?.firstname,
+                    leadById?.data?.lead?.lastname,
+                  ]
+                    .filter(Boolean)
+                    .join(" ")
+                    .trim() || "Client",
+                targetLabel:
+                  structureInstances[0]?.title ||
+                  leadById?.data?.lead?.leadProductStructureMapping?.[0]
+                    ?.productStructure?.type ||
+                  "Instance",
+                uploadDate: formatFileDate(new Date()),
+              })
+            : values.files ?? [],
         desc: values.desc?.trim() || "",
         date: values.date,
         vendorId,
