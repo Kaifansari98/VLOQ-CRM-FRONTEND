@@ -66,6 +66,54 @@ import {
 } from "@/components/ui/tooltip";
 import StructureQuantityCards from "@/components/sales-executive/Lead/structure-quantity-cards";
 import { getErrorMessage } from "@/lib/utils";
+import { Card, CardContent } from "@/components/ui/card";
+
+const formatFileDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const sanitizeFileSegment = (value: string) =>
+  value
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const getFileExtension = (fileName: string) => {
+  const lastDotIndex = fileName.lastIndexOf(".");
+  return lastDotIndex >= 0 ? fileName.slice(lastDotIndex) : "";
+};
+
+const renameLeadSitePhotoFiles = ({
+  files,
+  clientName,
+  targetLabel,
+  uploadDate,
+}: {
+  files: File[];
+  clientName: string;
+  targetLabel: string;
+  uploadDate: string;
+}) => {
+  const safeClientName = sanitizeFileSegment(clientName || "Client");
+  const safeTargetLabel = sanitizeFileSegment(targetLabel || "Furniture Type");
+
+  return files.map(
+    (file, index) =>
+      new File(
+        [file],
+        `P${index}-${safeClientName}-${safeTargetLabel}-${uploadDate}${getFileExtension(
+          file.name,
+        )}`,
+        {
+          type: file.type,
+          lastModified: file.lastModified,
+        },
+      ),
+  );
+};
 
 const priorityOptions = [
   { id: 1, label: "High", value: "High" },
@@ -157,6 +205,10 @@ export default function LeadsGenerationForm({
         | null
         | undefined,
   );
+  const isCustomDocNomenclatureEnabled = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_custom_doc_nomenclature_enabled === true,
+  );
   const userId = useAppSelector((state) => state.auth.user?.id);
   const createdBy = useAppSelector((state: any) => state.auth.user?.id);
   const [mapOpen, setMapOpen] = useState(false);
@@ -166,6 +218,9 @@ export default function LeadsGenerationForm({
   const [structureInstanceDetails, setStructureInstanceDetails] = useState<
     { title: string; desc: string }[]
   >([]);
+  const [instanceSitePhotoUploads, setInstanceSitePhotoUploads] = useState<
+    Record<string, File[]>
+  >({});
   const previousStructuresRef = useRef<string[]>([]);
   const [duplicatePrompt, setDuplicatePrompt] = useState<{
     open: boolean;
@@ -341,6 +396,25 @@ export default function LeadsGenerationForm({
       }),
     [selectedProductStructures, structureInstanceDetails, structureOptions]
   );
+  const isCustomVendorFlow = vendorCustomUserTypeMode === true;
+  const isMultiInstanceSitePhotoUploadFlow =
+    structureQuantityItems.length > 1 &&
+    (isCustomVendorFlow || isCustomDocNomenclatureEnabled);
+
+  useEffect(() => {
+    if (!isMultiInstanceSitePhotoUploadFlow) {
+      setInstanceSitePhotoUploads({});
+      return;
+    }
+
+    setInstanceSitePhotoUploads((prev) => {
+      const next: Record<string, File[]> = {};
+      for (const item of structureQuantityItems) {
+        next[item.key] = prev[item.key] ?? [];
+      }
+      return next;
+    });
+  }, [isMultiInstanceSitePhotoUploadFlow, structureQuantityItems]);
 
   useEffect(() => {
     if (!isKitchenStructureSingleSelect) return;
@@ -604,6 +678,47 @@ export default function LeadsGenerationForm({
     setDuplicatePrompt({ open: false });
   };
 
+  const buildRenamedSitePhotoFiles = useCallback(() => {
+    const clientName = `${form.getValues("firstname") || ""} ${
+      form.getValues("lastname") || ""
+    }`.trim();
+    const furnitureTypeName =
+      productTypes?.data?.find(
+        (type: any) => String(type.id) === selectedProductTypes?.[0],
+      )?.type || "Furniture Type";
+    const uploadDate = formatFileDate(new Date());
+
+    if (isMultiInstanceSitePhotoUploadFlow) {
+      return structureQuantityItems.flatMap((item) =>
+        renameLeadSitePhotoFiles({
+          files: instanceSitePhotoUploads[item.key] ?? [],
+          clientName,
+          targetLabel: item.title || item.label,
+          uploadDate,
+        }),
+      );
+    }
+
+    return isCustomVendorFlow || isCustomDocNomenclatureEnabled
+      ? renameLeadSitePhotoFiles({
+          files,
+          clientName,
+          targetLabel: furnitureTypeName,
+          uploadDate,
+        })
+      : files;
+  }, [
+    files,
+    form,
+    instanceSitePhotoUploads,
+    isCustomDocNomenclatureEnabled,
+    isCustomVendorFlow,
+    isMultiInstanceSitePhotoUploadFlow,
+    productTypes?.data,
+    selectedProductTypes,
+    structureQuantityItems,
+  ]);
+
   function onSubmit(values: FormValues) {
     if (similarLeadWarning) {
       toastManager.add({ title: similarLeadErrorMessage, type: "error" });
@@ -673,7 +788,7 @@ export default function LeadsGenerationForm({
     };
 
     createLeadMutation.mutate(
-      { payload, files },
+      { payload, files: buildRenamedSitePhotoFiles() },
       {
         onSuccess: () => {
           // ✅ Refetch lead count after success
@@ -762,7 +877,7 @@ export default function LeadsGenerationForm({
       is_draft: true,
     };
 
-    saveDraftMutation.mutate({ payload, files });
+    saveDraftMutation.mutate({ payload, files: buildRenamedSitePhotoFiles() });
   }
 
   return (
@@ -1352,7 +1467,42 @@ export default function LeadsGenerationForm({
             <FormItem>
               <FormLabel className="text-sm">Site Photos</FormLabel>
               <FormControl>
-                <FileUploadField value={files} onChange={setFiles} />
+                {isMultiInstanceSitePhotoUploadFlow ? (
+                  <div className="space-y-4">
+                    <div className="text-xs text-muted-foreground border-b pb-4">
+                      Upload site photos for each selected instance.
+                    </div>
+                    <div className="grid gap-2">
+                      {structureQuantityItems.map((item) => (
+                        <div key={item.key}>
+                          <div className="space-y-2">
+                            <div>
+                              <h4 className="text-sm font-semibold">
+                                {item.title || item.label}
+                              </h4>
+                              {item.desc ? (
+                                <p className="text-xs text-muted-foreground">
+                                  {item.desc}
+                                </p>
+                              ) : null}
+                            </div>
+                            <FileUploadField
+                              value={instanceSitePhotoUploads[item.key] ?? []}
+                              onChange={(nextFiles) =>
+                                setInstanceSitePhotoUploads((prev) => ({
+                                  ...prev,
+                                  [item.key]: nextFiles,
+                                }))
+                              }
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <FileUploadField value={files} onChange={setFiles} />
+                )}
               </FormControl>
               <FormDescription className="text-xs">
                 Upload photos or documents.
