@@ -21,6 +21,12 @@ import { useFinalMeasurement } from "@/hooks/final-measurement/use-final-measure
 import { useAppSelector } from "@/redux/store";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import {
+  useLeadById,
+  useLeadProductStructureInstances,
+} from "@/hooks/useLeadsQueries";
+import { LeadProductStructureInstance } from "@/api/leads";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface LeadViewModalProps {
   open: boolean;
@@ -83,6 +89,10 @@ const FinalMeasurementModal = ({
   const router = useRouter();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const isCustomVendorFlowFromAuth = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
+  );
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -93,12 +103,71 @@ const FinalMeasurementModal = ({
   });
 
   const finalMeasurementMutation = useFinalMeasurement();
+  const leadId = data?.id;
+  const { data: leadByIdResponse } = useLeadById(leadId, vendorId, userId);
+  const leadById = leadByIdResponse?.data?.lead;
+  const isCustomVendorFlow =
+    isCustomVendorFlowFromAuth ||
+    leadById?.createdBy?.vendor?.is_this_vendor_is_custom_usertype_only === true ||
+    leadById?.assignedTo?.vendor?.is_this_vendor_is_custom_usertype_only === true;
+  const {
+    data: structureInstancesData,
+    isLoading: isStructureInstancesLoading,
+  } = useLeadProductStructureInstances(leadId ?? 0, vendorId);
+  const structureInstances: LeadProductStructureInstance[] = React.useMemo(
+    () =>
+      Array.isArray(structureInstancesData?.data)
+        ? structureInstancesData.data
+        : [],
+    [structureInstancesData?.data],
+  );
+  const isMultiInstanceCustomFlow =
+    isCustomVendorFlow && structureInstances.length > 1;
+  const [instanceUploads, setInstanceUploads] = React.useState<
+    Record<
+      number,
+      { finalMeasurementDocs: File[]; currentSitePhotos: File[] }
+    >
+  >({});
+
+  React.useEffect(() => {
+    if (!isMultiInstanceCustomFlow) {
+      setInstanceUploads({});
+      return;
+    }
+
+    setInstanceUploads((prev) => {
+      const next: Record<
+        number,
+        { finalMeasurementDocs: File[]; currentSitePhotos: File[] }
+      > = {};
+
+      for (const instance of structureInstances) {
+        next[instance.id] = prev[instance.id] ?? {
+          finalMeasurementDocs: [],
+          currentSitePhotos: [],
+        };
+      }
+
+      return next;
+    });
+  }, [isMultiInstanceCustomFlow, structureInstances]);
 
   const resetForm = React.useCallback(() => {
     form.reset({
       finalMeasurementDocs: [],
       currentSitePhotos: [],
       criticalDiscussion: "N/A",
+    });
+    setInstanceUploads((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((key) => {
+        next[Number(key)] = {
+          finalMeasurementDocs: [],
+          currentSitePhotos: [],
+        };
+      });
+      return next;
     });
   }, [form]);
 
@@ -149,6 +218,70 @@ const FinalMeasurementModal = ({
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     if (!data) return;
 
+    const flattenedFinalMeasurementDocs: Array<{
+      file: File;
+      instanceId: number | null;
+    }> = [];
+    const flattenedSitePhotos: Array<{
+      file: File;
+      instanceId: number | null;
+    }> = [];
+
+    if (isMultiInstanceCustomFlow) {
+      for (const instance of structureInstances) {
+        const uploads = instanceUploads[instance.id] ?? {
+          finalMeasurementDocs: [],
+          currentSitePhotos: [],
+        };
+
+        uploads.finalMeasurementDocs.forEach((file) => {
+          flattenedFinalMeasurementDocs.push({
+            file,
+            instanceId: instance.id,
+          });
+        });
+        uploads.currentSitePhotos.forEach((file) => {
+          flattenedSitePhotos.push({
+            file,
+            instanceId: instance.id,
+          });
+        });
+      }
+
+      const missingDocs = structureInstances.filter(
+        (instance) =>
+          !instanceUploads[instance.id] ||
+          instanceUploads[instance.id].finalMeasurementDocs.length === 0,
+      );
+      if (missingDocs.length > 0) {
+        toastManager.add({
+          title: `Please upload Final Measurement Document for ${missingDocs[0].title}.`,
+          type: "error",
+        });
+        return;
+      }
+
+      const missingSitePhotos = structureInstances.filter(
+        (instance) =>
+          !instanceUploads[instance.id] ||
+          instanceUploads[instance.id].currentSitePhotos.length === 0,
+      );
+      if (missingSitePhotos.length > 0) {
+        toastManager.add({
+          title: `Please upload Current Site Photos for ${missingSitePhotos[0].title}.`,
+          type: "error",
+        });
+        return;
+      }
+    } else {
+      values.finalMeasurementDocs.forEach((file) => {
+        flattenedFinalMeasurementDocs.push({ file, instanceId: null });
+      });
+      values.currentSitePhotos.forEach((file) => {
+        flattenedSitePhotos.push({ file, instanceId: null });
+      });
+    }
+
     finalMeasurementMutation.mutate(
       {
         lead_id: data.id,
@@ -156,8 +289,15 @@ const FinalMeasurementModal = ({
         vendor_id: vendorId!,
         created_by: userId!,
         critical_discussion_notes: values.criticalDiscussion,
-        final_measurement_docs: values.finalMeasurementDocs,
-        site_photos: values.currentSitePhotos,
+        final_measurement_docs: flattenedFinalMeasurementDocs.map(
+          ({ file }) => file,
+        ),
+        site_photos: flattenedSitePhotos.map(({ file }) => file),
+        final_measurement_doc_instance_ids:
+          flattenedFinalMeasurementDocs.map(({ instanceId }) => instanceId),
+        site_photo_instance_ids: flattenedSitePhotos.map(
+          ({ instanceId }) => instanceId,
+        ),
       },
       {
         onSuccess: () => {
@@ -198,6 +338,26 @@ const FinalMeasurementModal = ({
     );
   };
 
+  const setInstanceFiles = React.useCallback(
+    (
+      instanceId: number,
+      field: "finalMeasurementDocs" | "currentSitePhotos",
+      files: File[],
+    ) => {
+      setInstanceUploads((prev) => ({
+        ...prev,
+        [instanceId]: {
+          ...(prev[instanceId] ?? {
+            finalMeasurementDocs: [],
+            currentSitePhotos: [],
+          }),
+          [field]: files,
+        },
+      }));
+    },
+    [],
+  );
+
   return (
     <BaseModal
       open={open}
@@ -208,61 +368,149 @@ const FinalMeasurementModal = ({
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5  p-5">
-          {/* ---- PDF Upload ---- */}
-          <FormField
-            control={form.control}
-            name="finalMeasurementDocs"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm">
-                  Final Measurement Documents (max 20) *
-                </FormLabel>
-                <FormControl>
-                  <FileUploadField
-                    value={field.value}
-                    onChange={(files) =>
-                      handleFilesChange(
-                        "finalMeasurementDocs",
-                        files,
-                        documentMimeTypes,
-                      )
-                    }
-                    accept={documentAccept}
-                    multiple
-                    maxFiles={MAX_FINAL_MEASUREMENT_FILES}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {isCustomVendorFlow && isStructureInstancesLoading ? (
+            <div className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">
+              Loading product instances...
+            </div>
+          ) : isMultiInstanceCustomFlow ? (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-semibold">Instance Documents</h3>
+                <p className="text-xs text-muted-foreground">
+                  Upload Final Measurement documents and Current Site Photos
+                  for each instance before submitting.
+                </p>
+              </div>
 
-          {/* ---- Site Photos ---- */}
-          <FormField
-            control={form.control}
-            name="currentSitePhotos"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm">Current Site Photos *</FormLabel>
-                <FormControl>
-                  <FileUploadField
-                    value={field.value}
-                    onChange={(files) =>
-                      handleFilesChange(
-                        "currentSitePhotos",
-                        files,
-                        imageMimeTypes,
-                      )
-                    }
-                    accept={imageAccept}
-                    multiple
-                    maxFiles={MAX_FINAL_MEASUREMENT_FILES}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+              <div className="grid gap-2">
+                {structureInstances.map((instance) => {
+                  const uploads = instanceUploads[instance.id] ?? {
+                    finalMeasurementDocs: [],
+                    currentSitePhotos: [],
+                  };
+
+                  return (
+                    <Card key={instance.id}>
+                      <CardContent className="space-y-4">
+                        <div>
+                          <h4 className="text-sm font-semibold">
+                            {instance.title}
+                          </h4>
+                          {instance.productType?.type && (
+                            <p className="text-xs text-muted-foreground">
+                              {instance.productType.type}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <FormLabel className="text-sm">
+                              Final Measurement Documents *
+                            </FormLabel>
+                            <FileUploadField
+                              value={uploads.finalMeasurementDocs}
+                              onChange={(files) =>
+                                setInstanceFiles(
+                                  instance.id,
+                                  "finalMeasurementDocs",
+                                  files.filter((file) =>
+                                    documentMimeTypes.includes(file.type),
+                                  ),
+                                )
+                              }
+                              accept={documentAccept}
+                              multiple
+                              maxFiles={MAX_FINAL_MEASUREMENT_FILES}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <FormLabel className="text-sm">
+                              Current Site Photos *
+                            </FormLabel>
+                            <FileUploadField
+                              value={uploads.currentSitePhotos}
+                              onChange={(files) =>
+                                setInstanceFiles(
+                                  instance.id,
+                                  "currentSitePhotos",
+                                  files.filter((file) =>
+                                    imageMimeTypes.includes(file.type),
+                                  ),
+                                )
+                              }
+                              accept={imageAccept}
+                              multiple
+                              maxFiles={MAX_FINAL_MEASUREMENT_FILES}
+                            />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <>
+              <FormField
+                control={form.control}
+                name="finalMeasurementDocs"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm">
+                      Final Measurement Documents (max 20) *
+                    </FormLabel>
+                    <FormControl>
+                      <FileUploadField
+                        value={field.value}
+                        onChange={(files) =>
+                          handleFilesChange(
+                            "finalMeasurementDocs",
+                            files,
+                            documentMimeTypes,
+                          )
+                        }
+                        accept={documentAccept}
+                        multiple
+                        maxFiles={MAX_FINAL_MEASUREMENT_FILES}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="currentSitePhotos"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm">
+                      Current Site Photos *
+                    </FormLabel>
+                    <FormControl>
+                      <FileUploadField
+                        value={field.value}
+                        onChange={(files) =>
+                          handleFilesChange(
+                            "currentSitePhotos",
+                            files,
+                            imageMimeTypes,
+                          )
+                        }
+                        accept={imageAccept}
+                        multiple
+                        maxFiles={MAX_FINAL_MEASUREMENT_FILES}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </>
+          )}
 
           {/* ---- Notes ---- */}
           <FormField
