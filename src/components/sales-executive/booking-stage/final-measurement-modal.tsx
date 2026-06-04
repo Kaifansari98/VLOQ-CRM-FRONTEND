@@ -53,9 +53,6 @@ const MAX_FINAL_MEASUREMENT_FILES = 20;
 const formSchema = z.object({
   finalMeasurementDocs: z
     .array(z.custom<File>((file) => file instanceof File))
-    .nonempty({
-      message: "At least one Final Measurement Document is required",
-    })
     .refine(
       (files) => files.every((file) => documentMimeTypes.includes(file.type)),
       {
@@ -68,7 +65,6 @@ const formSchema = z.object({
 
   currentSitePhotos: z
     .array(z.instanceof(File))
-    .nonempty({ message: "At least one site photo is required" })
     .refine(
       (files) => files.every((file) => imageMimeTypes.includes(file.type)),
       { message: "Only JPG, JPEG, PNG, or GIF images are allowed" },
@@ -280,6 +276,22 @@ const FinalMeasurementModal = ({
       values.currentSitePhotos.forEach((file) => {
         flattenedSitePhotos.push({ file, instanceId: null });
       });
+
+      if (flattenedFinalMeasurementDocs.length === 0) {
+        form.setError("finalMeasurementDocs", {
+          type: "manual",
+          message: "At least one Final Measurement Document is required",
+        });
+        return;
+      }
+
+      if (flattenedSitePhotos.length === 0) {
+        form.setError("currentSitePhotos", {
+          type: "manual",
+          message: "At least one site photo is required",
+        });
+        return;
+      }
     }
 
     finalMeasurementMutation.mutate(
