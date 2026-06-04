@@ -41,6 +41,57 @@ interface LeadViewModalProps {
   };
 }
 
+const formatFileDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const sanitizeFileSegment = (value: string) =>
+  value
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const getFileExtension = (fileName: string) => {
+  const lastDotIndex = fileName.lastIndexOf(".");
+  return lastDotIndex >= 0 ? fileName.slice(lastDotIndex) : "";
+};
+
+const renameIsmFiles = ({
+  files,
+  clientName,
+  targetLabel,
+  startIndex,
+  uploadDate,
+  prefix,
+}: {
+  files: File[];
+  clientName: string;
+  targetLabel: string;
+  startIndex: number;
+  uploadDate: string;
+  prefix: "MD" | "CSP";
+}) => {
+  const safeClientName = sanitizeFileSegment(clientName || "Client");
+  const safeTargetLabel = sanitizeFileSegment(targetLabel || "Furniture Type");
+
+  return files.map(
+    (file, index) =>
+      new File(
+        [file],
+        `${prefix}${startIndex + index}-ISM-${safeClientName}-${safeTargetLabel}-${uploadDate}${getFileExtension(
+          file.name,
+        )}`,
+        {
+          type: file.type,
+          lastModified: file.lastModified,
+        },
+      ),
+  );
+};
+
 const formSchema = z
   .object({
     current_site_photos: z.any().optional(),
@@ -128,6 +179,10 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
     (state) =>
       state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
   );
+  const isCustomDocNomenclatureEnabled = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_custom_doc_nomenclature_enabled === true,
+  );
   const leadId = data?.id;
   const accountId = data?.accountId;
   const { data: leadByIdResponse } = useLeadById(leadId, vendorId, userId);
@@ -147,14 +202,15 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
         : [],
     [structureInstancesData?.data],
   );
-  const isMultiInstanceCustomFlow =
-    isCustomVendorFlow && structureInstances.length > 1;
+  const isMultiInstanceUploadFlow =
+    structureInstances.length > 1 &&
+    (isCustomVendorFlow || isCustomDocNomenclatureEnabled);
   const [instanceUploads, setInstanceUploads] = React.useState<
     Record<number, { current_site_photos: File[]; upload_pdf: File[] }>
   >({});
 
   React.useEffect(() => {
-    if (!isMultiInstanceCustomFlow) {
+    if (!isMultiInstanceUploadFlow) {
       setInstanceUploads({});
       return;
     }
@@ -174,7 +230,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
 
       return next;
     });
-  }, [isMultiInstanceCustomFlow, structureInstances]);
+  }, [isMultiInstanceUploadFlow, structureInstances]);
 
   const queryClient = useQueryClient();
 
@@ -225,7 +281,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
     const flattenedDocuments: Array<{ file: File; instanceId: number | null }> =
       [];
 
-    if (isMultiInstanceCustomFlow) {
+    if (isMultiInstanceUploadFlow) {
       for (const instance of structureInstances) {
         const uploads = instanceUploads[instance.id] ?? {
           current_site_photos: [],
@@ -271,6 +327,21 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       return;
     }
 
+    const clientName =
+      data?.name?.trim() ||
+      leadById?.account?.name?.trim() ||
+      [leadById?.firstname, leadById?.lastname].filter(Boolean).join(" ").trim() ||
+      "Client";
+    const furnitureTypeName =
+      structureInstances[0]?.productType?.type?.trim() ||
+      leadById?.productMappings?.[0]?.productType?.type?.trim() ||
+      "Furniture Type";
+    const singleInstanceTitle =
+      structureInstances.length === 1 ? structureInstances[0]?.title?.trim() : "";
+    const uploadDate = formatFileDate(new Date());
+    let currentSitePhotoSequence = 0;
+    let measurementDocumentSequence = 0;
+
     const formData = new FormData();
     formData.append("lead_id", leadId?.toString() || "");
     formData.append("account_id", accountId?.toString() || "");
@@ -279,16 +350,48 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
     formData.append("client_id", clientId.toString() || "");
     formData.append("user_id", userId?.toString() || "");
 
-    flattenedSitePhotos.forEach(({ file }) => {
-      formData.append("current_site_photos", file);
+    flattenedSitePhotos.forEach(({ file, instanceId }) => {
+      const instanceTitle = structureInstances.find(
+        (instance) => instance.id === instanceId,
+      )?.title;
+      const renamedFile = isCustomDocNomenclatureEnabled
+        ? renameIsmFiles({
+            files: [file],
+            clientName,
+            targetLabel: instanceTitle || singleInstanceTitle || furnitureTypeName,
+            startIndex: currentSitePhotoSequence,
+            uploadDate,
+            prefix: "CSP",
+          })[0]
+        : file;
+      if (isCustomDocNomenclatureEnabled) {
+        currentSitePhotoSequence += 1;
+      }
+      formData.append("current_site_photos", renamedFile);
     });
     formData.append(
       "current_site_photo_instance_ids",
       JSON.stringify(flattenedSitePhotos.map(({ instanceId }) => instanceId)),
     );
 
-    flattenedDocuments.forEach(({ file }) => {
-      formData.append("upload_pdf", file);
+    flattenedDocuments.forEach(({ file, instanceId }) => {
+      const instanceTitle = structureInstances.find(
+        (instance) => instance.id === instanceId,
+      )?.title;
+      const renamedFile = isCustomDocNomenclatureEnabled
+        ? renameIsmFiles({
+            files: [file],
+            clientName,
+            targetLabel: instanceTitle || singleInstanceTitle || furnitureTypeName,
+            startIndex: measurementDocumentSequence,
+            uploadDate,
+            prefix: "MD",
+          })[0]
+        : file;
+      if (isCustomDocNomenclatureEnabled) {
+        measurementDocumentSequence += 1;
+      }
+      formData.append("upload_pdf", renamedFile);
     });
     formData.append(
       "upload_pdf_instance_ids",
@@ -358,17 +461,18 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       <div className="px-5 py-4">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-            {isCustomVendorFlow && isStructureInstancesLoading ? (
+            {(isCustomVendorFlow || isCustomDocNomenclatureEnabled) &&
+            isStructureInstancesLoading ? (
               <div className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">
                 Loading product instances...
               </div>
-            ) : isMultiInstanceCustomFlow ? (
+            ) : isMultiInstanceUploadFlow ? (
               <div className="space-y-4">
                 <div>
                   <h3 className="text-sm font-semibold">Instance Documents</h3>
                   <p className="text-xs text-muted-foreground">
                     Upload current site photos and Initial Site Measurement
-                    documents for each instance before submitting.
+                    documents for the relevant instance before submitting.
                   </p>
                 </div>
 
