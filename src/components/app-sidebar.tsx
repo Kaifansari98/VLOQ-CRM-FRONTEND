@@ -303,6 +303,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const userType = user?.user_type?.user_type?.toLowerCase();
   const isCustomUserTypeOnlyVendor =
     user?.vendor?.is_this_vendor_is_custom_usertype_only === true;
+  const isCrmEnabled = user?.vendor?.is_crm_enabled !== false;
   const isInventoryEnabled = user?.vendor?.is_inventory_enabled === true;
   const isTrackTraceEnabled = user?.vendor?.is_tracktrace_enabled === true;
   const canSeeOverallLeads = userType === "admin" || userType === "super-admin";
@@ -542,7 +543,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         : undefined,
     };
 
-    const finalNavItems = customFilteredItems.map((item) => {
+    const finalNavItemsSource = customFilteredItems.map((item) => {
       if (item.title === "Execution" && item.items) {
         const underInstallationIndex = item.items.findIndex(
           (subItem) => subItem.title === "Installation",
@@ -562,13 +563,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       return item;
     });
 
+    const finalNavItems = isCrmEnabled ? finalNavItemsSource : [];
+
     const finalTrackTraceItems = isSuperAdmin && isTrackTraceEnabled
       ? data.trackTraceNav
       : [];
     const finalInventoryItems = isSuperAdmin && isInventoryEnabled
       ? data.inventoryTraceNav
       : [];
-    const finalMastersItems = isSuperAdmin
+    const finalMastersItems = isSuperAdmin && isCrmEnabled
       ? data.mastersNav.map((section) => ({
           ...section,
           items:
@@ -597,6 +600,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     isMiscLeadLoading,
     userType,
     isCustomUserTypeOnlyVendor,
+    isCrmEnabled,
     isInventoryEnabled,
     isTrackTraceEnabled,
     customPrivilegeCodes,

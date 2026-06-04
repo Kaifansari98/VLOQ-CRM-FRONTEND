@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -14,10 +15,106 @@ import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useParams } from "next/navigation";
 import FranchisesTable from "@/components/custom/FranchisesTable";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useCreateFranchise } from "@/api/franchises";
+import { useVendorById } from "@/api/vendors";
+import { toastManager } from "@/components/ui/toast";
+import TextAreaInput from "@/components/origin-text-area";
+import MapPicker from "@/components/MapPicker";
+import { MapPin } from "lucide-react";
+
+const EMPTY_FORM = {
+  franchise_name: "",
+  franchise_code: "",
+  contact_person: "",
+  contact_number: "",
+  contact_email: "",
+  address: "",
+};
 
 export default function VendorDetailPage() {
   const { vendorId } = useParams<{ vendorId: string }>();
   const vendorIdNum = Number(vendorId);
+  const { data: vendorResponse } = useVendorById(vendorIdNum);
+  const vendorName = vendorResponse?.data?.vendor_name?.trim() || `vendor #${vendorId}`;
+
+  const [openCreate, setOpenCreate] = React.useState(false);
+  const [form, setForm] = React.useState(EMPTY_FORM);
+  const [mapOpen, setMapOpen] = React.useState(false);
+  const [savedMapLocation, setSavedMapLocation] = React.useState<{
+    lat: number;
+    lng: number;
+    address: string;
+  } | null>(null);
+
+  const createFranchiseMutation = useCreateFranchise(vendorIdNum);
+
+  const handleFieldChange =
+    (field: keyof typeof form) =>
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      let value = event.target.value;
+      if (field === "contact_number") value = value.replace(/\D/g, "").slice(0, 10);
+      if (field === "franchise_code") value = value.toUpperCase();
+      setForm((prev) => ({ ...prev, [field]: value }));
+    };
+
+  const resetForm = () => {
+    setForm(EMPTY_FORM);
+    setSavedMapLocation(null);
+  };
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (
+      !form.franchise_name.trim() ||
+      !form.franchise_code.trim() ||
+      !form.contact_person.trim() ||
+      !form.contact_number.trim() ||
+      !form.contact_email.trim() ||
+      !form.address.trim()
+    ) {
+      toastManager.add({ title: "Please fill all required fields", type: "error" });
+      return;
+    }
+
+    if (form.contact_number.length !== 10) {
+      toastManager.add({ title: "Contact number must be 10 digits", type: "error" });
+      return;
+    }
+
+    try {
+      await createFranchiseMutation.mutateAsync({
+        vendor_id: vendorIdNum,
+        franchise_name: form.franchise_name.trim(),
+        franchise_code: form.franchise_code.trim(),
+        contact_person: form.contact_person.trim(),
+        contact_number: form.contact_number.trim(),
+        contact_email: form.contact_email.trim(),
+        address: form.address.trim(),
+        is_head_office: false,
+      });
+
+      toastManager.add({ title: "Franchise created successfully", type: "success" });
+      setOpenCreate(false);
+      resetForm();
+    } catch (error: any) {
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to create franchise",
+        type: "error",
+      });
+    }
+  };
 
   return (
     <>
@@ -37,13 +134,14 @@ export default function VendorDetailPage() {
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
-                <BreadcrumbPage>Vendor #{vendorId}</BreadcrumbPage>
+                <BreadcrumbPage>{vendorName}</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
         </div>
 
         <div className="flex items-center gap-2">
+          <Button onClick={() => setOpenCreate(true)}>Create Franchise</Button>
           <NotificationBell />
           <AnimatedThemeToggler />
         </div>
@@ -55,12 +153,152 @@ export default function VendorDetailPage() {
             Vendor Details
           </h1>
           <p className="text-sm text-muted-foreground">
-            View and manage details for vendor #{vendorId}.
+            View and manage details for {vendorName}.
           </p>
         </div>
 
         <FranchisesTable vendorId={vendorIdNum} />
       </div>
+
+      <Dialog
+        open={openCreate}
+        onOpenChange={(open) => {
+          setOpenCreate(open);
+          if (!open) resetForm();
+        }}
+      >
+        <DialogContent>
+          <DialogHeader className="border-b pb-4">
+            <DialogTitle className="text-base">Create Franchise</DialogTitle>
+            <DialogDescription className="text-xs">
+              Add the basic franchise details to onboard a new franchise.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form className="space-y-4 mt-2" onSubmit={handleSubmit}>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="franchise_name">Franchise Name</Label>
+                <Input
+                  id="franchise_name"
+                  value={form.franchise_name}
+                  onChange={handleFieldChange("franchise_name")}
+                  placeholder="Enter franchise name"
+                  required
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="franchise_code">Franchise Code</Label>
+                <Input
+                  id="franchise_code"
+                  value={form.franchise_code}
+                  onChange={handleFieldChange("franchise_code")}
+                  placeholder="Enter franchise code"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="contact_person">Contact Person</Label>
+                <Input
+                  id="contact_person"
+                  value={form.contact_person}
+                  onChange={handleFieldChange("contact_person")}
+                  placeholder="Enter contact person"
+                  required
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="contact_number">Contact Number</Label>
+                <Input
+                  id="contact_number"
+                  inputMode="numeric"
+                  value={form.contact_number}
+                  onChange={handleFieldChange("contact_number")}
+                  placeholder="Enter 10 digit number"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="contact_email">Contact Email</Label>
+              <Input
+                id="contact_email"
+                type="email"
+                value={form.contact_email}
+                onChange={handleFieldChange("contact_email")}
+                placeholder="Enter contact email"
+                required
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between">
+                <Label>Address</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setMapOpen(true)}
+                  className="flex items-center gap-1"
+                >
+                  <MapPin className="h-4 w-4" />
+                  {savedMapLocation ? "Update Map" : "Open Map"}
+                </Button>
+              </div>
+              <TextAreaInput
+                value={form.address}
+                onChange={(value) => {
+                  setForm((prev) => ({ ...prev, address: value }));
+                  if (savedMapLocation) {
+                    setSavedMapLocation((prev) =>
+                      prev ? { ...prev, address: value } : prev
+                    );
+                  }
+                }}
+                placeholder="Enter address or use map"
+              />
+              <MapPicker
+                open={mapOpen}
+                onClose={() => setMapOpen(false)}
+                savedLocation={savedMapLocation}
+                onSelect={(address, link) => {
+                  setForm((prev) => ({ ...prev, address }));
+                  const coords = link.match(/q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+                  if (coords) {
+                    setSavedMapLocation({
+                      lat: parseFloat(coords[1]),
+                      lng: parseFloat(coords[2]),
+                      address,
+                    });
+                  }
+                }}
+              />
+            </div>
+
+            <DialogFooter className="border-t pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setOpenCreate(false);
+                  resetForm();
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={createFranchiseMutation.isPending}>
+                {createFranchiseMutation.isPending ? "Creating..." : "Confirm"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -50,7 +50,7 @@ interface LeadViewModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const getRevisionKey = (fileName: string, prefix: "R" | "Q") => {
+const getRevisionKey = (fileName: string, prefix: "Q" | "D" | "R") => {
   const parsedName = fileName.replace(/\.[^/.]+$/, "");
   const match = parsedName.match(
     new RegExp(`^${prefix}(\\d+)-(.+)-\\d{4}-\\d{2}-\\d{2}$`, "i"),
@@ -60,6 +60,9 @@ const getRevisionKey = (fileName: string, prefix: "R" | "Q") => {
 
   return `${match[1]}-${match[2].toLowerCase()}`;
 };
+
+const getDesignRevisionKey = (fileName: string) =>
+  getRevisionKey(fileName, "D") ?? getRevisionKey(fileName, "R");
 
 const AddQuotationModal: React.FC<LeadViewModalProps> = ({
   open,
@@ -91,7 +94,7 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
   const availableDesignDocs = React.useMemo(
     () =>
       designDocs.filter((doc) => {
-        const designKey = getRevisionKey(doc.doc_og_name, "R");
+        const designKey = getDesignRevisionKey(doc.doc_og_name);
         return !designKey || !usedQuotationKeys.has(designKey);
       }),
     [designDocs, usedQuotationKeys],

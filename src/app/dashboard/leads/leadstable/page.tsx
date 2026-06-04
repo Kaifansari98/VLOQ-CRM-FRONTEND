@@ -19,6 +19,7 @@ import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useActivityStatusCounts } from "@/hooks/useActivityStatus";
 import ViewOpenLeadTable from "@/app/_components/view-leads-table";
 import PendingLeadsTable from "../../../_components/pending-leads-table";
+import { useUniversalStageLeadsPost } from "@/api/universalstage";
 import {
   Popover,
   PopoverContent,
@@ -48,6 +49,7 @@ export default function LeadsGenerationPage() {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type as string | undefined,
   );
+  const userId = useAppSelector((state) => state.auth.user?.id);
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
@@ -114,12 +116,47 @@ export default function LeadsGenerationPage() {
   const [openPopover, setOpenPopover] = useState(false);
 
   const { data: counts } = useActivityStatusCounts(vendorId, franchiseId);
+  const customOpenTabPayload = useMemo(
+    () => ({
+      userId: userId ?? 0,
+      franchise_id: franchiseId ?? undefined,
+      tag: "Type 1",
+      page: 1,
+      limit: 1,
+      filter_name: "",
+      filter_lead_code: "",
+      contact: "",
+      alt_contact_no: "",
+      email: "",
+      site_address: "",
+      archetech_name: "",
+      designer_remark: "",
+      furniture_type: [],
+      furniture_structure: [],
+      site_type: [],
+      source: [],
+      assign_to: [],
+      priority: [],
+      site_map_link: null,
+      created_at: "desc" as const,
+      global_search: "",
+    }),
+    [franchiseId, userId],
+  );
+  const { data: customOpenTableData } = useUniversalStageLeadsPost(
+    vendorId!,
+    customOpenTabPayload,
+  );
+  const openLeadsCountForTab =
+    normalizedUserType === "custom"
+      ? (customOpenTableData?.count ?? 0)
+      : (counts?.open ?? 0);
 
   const tabItems: TabItem[] = [
     {
       value: "open",
       label: "Open",
-      count: counts?.open ?? 0,
+      count: openLeadsCountForTab,
       dotColor: "#3b82f6",
     },
     ...(canShowOnHoldTab

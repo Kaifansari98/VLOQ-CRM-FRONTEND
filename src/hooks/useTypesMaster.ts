@@ -70,8 +70,13 @@ const getCarcassTypesQueryKey = (vendorId?: number) => ["carcassTypes", vendorId
 const getShutterTypesQueryKey = (vendorId?: number) => ["shutterTypes", vendorId];
 const getHandleTypesQueryKey = (vendorId?: number) => ["handleTypes", vendorId];
 
-export const useCompanyVendorsForMaster = () => {
+const useResolvedVendorId = (vendorIdOverride?: number) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return vendorIdOverride ?? vendorId;
+};
+
+export const useCompanyVendorsForMaster = (vendorIdOverride?: number) => {
+  const vendorId = useResolvedVendorId(vendorIdOverride);
   return useQuery({
     queryKey: getCompanyVendorsMasterQueryKey(vendorId),
     queryFn: () => fetchCompanyVendorsForMaster(vendorId!),
@@ -86,8 +91,8 @@ export const useUsersForMaster = (params: {
   limit: number;
   search?: string;
   franchise_id?: number;
-}) => {
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+}, vendorIdOverride?: number) => {
+  const vendorId = useResolvedVendorId(vendorIdOverride);
   return useQuery({
     queryKey: getUsersMasterQueryKey(vendorId).concat([
       params.page,
@@ -106,12 +111,14 @@ export const usePrivilegeMasters = ({
   enabled = true,
   search = "",
   userId,
+  vendorIdOverride,
 }: {
   enabled?: boolean;
   search?: string;
   userId?: number | null;
+  vendorIdOverride?: number;
 } = {}) => {
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorId = useResolvedVendorId(vendorIdOverride);
   return useQuery({
     queryKey: getPrivilegeMastersQueryKey(vendorId, search, userId),
     queryFn: () => fetchPrivilegeMasters(vendorId!, search, userId),
@@ -121,9 +128,9 @@ export const usePrivilegeMasters = ({
   });
 }
 
-export const useCreateCompanyVendor = () => {
+export const useCreateCompanyVendor = (vendorIdOverride?: number) => {
   const queryClient = useQueryClient();
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorId = useResolvedVendorId(vendorIdOverride);
 
   return useMutation({
     mutationFn: (payload: Parameters<typeof createCompanyVendor>[1]) =>
@@ -144,8 +151,8 @@ export const useCreateCompanyVendor = () => {
   });
 }
 
-export const useInstallerUsersForMaster = () => {
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+export const useInstallerUsersForMaster = (vendorIdOverride?: number) => {
+  const vendorId = useResolvedVendorId(vendorIdOverride);
   return useQuery({
     queryKey: getInstallerUsersMasterQueryKey(vendorId),
     queryFn: () => fetchInstallerUsersForMaster(vendorId!),
@@ -155,9 +162,9 @@ export const useInstallerUsersForMaster = () => {
   })
 }
 
-export const useCreateInstallerUser = () => {
+export const useCreateInstallerUser = (vendorIdOverride?: number) => {
   const queryClient = useQueryClient();
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorId = useResolvedVendorId(vendorIdOverride);
 
   return useMutation({
     mutationFn: createInstallerUser,
@@ -177,8 +184,8 @@ export const useCreateInstallerUser = () => {
   });
 }
 
-export const useMiscellaneousTeams = () => {
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+export const useMiscellaneousTeams = (vendorIdOverride?: number) => {
+  const vendorId = useResolvedVendorId(vendorIdOverride);
   return useQuery({
     queryKey: getMiscellaneousTeamsQueryKey(vendorId),
     queryFn: () => fetchMiscellaneousTeams(vendorId!),
@@ -188,9 +195,9 @@ export const useMiscellaneousTeams = () => {
   })
 }
 
-export const useCreateMiscellaneousTeam = () => {
+export const useCreateMiscellaneousTeam = (vendorIdOverride?: number) => {
   const queryClient = useQueryClient();
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorId = useResolvedVendorId(vendorIdOverride);
 
   return useMutation({
     mutationFn: createMiscellaneousTeam,
@@ -210,8 +217,8 @@ export const useCreateMiscellaneousTeam = () => {
   });
 }
 
-export const useIssueLogTypes = () => {
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+export const useIssueLogTypes = (vendorIdOverride?: number) => {
+  const vendorId = useResolvedVendorId(vendorIdOverride);
   return useQuery({
     queryKey: getIssueLogTypesQueryKey(vendorId),
     queryFn: () => fetchIssueLogTypes(vendorId!),
@@ -221,9 +228,9 @@ export const useIssueLogTypes = () => {
   })
 }
 
-export const useCreateIssueLogType = () => {
+export const useCreateIssueLogType = (vendorIdOverride?: number) => {
   const queryClient = useQueryClient();
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorId = useResolvedVendorId(vendorIdOverride);
 
   return useMutation({
     mutationFn: createIssueLogType,
@@ -243,8 +250,8 @@ export const useCreateIssueLogType = () => {
   });
 }
 
-export const useMiscellaneousTypes = () => {
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+export const useMiscellaneousTypes = (vendorIdOverride?: number) => {
+  const vendorId = useResolvedVendorId(vendorIdOverride);
   return useQuery({
     queryKey: getMiscellaneousTypesQueryKey(vendorId),
     queryFn: () => fetchMiscellaneousTypes(vendorId!),
@@ -254,9 +261,9 @@ export const useMiscellaneousTypes = () => {
   })
 }
 
-export const useCreateMiscellaneousType = () => {
+export const useCreateMiscellaneousType = (vendorIdOverride?: number) => {
   const queryClient = useQueryClient();
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorId = useResolvedVendorId(vendorIdOverride);
 
   return useMutation({
     mutationFn: createMiscellaneousType,
@@ -276,8 +283,8 @@ export const useCreateMiscellaneousType = () => {
   });
 }
 
-export const useSourceTypes = () => {
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+export const useSourceTypes = (vendorIdOverride?: number) => {
+  const vendorId = useResolvedVendorId(vendorIdOverride);
   return useQuery({
     queryKey: getSourceTypesQueryKey(vendorId),
     queryFn: () => fetchSourceTypes(vendorId!),
@@ -287,9 +294,9 @@ export const useSourceTypes = () => {
   })
 }
 
-export const useCreateSourceType = () => {
+export const useCreateSourceType = (vendorIdOverride?: number) => {
   const queryClient = useQueryClient();
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorId = useResolvedVendorId(vendorIdOverride);
 
   return useMutation({
     mutationFn: createSourceType,
@@ -348,8 +355,8 @@ export const useHandleTypes = () => {
   });
 }
 
-export const useSiteTypes = () => {
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id)
+export const useSiteTypes = (vendorIdOverride?: number) => {
+  const vendorId = useResolvedVendorId(vendorIdOverride)
   return useQuery({
     queryKey: getSiteTypesQueryKey(vendorId),
     queryFn: () => fetchSiteTypes(vendorId!),
@@ -357,9 +364,9 @@ export const useSiteTypes = () => {
   })
 }
 
-export const useCreateSiteType = () => {
+export const useCreateSiteType = (vendorIdOverride?: number) => {
   const queryClient = useQueryClient();
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorId = useResolvedVendorId(vendorIdOverride);
 
   return useMutation({
     mutationFn: createSiteType,
@@ -377,8 +384,8 @@ export const useCreateSiteType = () => {
   });
 }
 
-export const useSiteTypesForMaster = () => {
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id)
+export const useSiteTypesForMaster = (vendorIdOverride?: number) => {
+  const vendorId = useResolvedVendorId(vendorIdOverride)
   return useQuery({
     queryKey: getSiteTypesMasterQueryKey(vendorId),
     queryFn: () => fetchSiteTypesForMaster(vendorId!),
@@ -388,9 +395,9 @@ export const useSiteTypesForMaster = () => {
   })
 }
 
-export const useUpdateSiteType = () => {
+export const useUpdateSiteType = (vendorIdOverride?: number) => {
   const queryClient = useQueryClient();
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorId = useResolvedVendorId(vendorIdOverride);
 
   return useMutation({
     mutationFn: ({ id, type }: { id: number; type: string }) =>
@@ -412,9 +419,9 @@ export const useUpdateSiteType = () => {
   });
 }
 
-export const useUpdateSiteTypeStatus = () => {
+export const useUpdateSiteTypeStatus = (vendorIdOverride?: number) => {
   const queryClient = useQueryClient();
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorId = useResolvedVendorId(vendorIdOverride);
 
   return useMutation({
     mutationFn: ({ id, status }: { id: number; status: "active" | "inactive" }) =>
@@ -436,9 +443,9 @@ export const useUpdateSiteTypeStatus = () => {
   });
 }
 
-export const useUpdateSourceType = () => {
+export const useUpdateSourceType = (vendorIdOverride?: number) => {
   const queryClient = useQueryClient();
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorId = useResolvedVendorId(vendorIdOverride);
 
   return useMutation({
     mutationFn: ({ id, type }: { id: number; type: string }) =>
@@ -459,9 +466,9 @@ export const useUpdateSourceType = () => {
   });
 }
 
-export const useUpdateSourceTypeStatus = () => {
+export const useUpdateSourceTypeStatus = (vendorIdOverride?: number) => {
   const queryClient = useQueryClient();
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorId = useResolvedVendorId(vendorIdOverride);
 
   return useMutation({
     mutationFn: ({ id, status }: { id: number; status: "active" | "inactive" }) =>
@@ -482,9 +489,9 @@ export const useUpdateSourceTypeStatus = () => {
   });
 }
 
-export const useUpdateMiscellaneousType = () => {
+export const useUpdateMiscellaneousType = (vendorIdOverride?: number) => {
   const queryClient = useQueryClient();
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorId = useResolvedVendorId(vendorIdOverride);
 
   return useMutation({
     mutationFn: ({ id, name }: { id: number; name: string }) =>
@@ -508,9 +515,9 @@ export const useUpdateMiscellaneousType = () => {
   });
 }
 
-export const useUpdateMiscellaneousTypeStatus = () => {
+export const useUpdateMiscellaneousTypeStatus = (vendorIdOverride?: number) => {
   const queryClient = useQueryClient();
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorId = useResolvedVendorId(vendorIdOverride);
 
   return useMutation({
     mutationFn: ({ id, status }: { id: number; status: "active" | "inactive" }) =>
@@ -532,9 +539,9 @@ export const useUpdateMiscellaneousTypeStatus = () => {
   });
 }
 
-export const useUpdateIssueLogType = () => {
+export const useUpdateIssueLogType = (vendorIdOverride?: number) => {
   const queryClient = useQueryClient();
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorId = useResolvedVendorId(vendorIdOverride);
 
   return useMutation({
     mutationFn: ({ id, name }: { id: number; name: string }) =>
@@ -558,9 +565,9 @@ export const useUpdateIssueLogType = () => {
   });
 }
 
-export const useUpdateIssueLogTypeStatus = () => {
+export const useUpdateIssueLogTypeStatus = (vendorIdOverride?: number) => {
   const queryClient = useQueryClient();
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorId = useResolvedVendorId(vendorIdOverride);
 
   return useMutation({
     mutationFn: ({ id, status }: { id: number; status: "active" | "inactive" }) =>
@@ -582,9 +589,9 @@ export const useUpdateIssueLogTypeStatus = () => {
   });
 }
 
-export const useUpdateMiscellaneousTeam = () => {
+export const useUpdateMiscellaneousTeam = (vendorIdOverride?: number) => {
   const queryClient = useQueryClient();
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorId = useResolvedVendorId(vendorIdOverride);
 
   return useMutation({
     mutationFn: ({ id, name }: { id: number; name: string }) =>
@@ -608,9 +615,9 @@ export const useUpdateMiscellaneousTeam = () => {
   });
 }
 
-export const useUpdateMiscellaneousTeamStatus = () => {
+export const useUpdateMiscellaneousTeamStatus = (vendorIdOverride?: number) => {
   const queryClient = useQueryClient();
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorId = useResolvedVendorId(vendorIdOverride);
 
   return useMutation({
     mutationFn: ({ id, status }: { id: number; status: "active" | "inactive" }) =>
@@ -632,9 +639,9 @@ export const useUpdateMiscellaneousTeamStatus = () => {
   });
 }
 
-export const useUpdateInstallerUser = () => {
+export const useUpdateInstallerUser = (vendorIdOverride?: number) => {
   const queryClient = useQueryClient();
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorId = useResolvedVendorId(vendorIdOverride);
 
   return useMutation({
     mutationFn: ({
@@ -665,9 +672,9 @@ export const useUpdateInstallerUser = () => {
   });
 }
 
-export const useUpdateInstallerUserStatus = () => {
+export const useUpdateInstallerUserStatus = (vendorIdOverride?: number) => {
   const queryClient = useQueryClient();
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorId = useResolvedVendorId(vendorIdOverride);
 
   return useMutation({
     mutationFn: ({ id, status }: { id: number; status: "active" | "inactive" }) =>
@@ -688,9 +695,9 @@ export const useUpdateInstallerUserStatus = () => {
   });
 }
 
-export const useUpdateCompanyVendor = () => {
+export const useUpdateCompanyVendor = (vendorIdOverride?: number) => {
   const queryClient = useQueryClient();
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorId = useResolvedVendorId(vendorIdOverride);
 
   return useMutation({
     mutationFn: ({
@@ -716,9 +723,9 @@ export const useUpdateCompanyVendor = () => {
   });
 }
 
-export const useUpdateCompanyVendorStatus = () => {
+export const useUpdateCompanyVendorStatus = (vendorIdOverride?: number) => {
   const queryClient = useQueryClient();
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorId = useResolvedVendorId(vendorIdOverride);
 
   return useMutation({
     mutationFn: ({
@@ -763,9 +770,9 @@ export const useUserTypes = () => {
   });
 }
 
-export const useCreateUser = () => {
+export const useCreateUser = (vendorIdOverride?: number) => {
   const queryClient = useQueryClient();
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorId = useResolvedVendorId(vendorIdOverride);
 
   return useMutation({
     mutationFn: createUser,
@@ -785,9 +792,9 @@ export const useCreateUser = () => {
   });
 }
 
-export const useUpdateUser = () => {
+export const useUpdateUser = (vendorIdOverride?: number) => {
   const queryClient = useQueryClient();
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorId = useResolvedVendorId(vendorIdOverride);
 
   return useMutation({
     mutationFn: ({ userId, payload }: { userId: number; payload: UpdateUserMasterPayload }) =>
@@ -808,9 +815,9 @@ export const useUpdateUser = () => {
   });
 }
 
-export const useUpdateUserPrivileges = () => {
+export const useUpdateUserPrivileges = (vendorIdOverride?: number) => {
   const queryClient = useQueryClient();
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorId = useResolvedVendorId(vendorIdOverride);
 
   return useMutation({
     mutationFn: ({

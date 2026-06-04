@@ -139,13 +139,19 @@ const getInstallerMasterColumns = ({
   },
 ];
 
-export default function InstallerUserMastersTable() {
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+interface InstallerUserMastersTableProps {
+  vendorIdOverride?: number;
+}
+
+export default function InstallerUserMastersTable({
+  vendorIdOverride,
+}: InstallerUserMastersTableProps) {
+  const vendorId = vendorIdOverride ?? useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
-  const { data, isLoading, isError, error, refetch } = useInstallerUsersForMaster();
-  const createInstallerMutation = useCreateInstallerUser();
-  const updateInstallerMutation = useUpdateInstallerUser();
-  const updateInstallerStatusMutation = useUpdateInstallerUserStatus();
+  const { data, isLoading, isError, error, refetch } = useInstallerUsersForMaster(vendorId);
+  const createInstallerMutation = useCreateInstallerUser(vendorId);
+  const updateInstallerMutation = useUpdateInstallerUser(vendorId);
+  const updateInstallerStatusMutation = useUpdateInstallerUserStatus(vendorId);
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);

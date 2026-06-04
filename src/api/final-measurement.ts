@@ -8,6 +8,8 @@ export interface FinalMeasurementPayload {
   critical_discussion_notes?: string; // optional
   final_measurement_docs: File[]; // accept multiple PDF or image files
   site_photos: File[]; // multiple images
+  final_measurement_doc_instance_ids?: Array<number | null>;
+  site_photo_instance_ids?: Array<number | null>;
 }
 
 export interface AssignToFinalMeasurementPayload {
@@ -103,10 +105,22 @@ export const UploadFinalMeasurement = async (
       formData.append("final_measurement_doc", file); // ✅ multiple files with same field name
     });
   }
+  if (payload.final_measurement_doc_instance_ids) {
+    formData.append(
+      "final_measurement_doc_instance_ids",
+      JSON.stringify(payload.final_measurement_doc_instance_ids),
+    );
+  }
 
   payload.site_photos.forEach((file) => {
     formData.append("site_photos", file);
   });
+  if (payload.site_photo_instance_ids) {
+    formData.append(
+      "site_photo_instance_ids",
+      JSON.stringify(payload.site_photo_instance_ids),
+    );
+  }
 
   const { data } = await apiClient.post(
     `/leads/final-measurement/onboard`,

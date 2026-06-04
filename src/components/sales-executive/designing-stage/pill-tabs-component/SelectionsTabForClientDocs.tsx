@@ -20,6 +20,7 @@ import { toastManager } from "@/components/ui/toast";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -117,6 +118,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const userId = useAppSelector((s) => s.auth.user?.id);
   const rawUserType = useAppSelector((s) => s.auth.user?.user_type.user_type);
   const userType = rawUserType?.toLowerCase() ?? "";
+  const isCustomVendorFlow = useAppSelector(
+    (s) => s.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
+  );
   const customPrivilegeCodes = useAppSelector((s) => s.customPrivileges.codes);
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -136,9 +140,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     vendorId,
     leadId,
   );
-  const chsMappings: any[] = Array.isArray(chsMappingsData?.data)
-    ? chsMappingsData.data
-    : [];
+  const chsMappings: any[] = React.useMemo(
+    () => (Array.isArray(chsMappingsData?.data) ? chsMappingsData.data : []),
+    [chsMappingsData?.data],
+  );
   const {
     data: selectionsData,
     isLoading,
@@ -163,9 +168,13 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const manufacturingDaysByInstance: {
     instance_id: number | null;
     max_days: number | null;
-  }[] = Array.isArray(manufacturingDaysData?.data)
-    ? manufacturingDaysData.data
-    : [];
+  }[] = React.useMemo(
+    () =>
+      Array.isArray(manufacturingDaysData?.data)
+        ? manufacturingDaysData.data
+        : [],
+    [manufacturingDaysData?.data],
+  );
 
   const getManufacturingDaysForInstance = (instanceId: number | null) =>
     manufacturingDaysByInstance.find((d) => d.instance_id === instanceId)
@@ -265,11 +274,13 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const effectiveCanMoveToClientApproval =
     canMoveToClientApproval && !shouldDisableBlockedActions;
 
-  const structureInstances: LeadProductStructureInstance[] = Array.isArray(
-    structureInstancesData?.data,
-  )
-    ? structureInstancesData.data
-    : [];
+  const structureInstances: LeadProductStructureInstance[] = React.useMemo(
+    () =>
+      Array.isArray(structureInstancesData?.data)
+        ? structureInstancesData.data
+        : [],
+    [structureInstancesData?.data],
+  );
 
   const carcassOptions = React.useMemo<ClientDocsSelectionOption[]>(
     () =>
@@ -1250,6 +1261,13 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                               disabled={!effectiveCanUploadProjectFiles}
                             />
                           </FormControl>
+                          {isCustomVendorFlow && (
+                            <FormDescription className="text-xs">
+                              Files are auto-renamed to the `CD...-Document`
+                              format based on client and instance or furniture
+                              type.
+                            </FormDescription>
+                          )}
                           <FormMessage />
                         </FormItem>
                       )}
@@ -1273,6 +1291,13 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                               disabled={!effectiveCanUploadDesignFiles}
                             />
                           </FormControl>
+                          {isCustomVendorFlow && (
+                            <FormDescription className="text-xs">
+                              Files are auto-renamed to the `CD...-Design`
+                              format based on client and instance or furniture
+                              type.
+                            </FormDescription>
+                          )}
                           <FormMessage />
                         </FormItem>
                       )}

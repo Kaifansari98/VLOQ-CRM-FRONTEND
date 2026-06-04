@@ -117,6 +117,48 @@ const formatDisplayDate = (value?: string | Date | null) => {
   }).format(date);
 };
 
+const getInvalidPhoneReason = (value?: string | null) => {
+  const phone = String(value ?? "").trim();
+
+  if (!/^\d{10}$/.test(phone)) {
+    return "Client phone number must contain exactly 10 digits only.";
+  }
+
+  if (!/^[6-9]/.test(phone)) {
+    return "Client phone number must start with 6, 7, 8, or 9.";
+  }
+
+  if (/^(\d)\1{9}$/.test(phone)) {
+    return "Client phone number cannot contain the same digit repeated 10 times.";
+  }
+
+  if (phone === "1234567890" || phone === "9876543210") {
+    return "Client phone number cannot be a sequential number pattern.";
+  }
+
+  if (/^(\d)\1{4}(\d)\2{4}$/.test(phone)) {
+    return "Client phone number cannot follow a repeated block pattern.";
+  }
+
+  if (/^(\d)(\d)\1\2\1\2\1\2\1\2$/.test(phone)) {
+    return "Client phone number cannot follow an alternating digit pattern.";
+  }
+
+  const digitCounts = new Map<string, number>();
+  for (const digit of phone) {
+    digitCounts.set(digit, (digitCounts.get(digit) ?? 0) + 1);
+  }
+  if ([...digitCounts.values()].some((count) => count > 6)) {
+    return "Client phone number contains too many repeating digits.";
+  }
+
+  if (/(\d)\1{3,}$/.test(phone)) {
+    return "Client phone number cannot end with a long repeated digit sequence.";
+  }
+
+  return null;
+};
+
 export default function DesigningStageLead() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -206,6 +248,7 @@ export default function DesigningStageLead() {
       ? null
       : Number(eligibleBookingDaysValue);
   const leadCreatedAt = lead?.created_at ? new Date(lead.created_at) : null;
+  const invalidPhoneReason = getInvalidPhoneReason(lead?.contact_no);
   const hasEligibleBookingWindow =
     typeof eligibleBookingDays === "number" &&
     Number.isFinite(eligibleBookingDays) &&
@@ -224,7 +267,7 @@ export default function DesigningStageLead() {
     isBookingLockedByEligibleDays && bookingEligibleOn
       ? `Booking is locked for ${eligibleBookingDays} full day${eligibleBookingDays === 1 ? "" : "s"} and will unlock on ${formatDisplayDate(bookingEligibleOn)}.`
       : "";
-
+ 
 
 
 
@@ -247,7 +290,8 @@ export default function DesigningStageLead() {
     canMoveToBooking &&
     canPerformMoveToBooking &&
     !isBookingLockedByEligibleDays &&
-    !(isLeadBlocked && !isSuperAdmin);
+    !(isLeadBlocked && !isSuperAdmin) &&
+    !invalidPhoneReason;
 
   useEffect(() => {
     if (isLoading || isChatNotification) return;
@@ -338,6 +382,7 @@ export default function DesigningStageLead() {
     userType === "sales-executive" ? "todo" : "details",
   );
   useChatTabFromUrl(setActiveTab);
+  useChatTabFromUrl(setActiveTab, "meetings");
 
   if (isLoading && !lead) {
     return <p className="p-6">Loading lead details...</p>;
@@ -475,9 +520,9 @@ export default function DesigningStageLead() {
                   </div>
                 }
                 value={moveToBookingTooltip}
-                contentClassName="max-w-80 text-center"
+                contentClassName="max-w-80 text-left"
               />
-            ) : canPerformMoveToBooking ? (
+            ) : (
               <Button
                 size="sm"
                 className="hidden md:block"
@@ -485,17 +530,6 @@ export default function DesigningStageLead() {
               >
                 Move To Booking
               </Button>
-            ) : (
-              <CustomeTooltip
-                truncateValue={
-                  <div className="hidden md:flex items-center opacity-50 cursor-not-allowed px-2">
-                    <ClipboardCheck className="mr-2 h-4 w-4" />
-                    Move To Booking
-                  </div>
-                }
-                value={moveToBookingTooltip}
-                contentClassName="max-w-80 text-center"
-              />
             )}
           </div>
           <Button
@@ -555,7 +589,7 @@ export default function DesigningStageLead() {
                     </div>
                   }
                   value={moveToBookingTooltip}
-                  contentClassName="max-w-80 text-center"
+                  contentClassName="max-w-80 text-left"
                 />
               )}
 

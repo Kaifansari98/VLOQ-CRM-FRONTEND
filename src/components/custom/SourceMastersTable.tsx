@@ -38,12 +38,16 @@ import {
   type SiteMasterRow,
 } from "@/components/utils/column/site-masters-column";
 
-export default function SourceMastersTable() {
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-  const { data, isLoading, isError, error, refetch } = useSourceTypes();
-  const createSourceTypeMutation = useCreateSourceType();
-  const updateSourceTypeMutation = useUpdateSourceType();
-  const updateSourceTypeStatusMutation = useUpdateSourceTypeStatus();
+interface SourceMastersTableProps {
+  vendorIdOverride?: number;
+}
+
+export default function SourceMastersTable({ vendorIdOverride }: SourceMastersTableProps) {
+  const vendorId = vendorIdOverride ?? useAppSelector((state) => state.auth.user?.vendor_id);
+  const { data, isLoading, isError, error, refetch } = useSourceTypes(vendorId);
+  const createSourceTypeMutation = useCreateSourceType(vendorId);
+  const updateSourceTypeMutation = useUpdateSourceType(vendorId);
+  const updateSourceTypeStatusMutation = useUpdateSourceTypeStatus(vendorId);
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);

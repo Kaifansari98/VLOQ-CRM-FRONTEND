@@ -38,7 +38,7 @@ interface LinkedDocGroup {
 
 const getDocKey = (doc: DocItem) => `${doc.type}-${doc.id}`;
 
-const getLinkedRevisionKey = (fileName: string, prefix: "R" | "Q") => {
+const getLinkedRevisionKey = (fileName: string, prefix: "Q" | "D" | "R") => {
   const parsedName = fileName.replace(/\.[^/.]+$/, "");
   const match = parsedName.match(
     new RegExp(`^${prefix}(\\d+)-(.+)-\\d{4}-\\d{2}-\\d{2}$`, "i"),
@@ -48,6 +48,9 @@ const getLinkedRevisionKey = (fileName: string, prefix: "R" | "Q") => {
 
   return `${match[1]}-${match[2].toLowerCase()}`;
 };
+
+const getDesignRevisionKey = (fileName: string) =>
+  getLinkedRevisionKey(fileName, "D") ?? getLinkedRevisionKey(fileName, "R");
 
 const getTimestamp = (value?: string) => (value ? new Date(value).getTime() : 0);
 
@@ -116,9 +119,7 @@ const SelectDocumentModal: React.FC<Props> = ({
     });
 
     sortedDesigns.forEach((doc) => {
-      const key =
-        getLinkedRevisionKey(doc.doc_og_name, "R") ??
-        `design-${doc.id}`;
+      const key = getDesignRevisionKey(doc.doc_og_name) ?? `design-${doc.id}`;
       const existing = grouped.get(key);
       grouped.set(key, {
         key,
@@ -143,7 +144,7 @@ const SelectDocumentModal: React.FC<Props> = ({
     const revisionKey =
       doc.type === "quotation"
         ? getLinkedRevisionKey(doc.doc_og_name, "Q")
-        : getLinkedRevisionKey(doc.doc_og_name, "R");
+        : getDesignRevisionKey(doc.doc_og_name);
 
     setSelectedDocs((prev) => {
       const selectedMap = new Map(prev.map((item) => [getDocKey(item), item]));
@@ -154,7 +155,7 @@ const SelectDocumentModal: React.FC<Props> = ({
         ? [
             ...(doc.type === "quotation"
               ? sortedDesigns.filter(
-                  (item) => getLinkedRevisionKey(item.doc_og_name, "R") === revisionKey,
+                  (item) => getDesignRevisionKey(item.doc_og_name) === revisionKey,
                 )
               : sortedQuotations.filter(
                   (item) => getLinkedRevisionKey(item.doc_og_name, "Q") === revisionKey,
@@ -199,7 +200,7 @@ const SelectDocumentModal: React.FC<Props> = ({
                 Quotation - Design linkage
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                Matching files are linked by revision name like `R1` and `Q1`.
+                Matching files are linked by revision name like `D1` and `Q1`.
                 Selecting one will select its linked pair automatically.
               </p>
             </div>

@@ -14,6 +14,9 @@ export interface User {
     id?: number
     vendor_name?: string
     vendor_code?: string
+    is_crm_enabled?: boolean | null
+    is_custom_doc_nomenclature_enabled?: boolean | null
+    is_this_vendor_is_custom_usertype_only?: boolean | null
     is_year_wise_lead_code_enabled?: boolean | null
     is_client_visit_enabled?: boolean | null
     vendor_report_code?: string | null

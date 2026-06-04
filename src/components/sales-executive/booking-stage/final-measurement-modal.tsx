@@ -21,6 +21,12 @@ import { useFinalMeasurement } from "@/hooks/final-measurement/use-final-measure
 import { useAppSelector } from "@/redux/store";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import {
+  useLeadById,
+  useLeadProductStructureInstances,
+} from "@/hooks/useLeadsQueries";
+import { LeadProductStructureInstance } from "@/api/leads";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface LeadViewModalProps {
   open: boolean;
@@ -31,6 +37,57 @@ interface LeadViewModalProps {
     accountId: number;
   };
 }
+
+const formatFileDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const sanitizeFileSegment = (value: string) =>
+  value
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const getFileExtension = (fileName: string) => {
+  const lastDotIndex = fileName.lastIndexOf(".");
+  return lastDotIndex >= 0 ? fileName.slice(lastDotIndex) : "";
+};
+
+const renameFinalMeasurementFiles = ({
+  files,
+  clientName,
+  targetLabel,
+  startIndex,
+  uploadDate,
+  prefix,
+}: {
+  files: File[];
+  clientName: string;
+  targetLabel: string;
+  startIndex: number;
+  uploadDate: string;
+  prefix: "MD" | "CSP";
+}) => {
+  const safeClientName = sanitizeFileSegment(clientName || "Client");
+  const safeTargetLabel = sanitizeFileSegment(targetLabel || "Furniture Type");
+
+  return files.map(
+    (file, index) =>
+      new File(
+        [file],
+        `${prefix}${startIndex + index}-FM-${safeClientName}-${safeTargetLabel}-${uploadDate}${getFileExtension(
+          file.name,
+        )}`,
+        {
+          type: file.type,
+          lastModified: file.lastModified,
+        },
+      ),
+  );
+};
 
 const documentMimeTypes = [
   "application/pdf",
@@ -47,9 +104,6 @@ const MAX_FINAL_MEASUREMENT_FILES = 20;
 const formSchema = z.object({
   finalMeasurementDocs: z
     .array(z.custom<File>((file) => file instanceof File))
-    .nonempty({
-      message: "At least one Final Measurement Document is required",
-    })
     .refine(
       (files) => files.every((file) => documentMimeTypes.includes(file.type)),
       {
@@ -62,7 +116,6 @@ const formSchema = z.object({
 
   currentSitePhotos: z
     .array(z.instanceof(File))
-    .nonempty({ message: "At least one site photo is required" })
     .refine(
       (files) => files.every((file) => imageMimeTypes.includes(file.type)),
       { message: "Only JPG, JPEG, PNG, or GIF images are allowed" },
@@ -83,6 +136,14 @@ const FinalMeasurementModal = ({
   const router = useRouter();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const isCustomVendorFlowFromAuth = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
+  );
+  const isCustomDocNomenclatureEnabled = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_custom_doc_nomenclature_enabled === true,
+  );
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -93,12 +154,72 @@ const FinalMeasurementModal = ({
   });
 
   const finalMeasurementMutation = useFinalMeasurement();
+  const leadId = data?.id;
+  const { data: leadByIdResponse } = useLeadById(leadId, vendorId, userId);
+  const leadById = leadByIdResponse?.data?.lead;
+  const isCustomVendorFlow =
+    isCustomVendorFlowFromAuth ||
+    leadById?.createdBy?.vendor?.is_this_vendor_is_custom_usertype_only === true ||
+    leadById?.assignedTo?.vendor?.is_this_vendor_is_custom_usertype_only === true;
+  const {
+    data: structureInstancesData,
+    isLoading: isStructureInstancesLoading,
+  } = useLeadProductStructureInstances(leadId ?? 0, vendorId);
+  const structureInstances: LeadProductStructureInstance[] = React.useMemo(
+    () =>
+      Array.isArray(structureInstancesData?.data)
+        ? structureInstancesData.data
+        : [],
+    [structureInstancesData?.data],
+  );
+  const isMultiInstanceUploadFlow =
+    structureInstances.length > 1 &&
+    (isCustomVendorFlow || isCustomDocNomenclatureEnabled);
+  const [instanceUploads, setInstanceUploads] = React.useState<
+    Record<
+      number,
+      { finalMeasurementDocs: File[]; currentSitePhotos: File[] }
+    >
+  >({});
+
+  React.useEffect(() => {
+    if (!isMultiInstanceUploadFlow) {
+      setInstanceUploads({});
+      return;
+    }
+
+    setInstanceUploads((prev) => {
+      const next: Record<
+        number,
+        { finalMeasurementDocs: File[]; currentSitePhotos: File[] }
+      > = {};
+
+      for (const instance of structureInstances) {
+        next[instance.id] = prev[instance.id] ?? {
+          finalMeasurementDocs: [],
+          currentSitePhotos: [],
+        };
+      }
+
+      return next;
+    });
+  }, [isMultiInstanceUploadFlow, structureInstances]);
 
   const resetForm = React.useCallback(() => {
     form.reset({
       finalMeasurementDocs: [],
       currentSitePhotos: [],
       criticalDiscussion: "N/A",
+    });
+    setInstanceUploads((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((key) => {
+        next[Number(key)] = {
+          finalMeasurementDocs: [],
+          currentSitePhotos: [],
+        };
+      });
+      return next;
     });
   }, [form]);
 
@@ -149,6 +270,150 @@ const FinalMeasurementModal = ({
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     if (!data) return;
 
+    const flattenedFinalMeasurementDocs: Array<{
+      file: File;
+      instanceId: number | null;
+    }> = [];
+    const flattenedSitePhotos: Array<{
+      file: File;
+      instanceId: number | null;
+    }> = [];
+
+    if (isMultiInstanceUploadFlow) {
+      for (const instance of structureInstances) {
+        const uploads = instanceUploads[instance.id] ?? {
+          finalMeasurementDocs: [],
+          currentSitePhotos: [],
+        };
+
+        uploads.finalMeasurementDocs.forEach((file) => {
+          flattenedFinalMeasurementDocs.push({
+            file,
+            instanceId: instance.id,
+          });
+        });
+        uploads.currentSitePhotos.forEach((file) => {
+          flattenedSitePhotos.push({
+            file,
+            instanceId: instance.id,
+          });
+        });
+      }
+
+      const missingDocs = structureInstances.filter(
+        (instance) =>
+          !instanceUploads[instance.id] ||
+          instanceUploads[instance.id].finalMeasurementDocs.length === 0,
+      );
+      if (missingDocs.length > 0) {
+        toastManager.add({
+          title: `Please upload Final Measurement Document for ${missingDocs[0].title}.`,
+          type: "error",
+        });
+        return;
+      }
+
+      const missingSitePhotos = structureInstances.filter(
+        (instance) =>
+          !instanceUploads[instance.id] ||
+          instanceUploads[instance.id].currentSitePhotos.length === 0,
+      );
+      if (missingSitePhotos.length > 0) {
+        toastManager.add({
+          title: `Please upload Current Site Photos for ${missingSitePhotos[0].title}.`,
+          type: "error",
+        });
+        return;
+      }
+    } else {
+      values.finalMeasurementDocs.forEach((file) => {
+        flattenedFinalMeasurementDocs.push({ file, instanceId: null });
+      });
+      values.currentSitePhotos.forEach((file) => {
+        flattenedSitePhotos.push({ file, instanceId: null });
+      });
+
+      if (flattenedFinalMeasurementDocs.length === 0) {
+        form.setError("finalMeasurementDocs", {
+          type: "manual",
+          message: "At least one Final Measurement Document is required",
+        });
+        return;
+      }
+
+      if (flattenedSitePhotos.length === 0) {
+        form.setError("currentSitePhotos", {
+          type: "manual",
+          message: "At least one site photo is required",
+        });
+        return;
+      }
+    }
+
+    const clientName =
+      data?.name?.trim() ||
+      leadById?.account?.name?.trim() ||
+      [leadById?.firstname, leadById?.lastname].filter(Boolean).join(" ").trim() ||
+      "Client";
+    const furnitureTypeName =
+      structureInstances[0]?.productType?.type?.trim() ||
+      leadById?.productMappings?.[0]?.productType?.type?.trim() ||
+      "Furniture Type";
+    const singleInstanceTitle =
+      structureInstances.length === 1 ? structureInstances[0]?.title?.trim() : "";
+    const uploadDate = formatFileDate(new Date());
+    let measurementDocumentSequence = 0;
+    let currentSitePhotoSequence = 0;
+
+    const renamedFinalMeasurementDocs = flattenedFinalMeasurementDocs.map(
+      ({ file, instanceId }) => {
+        const instanceTitle = structureInstances.find(
+          (instance) => instance.id === instanceId,
+        )?.title;
+
+        const renamedFile = isCustomDocNomenclatureEnabled
+          ? renameFinalMeasurementFiles({
+              files: [file],
+              clientName,
+              targetLabel:
+                instanceTitle || singleInstanceTitle || furnitureTypeName,
+              startIndex: measurementDocumentSequence,
+              uploadDate,
+              prefix: "MD",
+            })[0]
+          : file;
+
+        if (isCustomDocNomenclatureEnabled) {
+          measurementDocumentSequence += 1;
+        }
+
+        return renamedFile;
+      },
+    );
+
+    const renamedSitePhotos = flattenedSitePhotos.map(({ file, instanceId }) => {
+      const instanceTitle = structureInstances.find(
+        (instance) => instance.id === instanceId,
+      )?.title;
+
+      const renamedFile = isCustomDocNomenclatureEnabled
+        ? renameFinalMeasurementFiles({
+            files: [file],
+            clientName,
+            targetLabel: instanceTitle || singleInstanceTitle || furnitureTypeName,
+            startIndex: currentSitePhotoSequence,
+            uploadDate,
+            prefix: "CSP",
+          })[0]
+        : file;
+
+      if (isCustomDocNomenclatureEnabled) {
+        currentSitePhotoSequence += 1;
+      }
+
+      return renamedFile;
+    });
+
     finalMeasurementMutation.mutate(
       {
         lead_id: data.id,
@@ -156,8 +421,13 @@ const FinalMeasurementModal = ({
         vendor_id: vendorId!,
         created_by: userId!,
         critical_discussion_notes: values.criticalDiscussion,
-        final_measurement_docs: values.finalMeasurementDocs,
-        site_photos: values.currentSitePhotos,
+        final_measurement_docs: renamedFinalMeasurementDocs,
+        site_photos: renamedSitePhotos,
+        final_measurement_doc_instance_ids:
+          flattenedFinalMeasurementDocs.map(({ instanceId }) => instanceId),
+        site_photo_instance_ids: flattenedSitePhotos.map(
+          ({ instanceId }) => instanceId,
+        ),
       },
       {
         onSuccess: () => {
@@ -204,6 +474,26 @@ const FinalMeasurementModal = ({
     );
   };
 
+  const setInstanceFiles = React.useCallback(
+    (
+      instanceId: number,
+      field: "finalMeasurementDocs" | "currentSitePhotos",
+      files: File[],
+    ) => {
+      setInstanceUploads((prev) => ({
+        ...prev,
+        [instanceId]: {
+          ...(prev[instanceId] ?? {
+            finalMeasurementDocs: [],
+            currentSitePhotos: [],
+          }),
+          [field]: files,
+        },
+      }));
+    },
+    [],
+  );
+
   return (
     <BaseModal
       open={open}
@@ -214,61 +504,150 @@ const FinalMeasurementModal = ({
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5  p-5">
-          {/* ---- PDF Upload ---- */}
-          <FormField
-            control={form.control}
-            name="finalMeasurementDocs"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm">
-                  Final Measurement Documents (max 20) *
-                </FormLabel>
-                <FormControl>
-                  <FileUploadField
-                    value={field.value}
-                    onChange={(files) =>
-                      handleFilesChange(
-                        "finalMeasurementDocs",
-                        files,
-                        documentMimeTypes,
-                      )
-                    }
-                    accept={documentAccept}
-                    multiple
-                    maxFiles={MAX_FINAL_MEASUREMENT_FILES}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {(isCustomVendorFlow || isCustomDocNomenclatureEnabled) &&
+          isStructureInstancesLoading ? (
+            <div className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">
+              Loading product instances...
+            </div>
+          ) : isMultiInstanceUploadFlow ? (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-semibold">Instance Documents</h3>
+                <p className="text-xs text-muted-foreground">
+                  Upload Final Measurement documents and Current Site Photos
+                  for the relevant instance before submitting.
+                </p>
+              </div>
 
-          {/* ---- Site Photos ---- */}
-          <FormField
-            control={form.control}
-            name="currentSitePhotos"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm">Current Site Photos *</FormLabel>
-                <FormControl>
-                  <FileUploadField
-                    value={field.value}
-                    onChange={(files) =>
-                      handleFilesChange(
-                        "currentSitePhotos",
-                        files,
-                        imageMimeTypes,
-                      )
-                    }
-                    accept={imageAccept}
-                    multiple
-                    maxFiles={MAX_FINAL_MEASUREMENT_FILES}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+              <div className="grid gap-2">
+                {structureInstances.map((instance) => {
+                  const uploads = instanceUploads[instance.id] ?? {
+                    finalMeasurementDocs: [],
+                    currentSitePhotos: [],
+                  };
+
+                  return (
+                    <Card key={instance.id}>
+                      <CardContent className="space-y-4">
+                        <div>
+                          <h4 className="text-sm font-semibold">
+                            {instance.title}
+                          </h4>
+                          {instance.productType?.type && (
+                            <p className="text-xs text-muted-foreground">
+                              {instance.productType.type}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <FormLabel className="text-sm">
+                              Final Measurement Documents *
+                            </FormLabel>
+                            <FileUploadField
+                              value={uploads.finalMeasurementDocs}
+                              onChange={(files) =>
+                                setInstanceFiles(
+                                  instance.id,
+                                  "finalMeasurementDocs",
+                                  files.filter((file) =>
+                                    documentMimeTypes.includes(file.type),
+                                  ),
+                                )
+                              }
+                              accept={documentAccept}
+                              multiple
+                              maxFiles={MAX_FINAL_MEASUREMENT_FILES}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <FormLabel className="text-sm">
+                              Current Site Photos *
+                            </FormLabel>
+                            <FileUploadField
+                              value={uploads.currentSitePhotos}
+                              onChange={(files) =>
+                                setInstanceFiles(
+                                  instance.id,
+                                  "currentSitePhotos",
+                                  files.filter((file) =>
+                                    imageMimeTypes.includes(file.type),
+                                  ),
+                                )
+                              }
+                              accept={imageAccept}
+                              multiple
+                              maxFiles={MAX_FINAL_MEASUREMENT_FILES}
+                            />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <>
+              <FormField
+                control={form.control}
+                name="finalMeasurementDocs"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm">
+                      Final Measurement Documents (max 20) *
+                    </FormLabel>
+                    <FormControl>
+                      <FileUploadField
+                        value={field.value}
+                        onChange={(files) =>
+                          handleFilesChange(
+                            "finalMeasurementDocs",
+                            files,
+                            documentMimeTypes,
+                          )
+                        }
+                        accept={documentAccept}
+                        multiple
+                        maxFiles={MAX_FINAL_MEASUREMENT_FILES}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="currentSitePhotos"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm">
+                      Current Site Photos *
+                    </FormLabel>
+                    <FormControl>
+                      <FileUploadField
+                        value={field.value}
+                        onChange={(files) =>
+                          handleFilesChange(
+                            "currentSitePhotos",
+                            files,
+                            imageMimeTypes,
+                          )
+                        }
+                        accept={imageAccept}
+                        multiple
+                        maxFiles={MAX_FINAL_MEASUREMENT_FILES}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </>
+          )}
 
           {/* ---- Notes ---- */}
           <FormField

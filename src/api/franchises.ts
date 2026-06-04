@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/apiClient";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -24,7 +24,23 @@ export interface FranchisesResponse {
   data: FranchiseListItem[];
 }
 
+export interface CreateFranchisePayload {
+  vendor_id: number;
+  franchise_name: string;
+  franchise_code?: string | null;
+  contact_number?: string | null;
+  contact_email?: string | null;
+  contact_person?: string | null;
+  is_head_office: boolean;
+  address?: string | null;
+}
+
 // ─── API fn ──────────────────────────────────────────────────────────────────
+
+export const createFranchise = async (payload: CreateFranchisePayload) => {
+  const { data } = await apiClient.post("/franchises/create", payload);
+  return data;
+};
 
 export const fetchFranchisesByVendor = async (
   vendorId: number,
@@ -42,5 +58,16 @@ export const useFranchisesByVendor = (vendorId: number, enabled = true) => {
     enabled: enabled && !!vendorId,
     retry: false,
     refetchOnWindowFocus: false,
+  });
+};
+
+export const useCreateFranchise = (vendorId: number) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createFranchise,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["franchises", "vendor", vendorId] });
+    },
   });
 };

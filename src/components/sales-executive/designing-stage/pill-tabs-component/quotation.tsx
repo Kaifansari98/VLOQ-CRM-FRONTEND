@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useDetails } from "./details-context";
 import { useAppSelector } from "@/redux/store";
-import { Ban, Images, RefreshCcw, ScrollText, ScrollTextIcon } from "lucide-react";
+import { Ban, Images, RefreshCcw, ScrollText } from "lucide-react";
 import {
   useLeadStatus,
   useQuotationDoc,

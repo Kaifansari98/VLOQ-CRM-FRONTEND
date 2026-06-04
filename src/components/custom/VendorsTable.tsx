@@ -19,6 +19,12 @@ import { DataTableColumnHeader } from "@/components/data-table/data-table-column
 import ClearInput from "@/components/origin-input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  ContextMenuItem,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+} from "@/components/ui/context-menu";
 
 // ─── Row type ────────────────────────────────────────────────────────────────
 
@@ -27,10 +33,12 @@ type VendorRow = {
   id: number;
   vendor_name: string;
   vendor_code: string;
+  subdomain_url: string;
   primary_contact_email: string;
   primary_contact_number: string;
   primary_contact_name: string;
   status: string;
+  is_crm_enabled: boolean;
   is_inventory_enabled: boolean;
   is_tracktrace_enabled: boolean;
   createdAt: string;
@@ -207,7 +215,15 @@ const columns: ColumnDef<VendorRow>[] = [
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function VendorsTable() {
+interface VendorsTableProps {
+  onLoginToVendor?: (row: VendorRow) => void;
+  onConfigureVendor?: (row: VendorRow) => void;
+}
+
+export default function VendorsTable({
+  onLoginToVendor,
+  onConfigureVendor,
+}: VendorsTableProps) {
   const router = useRouter();
 
   const [pagination, setPagination] = React.useState<PaginationState>({
@@ -230,10 +246,12 @@ export default function VendorsTable() {
         id: item.id,
         vendor_name: item.vendor_name ?? "",
         vendor_code: item.vendor_code ?? "",
+        subdomain_url: item.subdomain_url ?? "",
         primary_contact_name: item.primary_contact_name ?? "",
         primary_contact_email: item.primary_contact_email ?? "",
         primary_contact_number: item.primary_contact_number ?? "",
         status: item.status ?? "",
+        is_crm_enabled: item.is_crm_enabled !== false,
         is_inventory_enabled: item.is_inventory_enabled === true,
         is_tracktrace_enabled: item.is_tracktrace_enabled === true,
         createdAt: item.createdAt ?? "",
@@ -258,6 +276,14 @@ export default function VendorsTable() {
 
   const handleRowDoubleClick = (row: VendorRow) => {
     router.push(`/dashboard/vendors/${row.id}`);
+  };
+
+  const handleVendorMasterNavigation = (
+    row: VendorRow,
+    path: "/dashboard/masters-management/field-masters" | "/dashboard/masters-management/user-master",
+  ) => {
+    const params = new URLSearchParams({ vendor_id: String(row.id) });
+    router.push(`${path}?${params.toString()}`);
   };
 
   return (
@@ -298,7 +324,45 @@ export default function VendorsTable() {
           </div>
         ) : (
           <div className="select-none">
-            <DataTable table={table} onRowDoubleClick={handleRowDoubleClick} />
+            <DataTable
+              table={table}
+              onRowDoubleClick={handleRowDoubleClick}
+              renderRowContextMenu={(row) => (
+                <>
+                  <ContextMenuItem onClick={() => onConfigureVendor?.(row)}>
+                    Configure Vendor
+                  </ContextMenuItem>
+                  <ContextMenuItem onClick={() => onLoginToVendor?.(row)}>
+                    {`Login to ${row.vendor_name}`}
+                  </ContextMenuItem>
+                  <ContextMenuSub>
+                    <ContextMenuSubTrigger>CRM Masters</ContextMenuSubTrigger>
+                    <ContextMenuSubContent>
+                      <ContextMenuItem
+                        onClick={() =>
+                          handleVendorMasterNavigation(
+                            row,
+                            "/dashboard/masters-management/field-masters",
+                          )
+                        }
+                      >
+                        Field Masters
+                      </ContextMenuItem>
+                      <ContextMenuItem
+                        onClick={() =>
+                          handleVendorMasterNavigation(
+                            row,
+                            "/dashboard/masters-management/user-master",
+                          )
+                        }
+                      >
+                        User Master
+                      </ContextMenuItem>
+                    </ContextMenuSubContent>
+                  </ContextMenuSub>
+                </>
+              )}
+            />
           </div>
         )}
       </CardContent>

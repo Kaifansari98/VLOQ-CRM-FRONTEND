@@ -19,8 +19,12 @@ import IssueLogTypeMastersTable from "@/components/custom/IssueLogTypeMastersTab
 import MiscellaneousTeamMastersTable from "@/components/custom/MiscellaneousTeamMastersTable";
 import InstallerUserMastersTable from "@/components/custom/InstallerUserMastersTable";
 import CompanyVendorMastersTable from "@/components/custom/CompanyVendorMastersTable";
+import { useSearchParams } from "next/navigation";
 
 export default function FieldMastersPage() {
+  const searchParams = useSearchParams();
+  const vendorIdOverride = Number(searchParams.get("vendor_id") || "") || undefined;
+
   return (
     <>
       <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
@@ -67,43 +71,43 @@ export default function FieldMastersPage() {
               id: "site-master",
               title: "Site Master",
               color: "bg-black hover:bg-black",
-              cardContent: <SiteMastersTable />,
+              cardContent: <SiteMastersTable vendorIdOverride={vendorIdOverride} />,
             },
             {
               id: "source-master",
               title: "Source Master",
               color: "bg-black hover:bg-black",
-              cardContent: <SourceMastersTable />,
+              cardContent: <SourceMastersTable vendorIdOverride={vendorIdOverride} />,
             },
             {
               id: "miscellaneous-type-master",
               title: "Miscellaneous Type Master",
               color: "bg-black hover:bg-black",
-              cardContent: <MiscellaneousTypeMastersTable />,
+              cardContent: <MiscellaneousTypeMastersTable vendorIdOverride={vendorIdOverride} />,
             },
             {
               id: "issue-log-type-master",
               title: "Issue Log Type Master",
               color: "bg-black hover:bg-black",
-              cardContent: <IssueLogTypeMastersTable />,
+              cardContent: <IssueLogTypeMastersTable vendorIdOverride={vendorIdOverride} />,
             },
             {
               id: "miscellaneous-team-master",
               title: "Miscellaneous Team Master",
               color: "bg-black hover:bg-black",
-              cardContent: <MiscellaneousTeamMastersTable />,
+              cardContent: <MiscellaneousTeamMastersTable vendorIdOverride={vendorIdOverride} />,
             },
             {
               id: "installer-master",
               title: "Installer Master",
               color: "bg-black hover:bg-black",
-              cardContent: <InstallerUserMastersTable />,
+              cardContent: <InstallerUserMastersTable vendorIdOverride={vendorIdOverride} />,
             },
             {
               id: "company-vendor-master",
               title: "Company Vendor Master",
               color: "bg-black hover:bg-black",
-              cardContent: <CompanyVendorMastersTable />,
+              cardContent: <CompanyVendorMastersTable vendorIdOverride={vendorIdOverride} />,
             },
           ]}
           contentHeightClass="min-h-[240px]"

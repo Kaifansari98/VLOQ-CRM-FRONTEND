@@ -38,13 +38,19 @@ import {
   type SiteMasterRow,
 } from "@/components/utils/column/site-masters-column";
 
-export default function MiscellaneousTeamMastersTable() {
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+interface MiscellaneousTeamMastersTableProps {
+  vendorIdOverride?: number;
+}
+
+export default function MiscellaneousTeamMastersTable({
+  vendorIdOverride,
+}: MiscellaneousTeamMastersTableProps) {
+  const vendorId = vendorIdOverride ?? useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
-  const { data, isLoading, isError, error, refetch } = useMiscellaneousTeams();
-  const createMiscTeamMutation = useCreateMiscellaneousTeam();
-  const updateMiscTeamMutation = useUpdateMiscellaneousTeam();
-  const updateMiscTeamStatusMutation = useUpdateMiscellaneousTeamStatus();
+  const { data, isLoading, isError, error, refetch } = useMiscellaneousTeams(vendorId);
+  const createMiscTeamMutation = useCreateMiscellaneousTeam(vendorId);
+  const updateMiscTeamMutation = useUpdateMiscellaneousTeam(vendorId);
+  const updateMiscTeamStatusMutation = useUpdateMiscellaneousTeamStatus(vendorId);
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);

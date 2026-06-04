@@ -46,6 +46,7 @@ import {
 } from "@/hooks/useApprovalRequests";
 import { useSelfAssignTaskTypes } from "@/hooks/useSelfAssignTaskTypes";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUsers";
 
 function formatLocalDate(date: Date) {
   const year = date.getFullYear();
@@ -126,6 +127,10 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   const isSelfAssignTaskTypeMasterEnabled = useAppSelector(
     (state) =>
       state.auth.user?.vendor?.is_self_assign_task_type_master_enabed !== false,
+  );
+  const isCustomUsertypeOnlyVendor = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
   );
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
@@ -220,6 +225,15 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     leadId,
     userType: loggedInUserType ?? userType,
   });
+  const {
+    data: customSiteReadinessUsersData,
+    isLoading: loadingCustomSiteReadinessUsers,
+    error: customSiteReadinessUsersError,
+  } = useVendorSalesExecutiveUsers(vendorId!, franchiseId ?? undefined, {
+    assigneeUserType: "custom",
+    requiredPrivilegeCode:
+      "installation.site_readiness.checklist_of_site_readiness.update_edit",
+  });
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -295,6 +309,16 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     (u: any) =>
       String(u.user_type?.user_type ?? "").toLowerCase() !== "master-admin",
   );
+  const customSiteReadinessUsers = React.useMemo(
+    () =>
+      (customSiteReadinessUsersData?.data?.sales_executives ?? []).filter(
+        (u: any) =>
+          String(u.user_type?.user_type ?? "").toLowerCase() === "custom",
+      ),
+    [customSiteReadinessUsersData?.data?.sales_executives],
+  );
+  const shouldUseCustomSiteReadinessUsers =
+    isCustomUsertypeOnlyVendor && taskType === "Site Readiness";
 
   const mappedData = isApprovalRequestTask
     ? approvalRequestUsers.map((user) => ({
@@ -305,7 +329,14 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
       ? normalizedUserType === "master-admin"
         ? []
         : [{ id: userId ?? 0, label: loggedInUserName }]
-      : normalizedUserType === "custom"
+      : shouldUseCustomSiteReadinessUsers
+      ? customSiteReadinessUsers.map((u: any) => ({
+          id: u.id,
+          label: u.user_name,
+          disabled: false,
+          tooltip: undefined,
+        }))
+    : normalizedUserType === "custom"
         ? followUpAssignableUsers.map((u: any) => ({
             id: u.id,
             label: u.user_name,
@@ -574,17 +605,30 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     });
   };
 
-  if (loadingUsers || loadingApprovalRequestUsers || loadingSelfAssignTaskTypes) {
+  if (
+    loadingUsers ||
+    loadingApprovalRequestUsers ||
+    loadingSelfAssignTaskTypes ||
+    loadingCustomSiteReadinessUsers
+  ) {
     return (
       <BaseModal open={open} onOpenChange={onOpenChange} title="Loading..." size="lg">
-        <div className="p-6">Loading Site Supervisors...</div>
+        <div className="p-6">Loading users...</div>
       </BaseModal>
     );
   }
 
-  if (error || approvalRequestUsersError || selfAssignTaskTypesError) {
+  if (
+    error ||
+    approvalRequestUsersError ||
+    selfAssignTaskTypesError ||
+    customSiteReadinessUsersError
+  ) {
     const resolvedError =
-      error || approvalRequestUsersError || selfAssignTaskTypesError;
+      error ||
+      approvalRequestUsersError ||
+      selfAssignTaskTypesError ||
+      customSiteReadinessUsersError;
     return (
       <BaseModal open={open} onOpenChange={onOpenChange} title="Error" size="lg">
         <div className="p-6">Error: {resolvedError?.message}</div>

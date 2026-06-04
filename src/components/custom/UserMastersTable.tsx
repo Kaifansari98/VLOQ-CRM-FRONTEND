@@ -486,8 +486,12 @@ const customPrivilegeSections: readonly CustomPrivilegeSection[] = [
   },
 ] as const;
 
-export default function UserMastersTable() {
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+interface UserMastersTableProps {
+  vendorIdOverride?: number;
+}
+
+export default function UserMastersTable({ vendorIdOverride }: UserMastersTableProps) {
+  const vendorId = vendorIdOverride ?? useAppSelector((state) => state.auth.user?.vendor_id);
 
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -526,7 +530,7 @@ export default function UserMastersTable() {
     limit: pagination.pageSize,
     search: globalFilter,
     franchise_id: franchiseFilter,
-  });
+  }, vendorId);
   const { data: franchisesData = [] } = useFranchisesByVendorId(
     vendorId,
     !!vendorId,
@@ -540,10 +544,11 @@ export default function UserMastersTable() {
     enabled: openPrivilegesModal,
     search: deferredPrivilegeSearch,
     userId: editingUserId,
+    vendorIdOverride: vendorId,
   });
-  const createUserMutation = useCreateUser();
-  const updateUserMutation = useUpdateUser();
-  const updateUserPrivilegesMutation = useUpdateUserPrivileges();
+  const createUserMutation = useCreateUser(vendorId);
+  const updateUserMutation = useUpdateUser(vendorId);
+  const updateUserPrivilegesMutation = useUpdateUserPrivileges(vendorId);
 
   const tableData = React.useMemo<UserMasterRow[]>(
     () =>

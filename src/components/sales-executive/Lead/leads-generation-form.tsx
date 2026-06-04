@@ -158,6 +158,10 @@ export default function LeadsGenerationForm({
         | null
         | undefined,
   );
+  const isCustomDocNomenclatureEnabled = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_custom_doc_nomenclature_enabled === true,
+  );
   const userId = useAppSelector((state) => state.auth.user?.id);
   const createdBy = useAppSelector((state: any) => state.auth.user?.id);
   const [mapOpen, setMapOpen] = useState(false);
@@ -167,6 +171,9 @@ export default function LeadsGenerationForm({
   const [structureInstanceDetails, setStructureInstanceDetails] = useState<
     { title: string; desc: string }[]
   >([]);
+  const [instanceSitePhotoUploads, setInstanceSitePhotoUploads] = useState<
+    Record<string, File[]>
+  >({});
   const previousStructuresRef = useRef<string[]>([]);
   const [duplicatePrompt, setDuplicatePrompt] = useState<{
     open: boolean;
@@ -244,6 +251,7 @@ export default function LeadsGenerationForm({
   }
   const allowDuplicatesForWardrobe =
     parentFilter === "Wardrobe" || parentFilter === "Others";
+  const isKitchenStructureSingleSelect = parentFilter === "Kitchen";
 
   useEffect(() => {
     return () => {
@@ -341,6 +349,36 @@ export default function LeadsGenerationForm({
       }),
     [selectedProductStructures, structureInstanceDetails, structureOptions]
   );
+  const isCustomVendorFlow = vendorCustomUserTypeMode === true;
+  const isMultiInstanceSitePhotoUploadFlow =
+    structureQuantityItems.length > 1 &&
+    (isCustomVendorFlow || isCustomDocNomenclatureEnabled);
+
+  useEffect(() => {
+    if (!isMultiInstanceSitePhotoUploadFlow) {
+      setInstanceSitePhotoUploads({});
+      return;
+    }
+
+    setInstanceSitePhotoUploads((prev) => {
+      const next: Record<string, File[]> = {};
+      for (const item of structureQuantityItems) {
+        next[item.key] = prev[item.key] ?? [];
+      }
+      return next;
+    });
+  }, [isMultiInstanceSitePhotoUploadFlow, structureQuantityItems]);
+
+  useEffect(() => {
+    if (!isKitchenStructureSingleSelect) return;
+
+    const currentStructures = form.getValues("product_structures") || [];
+    if (currentStructures.length <= 1) return;
+
+    form.setValue("product_structures", [currentStructures[0]], {
+      shouldValidate: true,
+    });
+  }, [form, isKitchenStructureSingleSelect]);
 
   useEffect(() => {
     if (!hasSelectedFurnitureType) return;
@@ -592,6 +630,47 @@ export default function LeadsGenerationForm({
     setDuplicatePrompt({ open: false });
   };
 
+  const buildRenamedSitePhotoFiles = useCallback(() => {
+    const clientName = `${form.getValues("firstname") || ""} ${
+      form.getValues("lastname") || ""
+    }`.trim();
+    const furnitureTypeName =
+      productTypes?.data?.find(
+        (type: any) => String(type.id) === selectedProductTypes?.[0],
+      )?.type || "Furniture Type";
+    const uploadDate = formatFileDate(new Date());
+
+    if (isMultiInstanceSitePhotoUploadFlow) {
+      return structureQuantityItems.flatMap((item) =>
+        renameLeadSitePhotoFiles({
+          files: instanceSitePhotoUploads[item.key] ?? [],
+          clientName,
+          targetLabel: item.title || item.label,
+          uploadDate,
+        }),
+      );
+    }
+
+    return isCustomVendorFlow || isCustomDocNomenclatureEnabled
+      ? renameLeadSitePhotoFiles({
+          files,
+          clientName,
+          targetLabel: furnitureTypeName,
+          uploadDate,
+        })
+      : files;
+  }, [
+    files,
+    form,
+    instanceSitePhotoUploads,
+    isCustomDocNomenclatureEnabled,
+    isCustomVendorFlow,
+    isMultiInstanceSitePhotoUploadFlow,
+    productTypes?.data,
+    selectedProductTypes,
+    structureQuantityItems,
+  ]);
+
   function onSubmit(values: FormValues) {
     if (similarLeadWarning) {
       toastManager.add({ title: similarLeadErrorMessage, type: "error" });
@@ -679,7 +758,7 @@ export default function LeadsGenerationForm({
     }
 
     createLeadMutation.mutate(
-      { payload, files },
+      { payload, files: buildRenamedSitePhotoFiles() },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({
@@ -766,7 +845,7 @@ export default function LeadsGenerationForm({
       is_draft: true,
     };
 
-    saveDraftMutation.mutate({ payload, files });
+    saveDraftMutation.mutate({ payload, files: buildRenamedSitePhotoFiles() });
   }
 
   return (
@@ -1179,6 +1258,8 @@ export default function LeadsGenerationForm({
                 showMaxStructureTooltip && hasSelectedFurnitureType;
               const tooltipMessage = !hasSelectedFurnitureType
                 ? "Select a furniture type first."
+                : isKitchenStructureSingleSelect && shouldShowMaxTooltip
+                ? "Kitchen allows only 1 furniture structure."
                 : shouldShowMaxTooltip
                   ? "Maximum limit is 10 per item."
                   : "";
@@ -1205,9 +1286,25 @@ export default function LeadsGenerationForm({
                             disabled={
                               isStructuresLoading || !hasSelectedFurnitureType
                             }
+                            maxSelected={
+                              isKitchenStructureSingleSelect ? 1 : undefined
+                            }
                             hidePlaceholderWhenSelected
                             showSelectedOptionsInDropdown
                             allowDuplicateSelections={allowDuplicatesForWardrobe}
+                            onMaxSelected={() => {
+                              if (!isKitchenStructureSingleSelect) return;
+                              setShowMaxStructureTooltip(true);
+                              if (maxStructureTooltipTimerRef.current) {
+                                window.clearTimeout(
+                                  maxStructureTooltipTimerRef.current
+                                );
+                              }
+                              maxStructureTooltipTimerRef.current =
+                                window.setTimeout(() => {
+                                  setShowMaxStructureTooltip(false);
+                                }, 1500);
+                            }}
                             maxSelectedPerOption={10}
                             onMaxSelectedPerOption={() => {
                               setShowMaxStructureTooltip(true);
@@ -1338,13 +1435,48 @@ export default function LeadsGenerationForm({
             <FormItem>
               <FormLabel className="text-sm">Site Photos</FormLabel>
               <FormControl>
-                <FileUploadField
+                {isMultiInstanceSitePhotoUploadFlow ? (
+                  <div className="space-y-4">
+                    <div className="text-xs text-muted-foreground border-b pb-4">
+                      Upload site photos for each selected instance.
+                    </div>
+                    <div className="grid gap-2">
+                      {structureQuantityItems.map((item) => (
+                        <div key={item.key}>
+                          <div className="space-y-2">
+                            <div>
+                              <h4 className="text-sm font-semibold">
+                                {item.title || item.label}
+                              </h4>
+                              {item.desc ? (
+                                <p className="text-xs text-muted-foreground">
+                                  {item.desc}
+                                </p>
+                              ) : null}
+                            </div>
+                            <FileUploadField
+                              value={instanceSitePhotoUploads[item.key] ?? []}
+                              onChange={(nextFiles) =>
+                                setInstanceSitePhotoUploads((prev) => ({
+                                  ...prev,
+                                  [item.key]: nextFiles,
+                                }))
+                              }
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <FileUploadField
                   value={files}
                   onChange={setFiles}
                   multiple={true}
                   maxFiles={40}
                   maxSizeMB={400}
                 />
+                )}
               </FormControl>
               <FormDescription className="text-xs">
                 Upload photos or documents.
