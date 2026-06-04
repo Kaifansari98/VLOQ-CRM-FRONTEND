@@ -341,7 +341,12 @@ export function mapTaskTableFiltersToPayload(filters: ColumnFiltersState) {
 
     switch (id) {
       case "dueDate":
-        if (value === "today" || value === "upcoming" || value === "overdue") {
+        if (
+          value === "today" ||
+          value === "upcoming" ||
+          value === "overdue" ||
+          value === "completed"
+        ) {
           payload.due_filter = value;
         }
         // ✅ HANDLE OBJECT FORMAT (from custom date picker)

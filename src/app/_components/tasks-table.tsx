@@ -428,7 +428,8 @@ const MyTaskTable = () => {
         count:
           (franchiseCountQueries[index]?.data?.summary?.today ?? 0) +
           (franchiseCountQueries[index]?.data?.summary?.upcoming ?? 0) +
-          (franchiseCountQueries[index]?.data?.summary?.overdue ?? 0),
+          (franchiseCountQueries[index]?.data?.summary?.overdue ?? 0) +
+          (franchiseCountQueries[index]?.data?.summary?.completed ?? 0),
         isLoading: franchiseCountQueries[index]?.isLoading,
       })),
     [franchiseCountQueries, franchiseOptions],
@@ -727,12 +728,14 @@ const MyTaskTable = () => {
   const myTaskTotal =
     (vendorUserData?.summary?.overdue ?? 0) +
     (vendorUserData?.summary?.today ?? 0) +
-    (vendorUserData?.summary?.upcoming ?? 0);
+    (vendorUserData?.summary?.upcoming ?? 0) +
+    (vendorUserData?.summary?.completed ?? 0);
 
   const overallTaskTotal = vendorAllData?.summary
     ? (vendorAllData?.summary?.overdue ?? 0) +
       (vendorAllData?.summary?.today ?? 0) +
-      (vendorAllData?.summary?.upcoming ?? 0)
+      (vendorAllData?.summary?.upcoming ?? 0) +
+      (vendorAllData?.summary?.completed ?? 0)
     : 0;
 
   const DueDateTabs = () => {
@@ -771,7 +774,7 @@ const MyTaskTable = () => {
           {
             value: "upcoming",
             label: "Upcoming",
-            dotColor: "green",
+            dotColor: "orange",
             count: summary?.upcoming ?? 0,
           },
           {
@@ -779,6 +782,12 @@ const MyTaskTable = () => {
             label: "Overdue",
             dotColor: "red",
             count: summary?.overdue ?? 0,
+          },
+          {
+            value: "completed",
+            label: "Completed",
+            dotColor: "#16a34a",
+            count: summary?.completed ?? 0,
           },
         ]}
       />
@@ -795,11 +804,14 @@ const MyTaskTable = () => {
   const dueDateFilterLabel =
     (table.getColumn("dueDate")?.getFilterValue() as string) || "today";
   const isOverallView = viewScope === "overall";
+  const isCompletedTabActive = dueDateFilterLabel === "completed";
   const headerDescription = (() => {
     const scopeText = isOverallView ? "Your teams" : "Your";
     if (dueDateFilterLabel === "upcoming")
       return `${scopeText} upcoming tasks.`;
     if (dueDateFilterLabel === "overdue") return `${scopeText} overdue tasks.`;
+    if (dueDateFilterLabel === "completed")
+      return `${scopeText} completed tasks.`;
     return `${scopeText} active tasks for the day.`;
   })();
 
@@ -814,6 +826,7 @@ const MyTaskTable = () => {
   };
 
   const isTodayTabActive = dueDateFilterLabel === "today";
+  const showDueDateRangeFilter = !isTodayTabActive && !isCompletedTabActive;
 
   return (
     <>
@@ -837,7 +850,7 @@ const MyTaskTable = () => {
         {/* ================= TABLE ================= */}
         <DataTable
           table={table}
-          onRowDoubleClick={handleRowDoubleClick}
+          onRowDoubleClick={isCompletedTabActive ? undefined : handleRowDoubleClick}
           className="pt-3 px-4"
         >
           {/* ================= MOBILE LAYOUT ================= */}
@@ -863,7 +876,7 @@ const MyTaskTable = () => {
                 </>
               )}
 
-              {!isTodayTabActive && (
+              {showDueDateRangeFilter && (
                 <DataTableDateFilter
                   column={table.getColumn("dueDate")!}
                   title="DueDate"
@@ -920,7 +933,7 @@ const MyTaskTable = () => {
                 className="h-8 w-64"
               />
 
-              {!isTodayTabActive && (
+              {showDueDateRangeFilter && (
                 <DataTableDateFilter
                   column={table.getColumn("dueDate")!}
                   title="DueDate"

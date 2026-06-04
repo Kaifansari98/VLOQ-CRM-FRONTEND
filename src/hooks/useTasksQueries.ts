@@ -86,7 +86,7 @@ export interface TaskFilterPayload {
   due_date?: string;
 
   // ✅ NEW
-  due_filter?: "today" | "upcoming" | "overdue";
+  due_filter?: "today" | "upcoming" | "overdue" | "completed";
 
   // ✅ DATE RANGE - ADD THIS
   date_range?: {
@@ -122,6 +122,7 @@ export interface VendorUserTasksApiResponse {
     today: number;
     upcoming: number;
     overdue: number;
+    completed: number;
   };
 
   data: VendorUserTask[];
