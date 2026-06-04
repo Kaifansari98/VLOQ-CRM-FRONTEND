@@ -22,9 +22,6 @@ import {
   Clock,
   EllipsisVertical,
   HouseIcon,
-  PanelsTopLeftIcon,
-  BoxIcon,
-  UsersRoundIcon,
   CircleArrowOutUpRight,
   UserPlus,
   MessageSquare,
@@ -432,19 +429,41 @@ export default function LeadDetails() {
                 </DropdownMenuItem>
               )}
 
-              {canEdit && (
-                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                  <SquarePen className=" h-4 w-4" />
-                  Edit
-                </DropdownMenuItem>
-              )}
+              {canEdit &&
+                (isLeadBlocked ? (
+                  <CustomeTooltip
+                    value={blockedAtTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <SquarePen className="h-4 w-4" />
+                        Edit
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                    <SquarePen className="h-4 w-4" />
+                    Edit
+                  </DropdownMenuItem>
+                ))}
 
-              {canReassign && (
-                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                  <Users className="h-4 w-4" />
-                  Reassign Lead
-                </DropdownMenuItem>
-              )}
+              {canReassign &&
+                (isLeadBlocked ? (
+                  <CustomeTooltip
+                    value={blockedAtTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <Users className="h-4 w-4" />
+                        Reassign Lead
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                    <Users className="h-4 w-4" />
+                    Reassign Lead
+                  </DropdownMenuItem>
+                ))}
 
               {isSuperAdmin && (
                 <CustomeTooltip
@@ -467,58 +486,74 @@ export default function LeadDetails() {
                 />
               )}
 
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger className="flex items-center gap-2">
-                  <CircleArrowOutUpRight className="h-4 w-4" />
-                  <span>Lead Status</span>
-                </DropdownMenuSubTrigger>
+              {isLeadBlocked ? (
+                <CustomeTooltip
+                  value={blockedAtTooltip}
+                  truncateValue={
+                    <DropdownMenuItem disabled>
+                      <CircleArrowOutUpRight className="h-4 w-4" />
+                      Lead Status
+                    </DropdownMenuItem>
+                  }
+                />
+              ) : (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="flex items-center gap-2">
+                    <CircleArrowOutUpRight className="h-4 w-4" />
+                    <span>Lead Status</span>
+                  </DropdownMenuSubTrigger>
 
-                {!uiDisabled && (
-                  <DropdownMenuSubContent>
-                    {canMarkOnHold && (
-                      <DropdownMenuItem
-                        onSelect={() => {
-                          setActivityType("onHold");
-                          setActivityModalOpen(true);
-                        }}
-                      >
-                        <Clock className="h-4 w-4 mr-2" />
-                        Mark On Hold
-                      </DropdownMenuItem>
-                    )}
+                  {!uiDisabled && (
+                    <DropdownMenuSubContent>
+                      {canMarkOnHold && (
+                        <DropdownMenuItem
+                          onSelect={() => {
+                            setActivityType("onHold");
+                            setActivityModalOpen(true);
+                          }}
+                        >
+                          <Clock className="h-4 w-4 mr-2" />
+                          Mark On Hold
+                        </DropdownMenuItem>
+                      )}
 
-                    {canMarkAsLost && (
-                      <DropdownMenuItem
-                        onSelect={() => {
-                          setActivityType(
-                            shouldDirectlyMarkLost ? "lost" : "lostApproval",
-                          );
-                          setActivityModalOpen(true);
-                        }}
-                      >
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Mark As Lost
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuSubContent>
-                )}
-              </DropdownMenuSub>
-
+                      {canMarkAsLost && (
+                        <DropdownMenuItem
+                          onSelect={() => {
+                            setActivityType(
+                              shouldDirectlyMarkLost
+                                ? "lost"
+                                : "lostApproval"
+                            );
+                            setActivityModalOpen(true);
+                          }}
+                        >
+                          <XCircle className="h-4 w-4 mr-2" />
+                          Mark As Lost
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuSubContent>
+                  )}
+                </DropdownMenuSub>
+              )}
               {canDelete && (
                 <>
                   <DropdownMenuSeparator />
-                  {uiDisabled ? (
-                    <CustomeTooltip
-                      truncateValue={
-                        <DropdownMenuItem disabled>Delete</DropdownMenuItem>
-                      }
-                      value="Please wait while the lead loads."
-                    />
-                  ) : (
-                    <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
-                      Delete
-                    </DropdownMenuItem>
-                  )}
+                  {canDelete &&
+                    (isLeadBlocked ? (
+                      <CustomeTooltip
+                        value={blockedAtTooltip}
+                        truncateValue={
+                          <DropdownMenuItem disabled>
+                            Delete
+                          </DropdownMenuItem>
+                        }
+                      />
+                    ) : (
+                      <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
+                        Delete
+                      </DropdownMenuItem>
+                    ))}
                 </>
               )}
             </DropdownMenuContent>

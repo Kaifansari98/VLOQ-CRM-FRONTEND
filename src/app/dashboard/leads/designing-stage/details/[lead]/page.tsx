@@ -234,6 +234,7 @@ export default function DesigningStageLead() {
   const {
     isLeadBlocked,
     blockedTooltip,
+    shouldDisableBlockedActions,
     isPending: isBlockActionPending,
   } = useLeadAccessControl({
     leadId: leadIdNum,
@@ -528,7 +529,19 @@ export default function DesigningStageLead() {
                 Assign Task
               </DropdownMenuItem>
               {/* Move to Booking */}
-              {canOpenBookingModal ? (
+              {shouldDisableBlockedActions ? (
+                // Lead block handling added for DropdownMenu action
+                <CustomeTooltip
+                  value={blockedTooltip}
+                  truncateValue={
+                    <DropdownMenuItem disabled>
+                      <ClipboardCheck className="h-4 w-4" />
+                      Move To Booking
+                    </DropdownMenuItem>
+                  }
+                  contentClassName="max-w-80 text-center"
+                />
+              ) : canOpenBookingModal ? (
                 <DropdownMenuItem onClick={() => setBookingOpenLead(true)}>
                   <ClipboardCheck className="h-4 w-4" />
                   Move To Booking
@@ -548,38 +561,51 @@ export default function DesigningStageLead() {
 
               {/* Lead Status submenu */}
               {canSeeLeadStatusMenu && (
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
-                    <CircleArrowOutUpRight className="mr-2 h-4 w-4" />
-                    Lead Status
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent>
-                    {canMarkOnHold && (
-                      <DropdownMenuItem
-                        onSelect={() => {
-                          setActivityType("onHold");
-                          setActivityModalOpen(true);
-                        }}
-                      >
-                        <Clock className="h-4 w-4" />
-                        Mark On Hold
+                // Lead block handling added to prevent submenu opening
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <CircleArrowOutUpRight className="h-4 w-4" />
+                        Lead Status
                       </DropdownMenuItem>
-                    )}
-                    {canMarkAsLost && (
-                      <DropdownMenuItem
-                        onSelect={() => {
-                          setActivityType(
-                            shouldDirectlyMarkLost ? "lost" : "lostApproval",
-                          );
-                          setActivityModalOpen(true);
-                        }}
-                      >
-                        <XCircle className="h-4 w-4" />
-                        Mark As Lost
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <CircleArrowOutUpRight className="mr-2 h-4 w-4" />
+                      Lead Status
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      {canMarkOnHold && (
+                        <DropdownMenuItem
+                          onSelect={() => {
+                            setActivityType("onHold");
+                            setActivityModalOpen(true);
+                          }}
+                        >
+                          <Clock className="h-4 w-4" />
+                          Mark On Hold
+                        </DropdownMenuItem>
+                      )}
+                      {canMarkAsLost && (
+                        <DropdownMenuItem
+                          onSelect={() => {
+                            setActivityType(
+                              shouldDirectlyMarkLost ? "lost" : "lostApproval",
+                            );
+                            setActivityModalOpen(true);
+                          }}
+                        >
+                          <XCircle className="h-4 w-4" />
+                          Mark As Lost
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                )
               )}
 
 
@@ -602,28 +628,67 @@ export default function DesigningStageLead() {
                 </DropdownMenuItem>
               )}
               {canReassign && (
-                <DropdownMenuItem onSelect={() => setAssignOpenLead(true)}>
-                  <Users className="h-4 w-4" />
-                  Reassign Lead
-                </DropdownMenuItem>
+                // Lead block handling added for DropdownMenu action
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <Users className="h-4 w-4" />
+                        Reassign Lead
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onSelect={() => setAssignOpenLead(true)}>
+                    <Users className="h-4 w-4" />
+                    Reassign Lead
+                  </DropdownMenuItem>
+                )
               )}
 
               {/* Edit Lead */}
 
               {canEdit && (
-                <DropdownMenuItem onSelect={() => setOpenEditModal(true)}>
-                  <SquarePen className="h-4 w-4" />
-                  Edit Lead
-                </DropdownMenuItem>
+                // Lead block handling added for DropdownMenu action
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <SquarePen className="h-4 w-4" />
+                        Edit Lead
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onSelect={() => setOpenEditModal(true)}>
+                    <SquarePen className="h-4 w-4" />
+                    Edit Lead
+                  </DropdownMenuItem>
+                )
               )}
 
               {canDelete && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
-                    <XCircle className="h-4 w-4 text-red-500" />
-                    Delete Lead
-                  </DropdownMenuItem>
+                  {/* Lead block handling added for DropdownMenu action */}
+                  {shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <XCircle className="h-4 w-4 text-red-500" />
+                          Delete Lead
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
+                      <XCircle className="h-4 w-4 text-red-500" />
+                      Delete Lead
+                    </DropdownMenuItem>
+                  )}
                 </>
               )}
             </DropdownMenuContent>

@@ -20,6 +20,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import CurrencyInput from "../custom/CurrencyInput";
 import { formatCurrencyINR } from "@/utils/formatCurrency";
 import { Label } from "../ui/label";
+import CustomeTooltip from "@/components/custom-tooltip";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -33,9 +35,9 @@ interface ProjectFinanceSummaryProps {
 
 type FormValues = {
   amount: number;
-  payment_date: string; // ISO string from your CustomeDatePicker
+  payment_date: string;
   payment_text: string;
-  payment_file: File[]; // we’ll take only [0] on submit
+  payment_file: File[];
 };
 
 export default function ProjectFinanceSummary({
@@ -44,8 +46,14 @@ export default function ProjectFinanceSummary({
 }: ProjectFinanceSummaryProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((s) => s.auth.user?.id) || 0;
+  const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
 
-  // 🔹 Fetch finance info (also used to refetch after successful add)
+  // ✅ Lead block access control
+  const { blockedTooltip, shouldDisableBlockedActions } = useLeadAccessControl({
+    leadId,
+    userType,
+  });
+
   const { data, isLoading, refetch } = usePaymentLogs(leadId, vendorId);
 
   const projectFinance = data?.project_finance ?? {
@@ -56,7 +64,6 @@ export default function ProjectFinanceSummary({
 
   const mrpValue = projectFinance.mrp_value ?? 0;
 
-  // 🔹 Build Zod schema dynamically using current pending amount
   const schema = useMemo(
     () =>
       z.object({
@@ -65,13 +72,11 @@ export default function ProjectFinanceSummary({
           .positive("Amount must be greater than 0")
           .max(
             projectFinance.pending_amount,
-            `Amount cannot exceed pending amount (₹${projectFinance.pending_amount.toLocaleString()})`
+            `Amount cannot exceed pending amount (₹${projectFinance.pending_amount.toLocaleString()})`,
           ),
         payment_date: z
           .string({ message: "Payment date is required" })
           .refine((val) => {
-            // disallow future dates
-            // Your picker returns a string; treat it as local date or ISO.
             const d = new Date(val);
             if (isNaN(d.getTime())) return false;
             const now = new Date();
@@ -81,7 +86,6 @@ export default function ProjectFinanceSummary({
           .string({ message: "Description is required" })
           .trim()
           .min(1, "Description is required"),
-        // Optional file; if present must be image and single (UI already enforces single)
         payment_file: z
           .array(z.instanceof(File))
           .max(1, "Only one file allowed")
@@ -89,10 +93,10 @@ export default function ProjectFinanceSummary({
             (files) =>
               files.length === 0 ||
               files.every((f) => /image\/(png|jpe?g)/i.test(f.type)),
-            "Only image files are allowed (JPG/PNG)"
+            "Only image files are allowed (JPG/PNG)",
           ),
       }),
-    [projectFinance.pending_amount]
+    [projectFinance.pending_amount],
   );
 
   const {
@@ -119,7 +123,7 @@ export default function ProjectFinanceSummary({
         lead_id: leadId,
         account_id: accountId,
         vendor_id: vendorId,
-        client_id: 1, // as requested
+        client_id: 1,
         created_by: userId,
         amount: values.amount,
         payment_text: values.payment_text,
@@ -130,12 +134,12 @@ export default function ProjectFinanceSummary({
         onSuccess: () => {
           toastManager.add({ title: "Payment added successfully!", type: "success" });
           reset();
-          refetch(); // refresh finance after adding payment
+          refetch();
         },
         onError: () => {
           toastManager.add({ title: "Failed to add payment", type: "error" });
         },
-      }
+      },
     );
   };
 
@@ -155,26 +159,20 @@ export default function ProjectFinanceSummary({
       variants={itemVariants}
       className="h-fit w-full rounded-lg bg-card flex flex-col gap-4 overflow-y-auto"
     >
-      {/* 🔹 Project Finance Summary */}
-      {/* 🔹 Project Finance Summary */}
-      <Card className="p-4 w-full  shadow-sm text-center">
+      {/* ── Project Finance Summary ──────────────────────────────────────────── */}
+      <Card className="p-4 w-full shadow-sm text-center">
         <h2 className="text-lg font-semibold mb-4">Project Finance Summary</h2>
         <div className="grid grid-cols-4 gap-4">
-          {/* ✅ Total Project */}
           <div>
             <p className="text-muted-foreground text-sm">Total Project</p>
             <p className="font-bold text-lg">
               {formatCurrencyINR(projectFinance.total_project_amount)}
             </p>
           </div>
-
-          {/* ✅ MRP Value */}
           <div>
             <p className="text-muted-foreground text-sm">MRP Value</p>
             <p className="font-bold text-lg">{formatCurrencyINR(mrpValue)}</p>
           </div>
-
-          {/* ✅ Booking Amount (only if greater than 0) */}
           {projectFinance.booking_amount > 0 && (
             <div>
               <p className="text-muted-foreground text-sm">Booking Amount</p>
@@ -183,8 +181,6 @@ export default function ProjectFinanceSummary({
               </p>
             </div>
           )}
-
-          {/* ✅ Pending Amount */}
           <div>
             <p className="text-muted-foreground text-sm">Pending Amount</p>
             <p className="font-bold text-lg text-red-500">
@@ -194,42 +190,80 @@ export default function ProjectFinanceSummary({
         </div>
       </Card>
 
-      {/* 🔹 Add Additional Payment Form */}
+      {/* ── Add Additional Payment Form ───────────────────────────────────────── */}
       <Card className="p-4 shadow-sm">
         <h3 className="text-md font-semibold mb-3">Add Additional Payment</h3>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {/* Amount + Date */}
+        <form
+          onSubmit={
+            shouldDisableBlockedActions
+              ? (e) => e.preventDefault()
+              : handleSubmit(onSubmit)
+          }
+          className="space-y-4"
+        >
+          {/* ✅ Blocked notice banner */}
+          {shouldDisableBlockedActions && (
+            <div className="text-xs text-muted-foreground bg-destructive/10 border border-destructive/20 rounded-lg px-4 py-2">
+              {blockedTooltip}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Payment Amount */}
             <div>
               <Label className="mb-2">Payment Amount</Label>
-              <CurrencyInput
-                value={watch("amount")}
-                onChange={(val) =>
-                  setValue("amount", val ?? 0, {
-                    shouldValidate: true,
-                    shouldDirty: true,
-                  })
+              {/* ✅ Tooltip on amount input when blocked */}
+              <CustomeTooltip
+                value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                truncateValue={
+                  <span className="block">
+                    <CurrencyInput
+                      value={watch("amount")}
+                      onChange={(val) =>
+                        setValue("amount", val ?? 0, {
+                          shouldValidate: true,
+                          shouldDirty: true,
+                        })
+                      }
+                      placeholder="Enter payment amount"
+                      disabled={shouldDisableBlockedActions}
+                    />
+                  </span>
                 }
-                placeholder="Enter payment amount"
               />
               {errors.amount && (
-                <p className="text-xs text-red-500 mt-1">
-                  {errors.amount.message}
-                </p>
+                <p className="text-xs text-red-500 mt-1">{errors.amount.message}</p>
               )}
             </div>
 
+            {/* Payment Date */}
             <div>
               <Label className="mb-2">Payment Date</Label>
-              <CustomeDatePicker
-                value={watch("payment_date")}
-                onChange={(value?: string) =>
-                  setValue("payment_date", value ?? "", {
-                    shouldValidate: true,
-                  })
+              {/* ✅ Tooltip on date picker when blocked */}
+              <CustomeTooltip
+                value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                truncateValue={
+                  <span className="block">
+                    <div
+                      className={
+                        shouldDisableBlockedActions
+                          ? "opacity-50 pointer-events-none"
+                          : ""
+                      }
+                    >
+                      <CustomeDatePicker
+                        value={watch("payment_date")}
+                        onChange={(value?: string) =>
+                          setValue("payment_date", value ?? "", {
+                            shouldValidate: true,
+                          })
+                        }
+                        restriction="pastOnly"
+                      />
+                    </div>
+                  </span>
                 }
-                restriction="pastOnly"
               />
               {errors.payment_date && (
                 <p className="text-xs text-red-500 mt-1">
@@ -239,16 +273,25 @@ export default function ProjectFinanceSummary({
             </div>
           </div>
 
-          {/* Payment File (optional) */}
+          {/* Payment File */}
           <div>
             <Label className="mb-2">Payment Receipt (optional)</Label>
-            <FileUploadField
-              value={watch("payment_file")}
-              onChange={(files) =>
-                setValue("payment_file", files, { shouldValidate: true })
+            {/* ✅ Tooltip on file upload when blocked */}
+            <CustomeTooltip
+              value={shouldDisableBlockedActions ? blockedTooltip : ""}
+              truncateValue={
+                <span className="block">
+                  <FileUploadField
+                    value={watch("payment_file")}
+                    onChange={(files) =>
+                      setValue("payment_file", files, { shouldValidate: true })
+                    }
+                    accept=".jpg,.jpeg,.png"
+                    multiple={false}
+                    disabled={shouldDisableBlockedActions}
+                  />
+                </span>
               }
-              accept=".jpg,.jpeg,.png"
-              multiple={false}
             />
             {errors.payment_file && (
               <p className="text-xs text-red-500 mt-1">
@@ -260,12 +303,21 @@ export default function ProjectFinanceSummary({
           {/* Payment Text */}
           <div>
             <Label className="mb-2">Payment Description</Label>
-            <TextAreaInput
-              value={watch("payment_text")}
-              onChange={(val) =>
-                setValue("payment_text", val, { shouldValidate: true })
+            {/* ✅ Tooltip on textarea when blocked */}
+            <CustomeTooltip
+              value={shouldDisableBlockedActions ? blockedTooltip : ""}
+              truncateValue={
+                <span className="block">
+                  <TextAreaInput
+                    value={watch("payment_text")}
+                    onChange={(val) =>
+                      setValue("payment_text", val, { shouldValidate: true })
+                    }
+                    placeholder="Enter payment description"
+                    disabled={shouldDisableBlockedActions}
+                  />
+                </span>
               }
-              placeholder="Enter payment description"
             />
             {errors.payment_text && (
               <p className="text-xs text-red-500 mt-1">
@@ -274,15 +326,25 @@ export default function ProjectFinanceSummary({
             )}
           </div>
 
+          {/* ✅ Submit button — tooltip when blocked */}
           <div className="flex justify-end">
-            <Button
-              type="submit"
-              disabled={addPaymentMutation.isPending || isSubmitting}
-            >
-              {addPaymentMutation.isPending
-                ? "Submitting..."
-                : "Submit Payment"}
-            </Button>
+            <CustomeTooltip
+              value={shouldDisableBlockedActions ? blockedTooltip : ""}
+              truncateValue={
+                <span className="inline-block">
+                  <Button
+                    type="submit"
+                    disabled={
+                      addPaymentMutation.isPending ||
+                      isSubmitting ||
+                      shouldDisableBlockedActions
+                    }
+                  >
+                    {addPaymentMutation.isPending ? "Submitting..." : "Submit Payment"}
+                  </Button>
+                </span>
+              }
+            />
           </div>
         </form>
       </Card>

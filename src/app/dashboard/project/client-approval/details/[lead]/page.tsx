@@ -416,10 +416,23 @@ export default function ClientApprovalLeadDetails() {
                 Assign Task
               </DropdownMenuItem>
               {/* ⭐ ONLY MARK ON HOLD */}
-              <DropdownMenuItem onSelect={() => setActivityModalOpen(true)}>
-                <Clock className="m h-4 w-4" />
-                Mark On Hold
-              </DropdownMenuItem>
+              {/* Lead block handling added for DropdownMenu action */}
+              {shouldDisableBlockedActions ? (
+                <CustomeTooltip
+                  value={blockedTooltip}
+                  truncateValue={
+                    <DropdownMenuItem disabled>
+                      <Clock className="m h-4 w-4" />
+                      Mark On Hold
+                    </DropdownMenuItem>
+                  }
+                />
+              ) : (
+                <DropdownMenuItem onSelect={() => setActivityModalOpen(true)}>
+                  <Clock className="m h-4 w-4" />
+                  Mark On Hold
+                </DropdownMenuItem>
+              )}
 
               {userType?.toLowerCase() === "super-admin" && (
                 <DropdownMenuItem
@@ -441,12 +454,25 @@ export default function ClientApprovalLeadDetails() {
               {/* CLIENT APPROVAL */}
               {!is_client_approval_submitted ? (
                 canAccessClientApprovalForm ? (
-                  <DropdownMenuItem
-                    onClick={() => setOpenClientApprovalModal(true)}
-                  >
-                    <FileText size={20} />
-                    Client Approval
-                  </DropdownMenuItem>
+                  // Lead block handling added for DropdownMenu action
+                  shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <FileText size={20} />
+                          Client Approval
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem
+                      onClick={() => setOpenClientApprovalModal(true)}
+                    >
+                      <FileText size={20} />
+                      Client Approval
+                    </DropdownMenuItem>
+                  )
                 ) : (
                   <CustomeTooltip
                     truncateValue={
@@ -455,22 +481,44 @@ export default function ClientApprovalLeadDetails() {
                         Client Approval
                       </DropdownMenuItem>
                     }
-                    value="Only Sales-executive access this option"
+                    value={
+                      shouldDisableBlockedActions
+                        ? blockedTooltip
+                        : "Only Sales-executive access this option"
+                    }
                   />
                 )
               ) : canRequestToTechCheckAccess ? (
-                <DropdownMenuItem
-                  className="lg:hidden"
-                  onClick={() => setOpenRequestToTechCheckModal(true)}
-                >
-                  <FileText size={20} />
-                  Request To Tech Check
-                </DropdownMenuItem>
+                // Lead block handling added for DropdownMenu action
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem className="lg:hidden" disabled>
+                        <FileText size={20} />
+                        Request To Tech Check
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem
+                    className="lg:hidden"
+                    onClick={() => setOpenRequestToTechCheckModal(true)}
+                  >
+                    <FileText size={20} />
+                    Request To Tech Check
+                  </DropdownMenuItem>
+                )
               ) : isCustomUser ? (
-                <DropdownMenuItem className="lg:hidden" disabled>
-                  <FileText size={20} />
-                  Request To Tech Check
-                </DropdownMenuItem>
+                <CustomeTooltip
+                  value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                  truncateValue={
+                    <DropdownMenuItem className="lg:hidden" disabled>
+                      <FileText size={20} />
+                      Request To Tech Check
+                    </DropdownMenuItem>
+                  }
+                />
               ) : (
                 <CustomeTooltip
                   truncateValue={
@@ -479,35 +527,78 @@ export default function ClientApprovalLeadDetails() {
                       Request To Tech Check
                     </DropdownMenuItem>
                   }
-                  value="Only Sales Executive can request to Tech Check"
+                  value={
+                    shouldDisableBlockedActions
+                      ? blockedTooltip
+                      : "Only Sales Executive can request to Tech Check"
+                  }
                 />
               )}
 
               {/* EDIT */}
 
               {canEdit && (
-                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                  <SquarePen size={20} />
-                  Edit
-                </DropdownMenuItem>
+                // Lead block handling added for DropdownMenu action
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <SquarePen size={20} />
+                        Edit
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                    <SquarePen size={20} />
+                    Edit
+                  </DropdownMenuItem>
+                )
               )}
 
               {/* REASSIGN */}
               {canReassign && (
-                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                  <Users size={20} />
-                  Reassign Lead
-                </DropdownMenuItem>
+                // Lead block handling added for DropdownMenu action
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <Users size={20} />
+                        Reassign Lead
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                    <Users size={20} />
+                    Reassign Lead
+                  </DropdownMenuItem>
+                )
               )}
 
               {/* DELETE */}
               {canDelete && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setOpenDelete(true)}>
-                    <XCircle size={20} className="text-red-500" />
-                    Delete
-                  </DropdownMenuItem>
+                  {/* Lead block handling added for DropdownMenu action */}
+                  {shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <XCircle size={20} className="text-red-500" />
+                          Delete
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem onClick={() => setOpenDelete(true)}>
+                      <XCircle size={20} className="text-red-500" />
+                      Delete
+                    </DropdownMenuItem>
+                  )}
                 </>
               )}
             </DropdownMenuContent>

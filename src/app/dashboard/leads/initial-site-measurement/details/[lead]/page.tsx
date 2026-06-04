@@ -82,8 +82,6 @@ import {
   useIsChatNotification,
 } from "@/hooks/useChatTabFromUrl";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
-
-
 import {
   useLeadBlockStatus,
   useBlockLead,
@@ -356,10 +354,22 @@ export default function SiteMeasurementLead() {
                 Assign Task
               </DropdownMenuItem>
               {canUploadISM(userType) && !lead?.is_draft && canAccessTodoTask ? (
-                <DropdownMenuItem onSelect={() => setOpenMeasurement(true)}>
-                  <ClipboardCheck size={20} />
-                  Upload Measurement
-                </DropdownMenuItem>
+                // Lead block handling added for DropdownMenu action
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <ClipboardCheck size={20} /> Upload Measurement
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onSelect={() => setOpenMeasurement(true)}>
+                    <ClipboardCheck size={20} />
+                    Upload Measurement
+                  </DropdownMenuItem>
+                )
               ) : (
                 <CustomeTooltip
                   truncateValue={
@@ -377,46 +387,72 @@ export default function SiteMeasurementLead() {
 
               {/* Lead Status */}
               {canSeeLeadStatusMenu && (
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="flex items-center gap-2">
-                    <CircleArrowOutUpRight className="h-4 w-4" />
-                    <span>Lead Status</span>
-                  </DropdownMenuSubTrigger>
-
-                  <DropdownMenuSubContent>
-                    {canMarkOnHold && (
-                      <DropdownMenuItem
-                        onSelect={() => {
-                          setActivityType("onHold");
-                          setActivityModalOpen(true);
-                        }}
-                      >
-                        <Clock className="h-4 w-4 " />
-                        Mark On Hold
+                // Lead block handling added to prevent submenu opening
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <CircleArrowOutUpRight className="h-4 w-4" />
+                        Lead Status
                       </DropdownMenuItem>
-                    )}
+                    }
+                  />
+                ) : (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="flex items-center gap-2">
+                      <CircleArrowOutUpRight className="h-4 w-4" />
+                      <span>Lead Status</span>
+                    </DropdownMenuSubTrigger>
 
-                    {canMarkAsLost && (
-                      <DropdownMenuItem
-                        onSelect={() => {
-                          setActivityType("lostApproval");
-                          setActivityModalOpen(true);
-                        }}
-                      >
-                        <XCircle className="h-4 w-4" />
-                        Mark As Lost
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
+                    <DropdownMenuSubContent>
+                      {canMarkOnHold && (
+                        <DropdownMenuItem
+                          onSelect={() => {
+                            setActivityType("onHold");
+                            setActivityModalOpen(true);
+                          }}
+                        >
+                          <Clock className="h-4 w-4 " />
+                          Mark On Hold
+                        </DropdownMenuItem>
+                      )}
+
+                      {canMarkAsLost && (
+                        <DropdownMenuItem
+                          onSelect={() => {
+                            setActivityType("lostApproval");
+                            setActivityModalOpen(true);
+                          }}
+                        >
+                          <XCircle className="h-4 w-4" />
+                          Mark As Lost
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                )
               )}
 
               {/* Edit */}
               {canEdit && (
-                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                  <SquarePen size={20} />
-                  Edit
-                </DropdownMenuItem>
+                // Lead block handling added for DropdownMenu action
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <SquarePen size={20} />
+                        Edit
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                    <SquarePen size={20} />
+                    Edit
+                  </DropdownMenuItem>
+                )
               )}
 
               {userType?.toLowerCase() === "super-admin" && (
@@ -438,19 +474,44 @@ export default function SiteMeasurementLead() {
 
               {/* Reassign */}
               {canReassign && (
-                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                  <Users size={20} />
-                  Reassign Lead
-                </DropdownMenuItem>
+                // Lead block handling added for DropdownMenu action
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <Users size={20} />
+                        Reassign Lead
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                    <Users size={20} />
+                    Reassign Lead
+                  </DropdownMenuItem>
+                )
               )}
 
               {/* Delete */}
               {canDelete && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
-                    Delete
-                  </DropdownMenuItem>
+                  {/* Lead block handling added for DropdownMenu action */}
+                  {shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          Delete
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
+                      Delete
+                    </DropdownMenuItem>
+                  )}
                 </>
               )}
             </DropdownMenuContent>

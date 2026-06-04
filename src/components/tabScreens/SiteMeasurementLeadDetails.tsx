@@ -34,6 +34,7 @@ import { FileUploadField } from "@/components/custom/file-upload";
 import { useQueryClient } from "@tanstack/react-query";
 import { toastManager } from "@/components/ui/toast";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import CustomeTooltip from "../custom-tooltip";
 
 type Props = {
   leadId: number;
@@ -78,7 +79,10 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
   const { mutateAsync: replacePdf, isPending: replacingPdf } =
     useReplaceInitialSiteMeasurementPdf();
   const queryClient = useQueryClient();
-  const { shouldDisableBlockedActions } = useLeadAccessControl({
+  const {
+    shouldDisableBlockedActions,
+    blockedTooltip,
+  } = useLeadAccessControl({
     leadId,
     userType,
   });
@@ -121,17 +125,17 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes("leads.ism_leads.ism_details.edit")
       : userType === "admin" ||
-        userType === "super-admin" ||
-        (userType === "sales-executive" &&
-          leadStatus === "initial-site-measurement");
+      userType === "super-admin" ||
+      (userType === "sales-executive" &&
+        leadStatus === "initial-site-measurement");
 
   const canDelete =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes("leads.ism_leads.ism_details.delete")
       : userType === "admin" ||
-        userType === "super-admin" ||
-        (userType === "sales-executive" &&
-          leadStatus === "initial-site-measurement");
+      userType === "super-admin" ||
+      (userType === "sales-executive" &&
+        leadStatus === "initial-site-measurement");
 
   // 🧩 --- Handlers ---
   const handleConfirmDelete = () => {
@@ -311,16 +315,33 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                 </h1>
               </div>
 
-              {canEditOrUpload && (
-                <Button
-                  size="sm"
-                  onClick={() => setOpenEditModal(true)}
-                  className="gap-2"
-                >
-                  <Edit2 size={16} />
-                  <span className="text-sm">Edit</span>
-                </Button>
-              )}
+              {canEditOrUpload &&
+                (shouldDisableBlockedActions ? (
+                  <div className="flex justify-end">
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <Button
+                          size="sm"
+                          disabled
+                          className="gap-2"
+                        >
+                          <Edit2 size={16} />
+                          <span className="text-sm">Edit</span>
+                        </Button>
+                      }
+                    />
+                  </div>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={() => setOpenEditModal(true)}
+                    className="gap-2"
+                  >
+                    <Edit2 size={16} />
+                    <span className="text-sm">Edit</span>
+                  </Button>
+                ))}
             </div>
 
             {/* Body */}
@@ -343,10 +364,10 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                 <div className="bg-muted border border-border rounded-lg px-3 py-2 text-sm">
                   {payment.payment_date
                     ? new Date(payment.payment_date).toLocaleDateString("en-IN", {
-                        day: "2-digit",
-                        month: "long",
-                        year: "numeric",
-                      })
+                      day: "2-digit",
+                      month: "long",
+                      year: "numeric",
+                    })
                     : "N/A"}
                 </div>
               </div>
@@ -439,24 +460,44 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
             ))}
 
             {/* Add button card */}
-            {canEditOrUpload && (
-              <div
-                onClick={() => setOpenImageModal(true)}
-                className="
-            flex flex-col items-center justify-center 
-            h-28 
-            border-2 border-dashed border-border 
-            rounded-xl cursor-pointer 
-            hover:bg-mutedBg dark:hover:bg-neutral-800 
-            transition-all duration-200
+            {canEditOrUpload &&
+              (shouldDisableBlockedActions ? (
+                <CustomeTooltip
+                  value={blockedTooltip}
+                  truncateValue={
+                    <div
+                      className="
+            flex flex-col items-center justify-center
+            h-28
+            border-2 border-dashed border-border
+            rounded-xl
+            opacity-60
+            cursor-not-allowed
           "
-              >
-                <Plus size={26} className="text-muted-foreground mb-1" />
-                <span className="text-xs font-medium text-muted-foreground">
-                  Add Photos
-                </span>
-              </div>
-            )}
+                    >
+                      <Plus size={26} className="text-muted-foreground mb-1" />
+                      <span className="text-xs font-medium text-muted-foreground">
+                        Add Photos
+                      </span>
+                    </div>
+                  }
+                />
+              ) : (
+                <div
+                  onClick={() => setOpenImageModal(true)}
+                  className="
+        flex flex-col items-center justify-center
+        h-28
+        border-2 border-dashed border-border
+        rounded-xl cursor-pointer
+      "
+                >
+                  <Plus size={26} className="text-muted-foreground mb-1" />
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Add Photos
+                  </span>
+                </div>
+              ))}
           </div>
         </motion.div>
       </motion.section>
