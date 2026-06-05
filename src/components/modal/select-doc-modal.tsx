@@ -167,6 +167,10 @@ const SelectDocumentModal: React.FC<Props> = ({
         selectedMap.delete(currentKey);
         linkedPair.forEach((item) => selectedMap.delete(getDocKey(item)));
       } else {
+        if (vendorCustomUserTypeMode === true) {
+          selectedMap.clear();
+        }
+
         selectedMap.set(currentKey, doc);
         linkedPair.forEach((item) => selectedMap.set(getDocKey(item), item));
       }
@@ -201,7 +205,7 @@ const SelectDocumentModal: React.FC<Props> = ({
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 Matching files are linked by revision name like `D1` and `Q1`.
-                Selecting one will select its linked pair automatically.
+                Selecting one will select its linked pair automatically. Only one quotation-design pair can be selected at a time.
               </p>
             </div>
 

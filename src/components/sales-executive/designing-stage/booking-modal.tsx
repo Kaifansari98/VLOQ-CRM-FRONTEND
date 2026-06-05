@@ -396,18 +396,24 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
               <FormItem>
                 <FormLabel className="text-sm flex  justify-between">
                   Booking Documents (Quotations + Design) *
-                  <Button
-                    type="button"
-                    onClick={() => setOpenSelectDocModal(true)}
-                  >
-                    Select Documents
-                  </Button>
+                  {vendorCustomUserTypeMode !== true && (
+                    <Button
+                      type="button"
+                      onClick={() => setOpenSelectDocModal(true)}
+                    >
+                      Select Documents
+                    </Button>
+                  )}
                 </FormLabel>
                 <FormControl>
                   <FileUploadField
                     value={field.value}
                     onChange={field.onChange}
                     accept=".pptx.,.ppt, .pdf, .jpg, .jpeg, .png, .pyo"
+                    isUploadDeniedAndSelectEnabled={
+                      vendorCustomUserTypeMode === true
+                    }
+                    onSelectEnabledClick={() => setOpenSelectDocModal(true)}
                   />
                 </FormControl>
                 <FormMessage />

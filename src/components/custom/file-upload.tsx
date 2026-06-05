@@ -24,6 +24,8 @@ interface FileUploadFieldProps {
   multiple?: boolean;
   disabled?: boolean;
   maxFiles?: number;
+  isUploadDeniedAndSelectEnabled?: boolean;
+  onSelectEnabledClick?: () => void;
 }
 
 export function FileUploadField({
@@ -33,6 +35,8 @@ export function FileUploadField({
   multiple = true,
   disabled,
   maxFiles,
+  isUploadDeniedAndSelectEnabled = false,
+  onSelectEnabledClick,
 }: FileUploadFieldProps) {
   const finalAccept = accept ?? "*/*";
   const finalMaxFiles = maxFiles ?? (multiple ? 20 : 1);
@@ -134,22 +138,69 @@ export function FileUploadField({
       disabled={disabled}
 
     >
-      <FileUploadDropzone>
+      <FileUploadDropzone
+        onClick={
+          isUploadDeniedAndSelectEnabled
+            ? (event) => {
+                event.preventDefault();
+              }
+            : undefined
+        }
+        onDrop={
+          isUploadDeniedAndSelectEnabled
+            ? (event) => {
+                event.preventDefault();
+              }
+            : undefined
+        }
+        onPaste={
+          isUploadDeniedAndSelectEnabled
+            ? (event) => {
+                event.preventDefault();
+              }
+            : undefined
+        }
+        onKeyDown={
+          isUploadDeniedAndSelectEnabled
+            ? (event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                }
+              }
+            : undefined
+        }
+      >
         <div className="flex flex-col items-center gap-1 text-center ">
           <div className="flex items-center justify-center rounded-full border p-2.5">
             <Upload className="size-6 text-muted-foreground" />
           </div>
           <p className="font-medium text-sm">
-            Drag & drop {`${multiple ? "files" : "file"}`} here
+            {isUploadDeniedAndSelectEnabled
+              ? `Select and Upload ${multiple ? "files" : "file"} here`
+              : `Drag & drop ${multiple ? "files" : "file"} here`}
           </p>
           <p className="text-muted-foreground text-xs">
-            {multiple
-              ? `On click to browse (max ${finalMaxFiles} files allowed)`
-              : `On click to browse (only 1 file allowed`}
+            {isUploadDeniedAndSelectEnabled
+              ? "select the documents by clicking of the select documents button."
+              : multiple
+                ? `On click to browse (max ${finalMaxFiles} files allowed)`
+                : `On click to browse (only 1 file allowed)`}
           </p>
         </div>
         <FileUploadTrigger asChild>
-          <Button variant="outline" size="sm" className="mt-2 w-fit">
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-2 w-fit"
+            onClick={
+              isUploadDeniedAndSelectEnabled
+                ? (event) => {
+                    event.preventDefault();
+                    onSelectEnabledClick?.();
+                  }
+                : undefined
+            }
+          >
             {multiple ? "Select files" : "Select file"}
           </Button>
         </FileUploadTrigger>
