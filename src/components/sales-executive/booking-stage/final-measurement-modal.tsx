@@ -18,6 +18,7 @@ import { useForm } from "react-hook-form";
 import z from "zod";
 import { toastManager } from "@/components/ui/toast";
 import { useFinalMeasurement } from "@/hooks/final-measurement/use-final-measurement";
+import { useFinalMeasurementLeadById } from "@/hooks/final-measurement/use-final-measurement";
 import { useAppSelector } from "@/redux/store";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -27,6 +28,7 @@ import {
 } from "@/hooks/useLeadsQueries";
 import { LeadProductStructureInstance } from "@/api/leads";
 import { Card, CardContent } from "@/components/ui/card";
+import { FinalMeasurementDoc } from "@/types/final-measurement";
 
 interface LeadViewModalProps {
   open: boolean;
@@ -156,6 +158,10 @@ const FinalMeasurementModal = ({
   const finalMeasurementMutation = useFinalMeasurement();
   const leadId = data?.id;
   const { data: leadByIdResponse } = useLeadById(leadId, vendorId, userId);
+  const { data: finalMeasurementDetails } = useFinalMeasurementLeadById(
+    vendorId ?? 0,
+    leadId ?? 0,
+  );
   const leadById = leadByIdResponse?.data?.lead;
   const isCustomVendorFlow =
     isCustomVendorFlowFromAuth ||
@@ -175,6 +181,14 @@ const FinalMeasurementModal = ({
   const isMultiInstanceUploadFlow =
     structureInstances.length > 1 &&
     (isCustomVendorFlow || isCustomDocNomenclatureEnabled);
+  const existingFinalMeasurementDocs = React.useMemo(
+    () => finalMeasurementDetails?.measurementDocs ?? [],
+    [finalMeasurementDetails?.measurementDocs],
+  );
+  const existingSitePhotos = React.useMemo(
+    () => finalMeasurementDetails?.sitePhotos ?? [],
+    [finalMeasurementDetails?.sitePhotos],
+  );
   const [instanceUploads, setInstanceUploads] = React.useState<
     Record<
       number,
@@ -300,11 +314,14 @@ const FinalMeasurementModal = ({
         });
       }
 
-      const missingDocs = structureInstances.filter(
-        (instance) =>
-          !instanceUploads[instance.id] ||
-          instanceUploads[instance.id].finalMeasurementDocs.length === 0,
-      );
+      const missingDocs = structureInstances.filter((instance) => {
+        const hasLocalDocs =
+          (instanceUploads[instance.id]?.finalMeasurementDocs.length ?? 0) > 0;
+        const hasExistingDocs =
+          getExistingFinalMeasurementDocsByInstance(instance.id).length > 0;
+
+        return !(hasLocalDocs || hasExistingDocs);
+      });
       if (missingDocs.length > 0) {
         toastManager.add({
           title: `Please upload Final Measurement Document for ${missingDocs[0].title}.`,
@@ -313,11 +330,14 @@ const FinalMeasurementModal = ({
         return;
       }
 
-      const missingSitePhotos = structureInstances.filter(
-        (instance) =>
-          !instanceUploads[instance.id] ||
-          instanceUploads[instance.id].currentSitePhotos.length === 0,
-      );
+      const missingSitePhotos = structureInstances.filter((instance) => {
+        const hasLocalSitePhotos =
+          (instanceUploads[instance.id]?.currentSitePhotos.length ?? 0) > 0;
+        const hasExistingSitePhotos =
+          getExistingSitePhotosByInstance(instance.id).length > 0;
+
+        return !(hasLocalSitePhotos || hasExistingSitePhotos);
+      });
       if (missingSitePhotos.length > 0) {
         toastManager.add({
           title: `Please upload Current Site Photos for ${missingSitePhotos[0].title}.`,
@@ -348,6 +368,20 @@ const FinalMeasurementModal = ({
         });
         return;
       }
+    }
+
+    if (
+      isMultiInstanceUploadFlow &&
+      flattenedFinalMeasurementDocs.length === 0 &&
+      flattenedSitePhotos.length === 0 &&
+      isCustomVendorFlowFromAuth &&
+      !allInstancesAlreadyHaveRequiredUploads
+    ) {
+      toastManager.add({
+        title: "Please upload all required Final Measurement files for every instance.",
+        type: "error",
+      });
+      return;
     }
 
     const clientName =
@@ -487,6 +521,44 @@ const FinalMeasurementModal = ({
     },
     [],
   );
+
+  const getExistingFinalMeasurementDocsByInstance = React.useCallback(
+    (instanceId: number) =>
+      existingFinalMeasurementDocs.filter(
+        (doc: FinalMeasurementDoc) =>
+          doc.product_structure_instance_id === instanceId,
+      ),
+    [existingFinalMeasurementDocs],
+  );
+
+  const getExistingSitePhotosByInstance = React.useCallback(
+    (instanceId: number) =>
+      existingSitePhotos.filter(
+        (doc: FinalMeasurementDoc) =>
+          doc.product_structure_instance_id === instanceId,
+      ),
+    [existingSitePhotos],
+  );
+
+  const allInstancesAlreadyHaveRequiredUploads = React.useMemo(() => {
+    if (!isMultiInstanceUploadFlow || structureInstances.length === 0) {
+      return false;
+    }
+
+    return structureInstances.every((instance) => {
+      const hasExistingDocs =
+        getExistingFinalMeasurementDocsByInstance(instance.id).length > 0;
+      const hasExistingSitePhotos =
+        getExistingSitePhotosByInstance(instance.id).length > 0;
+
+      return hasExistingDocs && hasExistingSitePhotos;
+    });
+  }, [
+    getExistingFinalMeasurementDocsByInstance,
+    getExistingSitePhotosByInstance,
+    isMultiInstanceUploadFlow,
+    structureInstances,
+  ]);
 
   return (
     <BaseModal
