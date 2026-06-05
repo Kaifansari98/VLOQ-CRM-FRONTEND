@@ -31,6 +31,10 @@ import { useLeadById } from "@/hooks/useLeadsQueries";
 import { LeadProductStructureInstance } from "@/api/leads";
 import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle2, Loader2 } from "lucide-react";
+import { useSiteMeasurementLeadById } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
+import DocumentCard from "@/components/utils/documentCard";
+import { ImageComponent } from "@/components/utils/ImageCard";
+import { SiteMeasurementFile } from "@/types/site-measrument-types";
 
 interface LeadViewModalProps {
   open: boolean;
@@ -187,6 +191,9 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
   const leadId = data?.id;
   const accountId = data?.accountId;
   const { data: leadByIdResponse } = useLeadById(leadId, vendorId, userId);
+  const { data: siteMeasurementDetails } = useSiteMeasurementLeadById(
+    leadId ?? 0,
+  );
   const leadById = leadByIdResponse?.data?.lead;
   const isCustomVendorFlow =
     isCustomVendorFlowFromAuth ||
@@ -206,6 +213,14 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
   const isMultiInstanceUploadFlow =
     structureInstances.length > 1 &&
     (isCustomVendorFlow || isCustomDocNomenclatureEnabled);
+  const existingSitePhotos = React.useMemo(
+    () => siteMeasurementDetails?.current_site_photos ?? [],
+    [siteMeasurementDetails?.current_site_photos],
+  );
+  const existingMeasurementDocs = React.useMemo(
+    () => siteMeasurementDetails?.initial_site_measurement_documents ?? [],
+    [siteMeasurementDetails?.initial_site_measurement_documents],
+  );
   const [instanceUploads, setInstanceUploads] = React.useState<
     Record<number, { current_site_photos: File[]; upload_pdf: File[] }>
   >({});
@@ -259,6 +274,9 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       queryClient.invalidateQueries({
         queryKey: ["vendorAllTasks"],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["siteMeasurementLeadDetails", leadId],
+      });
       handleReset();
       onOpenChange(false);
 
@@ -291,6 +309,9 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       });
       queryClient.invalidateQueries({
         queryKey: ["allLeadDocuments"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["siteMeasurementLeadDetails", leadId],
       });
     },
     onError: (error: unknown) => {
@@ -498,16 +519,30 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
         });
       }
 
-      const missingDocuments = structureInstances.filter(
-        (instance) =>
-          !savedInstanceIds.includes(instance.id) &&
-          (!instanceUploads[instance.id] ||
-            instanceUploads[instance.id].upload_pdf.length === 0),
-      );
+      const missingRequiredUploads = structureInstances.filter((instance) => {
+        const uploads = instanceUploads[instance.id] ?? {
+          current_site_photos: [],
+          upload_pdf: [],
+        };
+        const hasSavedThisSession = savedInstanceIds.includes(instance.id);
+        const hasExistingSitePhotos =
+          getExistingSitePhotosByInstance(instance.id).length > 0;
+        const hasExistingDocuments =
+          getExistingMeasurementDocsByInstance(instance.id).length > 0;
+        const hasLocalSitePhotos = uploads.current_site_photos.length > 0;
+        const hasLocalDocuments = uploads.upload_pdf.length > 0;
 
-      if (missingDocuments.length > 0) {
+        const hasRequiredSitePhotos =
+          hasSavedThisSession || hasExistingSitePhotos || hasLocalSitePhotos;
+        const hasRequiredDocuments =
+          hasSavedThisSession || hasExistingDocuments || hasLocalDocuments;
+
+        return !(hasRequiredSitePhotos && hasRequiredDocuments);
+      });
+
+      if (missingRequiredUploads.length > 0) {
         toastManager.add({
-          title: `Please upload Initial Site Measurement Document for ${missingDocuments[0].title}.`,
+          title: `Please upload all required ISM files for ${missingRequiredUploads[0].title}.`,
           type: "error",
         });
         return;
@@ -522,10 +557,39 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       });
     }
 
-    if (flattenedDocuments.length === 0) {
+    if (!isMultiInstanceUploadFlow && flattenedDocuments.length === 0) {
       toastManager.add({
         title: "Please upload at least one document",
         type: "error",
+      });
+      return;
+    }
+
+    if (
+      isMultiInstanceUploadFlow &&
+      flattenedDocuments.length === 0 &&
+      flattenedSitePhotos.length === 0
+    ) {
+      if (
+        isCustomVendorFlowFromAuth &&
+        !allInstancesAlreadyHaveRequiredUploads
+      ) {
+        toastManager.add({
+          title: "Please upload all required ISM files for every instance.",
+          type: "error",
+        });
+        return;
+      }
+
+      mutation.mutate(
+        buildInitialSiteMeasurementPayload({
+          sitePhotos: [],
+          documents: [],
+          values,
+        }),
+      );
+      queryClient.invalidateQueries({
+        queryKey: ["allLeadDocuments"],
       });
       return;
     }
@@ -576,6 +640,44 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
     }));
   };
 
+  const getExistingSitePhotosByInstance = React.useCallback(
+    (instanceId: number) =>
+      existingSitePhotos.filter(
+        (doc: SiteMeasurementFile) =>
+          doc.product_structure_instance_id === instanceId,
+      ),
+    [existingSitePhotos],
+  );
+
+  const getExistingMeasurementDocsByInstance = React.useCallback(
+    (instanceId: number) =>
+      existingMeasurementDocs.filter(
+        (doc: SiteMeasurementFile) =>
+          doc.product_structure_instance_id === instanceId,
+      ),
+    [existingMeasurementDocs],
+  );
+
+  const allInstancesAlreadyHaveRequiredUploads = React.useMemo(() => {
+    if (!isMultiInstanceUploadFlow || structureInstances.length === 0) {
+      return false;
+    }
+
+    return structureInstances.every((instance) => {
+      const hasExistingSitePhotos =
+        getExistingSitePhotosByInstance(instance.id).length > 0;
+      const hasExistingDocuments =
+        getExistingMeasurementDocsByInstance(instance.id).length > 0;
+
+      return hasExistingSitePhotos && hasExistingDocuments;
+    });
+  }, [
+    getExistingMeasurementDocsByInstance,
+    getExistingSitePhotosByInstance,
+    isMultiInstanceUploadFlow,
+    structureInstances,
+  ]);
+
   return (
     <BaseModal
       open={open}
@@ -608,6 +710,10 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                       current_site_photos: [],
                       upload_pdf: [],
                     };
+                    const existingInstanceSitePhotos =
+                      getExistingSitePhotosByInstance(instance.id);
+                    const existingInstanceMeasurementDocs =
+                      getExistingMeasurementDocsByInstance(instance.id);
 
                     return (
                       <Card key={instance.id}>
@@ -677,6 +783,76 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                               />
                             </div>
                           </div>
+
+                          {(existingInstanceSitePhotos.length > 0 ||
+                            existingInstanceMeasurementDocs.length > 0) && (
+                            <div className="space-y-4 rounded-xl border border-dashed p-4">
+                              <div>
+                                <h5 className="text-sm font-semibold">
+                                  Uploaded Files
+                                </h5>
+                                <p className="text-xs text-muted-foreground">
+                                  These files are already saved for this instance.
+                                </p>
+                              </div>
+
+                              {existingInstanceSitePhotos.length > 0 && (
+                                <div className="space-y-3">
+                                  <p className="text-xs font-medium text-muted-foreground">
+                                    Current Site Photos
+                                  </p>
+                                  <div className="flex flex-wrap gap-4">
+                                    {existingInstanceSitePhotos.map((
+                                      doc: SiteMeasurementFile,
+                                      index: number,
+                                    ) => (
+                                      <div
+                                        key={doc.id}
+                                        className="w-fit max-w-full"
+                                      >
+                                        <ImageComponent
+                                          doc={{
+                                            id: doc.id,
+                                            doc_og_name: doc.originalName,
+                                            signedUrl: doc.signedUrl,
+                                            created_at: doc.uploadedAt,
+                                          }}
+                                          index={index}
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {existingInstanceMeasurementDocs.length > 0 && (
+                                <div className="space-y-3">
+                                  <p className="text-xs font-medium text-muted-foreground">
+                                    Initial Site Measurement Documents
+                                  </p>
+                                  <div className="flex flex-wrap gap-4">
+                                    {existingInstanceMeasurementDocs.map(
+                                      (doc: SiteMeasurementFile) => (
+                                      <div
+                                        key={doc.id}
+                                        className="w-fit max-w-full"
+                                      >
+                                        <DocumentCard
+                                          doc={{
+                                            id: doc.id,
+                                            originalName: doc.originalName,
+                                            signedUrl: doc.signedUrl,
+                                            created_at: doc.uploadedAt,
+                                          }}
+                                        />
+                                      </div>
+                                      ),
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
 
                           <div className="flex justify-end">
                             <Button
