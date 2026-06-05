@@ -643,7 +643,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         title: "Site photos uploaded successfully",
        
         type: "success",
-     ,
+     
       });
 
     } catch (error: any) {
