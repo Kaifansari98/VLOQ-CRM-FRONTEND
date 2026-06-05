@@ -581,8 +581,12 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
         onOpenChange={setOpenSelectDocModal}
         leadId={leadId!}
         onSelectDocs={(files) => {
-          const existing = form.getValues("final_documents") || [];
-          form.setValue("final_documents", [...existing, ...files], {
+          const nextFiles =
+            vendorCustomUserTypeMode === true
+              ? files
+              : [...(form.getValues("final_documents") || []), ...files];
+
+          form.setValue("final_documents", nextFiles, {
             shouldValidate: true,
           });
         }}
