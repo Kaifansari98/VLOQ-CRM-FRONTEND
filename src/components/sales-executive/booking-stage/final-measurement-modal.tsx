@@ -19,6 +19,10 @@ import z from "zod";
 import { toastManager } from "@/components/ui/toast";
 import { useFinalMeasurement } from "@/hooks/final-measurement/use-final-measurement";
 import { useFinalMeasurementLeadById } from "@/hooks/final-measurement/use-final-measurement";
+import {
+  useAddMoreFinalMeasurementFiles,
+  useAddMoreFinalMeasurementSitePhotos,
+} from "@/hooks/final-measurement/use-final-measurement";
 import { useAppSelector } from "@/redux/store";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -29,6 +33,9 @@ import {
 import { LeadProductStructureInstance } from "@/api/leads";
 import { Card, CardContent } from "@/components/ui/card";
 import { FinalMeasurementDoc } from "@/types/final-measurement";
+import { CheckCircle2, Loader2 } from "lucide-react";
+import DocumentCard from "@/components/utils/documentCard";
+import { ImageComponent } from "@/components/utils/ImageCard";
 
 interface LeadViewModalProps {
   open: boolean;
@@ -156,6 +163,9 @@ const FinalMeasurementModal = ({
   });
 
   const finalMeasurementMutation = useFinalMeasurement();
+  const addMoreFinalMeasurementDocsMutation = useAddMoreFinalMeasurementFiles();
+  const addMoreFinalMeasurementSitePhotosMutation =
+    useAddMoreFinalMeasurementSitePhotos();
   const leadId = data?.id;
   const { data: leadByIdResponse } = useLeadById(leadId, vendorId, userId);
   const { data: finalMeasurementDetails } = useFinalMeasurementLeadById(
@@ -195,6 +205,10 @@ const FinalMeasurementModal = ({
       { finalMeasurementDocs: File[]; currentSitePhotos: File[] }
     >
   >({});
+  const [savedInstanceIds, setSavedInstanceIds] = React.useState<number[]>([]);
+  const [uploadingInstanceId, setUploadingInstanceId] = React.useState<
+    number | null
+  >(null);
 
   React.useEffect(() => {
     if (!isMultiInstanceUploadFlow) {
@@ -235,6 +249,7 @@ const FinalMeasurementModal = ({
       });
       return next;
     });
+    setSavedInstanceIds([]);
   }, [form]);
 
   const handleModalChange = React.useCallback(
@@ -540,6 +555,124 @@ const FinalMeasurementModal = ({
     [existingSitePhotos],
   );
 
+  const handleInstanceUpload = React.useCallback(
+    async (instance: LeadProductStructureInstance) => {
+      if (!leadId || !vendorId || !userId) {
+        toastManager.add({
+          title: "Lead or user context is missing.",
+          type: "error",
+        });
+        return;
+      }
+
+      const uploads = instanceUploads[instance.id] ?? {
+        finalMeasurementDocs: [],
+        currentSitePhotos: [],
+      };
+      const existingDocs = getExistingFinalMeasurementDocsByInstance(instance.id);
+      const existingPhotos = getExistingSitePhotosByInstance(instance.id);
+
+      if (
+        uploads.finalMeasurementDocs.length === 0 &&
+        existingDocs.length === 0
+      ) {
+        toastManager.add({
+          title: `Please upload Final Measurement Document for ${instance.title}.`,
+          type: "error",
+        });
+        return;
+      }
+
+      if (
+        uploads.currentSitePhotos.length === 0 &&
+        existingPhotos.length === 0
+      ) {
+        toastManager.add({
+          title: `Please upload Current Site Photos for ${instance.title}.`,
+          type: "error",
+        });
+        return;
+      }
+
+      if (
+        uploads.finalMeasurementDocs.length === 0 &&
+        uploads.currentSitePhotos.length === 0
+      ) {
+        toastManager.add({
+          title: "No new files selected for this instance.",
+          type: "error",
+        });
+        return;
+      }
+
+      try {
+        setUploadingInstanceId(instance.id);
+
+        if (uploads.finalMeasurementDocs.length > 0) {
+          await addMoreFinalMeasurementDocsMutation.mutateAsync({
+            leadId,
+            vendorId,
+            createdBy: userId,
+            productStructureInstanceId: instance.id,
+            sitePhotos: uploads.finalMeasurementDocs,
+          });
+        }
+
+        if (uploads.currentSitePhotos.length > 0) {
+          await addMoreFinalMeasurementSitePhotosMutation.mutateAsync({
+            leadId,
+            vendorId,
+            createdBy: userId,
+            productStructureInstanceId: instance.id,
+            sitePhotos: uploads.currentSitePhotos,
+          });
+        }
+
+        toastManager.add({
+          title: "Instance documents uploaded successfully!",
+          type: "success",
+        });
+        setSavedInstanceIds((prev) =>
+          prev.includes(instance.id) ? prev : [...prev, instance.id],
+        );
+        setInstanceUploads((prev) => ({
+          ...prev,
+          [instance.id]: {
+            finalMeasurementDocs: [],
+            currentSitePhotos: [],
+          },
+        }));
+        queryClient.invalidateQueries({
+          queryKey: ["finalMeasurementLead", vendorId, leadId],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["allLeadDocuments"],
+        });
+      } catch (error: any) {
+        toastManager.add({
+          title:
+            error?.response?.data?.message ||
+            error?.message ||
+            "Failed to upload instance files.",
+          type: "error",
+        });
+      } finally {
+        setUploadingInstanceId(null);
+      }
+    },
+    [
+      addMoreFinalMeasurementDocsMutation,
+      addMoreFinalMeasurementSitePhotosMutation,
+      getExistingFinalMeasurementDocsByInstance,
+      getExistingSitePhotosByInstance,
+      instanceUploads,
+      leadId,
+      queryClient,
+      userId,
+      vendorId,
+    ],
+  );
+
   const allInstancesAlreadyHaveRequiredUploads = React.useMemo(() => {
     if (!isMultiInstanceUploadFlow || structureInstances.length === 0) {
       return false;
@@ -591,6 +724,10 @@ const FinalMeasurementModal = ({
                     finalMeasurementDocs: [],
                     currentSitePhotos: [],
                   };
+                  const existingInstanceDocs =
+                    getExistingFinalMeasurementDocsByInstance(instance.id);
+                  const existingInstanceSitePhotos =
+                    getExistingSitePhotosByInstance(instance.id);
 
                   return (
                     <Card key={instance.id}>
@@ -603,6 +740,12 @@ const FinalMeasurementModal = ({
                             <p className="text-xs text-muted-foreground">
                               {instance.productType.type}
                             </p>
+                          )}
+                          {savedInstanceIds.includes(instance.id) && (
+                            <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700">
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              Saved
+                            </div>
                           )}
                         </div>
 
@@ -648,6 +791,89 @@ const FinalMeasurementModal = ({
                               maxFiles={MAX_FINAL_MEASUREMENT_FILES}
                             />
                           </div>
+                        </div>
+
+                        {(existingInstanceDocs.length > 0 ||
+                          existingInstanceSitePhotos.length > 0) && (
+                          <div className="space-y-4 rounded-xl border border-dashed p-4">
+                            <div>
+                              <h5 className="text-sm font-semibold">
+                                Uploaded Files
+                              </h5>
+                              <p className="text-xs text-muted-foreground">
+                                These files are already saved for this instance.
+                              </p>
+                            </div>
+
+                            {existingInstanceDocs.length > 0 && (
+                              <div className="space-y-3">
+                                <p className="text-xs font-medium text-muted-foreground">
+                                  Final Measurement Documents
+                                </p>
+                                <div className="flex flex-wrap gap-4">
+                                  {existingInstanceDocs.map((doc) => (
+                                    <div key={doc.id} className="w-fit max-w-full">
+                                      <DocumentCard
+                                        doc={{
+                                          id: doc.id,
+                                          originalName: doc.doc_og_name,
+                                          signedUrl: doc.signedUrl,
+                                          created_at: doc.created_at,
+                                        }}
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {existingInstanceSitePhotos.length > 0 && (
+                              <div className="space-y-3">
+                                <p className="text-xs font-medium text-muted-foreground">
+                                  Current Site Photos
+                                </p>
+                                <div className="flex flex-wrap gap-4">
+                                  {existingInstanceSitePhotos.map((doc, index) => (
+                                    <div key={doc.id} className="w-fit max-w-full">
+                                      <ImageComponent
+                                        doc={{
+                                          id: doc.id,
+                                          doc_og_name: doc.doc_og_name,
+                                          signedUrl: doc.signedUrl,
+                                          created_at: doc.created_at,
+                                        }}
+                                        index={index}
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="flex justify-end">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => handleInstanceUpload(instance)}
+                            disabled={
+                              uploadingInstanceId === instance.id &&
+                              (addMoreFinalMeasurementDocsMutation.isPending ||
+                                addMoreFinalMeasurementSitePhotosMutation.isPending)
+                            }
+                          >
+                            {uploadingInstanceId === instance.id &&
+                            (addMoreFinalMeasurementDocsMutation.isPending ||
+                              addMoreFinalMeasurementSitePhotosMutation.isPending) ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Uploading...
+                              </>
+                            ) : (
+                              "Upload This Instance"
+                            )}
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>

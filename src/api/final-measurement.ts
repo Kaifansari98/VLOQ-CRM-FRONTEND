@@ -250,6 +250,7 @@ export interface AddMoreFinalMeasurementFilesPayload {
   vendorId: number;
   createdBy: number;
   sitePhotos: File[];
+  productStructureInstanceId?: number;
 }
 
 export const addMoreFinalMeasurementFiles = async (
@@ -259,6 +260,12 @@ export const addMoreFinalMeasurementFiles = async (
   formData.append("lead_id", payload.leadId.toString());
   formData.append("vendor_id", payload.vendorId.toString());
   formData.append("created_by", payload.createdBy.toString());
+  if (payload.productStructureInstanceId) {
+    formData.append(
+      "product_structure_instance_id",
+      payload.productStructureInstanceId.toString(),
+    );
+  }
 
   payload.sitePhotos.forEach((file) => {
     formData.append("final_measurement_doc", file);
@@ -282,6 +289,7 @@ export interface AddMoreFinalMeasurementSitePhotosPayload {
   vendorId: number;
   createdBy: number;
   sitePhotos: File[];
+  productStructureInstanceId?: number;
 }
 
 export const addMoreFinalMeasurementSitePhotos = async (
@@ -291,6 +299,12 @@ export const addMoreFinalMeasurementSitePhotos = async (
   formData.append("lead_id", payload.leadId.toString());
   formData.append("vendor_id", payload.vendorId.toString());
   formData.append("created_by", payload.createdBy.toString());
+  if (payload.productStructureInstanceId) {
+    formData.append(
+      "product_structure_instance_id",
+      payload.productStructureInstanceId.toString(),
+    );
+  }
 
   payload.sitePhotos.forEach((file) => {
     formData.append("site_photos", file);
