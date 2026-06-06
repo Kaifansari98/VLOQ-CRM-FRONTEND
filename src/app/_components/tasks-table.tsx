@@ -49,7 +49,8 @@ import { DataTableDateFilter } from "@/components/data-table/data-table-date-fil
 import { DataTableFilterList } from "@/components/data-table/data-table-filter-list";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
 import CustomTabs from "@/components/custom/customeTab";
-import { extractTitleText, mapTaskTableFiltersToPayload } from "@/lib/utils";
+import { extractTitleText, mapTaskTableFiltersToPayload, formatBlockedAt } from "@/lib/utils";
+import { toastManager } from "@/components/ui/toast";
 import TaskTypeFilter from "@/components/data-table/data-table-task-filter";
 import OrderLoginApprovalModal from "@/components/tasks/OrderLoginApprovalModal";
 import DispatchPlanningApprovalModal from "@/components/tasks/DispatchPlanningApprovalModal";
@@ -454,6 +455,34 @@ const MyTaskTable = () => {
 
   const handleRowDoubleClick = useCallback(
     (row: ProcessedTask) => {
+      const isBlocked = row.is_blocked;
+      const isPrivilegedUser = userType?.toLowerCase() === "super-admin";
+      
+      const isDeliveryTask = (row.remark || "")
+        .toLowerCase()
+        .includes("required delivery date");
+
+      const isNavigationTask =
+        row.taskType === "Dispatch" ||
+        row.taskType === "Assign a Site Supervisor" ||
+        row.taskType === "Site Readiness" ||
+        (row.taskType === "Miscellaneous" && !isDeliveryTask) ||
+        row.taskType === "Production Ready" ||
+        row.taskType === "Order Login" ||
+        row.taskType === "1st Servicing" ||
+        row.taskType === "2nd Servicing" ||
+        row.taskType === "3rd Servicing";
+
+      const isFollowUpTask = row.taskType === "Follow Up";
+
+      if (isBlocked && !isPrivilegedUser && !isNavigationTask && !isFollowUpTask) {
+        const blockTime = row.lead_blocked_at ? ` at ${formatBlockedAt(row.lead_blocked_at)}` : "";
+        toastManager.add({
+          title: `This lead has been blocked${blockTime}. Only follow up tasks are allowed.`,
+          type: "error",
+        });
+        return;
+      }
       if (row.taskType === "Initial Site Measurement") {
         setRowAction({
           row: { original: row } as any,
@@ -653,6 +682,8 @@ const MyTaskTable = () => {
       assignedAt: task.userLeadTask.created_at,
       remark: task.userLeadTask?.remark || "",
       instance_id: task.userLeadTask?.instance_id,
+      is_blocked: (task.leadMaster as any).is_blocked ?? false,
+      lead_blocked_at: (task.leadMaster as any).lead_blocked_at ?? null,
     }));
   }, [vendorAllData?.data, vendorUserData?.data, viewScope]);
 
