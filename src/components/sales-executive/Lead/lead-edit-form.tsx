@@ -102,6 +102,16 @@ const optionalPhoneField = z
     },
   );
 
+const optionalArchitectPhoneField = z
+  .string()
+  .optional()
+  .refine(
+    (value) => !value || value.trim() === "" || isPhoneValueValid(value),
+    {
+      message: "Please enter a valid architect number",
+    },
+  );
+
 const optionalDateField = z
   .string()
   .optional()
@@ -130,6 +140,7 @@ const completeFormSchema = z.object({
   priority: z.enum(["High", "Medium", "Low"]),
   alt_contact_no: optionalPhoneField,
   archetech_name: z.string().max(300).optional(),
+  archetech_number: optionalArchitectPhoneField,
   designer_remark: z.string().max(2000).optional(),
   product_types: z.array(z.string()).optional(),
   product_structures: z.array(z.string()).optional(),
@@ -160,6 +171,7 @@ const draftFormSchema = z.object({
   priority: z.enum(["High", "Medium", "Low"]).or(z.literal("")),
   alt_contact_no: optionalPhoneField,
   archetech_name: z.string().max(300).optional(),
+  archetech_number: optionalArchitectPhoneField,
   designer_remark: z.string().max(2000).optional(),
   product_types: z.array(z.string()).optional(),
   product_structures: z.array(z.string()).optional(),
@@ -178,6 +190,10 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
   const [isDraftLead, setIsDraftLead] = useState(false);
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const createdBy = useAppSelector((state) => state.auth.user?.id);
+  const isCustomVendorFlow = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
+  );
   const queryClient = useQueryClient();
   const [mapOpen, setMapOpen] = useState(false);
   const [savedMapLocation, setSavedMapLocation] = useState<{
@@ -224,6 +240,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
       source_id: "",
       priority: "Medium",
       archetech_name: "",
+      archetech_number: "",
       designer_remark: "",
       initial_site_measurement_date: "",
       product_types: [],
@@ -458,6 +475,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           source_id: lead.source_id ? String(lead.source_id) : "",
           priority: lead.priority || "Medium",
           archetech_name: lead.archetech_name || "",
+          archetech_number: lead.archetech_number || "",
           designer_remark: lead.designer_remark || "",
           initial_site_measurement_date: formattedDate,
           product_types: productTypeIds,
@@ -590,6 +608,18 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
     }
     if (isDirty("archetech_name"))
       payload.archetech_name = values.archetech_name || "";
+    if (isDirty("archetech_number") && values.archetech_number?.trim()) {
+      try {
+        const parsedArchitect = parsePhoneNumber(values.archetech_number);
+        if (parsedArchitect) {
+          payload.archetech_number = parsedArchitect.nationalNumber.toString();
+        }
+      } catch {
+        payload.archetech_number = values.archetech_number.replace(/\D/g, "");
+      }
+    } else if (isDirty("archetech_number")) {
+      payload.archetech_number = "";
+    }
     if (isDirty("designer_remark"))
       payload.designer_remark = values.designer_remark || "";
     if (
@@ -1132,7 +1162,11 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           }}
         />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+        <div
+          className={`grid grid-cols-1 gap-3 items-start ${
+            isCustomVendorFlow ? "sm:grid-cols-3" : "sm:grid-cols-2"
+          }`}
+        >
           {/* Architect Name */}
           <FormField
             control={form.control}
@@ -1152,6 +1186,30 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
               </FormItem>
             )}
           />
+
+          {isCustomVendorFlow && (
+            <FormField
+              control={form.control}
+              name="archetech_number"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm">Architect Number</FormLabel>
+                  <FormControl>
+                    <PhoneInput
+                      defaultCountry="IN"
+                      placeholder="Enter architect number"
+                      className="text-sm"
+                      value={field.value}
+                      onChange={(val) => field.onChange(val)}
+                      onBlur={field.onBlur}
+                      validateIndianNumber={true}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
 
           <FormField
             control={form.control}

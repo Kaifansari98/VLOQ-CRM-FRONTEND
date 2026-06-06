@@ -176,6 +176,7 @@ export interface EditLeadPayload {
   source_id?: number;
   priority?: string;
   archetech_name?: string;
+  archetech_number?: string;
   designer_remark?: string;
   updated_by: number;
   initial_site_measurement_date?: string;
