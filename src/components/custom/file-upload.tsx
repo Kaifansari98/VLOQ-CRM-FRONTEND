@@ -176,12 +176,12 @@ export function FileUploadField({
           </div>
           <p className="font-medium text-sm">
             {isUploadDeniedAndSelectEnabled
-              ? `Select and Upload ${multiple ? "files" : "file"} here`
+              ? `Select the final ${multiple ? "files" : "file"} here`
               : `Drag & drop ${multiple ? "files" : "file"} here`}
           </p>
           <p className="text-muted-foreground text-xs">
             {isUploadDeniedAndSelectEnabled
-              ? "select the documents by clicking of the select documents button."
+              ? "Select the documents by clicking of the select documents button."
               : multiple
                 ? `On click to browse (max ${finalMaxFiles} files allowed)`
                 : `On click to browse (only 1 file allowed)`}

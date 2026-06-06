@@ -151,6 +151,11 @@ const createFormSchema = (userType: string | undefined) => {
     assigned_by: isAdminOrSuperAdmin ? z.string() : z.string().optional(),
     documents: z.string().optional(),
     archetech_name: z.string().max(300).optional(),
+    archetech_number: z
+      .string()
+      .regex(/^\+?\d{7,20}$/, "Please enter a valid architect number")
+      .optional()
+      .or(z.literal("")),
     designer_remark: z.string().max(2000).optional(),
     initial_site_measurement_date: z.string().optional(),
     priority: z.enum(["High", "Medium", "Low"], {
@@ -183,6 +188,11 @@ const draftFormSchema = (userType: string | undefined) => {
     assigned_by: z.string().optional(),
     documents: z.string().optional(),
     archetech_name: z.string().optional(),
+    archetech_number: z
+      .string()
+      .regex(/^\+?\d{7,20}$/, "Please enter a valid architect number")
+      .optional()
+      .or(z.literal("")),
     designer_remark: z.string().optional(),
     initial_site_measurement_date: z.string().optional(),
     priority: z.enum(["High", "Medium", "Low"]).optional(),
@@ -263,6 +273,7 @@ export default function LeadsGenerationForm({
       product_structures: [],
       documents: "",
       archetech_name: "",
+      archetech_number: "",
       designer_remark: "N/A",
       priority: "Medium",
       assign_to: "",
@@ -751,6 +762,7 @@ export default function LeadsGenerationForm({
       site_type_id: Number(values.site_type_id),
       source_id: Number(values.source_id),
       archetech_name: values.archetech_name || undefined,
+      archetech_number: values.archetech_number || undefined,
       designer_remark: values.designer_remark || undefined,
       vendor_id: vendorId,
       franchise_id: franchiseId,
@@ -846,6 +858,7 @@ export default function LeadsGenerationForm({
         : undefined,
       source_id: values.source_id ? Number(values.source_id) : undefined,
       archetech_name: values.archetech_name || undefined,
+      archetech_number: values.archetech_number || undefined,
       designer_remark: values.designer_remark || undefined,
       vendor_id: vendorId,
       franchise_id: franchiseId,
@@ -1401,7 +1414,11 @@ export default function LeadsGenerationForm({
             />
           </div>
         )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+        <div
+          className={`grid grid-cols-1 gap-3 items-start ${
+            isCustomVendorFlow ? "sm:grid-cols-3" : "sm:grid-cols-2"
+          }`}
+        >
           {/* Architect Name */}
           <FormField
             control={form.control}
@@ -1421,6 +1438,28 @@ export default function LeadsGenerationForm({
               </FormItem>
             )}
           />
+          {isCustomVendorFlow && (
+            <FormField
+              control={form.control}
+              name="archetech_number"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm">Architect Number</FormLabel>
+                  <FormControl>
+                    <PhoneInput
+                      defaultCountry="IN"
+                      placeholder="Enter architect number"
+                      className="text-sm"
+                      value={field.value}
+                      onChange={(val) => field.onChange(val)}
+                      validateIndianNumber={true}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
           <FormField
             control={form.control}
             name="initial_site_measurement_date"
