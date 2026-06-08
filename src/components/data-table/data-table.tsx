@@ -23,6 +23,7 @@ interface DataTableProps<TData> extends React.ComponentProps<"div"> {
   actionBar?: React.ReactNode;
   onRowDoubleClick?: (row: TData) => void;
   renderRowContextMenu?: (row: TData) => React.ReactNode;
+  rowClassName?: (row: TData) => string | undefined;
   showPagination?: boolean; // ✅ Add this prop
 }
 
@@ -33,6 +34,7 @@ export function DataTable<TData>({
   className,
   onRowDoubleClick,
   renderRowContextMenu,
+  rowClassName,
   showPagination = true, // ✅ Default to true for backward compatibility
   ...props
 }: DataTableProps<TData>) {
@@ -90,6 +92,7 @@ export function DataTable<TData>({
                       onRowDoubleClick || renderRowContextMenu
                         ? "cursor-pointer"
                         : undefined,
+                      rowClassName?.(row.original),
                     )}
                   >
                     {row.getVisibleCells().map((cell) => (

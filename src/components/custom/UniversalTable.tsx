@@ -970,6 +970,7 @@ export function UniversalTable({
       sales_executive: lead.assignedTo?.user_name ?? "",
       designer: designerName,
       assignedToId: lead.assignedTo?.id ?? "",
+      isDraft: lead.is_draft === true,
       accountId: lead.account?.id ?? lead.account_id ?? 0,
       priority: lead.priority ?? "",
       servicing: getPendingServicingLabel(lead),
@@ -1409,6 +1410,11 @@ export function UniversalTable({
       <DataTable
         table={table}
         onRowDoubleClick={handleRowClick}
+        rowClassName={(row) =>
+          row.isDraft
+            ? "bg-orange-50/80 dark:bg-orange-950/20 hover:bg-orange-100/80 dark:hover:bg-orange-950/30"
+            : undefined
+        }
         className="pt-3 px-4"
       >
         {/* 🖥️ DESKTOP FILTERS (Horizontal Layout) */}
