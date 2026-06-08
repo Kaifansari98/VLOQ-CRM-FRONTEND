@@ -63,59 +63,6 @@ export interface UniversalTableProps {
   initialProductionStatusFilter?: string;
 }
 
-const STAGE_PATH_BY_TAG: Record<string, string> = {
-  "Type 1": "/dashboard/leads/leadstable/details",
-  "Type 2": "/dashboard/leads/initial-site-measurement/details",
-  "Type 3": "/dashboard/leads/designing-stage/details",
-  "Type 4": "/dashboard/leads/booking-stage/details",
-  "Type 5": "/dashboard/project/final-measurement/details",
-  "Type 6": "/dashboard/project/client-documentation/details",
-  "Type 7": "/dashboard/project/client-approval/details",
-  "Type 8": "/dashboard/production/tech-check/details",
-  "Type 9": "/dashboard/production/order-login/details",
-  "Type 10": "/dashboard/production/pre-post-prod/details",
-  "Type 11": "/dashboard/production/ready-to-dispatch/details",
-  "Type 12": "/dashboard/installation/site-readiness/details",
-  "Type 13": "/dashboard/installation/dispatch-planning/details",
-  "Type 14": "/dashboard/installation/dispatch-stage/details",
-  "Type 15": "/dashboard/installation/under-installation/details",
-  "Type 16": "/dashboard/installation/final-handover/details",
-  "Type 17": "/dashboard/installation/final-handover/details",
-};
-
-const STAGE_PATH_BY_NAME: Record<string, string> = {
-  Open: "/dashboard/leads/leadstable/details",
-  "Initial Site Measurement":
-    "/dashboard/leads/initial-site-measurement/details",
-  Designing: "/dashboard/leads/designing-stage/details",
-  Booking: "/dashboard/leads/booking-stage/details",
-  "Final Site Measurement": "/dashboard/project/final-measurement/details",
-  "Client Documentation": "/dashboard/project/client-documentation/details",
-  "Client Approval": "/dashboard/project/client-approval/details",
-  "Tech Check": "/dashboard/production/tech-check/details",
-  "Order Login": "/dashboard/production/order-login/details",
-  Production: "/dashboard/production/pre-post-prod/details",
-  "Ready to Dispatch": "/dashboard/production/ready-to-dispatch/details",
-  "Site Readiness": "/dashboard/installation/site-readiness/details",
-  "Dispatch Planning": "/dashboard/installation/dispatch-planning/details",
-  Dispatch: "/dashboard/installation/dispatch-stage/details",
-  "Under Installation": "/dashboard/installation/under-installation/details",
-  "Final Handover": "/dashboard/installation/final-handover/details",
-  "Project Completed": "/dashboard/installation/final-handover/details",
-};
-
-const navigateLeadByStage = (row: LeadColumn) => {
-  const basePath =
-    (row.statusTag && STAGE_PATH_BY_TAG[row.statusTag]) ||
-    (row.status && STAGE_PATH_BY_NAME[row.status]);
-
-  if (!basePath) {
-    return `/dashboard/leads/details/${row.id}?accountId=${row.accountId}`;
-  }
-
-  return `${basePath}/${row.id}?accountId=${row.accountId}`;
-};
-
 // -------------------------------------------------------
 // 🔵 PRODUCTION STATUS FILTER
 // -------------------------------------------------------
@@ -452,9 +399,6 @@ export function UniversalTable({
   // -------------------- GLOBAL STATE --------------------
 
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
-  const isCustomUserTypeOnlyVendor = useAppSelector(
-    (s) => s.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
-  );
   const franchiseId = useAppSelector(
     (s) => s.auth.franchise_id ?? s.auth.user?.franchise_id,
   );
@@ -465,17 +409,12 @@ export function UniversalTable({
   const normalizedUserType = userType?.toLowerCase();
   const isAdmin =
     normalizedUserType === "admin" || normalizedUserType === "super-admin";
-  const shouldUseAllStagesForCustomSuperAdmin =
-    normalizedUserType === "super-admin" && isCustomUserTypeOnlyVendor;
-  const resolvedType = shouldUseAllStagesForCustomSuperAdmin ? "ALL" : type;
-  const shouldShowResolvedStageColumn =
-    showStageColumn || shouldUseAllStagesForCustomSuperAdmin;
   const shouldIncludeFranchise =
     normalizedUserType === "admin" ||
     normalizedUserType === "super-admin" ||
     normalizedUserType === "sales-executive" ||
     normalizedUserType === "head-site-supervisor";
-  const normalizedType = String(resolvedType || "")
+  const normalizedType = String(type || "")
     .trim()
     .toLowerCase();
   const canSeeMyOverallTabs = normalizedUserType === "sales-executive";
@@ -619,7 +558,7 @@ export function UniversalTable({
     return {
       userId: userId!,
       franchise_id: shouldIncludeFranchise ? franchiseId! : undefined,
-      tag: resolvedType,
+      tag: type,
       page: myPagination.pageIndex + 1,
       limit: myPagination.pageSize,
       global_search: myGlobalFilter || "",
@@ -662,7 +601,6 @@ export function UniversalTable({
     userType,
     shouldIncludeFranchise,
     type,
-    resolvedType,
     franchiseId,
     myPagination,
     mySorting,
@@ -695,7 +633,7 @@ export function UniversalTable({
     return {
       userId: overallUserId,
       franchise_id: shouldIncludeFranchise ? franchiseId! : undefined,
-      tag: resolvedType,
+      tag: type,
 
       page: overallPagination.pageIndex + 1,
       limit: overallPagination.pageSize,
@@ -741,7 +679,6 @@ export function UniversalTable({
     isAdmin,
     shouldIncludeFranchise,
     type,
-    resolvedType,
     franchiseId,
     overallPagination,
     overallSorting,
@@ -858,7 +795,6 @@ export function UniversalTable({
     effectiveViewType,
     dataMode,
     type,
-    resolvedType,
     vendorId,
     franchiseId,
     userId,
@@ -1238,13 +1174,13 @@ export function UniversalTable({
   const columns = useMemo(
     () =>
       getUniversalTableColumns({
-        showStageColumn: shouldShowResolvedStageColumn,
+        showStageColumn,
         showProductionStatusColumn,
         showPriorityColumn,
         showServicingColumn,
       }),
     [
-      shouldShowResolvedStageColumn,
+      showStageColumn,
       showProductionStatusColumn,
       showPriorityColumn,
       showServicingColumn,
@@ -1341,9 +1277,7 @@ export function UniversalTable({
   };
 
   const handleRowClick = (row: LeadColumn) => {
-    const targetPath = shouldUseAllStagesForCustomSuperAdmin
-      ? navigateLeadByStage(row)
-      : onRowNavigate(row);
+    const targetPath = onRowNavigate(row);
     router.push(withInstanceId(targetPath, row.instanceId));
   };
 
