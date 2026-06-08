@@ -920,8 +920,8 @@ export function UniversalTable({
       instanceDescription?: string;
     },
   ): LeadColumn => {
-    const designerMapping = Array.isArray(lead.leadUserMapping)
-      ? lead.leadUserMapping.find(
+    const designerMapping = Array.isArray(lead.userMappings)
+      ? lead.userMappings.find(
           (mapping: any) =>
             String(mapping?.type ?? "designer").toLowerCase() === "designer" &&
             String(mapping?.status ?? "active").toLowerCase() === "active",
