@@ -32,6 +32,7 @@ interface UniversalColumnOptions {
   showProductionStatusColumn?: boolean;
   showPriorityColumn?: boolean;
   showServicingColumn?: boolean;
+  showDesignerColumn?: boolean;
 }
 
 function toTitleCase(value: string) {
@@ -51,6 +52,7 @@ export function getUniversalTableColumns(
     showProductionStatusColumn = false,
     showPriorityColumn = false,
     showServicingColumn = false,
+    showDesignerColumn = false,
   } =
     options;
   const columns: ColumnDef<LeadColumn>[] = [
@@ -441,6 +443,28 @@ export function getUniversalTableColumns(
       enableHiding: true,
       enableColumnFilter: true,
     },
+
+    ...(showDesignerColumn
+      ? ([
+          {
+            accessorKey: "designer",
+            header: ({ column }) => (
+              <DataTableColumnHeader column={column} title="Designer" />
+            ),
+            meta: {
+              label: "Designer",
+            },
+            filterFn: tableSingleValueMultiSelectFilter,
+            enableSorting: false,
+            enableHiding: true,
+            enableColumnFilter: true,
+            cell: ({ row }) => {
+              const designer = (row.getValue("designer") as string) || "";
+              return designer.trim() ? designer : "—";
+            },
+          },
+        ] satisfies ColumnDef<LeadColumn>[])
+      : []),
 
     // 8) Site Address
     {

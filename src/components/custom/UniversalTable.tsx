@@ -399,6 +399,9 @@ export function UniversalTable({
   // -------------------- GLOBAL STATE --------------------
 
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
+  const isCustomUserTypeOnlyVendor = useAppSelector(
+    (s) => s.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
+  );
   const franchiseId = useAppSelector(
     (s) => s.auth.franchise_id ?? s.auth.user?.franchise_id,
   );
@@ -916,47 +919,63 @@ export function UniversalTable({
       instanceTitle?: string;
       instanceDescription?: string;
     },
-  ): LeadColumn => ({
-    rowKey: options?.rowKey,
-    instanceId: options?.instanceId,
-    id: lead.id,
-    srNo: index + 1,
-    lead_code: `${lead.lead_code ?? ""}${options?.leadCodeSuffix ?? ""}`,
-    name: toTitleCase(`${lead.firstname ?? ""} ${lead.lastname ?? ""}`),
-    email: lead.email ?? "",
-    contact: `${lead.country_code ?? ""}${lead.contact_no ?? ""}`,
-    siteAddress: lead.site_address ?? "",
-    site_map_link: lead.site_map_link ?? "",
-    architechName: lead.archetech_name ?? "",
-    designerRemark: lead.designer_remark ?? "",
-    furnitureType:
-      lead.productMappings?.map((p: any) => p.productType?.type).join(", ") ??
-      "",
-    furnitueStructures: options?.furnitureStructureOverride
-      ? [options.furnitureStructureOverride]
-      : (lead.leadProductStructureMapping?.map(
-          (p: any) => p.productStructure?.type,
-        ) ?? []),
-    productionStatus: options?.productionStatus,
-    type8StatusLoggedAt: options?.type8StatusLoggedAt,
-    techCheckCompletedAt: options?.techCheckCompletedAt,
-    orderLoginCompletedAt: options?.orderLoginCompletedAt,
-    instanceTitle: options?.instanceTitle,
-    instanceDescription: options?.instanceDescription,
-    source: lead.source?.type ?? "",
-    siteType: lead.siteType?.type ?? "",
-    createdAt: lead.created_at ? new Date(lead.created_at).getTime() : "",
-    updatedAt: lead.updated_at ?? "",
-    altContact: lead.alt_contact_no ?? "",
-    status: lead.statusType?.type ?? "",
-    statusTag: lead.statusType?.tag ?? "",
-    sales_executive: lead.assignedTo?.user_name ?? "",
-    assignedToId: lead.assignedTo?.id ?? "",
-    accountId: lead.account?.id ?? lead.account_id ?? 0,
-    priority: lead.priority ?? "",
-    servicing: getPendingServicingLabel(lead),
-    scheduledAt: getNextPendingService(lead)?.scheduled_for ?? "",
-  });
+  ): LeadColumn => {
+    const designerMapping = Array.isArray(lead.leadUserMapping)
+      ? lead.leadUserMapping.find(
+          (mapping: any) =>
+            String(mapping?.type ?? "designer").toLowerCase() === "designer" &&
+            String(mapping?.status ?? "active").toLowerCase() === "active",
+        )
+      : undefined;
+
+    const designerName =
+      designerMapping?.user?.user_name ??
+      designerMapping?.userMaster?.user_name ??
+      "";
+
+    return {
+      rowKey: options?.rowKey,
+      instanceId: options?.instanceId,
+      id: lead.id,
+      srNo: index + 1,
+      lead_code: `${lead.lead_code ?? ""}${options?.leadCodeSuffix ?? ""}`,
+      name: toTitleCase(`${lead.firstname ?? ""} ${lead.lastname ?? ""}`),
+      email: lead.email ?? "",
+      contact: `${lead.country_code ?? ""}${lead.contact_no ?? ""}`,
+      siteAddress: lead.site_address ?? "",
+      site_map_link: lead.site_map_link ?? "",
+      architechName: lead.archetech_name ?? "",
+      designerRemark: lead.designer_remark ?? "",
+      furnitureType:
+        lead.productMappings?.map((p: any) => p.productType?.type).join(", ") ??
+        "",
+      furnitueStructures: options?.furnitureStructureOverride
+        ? [options.furnitureStructureOverride]
+        : (lead.leadProductStructureMapping?.map(
+            (p: any) => p.productStructure?.type,
+          ) ?? []),
+      productionStatus: options?.productionStatus,
+      type8StatusLoggedAt: options?.type8StatusLoggedAt,
+      techCheckCompletedAt: options?.techCheckCompletedAt,
+      orderLoginCompletedAt: options?.orderLoginCompletedAt,
+      instanceTitle: options?.instanceTitle,
+      instanceDescription: options?.instanceDescription,
+      source: lead.source?.type ?? "",
+      siteType: lead.siteType?.type ?? "",
+      createdAt: lead.created_at ? new Date(lead.created_at).getTime() : "",
+      updatedAt: lead.updated_at ?? "",
+      altContact: lead.alt_contact_no ?? "",
+      status: lead.statusType?.type ?? "",
+      statusTag: lead.statusType?.tag ?? "",
+      sales_executive: lead.assignedTo?.user_name ?? "",
+      designer: designerName,
+      assignedToId: lead.assignedTo?.id ?? "",
+      accountId: lead.account?.id ?? lead.account_id ?? 0,
+      priority: lead.priority ?? "",
+      servicing: getPendingServicingLabel(lead),
+      scheduledAt: getNextPendingService(lead)?.scheduled_for ?? "",
+    };
+  };
 
   // -------------------- TABLE DATA --------------------
 
@@ -1178,12 +1197,14 @@ export function UniversalTable({
         showProductionStatusColumn,
         showPriorityColumn,
         showServicingColumn,
+        showDesignerColumn: isCustomUserTypeOnlyVendor,
       }),
     [
       showStageColumn,
       showProductionStatusColumn,
       showPriorityColumn,
       showServicingColumn,
+      isCustomUserTypeOnlyVendor,
     ],
   );
 

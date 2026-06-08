@@ -10,6 +10,7 @@ export type LeadColumn = {
   status: string; // R
   siteType: string; // R
   sales_executive?: string; // R
+  designer?: string;
   assignedToId?: number;
   siteAddress: string; // R
   architechName: string;
