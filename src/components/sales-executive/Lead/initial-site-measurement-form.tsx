@@ -474,6 +474,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
         instanceId: instance.id,
       })),
     });
+    formData.append("skip_status_update", "true");
 
     try {
       setUploadingInstanceId(instance.id);
