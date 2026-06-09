@@ -93,6 +93,7 @@ import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 import { useChatTabFromUrl } from "@/hooks/useChatTabFromUrl";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
+import SmallOrderRequestModal from "@/components/installation/small-order/SmallOrderRequestModal";
 
 export default function FinalHandoverLeadDetails() {
   const router = useRouter();
@@ -117,6 +118,7 @@ export default function FinalHandoverLeadDetails() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
+  const [openSmallOrderModal, setOpenSmallOrderModal] = useState(false);
 
   const [activeTab, setActiveTab] = useState(
     userType === "site-supervisor" ? "todo" : "details"
@@ -165,6 +167,11 @@ export default function FinalHandoverLeadDetails() {
       : canAccessTodoTaskTabUnderFinalHandoverStage(effectiveUserType ?? "");
   const normalizedUserType = userType?.toLowerCase() ?? "";
   const normalizedEffectiveUserType = effectiveUserType?.toLowerCase() ?? "";
+  const canCreateSmallOrder = [
+    "sales-executive",
+    "admin",
+    "super-admin",
+  ].includes(normalizedEffectiveUserType);
   const isSiteSupervisor = normalizedUserType === "site-supervisor";
 
 
@@ -475,6 +482,27 @@ export default function FinalHandoverLeadDetails() {
                   Mark On Hold
                 </DropdownMenuItem>
               )}
+              {canCreateSmallOrder &&
+                (shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <BoxIcon size={20} />
+                        Create Small Order
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setOpenSmallOrderModal(true);
+                    }}
+                  >
+                    <BoxIcon size={20} />
+                    Create Small Order
+                  </DropdownMenuItem>
+                ))}
 
               {canEdit && (
                 // Lead block handling added for DropdownMenu action
@@ -718,6 +746,12 @@ export default function FinalHandoverLeadDetails() {
         open={assignOpenLead}
         onOpenChange={setAssignOpenLead}
         leadData={{ id: leadIdNum, assignTo: lead?.assignedTo }}
+      />
+
+      <SmallOrderRequestModal
+        open={openSmallOrderModal}
+        onOpenChange={setOpenSmallOrderModal}
+        source="final_handover"
       />
 
       <EditLeadModal

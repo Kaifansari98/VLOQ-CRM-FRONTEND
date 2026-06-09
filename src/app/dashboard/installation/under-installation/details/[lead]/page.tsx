@@ -30,6 +30,7 @@ import {
   Users,
   XCircle,
   Hammer,
+  BoxIcon,
   // Under Installation icon,
   Clock,
   Handshake,
@@ -93,6 +94,7 @@ import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import SmallOrderRequestModal from "@/components/installation/small-order/SmallOrderRequestModal";
 import {
   useBlockLead,
   useUnblockLead,
@@ -135,6 +137,7 @@ export default function UnderInstallationLeadDetails() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
+  const [openSmallOrderModal, setOpenSmallOrderModal] = useState(false);
   const [showMoveModal, setShowMoveModal] = useState(false);
   const moveMutation = useMoveToFinalHandover();
   const [activityModalOpen, setActivityModalOpen] = useState(false);
@@ -155,6 +158,12 @@ export default function UnderInstallationLeadDetails() {
   const canReassign = canReassignLeadButton(effectiveUserType ?? "");
   const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
   const canEdit = canEditLeadButton(effectiveUserType ?? "");
+  const normalizedEffectiveUserType = effectiveUserType?.toLowerCase() ?? "";
+  const canCreateSmallOrder = [
+    "sales-executive",
+    "admin",
+    "super-admin",
+  ].includes(normalizedEffectiveUserType);
   const deleteLeadMutation = useDeleteLead();
   const canAccessTodoTab =
     effectiveUserType?.toLowerCase() === "custom"
@@ -622,6 +631,27 @@ export default function UnderInstallationLeadDetails() {
                   Mark On Hold
                 </DropdownMenuItem>
               )}
+              {canCreateSmallOrder &&
+                (shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <BoxIcon size={20} />
+                        Create Small Order
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setOpenSmallOrderModal(true);
+                    }}
+                  >
+                    <BoxIcon size={20} />
+                    Create Small Order
+                  </DropdownMenuItem>
+                ))}
               {canEdit && (
                 // Lead block handling added for DropdownMenu action
                 shouldDisableBlockedActions ? (
@@ -905,6 +935,12 @@ export default function UnderInstallationLeadDetails() {
         open={assignOpenLead}
         onOpenChange={setAssignOpenLead}
         leadData={{ id: leadIdNum, assignTo: lead?.assignedTo }}
+      />
+
+      <SmallOrderRequestModal
+        open={openSmallOrderModal}
+        onOpenChange={setOpenSmallOrderModal}
+        source="under_installation"
       />
 
       <EditLeadModal
