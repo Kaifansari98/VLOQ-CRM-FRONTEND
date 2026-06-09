@@ -386,14 +386,32 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       size="lg"
     > 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-5">
+        <form
+          onSubmit={form.handleSubmit(onSubmit, (errors) => {
+            const errorKeys = Object.keys(errors);
+            if (errorKeys.length > 0) {
+              const firstErrorKey = errorKeys[0];
+              const el = document.querySelector(`[data-name="${firstErrorKey}"]`);
+              if (el) {
+                const isHidden = el.getBoundingClientRect().height === 0;
+                const targetScrollEl = isHidden ? (el.parentElement || el) : el;
+                targetScrollEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                const focusable = el.querySelector("input, select, textarea, button");
+                if (focusable instanceof HTMLElement) {
+                  focusable.focus({ preventScroll: true });
+                }
+              }
+            }
+          })}
+          className="space-y-6 p-5"
+        >
           {/* File Upload Section */}
 
           <FormField
             control={form.control}
             name="final_documents"
             render={({ field }) => (
-              <FormItem>
+              <FormItem data-name="final_documents">
                 <FormLabel className="text-sm flex  justify-between">
                   Booking Documents (Quotations + Design) *
                   {vendorCustomUserTypeMode !== true && (
@@ -427,7 +445,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                 control={form.control}
                 name="mrp_value"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem data-name="mrp_value">
                     <FormLabel className="text-sm">MRP Value *</FormLabel>
                     <FormControl>
                       <CurrencyInput
@@ -445,7 +463,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                 control={form.control}
                 name="final_booking_amount"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem data-name="final_booking_amount">
                     <FormLabel className="text-sm">
                       Total Booking Value *
                     </FormLabel>
@@ -467,7 +485,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                 control={form.control}
                 name="amount_received"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem data-name="amount_received">
                     <FormLabel className="text-sm">
                       Booking Advance Received
                     </FormLabel>
@@ -490,7 +508,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                   control={form.control}
                   name="assign_to"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem data-name="assign_to">
                       <FormLabel className="text-sm">Assign Head Site Supervisor *</FormLabel>
                       <AssignToPicker
                         data={vendorUser.map((u: any) => ({ id: u.id, label: u.user_name }))}
@@ -521,7 +539,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
             control={form.control}
             name="payment_details_document"
             render={({ field }) => (
-              <FormItem>
+              <FormItem data-name="payment_details_document">
                 <FormLabel className="text-sm">
                   Booking Amount Payment Details Document
                 </FormLabel>
@@ -542,7 +560,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
             control={form.control}
             name="payment_text"
             render={({ field }) => (
-              <FormItem>
+              <FormItem data-name="payment_text">
                 <FormLabel className="text-sm">Payment Details</FormLabel>
                 <FormControl>
                   <TextAreaInput
