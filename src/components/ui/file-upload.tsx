@@ -366,31 +366,20 @@ function FileUploadRoot(props: FileUploadRootProps) {
   );
 
   const onProgress = useLazyRef(() => {
-    let frame = 0;
+    const frames = new WeakMap<File, number>();
     return (file: File, progress: number) => {
-      if (frame) return;
-      frame = requestAnimationFrame(() => {
-        frame = 0;
+      if (frames.get(file)) return;
+      const frameId = requestAnimationFrame(() => {
+        frames.delete(file);
         store.dispatch({
           type: "SET_PROGRESS",
           file,
           progress: Math.min(Math.max(0, progress), 100),
         });
       });
+      frames.set(file, frameId);
     };
   }).current;
-
-  React.useEffect(() => {
-    if (isControlled) {
-      store.dispatch({ type: "SET_FILES", files: value });
-    } else if (
-      defaultValue &&
-      defaultValue.length > 0 &&
-      !store.getState().files.size
-    ) {
-      store.dispatch({ type: "SET_FILES", files: defaultValue });
-    }
-  }, [value, defaultValue, isControlled, store]);
 
   React.useEffect(() => {
     return () => {
@@ -576,6 +565,27 @@ function FileUploadRoot(props: FileUploadRootProps) {
     },
     [store, onUpload, onProgress],
   );
+
+  React.useEffect(() => {
+    if (isControlled) {
+      const currentFiles = store.getState().files;
+      const newFiles = value?.filter((file) => !currentFiles.has(file)) || [];
+      
+      store.dispatch({ type: "SET_FILES", files: value || [] });
+      
+      if (newFiles.length > 0 && onUpload) {
+        setTimeout(() => {
+          onFilesUpload(newFiles);
+        }, 50);
+      }
+    } else if (
+      defaultValue &&
+      defaultValue.length > 0 &&
+      !store.getState().files.size
+    ) {
+      store.dispatch({ type: "SET_FILES", files: defaultValue });
+    }
+  }, [value, defaultValue, isControlled, store, onUpload, onFilesUpload]);
 
   const onInputChange = React.useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
