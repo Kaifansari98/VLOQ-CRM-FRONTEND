@@ -13,7 +13,6 @@ import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
-  getFilteredRowModel,
   getPaginationRowModel,
   SortingState,
   ColumnFiltersState,
@@ -456,26 +455,9 @@ const MyTaskTable = () => {
   const handleRowDoubleClick = useCallback(
     (row: ProcessedTask) => {
       const isBlocked = row.is_blocked;
-      const isPrivilegedUser = userType?.toLowerCase() === "super-admin";
-      
-      const isDeliveryTask = (row.remark || "")
-        .toLowerCase()
-        .includes("required delivery date");
-
-      const isNavigationTask =
-        row.taskType === "Dispatch" ||
-        row.taskType === "Assign a Site Supervisor" ||
-        row.taskType === "Site Readiness" ||
-        (row.taskType === "Miscellaneous" && !isDeliveryTask) ||
-        row.taskType === "Production Ready" ||
-        row.taskType === "Order Login" ||
-        row.taskType === "1st Servicing" ||
-        row.taskType === "2nd Servicing" ||
-        row.taskType === "3rd Servicing";
-
       const isFollowUpTask = row.taskType === "Follow Up";
 
-      if (isBlocked && !isPrivilegedUser && !isNavigationTask && !isFollowUpTask) {
+      if (isBlocked && !isFollowUpTask) {
         const blockTime = row.lead_blocked_at ? ` at ${formatBlockedAt(row.lead_blocked_at)}` : "";
         toastManager.add({
           title: `This lead has been blocked${blockTime}. Only follow up tasks are allowed.`,
