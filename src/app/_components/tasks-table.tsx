@@ -54,6 +54,7 @@ import TaskTypeFilter from "@/components/data-table/data-table-task-filter";
 import OrderLoginApprovalModal from "@/components/tasks/OrderLoginApprovalModal";
 import DispatchPlanningApprovalModal from "@/components/tasks/DispatchPlanningApprovalModal";
 import ApprovalRequestActionModal from "@/components/tasks/ApprovalRequestActionModal";
+import SmallOrderRequestActionModal from "@/components/tasks/SmallOrderRequestActionModal";
 import InitialSiteMeasurementTaskModal from "@/components/tasks/InitialSiteMeasurementTaskModal";
 import FinalMeasurementTaskModal from "@/components/tasks/FinalMeasurementTaskModal";
 import OrderLoginCompletedTaskModal from "@/components/tasks/OrderLoginCompletedTaskModal";
@@ -205,6 +206,8 @@ const MyTaskTable = () => {
   const [openDispatchPlanningApproval, setOpenDispatchPlanningApproval] =
     useState(false);
   const [openApprovalRequestAction, setOpenApprovalRequestAction] =
+    useState(false);
+  const [openSmallOrderRequestAction, setOpenSmallOrderRequestAction] =
     useState(false);
 
   // ✅ SEPARATE TASK TYPE FILTERS
@@ -501,6 +504,12 @@ const MyTaskTable = () => {
           variant: "view",
         });
         setOpenApprovalRequestAction(true);
+      } else if (row.taskType === "Small order request") {
+        setRowAction({
+          row: { original: row } as any,
+          variant: "smallorderrequest",
+        });
+        setOpenSmallOrderRequestAction(true);
       } else if (row.taskType === "Final Measurements") {
         setRowAction({
           row: { original: row } as any,
@@ -1098,6 +1107,16 @@ const MyTaskTable = () => {
           leadId: rowAction?.row.original.leadId || 0,
           taskId: rowAction?.row.original.id || 0,
           dueDate: rowAction?.row.original.dueDate,
+          remark: rowAction?.row.original.remark,
+        }}
+      />
+
+      <SmallOrderRequestActionModal
+        open={openSmallOrderRequestAction}
+        onOpenChange={setOpenSmallOrderRequestAction}
+        data={{
+          leadId: rowAction?.row.original.leadId || 0,
+          taskId: rowAction?.row.original.id || 0,
           remark: rowAction?.row.original.remark,
         }}
       />
