@@ -298,8 +298,10 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
       String(u.user_type?.user_type ?? "").toLowerCase() !== "master-admin",
   );
   const customFollowUpAssignableUsers = React.useMemo(() => {
-    const users = followUpAssignableUsers.filter(
-      (u: any) => String(u.user_type?.user_type ?? "").toLowerCase() === "custom",
+    const users = followUpAssignableUsers.filter((u: any) =>
+      ["custom", "super-admin"].includes(
+        String(u.user_type?.user_type ?? "").toLowerCase(),
+      ),
     );
 
     if (!userId || !loggedInUserName || normalizedUserType !== "custom") {
@@ -309,7 +311,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     const hasSelf = users.some((u: any) => u.id === userId);
     if (hasSelf) return users;
 
-    return [
+    const mergedUsers = [
       ...users,
       {
         id: userId,
@@ -317,6 +319,10 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
         user_type: { user_type: "custom" },
       },
     ];
+    return mergedUsers.filter(
+      (user: any, index: number, array: any[]) =>
+        array.findIndex((candidate: any) => candidate.id === user.id) === index,
+    );
   }, [followUpAssignableUsers, loggedInUserName, normalizedUserType, userId]);
   const customSiteReadinessUsers = React.useMemo(
     () =>

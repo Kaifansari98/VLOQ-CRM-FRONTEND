@@ -447,10 +447,18 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       String(u.user_type?.user_type ?? "").toLowerCase() !== "master-admin",
   );
   const customFollowUpAssignableUsers = React.useMemo(() => {
-    const users = eligibleCustomUsers;
+    const superAdminUsers = (followUpUsersData?.data?.users ?? []).filter(
+      (u: any) =>
+        String(u.user_type?.user_type ?? "").toLowerCase() === "super-admin",
+    );
+    const users = [...eligibleCustomUsers, ...superAdminUsers];
 
     if (!userId || !loggedInUserName || !isCustomUser) {
-      return users;
+      return users.filter(
+        (user: any, index: number, array: any[]) =>
+          array.findIndex((candidate: any) => candidate.id === user.id) ===
+          index,
+      );
     }
 
     const hasSelf = users.some((u: any) => u.id === userId);
@@ -463,8 +471,18 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
         user_name: loggedInUserName,
         user_type: { user_type: "custom" },
       },
-    ];
-  }, [eligibleCustomUsers, isCustomUser, loggedInUserName, userId]);
+    ].filter(
+      (user: any, index: number, array: any[]) =>
+        array.findIndex((candidate: any) => candidate.id === user.id) ===
+        index,
+    );
+  }, [
+    eligibleCustomUsers,
+    followUpUsersData?.data?.users,
+    isCustomUser,
+    loggedInUserName,
+    userId,
+  ]);
 
   const mappedData = React.useMemo(() => {
     if (taskType === "Approval Request") {

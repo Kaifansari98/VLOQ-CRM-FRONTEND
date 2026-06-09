@@ -317,19 +317,30 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
 
   const followUpAssignableUsers = isCustomUser
     ? (() => {
-        if (!userId || !loggedInUserName) return eligibleCustomUsers;
+        const superAdminUsers = (followUpUsersData?.data?.users ?? []).filter(
+          (u: any) =>
+            String(u.user_type?.user_type ?? "").toLowerCase() ===
+            "super-admin",
+        );
 
-        const hasSelf = eligibleCustomUsers.some((u: any) => u.id === userId);
-        if (hasSelf) return eligibleCustomUsers;
+        const mergedUsers = [...eligibleCustomUsers, ...superAdminUsers];
 
-        return [
-          ...eligibleCustomUsers,
-          {
-            id: userId,
-            user_name: loggedInUserName,
-            user_type: { user_type: "custom" },
-          },
-        ];
+        if (userId && loggedInUserName) {
+          const hasSelf = mergedUsers.some((u: any) => u.id === userId);
+          if (!hasSelf) {
+            mergedUsers.push({
+              id: userId,
+              user_name: loggedInUserName,
+              user_type: { user_type: "custom" },
+            });
+          }
+        }
+
+        return mergedUsers.filter(
+          (user: any, index: number, array: any[]) =>
+            array.findIndex((candidate: any) => candidate.id === user.id) ===
+            index,
+        );
       })()
     : (followUpUsersData?.data?.users ?? []).filter(
         (u: any) =>
