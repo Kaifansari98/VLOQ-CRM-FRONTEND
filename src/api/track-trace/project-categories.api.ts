@@ -24,6 +24,7 @@ export interface CreateCategoryPayload {
   vendor_id: number;
   category_name: string;
   type_ids: number[];
+  created_by:number;
 }
 
 export interface UpdateCategoryPayload {

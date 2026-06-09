@@ -32,6 +32,7 @@ import {
 import {
   useCreateTrackTraceProject,
   useSearchTrackTraceLeads,
+  useTrackTraceVendorConfig,
 } from "@/hooks/track-trace-hooks/useTrackTraceMasterHooks";
 import { cn } from "@/lib/utils";
 import { TrackTraceLeadOption } from "@/types/track-trace";
@@ -43,12 +44,7 @@ const createProjectSchema = z.object({
     .min(3, "Project name must be at least 3 characters")
     .max(100, "Project name must not exceed 100 characters"),
 
-  lead_id: z
-    .number({
-      error: "Please select a lead",
-    })
-    .int("Please select a valid lead")
-    .positive("Please select a lead"),
+    lead_id: z.number().nullable().optional(),
 
   file: z
     .array(z.instanceof(File))
@@ -238,14 +234,19 @@ export function CreateProjectModal({
 
   const { mutate: createProject, isPending } = useCreateTrackTraceProject();
 
+  const { data: vendorConfig, isLoading: configLoading } =
+  useTrackTraceVendorConfig(vendorId);
+
+const isCrmEnabled = !!vendorConfig?.is_crm_enabled;
+
   const form = useForm<CreateProjectFormData>({
-    resolver: zodResolver(createProjectSchema),
-    defaultValues: {
-      projectName: "",
-      lead_id: 0,
-      file: [],
-    },
-  });
+  resolver: zodResolver(createProjectSchema),
+  defaultValues: {
+    projectName: "",
+    lead_id: null,
+    file: [],
+  },
+});
 
   const handleDownloadTemplate = () => {
     try {
@@ -278,13 +279,13 @@ export function CreateProjectModal({
       return;
     }
     
-    if (!data.lead_id || Number(data.lead_id) <= 0) {
-      toastManager.add({
-        title: "Please select a lead",
-        type: "error",
-      });
-      return;
-    }
+    // if (!data.lead_id || Number(data.lead_id) <= 0) {
+    //   toastManager.add({
+    //     title: "Please select a lead",
+    //     type: "error",
+    //   });
+    //   return;
+    // }
 
     if (!data.file || data.file.length === 0) {
       toastManager.add({
@@ -296,7 +297,7 @@ export function CreateProjectModal({
 
     const payload = {
       vendorId: vendorId,
-      lead_id: Number(data.lead_id),
+      lead_id: isCrmEnabled && data.lead_id ? Number(data.lead_id) : null,
       projectName: data.projectName.trim(),
       file: data.file[0],
     };
@@ -310,7 +311,7 @@ export function CreateProjectModal({
 
         form.reset({
           projectName: "",
-          lead_id: 0,
+          lead_id: null,
           file: [],
         });
 
@@ -353,7 +354,7 @@ export function CreateProjectModal({
                 <div className="space-y-2 text-sm">
                   <p className="font-medium">Quick Setup Guide</p>
                   <ol className="list-inside list-decimal space-y-1.5">
-                    <li>Select the lead/project this cutlist belongs to</li>
+                    {isCrmEnabled && <li>Select the lead/project this cutlist belongs to, if applicable</li>}
                     <li>Download the Excel template below</li>
                     <li>Fill in your project data</li>
                     <li>Upload the completed file</li>
@@ -373,28 +374,38 @@ export function CreateProjectModal({
             </div>
           </div>
 
-          <FormField
-            control={form.control}
-            name="lead_id"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm font-medium">
-                  Select Lead <span className="text-destructive">*</span>
-                </FormLabel>
+          {configLoading ? (
+  <div className="rounded-xl border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+    Checking CRM configuration...
+  </div>
+) : isCrmEnabled ? (
+  <FormField
+    control={form.control}
+    name="lead_id"
+    render={({ field }) => (
+      <FormItem>
+        <FormLabel className="text-sm font-medium">
+          Select Lead <span className="text-xs text-muted-foreground">(optional)</span>
+        </FormLabel>
 
-                <FormControl>
-                  <LeadSearchBox
-                    vendorId={vendorId}
-                    value={field.value}
-                    disabled={isPending}
-                    onChange={(leadId) => field.onChange(leadId)}
-                  />
-                </FormControl>
-
-                <FormMessage />
-              </FormItem>
-            )}
+        <FormControl>
+          <LeadSearchBox
+            vendorId={vendorId}
+            value={field.value ?? undefined}
+            disabled={isPending}
+            onChange={(leadId) => field.onChange(leadId)}
           />
+        </FormControl>
+
+        <FormMessage />
+      </FormItem>
+    )}
+  />
+) : (
+  <div className="rounded-xl border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+    CRM is disabled for this vendor. Project will be created without lead mapping.
+  </div>
+)}
 
           <FormField
             control={form.control}
