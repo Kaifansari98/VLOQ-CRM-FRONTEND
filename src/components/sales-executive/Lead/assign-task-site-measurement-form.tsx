@@ -40,6 +40,7 @@ import {
   useCreateApprovalRequest,
 } from "@/hooks/useApprovalRequests";
 import { useSelfAssignTaskTypes } from "@/hooks/useSelfAssignTaskTypes";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 
 interface Props {
   open: boolean;
@@ -48,7 +49,7 @@ interface Props {
     id: number;
     name: string;
   };
-  onlyFollowUp?: boolean; // ✅ NEW
+  onlyFollowUp?: boolean;
 }
 
 const formSchema = z
@@ -80,7 +81,7 @@ const formSchema = z
     },
     {
       message: "Remark is required",
-      path: ["remark"], // Attach error to remark field
+      path: ["remark"],
     },
   );
 
@@ -99,10 +100,11 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
         | undefined,
   );
   const isApprovalTaskEnabled = useAppSelector(
-    (state) => state.auth.user?.vendor?.is_approval_task_enabled as
-      | boolean
-      | null
-      | undefined,
+    (state) =>
+      state.auth.user?.vendor?.is_approval_task_enabled as
+        | boolean
+        | null
+        | undefined,
   );
   const isSelfAssignTaskTypeMasterEnabled = useAppSelector(
     (state) =>
@@ -122,7 +124,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     (state) => state.customPrivileges.codes,
   );
   const isCustomUser = (userType || "").toLowerCase() === "custom";
-  
+
   const router = useRouter();
   const leadId = data?.id!;
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -146,7 +148,9 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
 
   const normalizedUserType = (userType || "").toLowerCase();
   const canAssignInitialSiteMeasurementForCustomUser =
-    customPrivilegeCodes.includes("leads.open_leads.assign_task.ism_assign_task");
+    customPrivilegeCodes.includes(
+      "leads.open_leads.assign_task.ism_assign_task",
+    );
   const canAssignFollowUpForCustomUser = customPrivilegeCodes.includes(
     "leads.open_leads.assign_task.follow_up_task",
   );
@@ -159,6 +163,36 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   const canShowApprovalRequestOption = isApprovalTaskEnabled !== false;
   const shouldShowInitialSiteMeasurementOption = !onlyFollowUp;
 
+  // ✅ useLeadAccessControl replaces useLeadBlockStatus + formatBlockedAt
+  const {
+    isLeadBlocked,
+    blockedTooltip,
+    shouldDisableBlockedActions,
+  } = useLeadAccessControl({
+    leadId,
+    userType,
+  });
+
+
+
+  React.useEffect(() => {
+  if (!open) return;
+
+  if (
+    shouldDisableBlockedActions &&
+    canShowFollowUpOption &&
+    form.getValues("task_type") !== "Follow Up"
+  ) {
+    form.setValue("task_type", "Follow Up", {
+      shouldValidate: true,
+    });
+  }
+}, [
+  open,
+  shouldDisableBlockedActions,
+  canShowFollowUpOption,
+  form,
+]);
   const initialSiteMeasurementTaskConflicts =
     taskConflicts?.restrictedTaskConflicts ?? [];
   const followUpConflicts = taskConflicts?.followUpConflicts ?? [];
@@ -166,6 +200,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   const [approvalFiles, setApprovalFiles] = React.useState<File[]>([]);
   const isFollowUp = taskType === "Follow Up";
   const isApprovalRequestTask = taskType === "Approval Request";
+
   const {
     data: selfAssignTaskTypes = [],
     isLoading: loadingSelfAssignTaskTypes,
@@ -217,26 +252,31 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     requiredPrivilegeCode: "leads.ism_leads.ism_details.upload_measurement",
     taskType: isFollowUp ? "followup" : undefined,
   });
-  const initialSiteMeasurementConflict = initialSiteMeasurementTaskConflicts.find(
-    (task) => task.task_type === "Initial Site Measurement",
-  );
+
+  const initialSiteMeasurementConflict =
+    initialSiteMeasurementTaskConflicts.find(
+      (task) => task.task_type === "Initial Site Measurement",
+    );
+
   const isInitialSiteMeasurementDisabled =
     isLoadingInitialSiteMeasurementTaskConflicts ||
     !!initialSiteMeasurementConflict ||
     !!onlyFollowUp ||
     !canShowInitialSiteMeasurementOption;
-  const initialSiteMeasurementTooltip = isLoadingInitialSiteMeasurementTaskConflicts
-    ? "Checking existing tasks"
-    : initialSiteMeasurementConflict
-      ? "Initial Site Measurement task already created and not completed"
-      : !canShowInitialSiteMeasurementOption
-        ? "You don’t have permission to assign Initial Site Measurement."
-        : "Initial Site Measurement is not available here";
+
+  const initialSiteMeasurementTooltip =
+    isLoadingInitialSiteMeasurementTaskConflicts
+      ? "Checking existing tasks"
+      : initialSiteMeasurementConflict
+        ? "Initial Site Measurement task already created and not completed"
+        : !canShowInitialSiteMeasurementOption
+          ? "You don't have permission to assign Initial Site Measurement."
+          : "Initial Site Measurement is not available here";
 
   const { data: followUpUsersData } = useFollowUpUsers(
     vendorId,
     leadId,
-    franchiseId
+    franchiseId,
   );
   const {
     data: approvalRequestAssignableUsersData,
@@ -246,18 +286,18 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   const followUpTooltip =
     "A Follow Up Task is already assigned to this user, which is not yet completed.";
 
-  const franchiseSalesExecutives =
-    (salesExecutiveUsers?.data?.sales_executives ?? []).filter(
-      (user: any) =>
-        String(user.user_type?.user_type ?? "").toLowerCase() !==
-        "master-admin",
-    );
-  const eligibleCustomUsers =
-    (customPrivilegeUsers?.data?.sales_executives ?? []).filter(
-      (user: any) =>
-        String(user.user_type?.user_type ?? "").toLowerCase() !==
-        "master-admin",
-    );
+  const franchiseSalesExecutives = (
+    salesExecutiveUsers?.data?.sales_executives ?? []
+  ).filter(
+    (user: any) =>
+      String(user.user_type?.user_type ?? "").toLowerCase() !== "master-admin",
+  );
+  const eligibleCustomUsers = (
+    customPrivilegeUsers?.data?.sales_executives ?? []
+  ).filter(
+    (user: any) =>
+      String(user.user_type?.user_type ?? "").toLowerCase() !== "master-admin",
+  );
 
   const initialSiteMeasurementUsers = React.useMemo(() => {
     if (vendorCustomUserTypeMode === true) {
@@ -272,16 +312,13 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
 
       return mergedUsers.filter(
         (user: any, index: number, array: any[]) =>
-          array.findIndex((candidate: any) => candidate.id === user.id) === index,
+          array.findIndex((candidate: any) => candidate.id === user.id) ===
+          index,
       );
     }
 
     return franchiseSalesExecutives;
-  }, [
-    eligibleCustomUsers,
-    franchiseSalesExecutives,
-    vendorCustomUserTypeMode,
-  ]);
+  }, [eligibleCustomUsers, franchiseSalesExecutives, vendorCustomUserTypeMode]);
 
   const approvalRequestUsers = React.useMemo(() => {
     const users = approvalRequestAssignableUsersData?.users ?? [];
@@ -294,13 +331,8 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
         user.user_type?.user_type ?? "",
       ).toLowerCase();
 
-      if (user.id === userId) {
-        return false;
-      }
-
-      if (normalizedAssignableUserType === "master-admin") {
-        return false;
-      }
+      if (user.id === userId) return false;
+      if (normalizedAssignableUserType === "master-admin") return false;
 
       if (shouldRestrictToFranchise) {
         return user.franchise_id === franchiseId;
@@ -344,8 +376,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
       })()
     : (followUpUsersData?.data?.users ?? []).filter(
         (u: any) =>
-          String(u.user_type?.user_type ?? "").toLowerCase() !==
-          "master-admin",
+          String(u.user_type?.user_type ?? "").toLowerCase() !== "master-admin",
       );
 
   const mappedData = isApprovalRequestTask
@@ -356,29 +387,24 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     : isSelfAssignTask
       ? normalizedUserType === "master-admin"
         ? []
-        : [
-          {
-            id: userId ?? 0,
-            label: loggedInUserName,
-          },
-        ]
-    : isFollowUp
-      ? followUpAssignableUsers.map((u: any) => ({
-          id: u.id,
-          label: u.user_name,
-          disabled:
-            u.id !== userId &&
-            followUpConflicts.some((task) => task.assignee?.id === u.id),
-          tooltip:
-            u.id !== userId &&
-            followUpConflicts.some((task) => task.assignee?.id === u.id)
-              ? followUpTooltip
-              : undefined,
-        }))
-      : initialSiteMeasurementUsers.map((user: any) => ({
-          id: user.id,
-          label: user.user_name,
-        }));
+        : [{ id: userId ?? 0, label: loggedInUserName }]
+      : isFollowUp
+        ? followUpAssignableUsers.map((u: any) => ({
+            id: u.id,
+            label: u.user_name,
+            disabled:
+              u.id !== userId &&
+              followUpConflicts.some((task) => task.assignee?.id === u.id),
+            tooltip:
+              u.id !== userId &&
+              followUpConflicts.some((task) => task.assignee?.id === u.id)
+                ? followUpTooltip
+                : undefined,
+          }))
+        : initialSiteMeasurementUsers.map((user: any) => ({
+            id: user.id,
+            label: user.user_name,
+          }));
 
   const loadingUsers =
     loadingSalesExecutiveUsers ||
@@ -414,7 +440,10 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   React.useEffect(() => {
     const currentTaskType = form.getValues("task_type");
 
-    if (currentTaskType === "Initial Site Measurement" && !canShowInitialSiteMeasurementOption) {
+    if (
+      currentTaskType === "Initial Site Measurement" &&
+      !canShowInitialSiteMeasurementOption
+    ) {
       form.setValue("task_type", "Follow Up");
       return;
     }
@@ -427,7 +456,11 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
       return;
     }
 
-    if (currentTaskType === "Follow Up" && !canShowFollowUpOption && canShowInitialSiteMeasurementOption) {
+    if (
+      currentTaskType === "Follow Up" &&
+      !canShowFollowUpOption &&
+      canShowInitialSiteMeasurementOption
+    ) {
       form.setValue("task_type", "Initial Site Measurement");
     }
   }, [
@@ -452,9 +485,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
       userId &&
       form.getValues("assign_lead_to") !== userId
     ) {
-      form.setValue("assign_lead_to", userId, {
-        shouldValidate: true,
-      });
+      form.setValue("assign_lead_to", userId, { shouldValidate: true });
     }
   }, [form, isSelfAssignTask, userId]);
 
@@ -510,7 +541,6 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
               title: "Approval request assigned successfully!",
               type: "success",
             });
-
             queryClient.invalidateQueries({
               queryKey: ["universal-stage-leads"],
               exact: false,
@@ -518,9 +548,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
             queryClient.invalidateQueries({ queryKey: ["leadStats"] });
             queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
             queryClient.invalidateQueries({ queryKey: ["vendorUserTasks"] });
-            queryClient.invalidateQueries({
-              queryKey: ["leadLogs"],
-            });
+            queryClient.invalidateQueries({ queryKey: ["leadLogs"] });
             onOpenChange(false);
             resetForm();
           },
@@ -541,7 +569,8 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
       initialSiteMeasurementConflict
     ) {
       toastManager.add({
-        title: "Initial Site Measurement task already created and not completed",
+        title:
+          "Initial Site Measurement task already created and not completed",
         type: "error",
       });
       return;
@@ -554,10 +583,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
         (task) => task.assignee?.id === values.assign_lead_to,
       )
     ) {
-      toastManager.add({
-        title: followUpTooltip,
-        type: "error",
-      });
+      toastManager.add({ title: followUpTooltip, type: "error" });
       return;
     }
 
@@ -580,20 +606,20 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     mutation.mutate(payload, {
       onSuccess: (data) => {
         console.log("API Response:", data);
-        toastManager.add({ title: "Task assigned successfully!", type: "success" });
-
+        toastManager.add({
+          title: "Task assigned successfully!",
+          type: "success",
+        });
         queryClient.invalidateQueries({
           queryKey: ["universal-stage-leads"],
           exact: false,
         });
-
         queryClient.invalidateQueries({ queryKey: ["leadStats"] });
         queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
         queryClient.invalidateQueries({ queryKey: ["vendorUserTasks"] });
         onOpenChange(false);
         resetForm();
 
-        // ✅ Redirect if task type is Initial Site Measurement
         if (values.task_type === "Initial Site Measurement") {
           router.push("/dashboard/leads/initial-site-measurement");
         }
@@ -644,18 +670,18 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
           ? "Assign Approval Request"
           : isSelfAssignTask
             ? `Assign Task for ${form.watch("task_type")}`
-          : form.watch("task_type") === "Follow Up" || onlyFollowUp
-            ? "Assign Task for Follow Up"
-            : "Assign Task for Initial Site Measurement"
+            : form.watch("task_type") === "Follow Up" || onlyFollowUp
+              ? "Assign Task for Follow Up"
+              : "Assign Task for Initial Site Measurement"
       }
       description={
         form.watch("task_type") === "Approval Request"
           ? "Use this form to assign an approval request."
           : isSelfAssignTask
             ? `Use this form to assign a ${form.watch("task_type").toLowerCase()} task to yourself.`
-          : form.watch("task_type") === "Follow Up" || onlyFollowUp
-            ? "Use this form to assign a follow up task."
-            : "Use this form to assign a site measurement task."
+            : form.watch("task_type") === "Follow Up" || onlyFollowUp
+              ? "Use this form to assign a follow up task."
+              : "Use this form to assign a site measurement task."
       }
       size="smd"
     >
@@ -684,41 +710,78 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
                         <SelectItem value="Follow Up">Follow Up</SelectItem>
                       ) : (
                         <>
-                      {/* ✅ Only show "Initial Site Measurement" if not restricted */}
-                          {shouldShowInitialSiteMeasurementOption &&
-                            (!isInitialSiteMeasurementDisabled ? (
-                              <SelectItem value="Initial Site Measurement">
-                                Initial Site Measurement
-                              </SelectItem>
-                            ) : (
+                          {/* ── Initial Site Measurement ── */}
+                          {shouldShowInitialSiteMeasurementOption && (
+                            shouldDisableBlockedActions ? (
+                              <CustomeTooltip
+                                value={blockedTooltip}
+                                truncateValue={
+                                  <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                    <span>Initial Site Measurement</span>
+                                    <span className="text-xs italic">(blocked)</span>
+                                  </div>
+                                }
+                              />
+                            ) : isInitialSiteMeasurementDisabled ? (
                               <CustomeTooltip
                                 value={initialSiteMeasurementTooltip}
                                 truncateValue={
                                   <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
                                     <span>Initial Site Measurement</span>
-                                    <span className="text-xs italic text-muted-foreground ml-1">
-                                      (locked)
-                                    </span>
+                                    <span className="text-xs italic">(locked)</span>
                                   </div>
                                 }
                               />
-                            ))}
+                            ) : (
+                              <SelectItem value="Initial Site Measurement">
+                                Initial Site Measurement
+                              </SelectItem>
+                            )
+                          )}
+
+                          {/* ── Follow Up — always selectable even when blocked ── */}
                           {canShowFollowUpOption && (
                             <SelectItem value="Follow Up">Follow Up</SelectItem>
                           )}
+
+                          {/* ── Approval Request ── */}
                           {canShowApprovalRequestOption && (
-                            <SelectItem value="Approval Request">
-                              Approval Request
-                            </SelectItem>
+                            shouldDisableBlockedActions ? (
+                              <CustomeTooltip
+                                value={blockedTooltip}
+                                truncateValue={
+                                  <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                    <span>Approval Request</span>
+                                    <span className="text-xs italic">(blocked)</span>
+                                  </div>
+                                }
+                              />
+                            ) : (
+                              <SelectItem value="Approval Request">
+                                Approval Request
+                              </SelectItem>
+                            )
                           )}
-                          {selfAssignTaskTypeNames.map((taskTypeName) => (
-                            <SelectItem
-                              key={taskTypeName}
-                              value={taskTypeName}
-                            >
-                              {taskTypeName}
-                            </SelectItem>
-                          ))}
+
+                          {/* ── Self Assign Task Types ── */}
+                          {selfAssignTaskTypeNames.map((taskTypeName) =>
+                            shouldDisableBlockedActions ? (
+                              <CustomeTooltip
+                                key={taskTypeName}
+                                value={blockedTooltip}
+                                truncateValue={
+                                  <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                    <span>{taskTypeName}</span>
+                                    <span className="text-xs italic">(blocked)</span>
+                                  </div>
+                                }
+                              />
+                            ) : (
+                              <SelectItem key={taskTypeName} value={taskTypeName}>
+                                {taskTypeName}
+                              </SelectItem>
+                            ),
+                          )}
                         </>
                       )}
                     </SelectContent>
@@ -813,7 +876,9 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
               <Button
                 type="submit"
                 className="text-sm"
-                disabled={mutation.isPending || approvalRequestMutation.isPending}
+                disabled={
+                  mutation.isPending || approvalRequestMutation.isPending
+                }
               >
                 {mutation.isPending || approvalRequestMutation.isPending
                   ? "Submitting..."

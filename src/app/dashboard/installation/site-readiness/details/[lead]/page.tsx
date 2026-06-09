@@ -85,6 +85,9 @@ import {
 } from "@/hooks/useChatTabFromUrl";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useBlockLead, useUnblockLead } from "@/hooks/useLeadsQueries";
+import { Lock, LockOpen } from "lucide-react";
 
 export default function ReadyToDispatchLeadDetails() {
   const router = useRouter();
@@ -129,6 +132,26 @@ export default function ReadyToDispatchLeadDetails() {
 
   const deleteLeadMutation = useDeleteLead();
 
+
+  const {
+    isLeadBlocked,
+    blockedTooltip,
+    shouldDisableBlockedActions,
+  } = useLeadAccessControl({
+    leadId: leadIdNum,
+    userType,
+    lead,
+  });
+
+
+  const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
+
+  const blockLeadMutation = useBlockLead();
+  const unblockLeadMutation = useUnblockLead();
+
+  const isBlockActionPending =
+    blockLeadMutation.isPending ||
+    unblockLeadMutation.isPending;
   useEffect(() => {
     if (isChatNotification) return;
     if (userType?.toLowerCase() === "site-supervisor") {
@@ -147,8 +170,8 @@ export default function ReadyToDispatchLeadDetails() {
   const canMoveToDispatchPlanning =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "installation.site_readiness.move_to_dispatch_planning.enable_disable",
-        )
+        "installation.site_readiness.move_to_dispatch_planning.enable_disable",
+      )
       : true;
 
   const canReassign = canReassignLeadButton(effectiveUserType ?? "");
@@ -157,32 +180,32 @@ export default function ReadyToDispatchLeadDetails() {
   const canViewPayment =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.payment_information.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.payment_information.enable_disable",
+      )
       : canViewPaymentTab(effectiveUserType ?? "");
   const canViewSiteHistory =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.site_history.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.site_history.enable_disable",
+      )
       : canViewSiteHistoryTab(effectiveUserType ?? "");
   const canViewChats =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.chat.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.chat.enable_disable",
+      )
       : true;
   const canViewDocuments =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.some((code) =>
-          code.startsWith("leads.open_leads.details_of_lead.documents_section."),
-        )
+        code.startsWith("leads.open_leads.details_of_lead.documents_section."),
+      )
       : true;
   const canShowTodoTab =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.some((code) =>
-          code.startsWith("installation.site_readiness."),
-        )
+        code.startsWith("installation.site_readiness."),
+      )
       : canDoSR(effectiveUserType ?? "");
 
   const handleMoveToDispatch = async () => {
@@ -270,6 +293,42 @@ export default function ReadyToDispatchLeadDetails() {
     setOpenDelete(false);
   };
 
+
+  const handleToggleLeadBlock = () => {
+    if (!vendorId || !userId || !leadIdNum) return;
+
+    const mutation = isLeadBlocked
+      ? unblockLeadMutation
+      : blockLeadMutation;
+
+    mutation.mutate(
+      {
+        vendorId,
+        leadId: leadIdNum,
+        updatedBy: userId,
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: isLeadBlocked
+              ? "Lead unblocked successfully!"
+              : "Lead blocked successfully!",
+            type: "success",
+          });
+
+          setOpenBlockConfirm(false);
+
+          queryClient.invalidateQueries({
+            queryKey: ["leadBlockStatus", vendorId, leadIdNum],
+          });
+
+          queryClient.invalidateQueries({
+            queryKey: ["leadById", leadIdNum],
+          });
+        },
+      },
+    );
+  };
   if (isLoading && !lead) {
     return <p className="p-6">Loading Ready-To-Dispatch lead details...</p>;
   }
@@ -300,8 +359,23 @@ export default function ReadyToDispatchLeadDetails() {
         </div>
 
         <div className="flex items-center space-x-2">
-          {/* ✅ Move to Dispatch Planning Button */}
-          {isCompleted && canMoveToDispatchPlanning ? (
+          {shouldDisableBlockedActions ? (
+            <CustomeTooltip
+              value={blockedTooltip}
+              truncateValue={
+                <span>
+                  <Button
+                    size="sm"
+                    disabled
+                    className="hidden sm:flex"
+                  >
+                    <Truck size={16} />
+                    Move to Dispatch Planning
+                  </Button>
+                </span>
+              }
+            />
+          ) : isCompleted && canMoveToDispatchPlanning ? (
             <Button
               size="sm"
               variant="default"
@@ -361,7 +435,18 @@ export default function ReadyToDispatchLeadDetails() {
                 Assign Task
               </DropdownMenuItem>
 
-              {isCompleted && canMoveToDispatchPlanning ? (
+              {shouldDisableBlockedActions ? (
+                // Lead block handling added for DropdownMenu action
+                <CustomeTooltip
+                  value={blockedTooltip}
+                  truncateValue={
+                    <DropdownMenuItem className="sm:hidden" disabled>
+                      <Truck size={16} />
+                      Move to Dispatch Planning
+                    </DropdownMenuItem>
+                  }
+                />
+              ) : isCompleted && canMoveToDispatchPlanning ? (
                 <DropdownMenuItem
                   className="sm:hidden"
                   onClick={() => setOpenMoveConfirm(true)}
@@ -384,37 +469,110 @@ export default function ReadyToDispatchLeadDetails() {
                   }
                 />
               )}
-              <DropdownMenuItem
-                onSelect={() => {
-                  setActivityType("onHold");
-                  setActivityModalOpen(true);
-                }}
-              >
-                <Clock className=" h-4 w-4" />
-                Mark On Hold
-              </DropdownMenuItem>
+              {/* Lead block handling added for DropdownMenu action */}
+              {shouldDisableBlockedActions ? (
+                <CustomeTooltip
+                  value={blockedTooltip}
+                  truncateValue={
+                    <DropdownMenuItem disabled>
+                      <Clock className=" h-4 w-4" />
+                      Mark On Hold
+                    </DropdownMenuItem>
+                  }
+                />
+              ) : (
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setActivityType("onHold");
+                    setActivityModalOpen(true);
+                  }}
+                >
+                  <Clock className=" h-4 w-4" />
+                  Mark On Hold
+                </DropdownMenuItem>
+              )}
 
               {canEdit && (
-                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                  <SquarePen size={20} />
-                  Edit
-                </DropdownMenuItem>
+                // Lead block handling added for DropdownMenu action
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <SquarePen size={20} />
+                        Edit
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                    <SquarePen size={20} />
+                    Edit
+                  </DropdownMenuItem>
+                )
               )}
 
               {canReassign && (
-                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                  <Users size={20} />
-                  Reassign Lead
-                </DropdownMenuItem>
+                // Lead block handling added for DropdownMenu action
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <Users size={20} />
+                        Reassign Lead
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                    <Users size={20} />
+                    Reassign Lead
+                  </DropdownMenuItem>
+                )
               )}
 
+
+              {userType === "super-admin" && (
+                <>
+
+                  <DropdownMenuItem
+                    onClick={() => setOpenBlockConfirm(true)}
+                  >
+                    {isLeadBlocked ? (
+                      <>
+                        <LockOpen size={16} />
+                        Unblock Lead
+                      </>
+                    ) : (
+                      <>
+                        <Lock size={16} />
+                        Block Lead
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                </>
+              )}
               {canDelete && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setOpenDelete(true)}>
-                    <XCircle size={20} className="text-red-500" />
-                    Delete
-                  </DropdownMenuItem>
+                  {/* Lead block handling added for DropdownMenu action */}
+                  {shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <XCircle size={20} className="text-red-500" />
+                          Delete
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem onClick={() => setOpenDelete(true)}>
+                      <XCircle size={20} className="text-red-500" />
+                      Delete
+                    </DropdownMenuItem>
+                  )}
                 </>
               )}
             </DropdownMenuContent>
@@ -656,6 +814,46 @@ export default function ReadyToDispatchLeadDetails() {
         }}
         loading={updateStatusMutation.isPending}
       />
+
+
+
+      <AlertDialog
+        open={openBlockConfirm}
+        onOpenChange={setOpenBlockConfirm}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isLeadBlocked
+                ? "Unblock Lead?"
+                : "Block Lead?"}
+            </AlertDialogTitle>
+
+            <AlertDialogDescription>
+              {isLeadBlocked
+                ? "This will unblock the lead and allow normal actions."
+                : "This will block the lead and disable all actions except Assign Task."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={handleToggleLeadBlock}
+              disabled={isBlockActionPending}
+            >
+              {isBlockActionPending
+                ? "Processing..."
+                : isLeadBlocked
+                  ? "Unblock Lead"
+                  : "Block Lead"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

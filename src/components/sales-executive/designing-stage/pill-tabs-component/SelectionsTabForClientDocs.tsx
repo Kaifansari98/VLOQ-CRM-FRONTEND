@@ -78,6 +78,7 @@ import {
 import ClientDocsSelectionMultiSelect, {
   ClientDocsSelectionOption,
 } from "./ClientDocsSelectionMultiSelect";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 
 interface Props {
   leadId: number;
@@ -123,6 +124,12 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const customPrivilegeCodes = useAppSelector((s) => s.customPrivileges.codes);
   const queryClient = useQueryClient();
   const router = useRouter();
+
+  // ✅ Lead block access control
+  const { shouldDisableBlockedActions, blockedTooltip } = useLeadAccessControl({
+    leadId,
+    userType: rawUserType,
+  });
 
   const { mutateAsync: createSelectionAsync, isPending: isCreating } =
     useSubmitSelection();
@@ -253,6 +260,20 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         )
       : true;
 
+  // ✅ Effective permissions — blocked lead overrides all write actions
+  const effectiveCanEditSelections =
+    canEditSelectionInstances && !shouldDisableBlockedActions;
+  const effectiveCanUploadProjectFiles =
+    canUploadProjectFiles && !shouldDisableBlockedActions;
+  const effectiveCanUploadDesignFiles =
+    canUploadDesignFiles && !shouldDisableBlockedActions;
+  const effectiveCanDeleteProjectFiles =
+    canDeleteProjectFiles && !shouldDisableBlockedActions;
+  const effectiveCanDeleteDesignFiles =
+    canDeleteDesignFiles && !shouldDisableBlockedActions;
+  const effectiveCanMoveToClientApproval =
+    canMoveToClientApproval && !shouldDisableBlockedActions;
+
   const structureInstances: LeadProductStructureInstance[] = React.useMemo(
     () =>
       Array.isArray(structureInstancesData?.data)
@@ -312,12 +333,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
 
           if (distinctSubTypes.length === 0) {
             return mainLabel
-              ? [
-                  {
-                    value: `shutter-${item.id}`,
-                    label: mainLabel,
-                  },
-                ]
+              ? [{ value: `shutter-${item.id}`, label: mainLabel }]
               : [];
           }
 
@@ -373,8 +389,6 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const lastNotifiedInstanceIdRef = React.useRef<number | null | undefined>(
     undefined,
   );
-  // Keep a stable ref to onInstanceChange so the effect doesn't re-fire when the
-  // parent passes a new function reference on every render.
   const onInstanceChangeRef = React.useRef(onInstanceChange);
   onInstanceChangeRef.current = onInstanceChange;
 
@@ -417,13 +431,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     const rows = Array.isArray(selectionsData?.data) ? selectionsData.data : [];
     const activeInstanceId = activeInstance?.id ?? null;
 
-    // First, get instance-specific selections
     let scoped = rows.filter(
       (row) => (row.product_structure_instance_id ?? null) === activeInstanceId,
     );
 
-    // If no instance-specific selections found, fall back to lead-level selections
-    // This handles cases where selections were created before instances existed
     if (scoped.length === 0 && activeInstanceId !== null) {
       const leadLevelSelections = rows.filter(
         (row) => (row.product_structure_instance_id ?? null) === null,
@@ -431,7 +442,6 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       scoped = leadLevelSelections;
     }
 
-    // For leads with no instances, use lead-level selections
     if (structureInstances.length === 0 && scoped.length === 0) {
       scoped = rows.filter(
         (row) => (row.product_structure_instance_id ?? null) === null,
@@ -588,9 +598,11 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const onSaveSelections = async (values: FormValues) => {
     const dirtyFields = selectionForm.formState.dirtyFields;
 
-    if (!canEditSelectionInstances) {
+    if (!effectiveCanEditSelections) {
       toastManager.add({
-        title: "You do not have permission to update selections.",
+        title: shouldDisableBlockedActions
+          ? blockedTooltip || "This lead is blocked. You cannot edit selections."
+          : "You do not have permission to update selections.",
         type: "error",
       });
       return;
@@ -635,8 +647,6 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
             .map((v) => parseOptionValueToCHSItem(v, type))
             .filter((item) => Object.keys(item).length > 0);
 
-          // Always call — empty items clears the mappings and still
-          // triggers recompute of total_required_chs_manufacturing_days
           await saveCHSMappings({
             vendor_id: vendorId,
             lead_id: leadId,
@@ -665,10 +675,13 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         queryKey: ["getSelectionData", vendorId, leadId],
       });
     } catch (e: any) {
-      toastManager.add({
-        title: e?.message || "Some selections failed to update",
-        type: "error",
-      });
+      const errorMessage =
+        e?.response?.data?.error ||
+        e?.response?.data?.message ||
+        e?.message ||
+        "Some selections failed to update";
+
+      toastManager.add({ title: errorMessage, type: "error" });
     }
   };
 
@@ -756,9 +769,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       )
         continue;
 
-      // New records: check chs_selection_type_mapping
       const hasCHSMappings = chsMappings.some((m) => m.selection_id === row.id);
-      // Legacy records: desc had "Selections: X\nRemark: Y" format
       const hasLegacyDesc = (() => {
         const upper = (row.desc || "").trim().toUpperCase();
         return (
@@ -786,14 +797,12 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
           );
         })
       : (() => {
-          // No instances -> validate at lead level (null bucket)
           if (structureInstances.length === 0) {
             const nullBucket = selectionsByInstance.get(null);
             return Boolean(
               nullBucket?.Carcas && nullBucket?.Shutter && nullBucket?.Handles,
             );
           }
-          // Single instance -> check instance bucket first, fall back to null (lead-level) bucket
           const nullBucket = selectionsByInstance.get(null);
           const firstInstanceBucket = activeInstance
             ? selectionsByInstance.get(activeInstance.id)
@@ -802,15 +811,20 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
             (firstInstanceBucket?.Carcas &&
               firstInstanceBucket?.Shutter &&
               firstInstanceBucket?.Handles) ||
-            (nullBucket?.Carcas && nullBucket?.Shutter && nullBucket?.Handles),
+              (nullBucket?.Carcas &&
+                nullBucket?.Shutter &&
+                nullBucket?.Handles),
           );
         })();
 
+  // ✅ Move to client approval is disabled if lead is blocked
   const canMoveStage =
     allInstancesDocsReady &&
     allInstancesSelectionsReady &&
     !selectionForm.formState.isDirty &&
-    !isMovingStage;
+    !isMovingStage &&
+    !shouldDisableBlockedActions;
+
   const isSingleInstance = structureInstances.length === 1;
 
   const handleOpenUploadModal = (instance: LeadProductStructureInstance) => {
@@ -856,24 +870,32 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       uploadForm.reset({ pptDocuments: [], pythaDocuments: [] });
       await queryClient.invalidateQueries({
         queryKey: ["clientDocumentationDetails", vendorId, leadId],
-        exact: false, // ✅ catches all variants including userId
+        exact: false,
       });
       queryClient.invalidateQueries({
         queryKey: ["getSelectionData", vendorId, leadId],
       });
-      queryClient.invalidateQueries({
-        queryKey: ["allLeadDocuments"],
-      });
+      queryClient.invalidateQueries({ queryKey: ["allLeadDocuments"] });
     } catch (e: any) {
-      toastManager.add({
-        title: e?.response?.data?.message || "Failed to upload files",
-        type: "error",
-      });
+      const errorMessage =
+        e?.response?.data?.error ||
+        e?.response?.data?.message ||
+        e?.message ||
+        "Failed to upload files";
+
+      toastManager.add({ title: errorMessage, type: "error" });
     }
   };
 
   const handleMoveStage = () => {
     if (!vendorId || !userId) return;
+    if (shouldDisableBlockedActions) {
+      toastManager.add({
+        title: blockedTooltip || "This lead is blocked.",
+        type: "error",
+      });
+      return;
+    }
     if (selectionForm.formState.isDirty) {
       toastManager.add({
         title: "Please save Carcas, Shutter and Handles before moving stage",
@@ -882,11 +904,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       return;
     }
     moveToClientApproval(
-      {
-        leadId,
-        vendorId,
-        updatedBy: userId,
-      },
+      { leadId, vendorId, updatedBy: userId },
       {
         onSuccess: () => {
           router.push("/dashboard/project/client-approval");
@@ -951,17 +969,13 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
 
   const isPending = isCreating || isEditing;
 
-  // Helper function to get selections for a specific instance_id
   const getSelectionsByInstanceId = (instance_id: number | null) => {
     const rows = Array.isArray(selectionsData?.data) ? selectionsData.data : [];
 
-    // Filter by instance_id
     let scoped = rows.filter(
       (row) => (row.product_structure_instance_id ?? null) === instance_id,
     );
 
-    // If no instance-specific selections found and instance_id is not null,
-    // fall back to lead-level selections
     if (scoped.length === 0 && instance_id !== null) {
       const leadLevelSelections = rows.filter(
         (row) => (row.product_structure_instance_id ?? null) === null,
@@ -969,7 +983,6 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       scoped = leadLevelSelections;
     }
 
-    // For leads with no instances, use lead-level selections
     if (structureInstances.length === 0 && scoped.length === 0) {
       scoped = rows.filter(
         (row) => (row.product_structure_instance_id ?? null) === null,
@@ -999,8 +1012,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
           <div className="flex items-center justify-between w-full">
             <div>
               <h4 className="text-sm font-semibold">Design Selections</h4>
-              {!canEditSelectionInstances && (
-                <Badge variant="secondary">Read only</Badge>
+              {!effectiveCanEditSelections && (
+                <Badge variant="secondary">
+                  {shouldDisableBlockedActions ? "Lead is blocked" : "Read only"}
+                </Badge>
               )}
               {(() => {
                 const days = getManufacturingDaysForInstance(instance_id);
@@ -1021,41 +1036,59 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                 );
               })()}
             </div>
+
             <div>
+              {/* ✅ Save/Update button — disabled + tooltip when blocked */}
               {canEditSelectionInstances && (
                 <div className="flex justify-end">
-                  <Button
-                    type="button"
-                    disabled={isPending}
-                    onClick={selectionForm.handleSubmit(onSaveSelections)}
-                  >
-                    {isPending
-                      ? "Saving..."
-                      : (existingSelections.carcas &&
-                            chsMappings.some(
-                              (m) =>
-                                m.selection_id ===
-                                existingSelections.carcas?.id,
-                            )) ||
-                          (existingSelections.shutter &&
-                            chsMappings.some(
-                              (m) =>
-                                m.selection_id ===
-                                existingSelections.shutter?.id,
-                            )) ||
-                          (existingSelections.handles &&
-                            chsMappings.some(
-                              (m) =>
-                                m.selection_id ===
-                                existingSelections.handles?.id,
-                            ))
-                        ? "Update Design Selections"
-                        : "Save Design Selections"}
-                  </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-block">
+                          <Button
+                            type="button"
+                            disabled={isPending || shouldDisableBlockedActions}
+                            onClick={
+                              shouldDisableBlockedActions
+                                ? undefined
+                                : selectionForm.handleSubmit(onSaveSelections)
+                            }
+                          >
+                            {isPending
+                              ? "Saving..."
+                              : (existingSelections.carcas &&
+                                    chsMappings.some(
+                                      (m) =>
+                                        m.selection_id ===
+                                        existingSelections.carcas?.id,
+                                    )) ||
+                                  (existingSelections.shutter &&
+                                    chsMappings.some(
+                                      (m) =>
+                                        m.selection_id ===
+                                        existingSelections.shutter?.id,
+                                    )) ||
+                                  (existingSelections.handles &&
+                                    chsMappings.some(
+                                      (m) =>
+                                        m.selection_id ===
+                                        existingSelections.handles?.id,
+                                    ))
+                                ? "Update Design Selections"
+                                : "Save Design Selections"}
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      {shouldDisableBlockedActions && (
+                        <TooltipContent>{blockedTooltip}</TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
               )}
             </div>
           </div>
+
           <Form {...selectionForm}>
             <form
               onSubmit={selectionForm.handleSubmit(onSaveSelections)}
@@ -1076,7 +1109,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                           placeholder="Select carcass options"
                           disabled={
                             isPending ||
-                            !canEditSelectionInstances ||
+                            !effectiveCanEditSelections ||
                             isSelectionMastersLoading
                           }
                         />
@@ -1092,7 +1125,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                                 onChange={remarkField.onChange}
                                 placeholder="Enter carcas remark..."
                                 disabled={
-                                  isPending || !canEditSelectionInstances
+                                  isPending || !effectiveCanEditSelections
                                 }
                                 className="h-24"
                               />
@@ -1120,7 +1153,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                           placeholder="Select handle options"
                           disabled={
                             isPending ||
-                            !canEditSelectionInstances ||
+                            !effectiveCanEditSelections ||
                             isSelectionMastersLoading
                           }
                         />
@@ -1136,7 +1169,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                                 onChange={remarkField.onChange}
                                 placeholder="Enter handles remark..."
                                 disabled={
-                                  isPending || !canEditSelectionInstances
+                                  isPending || !effectiveCanEditSelections
                                 }
                                 className="h-24"
                               />
@@ -1164,7 +1197,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                           placeholder="Select shutter options"
                           disabled={
                             isPending ||
-                            !canEditSelectionInstances ||
+                            !effectiveCanEditSelections ||
                             isSelectionMastersLoading
                           }
                         />
@@ -1180,7 +1213,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                                 onChange={remarkField.onChange}
                                 placeholder="Enter shutter remark..."
                                 disabled={
-                                  isPending || !canEditSelectionInstances
+                                  isPending || !effectiveCanEditSelections
                                 }
                                 className="h-24"
                               />
@@ -1198,6 +1231,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
           </Form>
         </div>
 
+        {/* ✅ Upload section — disabled when blocked */}
         {(canUploadProjectFiles || canUploadDesignFiles) && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -1224,7 +1258,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                               value={field.value}
                               onChange={field.onChange}
                               accept=".ppt,.pptx,.pdf,.jpg,.jpeg,.png,.doc,.docx"
-                              disabled={!canUploadProjectFiles}
+                              disabled={!effectiveCanUploadProjectFiles}
                             />
                           </FormControl>
                           {isCustomVendorFlow && (
@@ -1254,7 +1288,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                               value={field.value}
                               onChange={field.onChange}
                               accept=".pdf,.zip,.pytha,.pyo"
-                              disabled={!canUploadDesignFiles}
+                              disabled={!effectiveCanUploadDesignFiles}
                             />
                           </FormControl>
                           {isCustomVendorFlow && (
@@ -1290,26 +1324,39 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                       animate={{ opacity: 1, height: "auto" }}
                       className="flex justify-end"
                     >
-                      <Button
-                        type="submit"
-                        disabled={
-                          isUploadingDocs ||
-                          (!canUploadProjectFiles && !canUploadDesignFiles)
-                        }
-                        className="gap-2"
-                      >
-                        {isUploadingDocs ? (
-                          <>
-                            <Loader2 className="animate-spin w-4 h-4" />
-                            Uploading...
-                          </>
-                        ) : (
-                          <>
-                            <Upload className="w-4 h-4" />
-                            Click Here To Upload Files
-                          </>
-                        )}
-                      </Button>
+                      {/* ✅ Upload button — disabled + tooltip when blocked */}
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-block">
+                              <Button
+                                type="submit"
+                                disabled={
+                                  isUploadingDocs ||
+                                  (!effectiveCanUploadProjectFiles &&
+                                    !effectiveCanUploadDesignFiles)
+                                }
+                                className="gap-2"
+                              >
+                                {isUploadingDocs ? (
+                                  <>
+                                    <Loader2 className="animate-spin w-4 h-4" />
+                                    Uploading...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Upload className="w-4 h-4" />
+                                    Click Here To Upload Files
+                                  </>
+                                )}
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          {shouldDisableBlockedActions && (
+                            <TooltipContent>{blockedTooltip}</TooltipContent>
+                          )}
+                        </Tooltip>
+                      </TooltipProvider>
                     </motion.div>
                   )}
                 </div>
@@ -1384,7 +1431,8 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                                       created_at: doc.created_at,
                                     }}
                                     index={index}
-                                    canDelete={canDeleteProjectFiles}
+                                    // ✅ delete disabled when blocked
+                                    canDelete={effectiveCanDeleteProjectFiles}
                                     onDelete={(id) =>
                                       setConfirmDelete(Number(id))
                                     }
@@ -1407,7 +1455,8 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                                       signedUrl: doc.signed_url,
                                       created_at: doc.created_at,
                                     }}
-                                    canDelete={canDeleteProjectFiles}
+                                    // ✅ delete disabled when blocked
+                                    canDelete={effectiveCanDeleteProjectFiles}
                                     onDelete={(id) => setConfirmDelete(id)}
                                   />
                                 </motion.div>
@@ -1439,7 +1488,8 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                                 signedUrl: doc.signed_url,
                                 created_at: doc.created_at,
                               }}
-                              canDelete={canDeleteDesignFiles}
+                              // ✅ delete disabled when blocked
+                              canDelete={effectiveCanDeleteDesignFiles}
                               onDelete={(id) => setConfirmDelete(id)}
                             />
                           </motion.div>
@@ -1521,7 +1571,6 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                     onClick={() => handleOpenUploadModal(instance)}
                   >
                     <CardContent className="px-6">
-                      {/* Top Row */}
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
                           <div
@@ -1555,10 +1604,8 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                         </Button>
                       </div>
 
-                      {/* Divider */}
                       <div className="my-4 border-t" />
 
-                      {/* Metadata row */}
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2 text-sm">
                           <FolderOpen className="w-4 h-4 text-muted-foreground" />
@@ -1571,7 +1618,6 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                         </Badge>
                       </div>
 
-                      {/* Bottom preview row */}
                       {totalDocs > 0 ? (
                         <div className="flex -space-x-2">
                           {Array.from({ length: Math.min(totalDocs, 4) }).map(
@@ -1619,11 +1665,13 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Move to Client Approval */}
-      {isClientDocumentationStage && canMoveToClientApproval && (
+      {/* ✅ Move to Client Approval — disabled + tooltip when blocked */}
+      {isClientDocumentationStage && effectiveCanMoveToClientApproval && (
         <div className="pt-2">
           {(() => {
             const missing: string[] = [];
+            if (shouldDisableBlockedActions)
+              missing.push(blockedTooltip || "Lead is blocked");
             if (!allInstancesSelectionsReady)
               missing.push("Save Carcas, Shutter & Handles for all instances");
             if (!allInstancesDocsReady)

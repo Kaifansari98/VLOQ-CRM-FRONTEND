@@ -70,7 +70,16 @@ const UploadFinalDoc: React.FC<LeadViewModalProps> = ({
           form.reset();
         },
         onError: (error: any) => {
-          toastManager.add({ title: error?.response?.data?.message || "Upload failed ❌", type: "error" });
+          const errorMessage =
+            error?.response?.data?.error ||
+            error?.response?.data?.message ||
+            error?.message ||
+            "Something went wrong";
+
+          toastManager.add({
+            title: errorMessage,
+            type: "error",
+          });
         },
       }
     );

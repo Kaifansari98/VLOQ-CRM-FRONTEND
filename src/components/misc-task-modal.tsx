@@ -43,7 +43,16 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
   const uploadCompletionDocsMutation = useMutation({
     mutationFn: uploadMiscCompletionDocumentsByTaskId,
     onError: (error: any) => {
-      toastManager.add({ title: error?.message || "Failed to upload documents", type: "error" });
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to upload documents";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
     },
   });
 
@@ -116,7 +125,16 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
                 }
               },
               onError: (err: any) => {
-                toastManager.add({ title: err?.message || "Failed to update task", type: "error" });
+                const errorMessage =
+                  err?.response?.data?.error ||
+                  err?.response?.data?.message ||
+                  err?.message ||
+                  "Failed to update task";
+
+                toastManager.add({
+                  title: errorMessage,
+                  type: "error",
+                });
               },
             },
           );
@@ -178,7 +196,16 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
           );
         },
         onError: (err: any) => {
-          toastManager.add({ title: err?.message || "Failed to reschedule task", type: "error" });
+          const errorMessage =
+            err?.response?.data?.error ||
+            err?.response?.data?.message ||
+            err?.message ||
+            "Failed to reschedule task";
+
+          toastManager.add({
+            title: errorMessage,
+            type: "error",
+          });
         },
       },
     );

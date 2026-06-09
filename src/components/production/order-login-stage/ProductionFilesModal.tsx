@@ -37,6 +37,10 @@ import { ImageComponent } from "@/components/utils/ImageCard";
 import { useSearchParams } from "next/navigation";
 import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
 
+
+import CustomeTooltip from "@/components/custom-tooltip";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useLeadById } from "@/hooks/useLeadsQueries";
 interface ProductionFilesSectionProps {
   leadId: number;
   accountId: number | null;
@@ -92,6 +96,24 @@ export default function ProductionFilesSection({
     useUpsertProductionFilesRemark(vendorId, leadId);
   const [remark, setRemark] = useState("");
 
+
+  const { data: leadResponse } = useLeadById(
+    leadId,
+    vendorId,
+    userId,
+  );
+
+  const lead = leadResponse?.data?.lead;
+
+  const {
+    blockedTooltip,
+    shouldDisableBlockedActions,
+  } = useLeadAccessControl({
+    leadId,
+    userType,
+    lead,
+  });
+
   useEffect(() => {
     if (savedRemark && savedRemark !== "N/A") setRemark(savedRemark);
   }, [savedRemark]);
@@ -104,8 +126,17 @@ export default function ProductionFilesSection({
     try {
       await saveRemark({ remark, updated_by: userId! });
       toastManager.add({ title: "Remark saved successfully.", type: "success" });
-    } catch {
-      toastManager.add({ title: "Failed to save remark.", type: "error" });
+    } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to save remark.";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
     }
   };
 
@@ -138,7 +169,16 @@ export default function ProductionFilesSection({
         queryKey: ["leadProductionReadiness", vendorId, leadId],
       });
     } catch (error: any) {
-      toastManager.add({ title: error?.response?.data?.message || "Failed to upload files.", type: "error" });
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to upload files.";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
     }
   };
 
@@ -162,202 +202,249 @@ export default function ProductionFilesSection({
     !readOnly &&
     canUploadOrDeleteOrderLogin(userType ?? "", effectiveStage);
   const canUploadProductionFiles =
-    userType === "custom"
-      ? customPrivilegeCodes.includes(
+    !shouldDisableBlockedActions &&
+    (
+      userType === "custom"
+        ? customPrivilegeCodes.includes(
           "production.order_login.production_files.upload",
         )
-      : canManageProductionFiles;
+        : canManageProductionFiles
+    );
+
   const canDeleteProductionFiles =
-    userType === "custom"
-      ? customPrivilegeCodes.includes(
+    !shouldDisableBlockedActions &&
+    (
+      userType === "custom"
+        ? customPrivilegeCodes.includes(
           "production.order_login.production_files.delete",
         )
-      : canManageProductionFiles;
+        : canManageProductionFiles
+    );
 
   return (
     <div className="space-y-4">
       <ClientRequiredDeliveryDateBanner leadId={leadId} />
 
       <div className="border rounded-lg bg-background shadow-sm">
-      {/* -------------------------------- HEADER -------------------------------- */}
-      <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between px-6 py-4 border-b bg-muted/30 ">
-        <div className="space-y-0.5">
-          <div className="flex items-center gap-2">
-            <FolderOpen className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-semibold tracking-tight">
-              Production Files
-            </h2>
+        {/* -------------------------------- HEADER -------------------------------- */}
+        <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between px-6 py-4 border-b bg-muted/30 ">
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2">
+              <FolderOpen className="w-5 h-5 text-primary" />
+              <h2 className="text-lg font-semibold tracking-tight">
+                Production Files
+              </h2>
+            </div>
+            <p className="text-xs text-muted-foreground ml-7">
+              Upload and manage production files associated with this
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground ml-7">
-            Upload and manage production files associated with this lead.
-          </p>
+
+          {hasFiles && (
+            <Badge variant="secondary">
+              {productionFiles.length} File
+              {productionFiles.length > 1 && "s"}
+            </Badge>
+          )}
         </div>
 
-        {hasFiles && (
-          <Badge variant="secondary">
-            {productionFiles.length} File
-            {productionFiles.length > 1 && "s"}
-          </Badge>
+        {/* -------------------------------- UPLOAD AREA -------------------------------- */}
+
+
+        {shouldDisableBlockedActions ? (
+          <div className="p-6 border-b space-y-4">
+            <CustomeTooltip
+              value={blockedTooltip}
+              truncateValue={
+                <div>
+                  <FileUploadField
+                    value={[]}
+                    onChange={() => { }}
+                    multiple
+                    disabled
+                  />
+                </div>
+              }
+            />
+
+       
+          </div>
+        ) : (
+          canUploadProductionFiles && (
+            <div className="p-6 border-b space-y-4">
+              <FileUploadField
+                value={selectedFiles}
+                onChange={setSelectedFiles}
+                accept=".png,.jpg,.jpeg,.pdf,.pyo,.pytha,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip"
+                multiple
+              />
+
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  onClick={handleUpload}
+                  disabled={isPending || selectedFiles.length === 0}
+                  className="flex items-center gap-2"
+                >
+                  {isPending ? (
+                    <>
+                      <Loader2 className="animate-spin size-4" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={16} />
+                      Upload Files
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )
         )}
-      </div>
 
-      {/* -------------------------------- UPLOAD AREA -------------------------------- */}
-      {canUploadProductionFiles && (
-        <div className="p-6 border-b space-y-4">
-          <FileUploadField
-            value={selectedFiles}
-            onChange={setSelectedFiles}
-            accept=".png,.jpg,.jpeg,.pdf,.pyo,.pytha,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip"
-            multiple
-          />
 
+        {/* -------------------------------- REMARK SECTION -------------------------------- */}
+        <div className="p-6 border-b space-y-2">
+          <p className="text-sm font-semibold tracking-tight">Remark</p>
+          {shouldDisableBlockedActions ? (
+            <CustomeTooltip
+              value={blockedTooltip}
+              truncateValue={
+                <div>
+                  <TextAreaInput
+                    value={remark}
+                    onChange={() => { }}
+                    disabled
+                    maxLength={500}
+                    placeholder="Add any notes related to production files..."
+                    className="h-[130px] bg-muted/20 rounded-lg"
+                  />
+                </div>
+              }
+            />
+          ) : (
+            <TextAreaInput
+              value={remark}
+              onChange={setRemark}
+              maxLength={500}
+              placeholder="Add any notes related to production files..."
+              className="h-[130px] bg-muted/20 rounded-lg"
+            />
+          )}
           <div className="flex justify-end">
             <Button
               size="sm"
-              onClick={handleUpload}
-              disabled={isPending || selectedFiles.length === 0}
+              onClick={handleRemarkSave}
+              disabled={
+                !remark.trim() || !canUploadProductionFiles || savingRemark
+              }
               className="flex items-center gap-2"
             >
-              {isPending ? (
+              {savingRemark ? (
                 <>
                   <Loader2 className="animate-spin size-4" />
-                  Uploading...
+                  Saving...
                 </>
               ) : (
                 <>
-                  <Upload size={16} />
-                  Upload Files
+                  <Paperclip size={16} />
+                  {savedRemark && savedRemark !== "N/A" ? "Update Remark" : "Add Remark"}
                 </>
               )}
             </Button>
           </div>
         </div>
-      )}
 
-      {/* -------------------------------- REMARK SECTION -------------------------------- */}
-      <div className="p-6 border-b space-y-2">
-        <p className="text-sm font-semibold tracking-tight">Remark</p>
-        <TextAreaInput
-          value={remark}
-          onChange={setRemark}
-          maxLength={500}
-          placeholder="Add any notes related to production files..."
-          className="h-[130px] bg-muted/20 rounded-lg"
-          disabled={!canUploadProductionFiles}
-        />
-        <div className="flex justify-end">
-          <Button
-            size="sm"
-            onClick={handleRemarkSave}
-            disabled={
-              !remark.trim() || !canUploadProductionFiles || savingRemark
-            }
-            className="flex items-center gap-2"
-          >
-            {savingRemark ? (
-              <>
-                <Loader2 className="animate-spin size-4" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Paperclip size={16} />
-                {savedRemark && savedRemark !== "N/A" ? "Update Remark" : "Add Remark"}
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
-
-      {/* -------------------------------- FILE LIST SECTION -------------------------------- */}
-      <div className="p-6 space-y-4">
-        <div className="flex items-center justify-between mb-2">
-          <h4 className="text-sm font-semibold tracking-tight">
-            Uploaded Files
-          </h4>
-        </div>
-
-        {isLoading ? (
-          <div className="flex justify-center py-10 text-sm text-muted-foreground">
-            <Loader2 className="animate-spin mr-2 size-4" />
-            Loading files...
+        {/* -------------------------------- FILE LIST SECTION -------------------------------- */}
+        <div className="p-6 space-y-4">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-sm font-semibold tracking-tight">
+              Uploaded Files
+            </h4>
           </div>
-        ) : !hasFiles ? (
-          <div className="p-10 border border-dashed rounded-xl flex flex-col items-center justify-center text-center bg-muted/40">
-            <FolderOpen className="w-10 h-10 text-muted-foreground mb-3" />
-            <p className="text-sm font-medium text-muted-foreground">
-              No production files uploaded yet.
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Start by uploading your CAD, Pytha, or image files.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
-            {productionFiles.map((doc: any) => {
-              const isImage = doc.doc_og_name?.match(
-                /\.(jpg|jpeg|png|gif|webp)$/i,
-              );
-              if (isImage) {
-                return (
-                  <ImageComponent
-                    key={doc.id}
-                    doc={{
-                      id: doc.id,
-                      doc_og_name: doc.doc_og_name,
-                      signedUrl: doc.signedUrl ?? doc.signed_url,
-                      created_at: doc.created_at,
-                    }}
-                    canDelete={canDeleteProductionFiles}
-                    onDelete={(id) =>
-                      setConfirmDelete(typeof id === "string" ? Number(id) : id)
-                    }
-                  />
+
+          {isLoading ? (
+            <div className="flex justify-center py-10 text-sm text-muted-foreground">
+              <Loader2 className="animate-spin mr-2 size-4" />
+              Loading files...
+            </div>
+          ) : !hasFiles ? (
+            <div className="p-10 border border-dashed rounded-xl flex flex-col items-center justify-center text-center bg-muted/40">
+              <FolderOpen className="w-10 h-10 text-muted-foreground mb-3" />
+              <p className="text-sm font-medium text-muted-foreground">
+                No production files uploaded yet.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Start by uploading your CAD, Pytha, or image files.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
+              {productionFiles.map((doc: any) => {
+                const isImage = doc.doc_og_name?.match(
+                  /\.(jpg|jpeg|png|gif|webp)$/i,
                 );
-              } else {
-                return (
-                  <DocumentCard
-                    key={doc.id}
-                    doc={{
-                      id: doc.id,
-                      originalName: doc.doc_og_name,
-                      signedUrl: doc.signedUrl ?? doc.signed_url,
-                      created_at: doc.created_at,
-                    }}
-                    canDelete={canDeleteProductionFiles}
-                    onDelete={(id) => setConfirmDelete(id)}
-                  />
-                );
-              }
-            })}
-          </div>
-        )}
-      </div>
+                if (isImage) {
+                  return (
+                    <ImageComponent
+                      key={doc.id}
+                      doc={{
+                        id: doc.id,
+                        doc_og_name: doc.doc_og_name,
+                        signedUrl: doc.signedUrl ?? doc.signed_url,
+                        created_at: doc.created_at,
+                      }}
+                      canDelete={canDeleteProductionFiles}
+                      onDelete={(id) =>
+                        setConfirmDelete(typeof id === "string" ? Number(id) : id)
+                      }
+                    />
+                  );
+                } else {
+                  return (
+                    <DocumentCard
+                      key={doc.id}
+                      doc={{
+                        id: doc.id,
+                        originalName: doc.doc_og_name,
+                        signedUrl: doc.signedUrl ?? doc.signed_url,
+                        created_at: doc.created_at,
+                      }}
+                      canDelete={canDeleteProductionFiles}
+                      onDelete={(id) => setConfirmDelete(id)}
+                    />
+                  );
+                }
+              })}
+            </div>
+          )}
+        </div>
 
-      {/* -------------------------------- DELETE CONFIRMATION -------------------------------- */}
-      <AlertDialog
-        open={!!confirmDelete}
-        onOpenChange={() => setConfirmDelete(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Document?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. The selected document will be
-              permanently deleted.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmDelete}
-              disabled={deleting}
-            >
-              {deleting ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        {/* -------------------------------- DELETE CONFIRMATION -------------------------------- */}
+        <AlertDialog
+          open={!!confirmDelete}
+          onOpenChange={() => setConfirmDelete(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Document?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. The selected document will be
+                permanently deleted.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );

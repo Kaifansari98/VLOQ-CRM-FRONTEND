@@ -24,7 +24,8 @@ import {
 import { toastManager } from "@/components/ui/toast";
 import { createClientVisit } from "@/api/leads";
 import { useGetMeetingTypes } from "@/hooks/designing-stage/use-meeting-types";
-import { getErrorMessage } from "@/lib/utils";
+import { formatBlockedAt, getErrorMessage } from "@/lib/utils";
+import { useLeadBlockStatus } from "@/hooks/useLeadsQueries";
 
 const visitSchema = z
   .object({
@@ -84,6 +85,17 @@ export default function AddVisitModal({
 }: AddVisitModalProps) {
   const queryClient = useQueryClient();
   const { data: meetingTypes = [] } = useGetMeetingTypes(vendorId);
+  const { data: leadBlockStatus } = useLeadBlockStatus(leadId, vendorId);
+
+
+
+  const isLeadBlocked = leadBlockStatus?.is_blocked;
+  const blockedAtTooltip = isLeadBlocked
+    ? `This lead has been blocked at ${formatBlockedAt(
+      leadBlockStatus?.lead_blocked_at ?? null,
+    )}`
+    : "";
+
   const [mapOpen, setMapOpen] = useState(false);
   const [savedMapLocation, setSavedMapLocation] = useState<{
     lat: number;

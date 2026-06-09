@@ -30,6 +30,11 @@ import DocumentCard from "@/components/utils/documentCard";
 import { canUploadReadyToDispatchDocuments } from "@/components/utils/privileges";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 
+import CustomeTooltip from "@/components/custom-tooltip";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useLeadById } from "@/hooks/useLeadsQueries";
+
+
 export default function CurrentSitePhotosSection({
   leadId,
   accountId,
@@ -52,6 +57,23 @@ export default function CurrentSitePhotosSection({
     vendorId,
     leadId
   );
+
+  const { data: leadResponse } = useLeadById(
+  leadId,
+  vendorId,
+  userId,
+);
+
+const lead = leadResponse?.data?.lead;
+
+const {
+  blockedTooltip,
+  shouldDisableBlockedActions,
+} = useLeadAccessControl({
+  leadId,
+  userType,
+  lead,
+});
 
   const { mutateAsync: uploadPhotos, isPending } = useUploadCurrentSitePhotos(
     vendorId,
@@ -76,18 +98,27 @@ export default function CurrentSitePhotosSection({
           "production.production.ready_to_dispatch.current_site_photos.view",
         )
       : true;
-  const canUploadDocuments =
+const canUploadDocuments =
+  !shouldDisableBlockedActions &&
+  (
     userType === "custom"
       ? customPrivilegeCodes.includes(
           "production.production.ready_to_dispatch.current_site_photos.upload",
         )
-      : canUploadReadyToDispatchDocuments(userType);
-  const canDeleteDocuments =
+      : canUploadReadyToDispatchDocuments(userType)
+  );
+
+
+const canDeleteDocuments =
+  !shouldDisableBlockedActions &&
+  (
     userType === "custom"
       ? customPrivilegeCodes.includes(
           "production.production.ready_to_dispatch.current_site_photos.delete",
         )
-      : canDelete;
+      : canDelete
+  );
+
 
   const hasFiles = Array.isArray(sitePhotos) && sitePhotos.length > 0;
 
@@ -133,7 +164,16 @@ export default function CurrentSitePhotosSection({
         queryKey: ["currentSitePhotosCount", vendorId, leadId],
       });
     } catch (error: any) {
-      toastManager.add({ title: error?.response?.data?.message || "Failed to upload photos.", type: "error" });
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to upload photos.";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
     }
   };
 
@@ -199,37 +239,58 @@ export default function CurrentSitePhotosSection({
       </div>
 
       {/* ---------- UPLOAD AREA ---------- */}
-      {canUploadDocuments && (
-        <div className="p-6 border-b space-y-4">
+    {shouldDisableBlockedActions ? (
+  <div className="p-6 border-b space-y-4">
+
+    <CustomeTooltip
+      value={blockedTooltip}
+      truncateValue={
+        <div>
           <FileUploadField
-            value={selectedFiles}
-            onChange={setSelectedFiles}
+            value={[]}
+            onChange={() => {}}
             accept=".jpg,.jpeg,.png,.pdf,.zip"
             multiple
+            disabled
           />
-
-          <div className="flex justify-end">
-            <Button
-              size="sm"
-              onClick={handleUpload}
-              disabled={isPending || selectedFiles.length === 0}
-              className="flex items-center gap-2"
-            >
-              {isPending ? (
-                <>
-                  <Loader2 className="animate-spin size-4" />
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Upload size={16} />
-                  Upload Photos
-                </>
-              )}
-            </Button>
-          </div>
         </div>
-      )}
+      }
+    />
+
+  </div>
+) : (
+  canUploadDocuments && (
+    <div className="p-6 border-b space-y-4">
+      <FileUploadField
+        value={selectedFiles}
+        onChange={setSelectedFiles}
+        accept=".jpg,.jpeg,.png,.pdf,.zip"
+        multiple
+      />
+
+      <div className="flex justify-end">
+        <Button
+          size="sm"
+          onClick={handleUpload}
+          disabled={isPending || selectedFiles.length === 0}
+          className="flex items-center gap-2"
+        >
+          {isPending ? (
+            <>
+              <Loader2 className="animate-spin size-4" />
+              Uploading...
+            </>
+          ) : (
+            <>
+              <Upload size={16} />
+              Upload Photos
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
+  )
+)}
 
       {/* ---------- FILE LIST ---------- */}
       <div className="p-6">

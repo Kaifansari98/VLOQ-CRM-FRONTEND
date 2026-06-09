@@ -10,7 +10,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { useParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
-import { useLeadById } from "@/hooks/useLeadsQueries";
+import { useBlockLead, useLeadById, useUnblockLead } from "@/hooks/useLeadsQueries";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
@@ -29,9 +29,6 @@ import {
   Users,
   XCircle,
   HouseIcon,
-  PanelsTopLeftIcon,
-  BoxIcon,
-  UsersRoundIcon,
   FileText,
   Clock,
   UserPlus,
@@ -40,6 +37,8 @@ import {
   History,
   IndianRupee,
   FolderOpen,
+  LockOpen,
+  Lock,
 } from "lucide-react";
 
 import {
@@ -63,6 +62,8 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 import ClientDocumentationModal from "@/components/site-supervisor/final-measurement/client-documantation-modal";
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
+
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 
 import {
   canUploadClientDocumentation,
@@ -110,6 +111,11 @@ export default function ClientDocumentationLeadDetails() {
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [openClientDocModal, setOpenClientDocModal] = useState(false);
+
+  const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
+
+  const blockLeadMutation = useBlockLead();
+  const unblockLeadMutation = useUnblockLead();
 
   const [activeTab, setActiveTab] = useState(
     userType === "sales-executive" ? "todo" : "details",
@@ -169,6 +175,23 @@ export default function ClientDocumentationLeadDetails() {
     setOpenDelete(false);
   };
 
+
+
+  const {
+    isLeadBlocked,
+    blockedTooltip,
+    shouldDisableBlockedActions,
+  } = useLeadAccessControl({
+    leadId: leadIdNum,
+    userType,
+    lead,
+  });
+
+  const isBlockActionPending =
+    blockLeadMutation.isPending ||
+    unblockLeadMutation.isPending;
+
+
   if (isLoading && !lead) {
     return <p className="p-6">Loading client documentation details…</p>;
   }
@@ -183,33 +206,73 @@ export default function ClientDocumentationLeadDetails() {
   const canViewPayment =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.payment_information.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.payment_information.enable_disable",
+      )
       : canViewPaymentTab(userType);
   const canViewSiteHistory =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.site_history.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.site_history.enable_disable",
+      )
       : canViewSiteHistoryTab(userType);
   const canViewChats =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.chat.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.chat.enable_disable",
+      )
       : true;
   const canViewDocuments =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.some((code) =>
-          code.startsWith("leads.open_leads.details_of_lead.documents_section."),
-        )
+        code.startsWith("leads.open_leads.details_of_lead.documents_section."),
+      )
       : true;
   const canAccessClientDocumentation =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "project.client_documentation.client_documentation_form.enable_disable",
-        )
+        "project.client_documentation.client_documentation_form.enable_disable",
+      )
       : canUploadClientDocumentation(userType);
+
+
+
+  const handleToggleLeadBlock = () => {
+    if (!vendorId || !userId || !leadIdNum) {
+      toastManager.add({
+        title: "Vendor, user, or lead information is missing!",
+        type: "error",
+      });
+      return;
+    }
+
+    const mutation = isLeadBlocked
+      ? unblockLeadMutation
+      : blockLeadMutation;
+
+    mutation.mutate(
+      {
+        vendorId,
+        leadId: leadIdNum,
+        updatedBy: userId,
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: isLeadBlocked
+              ? "Lead unblocked successfully!"
+              : "Lead blocked successfully!",
+            type: "success",
+          });
+
+          setOpenBlockConfirm(false);
+
+          queryClient.invalidateQueries({
+            queryKey: ["leadBlockStatus", vendorId, leadIdNum],
+          });
+        },
+      },
+    );
+  };
   return (
     <>
       {/* HEADER */}
@@ -266,21 +329,47 @@ export default function ClientDocumentationLeadDetails() {
                 Assign Task
               </DropdownMenuItem>
               {/* ONLY MARK ON HOLD */}
-              <DropdownMenuItem
-                onSelect={() => {
-                  setActivityModalOpen(true);
-                }}
-              >
-                <Clock className="m h-4 w-4" />
-                Mark On Hold
-              </DropdownMenuItem>
+              {/* Lead block handling added for DropdownMenu action */}
+              {shouldDisableBlockedActions ? (
+                <CustomeTooltip
+                  value={blockedTooltip}
+                  truncateValue={
+                    <DropdownMenuItem disabled>
+                      <Clock className="m h-4 w-4" />
+                      Mark On Hold
+                    </DropdownMenuItem>
+                  }
+                />
+              ) : (
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setActivityModalOpen(true);
+                  }}
+                >
+                  <Clock className="m h-4 w-4" />
+                  Mark On Hold
+                </DropdownMenuItem>
+              )}
 
               {/* CLIENT DOCUMENTATION */}
               {canAccessClientDocumentation ? (
-                <DropdownMenuItem onClick={() => setOpenClientDocModal(true)}>
-                  <FileText size={20} />
-                  Client Documentation
-                </DropdownMenuItem>
+                // Lead block handling added for DropdownMenu action
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <FileText size={20} />
+                        Client Documentation
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onClick={() => setOpenClientDocModal(true)}>
+                    <FileText size={20} />
+                    Client Documentation
+                  </DropdownMenuItem>
+                )
               ) : (
                 <CustomeTooltip
                   truncateValue={
@@ -289,34 +378,95 @@ export default function ClientDocumentationLeadDetails() {
                       Client Documentation
                     </div>
                   }
-                  value="You don’t have permission."
+                  value={
+                    shouldDisableBlockedActions
+                      ? blockedTooltip
+                      : "You don’t have permission."
+                  }
                 />
               )}
 
               {/* EDIT */}
               {canEdit && (
-                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                  <SquarePen size={20} />
-                  Edit
+                // Lead block handling added for DropdownMenu action
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <SquarePen size={20} />
+                        Edit
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                    <SquarePen size={20} />
+                    Edit
+                  </DropdownMenuItem>
+                )
+              )}
+
+
+              {userType?.toLowerCase() === "super-admin" && (
+                <DropdownMenuItem
+                  onSelect={() => setOpenBlockConfirm(true)}
+                  disabled={isBlockActionPending}
+                >
+                  {isLeadBlocked ? (
+                    <LockOpen className="h-4 w-4" />
+                  ) : (
+                    <Lock className="h-4 w-4" />
+                  )}
+
+                  {isLeadBlocked
+                    ? "Unblock Lead"
+                    : "Block Lead"}
                 </DropdownMenuItem>
               )}
 
               {/* REASSIGN */}
               {canReassign && (
-                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                  <Users size={20} />
-                  Reassign Lead
-                </DropdownMenuItem>
+                // Lead block handling added for DropdownMenu action
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <Users size={20} />
+                        Reassign Lead
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                    <Users size={20} />
+                    Reassign Lead
+                  </DropdownMenuItem>
+                )
               )}
 
               {/* DELETE */}
               {canDelete && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setOpenDelete(true)}>
-                    <XCircle size={20} className="text-red-500" />
-                    Delete
-                  </DropdownMenuItem>
+                  {/* Lead block handling added for DropdownMenu action */}
+                  {shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <XCircle size={20} className="text-red-500" />
+                          Delete
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem onClick={() => setOpenDelete(true)}>
+                      <XCircle size={20} className="text-red-500" />
+                      Delete
+                    </DropdownMenuItem>
+                  )}
                 </>
               )}
             </DropdownMenuContent>
@@ -346,15 +496,18 @@ export default function ClientDocumentationLeadDetails() {
             </TabsTrigger>
 
             {canAccessClientDocumentation ? (
+
+
               <TabsTrigger value="todo">
                 <PencilLine size={16} className="mr-1 opacity-60" />
                 To-Do Task
               </TabsTrigger>
+
             ) : (
               <CustomeTooltip
                 truncateValue={
                   <TabsTrigger value="" disabled>
-                    <PencilLine size={16} />
+                    <PencilLine size={16} className="mr-1 opacity-60" />
                     To-Do Task
                   </TabsTrigger>
                 }
@@ -527,6 +680,47 @@ export default function ClientDocumentationLeadDetails() {
         }}
         loading={updateStatusMutation.isPending}
       />
+
+
+      <AlertDialog
+        open={openBlockConfirm}
+        onOpenChange={setOpenBlockConfirm}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isLeadBlocked
+                ? "Unblock Lead?"
+                : "Block Lead?"}
+            </AlertDialogTitle>
+
+            <AlertDialogDescription>
+              {isLeadBlocked
+                ? "This will unblock the lead and allow it to proceed normally."
+                : "This will block the lead and mark the block time in the system."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={isBlockActionPending}
+            >
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={handleToggleLeadBlock}
+              disabled={isBlockActionPending}
+            >
+              {isBlockActionPending
+                ? "Processing..."
+                : isLeadBlocked
+                  ? "Unblock"
+                  : "Block"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

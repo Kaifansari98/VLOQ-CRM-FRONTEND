@@ -508,8 +508,14 @@ const FinalMeasurementModal = ({
           router.push("/dashboard/project/client-documentation");
         },
         onError: (error: any) => {
+          const errorMessage =
+            error?.response?.data?.error ||
+            error?.response?.data?.message ||
+            error?.message ||
+            "Upload failed. Try again.";
+
           toastManager.add({
-            title: error?.message || "Upload failed. Try again.",
+            title: errorMessage,
             type: "error",
           });
         },

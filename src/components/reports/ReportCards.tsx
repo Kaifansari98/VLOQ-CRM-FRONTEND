@@ -204,17 +204,30 @@ export function ReportCards() {
       const rawFranchiseId = filters?._franchiseId ?? adminFranchiseId ?? "all";
       const franchiseId = rawFranchiseId === "all" ? "all" : Number(rawFranchiseId);
 
-      setStage(reportId, "Fetching logs...");
-      try {
-        await generateMiscIssueLogReport({
-          vendorId,
-          vendorReportCode,
-          franchiseId,
-          leadId: filters?.leadId ? Number(filters.leadId) : null,
-          fromDate: filters?.fromDate ?? "",
-          toDate: filters?.toDate ?? "",
-          onProgress: (stage) => setStage(reportId, stage),
-        });
+     setStage(reportId, "Fetching logs...");
+
+const teamIds =
+  filters?.selectedTeams?.map(
+    (team) => Number(team.value)
+  ) ?? [];
+
+try {
+  await generateMiscIssueLogReport({
+    vendorId,
+    vendorReportCode,
+    franchiseId,
+    leadId: filters?.leadId
+      ? Number(filters.leadId)
+      : null,
+
+    teamIds, // NEW
+
+    fromDate: filters?.fromDate ?? "",
+    toDate: filters?.toDate ?? "",
+
+    onProgress: (stage) =>
+      setStage(reportId, stage),
+  });
         toast.success("Report downloaded successfully.");
       } catch (err: unknown) {
         console.error(err);

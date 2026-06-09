@@ -253,7 +253,16 @@ const AddMeetingsModal: React.FC<MeetingsModalProps> = ({
       });
     },
     onError: (err: any) => {
-      toastManager.add({ title: err?.response?.data?.message || "Failed to add meeting!", type: "error" });
+      const errorMessage =
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        err?.message ||
+        "Something went wrong";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
     },
   });
 

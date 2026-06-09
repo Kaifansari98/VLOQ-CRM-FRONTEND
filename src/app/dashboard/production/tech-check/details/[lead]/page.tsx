@@ -104,6 +104,9 @@ import {
 } from "@/hooks/useChatTabFromUrl";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useBlockLead, useUnblockLead } from "@/hooks/useLeadsQueries";
+import { Lock, LockOpen } from "lucide-react";
 
 export default function ClientApprovalLeadDetails() {
   const { lead: leadId } = useParams();
@@ -126,20 +129,20 @@ export default function ClientApprovalLeadDetails() {
   const canAccessTechCheckWorkflow =
     userType === "custom"
       ? customPrivilegeCodes.includes(
-          "production.tech_check.tech_check_action.tech_check_workflow_action",
-        )
+        "production.tech_check.tech_check_action.tech_check_workflow_action",
+      )
       : canTechCheck(effectiveUserType);
   const canAccessUploadRevisedDocs =
     userType === "custom"
       ? customPrivilegeCodes.includes(
-          "production.tech_check.tech_check_action.upload_revised_docs_action",
-        )
+        "production.tech_check.tech_check_action.upload_revised_docs_action",
+      )
       : canUploadRevisedClientDocumentationFiles(effectiveUserType);
   const canAccessMoveToOrderLogin =
     userType === "custom"
       ? customPrivilegeCodes.includes(
-          "production.tech_check.tech_check_action.move_to_order_login_action",
-        )
+        "production.tech_check.tech_check_action.move_to_order_login_action",
+      )
       : canMoveToOrderLogin(effectiveUserType);
 
   const { mutate: approveTechCheckMutate, isPending: approving } =
@@ -162,6 +165,9 @@ export default function ClientApprovalLeadDetails() {
   const [activityType, setActivityType] = useState<"onHold">("onHold");
   const [openOrderLoginModal, setOpenOrderLoginModal] = useState(false);
   const isChatNotification = useIsChatNotification();
+
+
+
 
   const updateStatusMutation = useUpdateActivityStatus();
   const queryClient = useQueryClient();
@@ -255,6 +261,8 @@ export default function ClientApprovalLeadDetails() {
     instanceIdNum!,
   );
 
+
+
   const allPptDocs = clientDocsData?.documents?.ppt ?? [];
   const allPythaDocs = clientDocsData?.documents?.pytha ?? [];
   const allDocs = [...allPptDocs, ...allPythaDocs];
@@ -271,9 +279,9 @@ export default function ClientApprovalLeadDetails() {
       ? (scopedGroup?.documents?.ppt ?? [])
       : validInstanceId
         ? allPptDocs.filter(
-            (doc: any) =>
-              doc?.product_structure_instance_id === validInstanceId,
-          )
+          (doc: any) =>
+            doc?.product_structure_instance_id === validInstanceId,
+        )
         : allPptDocs;
 
   const pythaDocs =
@@ -281,9 +289,9 @@ export default function ClientApprovalLeadDetails() {
       ? (scopedGroup?.documents?.pytha ?? [])
       : validInstanceId
         ? allPythaDocs.filter(
-            (doc: any) =>
-              doc?.product_structure_instance_id === validInstanceId,
-          )
+          (doc: any) =>
+            doc?.product_structure_instance_id === validInstanceId,
+        )
         : allPythaDocs;
 
   const docs = [...pptDocs, ...pythaDocs];
@@ -297,8 +305,8 @@ export default function ClientApprovalLeadDetails() {
     lead?.no_of_client_documents_initially_submitted;
   const instanceDocCount = validInstanceId
     ? clientDocsData?.product_structure_instances?.find(
-        (instance: any) => instance.id === validInstanceId,
-      )?.no_of_client_documents_initially_submitted
+      (instance: any) => instance.id === validInstanceId,
+    )?.no_of_client_documents_initially_submitted
     : undefined;
 
   const leadCode = lead?.lead_code ?? "";
@@ -308,18 +316,38 @@ export default function ClientApprovalLeadDetails() {
   const instanceSuffix =
     validInstanceId && totalInstanceCount > 1
       ? clientDocsData?.product_structure_instances?.find(
-          (instance: any) => instance.id === validInstanceId,
-        )?.quantity_index
+        (instance: any) => instance.id === validInstanceId,
+      )?.quantity_index
       : null;
   const displayLeadCode =
     leadCode && instanceSuffix ? `${leadCode}.${instanceSuffix}` : leadCode;
   const instanceName = validInstanceId
     ? (clientDocsData?.product_structure_instances?.find(
-        (instance: any) => instance.id === validInstanceId,
-      )?.title ?? "")
+      (instance: any) => instance.id === validInstanceId,
+    )?.title ?? "")
     : "";
 
   const accountId = Number(lead?.account_id);
+
+
+  const {
+    isLeadBlocked,
+    blockedTooltip,
+    shouldDisableBlockedActions,
+  } = useLeadAccessControl({
+    leadId: leadIdNum,
+    userType,
+    lead,
+  });
+
+  const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
+
+  const blockLeadMutation = useBlockLead();
+  const unblockLeadMutation = useUnblockLead();
+
+  const isBlockActionPending =
+    blockLeadMutation.isPending ||
+    unblockLeadMutation.isPending;
 
   useEffect(() => {
     setSelectedDocs([]);
@@ -362,45 +390,79 @@ export default function ClientApprovalLeadDetails() {
     return <p className="p-6">Lead details not found or you do not have access.</p>;
   }
 
+
+
+  const handleToggleLeadBlock = () => {
+    if (!vendorId || !userId || !leadIdNum) return;
+
+    const mutation = isLeadBlocked
+      ? unblockLeadMutation
+      : blockLeadMutation;
+
+    mutation.mutate(
+      {
+        vendorId,
+        leadId: leadIdNum,
+        updatedBy: userId,
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: isLeadBlocked
+              ? "Lead unblocked successfully!"
+              : "Lead blocked successfully!",
+            type: "success",
+          });
+
+          setOpenBlockConfirm(false);
+
+          queryClient.invalidateQueries({
+            queryKey: ["leadBlockStatus", vendorId, leadIdNum],
+          });
+        },
+      },
+    );
+  };
+
   const canReassign = canReassignLeadButton(effectiveUserType ?? "");
   const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
   const canEdit = canEditLeadButton(effectiveUserType ?? "");
   const canViewPayment =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.payment_information.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.payment_information.enable_disable",
+      )
       : canViewPaymentTab(effectiveUserType ?? "");
   const canViewSiteHistory =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.site_history.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.site_history.enable_disable",
+      )
       : canViewSiteHistoryTab(effectiveUserType ?? "");
   const canViewChats =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.chat.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.chat.enable_disable",
+      )
       : true;
   const canViewDocuments =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.some((code) =>
-          code.startsWith("leads.open_leads.details_of_lead.documents_section."),
-        )
+        code.startsWith("leads.open_leads.details_of_lead.documents_section."),
+      )
       : true;
 
   const moveScope = validInstanceId
     ? {
-        ppt: pptDocs,
-        pytha: pythaDocs,
-        docs,
-      }
+      ppt: pptDocs,
+      pytha: pythaDocs,
+      docs,
+    }
     : {
-        ppt: allPptDocs,
-        pytha: allPythaDocs,
-        docs: allDocs,
-      };
+      ppt: allPptDocs,
+      pytha: allPythaDocs,
+      docs: allDocs,
+    };
 
   const approvedPPTCount = moveScope.ppt.filter(
     (d) => d.tech_check_status === "APPROVED",
@@ -423,9 +485,9 @@ export default function ClientApprovalLeadDetails() {
   const isMoveToOrderLoginDisabled =
     requiredApprovalCount > 0
       ? approvedCount < requiredApprovalCount ||
-        pendingCount > 0 ||
-        approvedPPTCount === 0 ||
-        approvedPythaCount === 0
+      pendingCount > 0 ||
+      approvedPPTCount === 0 ||
+      approvedPythaCount === 0
       : pendingCount > 0 || approvedPPTCount === 0 || approvedPythaCount === 0;
 
   return (
@@ -498,6 +560,28 @@ export default function ClientApprovalLeadDetails() {
           <div className="hidden lg:flex">
             {canAccessMoveToOrderLogin &&
               (() => {
+
+                // 🔒 Lead Blocked
+                if (shouldDisableBlockedActions) {
+                  return (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <span>
+                          <Button
+                            disabled
+                            className="bg-gray-100 dark:bg-gray-800 text-gray-500 border border-gray-300 dark:border-gray-700 cursor-not-allowed flex items-center gap-2"
+                          >
+                            <CircleCheckBig size={16} />
+                            Move To Order Login
+                          </Button>
+                        </span>
+                      }
+                    />
+                  );
+                }
+
+                // Existing Logic
                 if (isMoveToOrderLoginDisabled) {
                   let tooltipMsg = "";
 
@@ -507,7 +591,7 @@ export default function ClientApprovalLeadDetails() {
                   ) {
                     tooltipMsg =
                       effectiveUserType === "sales-executive"
-                        ? `Once Tech Check is completed, then only lead can be move to Order Login.`
+                        ? "Once Tech Check is completed, then only lead can be move to Order Login."
                         : `You must approve all required client documents (${requiredApprovalCount}) before moving to Order Login.`;
                   } else if (approvedPPTCount === 0) {
                     tooltipMsg =
@@ -516,23 +600,24 @@ export default function ClientApprovalLeadDetails() {
                     tooltipMsg =
                       "At least one Pytha file must be approved before moving to Order Login.";
                   } else if (pendingCount > 0) {
-                    tooltipMsg = `You still have ${pendingCount} pending document${
-                      pendingCount > 1 ? "s" : ""
-                    }. Please review all before proceeding.`;
+                    tooltipMsg = `You still have ${pendingCount} pending document${pendingCount > 1 ? "s" : ""
+                      }. Please review all before proceeding.`;
                   }
 
                   return (
                     <CustomeTooltip
-                      truncateValue={
-                        <Button
-                          disabled
-                          className="bg-gray-100 dark:bg-gray-800 text-gray-500 border border-gray-300 dark:border-gray-700 cursor-not-allowed flex items-center gap-2"
-                        >
-                          <CircleCheckBig size={16} />
-                          Move To Order Login
-                        </Button>
-                      }
                       value={tooltipMsg}
+                      truncateValue={
+                        <span>
+                          <Button
+                            disabled
+                            className="bg-gray-100 dark:bg-gray-800 text-gray-500 border border-gray-300 dark:border-gray-700 cursor-not-allowed flex items-center gap-2"
+                          >
+                            <CircleCheckBig size={16} />
+                            Move To Order Login
+                          </Button>
+                        </span>
+                      }
                     />
                   );
                 }
@@ -574,14 +659,42 @@ export default function ClientApprovalLeadDetails() {
               </DropdownMenuItem>
 
               {canEdit && (
-                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                  <SquarePen size={20} />
-                  Edit
-                </DropdownMenuItem>
+                // Lead block handling added for DropdownMenu action
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <SquarePen size={20} />
+                        Edit
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                    <SquarePen size={20} />
+                    Edit
+                  </DropdownMenuItem>
+                )
               )}
 
               {canAccessMoveToOrderLogin &&
                 (() => {
+                  // Lead block handling added for DropdownMenu action
+                  if (shouldDisableBlockedActions) {
+                    return (
+                      <CustomeTooltip
+                        value={blockedTooltip}
+                        truncateValue={
+                          <DropdownMenuItem disabled>
+                            <CircleCheckBig size={16} />
+                            Move To Order Login
+                          </DropdownMenuItem>
+                        }
+                      />
+                    );
+                  }
+
                   if (isMoveToOrderLoginDisabled) {
                     let tooltipMsg = "";
 
@@ -597,9 +710,8 @@ export default function ClientApprovalLeadDetails() {
                       tooltipMsg =
                         "At least one Pytha file must be approved before moving to Order Login.";
                     } else if (pendingCount > 0) {
-                      tooltipMsg = `You still have ${pendingCount} pending document${
-                        pendingCount > 1 ? "s" : ""
-                      }. Please review all before proceeding.`;
+                      tooltipMsg = `You still have ${pendingCount} pending document${pendingCount > 1 ? "s" : ""
+                        }. Please review all before proceeding.`;
                     }
 
                     return (
@@ -627,31 +739,105 @@ export default function ClientApprovalLeadDetails() {
 
               {/* --- NEW: Lead Status submenu (Mark On Hold / Mark As Lost) */}
               {canViewThreeVerticalDocsOptionInTechCheck(effectiveUserType) && (
-                <DropdownMenuItem
-                  onSelect={() => {
-                    setActivityType("onHold");
-                    setActivityModalOpen(true);
-                  }}
-                >
-                  <Clock className=" h-4 w-4" />
-                  Mark On Hold
-                </DropdownMenuItem>
+                // Lead block handling added for DropdownMenu action
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <Clock className=" h-4 w-4" />
+                        Mark On Hold
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setActivityType("onHold");
+                      setActivityModalOpen(true);
+                    }}
+                  >
+                    <Clock className=" h-4 w-4" />
+                    Mark On Hold
+                  </DropdownMenuItem>
+                )
               )}
 
+
+
+              {userType?.toLowerCase() === "super-admin" && (
+                <DropdownMenuItem
+                  onSelect={() => setOpenBlockConfirm(true)}
+                  disabled={isBlockActionPending}
+                >
+                  {isLeadBlocked ? (
+                    <LockOpen className="h-4 w-4" />
+                  ) : (
+                    <Lock className="h-4 w-4" />
+                  )}
+
+                  {isLeadBlocked
+                    ? "Unblock Lead"
+                    : "Block Lead"}
+                </DropdownMenuItem>
+              )}
               {canReassign && (
-                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                  <Users size={20} />
-                  Reassign Lead
+                // Lead block handling added for DropdownMenu action
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <Users size={20} />
+                        Reassign Lead
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                    <Users size={20} />
+                    Reassign Lead
+                  </DropdownMenuItem>
+                )
+              )}
+
+              {userType?.toLowerCase() === "super-admin" && (
+                <DropdownMenuItem
+                  onSelect={() => setOpenBlockConfirm(true)}
+                  disabled={isBlockActionPending}
+                >
+                  {isLeadBlocked ? (
+                    <LockOpen className="h-4 w-4" />
+                  ) : (
+                    <Lock className="h-4 w-4" />
+                  )}
+
+                  {isLeadBlocked
+                    ? "Unblock Lead"
+                    : "Block Lead"}
                 </DropdownMenuItem>
               )}
 
               {canDelete && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setOpenDelete(true)}>
-                    <XCircle size={20} className="text-red-500" />
-                    Delete
-                  </DropdownMenuItem>
+                  {/* Lead block handling added for DropdownMenu action */}
+                  {shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <XCircle size={20} className="text-red-500" />
+                          Delete
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem onClick={() => setOpenDelete(true)}>
+                      <XCircle size={20} className="text-red-500" />
+                      Delete
+                    </DropdownMenuItem>
+                  )}
                 </>
               )}
             </DropdownMenuContent>
@@ -688,10 +874,24 @@ export default function ClientApprovalLeadDetails() {
               </TabsTrigger>
 
               {canAccessTechCheckWorkflow ? (
-                <TabsTrigger value="todo">
-                  <PencilLine size={16} className="mr-1 opacity-60" />
-                  To-Do Task
-                </TabsTrigger>
+
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <TabsTrigger value="" disabled>
+                        <PencilLine size={16} className="mr-1 opacity-60" />
+                        To-Do Task
+                      </TabsTrigger>
+                    }
+                  />
+                ) : (
+                  <TabsTrigger value="todo">
+                    <PencilLine size={16} className="mr-1 opacity-60" />
+                    To-Do Task
+                  </TabsTrigger>
+                )
+
               ) : (
                 <CustomeTooltip
                   truncateValue={
@@ -737,59 +937,85 @@ export default function ClientApprovalLeadDetails() {
 
           {/* ---------------- Actions ---------------- */}
           <div className="flex sm:flex-row gap-2">
-            {canAccessTechCheckWorkflow ? (
+            {/* Tech Check Workflow */}
+            {shouldDisableBlockedActions ? (
+              <CustomeTooltip
+                value={blockedTooltip}
+                truncateValue={
+                  <span>
+                    <Button disabled>
+                      Tech Check Workflow
+                    </Button>
+                  </span>
+                }
+              />
+            ) : canAccessTechCheckWorkflow ? (
               <Button
-                variant="outline"
                 onClick={() => setOpenRejectDocsModal(true)}
-                className="w-max"
               >
-                <Settings2 className="mr-1" size={16} />
-                Tech-Check Workflow
+                Tech Check Workflow
               </Button>
             ) : (
               <CustomeTooltip
-                truncateValue={
-                  <Button disabled variant="outline" className="w-max">
-                    <Settings2 className="mr-1" size={16} />
-                    Tech-Check Workflow
-                  </Button>
-                }
                 value="You don’t have permission to access Tech-Check Workflow."
+                truncateValue={
+                  <span>
+                    <Button disabled variant="outline">
+                      <Settings2 className="mr-1" size={16} />
+                      Tech-Check Workflow
+                    </Button>
+                  </span>
+                }
               />
             )}
 
-            {(() => {
-              const canUpload = canAccessUploadRevisedDocs;
-
-              if (!canUpload || !hasRejectedDocs) {
-                return (
-                  <CustomeTooltip
-                    truncateValue={
-                      <Button disabled className="w-max">
-                        <UploadIcon size={16} />
-                        Upload Revised Docs
-                      </Button>
-                    }
-                    value={
-                      !canUpload
-                        ? "You don’t have permission to upload revised docs."
-                        : "No rejected client documentation found."
-                    }
-                  />
-                );
-              }
-
-              return (
-                <Button
-                  onClick={() => setOpenUploadDocsModal(true)}
-                  variant="outline"
-                  className="w-max"
-                >
-                  <UploadIcon size={16} />
-                  Upload Revised Docs
-                </Button>
-              );
-            })()}
+            {/* Upload Revised Docs */}
+            {shouldDisableBlockedActions ? (
+              <CustomeTooltip
+                value={blockedTooltip}
+                truncateValue={
+                  <span>
+                    <Button disabled className="w-max">
+                      <UploadIcon size={16} />
+                      Upload Revised Docs
+                    </Button>
+                  </span>
+                }
+              />
+            ) : !canAccessUploadRevisedDocs ? (
+              <CustomeTooltip
+                value="You don’t have permission to upload revised docs."
+                truncateValue={
+                  <span>
+                    <Button disabled className="w-max">
+                      <UploadIcon size={16} />
+                      Upload Revised Docs
+                    </Button>
+                  </span>
+                }
+              />
+            ) : !hasRejectedDocs ? (
+              <CustomeTooltip
+                value="No rejected client documentation found."
+                truncateValue={
+                  <span>
+                    <Button disabled className="w-max">
+                      <UploadIcon size={16} />
+                      Upload Revised Docs
+                    </Button>
+                  </span>
+                }
+              />
+            ) : (
+              <Button
+                onClick={() => setOpenUploadDocsModal(true)}
+                variant="outline"
+                className="w-max"
+              >
+                <UploadIcon size={16} />
+                Upload Revised Docs
+              </Button>
+            )}
           </div>
         </div>
 
@@ -1606,6 +1832,45 @@ export default function ClientApprovalLeadDetails() {
           instanceId: validInstanceId,
         }}
       />
+
+
+      <AlertDialog
+        open={openBlockConfirm}
+        onOpenChange={setOpenBlockConfirm}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isLeadBlocked
+                ? "Unblock Lead?"
+                : "Block Lead?"}
+            </AlertDialogTitle>
+
+            <AlertDialogDescription>
+              {isLeadBlocked
+                ? "This will unblock the lead and allow normal actions."
+                : "This will block the lead and disable lead actions."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBlockActionPending}>
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={handleToggleLeadBlock}
+              disabled={isBlockActionPending}
+            >
+              {isBlockActionPending
+                ? "Processing..."
+                : isLeadBlocked
+                  ? "Unblock"
+                  : "Block"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

@@ -349,10 +349,6 @@ export const useUploadPostDispatchDocuments = () => {
       toastManager.add({ title: "Post Dispatch Photos & Documents uploaded successfully!", type: "success" });
       queryClient.invalidateQueries({ queryKey: ["postDispatchDocuments"] }); // ✅ auto-refresh document list
     },
-
-    onError: (err: AxiosError<ApiErrorResponse>) => {
-      toastManager.add({ title: err?.message || "Failed to upload Post Dispatch Documents", type: "error" });
-    },
   });
 };
 

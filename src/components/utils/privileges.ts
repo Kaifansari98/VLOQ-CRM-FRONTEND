@@ -60,7 +60,7 @@ export const formatDateTime = (dateString?: string) => {
 
 export const canTechCheck = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super-admin", "tech-check"];
+  const allowedRoles = ["super-admin", "tech-check", "admin"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 
@@ -73,7 +73,7 @@ export const canMoveToOrderLogin = (userType: string | undefined) => {
 
 export const canUploadFinalMeasurements = (userType: string | undefined) => {
   if (!userType) return false;
-  const allowedRoles = ["super-admin", "site-supervisor", "head-site-supervisor"];
+  const allowedRoles = ["super-admin", "site-supervisor", "head-site-supervisor", "admin"];
   return allowedRoles.includes(userType.toLowerCase());
 };
 

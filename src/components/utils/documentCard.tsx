@@ -16,6 +16,9 @@ import {
 import { formatDate } from "@/lib/format";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useParams } from "next/navigation";
+import { useAppSelector } from "@/redux/store";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 
 interface DocumentData {
   id: number;
@@ -30,6 +33,7 @@ interface DocumentCardProps {
   onDelete?: (id: number) => void;
   status?: "APPROVED" | "REJECTED" | "PENDING" | string;
   isLatest?: boolean;
+  disableActions?: boolean;
 }
 
 const PREVIEWABLE_EXTENSIONS = ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx"];
@@ -203,7 +207,20 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
   onDelete,
   status,
   isLatest = false,
+  disableActions = false,
 }) => {
+  const params = useParams();
+  const routeLeadId = Number(params?.lead ?? params?.leadId ?? 0);
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type,
+  );
+  const { shouldDisableBlockedActions: shouldDisableRouteBlockedActions } =
+    useLeadAccessControl({
+      leadId: routeLeadId || undefined,
+      userType,
+    });
+  const shouldHideDelete =
+    disableActions || shouldDisableRouteBlockedActions;
   const fileExt = doc.originalName?.split(".").pop()?.toLowerCase() || "file";
   const { icon: Icon } = getFileIcon(fileExt);
   const canPreview = PREVIEWABLE_EXTENSIONS.includes(fileExt);
@@ -216,9 +233,9 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
     switch (status?.toUpperCase()) {
       case "APPROVED": return "Approved";
       case "REJECTED": return "Rejected";
-      case "REVISED":  return "Revised";
-      case "PENDING":  return "Pending";
-      default:         return null;
+      case "REVISED": return "Revised";
+      case "PENDING": return "Pending";
+      default: return null;
     }
   };
   const hasStatus = Boolean(getStatusLabel());
@@ -227,14 +244,15 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
     switch (status?.toUpperCase()) {
       case "APPROVED": return "bg-green-500";
       case "REJECTED": return "bg-red-500";
-      case "REVISED":  return "bg-amber-500";
-      case "PENDING":  return "bg-blue-500";
-      default:         return "bg-neutral-400 dark:bg-neutral-600";
+      case "REVISED": return "bg-amber-500";
+      case "PENDING": return "bg-blue-500";
+      default: return "bg-neutral-400 dark:bg-neutral-600";
     }
   };
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (shouldHideDelete) return;
     onDelete?.(doc.id);
   };
 
@@ -312,17 +330,18 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
           bg-white dark:bg-neutral-900
           hover:bg-muted/40 dark:hover:bg-neutral-800
           transition-all duration-200
-          ${
-            isLatest
-              ? "border-emerald-400 ring-1 ring-emerald-200 dark:border-emerald-500/70 dark:ring-emerald-500/20"
-              : "border-border"
+          ${isLatest
+            ? "border-emerald-400 ring-1 ring-emerald-200 dark:border-emerald-500/70 dark:ring-emerald-500/20"
+            : "border-border"
           }
         `}
       >
         {/* Delete Button */}
-        {canDelete && (
+        {canDelete && !shouldHideDelete && (
           <button
+            type="button"
             onClick={handleDelete}
+            title="Delete"
             className="
               absolute top-3 right-3 p-1
               rounded-full border border-border
@@ -330,6 +349,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
               hover:bg-muted dark:hover:bg-neutral-800
               transition-colors
             "
+            aria-label="Delete document"
           >
             <Trash2 className="w-4 h-4 text-neutral-600 dark:text-neutral-300" />
           </button>
@@ -378,10 +398,10 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
               {doc.created_at
                 ? `Uploaded on ${formatDate(doc.created_at, {
-                    month: "short",
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })}`
+                  month: "short",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}`
                 : "Uploaded date not available"}
             </p>
           </div>

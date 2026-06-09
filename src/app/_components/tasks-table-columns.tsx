@@ -46,6 +46,8 @@ export type ProcessedTask = {
   remark?: string;
   site_map_link: string;
   instance_id: number;
+  is_blocked?: boolean;
+  lead_blocked_at?: string | null;
 };
 
 export function getVendorLeadsTableColumns({
