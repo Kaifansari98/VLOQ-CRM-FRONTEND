@@ -49,7 +49,7 @@ export const useLeadAccessControl = ({
     isSuperAdmin;
 
   const shouldDisableBlockedActions =
-    isLeadBlocked && !isPrivilegedUser;
+    isLeadBlocked;
 
   const blockedTooltip = shouldDisableBlockedActions
     ? blockedAt

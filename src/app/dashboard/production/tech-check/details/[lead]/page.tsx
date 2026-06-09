@@ -801,22 +801,7 @@ export default function ClientApprovalLeadDetails() {
                 )
               )}
 
-              {userType?.toLowerCase() === "super-admin" && (
-                <DropdownMenuItem
-                  onSelect={() => setOpenBlockConfirm(true)}
-                  disabled={isBlockActionPending}
-                >
-                  {isLeadBlocked ? (
-                    <LockOpen className="h-4 w-4" />
-                  ) : (
-                    <Lock className="h-4 w-4" />
-                  )}
 
-                  {isLeadBlocked
-                    ? "Unblock Lead"
-                    : "Block Lead"}
-                </DropdownMenuItem>
-              )}
 
               {canDelete && (
                 <>
