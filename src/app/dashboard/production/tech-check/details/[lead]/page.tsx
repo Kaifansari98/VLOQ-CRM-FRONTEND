@@ -178,17 +178,7 @@ export default function ClientApprovalLeadDetails() {
     }
   }, [instanceId]);
 
-  // ✅ Auto-open To-Do modal when screen loads (only for allowed roles)
-  useEffect(() => {
-    if (isChatNotification) return;
-    if (
-      canAccessTechCheckWorkflow &&
-      effectiveUserType?.toLowerCase() !== "admin" &&
-      effectiveUserType?.toLowerCase() !== "super-admin"
-    ) {
-      setOpenRejectDocsModal(true);
-    }
-  }, [isChatNotification, effectiveUserType, canAccessTechCheckWorkflow]);
+
 
   const [selectedDocs, setSelectedDocs] = useState<number[]>([]);
   const [openRemarkModal, setOpenRemarkModal] = useState(false);
@@ -334,6 +324,7 @@ export default function ClientApprovalLeadDetails() {
     isLeadBlocked,
     blockedTooltip,
     shouldDisableBlockedActions,
+    isLoading: isAccessControlLoading,
   } = useLeadAccessControl({
     leadId: leadIdNum,
     userType,
@@ -348,6 +339,27 @@ export default function ClientApprovalLeadDetails() {
   const isBlockActionPending =
     blockLeadMutation.isPending ||
     unblockLeadMutation.isPending;
+
+  // ✅ Auto-open To-Do modal when screen loads (only for allowed roles)
+  useEffect(() => {
+    if (isLoading || isAccessControlLoading) return;
+    if (isChatNotification) return;
+    if (
+      canAccessTechCheckWorkflow &&
+      !shouldDisableBlockedActions &&
+      effectiveUserType?.toLowerCase() !== "admin" &&
+      effectiveUserType?.toLowerCase() !== "super-admin"
+    ) {
+      setOpenRejectDocsModal(true);
+    }
+  }, [
+    isChatNotification,
+    effectiveUserType,
+    canAccessTechCheckWorkflow,
+    shouldDisableBlockedActions,
+    isLoading,
+    isAccessControlLoading,
+  ]);
 
   useEffect(() => {
     setSelectedDocs([]);
