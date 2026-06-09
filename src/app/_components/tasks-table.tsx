@@ -216,12 +216,12 @@ const MyTaskTable = () => {
   // ✅ SEPARATE PAGINATION
   const [myPagination, setMyPagination] = useState({
     pageIndex: 0,
-    pageSize: 20,
+    pageSize: 50,
   });
 
   const [overallPagination, setOverallPagination] = useState({
     pageIndex: 0,
-    pageSize: 20,
+    pageSize: 50,
   });
 
   // ✅ SEPARATE SORTING
