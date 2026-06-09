@@ -446,6 +446,25 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     (u: any) =>
       String(u.user_type?.user_type ?? "").toLowerCase() !== "master-admin",
   );
+  const customFollowUpAssignableUsers = React.useMemo(() => {
+    const users = eligibleCustomUsers;
+
+    if (!userId || !loggedInUserName || !isCustomUser) {
+      return users;
+    }
+
+    const hasSelf = users.some((u: any) => u.id === userId);
+    if (hasSelf) return users;
+
+    return [
+      ...users,
+      {
+        id: userId,
+        user_name: loggedInUserName,
+        user_type: { user_type: "custom" },
+      },
+    ];
+  }, [eligibleCustomUsers, isCustomUser, loggedInUserName, userId]);
 
   const mappedData = React.useMemo(() => {
     if (taskType === "Approval Request") {
@@ -477,7 +496,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     }
 
     if (isCustomUser) {
-      return eligibleCustomUsers.map((user: any) => ({
+      return customFollowUpAssignableUsers.map((user: any) => ({
         id: user.id,
         label: user.user_name,
         disabled:

@@ -297,6 +297,27 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     (u: any) =>
       String(u.user_type?.user_type ?? "").toLowerCase() !== "master-admin",
   );
+  const customFollowUpAssignableUsers = React.useMemo(() => {
+    const users = followUpAssignableUsers.filter(
+      (u: any) => String(u.user_type?.user_type ?? "").toLowerCase() === "custom",
+    );
+
+    if (!userId || !loggedInUserName || normalizedUserType !== "custom") {
+      return users;
+    }
+
+    const hasSelf = users.some((u: any) => u.id === userId);
+    if (hasSelf) return users;
+
+    return [
+      ...users,
+      {
+        id: userId,
+        user_name: loggedInUserName,
+        user_type: { user_type: "custom" },
+      },
+    ];
+  }, [followUpAssignableUsers, loggedInUserName, normalizedUserType, userId]);
   const customSiteReadinessUsers = React.useMemo(
     () =>
       (customSiteReadinessUsersData?.data?.sales_executives ?? []).filter(
@@ -330,7 +351,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
           tooltip: undefined,
         }))
     : normalizedUserType === "custom"
-      ? followUpAssignableUsers.map((u: any) => ({
+      ? customFollowUpAssignableUsers.map((u: any) => ({
           id: u.id,
           label: u.user_name,
           disabled: false,

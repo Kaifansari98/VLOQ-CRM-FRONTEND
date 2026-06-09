@@ -316,7 +316,21 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   ]);
 
   const followUpAssignableUsers = isCustomUser
-    ? eligibleCustomUsers
+    ? (() => {
+        if (!userId || !loggedInUserName) return eligibleCustomUsers;
+
+        const hasSelf = eligibleCustomUsers.some((u: any) => u.id === userId);
+        if (hasSelf) return eligibleCustomUsers;
+
+        return [
+          ...eligibleCustomUsers,
+          {
+            id: userId,
+            user_name: loggedInUserName,
+            user_type: { user_type: "custom" },
+          },
+        ];
+      })()
     : (followUpUsersData?.data?.users ?? []).filter(
         (u: any) =>
           String(u.user_type?.user_type ?? "").toLowerCase() !==
