@@ -941,6 +941,7 @@ export default function UnderInstallationLeadDetails() {
         open={openSmallOrderModal}
         onOpenChange={setOpenSmallOrderModal}
         source="under_installation"
+        leadId={leadIdNum}
       />
 
       <EditLeadModal

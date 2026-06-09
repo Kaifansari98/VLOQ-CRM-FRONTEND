@@ -202,6 +202,17 @@ export interface CreateClientVisitPayload {
   payment_proof_documents?: File[];
 }
 
+export interface CreateSmallOrderRequestPayload {
+  leadId: number;
+  vendorId: number;
+  createdBy: number;
+  requestSource: "post_dispatch" | "final_handover";
+  requestTypeId: number;
+  requiredDate: string;
+  remarks?: string;
+  documents?: File[];
+}
+
 export interface ClientVisitDocument {
   id: number;
   role: "supporting_document" | "payment_proof";
@@ -261,6 +272,34 @@ export const uploadMoreSitePhotos = async ({
     formData,
     { headers: { "Content-Type": "multipart/form-data" } },
   );
+
+  return response.data;
+};
+
+export const createSmallOrderRequest = async (
+  payload: CreateSmallOrderRequestPayload,
+) => {
+  const formData = new FormData();
+  formData.append("lead_id", payload.leadId.toString());
+  formData.append("vendor_id", payload.vendorId.toString());
+  formData.append("created_by", payload.createdBy.toString());
+  formData.append("request_source", payload.requestSource);
+  formData.append("request_type_id", payload.requestTypeId.toString());
+  formData.append("required_date", payload.requiredDate);
+
+  if (payload.remarks?.trim()) {
+    formData.append("remarks", payload.remarks.trim());
+  }
+
+  (payload.documents ?? []).forEach((file) => {
+    formData.append("documents", file);
+  });
+
+  const response = await apiClient.post("/leads/small-order-requests", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
 
   return response.data;
 };

@@ -752,6 +752,7 @@ export default function FinalHandoverLeadDetails() {
         open={openSmallOrderModal}
         onOpenChange={setOpenSmallOrderModal}
         source="final_handover"
+        leadId={leadIdNum}
       />
 
       <EditLeadModal

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo } from "react";
 import BaseModal from "@/components/utils/baseModal";
+import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
@@ -21,6 +22,8 @@ import { FileUploadField } from "@/components/custom/file-upload";
 import { Button } from "@/components/ui/button";
 import { toastManager } from "@/components/ui/toast";
 import { useSmallOrderRequestTypes } from "@/hooks/useTypesMaster";
+import { useCreateSmallOrderRequest } from "@/hooks/useLeadsQueries";
+import { useAppSelector } from "@/redux/store";
 
 export type SmallOrderRequestSourceContext =
   | "under_installation"
@@ -30,6 +33,7 @@ interface SmallOrderRequestModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   source: SmallOrderRequestSourceContext;
+  leadId: number;
 }
 
 const FILE_REQUIRED_ORDER_TYPE_KEYS = new Set<string>([
@@ -68,7 +72,12 @@ export default function SmallOrderRequestModal({
   open,
   onOpenChange,
   source,
+  leadId,
 }: SmallOrderRequestModalProps) {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const userId = useAppSelector((state) => state.auth.user?.id);
+  const createSmallOrderRequestMutation = useCreateSmallOrderRequest();
   const createdOn = useMemo(() => new Date(), [open]);
   const earliestRequiredDate = useMemo(() => addDays(createdOn, 15), [createdOn]);
   const minRequiredDate = useMemo(
@@ -123,7 +132,7 @@ export default function SmallOrderRequestModal({
     onOpenChange(false);
   };
 
-  const handleSubmit = (values: z.infer<typeof formSchema>) => {
+  const handleSubmit = async (values: z.infer<typeof formSchema>) => {
     if (isDocumentsRequired && values.documents.length === 0) {
       form.setError("documents", {
         message:
@@ -132,15 +141,63 @@ export default function SmallOrderRequestModal({
       return;
     }
 
-    toastManager.add({
-      title: `Small Order Request form is ready from ${sourceLabel}. Submit wiring is next.`,
-      type: "success",
-    });
-    console.log("small-order-request-form", {
-      source,
-      ...values,
-    });
-    handleClose();
+    if (!selectedOrderTypeMaster?.id) {
+      form.setError("orderType", {
+        message: "Type of Order is required",
+      });
+      return;
+    }
+
+    if (!vendorId || !userId) {
+      toastManager.add({
+        title: "User context is missing. Please refresh and try again.",
+        type: "error",
+      });
+      return;
+    }
+
+    try {
+      await createSmallOrderRequestMutation.mutateAsync({
+        leadId,
+        vendorId,
+        createdBy: userId,
+        requestSource:
+          source === "final_handover" ? "final_handover" : "post_dispatch",
+        requestTypeId: selectedOrderTypeMaster.id,
+        requiredDate: values.requiredDate,
+        remarks: values.remarks,
+        documents: values.documents,
+      });
+
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["lead", leadId, vendorId, userId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["leadLogs"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["vendorAllTasks"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["vendorUserTasks"],
+        }),
+      ]);
+
+      toastManager.add({
+        title: "Small Order Request created successfully.",
+        type: "success",
+      });
+      handleClose();
+    } catch (error: any) {
+      toastManager.add({
+        title:
+          error?.response?.data?.message ||
+          error?.response?.data?.error ||
+          "Failed to create Small Order Request.",
+        type: "error",
+      });
+    }
   };
 
   return (
@@ -253,7 +310,14 @@ export default function SmallOrderRequestModal({
               <Button type="button" variant="outline" onClick={handleClose}>
                 Cancel
               </Button>
-              <Button type="submit">Create Request</Button>
+              <Button
+                type="submit"
+                disabled={createSmallOrderRequestMutation.isPending}
+              >
+                {createSmallOrderRequestMutation.isPending
+                  ? "Creating..."
+                  : "Create Request"}
+              </Button>
             </div>
           </form>
         </Form>
