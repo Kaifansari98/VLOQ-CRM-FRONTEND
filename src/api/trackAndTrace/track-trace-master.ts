@@ -12,6 +12,7 @@ import {
   VendorLeadsPostPayload,
   VendorLeadsResponse,
   TrackTraceLeadOption,
+  TrackTraceVendorConfig,
 } from "@/types/track-trace";
 
 
@@ -135,9 +136,12 @@ export const createTrackTraceProjectApi = async (
   const formData = new FormData();
 
   formData.append("vendorId", String(payload.vendorId));
-  formData.append("lead_id", String(payload.lead_id));
   formData.append("projectName", payload.projectName);
   formData.append("file", payload.file);
+
+  if (payload.lead_id) {
+    formData.append("lead_id", String(payload.lead_id));
+  }
 
   const response = await apiClient.post<CreateTrackTraceProjectResponse>(
     "/track-trace-project/onboard/create-project",
@@ -150,6 +154,16 @@ export const createTrackTraceProjectApi = async (
   );
 
   return response.data;
+};
+
+export const getTrackTraceVendorConfigApi = async (
+  vendorId: number
+): Promise<TrackTraceVendorConfig> => {
+  const { data } = await apiClient.get(
+    `/track-trace-project/onboard/${vendorId}/config`
+  );
+
+  return data.data;
 };
 
 export const searchTrackTraceLeadsApi = async (

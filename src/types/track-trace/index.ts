@@ -339,11 +339,9 @@ export interface VendorLeadsResponse {
 
 export interface CreateTrackTraceProjectRequest {
   vendorId: number;
-  lead_id: number;
+  lead_id?: number | null;
   projectName: string;
   file: File;
-
-
 }
 
 export interface CreateTrackTraceProjectResponse {
@@ -361,4 +359,9 @@ export interface TrackTraceLeadOption {
   contact_no: string | null;
   lead_code: string | null;
   created_at: string;
+}
+
+export interface TrackTraceVendorConfig {
+  vendor_id: number;
+  is_crm_enabled: boolean;
 }

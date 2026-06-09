@@ -104,7 +104,7 @@ function CategoryFormDialog({ open, onClose, editData, vendorId, userId }: Categ
         status: editData.status, type_ids: selectedTypeIds, created_by: userId, updated_by: userId,
       });
     } else {
-      await createMutation.mutateAsync({ vendor_id: vendorId, category_name: categoryName.trim(), type_ids: selectedTypeIds });
+      await createMutation.mutateAsync({ vendor_id: vendorId, category_name: categoryName.trim(), type_ids: selectedTypeIds,created_by:userId });
     }
     onClose();
   };
