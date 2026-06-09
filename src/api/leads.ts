@@ -20,6 +20,13 @@ interface ApiErrorResponse {
   error?: string;
   details?: unknown;
 }
+
+export interface UploadProgressInfo {
+  percent: number;
+  uploadedBytes: number;
+  totalBytes: number;
+}
+
 export interface CreateLeadPayload {
   firstname: string;
   lastname: string;

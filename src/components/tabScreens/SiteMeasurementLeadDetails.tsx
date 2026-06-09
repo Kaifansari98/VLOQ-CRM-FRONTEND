@@ -216,6 +216,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
       createdAt?: string;
     },
     index?: number,
+    disableActions?: boolean,
   ) => {
     const uploadedAt = file.uploadedAt ?? file.createdAt;
 
@@ -231,6 +232,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
           }}
           index={index}
           canDelete={canDelete}
+          disableActions={disableActions}
           onDelete={(id) => setConfirmDelete(Number(id))}
         />
       );
@@ -246,6 +248,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
           signedUrl: file.signedUrl,
         }}
         canDelete={canDelete}
+        disableActions={disableActions}
         onDelete={(id) => setConfirmDelete(Number(id))}
       />
     );
@@ -326,8 +329,8 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
           <div className="p-6">
             {pdfDocs.length > 0 ? (
               <div className="space-y-4">
-                {pdfDocs.map((doc, index) =>
-                  renderFileCard(
+                {pdfDocs.map((doc, index) => {
+                  return renderFileCard(
                     {
                       id: doc.id,
                       originalName: doc.originalName,
@@ -335,9 +338,9 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                       signedUrl: doc.signedUrl,
                     },
                     index,
-                    disableActions={shouldDisableBlockedActions}
-                  ),
-                )}
+                    shouldDisableBlockedActions,
+                  );
+                })}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-10">
@@ -507,21 +510,18 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
           className="p-6 bg-[#fff] dark:bg-[#0a0a0a]"
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {currentSitePhotos.map((doc, index) =>
-              renderFileCard(
+            {currentSitePhotos.map((doc, index) => {
+              return renderFileCard(
                 {
                   id: doc.id,
                   originalName: doc.originalName,
                   uploadedAt: doc.uploadedAt,
                   signedUrl: doc.signedUrl,
-                  created_at: doc.uploadedAt,
-                }}
-                index={index}
-                canDelete={canDelete}
-                disableActions={shouldDisableBlockedActions}
-                onDelete={(id) => setConfirmDelete(Number(id))}
-              />
-            ))}
+                },
+                index,
+                shouldDisableBlockedActions,
+              );
+            })}
 
             {/* Add button card */}
             {canEditOrUpload &&
@@ -618,21 +618,18 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
             className="p-6 bg-[#fff] dark:bg-[#0a0a0a]"
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {paymentImages.map((doc, index) =>
-                renderFileCard(
+              {paymentImages.map((doc, index) => {
+                return renderFileCard(
                   {
                     id: doc.id,
                     originalName: doc.originalName,
                     uploadedAt: doc.uploadedAt,
                     signedUrl: doc.signedUrl,
-                    created_at: doc.uploadedAt,
-                  }}
-                  index={index}
-                  canDelete={canDelete}
-                  disableActions={shouldDisableBlockedActions}
-                  onDelete={(id) => setConfirmDelete(Number(id))}
-                />
-              ))}
+                  },
+                  index,
+                  shouldDisableBlockedActions,
+                );
+              })}
             </div>
           </motion.div>
         </motion.section>
@@ -713,8 +710,8 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                   </h2>
                 </div>
                 <div className="space-y-3">
-                  {bookingDoneIsmPdfDocs.map((doc: any, index: number) =>
-                    renderFileCard(
+                  {bookingDoneIsmPdfDocs.map((doc: any, index: number) => {
+                    return renderFileCard(
                       {
                         id: doc.id,
                         originalName: doc.originalName,
@@ -722,9 +719,9 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                         signedUrl: doc.signedUrl,
                       },
                       index,
-                      disableActions={shouldDisableBlockedActions}
-                    ),
-                  )}
+                      shouldDisableBlockedActions,
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -739,8 +736,8 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                   </h2>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {bookingDoneIsmCurrentSitePhotos.map((doc: any, index: any) =>
-                    renderFileCard(
+                  {bookingDoneIsmCurrentSitePhotos.map((doc: any, index: any) => {
+                    return renderFileCard(
                       {
                         id: doc.id,
                         originalName: doc.originalName,
@@ -748,8 +745,8 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                         signedUrl: doc.signedUrl,
                       },
                       index,
-                    ),
-                  )}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -763,21 +760,18 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                   </h2>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {bookingDoneIsmPaymentImages.map((doc: any, index: any) =>
-                    renderFileCard(
+                  {bookingDoneIsmPaymentImages.map((doc: any, index: any) => {
+                    return renderFileCard(
                       {
                         id: doc.id,
                         originalName: doc.originalName,
                         createdAt: doc.createdAt,
                         signedUrl: doc.signedUrl,
-                        created_at: doc.createdAt,
-                      }}
-                      index={index}
-                      canDelete={canDelete}
-                      disableActions={shouldDisableBlockedActions}
-                      onDelete={(id) => setConfirmDelete(Number(id))}
-                    />
-                  ))}
+                      },
+                      index,
+                      shouldDisableBlockedActions,
+                    );
+                  })}
                 </div>
               </div>
             )}
