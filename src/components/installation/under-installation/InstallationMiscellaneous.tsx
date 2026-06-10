@@ -201,6 +201,28 @@ export default function InstallationMiscellaneous({
   });
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const formData = form.watch();
+  const setFormData = (
+    updater:
+      | Partial<MiscFormValues>
+      | ((prev: MiscFormValues) => Partial<MiscFormValues> | MiscFormValues),
+  ) => {
+    const currentValues = form.getValues();
+    const nextValues =
+      typeof updater === "function" ? updater(currentValues) : updater;
+
+    Object.entries(nextValues).forEach(([key, value]) => {
+      form.setValue(key as keyof MiscFormValues, value as never, {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
+    });
+  };
+  const resetForm = () => {
+    form.reset();
+    setFiles([]);
+    setFormErrors({});
+  };
   const watchedInstanceId = form.watch("selected_instance_id");
 
   const resolveMisc = useResolveMiscellaneousEntry();
@@ -359,6 +381,7 @@ export default function InstallationMiscellaneous({
   };
 
   const handleCreateEntry = () => {
+    const values = form.getValues();
     const errors = validateForm();
     const errorKeys = Object.keys(errors);
     if (errorKeys.length > 0) {
@@ -707,7 +730,14 @@ export default function InstallationMiscellaneous({
         description="Log a miscellaneous issue with required details, supporting proofs, and material information."
         size="lg"
       >
-        <div className="space-y-4 py-4 px-6">
+        <Form {...form}>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleCreateEntry();
+            }}
+            className="space-y-4 py-4 px-6"
+          >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Miscellaneous Type */}
             <div className={cn("flex flex-col gap-2", formErrors.misc_type_id && "text-destructive [&_button]:border-destructive")} data-name="misc_type_id">
@@ -957,6 +987,7 @@ export default function InstallationMiscellaneous({
                 {createMutation.isPending ? "Creating..." : "Create Miscellaneous"}
               </Button>
             </div>
+          </div>
           </form>
         </Form>
       </BaseModal>
