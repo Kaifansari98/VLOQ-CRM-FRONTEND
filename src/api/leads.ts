@@ -57,6 +57,7 @@ export interface Lead {
   id: number;
   lead_code?: string;
   is_draft?: boolean;
+  is_small_order_request?: boolean;
   is_blocked?: boolean;
   lead_blocked_at?: string | null;
   firstname: string;
@@ -98,6 +99,15 @@ export interface Lead {
     user_id: number;
     user_name: string | null;
     created_at: string;
+  } | null;
+  smallOrderRequest?: {
+    id: number;
+    request_type_id: number;
+    requestType: {
+      id: number;
+      type: string;
+      type_key: string;
+    } | null;
   } | null;
 }
 

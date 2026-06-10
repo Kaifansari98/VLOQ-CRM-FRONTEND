@@ -162,13 +162,6 @@ export default function OrderLoginLeadDetails() {
       )
       : true;
 
-  const disabledReason = readinessLoading
-    ? "Checking production prerequisites..."
-    : !readiness
-      ? "Production readiness data unavailable"
-      : lacksProdFiles
-        ? "Production files are required before moving forward"
-        : "";
   const hasPendingOrderLoginApproval = orderLoginLockIns.some((lockIn) => {
     const pendingTasks = Array.isArray(lockIn.pending_tasks)
       ? lockIn.pending_tasks
@@ -189,9 +182,6 @@ export default function OrderLoginLeadDetails() {
   const orderLoginApprovalTooltip = orderLoginLockInsLoading
     ? "Checking accounts approval status"
     : "Accounts approval for Order Login is still pending";
-  const moveToProductionDisabledReason = isOrderLoginApprovalPending
-    ? orderLoginApprovalTooltip
-    : disabledReason || "Not eligible to move to Production yet";
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -217,6 +207,24 @@ export default function OrderLoginLeadDetails() {
   const updateStatusMutation = useUpdateActivityStatus();
   const queryClient = useQueryClient();
   const lead = data?.data?.lead;
+  const smallOrderTypeKey =
+    lead?.smallOrderRequest?.requestType?.type_key ?? null;
+  const shouldRequireProductionFiles =
+    !lead?.is_small_order_request ||
+    ["additional_panel", "one_cabinet"].includes(
+      String(smallOrderTypeKey ?? "").toLowerCase(),
+    );
+  const effectiveLacksProdFiles = shouldRequireProductionFiles && lacksProdFiles;
+  const disabledReason = readinessLoading
+    ? "Checking production prerequisites..."
+    : !readiness
+      ? "Production readiness data unavailable"
+      : effectiveLacksProdFiles
+        ? "Production files are required before moving forward"
+        : "";
+  const moveToProductionDisabledReason = isOrderLoginApprovalPending
+    ? orderLoginApprovalTooltip
+    : disabledReason || "Not eligible to move to Production yet";
 
   const client_required_order_login_complition_date =
     lead?.client_required_order_login_complition_date;
