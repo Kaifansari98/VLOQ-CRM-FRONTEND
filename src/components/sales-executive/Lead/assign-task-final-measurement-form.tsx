@@ -455,6 +455,14 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     approvalRequestAssignableUsersData?.users,
     userId,
   ]);
+  const approvalRequestMappedUsers = React.useMemo(
+    () =>
+      approvalRequestUsers.map((user) => ({
+        id: user.id,
+        label: user.user_name,
+      })),
+    [approvalRequestUsers],
+  );
 
   const followUpAssignableUsers = (followUpUsersData?.data?.users ?? []).filter(
     (u: any) =>
@@ -500,10 +508,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
 
   const mappedData = React.useMemo(() => {
     if (taskType === "Approval Request") {
-      return approvalRequestUsers.map((user) => ({
-        id: user.id,
-        label: user.user_name,
-      }));
+      return approvalRequestMappedUsers;
     }
 
     if (isSelfAssignTask) {
@@ -567,7 +572,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       })) ?? []
     );
   }, [
-    approvalRequestUsers,
+    approvalRequestMappedUsers,
     eligibleFinalMeasurementCustomUsers,
     eligibleCustomUsers,
     finalMeasurementUsers,

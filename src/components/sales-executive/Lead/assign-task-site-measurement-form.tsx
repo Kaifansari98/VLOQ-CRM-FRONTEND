@@ -337,6 +337,14 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     approvalRequestAssignableUsersData?.users,
     userId,
   ]);
+  const approvalRequestMappedUsers = React.useMemo(
+    () =>
+      approvalRequestUsers.map((user) => ({
+        id: user.id,
+        label: user.user_name,
+      })),
+    [approvalRequestUsers],
+  );
 
   const followUpAssignableUsers = isCustomUser
     ? (() => {
@@ -371,10 +379,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
       );
 
   const mappedData = isApprovalRequestTask
-    ? approvalRequestUsers.map((user) => ({
-        id: user.id,
-        label: user.user_name,
-      }))
+    ? approvalRequestMappedUsers
     : isSelfAssignTask
       ? normalizedUserType === "master-admin"
         ? []
