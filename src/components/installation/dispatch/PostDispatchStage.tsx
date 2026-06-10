@@ -42,6 +42,7 @@ export default function PostDispatchStage({
 }: PostDispatchStageProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const normalizedUserType = userType?.toLowerCase() ?? "";
   const customPrivilegeCodes = useAppSelector(
     (s) => s.customPrivileges.codes,
   );
@@ -155,10 +156,10 @@ export default function PostDispatchStage({
     }
   };
 
-  const isCustomUser = userType === "custom";
+  const isCustomUser = normalizedUserType === "custom";
   const canViewPostDispatch = isCustomUser
     ? customPrivilegeCodes.includes("installation.dispatch.post_dispatch.view")
-    : canViewAndWorkDispatchStage(userType, leadStatus);
+    : true;
   const canUploadPostDispatch =
     !shouldDisableBlockedActions &&
     (
@@ -166,15 +167,15 @@ export default function PostDispatchStage({
         ? customPrivilegeCodes.includes(
           "installation.dispatch.post_dispatch.upload",
         )
-        : canUploadDispatchDocument(userType, leadStatus)
+        : canUploadDispatchDocument(normalizedUserType, leadStatus)
     );
   const canDeletePostDispatch = isCustomUser
     ? customPrivilegeCodes.includes(
       "installation.dispatch.post_dispatch.delete",
     )
-    : userType === "admin" ||
-    userType === "super-admin" ||
-    (userType === "factory" && leadStatus === "dispatch-stage");
+    : normalizedUserType === "admin" ||
+    normalizedUserType === "super-admin" ||
+    (normalizedUserType === "factory" && leadStatus === "dispatch-stage");
 
   if (!canViewPostDispatch) {
     return null;
@@ -215,11 +216,26 @@ export default function PostDispatchStage({
                 onChange={setSelectedFiles}
                 accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.zip"
                 multiple
-                disabled={shouldDisableBlockedActions}
+                disabled={!canUploadPostDispatch}
               />
             </div>
           }
         />
+        {canUploadPostDispatch && (
+          <div className="flex justify-end">
+            <Button
+              onClick={handleUpload}
+              disabled={isPending || selectedFiles.length === 0}
+            >
+              {isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Upload className="mr-2 h-4 w-4" />
+              )}
+              Upload Documents
+            </Button>
+          </div>
+        )}
 
       </div>
 

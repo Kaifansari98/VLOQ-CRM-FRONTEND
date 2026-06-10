@@ -24,6 +24,7 @@ const DispatchTabsWrapper: React.FC<DispatchTabsWrapperProps> = ({
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type,
   );
+  const normalizedUserType = userType?.toLowerCase() ?? "";
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
@@ -73,8 +74,14 @@ const DispatchTabsWrapper: React.FC<DispatchTabsWrapperProps> = ({
       cardContent: (
         <PostDispatchStage leadId={leadId} accountId={accountId} />
       ),
-      disabled: !isReady && !isLoading,
-      disabledReason: !isReady ? disabledReason : undefined,
+      disabled:
+        normalizedUserType === "factory" ? false : (!isReady && !isLoading),
+      disabledReason:
+        normalizedUserType === "factory"
+          ? undefined
+          : !isReady
+            ? disabledReason
+            : undefined,
     },
   ].filter((tab) => {
     if (tab.id === "post-dispatch") return canViewPostDispatchTab;
