@@ -27,6 +27,7 @@ interface SinglePdfUploadFieldProps {
   buttonLabel?: string;
   multiple?: boolean;
   maxFiles?: number;
+  invalid?: boolean;
 }
 
 export function SinglePdfUploadField({
@@ -39,6 +40,7 @@ export function SinglePdfUploadField({
   buttonLabel = "Select PDF",
   multiple = false,
   maxFiles = 1,
+  invalid,
 }: SinglePdfUploadFieldProps) {
   const shouldValidateMimeTypes = (allowedMimeTypes?.length ?? 0) > 0;
 
@@ -106,6 +108,7 @@ export function SinglePdfUploadField({
       maxFiles={maxFiles}
       accept={accept}
       className="w-full"
+      invalid={invalid}
     >
       <FileUploadDropzone>
         <div className="flex flex-col items-center gap-1 text-center">
