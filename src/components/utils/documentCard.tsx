@@ -32,7 +32,8 @@ interface DocumentCardProps {
   isLatest?: boolean;
 }
 
-const PREVIEWABLE_EXTENSIONS = ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx"];
+const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"];
+const PREVIEWABLE_EXTENSIONS = ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", ...IMAGE_EXTENSIONS];
 const OFFICE_EXTENSIONS = ["doc", "docx", "xls", "xlsx", "ppt", "pptx"];
 
 const getFileIcon = (ext: string) => {
@@ -76,6 +77,8 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ url, fileName, fileExt, onC
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const [previewError, setPreviewError] = useState<string | null>(null);
 
+  const isImage = IMAGE_EXTENSIONS.includes(fileExt);
+
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => {
@@ -91,6 +94,13 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ url, fileName, fileExt, onC
       try {
         setIframeLoaded(false);
         setPreviewError(null);
+
+        if (isImage) {
+          if (!cancelled) {
+            setPreviewUrl(url);
+          }
+          return;
+        }
 
         if (fileExt === "pdf") {
           const response = await fetch(url);
@@ -128,7 +138,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ url, fileName, fileExt, onC
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, [fileExt, url]);
+  }, [fileExt, url, isImage]);
 
   return createPortal(
     <div
@@ -159,8 +169,8 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ url, fileName, fileExt, onC
         </div>
 
         {/* Iframe area */}
-        <div className="relative flex-1 min-h-0">
-          {!previewError && (!previewUrl || !iframeLoaded) && (
+        <div className="relative flex-1 min-h-0 bg-neutral-100 dark:bg-neutral-950">
+          {!previewError && (!previewUrl || (!iframeLoaded && !isImage)) && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-neutral-400 dark:text-neutral-500 bg-white dark:bg-neutral-900">
               <Loader2 className="w-6 h-6 animate-spin" />
               <span className="text-xs">Loading preview…</span>
@@ -180,13 +190,24 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ url, fileName, fileExt, onC
               </Button>
             </div>
           ) : previewUrl ? (
-            <iframe
-              src={previewUrl}
-              title={`Preview — ${fileName}`}
-              className="w-full h-full border-0"
-              onLoad={() => setIframeLoaded(true)}
-              allow="fullscreen"
-            />
+            isImage ? (
+              <div className="w-full h-full flex items-center justify-center p-4">
+                <img
+                  src={previewUrl}
+                  alt={`Preview — ${fileName}`}
+                  className="max-w-full max-h-full object-contain drop-shadow-md rounded"
+                  onLoad={() => setIframeLoaded(true)}
+                />
+              </div>
+            ) : (
+              <iframe
+                src={previewUrl}
+                title={`Preview — ${fileName}`}
+                className="w-full h-full border-0 bg-white"
+                onLoad={() => setIframeLoaded(true)}
+                allow="fullscreen"
+              />
+            )
           ) : null}
         </div>
       </div>
@@ -206,6 +227,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
 }) => {
   const fileExt = doc.originalName?.split(".").pop()?.toLowerCase() || "file";
   const { icon: Icon } = getFileIcon(fileExt);
+  const isImage = IMAGE_EXTENSIONS.includes(fileExt);
   const canPreview = PREVIEWABLE_EXTENSIONS.includes(fileExt);
 
   const [isDownloading, setIsDownloading] = useState(false);
@@ -344,16 +366,28 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
               bg-gray-600/20 dark:bg-neutral-800 
               flex items-center justify-center
               transition-all duration-200 group-hover:scale-[1.03]
+              overflow-hidden
             "
           >
-            <Icon className="text-neutral-700 dark:text-neutral-300" size={22} />
-            <div
-              className="
-                absolute top-0 right-0 w-0 h-0 
-                border-l-[10px] border-l-transparent
-                border-t-[10px] border-t-white/40 dark:border-t-neutral-700/40
-              "
-            />
+            {isImage ? (
+              <img
+                src={doc.signedUrl}
+                alt={doc.originalName}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <Icon className="text-neutral-700 dark:text-neutral-300" size={22} />
+            )}
+            
+            {!isImage && (
+              <div
+                className="
+                  absolute top-0 right-0 w-0 h-0 
+                  border-l-[10px] border-l-transparent
+                  border-t-[10px] border-t-white/40 dark:border-t-neutral-700/40
+                "
+              />
+            )}
             <div
               className="
                 absolute -bottom-1.5 left-1/2 -translate-x-1/2 
