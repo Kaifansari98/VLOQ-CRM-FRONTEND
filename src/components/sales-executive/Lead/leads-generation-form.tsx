@@ -910,7 +910,37 @@ export default function LeadsGenerationForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 p-5">
+      <form 
+          onSubmit={form.handleSubmit(onSubmit, (errors) => {
+            const errorKeys = Object.keys(errors);
+            if (errorKeys.length > 0) {
+              const firstErrorKey = errorKeys[0];
+              const el = document.querySelector(`[data-name="${firstErrorKey}"]`);
+              if (el) {
+                const isHidden = el.getBoundingClientRect().height === 0;
+                const targetScrollEl = isHidden ? (el.parentElement || el) : el;
+                
+                const scrollContainer = targetScrollEl.closest("[data-radix-scroll-area-viewport]") || targetScrollEl.closest("form");
+                if (scrollContainer instanceof HTMLElement) {
+                  const containerRect = scrollContainer.getBoundingClientRect();
+                  const elRect = targetScrollEl.getBoundingClientRect();
+                  const scrollOffset = elRect.top - containerRect.top + scrollContainer.scrollTop - (containerRect.height / 2) + (elRect.height / 2);
+                  scrollContainer.scrollTo({
+                    top: scrollOffset,
+                    behavior: "smooth",
+                  });
+                } else {
+                  targetScrollEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                }
+
+                const focusable = el.querySelector("input, select, textarea, button");
+                if (focusable instanceof HTMLElement) {
+                  focusable.focus({ preventScroll: true });
+                }
+              }
+            }
+          })}
+          className="space-y-4 p-5">
         {/* File Upload */}
 
         {/* First Name & Last Name */}
@@ -919,7 +949,7 @@ export default function LeadsGenerationForm({
             control={form.control}
             name="firstname"
             render={({ field }) => (
-              <FormItem>
+              <FormItem data-name={field?.name || ""} >
                 <FormLabel className="text-sm">First Name *</FormLabel>
                 <FormControl>
                   <Input
@@ -938,7 +968,7 @@ export default function LeadsGenerationForm({
             control={form.control}
             name="lastname"
             render={({ field }) => (
-              <FormItem>
+              <FormItem data-name={field?.name || ""} >
                 <FormLabel className="text-sm">Last Name *</FormLabel>
                 <FormControl>
                   <Input
@@ -963,7 +993,7 @@ export default function LeadsGenerationForm({
             control={form.control}
             name="contact_no"
             render={({ field }) => (
-              <FormItem>
+              <FormItem data-name={field?.name || ""} >
                 <FormLabel className="text-sm">Phone Number *</FormLabel>
                 <FormControl>
                   <PhoneInput
@@ -1000,7 +1030,7 @@ export default function LeadsGenerationForm({
             control={form.control}
             name="alt_contact_no"
             render={({ field }) => (
-              <FormItem>
+              <FormItem data-name={field?.name || ""} >
                 <FormLabel className="text-sm">Alt. Phone Number</FormLabel>
                 <FormControl>
                   {/* Use regular Input instead of PhoneInput */}
@@ -1037,7 +1067,7 @@ export default function LeadsGenerationForm({
           control={form.control}
           name="email"
           render={({ field }) => (
-            <FormItem>
+            <FormItem data-name={field?.name || ""} >
               <FormLabel className="text-sm">Email</FormLabel>
               <FormControl>
                 <Input
@@ -1076,7 +1106,7 @@ export default function LeadsGenerationForm({
                 })) || [];
 
               return (
-                <FormItem>
+                <FormItem data-name={field?.name || ""} >
                   <FormLabel className="text-sm">Site Type *</FormLabel>
 
                   {isLoading ? (
@@ -1104,7 +1134,7 @@ export default function LeadsGenerationForm({
             control={form.control}
             name="priority"
             render={({ field }) => (
-              <FormItem>
+              <FormItem data-name={field?.name || ""} >
                 <FormLabel className="text-sm">Priority *</FormLabel>
                 <AssignToPicker
                   data={priorityOptions.map((option) => ({
@@ -1144,7 +1174,7 @@ export default function LeadsGenerationForm({
                 })) || [];
 
               return (
-                <FormItem>
+                <FormItem data-name={field?.name || ""} >
                   <FormLabel className="text-sm">Source *</FormLabel>
 
                   {isLoading ? (
@@ -1174,7 +1204,7 @@ export default function LeadsGenerationForm({
           control={form.control}
           name="site_address"
           render={({ field }) => (
-            <FormItem>
+            <FormItem data-name={field?.name || ""} >
               <div className="w-full flex justify-between ">
                 <FormLabel className="text-sm">Site Address *</FormLabel>
                 <Button
@@ -1267,7 +1297,7 @@ export default function LeadsGenerationForm({
                 })) || [];
 
               return (
-                <FormItem>
+                <FormItem data-name={field?.name || ""} >
                 <FormLabel className="text-sm">Furniture Type *</FormLabel>
 
                   {isProductTypesLoading ? (
@@ -1325,7 +1355,7 @@ export default function LeadsGenerationForm({
                   : "";
 
               return (
-                <FormItem>
+                <FormItem data-name={field?.name || ""} >
                   <FormLabel className="text-sm">
                     Furniture Structure *
                   </FormLabel>
@@ -1409,7 +1439,7 @@ export default function LeadsGenerationForm({
                   })) || [];
 
                 return (
-                  <FormItem>
+                  <FormItem data-name={field?.name || ""} >
                     <FormLabel className="text-sm">Assign Lead To *</FormLabel>
 
                     <AssignToPicker
@@ -1439,7 +1469,7 @@ export default function LeadsGenerationForm({
             control={form.control}
             name="archetech_name"
             render={({ field }) => (
-              <FormItem>
+              <FormItem data-name={field?.name || ""} >
                 <FormLabel className="text-sm">Architect Name</FormLabel>
                 <FormControl>
                   <Input
@@ -1458,7 +1488,7 @@ export default function LeadsGenerationForm({
               control={form.control}
               name="archetech_number"
               render={({ field }) => (
-                <FormItem>
+                <FormItem data-name={field?.name || ""} >
                   <FormLabel className="text-sm">Architect Number</FormLabel>
                   <FormControl>
                     <PhoneInput
@@ -1479,7 +1509,7 @@ export default function LeadsGenerationForm({
             control={form.control}
             name="initial_site_measurement_date"
             render={({ field }) => (
-              <FormItem>
+              <FormItem data-name={field?.name || ""} >
                 <FormLabel className="text-sm">
                   Initial Site Measurement Date
                 </FormLabel>
@@ -1501,7 +1531,7 @@ export default function LeadsGenerationForm({
           control={form.control}
           name="designer_remark"
           render={({ field }) => (
-            <FormItem>
+            <FormItem data-name={field?.name || ""} >
               <FormLabel className="text-sm">Designer's Remark</FormLabel>
               <FormControl>
                 <TextAreaInput placeholder="Enter your remarks" {...field} />
@@ -1517,8 +1547,8 @@ export default function LeadsGenerationForm({
         <FormField
           control={form.control}
           name="documents"
-          render={() => (
-            <FormItem>
+          render={({ field }) => (
+            <FormItem data-name={field?.name || ""} >
               <FormLabel className="text-sm">Site Photos</FormLabel>
               <FormControl>
                 {isMultiInstanceSitePhotoUploadFlow ? (
