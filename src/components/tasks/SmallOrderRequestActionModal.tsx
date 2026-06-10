@@ -3,10 +3,16 @@
 import React, { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAppSelector } from "@/redux/store";
-import BaseModal from "@/components/utils/baseModal";
 import TextAreaInput from "@/components/origin-text-area";
 import { Button } from "@/components/ui/button";
 import { toastManager } from "@/components/ui/toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -126,21 +132,29 @@ export default function SmallOrderRequestActionModal({
 
   return (
     <>
-      <BaseModal
+      <Dialog
         open={open}
         onOpenChange={(nextOpen) => {
           onOpenChange(nextOpen);
           if (!nextOpen) resetState();
         }}
-        title="Small Order Request"
-        description="Review this small order request and choose whether to approve or reject it."
-        size="md"
       >
-        <div className="space-y-5 p-6">
+        <DialogContent className="w-[95vw] max-w-2xl overflow-hidden p-0">
+          <DialogHeader className="border-b bg-muted/30 px-6 py-4">
+            <DialogTitle className="text-left text-2xl font-semibold">
+              Small Order Request
+            </DialogTitle>
+            <DialogDescription className="text-left text-base text-muted-foreground">
+              Review this small order request and choose whether to approve or
+              reject it.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-[75vh] space-y-5 overflow-y-auto p-6">
           {data?.remark ? (
             <div className="space-y-2">
-              <p className="text-sm font-medium">Request Details</p>
-              <div className="rounded-md border bg-slate-50 p-3 text-sm text-slate-700 whitespace-pre-wrap">
+              <p className="text-2xl font-semibold">Request Details</p>
+              <div className="rounded-xl border bg-slate-50 p-4 text-base leading-8 text-slate-700 whitespace-pre-wrap">
                 {data.remark}
               </div>
             </div>
@@ -150,6 +164,7 @@ export default function SmallOrderRequestActionModal({
             <Button
               type="button"
               variant={mode === "approve" ? "default" : "outline"}
+              className="h-14 text-xl"
               onClick={() => setMode("approve")}
               disabled={actionMutation.isPending}
             >
@@ -158,6 +173,7 @@ export default function SmallOrderRequestActionModal({
             <Button
               type="button"
               variant={mode === "reject" ? "destructive" : "outline"}
+              className="h-14 text-xl"
               onClick={() => setMode("reject")}
               disabled={actionMutation.isPending}
             >
@@ -166,7 +182,7 @@ export default function SmallOrderRequestActionModal({
           </div>
 
           <div className="space-y-2">
-            <p className="text-sm font-medium">
+            <p className="text-xl font-medium">
               {mode === "reject" ? "Rejection Reason" : "Remark"}
             </p>
             <TextAreaInput
@@ -177,6 +193,7 @@ export default function SmallOrderRequestActionModal({
                   ? "Explain why you're rejecting..."
                   : "Add an optional remark"
               }
+              className="min-h-28"
             />
           </div>
 
@@ -197,8 +214,9 @@ export default function SmallOrderRequestActionModal({
               {mode === "reject" ? "Reject" : "Approve"}
             </Button>
           </div>
-        </div>
-      </BaseModal>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
