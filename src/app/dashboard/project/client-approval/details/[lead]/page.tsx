@@ -156,13 +156,12 @@ export default function ClientApprovalLeadDetails() {
     isLeadBlocked,
     blockedTooltip,
     shouldDisableBlockedActions,
+    isLoading: isLeadBlockStatusLoading,
   } = useLeadAccessControl({
     leadId: leadIdNum,
     userType,
     lead,
   });
-
-
 
   const isBlockActionPending =
     blockLeadMutation.isPending ||
@@ -171,10 +170,10 @@ export default function ClientApprovalLeadDetails() {
   // Auto-open documentation modal
   /* ---------- DEFAULT MODAL ON MOUNT ---------- */
   useEffect(() => {
-    if (isLoading || isChatNotification) return;
+    if (isLoading || isLeadBlockStatusLoading || !lead || isChatNotification) return;
 
     // Auto-open only for Sales Executive
-    if (userType === "sales-executive") {
+    if (userType === "sales-executive" && !isLeadBlocked && !lead.is_draft) {
       if (is_client_approval_submitted) {
         setOpenRequestToTechCheckModal(true);
       } else {
@@ -183,7 +182,7 @@ export default function ClientApprovalLeadDetails() {
 
       setActiveTab("todo");
     }
-  }, [isLoading, isChatNotification, userType, is_client_approval_submitted]);
+  }, [isLoading, isLeadBlockStatusLoading, lead, isChatNotification, userType, is_client_approval_submitted, isLeadBlocked]);
 
   const deleteLeadMutation = useDeleteLead();
   const handleDeleteLead = () => {

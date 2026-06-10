@@ -122,7 +122,7 @@ export default function LeadDetails() {
   const unblockLeadMutation = useUnblockLead();
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
-  const { data: leadBlockStatus } = useLeadBlockStatus(leadIdNum, vendorId);
+  const { data: leadBlockStatus, isLoading: isLeadBlockStatusLoading } = useLeadBlockStatus(leadIdNum, vendorId);
   const lead = data?.data?.lead;
   const isDraftLead = !!lead?.is_draft;
   const leadCode = lead?.lead_code ?? "";
@@ -314,11 +314,14 @@ export default function LeadDetails() {
 
   useEffect(() => {
     if (!lead) return;
+    if (isLeadBlockStatusLoading) return;
     if (isChatNotification) return;
+    if (hasAutoOpenedAssign.current) return;
     if (hasAutoOpenedAssign.current) return;
 
     if (
       !lead.is_draft &&
+      !isLeadBlocked &&
       canAccessAssignTask &&
       userType?.toLowerCase() !== "admin" &&
       userType?.toLowerCase() !== "super-admin"
@@ -327,7 +330,14 @@ export default function LeadDetails() {
       setAssignOpen(true);
       setActiveTab("projects");
     }
-  }, [isChatNotification, lead?.id, userType, canAccessAssignTask]);
+  }, [
+    isChatNotification,
+    lead?.id,
+    userType,
+    canAccessAssignTask,
+    isLeadBlocked,
+    isLeadBlockStatusLoading,
+  ]);
 
   // 🔹 Tabs state
   const [activeTab, setActiveTab] = useState("details");
@@ -336,6 +346,7 @@ export default function LeadDetails() {
   return (
     <>
       {/* Header */}
+      
       <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b bg-background">
         <div className="flex items-center gap-2">
           <SidebarTrigger className="-ml-1" />

@@ -279,22 +279,22 @@ export default function DesigningStageLead() {
     blockedTooltip,
     shouldDisableBlockedActions,
     isPending: isBlockActionPending,
+    isLoading: isLeadBlockStatusLoading,
   } = useLeadAccessControl({
     leadId: leadIdNum,
     userType,
     lead,
   });
 
-
   const canOpenBookingModal =
     canMoveToBooking &&
     canPerformMoveToBooking &&
     !isBookingLockedByEligibleDays &&
-    !(isLeadBlocked && !isSuperAdmin) &&
+    !isLeadBlocked &&
     !invalidPhoneReason;
 
   useEffect(() => {
-    if (isLoading || isChatNotification) return;
+    if (isLoading || isLeadBlockStatusLoading || isChatNotification) return;
 
     // Auto-open only when booking is actually allowed for this user.
     if (
@@ -306,6 +306,7 @@ export default function DesigningStageLead() {
     }
   }, [
     isLoading,
+    isLeadBlockStatusLoading,
     isChatNotification,
     normalizedUserType,
     canOpenBookingModal,
@@ -511,7 +512,7 @@ export default function DesigningStageLead() {
             {/* Move to Booking */}
             {!canMoveToBooking ||
               isBookingLockedByEligibleDays ||
-              (isLeadBlocked && !isSuperAdmin) ? (
+              isLeadBlocked ? (
               <CustomeTooltip
                 truncateValue={
                   <div className="flex items-center opacity-50 cursor-not-allowed px-2">
@@ -519,7 +520,7 @@ export default function DesigningStageLead() {
                     Move To Booking
                   </div>
                 }
-                value={moveToBookingTooltip}
+                value={isLeadBlocked ? blockedTooltip : moveToBookingTooltip}
                 contentClassName="max-w-80 text-left"
               />
             ) : (
@@ -563,7 +564,7 @@ export default function DesigningStageLead() {
                 Assign Task
               </DropdownMenuItem>
               {/* Move to Booking */}
-              {shouldDisableBlockedActions ? (
+              {isLeadBlocked ? (
                 // Lead block handling added for DropdownMenu action
                 <CustomeTooltip
                   value={blockedTooltip}
@@ -763,7 +764,7 @@ export default function DesigningStageLead() {
                 </TabsTrigger>
 
                 {canAccessTodoTab ? (
-                  isLeadBlocked && !isSuperAdmin ? (
+                  isLeadBlocked ? (
                     <CustomeTooltip
                       truncateValue={
                         <TabsTrigger value="todo" disabled>

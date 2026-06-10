@@ -342,11 +342,12 @@ export default function ClientApprovalLeadDetails() {
 
   // ✅ Auto-open To-Do modal when screen loads (only for allowed roles)
   useEffect(() => {
-    if (isLoading || isAccessControlLoading) return;
+    if (isLoading || isAccessControlLoading || !lead) return;
     if (isChatNotification) return;
     if (
       canAccessTechCheckWorkflow &&
-      !shouldDisableBlockedActions &&
+      !isLeadBlocked && 
+      !lead.is_draft &&
       effectiveUserType?.toLowerCase() !== "admin" &&
       effectiveUserType?.toLowerCase() !== "super-admin"
     ) {
@@ -356,7 +357,8 @@ export default function ClientApprovalLeadDetails() {
     isChatNotification,
     effectiveUserType,
     canAccessTechCheckWorkflow,
-    shouldDisableBlockedActions,
+    isLeadBlocked,
+    lead,
     isLoading,
     isAccessControlLoading,
   ]);

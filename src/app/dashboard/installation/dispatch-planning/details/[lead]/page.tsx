@@ -137,6 +137,7 @@ export default function DispatchPlanningLeadDetails() {
   isLeadBlocked,
   blockedTooltip,
   shouldDisableBlockedActions,
+  isLoading: isLeadBlockStatusLoading,
 } = useLeadAccessControl({
   leadId: leadIdNum,
   userType,
@@ -153,11 +154,11 @@ const isBlockActionPending =
   unblockLeadMutation.isPending;
 
   useEffect(() => {
-    if (isChatNotification) return;
-    if (userType?.toLowerCase() === "sales-executive") {
+    if (isLoading || isLeadBlockStatusLoading || !lead || isChatNotification) return;
+    if (userType?.toLowerCase() === "sales-executive" && !isLeadBlocked && !lead.is_draft) {
       setActiveTab("todo");
     }
-  }, [isChatNotification, userType]);
+  }, [isLoading, isLeadBlockStatusLoading, lead, isChatNotification, userType, isLeadBlocked]);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [activityType, setActivityType] = useState<"onHold">("onHold");
 

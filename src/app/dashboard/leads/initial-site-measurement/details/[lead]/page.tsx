@@ -132,7 +132,8 @@ export default function SiteMeasurementLead() {
     isLeadBlocked,
     blockedTooltip,
     shouldDisableBlockedActions,
-    isPending: isBlockActionPending
+    isPending: isBlockActionPending,
+    isLoading: isLeadBlockStatusLoading
   } = useLeadAccessControl({
     leadId: leadIdNum,
     userType,
@@ -147,22 +148,24 @@ export default function SiteMeasurementLead() {
 
 
   useEffect(() => {
-    if (isLoading || !lead || isChatNotification) return;
+    if (isLoading || isLeadBlockStatusLoading || !lead || isChatNotification) return;
     if (activeTab !== "details") return;
 
     // ✅ Only open automatically if:
     // - Lead is not draft
+    // - Lead is not blocked
     // - User has upload permission
     // - User is NOT admin or super-admin
     if (
       !lead.is_draft &&
+      !isLeadBlocked &&
       canUploadISM(userType) &&
       userType?.toLowerCase() !== "admin" &&
       userType?.toLowerCase() !== "super-admin"
     ) {
       setOpenMeasurement(true);
     }
-  }, [isLoading, isChatNotification, lead, userType, activeTab]);
+  }, [isLoading, isLeadBlockStatusLoading, isChatNotification, lead, userType, activeTab, isLeadBlocked]);
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
