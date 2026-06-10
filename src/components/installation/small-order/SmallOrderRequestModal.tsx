@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import BaseModal from "@/components/utils/baseModal";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,6 +23,13 @@ import { toastManager } from "@/components/ui/toast";
 import { useSmallOrderRequestTypes } from "@/hooks/useTypesMaster";
 import { useCreateSmallOrderRequest } from "@/hooks/useLeadsQueries";
 import { useAppSelector } from "@/redux/store";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export type SmallOrderRequestSourceContext =
   | "under_installation"
@@ -201,16 +207,23 @@ export default function SmallOrderRequestModal({
   };
 
   return (
-    <BaseModal
+    <Dialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Small Order Request"
-      description={`Raised from ${sourceLabel}. Required Date starts from ${formatDisplayDate(
-        earliestRequiredDate,
-      )}.`}
-      size="lg"
     >
-      <div className="p-6">
+      <DialogContent className="w-[95vw] max-w-4xl overflow-hidden p-0">
+        <DialogHeader className="border-b bg-muted/30 px-6 py-4">
+          <DialogTitle className="text-left text-2xl font-semibold">
+            Small Order Request
+          </DialogTitle>
+          <DialogDescription className="text-left text-base text-muted-foreground">
+            {`Raised from ${sourceLabel}. Required Date starts from ${formatDisplayDate(
+              earliestRequiredDate,
+            )}.`}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="max-h-[80vh] overflow-y-auto p-6">
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(handleSubmit)}
@@ -321,7 +334,8 @@ export default function SmallOrderRequestModal({
             </div>
           </form>
         </Form>
-      </div>
-    </BaseModal>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
