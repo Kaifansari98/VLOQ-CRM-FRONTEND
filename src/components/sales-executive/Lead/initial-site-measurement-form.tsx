@@ -25,7 +25,7 @@ import { SinglePdfUploadField } from "@/components/utils/single-pdf-uploader";
 import BaseModal from "@/components/utils/baseModal";
 import { useRouter } from "next/navigation";
 import CurrencyInput from "@/components/custom/CurrencyInput";
-import { toastError } from "@/lib/utils";
+import { toastError, cn } from "@/lib/utils";
 import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import { LeadProductStructureInstance } from "@/api/leads";
@@ -107,57 +107,6 @@ const formSchema = z
     payment_date: z.string().optional(),
     payment_image: z.any().optional(),
     payment_text: z.string().optional(),
-  })
-  // ✅ Replaced .refine() with granular .superRefine()
-  .superRefine((data, ctx) => {
-    const hasAmount = !!data.amount;
-    const hasPaymentDate = !!data.payment_date;
-    const hasPaymentText = !!data.payment_text?.trim();
-    const hasPaymentImage =
-      Array.isArray(data.payment_image) && data.payment_image.length > 0;
-
-    const anyFieldFilled =
-      hasAmount || hasPaymentDate || hasPaymentText || hasPaymentImage;
-
-    if (anyFieldFilled) {
-      // 💰 Amount missing
-      if (!hasAmount) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["amount"],
-          message: "Amount is required when adding payment details.",
-        });
-      }
-
-      // 📅 Payment date missing
-      if (!hasPaymentDate) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["payment_date"],
-          message: "Payment date is required when adding payment details.",
-        });
-      }
-
-      // 📝 Payment text missing
-      if (!hasPaymentText) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["payment_text"],
-          message:
-            "Payment details text is required when adding payment details.",
-        });
-      }
-
-      // 🖼️ Payment image missing
-      if (!hasPaymentImage) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["payment_image"],
-          message:
-            "At least one payment image is required when adding payment details.",
-        });
-      }
-    }
   });
 
 type InitialSiteMeasurementFormValues = z.infer<typeof formSchema>;
@@ -168,15 +117,6 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
   data,
 }) => {
   const router = useRouter();
-
-  const form = useForm<InitialSiteMeasurementFormValues>({
-    resolver: zodResolver(formSchema) as unknown as any,
-    defaultValues: {
-      current_site_photos: [],
-      upload_pdf: [],
-      payment_image: [],
-    },
-  });
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -213,6 +153,70 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
   const isMultiInstanceUploadFlow =
     structureInstances.length > 1 &&
     (isCustomVendorFlow || isCustomDocNomenclatureEnabled);
+
+  const dynamicFormSchema = React.useMemo(() => {
+    return z
+      .object({
+        current_site_photos: z.any().optional(),
+        upload_pdf: isMultiInstanceUploadFlow
+          ? z.array(z.instanceof(File)).default([])
+          : z.array(z.instanceof(File)).min(1, "Please upload at least one document"),
+        amount: z.number().optional(),
+        payment_date: z.string().optional(),
+        payment_image: z.any().optional(),
+        payment_text: z.string().optional(),
+      })
+      .superRefine((data, ctx) => {
+        const hasAmount = !!data.amount;
+        const hasPaymentDate = !!data.payment_date;
+        const hasPaymentText = !!data.payment_text?.trim();
+        const hasPaymentImage =
+          Array.isArray(data.payment_image) && data.payment_image.length > 0;
+
+        const anyFieldFilled =
+          hasAmount || hasPaymentDate || hasPaymentText || hasPaymentImage;
+
+        if (anyFieldFilled) {
+          if (!hasAmount) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["amount"],
+              message: "Amount is required when adding payment details.",
+            });
+          }
+          if (!hasPaymentDate) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["payment_date"],
+              message: "Payment date is required when adding payment details.",
+            });
+          }
+          if (!hasPaymentText) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["payment_text"],
+              message: "Payment details text is required when adding payment details.",
+            });
+          }
+          if (!hasPaymentImage) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["payment_image"],
+              message: "At least one payment image is required when adding payment details.",
+            });
+          }
+        }
+      });
+  }, [isMultiInstanceUploadFlow]);
+
+  const form = useForm<InitialSiteMeasurementFormValues>({
+    resolver: zodResolver(dynamicFormSchema) as unknown as any,
+    defaultValues: {
+      current_site_photos: [],
+      upload_pdf: [],
+      payment_image: [],
+    },
+  });
   const existingSitePhotos = React.useMemo(
     () => siteMeasurementDetails?.current_site_photos ?? [],
     [siteMeasurementDetails?.current_site_photos],
@@ -533,12 +537,10 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
         const hasLocalSitePhotos = uploads.current_site_photos.length > 0;
         const hasLocalDocuments = uploads.upload_pdf.length > 0;
 
-        const hasRequiredSitePhotos =
-          hasSavedThisSession || hasExistingSitePhotos || hasLocalSitePhotos;
         const hasRequiredDocuments =
           hasSavedThisSession || hasExistingDocuments || hasLocalDocuments;
 
-        return !(hasRequiredSitePhotos && hasRequiredDocuments);
+        return !hasRequiredDocuments;
       });
 
       if (missingRequiredUploads.length > 0) {
@@ -608,7 +610,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
     });
   };
 
-  const handleReset = () => {
+  const handleReset = React.useCallback(() => {
     form.reset({
       current_site_photos: [],
       upload_pdf: [],
@@ -617,6 +619,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       payment_image: [],
       payment_text: "",
     });
+    form.clearErrors();
     setInstanceUploads((prev) => {
       const next = { ...prev };
       Object.keys(next).forEach((key) => {
@@ -625,7 +628,11 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       return next;
     });
     setSavedInstanceIds([]);
-  };
+  }, [form]);
+
+  React.useEffect(() => {
+    handleReset();
+  }, [open, handleReset]);
 
   const setInstanceFiles = (
     instanceId: number,
@@ -665,16 +672,13 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
     }
 
     return structureInstances.every((instance) => {
-      const hasExistingSitePhotos =
-        getExistingSitePhotosByInstance(instance.id).length > 0;
       const hasExistingDocuments =
         getExistingMeasurementDocsByInstance(instance.id).length > 0;
 
-      return hasExistingSitePhotos && hasExistingDocuments;
+      return hasExistingDocuments;
     });
   }, [
     getExistingMeasurementDocsByInstance,
-    getExistingSitePhotosByInstance,
     isMultiInstanceUploadFlow,
     structureInstances,
   ]);
@@ -689,7 +693,38 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
     >
       <div className="px-5 py-4">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+          <form
+            onSubmit={form.handleSubmit(onSubmit, (errors) => {
+              const errorKeys = Object.keys(errors);
+              if (errorKeys.length > 0) {
+                const firstErrorKey = errorKeys[0];
+                const el = document.querySelector(`[data-name="${firstErrorKey}"]`);
+                if (el) {
+                  const isHidden = el.getBoundingClientRect().height === 0;
+                  const targetScrollEl = isHidden ? (el.parentElement || el) : el;
+                  
+                  const scrollContainer = targetScrollEl.closest("[data-radix-scroll-area-viewport]") || targetScrollEl.closest("form");
+                  if (scrollContainer instanceof HTMLElement) {
+                    const containerRect = scrollContainer.getBoundingClientRect();
+                    const elRect = targetScrollEl.getBoundingClientRect();
+                    const scrollOffset = elRect.top - containerRect.top + scrollContainer.scrollTop - (containerRect.height / 2) + (elRect.height / 2);
+                    scrollContainer.scrollTo({
+                      top: scrollOffset,
+                      behavior: "smooth",
+                    });
+                  } else {
+                    targetScrollEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }
+
+                  const focusable = el.querySelector("input, select, textarea, button");
+                  if (focusable instanceof HTMLElement) {
+                    focusable.focus({ preventScroll: true });
+                  }
+                }
+              }
+            })}
+            className="space-y-5"
+          >
             {(isCustomVendorFlow || isCustomDocNomenclatureEnabled) &&
             isStructureInstancesLoading ? (
               <div className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">
@@ -888,13 +923,14 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                   control={form.control}
                   name="current_site_photos"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem data-name="current_site_photos">
                       <FormLabel className="text-sm">Current Site Photos</FormLabel>
                       <FormControl>
                         <FileUploadField
                           value={field.value}
                           onChange={field.onChange}
                           accept=".png, .jpg, .jpeg, .gif"
+                          invalid={!!form.formState.errors.current_site_photos}
                         />
                       </FormControl>
                       <FormDescription className="text-xs">
@@ -909,7 +945,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                   control={form.control}
                   name="upload_pdf"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem data-name="upload_pdf">
                       <FormLabel className="text-sm">
                         Initial Site Measurement Document *
                       </FormLabel>
@@ -924,6 +960,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                           buttonLabel="Select File"
                           multiple
                           maxFiles={10}
+                          invalid={!!form.formState.errors.upload_pdf}
                         />
                       </FormControl>
                       <FormMessage />
@@ -939,7 +976,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                 control={form.control}
                 name="amount"
                 render={({ field }) => (
-                  <FormItem className="w-full">
+                  <FormItem className={cn("w-full", form.formState.errors.amount && "text-destructive [&_input]:border-destructive [&_input]:focus-visible:ring-destructive")} data-name="amount">
                     <FormLabel className="text-sm">
                       Initial Site Measurement Payable Amount
                     </FormLabel>
@@ -962,7 +999,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                 control={form.control}
                 name="payment_date"
                 render={({ field }) => (
-                  <FormItem className="w-full">
+                  <FormItem className={cn("w-full", form.formState.errors.payment_date && "text-destructive [&_button]:border-destructive [&_button]:focus-visible:ring-destructive")} data-name="payment_date">
                     <FormLabel className="text-sm">
                       Initial Site Measurement Amount Payment Date
                     </FormLabel>
@@ -984,7 +1021,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
               control={form.control}
               name="payment_image"
               render={({ field }) => (
-                <FormItem>
+                <FormItem data-name="payment_image">
                   <FormLabel className="text-sm">Payment Details</FormLabel>
                   <FormControl>
                     <FileUploadField
@@ -992,6 +1029,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                       onChange={field.onChange}
                       multiple={false}
                       accept=".png, .jpg, .jpeg, .gif"
+                      invalid={!!form.formState.errors.payment_image}
                     />
                   </FormControl>
                   <FormDescription className="text-xs">
@@ -1007,7 +1045,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
               control={form.control}
               name="payment_text"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className={cn(form.formState.errors.payment_text && "text-destructive [&_textarea]:border-destructive [&_textarea]:focus-visible:ring-destructive")} data-name="payment_text">
                   <FormLabel className="text-sm">
                     Payment Details Text
                   </FormLabel>
