@@ -216,6 +216,15 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
     })) || [];
 
   // Titles
+  const legacyDefaultTitles = [
+    "Carcass",
+    "Shutter",
+    "Stock Hardware",
+    "Special Hardware",
+    "Profile Shutter",
+    "Outsourced Shutter",
+    "Glass Material",
+  ];
   const mandatoryTitles = isSmallOrderRequestLead
     ? []
     : ["Carcass", "Shutter", "Stock Hardware"];
@@ -243,9 +252,12 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   const extraFromApi = useMemo(
     () =>
       (orderLoginData || []).filter(
-        (i: any) => !defaultTitles.includes(i.item_type),
+        (i: any) =>
+          isSmallOrderRequestLead
+            ? !legacyDefaultTitles.includes(i.item_type)
+            : !defaultTitles.includes(i.item_type),
       ),
-    [orderLoginData],
+    [defaultTitles, isSmallOrderRequestLead, orderLoginData],
   );
 
   console.log("order login data: ", orderLoginData)
@@ -280,12 +292,19 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   const mandatoryValidation = useMemo(() => {
     if (isSmallOrderRequestLead) {
       const hasAtLeastOneFilledCard = (orderLoginData || []).some((item: any) => {
+        if (legacyDefaultTitles.includes(item.item_type)) {
+          return false;
+        }
+
         const local = breakups[item.item_type] ?? {
           item_desc: item.item_desc || "",
           company_vendor_id: item.company_vendor_id || null,
         };
         const hasVendor = !!local.company_vendor_id;
-        const hasDesc = !!local.item_desc?.trim();
+        const normalizedDescription = local.item_desc?.trim();
+        const hasDesc =
+          !!normalizedDescription &&
+          normalizedDescription.toLowerCase() !== "n/a";
         return hasVendor && hasDesc;
       });
 
@@ -314,7 +333,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
       isValid: missing.length === 0,
       missingFields: missing,
     };
-  }, [breakups, isSmallOrderRequestLead, orderLoginData]);
+  }, [breakups, isSmallOrderRequestLead, legacyDefaultTitles, orderLoginData]);
 
   // Completed button is visible only when role can access AND mandatory fields filled
   const canShowCompletedButton =
