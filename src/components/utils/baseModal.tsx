@@ -66,7 +66,7 @@ const BaseModal: React.FC<BaseModalProps> = ({
           </DialogHeader>
         )}
 
-        <ScrollArea className="h-[calc(90vh-80px)] p-0 m-0">
+        <ScrollArea className="max-h-[calc(90vh-80px)] p-0 m-0">
           {children}
         </ScrollArea>
       </DialogContent>
