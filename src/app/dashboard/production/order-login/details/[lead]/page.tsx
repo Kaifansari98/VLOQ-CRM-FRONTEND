@@ -117,7 +117,6 @@ export default function OrderLoginLeadDetails() {
 
   // derive convenience flags & message
   const lacksProdFiles = readiness ? !readiness.productionFiles?.hasAny : false;
-  const canMove = readiness?.readyForProduction === true;
   const canMoveToProductionStage =
     userType === "custom"
       ? customPrivilegeCodes.includes(
@@ -215,6 +214,9 @@ export default function OrderLoginLeadDetails() {
       String(smallOrderTypeKey ?? "").toLowerCase(),
     );
   const effectiveLacksProdFiles = shouldRequireProductionFiles && lacksProdFiles;
+  const canMove =
+    readiness?.readyForProduction === true ||
+    (!!readiness && !shouldRequireProductionFiles && lacksProdFiles);
   const disabledReason = readinessLoading
     ? "Checking production prerequisites..."
     : !readiness
