@@ -10,7 +10,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { useParams, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
-import { useLeadById } from "@/hooks/useLeadsQueries";
+import { useLeadById, useLeadSuperAdminApprovalLockIns } from "@/hooks/useLeadsQueries";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import {
@@ -110,6 +110,10 @@ export default function OrderLoginLeadDetails() {
       leadIdNum,
       validInstanceId ?? undefined,
     );
+  const {
+    data: orderLoginLockIns = [],
+    isLoading: orderLoginLockInsLoading,
+  } = useLeadSuperAdminApprovalLockIns(vendorId, leadIdNum, "order_login");
 
   // derive convenience flags & message
   const lacksProdFiles = readiness ? !readiness.productionFiles?.hasAny : false;
@@ -165,6 +169,29 @@ export default function OrderLoginLeadDetails() {
       : lacksProdFiles
         ? "Production files are required before moving forward"
         : "";
+  const hasPendingOrderLoginApproval = orderLoginLockIns.some((lockIn) => {
+    const pendingTasks = Array.isArray(lockIn.pending_tasks)
+      ? lockIn.pending_tasks
+      : [];
+
+    if (validInstanceId) {
+      return pendingTasks.some((task) => task.instance_id === validInstanceId);
+    }
+
+    if (pendingTasks.length > 0) {
+      return true;
+    }
+
+    return !lockIn.is_approved;
+  });
+  const isOrderLoginApprovalPending =
+    orderLoginLockInsLoading || hasPendingOrderLoginApproval;
+  const orderLoginApprovalTooltip = orderLoginLockInsLoading
+    ? "Checking accounts approval status"
+    : "Accounts approval for Order Login is still pending";
+  const moveToProductionDisabledReason = isOrderLoginApprovalPending
+    ? orderLoginApprovalTooltip
+    : disabledReason || "Not eligible to move to Production yet";
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -405,7 +432,7 @@ export default function OrderLoginLeadDetails() {
                   );
                 }
 
-                if (canMove) {
+                if (canMove && !isOrderLoginApprovalPending) {
                   return (
                     <Button
                       size="sm"
@@ -420,8 +447,7 @@ export default function OrderLoginLeadDetails() {
                 return (
                   <CustomeTooltip
                     value={
-                      disabledReason ||
-                      "Not eligible to move to Production yet"
+                      moveToProductionDisabledReason
                     }
                     truncateValue={
                       <Button
@@ -490,7 +516,7 @@ export default function OrderLoginLeadDetails() {
                     );
                   }
 
-                  if (canMove) {
+                  if (canMove && !isOrderLoginApprovalPending) {
                     return (
                       <DropdownMenuItem
                         className="md:hidden"
@@ -507,8 +533,7 @@ export default function OrderLoginLeadDetails() {
                   return (
                     <CustomeTooltip
                       value={
-                        disabledReason ||
-                        "Not eligible to move to Production yet"
+                        moveToProductionDisabledReason
                       }
                       truncateValue={
                         <DropdownMenuItem

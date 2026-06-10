@@ -28,7 +28,10 @@ import {
   useInstanceStage,
   useLeadStatus,
 } from "@/hooks/designing-stage/designing-leads-hooks";
-import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
+import {
+  useLeadProductStructureInstances,
+  useLeadSuperAdminApprovalLockIns,
+} from "@/hooks/useLeadsQueries";
 import { canAccessAddNewSectionButton } from "@/components/utils/privileges";
 import FileBreakUpField from "./FileBreakUpField";
 import AddSectionModal from "./AddSectionModal";
@@ -83,6 +86,10 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
     vendorId,
     userId,
   );
+  const {
+    data: orderLoginLockIns = [],
+    isLoading: orderLoginLockInsLoading,
+  } = useLeadSuperAdminApprovalLockIns(vendorId, leadId, "order_login");
 
   const lead = leadResponse?.data?.lead;
   const isSmallOrderRequestLead = lead?.is_small_order_request === true;
@@ -342,6 +349,26 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
     hasValidInstanceId &&
     (isOrderLoginStage || isProductionStage) &&
     mandatoryValidation.isValid;
+  const hasPendingOrderLoginApproval = orderLoginLockIns.some((lockIn) => {
+    const pendingTasks = Array.isArray(lockIn.pending_tasks)
+      ? lockIn.pending_tasks
+      : [];
+
+    if (instanceId) {
+      return pendingTasks.some((task) => task.instance_id === instanceId);
+    }
+
+    if (pendingTasks.length > 0) {
+      return true;
+    }
+
+    return !lockIn.is_approved;
+  });
+  const isOrderLoginApprovalPending =
+    orderLoginLockInsLoading || hasPendingOrderLoginApproval;
+  const orderLoginApprovalTooltip = orderLoginLockInsLoading
+    ? "Checking accounts approval status"
+    : "Accounts approval for Order Login is still pending";
 
   // ─────────────────────────────────────────────────────────
   // CORE SAVE
@@ -546,6 +573,21 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
 <div className="ml-auto">
   <CustomeTooltip
     value={blockedTooltip}
+    truncateValue={
+      <Button
+        disabled
+        className="flex items-center gap-2 shrink-0 text-white disabled:opacity-60"
+      >
+        <CheckCircle className="w-4 h-4" />
+        Order Login Completed
+      </Button>
+    }
+  />
+</div>
+  ) : isOrderLoginApprovalPending ? (
+<div className="ml-auto">
+  <CustomeTooltip
+    value={orderLoginApprovalTooltip}
     truncateValue={
       <Button
         disabled
