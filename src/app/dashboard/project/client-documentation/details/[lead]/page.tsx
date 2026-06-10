@@ -138,14 +138,30 @@ export default function ClientDocumentationLeadDetails() {
   const leadCode = lead?.lead_code || "";
   const clientName = `${lead?.firstname || ""} ${lead?.lastname || ""}`.trim();
 
+  const {
+    isLeadBlocked,
+    blockedTooltip,
+    shouldDisableBlockedActions,
+    isLoading: isLeadBlockStatusLoading,
+  } = useLeadAccessControl({
+    leadId: leadIdNum,
+    userType,
+    lead,
+  });
+
+  const isBlockActionPending =
+    blockLeadMutation.isPending ||
+    unblockLeadMutation.isPending;
+
   // Auto-open documentation modal
   useEffect(() => {
-    if (userType === "sales-executive" && !isChatNotification) {
+    if (isLoading || isLeadBlockStatusLoading || !lead) return;
+    if (userType === "sales-executive" && !isChatNotification && !isLeadBlocked && !lead.is_draft) {
       setPreviousTab("details");
       setOpenClientDocModal(true);
       setActiveTab("todo");
     }
-  }, [isChatNotification, userType]);
+  }, [isLoading, isLeadBlockStatusLoading, lead, isChatNotification, userType, isLeadBlocked]);
 
   // DELETE LEAD
   const deleteLeadMutation = useDeleteLead();
@@ -174,22 +190,6 @@ export default function ClientDocumentationLeadDetails() {
     );
     setOpenDelete(false);
   };
-
-
-
-  const {
-    isLeadBlocked,
-    blockedTooltip,
-    shouldDisableBlockedActions,
-  } = useLeadAccessControl({
-    leadId: leadIdNum,
-    userType,
-    lead,
-  });
-
-  const isBlockActionPending =
-    blockLeadMutation.isPending ||
-    unblockLeadMutation.isPending;
 
 
   if (isLoading && !lead) {

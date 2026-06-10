@@ -138,13 +138,12 @@ export default function DispatchPlanningLeadDetails() {
     isLeadBlocked,
     blockedTooltip,
     shouldDisableBlockedActions,
+    isLoading: isLeadBlockStatusLoading,
   } = useLeadAccessControl({
     leadId: leadIdNum,
     userType,
     lead,
   });
-
-
 
   const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
 
@@ -154,9 +153,6 @@ export default function DispatchPlanningLeadDetails() {
   const isBlockActionPending =
     blockLeadMutation.isPending ||
     unblockLeadMutation.isPending;
-
-
-
 
   const canAccessButton =
     effectiveUserType === "custom"
@@ -243,12 +239,12 @@ export default function DispatchPlanningLeadDetails() {
 
   // 🔥 Auto-open To-Do modal for Sales Executive
   useEffect(() => {
-    if (isChatNotification) return;
-    if (userType === "factory") {
+    if (isLoading || isLeadBlockStatusLoading || !lead || isChatNotification) return;
+    if (userType === "factory" && !isLeadBlocked && !lead.is_draft) {
       setPreviousTab("details"); // so closing modal returns to details
       setActiveTab("todo"); // switch tab to To-Do
     }
-  }, [isChatNotification, userType]);
+  }, [isLoading, isLeadBlockStatusLoading, lead, isChatNotification, userType, isLeadBlocked]);
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
       toastManager.add({

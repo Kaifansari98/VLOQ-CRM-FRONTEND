@@ -140,6 +140,7 @@ export default function ReadyToDispatchLeadDetails() {
     isLeadBlocked,
     blockedTooltip,
     shouldDisableBlockedActions,
+    isLoading: isLeadBlockStatusLoading,
   } = useLeadAccessControl({
     leadId: leadIdNum,
     userType,
@@ -242,13 +243,13 @@ export default function ReadyToDispatchLeadDetails() {
 
   // 🔥 Auto-open To-Do modal for Sales Executive
   useEffect(() => {
-    if (isChatNotification) return;
-    if (userType === "sales-executive" && hasSitePhotos) {
+    if (isLoading || isLeadBlockStatusLoading || !lead || isChatNotification) return;
+    if (userType === "sales-executive" && hasSitePhotos && !isLeadBlocked && !lead.is_draft) {
       setPreviousTab("details"); // so closing modal returns to details
       setAssignOpen(true); // open modal on load
       setActiveTab("todo"); // switch tab to To-Do
     }
-  }, [isChatNotification, userType, hasSitePhotos]);
+  }, [isLoading, isLeadBlockStatusLoading, lead, isChatNotification, userType, hasSitePhotos, isLeadBlocked]);
 
   if (isLoading && !lead) {
     return <p className="p-6">Loading Ready-To-Dispatch lead details...</p>;

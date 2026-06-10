@@ -113,22 +113,34 @@ export default function BookingStageLeadsDetails() {
   );
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
+  const lead = data?.data?.lead;
+  const accountId = lead?.account_id;
+
+  const {
+    isLeadBlocked,
+    blockedTooltip,
+    shouldDisableBlockedActions,
+    isLoading: isLeadBlockStatusLoading,
+  } = useLeadAccessControl({
+    leadId: leadIdNum,
+    userType,
+    lead,
+  });
+
   const isChatNotification = useIsChatNotification();
 
   useEffect(() => {
+    if (isLoading || isLeadBlockStatusLoading || !lead) return;
     if (isChatNotification) {
       setAssignOpen(false);
       return;
     }
-    if (userType?.toLowerCase() === "sales-executive") {
+    if (userType?.toLowerCase() === "sales-executive" && !isLeadBlocked && !lead.is_draft) {
       setAssignOpen(true);
     } else {
       setAssignOpen(false);
     }
-  }, [isChatNotification, userType]);
-
-  const lead = data?.data?.lead;
-  const accountId = lead?.account_id;
+  }, [isLoading, isLeadBlockStatusLoading, lead, isChatNotification, userType, isLeadBlocked]);
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
@@ -171,16 +183,6 @@ export default function BookingStageLeadsDetails() {
   const queryClient = useQueryClient();
   const blockLeadMutation = useBlockLead();
   const unblockLeadMutation = useUnblockLead();
-
-  const {
-    isLeadBlocked,
-    blockedTooltip,
-    shouldDisableBlockedActions,
-  } = useLeadAccessControl({
-    leadId: leadIdNum,
-    userType,
-    lead,
-  });
 
   const isBlockActionPending =
     blockLeadMutation.isPending ||

@@ -133,14 +133,6 @@ export default function FinalMeasurementLeadDetails() {
   const blockLeadMutation = useBlockLead();
   const unblockLeadMutation = useUnblockLead();
 
-  useEffect(() => {
-    if (userType === "site-supervisor" && !isChatNotification) {
-      setPreviousTab("details");
-      setOpenFinalDocModal(true);
-      setActiveTab("todo");
-    }
-  }, [isChatNotification, userType]);
-
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
   const accountId = lead?.account_id;
@@ -161,6 +153,7 @@ export default function FinalMeasurementLeadDetails() {
     isLeadBlocked,
     blockedTooltip,
     shouldDisableBlockedActions,
+    isLoading: isLeadBlockStatusLoading,
   } = useLeadAccessControl({
     leadId: leadIdNum,
     userType,
@@ -169,6 +162,15 @@ export default function FinalMeasurementLeadDetails() {
 
   const isBlockActionPending =
     blockLeadMutation.isPending || unblockLeadMutation.isPending;
+
+  useEffect(() => {
+    if (isLoading || isLeadBlockStatusLoading || !lead) return;
+    if (userType === "site-supervisor" && !isChatNotification && !isLeadBlocked && !lead.is_draft) {
+      setPreviousTab("details");
+      setOpenFinalDocModal(true);
+      setActiveTab("todo");
+    }
+  }, [isLoading, isLeadBlockStatusLoading, lead, isChatNotification, userType, isLeadBlocked]);
 
   const handleToggleLeadBlock = () => {
     if (!vendorId || !userId || !leadIdNum) {

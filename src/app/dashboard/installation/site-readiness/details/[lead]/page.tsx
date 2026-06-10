@@ -137,6 +137,7 @@ export default function ReadyToDispatchLeadDetails() {
     isLeadBlocked,
     blockedTooltip,
     shouldDisableBlockedActions,
+    isLoading: isLeadBlockStatusLoading,
   } = useLeadAccessControl({
     leadId: leadIdNum,
     userType,
@@ -153,11 +154,11 @@ export default function ReadyToDispatchLeadDetails() {
     blockLeadMutation.isPending ||
     unblockLeadMutation.isPending;
   useEffect(() => {
-    if (isChatNotification) return;
-    if (userType?.toLowerCase() === "site-supervisor") {
+    if (isLoading || isLeadBlockStatusLoading || !lead || isChatNotification) return;
+    if (userType?.toLowerCase() === "site-supervisor" && !isLeadBlocked && !lead.is_draft) {
       setActiveTab("todo");
     }
-  }, [isChatNotification, userType]);
+  }, [isLoading, isLeadBlockStatusLoading, lead, isChatNotification, userType, isLeadBlocked]);
 
   const { data: readinessStatus, isLoading: checkingStatus } =
     useCheckSiteReadinessCompletion(vendorId, leadIdNum);
