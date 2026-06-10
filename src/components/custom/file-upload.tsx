@@ -26,6 +26,7 @@ interface FileUploadFieldProps {
   maxFiles?: number;
   isUploadDeniedAndSelectEnabled?: boolean;
   onSelectEnabledClick?: () => void;
+  invalid?: boolean;
 }
 
 export function FileUploadField({
@@ -37,6 +38,7 @@ export function FileUploadField({
   maxFiles,
   isUploadDeniedAndSelectEnabled = false,
   onSelectEnabledClick,
+  invalid,
 }: FileUploadFieldProps) {
   const finalAccept = accept ?? "*/*";
   const finalMaxFiles = maxFiles ?? (multiple ? 20 : 1);
@@ -136,7 +138,7 @@ export function FileUploadField({
       multiple={multiple}
       accept={finalAccept}
       disabled={disabled}
-
+      invalid={invalid}
     >
       <FileUploadDropzone
         onClick={

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
 import {
   AlertCircle,
   Plus,
@@ -140,6 +141,7 @@ export default function InstallationMiscellaneous({
     expected_ready_date: undefined as string | undefined,
     selectedTeams: [] as Option[],
   });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [files, setFiles] = useState<File[]>([]);
 
   const resolveMisc = useResolveMiscellaneousEntry();
@@ -287,21 +289,61 @@ export default function InstallationMiscellaneous({
     }
   }, [initialTaskId, entries, initialModalHandled]);
 
-  const handleCreateEntry = () => {
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
     if (!formData.misc_type_id) {
-      toastManager.add({ title: "Please select an issue type", type: "error" });
-      return;
+      errors.misc_type_id = "Please select an issue type";
+    }
+    if (!formData.selectedTeams || formData.selectedTeams.length === 0) {
+      errors.selectedTeams = "Please select at least one responsible team";
+    }
+    if (!formData.problem_description || !formData.problem_description.trim()) {
+      errors.problem_description = "Problem description is required";
     }
     if (!formData.selected_instance_id) {
-      toastManager.add({ title: "Please select an instance", type: "error" });
-      return;
+      errors.selected_instance_id = "Please select an instance";
     }
-
+    if (!formData.reorder_material_details || !formData.reorder_material_details.trim()) {
+      errors.reorder_material_details = "Please select a material type";
+    }
+    if (!formData.supervisor_remark || !formData.supervisor_remark.trim()) {
+      errors.supervisor_remark = "Material details are required";
+    }
     if (files.length === 0) {
-      toastManager.add({
-        title: "Please upload at least one document",
-        type: "error",
-      });
+      errors.files = "Please upload at least one document";
+    }
+    setFormErrors(errors);
+    return errors;
+  };
+
+  const handleCreateEntry = () => {
+    const errors = validateForm();
+    const errorKeys = Object.keys(errors);
+    if (errorKeys.length > 0) {
+      const firstErrorKey = errorKeys[0];
+      const el = document.querySelector(`[data-name="${firstErrorKey}"]`);
+      if (el) {
+        const isHidden = el.getBoundingClientRect().height === 0;
+        const targetScrollEl = isHidden ? (el.parentElement || el) : el;
+        
+        const scrollContainer = targetScrollEl.closest("[data-radix-scroll-area-viewport]") || targetScrollEl.closest(".space-y-4");
+        if (scrollContainer instanceof HTMLElement) {
+          const containerRect = scrollContainer.getBoundingClientRect();
+          const elRect = targetScrollEl.getBoundingClientRect();
+          const scrollOffset = elRect.top - containerRect.top + scrollContainer.scrollTop - (containerRect.height / 2) + (elRect.height / 2);
+          scrollContainer.scrollTo({
+            top: scrollOffset,
+            behavior: "smooth",
+          });
+        } else {
+          targetScrollEl.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+
+        const focusable = el.querySelector("input, select, textarea, button");
+        if (focusable instanceof HTMLElement) {
+          focusable.focus({ preventScroll: true });
+        }
+      }
       return;
     }
 
@@ -317,7 +359,7 @@ export default function InstallationMiscellaneous({
       vendorId,
       leadId,
       account_id: accountId,
-      misc_type_id: formData.misc_type_id,
+      misc_type_id: formData.misc_type_id!,
       problem_description: formData.problem_description.trim() || undefined,
       reorder_material_details: formattedReorderMaterial.trim() || undefined,
       quantity: formData.quantity,
@@ -358,6 +400,7 @@ export default function InstallationMiscellaneous({
       selectedTeams: [],
     });
     setFiles([]);
+    setFormErrors({});
   };
 
   const formatDate = (dateString: string) => {
@@ -731,36 +774,43 @@ export default function InstallationMiscellaneous({
         <div className="space-y-4 py-4 px-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Miscellaneous Type */}
-            <div className="flex flex-col gap-2">
+            <div className={cn("flex flex-col gap-2", formErrors.misc_type_id && "text-destructive [&_button]:border-destructive")} data-name="misc_type_id">
               <label className="text-sm font-medium">
                 Miscellaneous Type *
               </label>
               <AssignToPicker
                 data={typeSelectData}
                 value={formData.misc_type_id}
-                onChange={(id) =>
+                onChange={(id) => {
                   setFormData((prev) => ({
                     ...prev,
                     misc_type_id: id || undefined,
-                  }))
-                }
+                  }));
+                  setFormErrors((prev) => ({ ...prev, misc_type_id: "" }));
+                }}
                 placeholder="Select issue type"
                 emptyLabel="Select issue type"
                 disabled={loadingTypes}
               />
+              {formErrors.misc_type_id && (
+                <p className="text-xs font-medium text-destructive mt-1">
+                  {formErrors.misc_type_id}
+                </p>
+              )}
             </div>
 
             {/* Team Responsible */}
-            <div className="flex flex-col gap-2">
+            <div className={cn("flex flex-col gap-2", formErrors.selectedTeams && "text-destructive")} data-name="selectedTeams">
               <label className="text-sm font-medium">Team Responsible *</label>
               <MultipleSelector
                 value={formData.selectedTeams}
-                onChange={(options) =>
+                onChange={(options) => {
                   setFormData((prev) => ({
                     ...prev,
                     selectedTeams: options,
-                  }))
-                }
+                  }));
+                  setFormErrors((prev) => ({ ...prev, selectedTeams: "" }));
+                }}
                 defaultOptions={teamOptions}
                 placeholder="Select teams..."
                 emptyIndicator={
@@ -769,29 +819,44 @@ export default function InstallationMiscellaneous({
                   </p>
                 }
                 disabled={loadingTeams}
+                className={cn(formErrors.selectedTeams && "border-destructive focus-within:border-destructive focus-within:ring-destructive/20")}
               />
+              {formErrors.selectedTeams && (
+                <p className="text-xs font-medium text-destructive mt-1">
+                  {formErrors.selectedTeams}
+                </p>
+              )}
             </div>
           </div>
 
           {/* Problem Description */}
-          <div className="flex flex-col gap-2">
+          <div className={cn("flex flex-col gap-2", formErrors.problem_description && "text-destructive")} data-name="problem_description">
             <label className="text-sm font-medium">Problem Description *</label>
             <TextAreaInput
               value={formData.problem_description}
-              onChange={(value) =>
+              onChange={(value) => {
                 setFormData((prev) => ({
                   ...prev,
                   problem_description: value,
-                }))
-              }
+                }));
+                if (value.trim()) {
+                  setFormErrors((prev) => ({ ...prev, problem_description: "" }));
+                }
+              }}
               placeholder="Describe the issue in detail..."
               maxLength={1000}
+              className={cn(formErrors.problem_description && "border-destructive focus-visible:ring-destructive")}
             />
+            {formErrors.problem_description && (
+              <p className="text-xs font-medium text-destructive mt-1">
+                {formErrors.problem_description}
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {/* Select Instance */}
-            <div className="flex flex-col gap-2">
+            <div className={cn("flex flex-col gap-2", formErrors.selected_instance_id && "text-destructive [&_button]:border-destructive")} data-name="selected_instance_id">
               <label className="text-sm font-medium">Select Instance *</label>
               <TextSelectPicker
                 options={instanceOptions.map((opt) => opt.label)}
@@ -811,6 +876,7 @@ export default function InstallationMiscellaneous({
                       ? Number(match.value)
                       : undefined,
                   }));
+                  setFormErrors((prev) => ({ ...prev, selected_instance_id: "" }));
                 }}
                 placeholder={
                   instances.length === 0
@@ -820,10 +886,15 @@ export default function InstallationMiscellaneous({
                 emptyLabel="Select instance"
                 disabled={instances.length === 0}
               />
+              {formErrors.selected_instance_id && (
+                <p className="text-xs font-medium text-destructive mt-1">
+                  {formErrors.selected_instance_id}
+                </p>
+              )}
             </div>
 
             {/* Reorder Material Type */}
-            <div className="flex flex-col gap-2">
+            <div className={cn("flex flex-col gap-2", formErrors.reorder_material_details && "text-destructive [&_button]:border-destructive")} data-name="reorder_material_details">
               <label className="text-sm font-medium">
                 Reorder Material Type *
               </label>
@@ -835,12 +906,15 @@ export default function InstallationMiscellaneous({
                   ) || []
                 }
                 value={formData.reorder_material_details}
-                onChange={(selectedText) =>
+                onChange={(selectedText) => {
                   setFormData((prev) => ({
                     ...prev,
                     reorder_material_details: selectedText,
-                  }))
-                }
+                  }));
+                  if (selectedText.trim()) {
+                    setFormErrors((prev) => ({ ...prev, reorder_material_details: "" }));
+                  }
+                }}
                 placeholder={
                   loadingSummary
                     ? "Loading materials..."
@@ -849,39 +923,64 @@ export default function InstallationMiscellaneous({
                 emptyLabel="Select material details"
                 disabled={loadingSummary}
               />
+              {formErrors.reorder_material_details && (
+                <p className="text-xs font-medium text-destructive mt-1">
+                  {formErrors.reorder_material_details}
+                </p>
+              )}
             </div>
           </div>
 
           {/* Reorder Material Details */}
-          <div className="flex flex-col gap-2">
+          <div className={cn("flex flex-col gap-2", formErrors.supervisor_remark && "text-destructive")} data-name="supervisor_remark">
             <label className="text-sm font-medium">
               Reorder Material Details *
             </label>
             <TextAreaInput
               value={formData.supervisor_remark}
-              onChange={(value) =>
+              onChange={(value) => {
                 setFormData((prev) => ({
                   ...prev,
                   supervisor_remark: value,
-                }))
-              }
+                }));
+                if (value.trim()) {
+                  setFormErrors((prev) => ({ ...prev, supervisor_remark: "" }));
+                }
+              }}
               placeholder="Any remarks from supervisor..."
               maxLength={1000}
+              className={cn(formErrors.supervisor_remark && "border-destructive focus-visible:ring-destructive")}
             />
+            {formErrors.supervisor_remark && (
+              <p className="text-xs font-medium text-destructive mt-1">
+                {formErrors.supervisor_remark}
+              </p>
+            )}
           </div>
 
           {/* Supporting Proofs */}
-          <div className="flex flex-col gap-2">
+          <div className={cn("flex flex-col gap-2", formErrors.files && "text-destructive")} data-name="files">
             <label className="text-sm font-medium">Supporting Proofs *</label>
             <FileUploadField
               value={files}
-              onChange={setFiles}
+              onChange={(nextFiles) => {
+                setFiles(nextFiles);
+                if (nextFiles.length > 0) {
+                  setFormErrors((prev) => ({ ...prev, files: "" }));
+                }
+              }}
               accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.mp4,.mov,.avi,"
               multiple
+              invalid={Boolean(formErrors.files)}
             />
             <p className="text-xs text-muted-foreground">
               Max 10 files. Supported: Images, PDFs, Documents
             </p>
+            {formErrors.files && (
+              <p className="text-xs font-medium text-destructive mt-1">
+                {formErrors.files}
+              </p>
+            )}
           </div>
 
           {/* Quantity + Cost */}
