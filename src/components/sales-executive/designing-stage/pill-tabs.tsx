@@ -14,6 +14,12 @@ import { useDetails } from "./pill-tabs-component/details-context";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import AssignDesignerModal from "./assign-designer-modal";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type TabItemType = {
   id: string;
@@ -57,6 +63,14 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
     );
     const { data: leadStatus } = useLeadStatus(leadId, vendorId);
     const { data: leadDetailsData } = useLeadById(leadId, vendorId, userId);
+    const {
+      blockedTooltip,
+      shouldDisableBlockedActions,
+    } = useLeadAccessControl({
+      leadId,
+      userType,
+      lead: leadDetailsData?.data?.lead,
+    });
     const [activeTab, setActiveTab] = React.useState(defaultActiveId);
     const [openQuotationModal, setOpenQuotationModal] = useState(false);
     const [openDesignsModal, setOpenDesignsModal] = useState(false);
@@ -149,25 +163,55 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
             {canShowButtons && (
               <>
                 {activeTab === "quotation" && canUploadQuotation && (
-                  <Button
-                    size="sm"
-                    variant="default"
-                    className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
-                    onClick={() => setOpenQuotationModal(true)}
-                  >
-                    <CloudUpload size={16} className="sm:mr-1" />
-                    <span>Upload Quotations</span>
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex">
+                        <Button
+                          size="sm"
+                          variant="default"
+                          disabled={shouldDisableBlockedActions}
+                          className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
+                          onClick={() => {
+                            if (shouldDisableBlockedActions) return;
+                            setOpenQuotationModal(true);
+                          }}
+                        >
+                          <CloudUpload size={16} className="sm:mr-1" />
+                          <span>Upload Quotations</span>
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    {shouldDisableBlockedActions && (
+                      <TooltipContent side="top" className="max-w-64 text-center">
+                        {blockedTooltip}
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
                 )}
                 {activeTab === "meetings" && canUploadMeetings && (
-                  <Button
-                    size="sm"
-                    className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
-                    onClick={() => setOpenMeetingsModal(true)}
-                  >
-                    <CloudUpload size={16} className="sm:mr-1" />
-                    <span>Add Meetings</span>
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex">
+                        <Button
+                          size="sm"
+                          disabled={shouldDisableBlockedActions}
+                          className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
+                          onClick={() => {
+                            if (shouldDisableBlockedActions) return;
+                            setOpenMeetingsModal(true);
+                          }}
+                        >
+                          <CloudUpload size={16} className="sm:mr-1" />
+                          <span>Add Meetings</span>
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    {shouldDisableBlockedActions && (
+                      <TooltipContent side="top" className="max-w-64 text-center">
+                        {blockedTooltip}
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
                 )}
                 {activeTab === "designs" &&
                   vendorCustomUserTypeOnly &&
@@ -203,14 +247,29 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
                   )}
                 {activeTab === "designs" && canUploadDesigns && (
                   <>
-                    <Button
-                      size="sm"
-                      className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
-                      onClick={() => setOpenDesignsModal(true)}
-                    >
-                      <CloudUpload size={16} className="sm:mr-1" />
-                      <span>Upload Designs</span>
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex">
+                          <Button
+                            size="sm"
+                            disabled={shouldDisableBlockedActions}
+                            className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
+                            onClick={() => {
+                              if (shouldDisableBlockedActions) return;
+                              setOpenDesignsModal(true);
+                            }}
+                          >
+                            <CloudUpload size={16} className="sm:mr-1" />
+                            <span>Upload Designs</span>
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      {shouldDisableBlockedActions && (
+                        <TooltipContent side="top" className="max-w-64 text-center">
+                          {blockedTooltip}
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
                   </>
                 )}
                 {bookingBtn && (

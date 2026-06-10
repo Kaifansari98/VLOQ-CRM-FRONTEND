@@ -95,7 +95,7 @@ export default function RealTimeTracking({ items }: RealTimeTrackingProps) {
                       </p>
                       <span className="text-border text-[9px] shrink-0">·</span>
                       <span className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border leading-none">
-                        {item.lead.lead_code}
+                        {item.lead?.lead_code}
                       </span>
                     </div>
 

@@ -498,7 +498,16 @@ export const useRequestToProduction = () => {
       toastManager.add({ title: "Lead successfully moved to Production Stage!", type: "success" });
     },
     onError: (err: any) => {
-      toastManager.add({ title: err?.response?.data?.message || "Failed to move lead.", type: "error" });
+      const errorMessage =
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to move lead.";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
     },
   });
 };
@@ -648,11 +657,14 @@ export const useMarkOrderLoginFilled = (
     },
 
     onError: (error: any) => {
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to update order login.";
+
       toastManager.add({
-        title:
-          error?.response?.data?.message ||
-          error?.message ||
-          "Failed to update order login.",
+        title: errorMessage,
         type: "error",
       });
     },

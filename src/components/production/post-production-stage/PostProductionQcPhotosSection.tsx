@@ -33,6 +33,10 @@ import {
 } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkProductionStage } from "@/components/utils/privileges";
 
+import CustomeTooltip from "@/components/custom-tooltip";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useLeadById } from "@/hooks/useLeadsQueries";
+
 interface PostProductionQcPhotosSectionProps {
   leadId: number;
   accountId: number | null;
@@ -74,6 +78,23 @@ export default function PostProductionQcPhotosSection({
   );
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
+
+  const { data: leadResponse } = useLeadById(
+  leadId,
+  vendorId,
+  userId,
+);
+
+const lead = leadResponse?.data?.lead;
+
+const {
+  blockedTooltip,
+  shouldDisableBlockedActions,
+} = useLeadAccessControl({
+  leadId,
+  userType,
+  lead,
+});
 
   const { data, isLoading: instanceLoading } = useInstanceStage(
     vendorId,
@@ -149,8 +170,14 @@ export default function PostProductionQcPhotosSection({
 
       await refetchCompleteness();
     } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to upload QC photos.";
+
       toastManager.add({
-        title: error?.response?.data?.message || "Failed to upload QC photos.",
+        title: errorMessage,
         type: "error",
       });
     }
@@ -166,19 +193,24 @@ export default function PostProductionQcPhotosSection({
   const canViewAndWork =
     !isPreProd &&
     canViewAndWorkProductionStage(effectiveUserType, leadStatusIns ?? leadStatus);
-  const canUploadQcPhotos =
+const canUploadQcPhotos =
+  !shouldDisableBlockedActions &&
+  (
     userType === "custom"
       ? customPrivilegeCodes.includes(
           "production.production.post_production_qc_photos.upload",
         )
-      : canViewAndWork;
+      : canViewAndWork
+  );
   const canDeleteQcPhotos =
+  !shouldDisableBlockedActions &&
+  (
     userType === "custom"
       ? customPrivilegeCodes.includes(
           "production.production.post_production_qc_photos.delete",
         )
-      : canDelete;
-
+      : canDelete
+  );
   const handleConfirmDelete = () => {
     if (confirmDelete) {
       deleteDocument({
@@ -200,7 +232,7 @@ export default function PostProductionQcPhotosSection({
             <h2 className="text-lg font-semibold tracking-tight">QC Photos</h2>
           </div>
           <p className="text-xs text-muted-foreground ml-7">
-            Upload and manage Quality Check photos for this lead.
+
           </p>
         </div>
 
@@ -212,37 +244,59 @@ export default function PostProductionQcPhotosSection({
       </div>
 
       {/* -------------------------------- UPLOAD AREA -------------------------------- */}
-      {canUploadQcPhotos && (
-        <div className="p-6 border-b space-y-4">
+    {shouldDisableBlockedActions ? (
+  <div className="p-6 border-b space-y-4">
+
+    <CustomeTooltip
+      value={blockedTooltip}
+      truncateValue={
+        <div>
           <FileUploadField
-            value={selectedFiles}
-            onChange={setSelectedFiles}
+            value={[]}
+            onChange={() => {}}
             accept=".jpg,.jpeg,.png,.pdf,.zip"
             multiple
+            disabled
           />
-
-          <div className="flex justify-end">
-            <Button
-              size="sm"
-              onClick={handleUpload}
-              disabled={isPending || selectedFiles.length === 0}
-              className="flex items-center gap-2"
-            >
-              {isPending ? (
-                <>
-                  <Loader2 className="animate-spin size-4" />
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Upload size={16} />
-                  Upload Photos
-                </>
-              )}
-            </Button>
-          </div>
         </div>
-      )}
+      }
+    />
+
+
+  </div>
+) : (
+  canUploadQcPhotos && (
+    <div className="p-6 border-b space-y-4">
+      <FileUploadField
+        value={selectedFiles}
+        onChange={setSelectedFiles}
+        accept=".jpg,.jpeg,.png,.pdf,.zip"
+        multiple
+      />
+
+      <div className="flex justify-end">
+        <Button
+          size="sm"
+          onClick={handleUpload}
+          disabled={isPending || selectedFiles.length === 0}
+          className="flex items-center gap-2"
+        >
+          {isPending ? (
+            <>
+              <Loader2 className="animate-spin size-4" />
+              Uploading...
+            </>
+          ) : (
+            <>
+              <Upload size={16} />
+              Upload Photos
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
+  )
+)}
 
       {/* -------------------------------- FILE LIST -------------------------------- */}
       <div className="p-6">

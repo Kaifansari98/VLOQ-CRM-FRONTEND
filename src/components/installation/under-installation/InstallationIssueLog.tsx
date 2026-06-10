@@ -36,6 +36,9 @@ import RemarkTooltip from "@/components/origin-tooltip";
 import { canViewAndWorkUnderInstallationStage } from "@/components/utils/privileges";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import BaseModal from "@/components/utils/baseModal";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import CustomeTooltip from "@/components/custom-tooltip";
+
 
 interface InstallationIssueLogProps {
   vendorId: number;
@@ -79,7 +82,17 @@ export default function InstallationIssueLog({
   );
   const { data: issueTypes } = useGetIssueTypes(vendorId);
   const createMutation = useCreateInstallationIssueLog();
+const {
+  shouldDisableBlockedActions,
+  blockedTooltip,
+} = useLeadAccessControl({
+  leadId,
+  userType,
+});
 
+const blockedReason = shouldDisableBlockedActions
+  ? blockedTooltip
+  : "";
   React.useEffect(() => {
     if (issueTypes) {
       setIssueTypeOptions(
@@ -193,20 +206,37 @@ export default function InstallationIssueLog({
 
   return (
     <div className="space-y-6 bg-[#fff] dark:bg-[#0a0a0a]">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight">Issue Log</h2>
-          <p className="text-sm text-muted-foreground">
-            Track and manage installation issues
-          </p>
-        </div>
+ <div className="flex items-center justify-between">
+  <div>
+    <h2 className="text-lg font-semibold tracking-tight">
+      Issue Log
+    </h2>
+    <p className="text-sm text-muted-foreground">
+      Track and manage installation issues
+    </p>
+  </div>
 
-        {canWork && canAddIssueLog && (
-          <Button className="gap-2" onClick={() => setIsModalOpen(true)}>
-            <Plus className="h-4 w-4" /> Add Issue Log
+  {canWork && canAddIssueLog && (
+    <div>
+      <CustomeTooltip
+        value={blockedReason}
+        truncateValue={
+          <Button
+            className="gap-2"
+            disabled={shouldDisableBlockedActions}
+            onClick={() => {
+              if (shouldDisableBlockedActions) return;
+              setIsModalOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4" />
+            Add Issue Log
           </Button>
-        )}
-      </div>
+        }
+      />
+    </div>
+  )}
+</div>
 
       <BaseModal
         open={isModalOpen}

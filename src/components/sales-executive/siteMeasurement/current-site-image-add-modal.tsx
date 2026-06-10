@@ -17,6 +17,7 @@ import { FileUploadField } from "@/components/custom/file-upload";
 import { useAppSelector } from "@/redux/store";
 import { useUpdateSiteMeasurementMutation } from "@/hooks/Site-measruement/useUpdateSiteMeasurement";
 import BaseModal from "@/components/utils/baseModal";
+import { toastManager } from "@/components/ui/toast";
 
 // --------- Props ---------
 interface Data {
@@ -84,7 +85,17 @@ const AddCurrentSitePhotos: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
 
       form.reset();
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Something went wrong";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
       console.error("Error uploading current site photos:", error);
     }
   };

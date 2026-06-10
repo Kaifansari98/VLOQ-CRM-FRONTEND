@@ -41,6 +41,9 @@ import HardwarePackingDetailsSection from "../post-production-stage/HardwarePack
 import PostProductionQcPhotosSection from "../post-production-stage/PostProductionQcPhotosSection";
 import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
 
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useLeadById } from "@/hooks/useLeadsQueries";
+
 // ✅ Define Zod Schema
 const boxSchema = z.object({
   noOfBoxes: z
@@ -92,6 +95,24 @@ export default function PostProductionDetails({
     instanceId ?? undefined
   );
   const noOfBoxesValue = boxesData?.data?.no_of_boxes || null;
+
+
+  const { data: leadResponse } = useLeadById(
+  leadId,
+  vendorId,
+  userId,
+);
+
+const lead = leadResponse?.data?.lead;
+
+const {
+  blockedTooltip,
+  shouldDisableBlockedActions,
+} = useLeadAccessControl({
+  leadId,
+  userType,
+  lead,
+});
 
   const [open, setOpen] = useState(false);
 
@@ -255,94 +276,113 @@ export default function PostProductionDetails({
                 Loading...
               </Badge>
             ) : noOfBoxesValue ? (
-              <CustomeTooltip
-                truncateValue={
-                  <Card
-                    className={`
-                  flex min-w-[230px] items-center gap-4 rounded-2xl bg-background px-4 py-2
-                  transition-all duration-300 hover:border-primary/40
-                  ${!canEditBoxes ? "opacity-70" : ""}
-                `}
-                  >
-                    <CardContent className="flex items-center gap-4 p-0">
-                      <div className="flex flex-col items-start">
-                        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                          No. of Boxes
-                        </span>
-                        <span className="text-sm font-semibold text-foreground sm:text-base">
-                          {noOfBoxesValue} Box{noOfBoxesValue > 1 ? "es" : ""}
-                        </span>
-                      </div>
+<CustomeTooltip
+  truncateValue={
+    <span>
+      <Card
+        className={`
+          flex min-w-[230px] items-center gap-4 rounded-2xl bg-background px-4 py-2
+          transition-all duration-300 hover:border-primary/40
+          ${
+            !canEditBoxes || shouldDisableBlockedActions
+              ? "opacity-70"
+              : ""
+          }
+        `}
+      >
+        <CardContent className="flex items-center gap-4 p-0">
+          <div className="flex flex-col items-start">
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              No. of Boxes
+            </span>
 
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          form.setValue("noOfBoxes", String(noOfBoxesValue));
-                          setOpen(true);
-                        }}
-                        disabled={!canEditBoxes}
-                        className="
-                      rounded-full 
-                      hover:bg-primary/10 
-                      transition-colors duration-200
-                    "
-                      >
-                        <Pencil
-                          size={18}
-                          className={`${
-                            !canEditBoxes
-                              ? "text-muted-foreground"
-                              : "text-primary"
-                          }`}
-                        />
-                      </Button>
-                    </CardContent>
-                  </Card>
-                }
-                value={
-                  userType?.toLowerCase() === "pre-prod"
-                    ? "You cannot edit the number of boxes."
-                    : !canEditBoxes
-                    ? "You do not have access to edit the number of boxes."
-                    : "Click to edit the number of boxes for this order."
-                }
-              />
+            <span className="text-sm font-semibold text-foreground sm:text-base">
+              {noOfBoxesValue} Box{noOfBoxesValue > 1 ? "es" : ""}
+            </span>
+          </div>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              if (shouldDisableBlockedActions) return;
+
+              form.setValue(
+                "noOfBoxes",
+                String(noOfBoxesValue)
+              );
+
+              setOpen(true);
+            }}
+            disabled={
+              !canEditBoxes ||
+              shouldDisableBlockedActions
+            }
+            className="rounded-full hover:bg-primary/10 transition-colors duration-200"
+          >
+            <Pencil
+              size={18}
+              className={`${
+                !canEditBoxes ||
+                shouldDisableBlockedActions
+                  ? "text-muted-foreground"
+                  : "text-primary"
+              }`}
+            />
+          </Button>
+        </CardContent>
+      </Card>
+    </span>
+  }
+  value={
+    shouldDisableBlockedActions
+      ? blockedTooltip
+      : userType?.toLowerCase() === "pre-prod"
+      ? "You cannot edit the number of boxes."
+      : !canEditBoxes
+      ? "You do not have access to edit the number of boxes."
+      : "Click to edit the number of boxes for this order."
+  }
+/>
             ) : (
-              <CustomeTooltip
-                truncateValue={
-                  <div
-                    className={`
-                  ${!canEditBoxes ? "opacity-70 pointer-events-none" : ""}
-                `}
-                  >
-                    <Button
-                      onClick={() => setOpen(true)}
-                      disabled={!canEditBoxes}
-                      className="
-                    flex items-center gap-2 
-                    px-4 py-2.5 
-                    rounded-lg 
-                    bg-gradient-to-r from-zinc-700 to-zinc-800
-                    text-white font-medium 
-                    shadow-sm
-                    hover:shadow-md hover:brightness-105
-                    transition-all duration-300
-                  "
-                    >
-                      <PackagePlus className="h-4 w-4" />
-                      <span>Set No. Of Boxes</span>
-                    </Button>
-                  </div>
-                }
-                value={
-                  userType?.toLowerCase() === "pre-prod"
-                    ? "You cannot set the number of boxes."
-                    : !canEditBoxes
-                    ? "You do not have access to set the number of boxes."
-                    : "Click to set the number of boxes for this order."
-                }
-              />
+        <CustomeTooltip
+  truncateValue={
+    <span>
+      <Button
+        onClick={() => {
+          if (shouldDisableBlockedActions) return;
+          setOpen(true);
+        }}
+        disabled={
+          !canEditBoxes ||
+          shouldDisableBlockedActions
+        }
+        className="
+          flex items-center gap-2
+          px-4 py-2.5
+          rounded-lg
+          bg-gradient-to-r from-zinc-700 to-zinc-800
+          text-white font-medium
+          shadow-sm
+          hover:shadow-md hover:brightness-105
+          transition-all duration-300
+        "
+      >
+        <PackagePlus className="h-4 w-4" />
+        <span>Set No. Of Boxes</span>
+      </Button>
+    </span>
+  }
+  value={
+    shouldDisableBlockedActions
+      ? blockedTooltip
+      : userType?.toLowerCase() === "pre-prod"
+      ? "You cannot set the number of boxes."
+      : !canEditBoxes
+      ? "You do not have access to set the number of boxes."
+      : "Click to set the number of boxes for this order."
+  }
+/>
             )}
           </div>
         </motion.div>

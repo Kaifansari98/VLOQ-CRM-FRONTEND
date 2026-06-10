@@ -81,6 +81,10 @@ import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/ass
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
+
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useBlockLead, useUnblockLead } from "@/hooks/useLeadsQueries";
+import { Lock, LockOpen } from "lucide-react";
 import {
   useChatTabFromUrl,
   useIsChatNotification,
@@ -92,6 +96,8 @@ import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import { useQueryClient } from "@tanstack/react-query";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
+
+
 
 export default function ClientApprovalLeadDetails() {
   const { lead: leadId } = useParams();
@@ -119,9 +125,15 @@ export default function ClientApprovalLeadDetails() {
 
   // ⭐ Activity Status — ONLY ON HOLD
   const [activityModalOpen, setActivityModalOpen] = useState(false);
+  const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
 
   const updateStatusMutation = useUpdateActivityStatus();
+
+  const blockLeadMutation = useBlockLead();
+  const unblockLeadMutation = useUnblockLead();
   const queryClient = useQueryClient();
+
+
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
@@ -139,13 +151,29 @@ export default function ClientApprovalLeadDetails() {
 
   const is_client_approval_submitted = lead?.is_client_approval_submitted;
 
+
+  const {
+    isLeadBlocked,
+    blockedTooltip,
+    shouldDisableBlockedActions,
+    isLoading: isLeadBlockStatusLoading,
+  } = useLeadAccessControl({
+    leadId: leadIdNum,
+    userType,
+    lead,
+  });
+
+  const isBlockActionPending =
+    blockLeadMutation.isPending ||
+    unblockLeadMutation.isPending;
+
   // Auto-open documentation modal
   /* ---------- DEFAULT MODAL ON MOUNT ---------- */
   useEffect(() => {
-    if (isLoading || isChatNotification) return;
+    if (isLoading || isLeadBlockStatusLoading || !lead || isChatNotification) return;
 
     // Auto-open only for Sales Executive
-    if (userType === "sales-executive") {
+    if (userType === "sales-executive" && !isLeadBlocked && !lead.is_draft) {
       if (is_client_approval_submitted) {
         setOpenRequestToTechCheckModal(true);
       } else {
@@ -154,7 +182,7 @@ export default function ClientApprovalLeadDetails() {
 
       setActiveTab("todo");
     }
-  }, [isLoading, isChatNotification, userType, is_client_approval_submitted]);
+  }, [isLoading, isLeadBlockStatusLoading, lead, isChatNotification, userType, is_client_approval_submitted, isLeadBlocked]);
 
   const deleteLeadMutation = useDeleteLead();
   const handleDeleteLead = () => {
@@ -185,6 +213,41 @@ export default function ClientApprovalLeadDetails() {
     setOpenDelete(false);
   };
 
+
+
+  const handleToggleLeadBlock = () => {
+    if (!vendorId || !userId || !leadIdNum) return;
+
+    const mutation = isLeadBlocked
+      ? unblockLeadMutation
+      : blockLeadMutation;
+
+    mutation.mutate(
+      {
+        vendorId,
+        leadId: leadIdNum,
+        updatedBy: userId,
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: isLeadBlocked
+              ? "Lead unblocked successfully!"
+              : "Lead blocked successfully!",
+            type: "success",
+          });
+
+          setOpenBlockConfirm(false);
+
+          queryClient.invalidateQueries({
+            queryKey: ["leadBlockStatus", vendorId, leadIdNum],
+          });
+        },
+      },
+    );
+  };
+
+
   if (isLoading && !lead) {
     return <p className="p-6">Loading Client Approval Lead details…</p>;
   }
@@ -199,38 +262,38 @@ export default function ClientApprovalLeadDetails() {
   const canViewPayment =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.payment_information.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.payment_information.enable_disable",
+      )
       : canViewPaymentTab(userType);
   const canViewSiteHistory =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.site_history.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.site_history.enable_disable",
+      )
       : canViewSiteHistoryTab(userType);
   const canViewChats =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.chat.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.chat.enable_disable",
+      )
       : true;
   const canViewDocuments =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.some((code) =>
-          code.startsWith("leads.open_leads.details_of_lead.documents_section."),
-        )
+        code.startsWith("leads.open_leads.details_of_lead.documents_section."),
+      )
       : true;
   const canAccessClientApprovalForm =
     userType === "custom"
       ? customPrivilegeCodes.includes(
-          "project.client_approval.client_approval_form.enable_disable",
-        )
+        "project.client_approval.client_approval_form.enable_disable",
+      )
       : canUploadClientApproval(userType);
   const isCustomUser = userType === "custom";
   const canRequestToTechCheckAccess = isCustomUser
     ? customPrivilegeCodes.includes(
-        "project.client_approval.client_approval_screenshots.upload",
-      )
+      "project.client_approval.client_approval_screenshots.upload",
+    )
     : canRequestToTeckCheck(userType);
 
   return (
@@ -258,52 +321,66 @@ export default function ClientApprovalLeadDetails() {
         {/* ACTION BUTTONS */}
         <div className="flex items-center space-x-2">
           {/* Tech Check */}
-          {!is_client_approval_submitted ? (
-            <CustomeTooltip
-              truncateValue={
-                <Button
-                  className="hidden lg:block"
-                  size="sm"
-                  disabled
-                  variant="secondary"
-                >
-                  Request To Tech Check
-                </Button>
-              }
-              value="Submit approval first"
-            />
-          ) : canRequestToTechCheckAccess ? (
-            <Button
-              size="sm"
-              className="hidden lg:block"
-              onClick={() => setOpenRequestToTechCheckModal(true)}
-            >
-              Request To Tech Check
-            </Button>
-          ) : isCustomUser ? (
-            <Button
-              className="hidden lg:block"
-              size="sm"
-              disabled
-              variant="secondary"
-            >
-              Request To Tech Check
-            </Button>
-          ) : (
-            <CustomeTooltip
-              truncateValue={
-                <Button
-                  className="hidden lg:block"
-                  size="sm"
-                  disabled
-                  variant="secondary"
-                >
-                  Request To Tech Check
-                </Button>
-              }
-              value="Only Sales Executive can request to Tech Check"
-            />
-          )}
+{shouldDisableBlockedActions ? (
+  <CustomeTooltip
+    value={blockedTooltip}
+    truncateValue={
+      <Button
+        className="hidden lg:block"
+        size="sm"
+        disabled
+        variant="secondary"
+      >
+        Request To Tech Check
+      </Button>
+    }
+  />
+) : !is_client_approval_submitted ? (
+  <CustomeTooltip
+    truncateValue={
+      <Button
+        className="hidden lg:block"
+        size="sm"
+        disabled
+        variant="secondary"
+      >
+        Request To Tech Check
+      </Button>
+    }
+    value="Submit approval first"
+  />
+) : canRequestToTechCheckAccess ? (
+  <Button
+    size="sm"
+    className="hidden lg:block"
+    onClick={() => setOpenRequestToTechCheckModal(true)}
+  >
+    Request To Tech Check
+  </Button>
+) : isCustomUser ? (
+  <Button
+    className="hidden lg:block"
+    size="sm"
+    disabled
+    variant="secondary"
+  >
+    Request To Tech Check
+  </Button>
+) : (
+  <CustomeTooltip
+    truncateValue={
+      <Button
+        className="hidden lg:block"
+        size="sm"
+        disabled
+        variant="secondary"
+      >
+        Request To Tech Check
+      </Button>
+    }
+    value="Only Sales Executive can request to Tech Check"
+  />
+)}
 
           <Button
             size="sm"
@@ -338,20 +415,63 @@ export default function ClientApprovalLeadDetails() {
                 Assign Task
               </DropdownMenuItem>
               {/* ⭐ ONLY MARK ON HOLD */}
-              <DropdownMenuItem onSelect={() => setActivityModalOpen(true)}>
-                <Clock className="m h-4 w-4" />
-                Mark On Hold
-              </DropdownMenuItem>
+              {/* Lead block handling added for DropdownMenu action */}
+              {shouldDisableBlockedActions ? (
+                <CustomeTooltip
+                  value={blockedTooltip}
+                  truncateValue={
+                    <DropdownMenuItem disabled>
+                      <Clock className="m h-4 w-4" />
+                      Mark On Hold
+                    </DropdownMenuItem>
+                  }
+                />
+              ) : (
+                <DropdownMenuItem onSelect={() => setActivityModalOpen(true)}>
+                  <Clock className="m h-4 w-4" />
+                  Mark On Hold
+                </DropdownMenuItem>
+              )}
+
+              {userType?.toLowerCase() === "super-admin" && (
+                <DropdownMenuItem
+                  onSelect={() => setOpenBlockConfirm(true)}
+                  disabled={isBlockActionPending}
+                >
+                  {isLeadBlocked ? (
+                    <LockOpen className="h-4 w-4" />
+                  ) : (
+                    <Lock className="h-4 w-4" />
+                  )}
+
+                  {isLeadBlocked
+                    ? "Unblock Lead"
+                    : "Block Lead"}
+                </DropdownMenuItem>
+              )}
 
               {/* CLIENT APPROVAL */}
               {!is_client_approval_submitted ? (
                 canAccessClientApprovalForm ? (
-                  <DropdownMenuItem
-                    onClick={() => setOpenClientApprovalModal(true)}
-                  >
-                    <FileText size={20} />
-                    Client Approval
-                  </DropdownMenuItem>
+                  // Lead block handling added for DropdownMenu action
+                  shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <FileText size={20} />
+                          Client Approval
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem
+                      onClick={() => setOpenClientApprovalModal(true)}
+                    >
+                      <FileText size={20} />
+                      Client Approval
+                    </DropdownMenuItem>
+                  )
                 ) : (
                   <CustomeTooltip
                     truncateValue={
@@ -360,22 +480,44 @@ export default function ClientApprovalLeadDetails() {
                         Client Approval
                       </DropdownMenuItem>
                     }
-                    value="Only Sales-executive access this option"
+                    value={
+                      shouldDisableBlockedActions
+                        ? blockedTooltip
+                        : "Only Sales-executive access this option"
+                    }
                   />
                 )
               ) : canRequestToTechCheckAccess ? (
-                <DropdownMenuItem
-                  className="lg:hidden"
-                  onClick={() => setOpenRequestToTechCheckModal(true)}
-                >
-                  <FileText size={20} />
-                  Request To Tech Check
-                </DropdownMenuItem>
+                // Lead block handling added for DropdownMenu action
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem className="lg:hidden" disabled>
+                        <FileText size={20} />
+                        Request To Tech Check
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem
+                    className="lg:hidden"
+                    onClick={() => setOpenRequestToTechCheckModal(true)}
+                  >
+                    <FileText size={20} />
+                    Request To Tech Check
+                  </DropdownMenuItem>
+                )
               ) : isCustomUser ? (
-                <DropdownMenuItem className="lg:hidden" disabled>
-                  <FileText size={20} />
-                  Request To Tech Check
-                </DropdownMenuItem>
+                <CustomeTooltip
+                  value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                  truncateValue={
+                    <DropdownMenuItem className="lg:hidden" disabled>
+                      <FileText size={20} />
+                      Request To Tech Check
+                    </DropdownMenuItem>
+                  }
+                />
               ) : (
                 <CustomeTooltip
                   truncateValue={
@@ -384,35 +526,78 @@ export default function ClientApprovalLeadDetails() {
                       Request To Tech Check
                     </DropdownMenuItem>
                   }
-                  value="Only Sales Executive can request to Tech Check"
+                  value={
+                    shouldDisableBlockedActions
+                      ? blockedTooltip
+                      : "Only Sales Executive can request to Tech Check"
+                  }
                 />
               )}
 
               {/* EDIT */}
 
               {canEdit && (
-                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                  <SquarePen size={20} />
-                  Edit
-                </DropdownMenuItem>
+                // Lead block handling added for DropdownMenu action
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <SquarePen size={20} />
+                        Edit
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                    <SquarePen size={20} />
+                    Edit
+                  </DropdownMenuItem>
+                )
               )}
 
               {/* REASSIGN */}
               {canReassign && (
-                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                  <Users size={20} />
-                  Reassign Lead
-                </DropdownMenuItem>
+                // Lead block handling added for DropdownMenu action
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <Users size={20} />
+                        Reassign Lead
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                    <Users size={20} />
+                    Reassign Lead
+                  </DropdownMenuItem>
+                )
               )}
 
               {/* DELETE */}
               {canDelete && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setOpenDelete(true)}>
-                    <XCircle size={20} className="text-red-500" />
-                    Delete
-                  </DropdownMenuItem>
+                  {/* Lead block handling added for DropdownMenu action */}
+                  {shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <XCircle size={20} className="text-red-500" />
+                          Delete
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem onClick={() => setOpenDelete(true)}>
+                      <XCircle size={20} className="text-red-500" />
+                      Delete
+                    </DropdownMenuItem>
+                  )}
                 </>
               )}
             </DropdownMenuContent>
@@ -459,10 +644,22 @@ export default function ClientApprovalLeadDetails() {
             </TabsTrigger>
 
             {canAccessClientApprovalForm ? (
-              <TabsTrigger value="todo">
-                <PencilLine size={16} className="mr-1 opacity-60" />
-                To-Do Task
-              </TabsTrigger>
+              shouldDisableBlockedActions ? (
+                <CustomeTooltip
+                  value={blockedTooltip}
+                  truncateValue={
+                    <TabsTrigger value="" disabled>
+                      <PencilLine size={16} className="mr-1 opacity-60" />
+                      To-Do Task
+                    </TabsTrigger>
+                  }
+                />
+              ) : (
+                <TabsTrigger value="todo">
+                  <PencilLine size={16} className="mr-1 opacity-60" />
+                  To-Do Task
+                </TabsTrigger>
+              )
             ) : (
               <CustomeTooltip
                 truncateValue={
@@ -658,6 +855,47 @@ export default function ClientApprovalLeadDetails() {
           );
         }}
       />
+
+
+
+
+      <AlertDialog
+        open={openBlockConfirm}
+        onOpenChange={setOpenBlockConfirm}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isLeadBlocked
+                ? "Unblock Lead?"
+                : "Block Lead?"}
+            </AlertDialogTitle>
+
+            <AlertDialogDescription>
+              {isLeadBlocked
+                ? "This will unblock the lead and allow normal actions."
+                : "This will block the lead and disable lead actions."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBlockActionPending}>
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={handleToggleLeadBlock}
+              disabled={isBlockActionPending}
+            >
+              {isBlockActionPending
+                ? "Processing..."
+                : isLeadBlocked
+                  ? "Unblock"
+                  : "Block"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

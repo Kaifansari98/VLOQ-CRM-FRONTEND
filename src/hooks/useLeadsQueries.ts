@@ -29,6 +29,8 @@ import {
   checkSimilarLeadExists,
   SimilarLeadCheckPayload,
   SimilarLeadCheckResult,
+  createSmallOrderRequest,
+  CreateSmallOrderRequestPayload,
   getLeadProductStructureInstances,
   getClientVisits,
   uploadMoreSitePhotos,
@@ -469,5 +471,12 @@ export const useUploadMoreSitePhotos = () => {
       createdBy: number;
       files: File[];
     }) => uploadMoreSitePhotos({ vendorId, leadId, createdBy, files }),
+  });
+};
+
+export const useCreateSmallOrderRequest = () => {
+  return useMutation({
+    mutationFn: (payload: CreateSmallOrderRequestPayload) =>
+      createSmallOrderRequest(payload),
   });
 };

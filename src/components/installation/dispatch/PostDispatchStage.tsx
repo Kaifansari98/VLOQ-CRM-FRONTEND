@@ -28,6 +28,9 @@ import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canUploadDispatchDocument, canViewAndWorkDispatchStage } from "@/components/utils/privileges";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useLeadById } from "@/hooks/useLeadsQueries";
+import CustomeTooltip from "@/components/custom-tooltip";
 interface PostDispatchStageProps {
   leadId: number;
   accountId: number | null;
@@ -39,9 +42,11 @@ export default function PostDispatchStage({
 }: PostDispatchStageProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const normalizedUserType = userType?.toLowerCase() ?? "";
   const customPrivilegeCodes = useAppSelector(
     (s) => s.customPrivileges.codes,
   );
+
 
   const userId = useAppSelector((s) => s.auth.user?.id);
   const queryClient = useQueryClient();
@@ -54,6 +59,27 @@ export default function PostDispatchStage({
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
+
+
+  const { data: leadResponse } = useLeadById(
+    leadId,
+    vendorId,
+    userId,
+  );
+
+  const lead = leadResponse?.data?.lead;
+
+
+
+  const {
+    blockedTooltip,
+    shouldDisableBlockedActions,
+  } = useLeadAccessControl({
+    leadId,
+    userType,
+    lead,
+  });
+
 
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
@@ -99,15 +125,23 @@ export default function PostDispatchStage({
         },
       });
 
-    
+
       setSelectedFiles([]);
 
       queryClient.invalidateQueries({
         queryKey: ["postDispatchDocuments", vendorId, leadId],
       });
     } catch (error: any) {
-      toastManager.add({ title: error?.response?.data?.message ||
-          "Failed to upload Post Dispatch documents.", type: "error" });
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to upload Post Dispatch documents.";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
     }
   };
 
@@ -122,22 +156,26 @@ export default function PostDispatchStage({
     }
   };
 
-  const isCustomUser = userType === "custom";
+  const isCustomUser = normalizedUserType === "custom";
   const canViewPostDispatch = isCustomUser
     ? customPrivilegeCodes.includes("installation.dispatch.post_dispatch.view")
-    : canViewAndWorkDispatchStage(userType, leadStatus);
-  const canUploadPostDispatch = isCustomUser
-    ? customPrivilegeCodes.includes(
-        "installation.dispatch.post_dispatch.upload",
-      )
-    : canUploadDispatchDocument(userType, leadStatus);
+    : true;
+  const canUploadPostDispatch =
+    !shouldDisableBlockedActions &&
+    (
+      isCustomUser
+        ? customPrivilegeCodes.includes(
+          "installation.dispatch.post_dispatch.upload",
+        )
+        : canUploadDispatchDocument(normalizedUserType, leadStatus)
+    );
   const canDeletePostDispatch = isCustomUser
     ? customPrivilegeCodes.includes(
-        "installation.dispatch.post_dispatch.delete",
-      )
-    : userType === "admin" ||
-        userType === "super-admin" ||
-        (userType === "factory" && leadStatus === "dispatch-stage");
+      "installation.dispatch.post_dispatch.delete",
+    )
+    : normalizedUserType === "admin" ||
+    normalizedUserType === "super-admin" ||
+    (normalizedUserType === "factory" && leadStatus === "dispatch-stage");
 
   if (!canViewPostDispatch) {
     return null;
@@ -158,37 +196,48 @@ export default function PostDispatchStage({
 
       {/* Upload Section */}
 
-      {canUploadPostDispatch && (
-        <div className="p-6 border-b space-y-4">
-          <FileUploadField
-            value={selectedFiles}
-            onChange={setSelectedFiles}
-            accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.zip"
-            multiple
-          />
-
+      <div className="p-6 border-b space-y-4">
+        <CustomeTooltip
+          value={
+            shouldDisableBlockedActions
+              ? blockedTooltip
+              : undefined
+          }
+          truncateValue={
+            <div
+              className={
+                shouldDisableBlockedActions
+                  ? "pointer-events-none opacity-60"
+                  : ""
+              }
+            >
+              <FileUploadField
+                value={selectedFiles}
+                onChange={setSelectedFiles}
+                accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.zip"
+                multiple
+                disabled={!canUploadPostDispatch}
+              />
+            </div>
+          }
+        />
+        {canUploadPostDispatch && (
           <div className="flex justify-end">
             <Button
-              size="sm"
               onClick={handleUpload}
               disabled={isPending || selectedFiles.length === 0}
-              className="flex items-center gap-2"
             >
               {isPending ? (
-                <>
-                  <Loader2 className="animate-spin size-4" />
-                  Uploading...
-                </>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <>
-                  <Upload size={16} />
-                  Upload Files
-                </>
+                <Upload className="mr-2 h-4 w-4" />
               )}
+              Upload Documents
             </Button>
           </div>
-        </div>
-      )}
+        )}
+
+      </div>
 
       {/* Files List */}
       <div className="p-6">

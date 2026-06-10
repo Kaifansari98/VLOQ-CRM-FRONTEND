@@ -10,7 +10,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
-import { useLeadById } from "@/hooks/useLeadsQueries";
+import { useBlockLead, useLeadById, useUnblockLead } from "@/hooks/useLeadsQueries";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
@@ -21,6 +21,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 
 import {
   EllipsisVertical,
@@ -38,6 +40,8 @@ import {
   History,
   IndianRupee,
   FolderOpen,
+  LockOpen,
+  Lock,
 } from "lucide-react";
 
 import {
@@ -89,6 +93,7 @@ import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 import { useChatTabFromUrl } from "@/hooks/useChatTabFromUrl";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
+import SmallOrderRequestModal from "@/components/installation/small-order/SmallOrderRequestModal";
 
 export default function FinalHandoverLeadDetails() {
   const router = useRouter();
@@ -113,6 +118,7 @@ export default function FinalHandoverLeadDetails() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
+  const [openSmallOrderModal, setOpenSmallOrderModal] = useState(false);
 
   const [activeTab, setActiveTab] = useState(
     userType === "site-supervisor" ? "todo" : "details"
@@ -122,6 +128,8 @@ export default function FinalHandoverLeadDetails() {
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [activityType, setActivityType] = useState<"onHold">("onHold");
 
+
+
   const updateStatusMutation = useUpdateActivityStatus();
 
   const canReassign = canReassignLeadButton(effectiveUserType ?? "");
@@ -130,37 +138,55 @@ export default function FinalHandoverLeadDetails() {
   const canViewPayment =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.payment_information.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.payment_information.enable_disable",
+      )
       : canViewPaymentTab(effectiveUserType ?? "");
   const canViewSiteHistory =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.site_history.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.site_history.enable_disable",
+      )
       : canViewSiteHistoryTab(effectiveUserType ?? "");
   const canViewChats =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.chat.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.chat.enable_disable",
+      )
       : true;
   const canViewDocuments =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.some((code) =>
-          code.startsWith("leads.open_leads.details_of_lead.documents_section."),
-        )
+        code.startsWith("leads.open_leads.details_of_lead.documents_section."),
+      )
       : true;
   const canAccessTodoTab =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.some((code) =>
-          code.startsWith("installation.final_handover."),
-        )
+        code.startsWith("installation.final_handover."),
+      )
       : canAccessTodoTaskTabUnderFinalHandoverStage(effectiveUserType ?? "");
   const normalizedUserType = userType?.toLowerCase() ?? "";
   const normalizedEffectiveUserType = effectiveUserType?.toLowerCase() ?? "";
+  const isProductionEnvironment =
+    process.env.NEXT_PUBLIC_ENVIRONMENT === "PRODUCTION";
+  const canCreateSmallOrder = [
+    "sales-executive",
+    "admin",
+    "super-admin",
+  ].includes(normalizedEffectiveUserType) && !isProductionEnvironment;
   const isSiteSupervisor = normalizedUserType === "site-supervisor";
 
+
+
+
+  const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
+
+  const blockLeadMutation = useBlockLead();
+  const unblockLeadMutation = useUnblockLead();
+
+  const isBlockActionPending =
+    blockLeadMutation.isPending ||
+    unblockLeadMutation.isPending;
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
 
@@ -187,6 +213,21 @@ export default function FinalHandoverLeadDetails() {
     (["super-admin", "site-supervisor"].includes(normalizedEffectiveUserType) ||
       hasAnyUploadPrivilege) &&
     leadStatusTag !== "Type 17";
+
+
+  const {
+    isLeadBlocked,
+    shouldDisableBlockedActions,
+    blockedTooltip,
+  } = useLeadAccessControl({
+    leadId: leadIdNum,
+    userType,
+    lead,
+  });
+
+  const blockedReason = shouldDisableBlockedActions
+    ? blockedTooltip
+    : "";
 
   const { data: readiness, isLoading: readinessLoading } =
     useFinalHandoverReadiness(vendorId!, leadIdNum);
@@ -252,6 +293,47 @@ export default function FinalHandoverLeadDetails() {
     setOpenDelete(false);
   };
 
+
+
+  const handleToggleLeadBlock = () => {
+    if (!vendorId || !userId || !leadIdNum) return;
+
+    const mutation = isLeadBlocked
+      ? unblockLeadMutation
+      : blockLeadMutation;
+
+    mutation.mutate(
+      {
+        vendorId,
+        leadId: leadIdNum,
+        updatedBy: userId,
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: isLeadBlocked
+              ? "Lead unblocked successfully!"
+              : "Lead blocked successfully!",
+            type: "success",
+          });
+
+          setOpenBlockConfirm(false);
+
+          queryClient.invalidateQueries({
+            queryKey: [
+              "leadBlockStatus",
+              vendorId,
+              leadIdNum,
+            ],
+          });
+
+          queryClient.invalidateQueries({
+            queryKey: ["leadById", leadIdNum],
+          });
+        },
+      }
+    );
+  };
   return (
     <>
       {/* 🔹 Header */}
@@ -297,7 +379,7 @@ export default function FinalHandoverLeadDetails() {
               )} */}
 
           {canShowMarkCompleted &&
-            (canMarkCompleted ? (
+            (canMarkCompleted && !shouldDisableBlockedActions ? (
               <Button
                 className="hidden md:flex items-center gap-2"
                 onClick={() => setOpenProjectCompleteConfirm(true)}
@@ -307,7 +389,11 @@ export default function FinalHandoverLeadDetails() {
               </Button>
             ) : (
               <CustomeTooltip
-                value={completionBlockMessage}
+                value={
+                  shouldDisableBlockedActions
+                    ? blockedTooltip
+                    : completionBlockMessage
+                }
                 truncateValue={
                   <div>
                     <Button
@@ -328,8 +414,8 @@ export default function FinalHandoverLeadDetails() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button 
-              size="icon"
+              <Button
+                size="icon"
                 variant="ghost"
                 className="relative bg-accent p-1.5 rounded-sm"
               >
@@ -346,7 +432,18 @@ export default function FinalHandoverLeadDetails() {
                 Assign Task
               </DropdownMenuItem>
               {canShowMarkCompleted &&
-                (canMarkCompleted ? (
+                (shouldDisableBlockedActions ? (
+                  // Lead block handling added for DropdownMenu action
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled className="md:hidden">
+                        <CheckCircle2 size={18} />
+                        Mark Project as Completed
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : canMarkCompleted ? (
                   <DropdownMenuItem
                     className="md:hidden"
                     onClick={() => setOpenProjectCompleteConfirm(true)}
@@ -365,36 +462,131 @@ export default function FinalHandoverLeadDetails() {
                     }
                   />
                 ))}
-              <DropdownMenuItem
-                onSelect={() => {
-                  setActivityType("onHold");
-                  setActivityModalOpen(true);
-                }}
-              >
-                <Clock className="mh-4 w-4" />
-                Mark On Hold
-              </DropdownMenuItem>
+              {/* Lead block handling added for DropdownMenu action */}
+              {shouldDisableBlockedActions ? (
+                <CustomeTooltip
+                  value={blockedTooltip}
+                  truncateValue={
+                    <DropdownMenuItem disabled>
+                      <Clock className="mh-4 w-4" />
+                      Mark On Hold
+                    </DropdownMenuItem>
+                  }
+                />
+              ) : (
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setActivityType("onHold");
+                    setActivityModalOpen(true);
+                  }}
+                >
+                  <Clock className="mh-4 w-4" />
+                  Mark On Hold
+                </DropdownMenuItem>
+              )}
+              {canCreateSmallOrder &&
+                (shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <BoxIcon size={20} />
+                        Create Small Order
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setOpenSmallOrderModal(true);
+                    }}
+                  >
+                    <BoxIcon size={20} />
+                    Create Small Order
+                  </DropdownMenuItem>
+                ))}
 
               {canEdit && (
-                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                  <SquarePen size={20} />
-                  Edit
-                </DropdownMenuItem>
+                // Lead block handling added for DropdownMenu action
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <SquarePen size={20} />
+                        Edit
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                    <SquarePen size={20} />
+                    Edit
+                  </DropdownMenuItem>
+                )
               )}
               {canReassign && (
-                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                  <Users size={20} />
-                  Reassign Lead
-                </DropdownMenuItem>
+                // Lead block handling added for DropdownMenu action
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <Users size={20} />
+                        Reassign Lead
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                    <Users size={20} />
+                    Reassign Lead
+                  </DropdownMenuItem>
+                )
               )}
+
+
+              {userType === "super-admin" && (
+                <>
+                  <DropdownMenuItem
+                    onClick={() => setOpenBlockConfirm(true)}
+                  >
+                    {isLeadBlocked ? (
+                      <>
+                        <LockOpen size={18} />
+                        Unblock Lead
+                      </>
+                    ) : (
+                      <>
+                        <Lock size={18} />
+                        Block Lead
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                </>
+              )}
+
 
               {canDelete && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setOpenDelete(true)}>
-                    <XCircle size={20} className="text-red-500" />
-                    Delete
-                  </DropdownMenuItem>
+                  {/* Lead block handling added for DropdownMenu action */}
+                  {shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <XCircle size={20} className="text-red-500" />
+                          Delete
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem onClick={() => setOpenDelete(true)}>
+                      <XCircle size={20} className="text-red-500" />
+                      Delete
+                    </DropdownMenuItem>
+                  )}
                 </>
               )}
             </DropdownMenuContent>
@@ -558,6 +750,13 @@ export default function FinalHandoverLeadDetails() {
         leadData={{ id: leadIdNum, assignTo: lead?.assignedTo }}
       />
 
+      <SmallOrderRequestModal
+        open={openSmallOrderModal}
+        onOpenChange={setOpenSmallOrderModal}
+        source="final_handover"
+        leadId={leadIdNum}
+      />
+
       <EditLeadModal
         open={openEditModal}
         onOpenChange={setOpenEditModal}
@@ -661,11 +860,13 @@ export default function FinalHandoverLeadDetails() {
                       payment?.pending_amount !== undefined
                         ? payment.pending_amount
                         : 0;
-                    toastManager.add({ title: payment
+                    toastManager.add({
+                      title: payment
                         ? isSiteSupervisor
                           ? "Payment pending. Please contact admin."
                           : `Pending amount remaining: ${pending.toLocaleString()}`
-                        : "Unable to verify payment status.", type: "error" });
+                        : "Unable to verify payment status.", type: "error"
+                    });
                     setValidatingPayment(false);
                     setOpenProjectCompleteConfirm(false);
                     return;
@@ -697,6 +898,48 @@ export default function FinalHandoverLeadDetails() {
               }}
             >
               {movingProject || validatingPayment ? "Processing..." : "Confirm"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
+
+
+
+      <AlertDialog
+        open={openBlockConfirm}
+        onOpenChange={setOpenBlockConfirm}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isLeadBlocked
+                ? "Unblock Lead?"
+                : "Block Lead?"}
+            </AlertDialogTitle>
+
+            <AlertDialogDescription>
+              {isLeadBlocked
+                ? "This will unblock the lead and allow normal actions."
+                : "This will block the lead and prevent all restricted actions."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={handleToggleLeadBlock}
+              disabled={isBlockActionPending}
+            >
+              {isBlockActionPending
+                ? "Processing..."
+                : isLeadBlocked
+                  ? "Unblock Lead"
+                  : "Block Lead"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

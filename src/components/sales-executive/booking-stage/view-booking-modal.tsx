@@ -83,6 +83,8 @@ import { useReplaceInitialSiteMeasurementPdf } from "@/hooks/Site-measruement/us
 import { useSubmitDesigns } from "@/api/designingStageQueries";
 import { DocumentsUploader } from "@/components/document-upload";
 import { useUploadCSPBooking } from "@/hooks/useUploadCSPBooking";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import CustomeTooltip from "@/components/custom-tooltip";
 
 interface Props {
   leadId: number;
@@ -153,7 +155,7 @@ const designsSchema = z.object({
     .refine(
       (files: File[]) =>
         files.every((f) =>
-          /\.(pdf|zip|pyo|pytha|dwg|dxf|stl|step|stp|iges|igs|3ds|obj|skp|sldprt|sldasm|prt|catpart|catproduct)$/i.test(
+          /\.(pdf|zip|pyo|pytha|dwg|dxf|stl|step|stp|iges|igs|3ds|obj|skp|sldprt|sldasm|prt|catpart|catproduct|jpg)$/i.test(
             f.name,
           ),
         ),
@@ -172,9 +174,9 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   const vendorCustomUserTypeMode = useAppSelector(
     (state) =>
       state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only as
-        | boolean
-        | null
-        | undefined,
+      | boolean
+      | null
+      | undefined,
   );
   const userName = useAppSelector((state) => state.auth.user?.user_name);
   const userEmail = useAppSelector((state) => state.auth.user?.user_email);
@@ -268,6 +270,17 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   );
   const { data: designDocsData } = useDesignsDoc(vendorId!, leadId);
 
+
+
+  const {
+    isLeadBlocked,
+    blockedTooltip,
+    shouldDisableBlockedActions,
+  } = useLeadAccessControl({
+    leadId,
+    userType,
+  });
+
   const bookingStagePhotos = cspBookingData?.documents ?? [];
   const initialMeasurementDocs =
     siteMeasurementDetails?.initial_site_measurement_documents || [];
@@ -290,14 +303,14 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   const canAssignSiteSupervisor =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.assign_site_supervisor.assign",
-        )
+        "leads.booking_done.assign_site_supervisor.assign",
+      )
       : userType === "head-site-supervisor" || userType === "super-admin";
   const canReassignSiteSupervisor =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.assign_site_supervisor.reassign",
-        )
+        "leads.booking_done.assign_site_supervisor.reassign",
+      )
       : userType === "head-site-supervisor" || userType === "super-admin";
   const isSupervisorAssigned =
     siteSupervisorCheck?.isSiteSupervisorAssigned ?? false;
@@ -337,14 +350,14 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   const canViewTotalBookingValue =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.total_booking_value.view",
-        )
+        "leads.booking_done.total_booking_value.view",
+      )
       : true;
   const canEditTotalBookingValue =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.total_booking_value.edit",
-        )
+        "leads.booking_done.total_booking_value.edit",
+      )
       : canEditBookingValues;
   const canViewBookingAmount =
     userType?.toLowerCase() === "custom"
@@ -357,122 +370,122 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   const canViewBookingStageCurrentSitePhotos =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.current_site_photos.view",
-        )
+        "leads.booking_done.current_site_photos.view",
+      )
       : true;
   const canUploadBookingStageCurrentSitePhotos =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.current_site_photos.upload",
-        )
+        "leads.booking_done.current_site_photos.upload",
+      )
       : canEditBookingValues;
   const canDeleteBookingStageCurrentSitePhotos =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.current_site_photos.delete",
-        )
+        "leads.booking_done.current_site_photos.delete",
+      )
       : canDelete;
   const canViewBookingDocuments =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.booking_documents.view",
-        )
+        "leads.booking_done.booking_documents.view",
+      )
       : true;
   const canUploadBookingDocuments =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.booking_documents.upload",
-        )
+        "leads.booking_done.booking_documents.upload",
+      )
       : canDelete;
   const canDeleteBookingDocuments =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.booking_documents.delete",
-        )
+        "leads.booking_done.booking_documents.delete",
+      )
       : canDelete;
   const canViewBookingPaymentProofs =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.booking_payment_proofs.view",
-        )
+        "leads.booking_done.booking_payment_proofs.view",
+      )
       : true;
   const canDeleteBookingPaymentProofs =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.booking_payment_proofs.delete",
-        )
+        "leads.booking_done.booking_payment_proofs.delete",
+      )
       : canDelete;
   const canViewConsolidatedIsmPhotos =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.consolidated_view.ism_photos_view",
-        )
+        "leads.booking_done.consolidated_view.ism_photos_view",
+      )
       : true;
   const canDeleteConsolidatedIsmPhotos =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.consolidated_view.ism_photos_delete",
-        )
+        "leads.booking_done.consolidated_view.ism_photos_delete",
+      )
       : canDelete;
   const canUploadConsolidatedIsmPhotos =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.consolidated_view.ism_photos_upload",
-        )
+        "leads.booking_done.consolidated_view.ism_photos_upload",
+      )
       : canEditBookingValues;
   const canViewConsolidatedIsmMeasurementDocs =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.consolidated_view.ism_measurement_document_view",
-        )
+        "leads.booking_done.consolidated_view.ism_measurement_document_view",
+      )
       : true;
   const canDeleteConsolidatedIsmMeasurementDocs =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.consolidated_view.ism_measurement_document_delete",
-        )
+        "leads.booking_done.consolidated_view.ism_measurement_document_delete",
+      )
       : canDelete;
   const canUploadConsolidatedIsmMeasurementDocs =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.consolidated_view.ism_measurement_document_upload",
-        )
+        "leads.booking_done.consolidated_view.ism_measurement_document_upload",
+      )
       : canEditBookingValues;
   const canViewConsolidatedDesignDocuments =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.consolidated_view.design_document_view",
-        )
+        "leads.booking_done.consolidated_view.design_document_view",
+      )
       : true;
   const canDeleteConsolidatedDesignDocuments =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.consolidated_view.design_document_delete",
-        )
+        "leads.booking_done.consolidated_view.design_document_delete",
+      )
       : canDelete;
   const canUploadConsolidatedDesignDocuments =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.consolidated_view.design_document_upload",
-        )
+        "leads.booking_done.consolidated_view.design_document_upload",
+      )
       : canEditBookingValues;
   const canViewConsolidatedFinalMeasurementAssignmentDocs =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.consolidated_view.final_measurement_assignement_docs_view",
-        )
+        "leads.booking_done.consolidated_view.final_measurement_assignement_docs_view",
+      )
       : true;
   const canDeleteConsolidatedFinalMeasurementAssignmentDocs =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.consolidated_view.final_measurement_assignement_docs_delete",
-        )
+        "leads.booking_done.consolidated_view.final_measurement_assignement_docs_delete",
+      )
       : canDelete;
   const canUploadConsolidatedFinalMeasurementAssignmentDocs =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.booking_done.consolidated_view.final_measurement_assignement_docs_upload",
-        )
+        "leads.booking_done.consolidated_view.final_measurement_assignement_docs_upload",
+      )
       : canEditBookingValues;
 
   console.log("Lead Status: ", status);
@@ -540,8 +553,13 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
         queryKey: ["csp-booking-photos", vendorId, leadId],
       });
     } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message;
+
       toastManager.add({
-        title: error?.response?.data?.message || "Failed to upload site photos",
+        title: errorMessage,
         type: "error",
       });
     }
@@ -869,14 +887,22 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                     {assignedIsmUserFromMapping?.user_name || "Not Assigned Yet"}
                   </p>
                 ) : !isSupervisorAssigned && canAssignSiteSupervisor ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setReassignOpen(true)}
-                  >
-                    Assign Site Supervisor
-                  </Button>
+                  <div className="w-fit">
+                    <CustomeTooltip
+                      value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                      truncateValue={
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          disabled={shouldDisableBlockedActions}
+                          onClick={() => setReassignOpen(true)}
+                        >
+                          Assign Site Supervisor
+                        </Button>
+                      }
+                    />
+                  </div>
                 ) : (
                   <p className="text-xs font-semibold tracking-tight text-heading dark:text-neutral-100">
                     {currentSupervisor?.userName || "Not Assigned Yet"}
@@ -887,15 +913,23 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
               {vendorCustomUserTypeMode !== true &&
                 isSupervisorAssigned &&
                 canReassignSiteSupervisor && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setReassignOpen(true)}
-                >
-                  <UserPen />
-                </Button>
-              )}
+                  <div className="shrink-0">
+                    <CustomeTooltip
+                      value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                      truncateValue={
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={shouldDisableBlockedActions}
+                          onClick={() => setReassignOpen(true)}
+                        >
+                          <UserPen />
+                        </Button>
+                      }
+                    />
+                  </div>
+                )}
             </div>
 
             {/* MRP Value */}
@@ -932,14 +966,22 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                 </div>
 
                 {canEditMrpValue && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setMrpModalOpen(true)}
-                  >
-                    <UserPen className="w-4 h-4" />
-                  </Button>
+                  <div className="shrink-0">
+                    <CustomeTooltip
+                      value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                      truncateValue={
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={shouldDisableBlockedActions}
+                          onClick={() => setMrpModalOpen(true)}
+                        >
+                          <UserPen className="w-4 h-4" />
+                        </Button>
+                      }
+                    />
+                  </div>
                 )}
               </div>
             )}
@@ -980,14 +1022,22 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                 </div>
 
                 {canEditTotalBookingValue && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setTotalProjectModalOpen(true)}
-                  >
-                    <UserPen className="w-4 h-4" />
-                  </Button>
+                  <div className="shrink-0">
+                    <CustomeTooltip
+                      value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                      truncateValue={
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={shouldDisableBlockedActions}
+                          onClick={() => setTotalProjectModalOpen(true)}
+                        >
+                          <UserPen className="w-4 h-4" />
+                        </Button>
+                      }
+                    />
+                  </div>
                 )}
               </div>
             )}
@@ -1026,14 +1076,22 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                 </div>
 
                 {canEditBookingAmount && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setBookingAmountModalOpen(true)}
-                  >
-                    <UserPen className="w-4 h-4" />
-                  </Button>
+                  <div className="shrink-0">
+                    <CustomeTooltip
+                      value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                      truncateValue={
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={shouldDisableBlockedActions}
+                          onClick={() => setBookingAmountModalOpen(true)}
+                        >
+                          <UserPen className="w-4 h-4" />
+                        </Button>
+                      }
+                    />
+                  </div>
                 )}
               </div>
             )}
@@ -1074,25 +1132,45 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                       />
                     ))}
                     {canUploadBookingStageCurrentSitePhotos && (
-                      <div
-                        onClick={() => setCspUploadOpen(true)}
-                        className="
-            flex flex-col items-center justify-center 
-            h-28 
-            border-2 border-dashed border-border 
-            rounded-xl cursor-pointer 
-            hover:bg-mutedBg dark:hover:bg-neutral-800 
-            transition-all duration-200
-          "
-                      >
-                        <Plus
-                          size={26}
-                          className="text-muted-foreground mb-1"
-                        />
-                        <span className="text-xs font-medium text-muted-foreground">
-                          Add Photos
-                        </span>
-                      </div>
+                      <CustomeTooltip
+                        value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                        truncateValue={
+                          <div
+                            onClick={() => {
+                              if (shouldDisableBlockedActions) return;
+
+                              setCspUploadOpen(true);
+                            }}
+                            className={`
+        flex flex-col items-center justify-center
+        h-28
+        border-2 border-dashed border-border
+        rounded-xl
+        transition-all duration-200
+
+        ${shouldDisableBlockedActions
+                                ? "cursor-not-allowed opacity-50"
+                                : "cursor-pointer hover:bg-mutedBg dark:hover:bg-neutral-800"
+                              }
+      `}
+                          >
+                            <Plus
+                              size={26}
+                              className="text-muted-foreground mb-1"
+                            />
+                            <span className="text-xs font-medium text-muted-foreground">
+                              Add Photos
+                            </span>
+
+
+                            {shouldDisableBlockedActions && (
+                              <span className="text-[10px] italic text-red-500 mt-1">
+                                (blocked)
+                              </span>
+                            )}
+                          </div>
+                        }
+                      />
                     )}
                   </div>
                 </motion.div>
@@ -1160,23 +1238,45 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
 
                   {/* Add File Button */}
                   {canUploadBookingDocuments && (
-                    <div
-                      onClick={() => setOpenFinalDocModal(true)}
-                      className="
-              flex flex-col items-center justify-center 
-              min-h-[120px]
-              border-2 border-dashed border-border/70 
-              rounded-xl 
-              cursor-pointer 
-              hover:bg-mutedBg/40 dark:hover:bg-neutral-800/40 
-              transition-all
-            "
-                    >
-                      <Plus size={28} className="text-muted-foreground mb-1" />
-                      <span className="text-xs font-medium text-muted-foreground">
-                        Add File
-                      </span>
-                    </div>
+                    <CustomeTooltip
+                      value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                      truncateValue={
+                        <div
+                          onClick={() => {
+                            if (shouldDisableBlockedActions) return;
+
+                            setOpenFinalDocModal(true);
+                          }}
+                          className={`
+          flex flex-col items-center justify-center
+          min-h-[120px]
+          border-2 border-dashed border-border/70
+          rounded-xl
+          transition-all
+
+          ${shouldDisableBlockedActions
+                              ? "cursor-not-allowed opacity-50"
+                              : "cursor-pointer hover:bg-mutedBg/40 dark:hover:bg-neutral-800/40"
+                            }
+        `}
+                        >
+                          <Plus
+                            size={28}
+                            className="text-muted-foreground mb-1"
+                          />
+
+                          <span className="text-xs font-medium text-muted-foreground">
+                            Add File
+                          </span>
+
+                          {shouldDisableBlockedActions && (
+                            <span className="text-[10px] italic text-red-500 mt-1">
+                              (blocked)
+                            </span>
+                          )}
+                        </div>
+                      }
+                    />
                   )}
                 </div>
               </div>
@@ -1258,72 +1358,377 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
             bookingDoneIsmPaymentImages.length > 0 ||
             designDocs.length > 0 ||
             bookingStagePhotos.length > 0) && (
-            <div className="">
-              <div
-                className="
+              <div className="">
+                <div
+                  className="
           bg-white dark:bg-neutral-900
           rounded-2xl
           border border-border
           overflow-hidden
         "
-              >
-                <SectionHeader
-                  title="Consolidated Documents"
-                  icon={<Folder size={20} />}
-                />
+                >
+                  <SectionHeader
+                    title="Consolidated Documents"
+                    icon={<Folder size={20} />}
+                  />
 
-                <div className="p-6 space-y-8">
-                  {((canViewConsolidatedIsmMeasurementDocs &&
-                    initialMeasurementDocs.length > 0) ||
-                    (canViewConsolidatedIsmPhotos &&
-                      initialCurrentSitePhotos.length > 0)) && (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <FileText size={18} />
-                        <h2 className="text-base font-semibold">
-                          Initial Site Measurement
-                        </h2>
-                      </div>
-                      <div className="grid grid-cols-1 lg:grid-cols-1 gap-4">
-                        {canViewConsolidatedIsmPhotos &&
-                          initialCurrentSitePhotos.length > 0 && (
-                            <div className="space-y-2">
-                              <p className="text-sm font-medium text-muted-foreground">
-                                Current Site Photos (
-                                {initialCurrentSitePhotos.length})
-                              </p>
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                {initialCurrentSitePhotos.map(
-                                  (photo: any, index: any) => (
-                                    <ImageComponent
-                                      key={photo.id}
+                  <div className="p-6 space-y-8">
+                    {((canViewConsolidatedIsmMeasurementDocs &&
+                      initialMeasurementDocs.length > 0) ||
+                      (canViewConsolidatedIsmPhotos &&
+                        initialCurrentSitePhotos.length > 0)) && (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <FileText size={18} />
+                            <h2 className="text-base font-semibold">
+                              Initial Site Measurement
+                            </h2>
+                          </div>
+                          <div className="grid grid-cols-1 lg:grid-cols-1 gap-4">
+                            {canViewConsolidatedIsmPhotos &&
+                              initialCurrentSitePhotos.length > 0 && (
+                                <div className="space-y-2">
+                                  <p className="text-sm font-medium text-muted-foreground">
+                                    Current Site Photos (
+                                    {initialCurrentSitePhotos.length})
+                                  </p>
+                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    {initialCurrentSitePhotos.map(
+                                      (photo: any, index: any) => (
+                                        <ImageComponent
+                                          key={photo.id}
+                                          doc={{
+                                            id: photo.id,
+                                            doc_og_name: photo.originalName,
+                                            signedUrl: photo.signedUrl,
+                                            created_at: photo.uploadedAt,
+                                          }}
+                                          index={index}
+                                          canDelete={canDeleteConsolidatedIsmPhotos}
+                                          onDelete={(id) =>
+                                            setConfirmDelete(Number(id))
+                                          }
+                                        />
+                                      ),
+                                    )}
+                                    {canUploadConsolidatedIsmPhotos && (
+                                      <CustomeTooltip
+                                        value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                                        truncateValue={
+                                          <div
+                                            onClick={() => {
+                                              if (shouldDisableBlockedActions) return;
+                                              setInitialSitePhotosOpen(true);
+                                            }}
+                                            className={`
+                                              flex flex-col items-center justify-center
+                                              h-28
+                                              border-2 border-dashed border-border
+                                              rounded-xl transition-all duration-200
+                                              ${shouldDisableBlockedActions
+                                                ? "opacity-50 cursor-not-allowed"
+                                                : "cursor-pointer hover:bg-mutedBg dark:hover:bg-neutral-800"
+                                              }
+                                            `}
+                                          >
+                                            <Plus
+                                              size={26}
+                                              className="text-muted-foreground mb-1"
+                                            />
+                                            <span className="text-xs font-medium text-muted-foreground">
+                                              Add Photos
+                                            </span>
+                                            {shouldDisableBlockedActions && (
+                                              <span className="text-[10px] italic text-red-500 mt-1">
+                                                (blocked)
+                                              </span>
+                                            )}
+                                          </div>
+                                        }
+                                      />
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                            {canViewConsolidatedIsmMeasurementDocs &&
+                              initialMeasurementDocs.length > 0 && (
+                                <div className="space-y-2">
+                                  <p className="text-sm font-medium text-muted-foreground">
+                                    Measurement Documents (
+                                    {initialMeasurementDocs.length})
+                                  </p>
+                                  <div className="space-y-3 ">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                      {initialMeasurementDocs.map((doc: any) => (
+                                        <DocumentCard
+                                          key={doc.id}
+                                          doc={{
+                                            id: doc.id,
+                                            originalName: doc.originalName,
+                                            signedUrl: doc.signedUrl,
+                                            created_at: doc.uploadedAt,
+                                          }}
+                                          canDelete={
+                                            canDeleteConsolidatedIsmMeasurementDocs
+                                          }
+                                          onDelete={(id) =>
+                                            setConfirmDelete(Number(id))
+                                          }
+                                        />
+                                      ))}
+                                    </div>
+                                    {canUploadConsolidatedIsmMeasurementDocs && (
+                                      <CustomeTooltip
+                                        value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                                        truncateValue={
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              if (shouldDisableBlockedActions) return;
+                                              if (!initialMeasurementDocs.length) {
+                                                toastManager.add({
+                                                  title: "No document available to replace.",
+                                                  type: "error",
+                                                });
+                                                return;
+                                              }
+                                              setReplaceInitialDocId(
+                                                initialMeasurementDocs[0].id,
+                                              );
+                                            }}
+                                            disabled={shouldDisableBlockedActions}
+                                            className={`
+                                              flex items-center gap-2
+                                              rounded-md border border-dashed border-border
+                                              px-3 py-2 text-xs text-muted-foreground
+                                              transition
+                                              ${shouldDisableBlockedActions
+                                                ? "opacity-50 cursor-not-allowed"
+                                                : "hover:bg-mutedBg dark:hover:bg-neutral-800"
+                                              }
+                                            `}
+                                          >
+                                            <Plus size={14} />
+                                            Replace Document
+                                          </button>
+                                        }
+                                      />
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                          </div>
+                        </div>
+                      )}
+
+                    {(bookingDoneIsmDocs.length > 0 ||
+                      bookingDoneIsmCurrentSite.length > 0 ||
+                      bookingDoneIsmPaymentImages.length > 0) && (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <FileText size={18} />
+                            <h2 className="text-base font-semibold">
+                              Booking Done – ISM
+                            </h2>
+                          </div>
+                          <div className="space-y-4">
+                            {bookingDoneIsmDocs.length > 0 && (
+                              <div className="space-y-2">
+                                <p className="text-sm font-medium text-muted-foreground">
+                                  Documents ({bookingDoneIsmDocs.length})
+                                </p>
+                                <div className="space-y-3 w-fit">
+                                  {bookingDoneIsmDocs.map((doc: any) => (
+                                    <DocumentCard
+                                      key={doc.id}
                                       doc={{
-                                        id: photo.id,
-                                        doc_og_name: photo.originalName,
-                                        signedUrl: photo.signedUrl,
-                                        created_at: photo.uploadedAt,
+                                        id: doc.id,
+                                        originalName: doc.originalName,
+                                        signedUrl: doc.signedUrl,
+                                        created_at: doc.createdAt,
                                       }}
-                                      index={index}
-                                      canDelete={canDeleteConsolidatedIsmPhotos}
+                                      canDelete={canDelete}
                                       onDelete={(id) =>
                                         setConfirmDelete(Number(id))
                                       }
                                     />
-                                  ),
-                                )}
-                                {canUploadConsolidatedIsmPhotos && (
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {bookingDoneIsmCurrentSite.length > 0 && (
+                              <div className="space-y-2">
+                                <p className="text-sm font-medium text-muted-foreground">
+                                  Current Site Photos (
+                                  {bookingDoneIsmCurrentSite.length})
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                  {bookingDoneIsmCurrentSite.map(
+                                    (photo: any, index: any) => (
+                                      <ImageComponent
+                                        key={photo.id}
+                                        doc={{
+                                          id: photo.id,
+                                          doc_og_name: photo.originalName,
+                                          signedUrl: photo.signedUrl,
+                                          created_at: photo.createdAt,
+                                        }}
+                                        index={index}
+                                        canDelete={canDelete}
+                                        onDelete={(id) =>
+                                          setConfirmDelete(Number(id))
+                                        }
+                                      />
+                                    ),
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {bookingDoneIsmPaymentImages.length > 0 && (
+                              <div className="space-y-2">
+                                <p className="text-sm font-medium text-muted-foreground">
+                                  Payment Images (
+                                  {bookingDoneIsmPaymentImages.length})
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                  {bookingDoneIsmPaymentImages.map(
+                                    (photo: any, index: any) => (
+                                      <ImageComponent
+                                        key={photo.id}
+                                        doc={{
+                                          id: photo.id,
+                                          doc_og_name: photo.originalName,
+                                          signedUrl: photo.signedUrl,
+                                          created_at: photo.createdAt,
+                                        }}
+                                        index={index}
+                                        canDelete={canDelete}
+                                        onDelete={(id) =>
+                                          setConfirmDelete(Number(id))
+                                        }
+                                      />
+                                    ),
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                    {canViewConsolidatedDesignDocuments &&
+                      designDocs.length > 0 && (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <FileText size={18} />
+                            <h2 className="text-base font-semibold">
+                              Design Documents ({designDocs.length})
+                            </h2>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {designDocs.map((doc: any) => (
+                              <DocumentCard
+                                key={doc.id}
+                                doc={{
+                                  id: doc.id,
+                                  originalName:
+                                    doc.doc_og_name ?? doc.originalName,
+                                  signedUrl:
+                                    doc.signedUrl ??
+                                    doc.signed_url ??
+                                    doc.doc_sys_name,
+                                  created_at: doc.created_at,
+                                }}
+                                canDelete={canDeleteConsolidatedDesignDocuments}
+                                onDelete={(id) => setConfirmDelete(Number(id))}
+                              />
+                            ))}
+                            {canUploadConsolidatedDesignDocuments && (
+                              <CustomeTooltip
+                                value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                                truncateValue={
                                   <div
-                                    onClick={() =>
-                                      setInitialSitePhotosOpen(true)
-                                    }
-                                    className="
-                                    flex flex-col items-center justify-center
-                                    h-28
-                                    border-2 border-dashed border-border
-                                    rounded-xl cursor-pointer
-                                    hover:bg-mutedBg dark:hover:bg-neutral-800
-                                    transition-all duration-200
-                                  "
+                                    onClick={() => {
+                                      if (shouldDisableBlockedActions) return;
+                                      setDesignsModalOpen(true);
+                                    }}
+                                    className={`
+                                      flex flex-col items-center justify-center
+                                      border border-dashed border-border/70
+                                      rounded-xl p-6 text-center
+                                      transition
+                                      ${shouldDisableBlockedActions
+                                        ? "opacity-50 cursor-not-allowed bg-mutedBg/20 dark:bg-neutral-800/20"
+                                        : "cursor-pointer bg-mutedBg/40 dark:bg-neutral-800/40 hover:bg-mutedBg/60"
+                                      }
+                                    `}
+                                  >
+                                    <Plus className="w-8 h-8 text-muted-foreground mb-2" />
+                                    <p className="text-sm font-medium text-muted-foreground">
+                                      Upload Designs
+                                    </p>
+                                    {shouldDisableBlockedActions && (
+                                      <span className="text-[10px] italic text-red-500 mt-1">
+                                        (blocked)
+                                      </span>
+                                    )}
+                                  </div>
+                                }
+                              />
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                    {canViewConsolidatedFinalMeasurementAssignmentDocs &&
+                      bookingStagePhotos.length > 0 && (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Images size={18} />
+                            <h2 className="text-base font-semibold">
+                              Final Measurement Assignment Docs (
+                              {bookingStagePhotos.length})
+                            </h2>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {bookingStagePhotos.map((photo, index) => (
+                              <ImageComponent
+                                key={photo.id}
+                                doc={{
+                                  id: photo.id,
+                                  doc_og_name: photo.originalName,
+                                  signedUrl: photo.signedUrl,
+                                  created_at: photo.createdAt,
+                                }}
+                                index={index}
+                                canDelete={
+                                  canDeleteConsolidatedFinalMeasurementAssignmentDocs
+                                }
+                                onDelete={(id) => setConfirmDelete(Number(id))}
+                              />
+                            ))}
+                            {canUploadConsolidatedIsmPhotos && (
+                              <CustomeTooltip
+                                value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                                truncateValue={
+                                  <div
+                                    onClick={() => {
+                                      if (shouldDisableBlockedActions) return;
+                                      setInitialSitePhotosOpen(true);
+                                    }}
+                                    className={`
+                                      flex flex-col items-center justify-center
+                                      h-28
+                                      border-2 border-dashed border-border
+                                      rounded-xl transition-all duration-200
+                                      ${shouldDisableBlockedActions
+                                        ? "opacity-50 cursor-not-allowed"
+                                        : "cursor-pointer hover:bg-mutedBg dark:hover:bg-neutral-800"
+                                      }
+                                    `}
                                   >
                                     <Plus
                                       size={26}
@@ -1332,276 +1737,22 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                                     <span className="text-xs font-medium text-muted-foreground">
                                       Add Photos
                                     </span>
+                                    {shouldDisableBlockedActions && (
+                                      <span className="text-[10px] italic text-red-500 mt-1">
+                                        (blocked)
+                                      </span>
+                                    )}
                                   </div>
-                                )}
-                              </div>
-                            </div>
-                          )}
-
-                        {canViewConsolidatedIsmMeasurementDocs &&
-                          initialMeasurementDocs.length > 0 && (
-                            <div className="space-y-2">
-                              <p className="text-sm font-medium text-muted-foreground">
-                                Measurement Documents (
-                                {initialMeasurementDocs.length})
-                              </p>
-                              <div className="space-y-3 ">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                  {initialMeasurementDocs.map((doc: any) => (
-                                    <DocumentCard
-                                      key={doc.id}
-                                      doc={{
-                                        id: doc.id,
-                                        originalName: doc.originalName,
-                                        signedUrl: doc.signedUrl,
-                                        created_at: doc.uploadedAt,
-                                      }}
-                                      canDelete={
-                                        canDeleteConsolidatedIsmMeasurementDocs
-                                      }
-                                      onDelete={(id) =>
-                                        setConfirmDelete(Number(id))
-                                      }
-                                    />
-                                  ))}
-                                </div>
-                                {canUploadConsolidatedIsmMeasurementDocs && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      if (!initialMeasurementDocs.length) {
-                                        toastManager.add({
-                                          title:
-                                            "No document available to replace.",
-                                          type: "error",
-                                        });
-                                        return;
-                                      }
-                                      setReplaceInitialDocId(
-                                        initialMeasurementDocs[0].id,
-                                      );
-                                    }}
-                                    className="
-                                    flex items-center gap-2
-                                    rounded-md border border-dashed border-border
-                                    px-3 py-2 text-xs text-muted-foreground
-                                    hover:bg-mutedBg dark:hover:bg-neutral-800
-                                    transition
-                                  "
-                                  >
-                                    <Plus size={14} />
-                                    Replace Document
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                      </div>
-                    </div>
-                  )}
-
-                  {(bookingDoneIsmDocs.length > 0 ||
-                    bookingDoneIsmCurrentSite.length > 0 ||
-                    bookingDoneIsmPaymentImages.length > 0) && (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <FileText size={18} />
-                        <h2 className="text-base font-semibold">
-                          Booking Done – ISM
-                        </h2>
-                      </div>
-                      <div className="space-y-4">
-                        {bookingDoneIsmDocs.length > 0 && (
-                          <div className="space-y-2">
-                            <p className="text-sm font-medium text-muted-foreground">
-                              Documents ({bookingDoneIsmDocs.length})
-                            </p>
-                            <div className="space-y-3 w-fit">
-                              {bookingDoneIsmDocs.map((doc: any) => (
-                                <DocumentCard
-                                  key={doc.id}
-                                  doc={{
-                                    id: doc.id,
-                                    originalName: doc.originalName,
-                                    signedUrl: doc.signedUrl,
-                                    created_at: doc.createdAt,
-                                  }}
-                                  canDelete={canDelete}
-                                  onDelete={(id) =>
-                                    setConfirmDelete(Number(id))
-                                  }
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {bookingDoneIsmCurrentSite.length > 0 && (
-                          <div className="space-y-2">
-                            <p className="text-sm font-medium text-muted-foreground">
-                              Current Site Photos (
-                              {bookingDoneIsmCurrentSite.length})
-                            </p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                              {bookingDoneIsmCurrentSite.map(
-                                (photo: any, index: any) => (
-                                  <ImageComponent
-                                    key={photo.id}
-                                    doc={{
-                                      id: photo.id,
-                                      doc_og_name: photo.originalName,
-                                      signedUrl: photo.signedUrl,
-                                      created_at: photo.createdAt,
-                                    }}
-                                    index={index}
-                                    canDelete={canDelete}
-                                    onDelete={(id) =>
-                                      setConfirmDelete(Number(id))
-                                    }
-                                  />
-                                ),
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        {bookingDoneIsmPaymentImages.length > 0 && (
-                          <div className="space-y-2">
-                            <p className="text-sm font-medium text-muted-foreground">
-                              Payment Images (
-                              {bookingDoneIsmPaymentImages.length})
-                            </p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                              {bookingDoneIsmPaymentImages.map(
-                                (photo: any, index: any) => (
-                                  <ImageComponent
-                                    key={photo.id}
-                                    doc={{
-                                      id: photo.id,
-                                      doc_og_name: photo.originalName,
-                                      signedUrl: photo.signedUrl,
-                                      created_at: photo.createdAt,
-                                    }}
-                                    index={index}
-                                    canDelete={canDelete}
-                                    onDelete={(id) =>
-                                      setConfirmDelete(Number(id))
-                                    }
-                                  />
-                                ),
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {canViewConsolidatedDesignDocuments &&
-                    designDocs.length > 0 && (
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <FileText size={18} />
-                          <h2 className="text-base font-semibold">
-                            Design Documents ({designDocs.length})
-                          </h2>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                          {designDocs.map((doc: any) => (
-                            <DocumentCard
-                              key={doc.id}
-                              doc={{
-                                id: doc.id,
-                                originalName:
-                                  doc.doc_og_name ?? doc.originalName,
-                                signedUrl:
-                                  doc.signedUrl ??
-                                  doc.signed_url ??
-                                  doc.doc_sys_name,
-                                created_at: doc.created_at,
-                              }}
-                              canDelete={canDeleteConsolidatedDesignDocuments}
-                              onDelete={(id) => setConfirmDelete(Number(id))}
-                            />
-                          ))}
-                          {canUploadConsolidatedDesignDocuments && (
-                            <button
-                              type="button"
-                              onClick={() => setDesignsModalOpen(true)}
-                              className="
-                              flex flex-col items-center justify-center
-                              border border-dashed border-border/70
-                              rounded-xl p-6 text-center
-                              bg-mutedBg/40 dark:bg-neutral-800/40
-                              hover:bg-muted/40 dark:hover:bg-neutral-800/60
-                              transition
-                            "
-                            >
-                              <Plus className="w-8 h-8 text-muted-foreground mb-2" />
-                              <p className="text-sm font-medium text-muted-foreground">
-                                Upload Designs
-                              </p>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                  {canViewConsolidatedFinalMeasurementAssignmentDocs &&
-                    bookingStagePhotos.length > 0 && (
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <Images size={18} />
-                          <h2 className="text-base font-semibold">
-                            Final Measurement Assignment Docs (
-                            {bookingStagePhotos.length})
-                          </h2>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                          {bookingStagePhotos.map((photo, index) => (
-                            <ImageComponent
-                              key={photo.id}
-                              doc={{
-                                id: photo.id,
-                                doc_og_name: photo.originalName,
-                                signedUrl: photo.signedUrl,
-                                created_at: photo.createdAt,
-                              }}
-                              index={index}
-                              canDelete={
-                                canDeleteConsolidatedFinalMeasurementAssignmentDocs
-                              }
-                              onDelete={(id) => setConfirmDelete(Number(id))}
-                            />
-                          ))}
-                          {canUploadConsolidatedFinalMeasurementAssignmentDocs && (
-                            <div
-                              onClick={() => setCspUploadOpen(true)}
-                              className="
-                              flex flex-col items-center justify-center
-                              h-28
-                              border-2 border-dashed border-border
-                              rounded-xl cursor-pointer
-                              hover:bg-mutedBg dark:hover:bg-neutral-800
-                              transition-all duration-200
-                            "
-                            >
-                              <Plus
-                                size={26}
-                                className="text-muted-foreground mb-1"
+                                }
                               />
-                              <span className="text-xs font-medium text-muted-foreground">
-                                Add Photos
-                              </span>
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
         </div>
 
         {/* -------- Upload Modal -------- */}
@@ -1755,7 +1906,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                       <DocumentsUploader
                         value={field.value}
                         onChange={field.onChange}
-                        accept=".pdf,.pyo,.pytha,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip"
+                        accept=".pdf,.pyo,.pytha,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip,.jpg"
                       />
                     </FormControl>
                     <FormMessage />

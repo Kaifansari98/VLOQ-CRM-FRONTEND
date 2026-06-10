@@ -23,6 +23,7 @@ import {
   fetchSiteTypes,
   fetchSiteTypesForMaster,
   fetchProductTypes,
+  fetchSmallOrderRequestTypes,
   updateCompanyVendor,
   updateCompanyVendorStatus,
   updateInstallerUser,
@@ -69,6 +70,7 @@ const getPrivilegeMastersQueryKey = (
 const getCarcassTypesQueryKey = (vendorId?: number) => ["carcassTypes", vendorId];
 const getShutterTypesQueryKey = (vendorId?: number) => ["shutterTypes", vendorId];
 const getHandleTypesQueryKey = (vendorId?: number) => ["handleTypes", vendorId];
+const getSmallOrderRequestTypesQueryKey = (vendorId?: number) => ["smallOrderRequestTypes", vendorId];
 
 const useResolvedVendorId = (vendorIdOverride?: number) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -759,6 +761,17 @@ export const useProductTypes = () => {
     queryFn: () => fetchProductTypes(vendorId!),
     enabled: !!vendorId,
   })
+}
+
+export const useSmallOrderRequestTypes = (vendorIdOverride?: number) => {
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+  return useQuery({
+    queryKey: getSmallOrderRequestTypesQueryKey(vendorId),
+    queryFn: () => fetchSmallOrderRequestTypes(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
 }
 
 export const useUserTypes = () => {

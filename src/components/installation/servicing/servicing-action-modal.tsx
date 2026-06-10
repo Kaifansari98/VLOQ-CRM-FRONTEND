@@ -32,6 +32,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { useUpdateAmcOptedStatus } from "@/api/installation/useFinalHandoverStageLeads";
 
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import CustomeTooltip from "@/components/custom-tooltip";
+
 interface ServicingActionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -70,23 +73,23 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
   const isCustomUser = normalizedUserType === "custom";
   const canCompleteService = isCustomUser
     ? customPrivilegeCodes.includes(
-        "installation.servicing.service_actions.mark_as_complete",
-      )
+      "installation.servicing.service_actions.mark_as_complete",
+    )
     : true;
   const canRescheduleService = isCustomUser
     ? customPrivilegeCodes.includes(
-        "installation.servicing.service_actions.mark_as_reschedule",
-      )
+      "installation.servicing.service_actions.mark_as_reschedule",
+    )
     : true;
   const canRejectService = isCustomUser
     ? customPrivilegeCodes.includes(
-        "installation.servicing.service_actions.mark_as_reject",
-      )
+      "installation.servicing.service_actions.mark_as_reject",
+    )
     : [
-        "head-site-supervisor",
-        "admin",
-        "super-admin",
-      ].includes(normalizedUserType);
+      "head-site-supervisor",
+      "admin",
+      "super-admin",
+    ].includes(normalizedUserType);
   const canReopenRejected = ["admin", "super-admin"].includes(
     normalizedUserType,
   );
@@ -132,6 +135,16 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
 
     return `${time} - ${dayName}, ${fullDate}`;
   };
+
+
+  const {
+    shouldDisableBlockedActions,
+    blockedTooltip,
+  } = useLeadAccessControl({
+    leadId,
+    userType,
+  });
+
 
   const handleConfirmReschedule = () => {
     if (!vendorId || !userId || !serviceId) return;
@@ -222,24 +235,33 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
         <div className="space-y-4 p-6">
           {isThirdFreeService ? (
             <div className="flex items-center gap-3 px-4 py-3">
-              <Checkbox
-                id="is-amc-opted-servicing"
-                checked={isAmcOpted}
-                disabled={!canToggleAmc}
-                onCheckedChange={() => {
-                  if (!canToggleAmc) return;
-                  setConfirmAmcStatus(!isAmcOpted);
-                }}
-                className="h-4 w-4 data-[state=checked]:bg-black data-[state=checked]:border-black dark:data-[state=checked]:bg-white dark:data-[state=checked]:border-white dark:data-[state=checked]:text-black"
+                  <div className="shrink-0">
+              <CustomeTooltip
+                value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                truncateValue={
+                  <Checkbox
+                    checked={isAmcOpted}
+                    disabled={
+                      shouldDisableBlockedActions ||
+                      !canToggleAmc
+                    }
+                    onCheckedChange={() => {
+                      if (shouldDisableBlockedActions) return;
+                      if (!canToggleAmc) return;
+
+                      setConfirmAmcStatus(!isAmcOpted);
+                    }}
+                  />
+                }
               />
+              </div>
               <div className="space-y-1">
                 <label
                   htmlFor="is-amc-opted-servicing"
-                  className={`text-sm ${
-                    canToggleAmc
+                  className={`text-sm ${canToggleAmc
                       ? "cursor-pointer"
                       : "cursor-not-allowed opacity-70"
-                  }`}
+                    }`}
                 >
                   Is AMC Opted in ?
                 </label>
@@ -280,65 +302,105 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
                   </TooltipContent>
                 </Tooltip>
               ) : (
-                <Button
-                  className="w-28"
-                  onClick={() => setOpenCompleteModal(true)}
-                >
-                  Complete
-                </Button>
+
+                    <div className="shrink-0">
+                <CustomeTooltip
+                  value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                  truncateValue={
+                    <span className="inline-flex">
+                      <Button
+                        className="w-28"
+                        disabled={shouldDisableBlockedActions}
+                        onClick={() => {
+                          if (shouldDisableBlockedActions) return;
+                          setOpenCompleteModal(true);
+                        }}
+                      >
+                        Complete
+                      </Button>
+                    </span>
+                  }
+                />
+
+                </div>
               )}
             </div>
           ) : null}
 
-          {canRescheduleService ? (
-            <div className="flex items-center justify-between gap-3 rounded-xl border p-3">
-              <div className="flex flex-col gap-1">
-                <span className="text-base font-semibold">
-                  Mark as Reschedule
-                </span>
-                <p className="text-sm text-muted-foreground">
-                  Move this servicing visit to the next month on the same date.
-                </p>
-              </div>
-              {isRejectedService ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span tabIndex={0}>
-                      <Button className="w-28" variant="outline" disabled>
-                        Reschedule
-                      </Button>
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">
-                    {rejectedTooltipMessage}
-                  </TooltipContent>
-                </Tooltip>
-              ) : isRescheduled ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span tabIndex={0}>
-                      <Button className="w-28" variant="outline" disabled>
-                        Reschedule
-                      </Button>
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">
-                    This service has been already rescheduled.
-                  </TooltipContent>
-                </Tooltip>
-              ) : (
-                <Button
-                  className="w-28"
-                  variant="outline"
-                  onClick={() => setOpenRescheduleConfirm(true)}
-                  disabled={rescheduleMutation.isPending}
-                >
-                  Reschedule
-                </Button>
-              )}
-            </div>
-          ) : null}
+{canRescheduleService ? (
+  <div className="flex items-center justify-between gap-3 rounded-xl border p-3">
+    <div className="flex flex-col gap-1">
+      <span className="text-base font-semibold">
+        Mark as Reschedule
+      </span>
+      <p className="text-sm text-muted-foreground">
+        Move this servicing visit to the next month on the same date.
+      </p>
+    </div>
 
+    {shouldDisableBlockedActions ? (
+      <div className="shrink-0">
+        <CustomeTooltip
+          value={blockedTooltip}
+          truncateValue={
+            <Button
+              className="w-28"
+              variant="outline"
+              disabled
+            >
+              Reschedule
+            </Button>
+          }
+        />
+      </div>
+    ) : isRejectedService ? (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span tabIndex={0}>
+            <Button
+              className="w-28"
+              variant="outline"
+              disabled
+            >
+              Reschedule
+            </Button>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top">
+          {rejectedTooltipMessage}
+        </TooltipContent>
+      </Tooltip>
+    ) : isRescheduled ? (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span tabIndex={0}>
+            <Button
+              className="w-28"
+              variant="outline"
+              disabled
+            >
+              Reschedule
+            </Button>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top">
+          This service has been already rescheduled.
+        </TooltipContent>
+      </Tooltip>
+    ) : (
+      <div className="shrink-0">
+        <Button
+          className="w-28"
+          variant="outline"
+          disabled={rescheduleMutation.isPending}
+          onClick={() => setOpenRescheduleConfirm(true)}
+        >
+          Reschedule
+        </Button>
+      </div>
+    )}
+  </div>
+) : null}
           {canRejectService && !isRejectedService ? (
             <div className="space-y-4 rounded-xl border p-4">
               <div className="flex items-center justify-between gap-3">
@@ -350,14 +412,25 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
                     Reject this servicing visit with a mandatory remark.
                   </p>
                 </div>
-                <Button
-                  className="w-28"
-                  variant="destructive"
-                  onClick={() => setOpenRejectConfirm(true)}
-                  disabled={!rejectRemark.trim() || rejectMutation.isPending}
-                >
-                  Reject
-                </Button>
+                <div className="shrink-0">
+                <CustomeTooltip
+                  value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                  truncateValue={
+                    <span className="inline-flex">
+                      <Button
+                        variant="destructive"
+                        disabled={
+                          shouldDisableBlockedActions ||
+                          !rejectRemark.trim() ||
+                          rejectMutation.isPending
+                        }
+                      >
+                        Reject
+                      </Button>
+                    </span>
+                  }
+                />
+                </div>
               </div>
 
               <div className="space-y-2">

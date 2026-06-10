@@ -34,7 +34,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createLead } from "@/api/leads";
 import { useAppSelector } from "@/redux/store";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
-import { FileUploadField } from "@/components/custom/file-upload";
+
 import MultipleSelector, { Option } from "@/components/ui/multiselect";
 import { canReassingLead } from "@/components/utils/privileges";
 import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUsers";
@@ -66,7 +66,13 @@ import {
 } from "@/components/ui/tooltip";
 import StructureQuantityCards from "@/components/sales-executive/Lead/structure-quantity-cards";
 import { getErrorMessage } from "@/lib/utils";
-import { Card, CardContent } from "@/components/ui/card";
+import { FileUploadField } from "@/components/custom/file-upload";
+
+const priorityOptions = [
+  { id: 1, label: "High", value: "High" },
+  { id: 2, label: "Medium", value: "Medium" },
+  { id: 3, label: "Low", value: "Low" },
+] as const;
 
 const formatFileDate = (date: Date) => {
   const year = date.getFullYear();
@@ -104,7 +110,7 @@ const renameLeadSitePhotoFiles = ({
     (file, index) =>
       new File(
         [file],
-        `P${index}-${safeClientName}-${safeTargetLabel}-${uploadDate}${getFileExtension(
+        `CSP${index + 1}-${safeClientName}-${safeTargetLabel}-${uploadDate}${getFileExtension(
           file.name,
         )}`,
         {
@@ -114,12 +120,6 @@ const renameLeadSitePhotoFiles = ({
       ),
   );
 };
-
-const priorityOptions = [
-  { id: 1, label: "High", value: "High" },
-  { id: 2, label: "Medium", value: "Medium" },
-  { id: 3, label: "Low", value: "Low" },
-] as const;
 
 // Schema for Create Lead - all fields required as per business logic
 const createFormSchema = (userType: string | undefined) => {
@@ -493,19 +493,18 @@ export default function LeadsGenerationForm({
   const vendorUserss = vendorUsers?.data?.sales_executives ?? [];
 
   const createLeadMutation = useMutation({
-    mutationFn: ({ payload, files }: { payload: any; files: File[] }) =>
-      createLead(payload, files),
+    mutationFn: ({
+      payload,
+      files,
+    }: {
+      payload: any;
+      files: File[];
+    }) => createLead(payload, files),
     onSuccess: () => {
       toastManager.add({ title: "Lead created successfully!", type: "success" });
-      queryClient.invalidateQueries({
-        queryKey: ["leadStats", vendorId, userId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["universal-stage-leads"],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["vendorUserLeads", vendorId, userId],
-      });
+      queryClient.invalidateQueries({ queryKey: ["leadStats", vendorId, userId] });
+      queryClient.invalidateQueries({ queryKey: ["universal-stage-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["vendorUserLeads", vendorId, userId] });
       form.reset();
       setFiles([]);
       onClose();
@@ -788,26 +787,42 @@ export default function LeadsGenerationForm({
       // Assignment logic based on user role
       ...(canReassingLead(userType)
         ? {
-            // Admin/Super-admin can assign to anyone
-            assign_to: values.assign_to ? Number(values.assign_to) : undefined,
-            assigned_by: createdBy ? createdBy : undefined,
-          }
+          // Admin/Super-admin can assign to anyone
+          assign_to: values.assign_to ? Number(values.assign_to) : undefined,
+          assigned_by: createdBy ? createdBy : undefined,
+        }
         : {
-            // Sales executive self-assigns
-            assign_to: createdBy,
-            assigned_by: createdBy,
-          }),
+          // Sales executive self-assigns
+          assign_to: createdBy,
+          assigned_by: createdBy,
+        }),
     };
+
+    // ── Pre-flight validation ──────────────────────────────────────────────
+    if (files.length > 40) {
+      toastManager.add({
+        title: "Maximum 40 files allowed. Please remove some files.",
+        type: "error",
+      });
+      return;
+    }
+    const totalSizeBytes = files.reduce((sum, f) => sum + f.size, 0);
+    const MAX_TOTAL_MB = 400;
+    if (totalSizeBytes > MAX_TOTAL_MB * 1024 * 1024) {
+      toastManager.add({
+        title: `Total upload size exceeds ${MAX_TOTAL_MB}MB limit.`,
+        type: "error",
+      });
+      return;
+    }
 
     createLeadMutation.mutate(
       { payload, files: buildRenamedSitePhotoFiles() },
       {
         onSuccess: () => {
-          // ✅ Refetch lead count after success
           queryClient.invalidateQueries({
             queryKey: ["leadStats", vendorId, userId],
           });
-
           router.push("/dashboard/leads/leadstable");
         },
       }
@@ -880,13 +895,13 @@ export default function LeadsGenerationForm({
         : undefined,
       ...(canReassingLead(userType)
         ? {
-            assign_to: values.assign_to ? Number(values.assign_to) : undefined,
-            assigned_by: createdBy,
-          }
+          assign_to: values.assign_to ? Number(values.assign_to) : undefined,
+          assigned_by: createdBy,
+        }
         : {
-            assign_to: createdBy,
-            assigned_by: createdBy,
-          }),
+          assign_to: createdBy,
+          assigned_by: createdBy,
+        }),
       is_draft: true,
     };
 
@@ -995,7 +1010,7 @@ export default function LeadsGenerationForm({
                       handleDuplicateCheck("contact_no");
                       handleSimilarLeadCheck();
                     }}
-                    validateIndianNumber={true}
+                     validateIndianNumber={true}
                   />
                 </FormControl>
                 {/* <FormDescription className="text-xs">
@@ -1336,8 +1351,8 @@ export default function LeadsGenerationForm({
                 : isKitchenStructureSingleSelect && shouldShowMaxTooltip
                 ? "Kitchen allows only 1 furniture structure."
                 : shouldShowMaxTooltip
-                ? "Maximum limit is 10 per item."
-                : "";
+                  ? "Maximum limit is 10 per item."
+                  : "";
 
               return (
                 <FormItem data-name={field?.name || ""} >
@@ -1570,7 +1585,13 @@ export default function LeadsGenerationForm({
                     </div>
                   </div>
                 ) : (
-                  <FileUploadField value={files} onChange={setFiles} />
+                  <FileUploadField
+                  value={files}
+                  onChange={setFiles}
+                  multiple={true}
+                  maxFiles={40}
+                  maxSizeMB={400}
+                />
                 )}
               </FormControl>
               <FormDescription className="text-xs">
@@ -1595,8 +1616,8 @@ export default function LeadsGenerationForm({
                 {duplicatePrompt.field === "contact_no"
                   ? "phone number"
                   : duplicatePrompt.field === "alt_contact_no"
-                  ? "alternate phone number"
-                  : "email"}{" "}
+                    ? "alternate phone number"
+                    : "email"}{" "}
                 already exists for another lead.
               </AlertDialogDescription>
               {duplicatePrompt.lead && (
@@ -1657,7 +1678,7 @@ export default function LeadsGenerationForm({
             </AlertDialogContent>
           </AlertDialog>
 
-          {/* Create Lead */}
+          {/* Create Lead Button */}
           <Button
             type="submit"
             className="text-sm"

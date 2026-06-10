@@ -30,6 +30,8 @@ import { useAppSelector } from "@/redux/store";
 import BaseModal from "@/components/utils/baseModal";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import { useSearchParams } from "next/navigation";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useLeadById } from "@/hooks/useLeadsQueries";
 
 interface OrderLoginModalProps {
   open: boolean;
@@ -65,13 +67,15 @@ export default function OrderLoginModal({
   markedAsCompletedDate,
 }: OrderLoginModalProps) {
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
-  const customPrivilegeCodes = useAppSelector(
-    (s) => s.customPrivileges.codes,
-  );
+  const customPrivilegeCodes = useAppSelector((s) => s.customPrivileges.codes);
+  const userIdRedux = useAppSelector((s) => s.auth.user?.id);
   const searchParams = useSearchParams();
 
   const instanceFromUrl = searchParams.get("instance_id");
   const instanceId = instanceFromUrl ? Number(instanceFromUrl) : undefined;
+
+  const { data: leadResponse } = useLeadById(leadId, vendorId, userIdRedux);
+  const lead = leadResponse?.data?.lead;
 
   const queryClient = useQueryClient();
   const { data: vendors } = useCompanyVendors(vendorId);
@@ -95,6 +99,13 @@ export default function OrderLoginModal({
   const [remarkModalOpen, setRemarkModalOpen] = useState(false);
   const [pendingVendorId, setPendingVendorId] = useState<number | null>(null);
 
+  // ✅ Lead block access control
+  const { blockedTooltip, shouldDisableBlockedActions } = useLeadAccessControl({
+    leadId,
+    userType,
+    lead,
+  });
+
   const [productionReadyDate, setProductionReadyDate] = useState<
     string | undefined
   >(productionDate || undefined);
@@ -111,7 +122,6 @@ export default function OrderLoginModal({
     }
   }, [productionDate]);
 
-  // ✅ Sync selected vendor once vendors are loaded or currentCompanyVendorId changes
   useEffect(() => {
     if (currentCompanyVendorId) {
       setSelectedVendorId(currentCompanyVendorId);
@@ -148,7 +158,10 @@ export default function OrderLoginModal({
         queryKey: ["orderLoginByLead", vendorId, leadId, instanceId],
       });
     } catch (err: any) {
-      toastManager.add({ title: err?.message || "Failed to update vendor", type: "error" });
+      toastManager.add({
+        title: err?.message || "Failed to update vendor",
+        type: "error",
+      });
     }
   };
 
@@ -174,20 +187,24 @@ export default function OrderLoginModal({
         hour12: true,
       });
 
-      toastManager.add({ title: `Marked as ready at ${formattedTime}`, type: "success" });
+      toastManager.add({
+        title: `Marked as ready at ${formattedTime}`,
+        type: "success",
+      });
       setIsCompleted(true);
 
       queryClient.invalidateQueries({
         queryKey: ["orderLoginByLead", vendorId, leadId, instanceId],
       });
-      queryClient.invalidateQueries({
-        queryKey: ["leadById", leadId],
-      });
+      queryClient.invalidateQueries({ queryKey: ["leadById", leadId] });
       queryClient.invalidateQueries({
         queryKey: ["postProductionReady", vendorId, leadId],
       });
     } catch (err: any) {
-      toastManager.add({ title: err?.message || "Failed to mark as completed", type: "error" });
+      toastManager.add({
+        title: err?.message || "Failed to mark as completed",
+        type: "error",
+      });
     }
   };
 
@@ -229,13 +246,14 @@ export default function OrderLoginModal({
           },
         ],
       });
-      toastManager.add({ title: "Production ready date updated successfully!", type: "success" });
+      toastManager.add({
+        title: "Production ready date updated successfully!",
+        type: "success",
+      });
       queryClient.invalidateQueries({
         queryKey: ["orderLoginByLead", vendorId, leadId, instanceId],
       });
-      queryClient.invalidateQueries({
-        queryKey: ["leadById", leadId],
-      });
+      queryClient.invalidateQueries({ queryKey: ["leadById", leadId] });
       queryClient.invalidateQueries({
         queryKey: ["latestOrderLogin", vendorId, leadId],
       });
@@ -243,7 +261,10 @@ export default function OrderLoginModal({
         queryKey: ["postProductionReady", vendorId, leadId],
       });
     } catch (err: any) {
-      toastManager.add({ title: err?.message || "Failed to update production ready date", type: "error" });
+      toastManager.add({
+        title: err?.message || "Failed to update production ready date",
+        type: "error",
+      });
     }
   };
 
@@ -259,8 +280,11 @@ export default function OrderLoginModal({
           "production.production.under_production.expected_ready_date_of_order_action",
         )
       : canWorkAndView;
-  const vendorTooltipMessage =
-    canWorkAndView && !isCompleted
+
+  // ✅ Vendor tooltip — blocked takes highest priority
+  const vendorTooltipMessage = shouldDisableBlockedActions
+    ? blockedTooltip
+    : canWorkAndView && !isCompleted
       ? undefined
       : isPreProd
         ? "Pre-prod users can only view this section."
@@ -269,6 +293,54 @@ export default function OrderLoginModal({
           : !canWorkAndView
             ? "You do not have access to assign or change vendors."
             : "You cannot change the vendor after this order-login is marked as ready.";
+
+  // ✅ Date tooltip — blocked takes highest priority
+  const dateTooltipMessage = shouldDisableBlockedActions
+    ? blockedTooltip
+    : !canTakeUnderProductionAction
+      ? "You do not have permission to take action on this."
+      : isPreProd
+        ? "Pre-prod users can only view this section."
+        : !canWorkAndView && userType === "factory"
+          ? "This lead stage has progressed. Factory users cannot modify this section."
+          : !canWorkAndView
+            ? "You do not have access to change or set production-ready dates."
+            : isCompleted
+              ? "You cannot change the date after this order-login is marked as ready."
+              : "Select a production ready date.";
+
+  // ✅ Mark as Ready tooltip — blocked takes highest priority
+  const markAsReadyTooltipMessage = shouldDisableBlockedActions
+    ? blockedTooltip
+    : !canTakeUnderProductionAction
+      ? "You do not have permission to take action on this."
+      : isPreProd
+        ? "Pre-prod users can only view this section."
+        : !canWorkAndView && userType === "factory"
+          ? "This lead stage has progressed. Factory users cannot modify this section."
+          : !canWorkAndView
+            ? "You do not have access to mark this order-login as completed."
+            : isCompleted
+              ? "This order-login is already completed."
+              : !productionReadyDate
+                ? "Please set the Production Ready Date before marking as completed."
+                : !isProductionDateReached
+                  ? "You can mark as completed only once the Production Ready Date has arrived."
+                  : "Mark this order-login as completed.";
+
+  // ✅ Whether each action is actually disabled
+  const isVendorDisabled =
+    shouldDisableBlockedActions || !canWorkAndView || isCompleted;
+
+  const isDateDisabled =
+    shouldDisableBlockedActions || isCompleted || !canTakeUnderProductionAction;
+
+  const isMarkAsReadyDisabled =
+    shouldDisableBlockedActions ||
+    isCompleted ||
+    !productionReadyDate ||
+    !isProductionDateReached ||
+    !canTakeUnderProductionAction;
 
   return (
     <>
@@ -285,7 +357,7 @@ export default function OrderLoginModal({
           transition={{ duration: 0.3 }}
           className="grid grid-cols-1 md:grid-cols-2 gap-6 p-5"
         >
-          {/* LEFT */}
+          {/* ── LEFT ───────────────────────────────────────────────────────── */}
           <div className="space-y-5 h-full flex flex-col justify-between">
             <div className="flex flex-col gap-2">
               <h2 className="text-md font-semibold text-gray-900 dark:text-gray-300">
@@ -358,17 +430,18 @@ export default function OrderLoginModal({
             )}
           </div>
 
-          {/* RIGHT */}
+          {/* ── RIGHT ──────────────────────────────────────────────────────── */}
           <div className="border-l border-gray-200 dark:border-gray-800 pl-6 flex flex-col gap-4">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-300">
               Change {title} Vendor
             </h3>
 
+            {/* ✅ Vendor picker — blocked tooltip overrides all */}
             <CustomeTooltip
               truncateValue={
                 <div
                   className={
-                    isCompleted
+                    isVendorDisabled
                       ? "opacity-70 pointer-events-none w-full"
                       : "w-full"
                   }
@@ -380,9 +453,9 @@ export default function OrderLoginModal({
                         label: v.company_name,
                       })) ?? []
                     }
-                    disabled={!canWorkAndView}
+                    disabled={isVendorDisabled}
                     value={selectedVendorId || undefined}
-                    onChange={isCompleted ? () => {} : handleVendorChange}
+                    onChange={isVendorDisabled ? () => {} : handleVendorChange}
                     placeholder="Search vendor..."
                     emptyLabel="Select vendor"
                   />
@@ -392,7 +465,7 @@ export default function OrderLoginModal({
             />
 
             <p className="text-xs text-muted-foreground leading-relaxed">
-              If you change the vendor, you’ll be prompted to enter a remark
+              If you change the vendor, you'll be prompted to enter a remark
               explaining the reason.
             </p>
 
@@ -407,10 +480,9 @@ export default function OrderLoginModal({
               </div>
             )}
 
-            {/* Divider */}
             <Separator orientation="horizontal" className="my-3" />
 
-            {/* Production Ready Date */}
+            {/* ✅ Production Ready Date — blocked tooltip overrides all */}
             <div className="flex flex-col gap-2">
               <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-300">
                 Production Ready Date for {title}
@@ -420,35 +492,19 @@ export default function OrderLoginModal({
                 truncateValue={
                   <div
                     className={
-                      isCompleted || !canTakeUnderProductionAction
+                      isDateDisabled
                         ? "opacity-70 pointer-events-none w-full"
                         : "w-full"
                     }
                   >
                     <CustomeDatePicker
                       value={productionReadyDate}
-                      onChange={
-                        isCompleted || !canTakeUnderProductionAction
-                          ? () => {}
-                          : handleDateChange
-                      }
+                      onChange={isDateDisabled ? () => {} : handleDateChange}
                       restriction="futureOnly"
                     />
                   </div>
                 }
-                value={
-                  !canTakeUnderProductionAction
-                    ? "You do not have permission to take action on this."
-                    : isPreProd
-                    ? "Pre-prod users can only view this section."
-                    : !canWorkAndView && userType === "factory"
-                      ? "This lead stage has progressed. Factory users cannot modify this section."
-                    : !canWorkAndView
-                        ? "You do not have access to change or set production-ready dates."
-                        : isCompleted
-                          ? "You cannot change the date after this order-login is marked as ready."
-                        : "Select a production ready date."
-                }
+                value={dateTooltipMessage}
               />
 
               <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -457,56 +513,28 @@ export default function OrderLoginModal({
               </p>
             </div>
 
-            {/* Divider */}
             <Separator orientation="horizontal" className="my-3" />
 
-            {/* Mark as Completed */}
+            {/* ✅ Mark as Ready button — blocked tooltip overrides all */}
             <div>
               <CustomeTooltip
                 truncateValue={
                   <div
                     className={`w-full ${
-                      isCompleted ||
-                      !productionReadyDate ||
-                      !canTakeUnderProductionAction
-                        ? "opacity-70 pointer-events-none"
-                        : ""
+                      isMarkAsReadyDisabled ? "opacity-70 pointer-events-none" : ""
                     }`}
                   >
                     <Button
                       onClick={handleMarkAsCompleted}
-                      disabled={
-                        isCompleted ||
-                        !productionReadyDate ||
-                        !isProductionDateReached ||
-                        !canTakeUnderProductionAction
-                      }
-                      className={`w-full flex items-center justify-center gap-2 ${
-                        isCompleted ? "" : ""
-                      }`}
+                      disabled={isMarkAsReadyDisabled}
+                      className="w-full flex items-center justify-center gap-2"
                     >
                       <CheckCircle2 className="w-4 h-4" />
                       {isCompleted ? "Marked as Ready" : "Mark as Ready"}
                     </Button>
                   </div>
                 }
-                value={
-                  !canTakeUnderProductionAction
-                    ? "You do not have permission to take action on this."
-                    : isPreProd
-                    ? "Pre-prod users can only view this section."
-                    : !canWorkAndView && userType === "factory"
-                      ? "This lead stage has progressed. Factory users cannot modify this section."
-                      : !canWorkAndView
-                        ? "You do not have access to mark this order-login as completed."
-                        : isCompleted
-                          ? "This order-login is already completed."
-                        : !productionReadyDate
-                          ? "Please set the Production Ready Date before marking as completed."
-                          : !isProductionDateReached
-                            ? "You can mark as completed only once the Production Ready Date has arrived."
-                            : "Mark this order-login as completed."
-                }
+                value={markAsReadyTooltipMessage}
               />
 
               {isCompleted && (
@@ -529,6 +557,7 @@ export default function OrderLoginModal({
           </div>
         </motion.div>
       </BaseModal>
+
       {/* Remark Modal */}
       <VendorChangeRemarkModal
         open={remarkModalOpen}

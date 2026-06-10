@@ -44,6 +44,8 @@ import {
   History,
   IndianRupee,
   FolderOpen,
+  LockOpen,
+  Lock,
 } from "lucide-react";
 
 import {
@@ -97,7 +99,8 @@ import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 import { useChatTabFromUrl } from "@/hooks/useChatTabFromUrl";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
-
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useBlockLead, useUnblockLead } from "@/hooks/useLeadsQueries";
 export default function ProductionLeadDetails() {
   const router = useRouter();
   const { lead: leadId, remark } = useParams();
@@ -155,27 +158,51 @@ export default function ProductionLeadDetails() {
     validInstanceId ?? undefined,
   );
 
+
+
+  const {
+    isLeadBlocked,
+    blockedTooltip,
+    shouldDisableBlockedActions,
+  } = useLeadAccessControl({
+    leadId: leadIdNum,
+    userType,
+    lead,
+  });
+
+  const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
+
+  const blockLeadMutation = useBlockLead();
+  const unblockLeadMutation = useUnblockLead();
+
+  const isBlockActionPending =
+    blockLeadMutation.isPending ||
+    unblockLeadMutation.isPending;
+
+
+
+
   const canMoveReadyToDispatchStage =
     userType === "custom"
       ? customPrivilegeCodes.includes(
-          "production.production.ready_to_dispatch.enable_disable",
-        )
+        "production.production.ready_to_dispatch.enable_disable",
+      )
       : canMoveToReadyToDispatch(effectiveUserType);
   const canUpdateExpectedDate =
     canViewAndWorkEditProcutionExpectedDate(effectiveUserType);
   const canViewMarkCompletedButton =
     userType === "custom"
       ? customPrivilegeCodes.includes(
-          "production.production.mark_as_completed.enable_disable",
-        )
+        "production.production.mark_as_completed.enable_disable",
+      )
       : effectiveUserType?.toLowerCase() === "factory" ||
-        effectiveUserType?.toLowerCase() === "super-admin";
+      effectiveUserType?.toLowerCase() === "super-admin";
 
   const canShowTodoTab =
     userType === "custom"
       ? customPrivilegeCodes.some((code) =>
-          code.startsWith("production.production."),
-        )
+        code.startsWith("production.production."),
+      )
       : canAccessTodoTaskTabProductionStage(effectiveUserType);
 
   const latestOrderLoginDate =
@@ -187,8 +214,8 @@ export default function ProductionLeadDetails() {
 
   const currentInstance = validInstanceId
     ? instances.find(
-        (instance: any) => Number(instance?.id) === validInstanceId,
-      )
+      (instance: any) => Number(instance?.id) === validInstanceId,
+    )
     : null;
 
   useEffect(() => {
@@ -208,8 +235,8 @@ export default function ProductionLeadDetails() {
     const expectedDate = validInstanceId
       ? currentInstance?.production_erd_date
         ? new Date(currentInstance.production_erd_date)
-            .toISOString()
-            .split("T")[0]
+          .toISOString()
+          .split("T")[0]
         : undefined
       : lead?.expected_order_login_ready_date
         ? new Date(lead.expected_order_login_ready_date)
@@ -261,26 +288,26 @@ export default function ProductionLeadDetails() {
   const canViewPayment =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.payment_information.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.payment_information.enable_disable",
+      )
       : canViewPaymentTab(effectiveUserType ?? "");
   const canViewSiteHistory =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.site_history.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.site_history.enable_disable",
+      )
       : canViewSiteHistoryTab(effectiveUserType ?? "");
   const canViewChats =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.chat.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.chat.enable_disable",
+      )
       : true;
   const canViewDocuments =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.some((code) =>
-          code.startsWith("leads.open_leads.details_of_lead.documents_section."),
-        )
+        code.startsWith("leads.open_leads.details_of_lead.documents_section."),
+      )
       : true;
 
   const productionDefaultTab = handledproductionDefaultTab(
@@ -289,8 +316,8 @@ export default function ProductionLeadDetails() {
   const canViewProductionTabByDefault =
     userType === "custom"
       ? customPrivilegeCodes.some((code) =>
-          code.startsWith("production.production."),
-        )
+        code.startsWith("production.production."),
+      )
       : productionDefaultTab;
 
   const deleteLeadMutation = useDeleteLead();
@@ -313,15 +340,15 @@ export default function ProductionLeadDetails() {
   const instanceSuffix =
     validInstanceId && totalInstanceCount > 1
       ? instances.find(
-          (instance: any) => Number(instance?.id) === validInstanceId,
-        )?.quantity_index
+        (instance: any) => Number(instance?.id) === validInstanceId,
+      )?.quantity_index
       : null;
   const displayLeadCode =
     leadCode && instanceSuffix ? `${leadCode}.${instanceSuffix}` : leadCode;
   const instanceName = validInstanceId
     ? (instances.find(
-        (instance: any) => Number(instance?.id) === validInstanceId,
-      )?.title ?? "")
+      (instance: any) => Number(instance?.id) === validInstanceId,
+    )?.title ?? "")
     : "";
 
   const incompleteInstances = instances.filter(
@@ -372,15 +399,14 @@ export default function ProductionLeadDetails() {
   const productionCompletedTooltip = !validInstanceId
     ? "instance_id is required to mark production completed."
     : currentInstance?.is_production_completed
-      ? `Production already completed for this instance.${
-          incompleteTitles.length
-            ? ` Pending Instances: ${incompleteTitles.join(", ")}`
-            : ""
-        }`
+      ? `Production already completed for this instance.${incompleteTitles.length
+        ? ` Pending Instances: ${incompleteTitles.join(", ")}`
+        : ""
+      }`
       : missingDocsOrRemarks.length || missingPrerequisites.length
         ? `Pending: ${[...missingDocsOrRemarks, ...missingPrerequisites].join(
-            ", ",
-          )}`
+          ", ",
+        )}`
         : incompleteTitles.length
           ? `Other pending instances: ${incompleteTitles.join(", ")}`
           : "Ready to mark production completed.";
@@ -458,6 +484,42 @@ export default function ProductionLeadDetails() {
     setOpenDelete(false);
   };
 
+
+  const handleToggleLeadBlock = () => {
+    if (!vendorId || !userId || !leadIdNum) return;
+
+    const mutation = isLeadBlocked
+      ? unblockLeadMutation
+      : blockLeadMutation;
+
+    mutation.mutate(
+      {
+        vendorId,
+        leadId: leadIdNum,
+        updatedBy: userId,
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: isLeadBlocked
+              ? "Lead unblocked successfully!"
+              : "Lead blocked successfully!",
+            type: "success",
+          });
+
+          setOpenBlockConfirm(false);
+
+          queryClient.invalidateQueries({
+            queryKey: ["leadBlockStatus", vendorId, leadIdNum],
+          });
+
+          queryClient.invalidateQueries({
+            queryKey: ["leadById", leadIdNum],
+          });
+        },
+      },
+    );
+  };
   if (isLoading && !lead) {
     return <p className="p-6">Loading production lead details...</p>;
   }
@@ -484,14 +546,15 @@ export default function ProductionLeadDetails() {
     userType,
   });
 
-  const disabledReason = !canUpdateExpectedDate
-    ? "You do not have permission to update this date."
-    : completeness?.any_exists
-      ? "Cannot change the date because lead is currently in post-production."
-      : !postProductionStatus?.all_order_login_dates_added
-        ? "Please ensure all Order Login expected completion dates are added before setting this."
-        : undefined;
-
+  const disabledReason = shouldDisableBlockedActions
+    ? blockedTooltip
+    : !canUpdateExpectedDate
+      ? "You do not have permission to update this date."
+      : completeness?.any_exists
+        ? "Cannot change the date because lead is currently in post-production."
+        : !postProductionStatus?.all_order_login_dates_added
+          ? "Please ensure all Order Login expected completion dates are added before setting this."
+          : undefined;
   return (
     <>
       {/* Header */}
@@ -553,7 +616,31 @@ export default function ProductionLeadDetails() {
         <div className="flex w-full items-center justify-end gap-2 md:w-auto">
           {canViewMarkCompletedButton &&
             canMoveReadyToDispatchStage &&
-            (allInstancesCompleted ? (
+            (shouldDisableBlockedActions ? (
+              <CustomeTooltip
+                value={blockedTooltip}
+                truncateValue={
+                  allInstancesCompleted ? (
+                    <Button
+                      size="sm"
+                      className="hidden md:flex"
+                      variant="default"
+                      disabled
+                    >
+                      Ready To Dispatch
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      className="hidden md:flex"
+                      disabled
+                    >
+                      Mark Completed
+                    </Button>
+                  )
+                }
+              />
+            ) : allInstancesCompleted ? (
               <Button
                 size="sm"
                 className="hidden md:flex"
@@ -579,6 +666,7 @@ export default function ProductionLeadDetails() {
                         if (!canMarkProductionCompleted) {
                           return;
                         }
+
                         if (!vendorId || !leadIdNum || !userId) {
                           toastManager.add({
                             title: "Missing vendor or user info!",
@@ -586,10 +674,12 @@ export default function ProductionLeadDetails() {
                           });
                           return;
                         }
+
                         try {
                           await markProductionCompletedMutation.mutateAsync({
                             updatedBy: userId,
                           });
+
                           toastManager.add({
                             title: "Production marked completed!",
                             type: "success",
@@ -644,7 +734,20 @@ export default function ProductionLeadDetails() {
 
               {canViewMarkCompletedButton &&
                 canMoveReadyToDispatchStage &&
-                (allInstancesCompleted ? (
+                (shouldDisableBlockedActions ? (
+                  // Lead block handling added for DropdownMenu action
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem className="md:hidden" disabled>
+                        <Truck size={20} />
+                        {allInstancesCompleted
+                          ? "Ready To Dispatch"
+                          : "Mark Completed"}
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : allInstancesCompleted ? (
                   <DropdownMenuItem
                     className="md:hidden"
                     onClick={() => setOpenReadyToDispatch(true)}
@@ -709,37 +812,106 @@ export default function ProductionLeadDetails() {
                 ))}
 
               {/* --- NEW: Lead Status submenu (Mark On Hold / Mark As Lost) */}
-              <DropdownMenuItem
-                onSelect={() => {
-                  setActivityType("onHold");
-                  setActivityModalOpen(true);
-                }}
-              >
-                <Clock className=" h-4 w-4" />
-                Mark On Hold
-              </DropdownMenuItem>
-
-              {canEdit && (
-                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                  <SquarePen size={20} />
-                  Edit
+              {/* Lead block handling added for DropdownMenu action */}
+              {shouldDisableBlockedActions ? (
+                <CustomeTooltip
+                  value={blockedTooltip}
+                  truncateValue={
+                    <DropdownMenuItem disabled>
+                      <Clock className=" h-4 w-4" />
+                      Mark On Hold
+                    </DropdownMenuItem>
+                  }
+                />
+              ) : (
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setActivityType("onHold");
+                    setActivityModalOpen(true);
+                  }}
+                >
+                  <Clock className=" h-4 w-4" />
+                  Mark On Hold
                 </DropdownMenuItem>
               )}
 
+              {canEdit && (
+                // Lead block handling added for DropdownMenu action
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <SquarePen size={20} />
+                        Edit
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                    <SquarePen size={20} />
+                    Edit
+                  </DropdownMenuItem>
+                )
+              )}
+
               {canReassign && (
-                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                  <Users size={20} />
-                  Reassign Lead
+                // Lead block handling added for DropdownMenu action
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <Users size={20} />
+                        Reassign Lead
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                    <Users size={20} />
+                    Reassign Lead
+                  </DropdownMenuItem>
+                )
+              )}
+
+              {userType?.toLowerCase() === "super-admin" && (
+                <DropdownMenuItem
+                  onSelect={() => setOpenBlockConfirm(true)}
+                  disabled={isBlockActionPending}
+                >
+                  {isLeadBlocked ? (
+                    <LockOpen className="h-4 w-4" />
+                  ) : (
+                    <Lock className="h-4 w-4" />
+                  )}
+
+                  {isLeadBlocked
+                    ? "Unblock Lead"
+                    : "Block Lead"}
                 </DropdownMenuItem>
               )}
 
               {canDelete && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setOpenDelete(true)}>
-                    <XCircle size={20} className="text-red-500" />
-                    Delete
-                  </DropdownMenuItem>
+                  {/* Lead block handling added for DropdownMenu action */}
+                  {shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <XCircle size={20} className="text-red-500" />
+                          Delete
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem onClick={() => setOpenDelete(true)}>
+                      <XCircle size={20} className="text-red-500" />
+                      Delete
+                    </DropdownMenuItem>
+                  )}
                 </>
               )}
             </DropdownMenuContent>
@@ -819,12 +991,12 @@ export default function ProductionLeadDetails() {
                   ? currentInstance?.production_erd_date
                   : lead?.expected_order_login_ready_date) ||
                 (postProductionStatus?.all_order_login_dates_added &&
-                latestOrderLoginDate
+                  latestOrderLoginDate
                   ? (() => {
-                      const baseDate = new Date(latestOrderLoginDate);
-                      baseDate.setDate(baseDate.getDate() + 3); // ⏱ Add 3-day buffer
-                      return baseDate.toISOString().split("T")[0];
-                    })()
+                    const baseDate = new Date(latestOrderLoginDate);
+                    baseDate.setDate(baseDate.getDate() + 3); // ⏱ Add 3-day buffer
+                    return baseDate.toISOString().split("T")[0];
+                  })()
                   : undefined)
               }
               onChange={handleExpectedDateChange}
@@ -1055,6 +1227,48 @@ export default function ProductionLeadDetails() {
         }}
         loading={updateStatusMutation.isPending}
       />
+
+
+
+      <AlertDialog
+        open={openBlockConfirm}
+        onOpenChange={setOpenBlockConfirm}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isLeadBlocked
+                ? "Unblock Lead?"
+                : "Block Lead?"}
+            </AlertDialogTitle>
+
+            <AlertDialogDescription>
+              {isLeadBlocked
+                ? "This will unblock the lead and allow normal actions."
+                : "This will block the lead and disable lead actions."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={isBlockActionPending}
+            >
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={handleToggleLeadBlock}
+              disabled={isBlockActionPending}
+            >
+              {isBlockActionPending
+                ? "Processing..."
+                : isLeadBlocked
+                  ? "Unblock"
+                  : "Block"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

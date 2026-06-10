@@ -1293,13 +1293,6 @@ export const useUpdateUsableHandover = () => {
         queryKey: ["usableHandover", Number(vendorId), Number(leadId)],
       });
     },
-
-    onError: (error: AxiosError<ApiErrorResponse>) => {
-      toastManager.add({
-        title: error?.response?.data?.message || "Failed to upload files",
-        type: "error",
-      });
-    },
   });
 };
 

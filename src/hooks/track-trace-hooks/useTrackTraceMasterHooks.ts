@@ -22,6 +22,9 @@ import {
 } from "@/types/track-trace";
 
 
+import { getTrackTraceVendorConfigApi } from "@/api/trackAndTrace/track-trace-master";
+import { TrackTraceVendorConfig } from "@/types/track-trace";
+
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -169,5 +172,16 @@ export const useAssignedUsersByMachine = (machineId?: number) => {
     staleTime: 5 * 60 * 1000,
 
     refetchOnWindowFocus: false,
+  });
+};
+
+
+export const useTrackTraceVendorConfig = (vendorId?: number) => {
+  return useQuery<TrackTraceVendorConfig>({
+    queryKey: ["track-trace-vendor-config", vendorId],
+    queryFn: () => getTrackTraceVendorConfigApi(vendorId!),
+    enabled: !!vendorId,
+    staleTime: 1000 * 60 * 5,
+    retry: 1,
   });
 };

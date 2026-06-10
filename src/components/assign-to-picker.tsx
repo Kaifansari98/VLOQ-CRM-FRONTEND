@@ -137,7 +137,6 @@ export default function AssignToPicker({
 
         {!disabled && (
           <PopoverContent
-            portalled={false}
             className="border-input w-[var(--radix-popper-anchor-width)] min-w-0 max-w-[var(--radix-popper-anchor-width)] overflow-hidden p-0"
             align="start"
           >

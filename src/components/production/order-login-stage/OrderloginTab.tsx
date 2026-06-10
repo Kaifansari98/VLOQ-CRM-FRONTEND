@@ -28,10 +28,18 @@ import {
   useInstanceStage,
   useLeadStatus,
 } from "@/hooks/designing-stage/designing-leads-hooks";
-import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
+import {
+  useLeadProductStructureInstances,
+  useLeadSuperAdminApprovalLockIns,
+} from "@/hooks/useLeadsQueries";
 import { canAccessAddNewSectionButton } from "@/components/utils/privileges";
 import FileBreakUpField from "./FileBreakUpField";
 import AddSectionModal from "./AddSectionModal";
+
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useLeadById } from "@/hooks/useLeadsQueries";
+import CustomeTooltip from "@/components/custom-tooltip";
+
 
 interface OrderLoginTabProps {
   leadId: number;
@@ -71,6 +79,20 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
     leadId,
     instanceId!,
   );
+
+
+  const { data: leadResponse } = useLeadById(
+    leadId,
+    vendorId,
+    userId,
+  );
+  const {
+    data: orderLoginLockIns = [],
+    isLoading: orderLoginLockInsLoading,
+  } = useLeadSuperAdminApprovalLockIns(vendorId, leadId, "order_login");
+
+  const lead = leadResponse?.data?.lead;
+  const isSmallOrderRequestLead = lead?.is_small_order_request === true;
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const { data: instancesResponse } = useLeadProductStructureInstances(leadId, vendorId);
 
@@ -112,6 +134,16 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   // ✅ New: confirmation dialog for "Order Login Completed"
   const [confirmComplete, setConfirmComplete] = useState(false);
 
+
+  const {
+    blockedTooltip,
+    shouldDisableBlockedActions,
+  } = useLeadAccessControl({
+    leadId,
+    userType,
+    lead,
+  });
+
   // Debounce timers for description auto-save
   const descTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
@@ -122,6 +154,8 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
     ? (instanceStageData?.derived_stage ?? leadData?.status ?? "")
     : (leadData?.status ?? "");
 
+
+
   // ─────────────────────────────────────────────────────────
   // ROLE HELPERS
   // ─────────────────────────────────────────────────────────
@@ -131,8 +165,8 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   const canAccessOrderLoginDetailsForCustomUser =
     role === "custom"
       ? customPrivilegeCodes.includes(
-          "production.order_login.order_login_details.enable_disable",
-        )
+        "production.order_login.order_login_details.enable_disable",
+      )
       : true;
   const isBackendLockedAfterOrderLogin = isBackend && isOrderLoginMarked;
 
@@ -189,13 +223,28 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
     })) || [];
 
   // Titles
-  const mandatoryTitles = ["Carcass", "Shutter", "Stock Hardware"];
-  const defaultTitles = [
-    ...mandatoryTitles,
+  const legacyDefaultTitles = [
+    "Carcass",
+    "Shutter",
+    "Stock Hardware",
     "Special Hardware",
     "Profile Shutter",
     "Outsourced Shutter",
     "Glass Material",
+  ];
+  const mandatoryTitles = isSmallOrderRequestLead
+    ? []
+    : ["Carcass", "Shutter", "Stock Hardware"];
+  const defaultTitles = [
+    ...mandatoryTitles,
+    ...(isSmallOrderRequestLead
+      ? []
+      : [
+          "Special Hardware",
+          "Profile Shutter",
+          "Outsourced Shutter",
+          "Glass Material",
+        ]),
   ];
 
   const defaultCards = useMemo(
@@ -210,9 +259,12 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   const extraFromApi = useMemo(
     () =>
       (orderLoginData || []).filter(
-        (i: any) => !defaultTitles.includes(i.item_type),
+        (i: any) =>
+          isSmallOrderRequestLead
+            ? !legacyDefaultTitles.includes(i.item_type)
+            : !defaultTitles.includes(i.item_type),
       ),
-    [orderLoginData],
+    [defaultTitles, isSmallOrderRequestLead, orderLoginData],
   );
 
   console.log("order login data: ", orderLoginData)
@@ -245,6 +297,32 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   // "Order Login Completed" button is ONLY VISIBLE when isValid = true.
   // ─────────────────────────────────────────────────────────
   const mandatoryValidation = useMemo(() => {
+    if (isSmallOrderRequestLead) {
+      const hasAtLeastOneFilledCard = (orderLoginData || []).some((item: any) => {
+        if (legacyDefaultTitles.includes(item.item_type)) {
+          return false;
+        }
+
+        const local = breakups[item.item_type] ?? {
+          item_desc: item.item_desc || "",
+          company_vendor_id: item.company_vendor_id || null,
+        };
+        const hasVendor = !!local.company_vendor_id;
+        const normalizedDescription = local.item_desc?.trim();
+        const hasDesc =
+          !!normalizedDescription &&
+          normalizedDescription.toLowerCase() !== "n/a";
+        return hasVendor && hasDesc;
+      });
+
+      return {
+        isValid: hasAtLeastOneFilledCard,
+        missingFields: hasAtLeastOneFilledCard
+          ? []
+          : ["Add and fill at least one order login section"],
+      };
+    }
+
     const missing: string[] = [];
 
     mandatoryTitles.forEach((title) => {
@@ -262,7 +340,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
       isValid: missing.length === 0,
       missingFields: missing,
     };
-  }, [breakups]);
+  }, [breakups, isSmallOrderRequestLead, legacyDefaultTitles, orderLoginData]);
 
   // Completed button is visible only when role can access AND mandatory fields filled
   const canShowCompletedButton =
@@ -271,6 +349,26 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
     hasValidInstanceId &&
     (isOrderLoginStage || isProductionStage) &&
     mandatoryValidation.isValid;
+  const hasPendingOrderLoginApproval = orderLoginLockIns.some((lockIn) => {
+    const pendingTasks = Array.isArray(lockIn.pending_tasks)
+      ? lockIn.pending_tasks
+      : [];
+
+    if (instanceId) {
+      return pendingTasks.some((task) => task.instance_id === instanceId);
+    }
+
+    if (pendingTasks.length > 0) {
+      return true;
+    }
+
+    return !lockIn.is_approved;
+  });
+  const isOrderLoginApprovalPending =
+    orderLoginLockInsLoading || hasPendingOrderLoginApproval;
+  const orderLoginApprovalTooltip = orderLoginLockInsLoading
+    ? "Checking accounts approval status"
+    : "Accounts approval for Order Login is still pending";
 
   // ─────────────────────────────────────────────────────────
   // CORE SAVE
@@ -385,7 +483,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
     const trimmedTitle = nextTitle.trim();
 
     if (!trimmedTitle) { toastManager.add({ title: "Section name cannot be empty", type: "error" }); return false; }
-    if (defaultTitles.includes(trimmedTitle)) { toastManager.add({ title: "Section name cannot match a default section", type: "error" }); return false; }
+    if (!isSmallOrderRequestLead && defaultTitles.includes(trimmedTitle)) { toastManager.add({ title: "Section name cannot match a default section", type: "error" }); return false; }
     if (trimmedTitle === item.item_type) return true;
     if (breakups[trimmedTitle]) { toastManager.add({ title: "Section name already exists", type: "error" }); return false; }
     if (!item?.id) { toastManager.add({ title: "Unable to update section name", type: "error" }); return false; }
@@ -462,34 +560,65 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
           </p>
         </div>
 
-        {/* ✅ Badge when already marked complete */}
-        {isOrderLoginMarked ? (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/30 text-green-600 dark:text-green-400 shrink-0">
-            <BadgeCheck className="w-4 h-4" />
-            <span className="text-sm font-medium">Order Login Completed</span>
-          </div>
-        ) : (
-          /* ✅ Button visible ONLY when all 3 mandatory sections are filled */
-          canShowCompletedButton && (
-            <Button
-              onClick={() => setConfirmComplete(true)}
-              disabled={isMarkingComplete}
-              className="flex items-center gap-2 shrink-0 text-white disabled:opacity-60"
-            >
-              {isMarkingComplete ? (
-                <>
-                  <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="w-4 h-4" />
-                  Order Login Completed
-                </>
-              )}
-            </Button>
-          )
-        )}
+   {isOrderLoginMarked ? (
+  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/30 text-green-600 dark:text-green-400 shrink-0">
+    <BadgeCheck className="w-4 h-4" />
+    <span className="text-sm font-medium">
+      Order Login Completed
+    </span>
+  </div>
+) : (
+  canShowCompletedButton &&
+  (shouldDisableBlockedActions ? (
+<div className="ml-auto">
+  <CustomeTooltip
+    value={blockedTooltip}
+    truncateValue={
+      <Button
+        disabled
+        className="flex items-center gap-2 shrink-0 text-white disabled:opacity-60"
+      >
+        <CheckCircle className="w-4 h-4" />
+        Order Login Completed
+      </Button>
+    }
+  />
+</div>
+  ) : isOrderLoginApprovalPending ? (
+<div className="ml-auto">
+  <CustomeTooltip
+    value={orderLoginApprovalTooltip}
+    truncateValue={
+      <Button
+        disabled
+        className="flex items-center gap-2 shrink-0 text-white disabled:opacity-60"
+      >
+        <CheckCircle className="w-4 h-4" />
+        Order Login Completed
+      </Button>
+    }
+  />
+</div>
+  ) : (
+    <Button
+      onClick={() => setConfirmComplete(true)}
+      disabled={isMarkingComplete}
+      className="flex items-center gap-2 shrink-0 text-white disabled:opacity-60"
+    >
+      {isMarkingComplete ? (
+        <>
+          <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+          Processing...
+        </>
+      ) : (
+        <>
+          <CheckCircle className="w-4 h-4" />
+          Order Login Completed
+        </>
+      )}
+    </Button>
+  ))
+)}
       </div>
 
       {/* Grid of Breakups */}
@@ -570,77 +699,111 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
 
         {/* Add New Section Card */}
         {canAccessButtons && canAddCustomSection && (
-          <div
-            className="rounded-xl border-2 border-dashed border-primary/30 p-5 bg-primary/5 
-                       hover:bg-primary/10 transition-all cursor-pointer group 
-                       flex flex-col items-center justify-center gap-3 min-h-47.5"
-          >
-            <div className="rounded-full bg-primary/10 p-3 group-hover:bg-primary/20 transition-colors">
-              <Plus className="w-6 h-6 text-primary" />
-            </div>
-            <div className="text-center">
-              <p className="font-medium text-sm text-primary">Add New Section</p>
-              <p className="text-xs text-muted-foreground">
-                Create a new breakup category for this order
-              </p>
-            </div>
-            <AddSectionModal
-              users={users}
-              leadId={leadId}
-              accountId={accountId}
-              instanceId={instanceId}
-              onSectionAdded={() => {
-                queryClient.invalidateQueries({
-                  queryKey: [
-                    "orderLoginByLead",
-                    vendorId,
-                    leadId,
-                    instanceId ?? "all",
-                  ],
-                });
-              }}
+          shouldDisableBlockedActions ? (
+            <CustomeTooltip
+              value={blockedTooltip}
+              truncateValue={
+                <div
+                  className="rounded-xl border-2 border-dashed border-primary/30 p-5 bg-primary/5
+                     opacity-60 cursor-not-allowed
+                     flex flex-col items-center justify-center gap-3 min-h-47.5"
+                >
+                  <div className="rounded-full bg-primary/10 p-3">
+                    <Plus className="w-6 h-6 text-primary" />
+                  </div>
+
+                  <div className="text-center">
+                    <p className="font-medium text-sm text-primary">
+                      Add New Section
+                    </p>
+
+                    <p className="text-xs text-muted-foreground">
+                      Create a new breakup category for this order
+                    </p>
+                  </div>
+
+                  <Button>Click Here</Button>
+                </div>
+              }
             />
-          </div>
+          ) : (
+            <div
+              className="rounded-xl border-2 border-dashed border-primary/30 p-5 bg-primary/5
+                 hover:bg-primary/10 transition-all cursor-pointer group
+                 flex flex-col items-center justify-center gap-3 min-h-47.5"
+            >
+              <div className="rounded-full bg-primary/10 p-3 group-hover:bg-primary/20 transition-colors">
+                <Plus className="w-6 h-6 text-primary" />
+              </div>
+
+              <div className="text-center">
+                <p className="font-medium text-sm text-primary">
+                  Add New Section
+                </p>
+
+                <p className="text-xs text-muted-foreground">
+                  Create a new breakup category for this order
+                </p>
+              </div>
+
+              <AddSectionModal
+                users={users}
+                leadId={leadId}
+                accountId={accountId}
+                instanceId={instanceId}
+                onSectionAdded={() => {
+                  queryClient.invalidateQueries({
+                    queryKey: [
+                      "orderLoginByLead",
+                      vendorId,
+                      leadId,
+                      instanceId ?? "all",
+                    ],
+                  });
+                }}
+              />
+            </div>
+          )
         )}
       </div>
 
       {/* ✅ Order Login Complete — Confirmation Dialog */}
-   <AlertDialog open={confirmComplete} onOpenChange={setConfirmComplete}>
-  <AlertDialogContent>
-    <AlertDialogHeader>
-      <AlertDialogTitle className="flex items-center gap-2">
-   
-        Complete Order Login
-      </AlertDialogTitle>
+      <AlertDialog open={confirmComplete} onOpenChange={setConfirmComplete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
 
-      <AlertDialogDescription className="pt-2 text-sm leading-relaxed">
-        This will mark the order login as completed and move the lead to the next stage.
-        Please confirm to proceed.
-      </AlertDialogDescription>
-    </AlertDialogHeader>
+              Complete Order Login
+            </AlertDialogTitle>
 
-    <AlertDialogFooter>
-      <AlertDialogCancel disabled={isMarkingComplete}>
-        Cancel
-      </AlertDialogCancel>
+            <AlertDialogDescription className="pt-2 text-sm leading-relaxed">
+              This will mark the order login as completed and move the lead to the next stage.
+              Please confirm to proceed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
 
-      <AlertDialogAction
-        onClick={handleConfirmComplete}
-        disabled={isMarkingComplete}
-        
-      >
-        {isMarkingComplete ? (
-          <span className="flex items-center gap-2">
-            <span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full" />
-            Processing...
-          </span>
-        ) : (
-          "Mark as Completed"
-        )}
-      </AlertDialogAction>
-    </AlertDialogFooter>
-  </AlertDialogContent>
-</AlertDialog>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isMarkingComplete}>
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={handleConfirmComplete}
+              disabled={isMarkingComplete}
+
+            >
+              {isMarkingComplete ? (
+                <span className="flex items-center gap-2">
+                  <span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full" />
+                  Processing...
+                </span>
+              ) : (
+                "Mark as Completed"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Section — Confirmation Dialog */}
       <AlertDialog

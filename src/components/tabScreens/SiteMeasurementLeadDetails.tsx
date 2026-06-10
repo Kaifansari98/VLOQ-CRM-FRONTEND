@@ -33,6 +33,8 @@ import BaseModal from "@/components/utils/baseModal";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { useQueryClient } from "@tanstack/react-query";
 import { toastManager } from "@/components/ui/toast";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import CustomeTooltip from "../custom-tooltip";
 
 type Props = {
   leadId: number;
@@ -89,6 +91,13 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
   const { mutateAsync: replacePdf, isPending: replacingPdf } =
     useReplaceInitialSiteMeasurementPdf();
   const queryClient = useQueryClient();
+  const {
+    shouldDisableBlockedActions,
+    blockedTooltip,
+  } = useLeadAccessControl({
+    leadId,
+    userType,
+  });
 
   // 🧩 --- Local State ---
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
@@ -128,20 +137,21 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes("leads.ism_leads.ism_details.edit")
       : userType === "admin" ||
-        userType === "super-admin" ||
-        (userType === "sales-executive" &&
-          leadStatus === "initial-site-measurement");
+      userType === "super-admin" ||
+      (userType === "sales-executive" &&
+        leadStatus === "initial-site-measurement");
 
   const canDelete =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes("leads.ism_leads.ism_details.delete")
       : userType === "admin" ||
-        userType === "super-admin" ||
-        (userType === "sales-executive" &&
-          leadStatus === "initial-site-measurement");
+      userType === "super-admin" ||
+      (userType === "sales-executive" &&
+        leadStatus === "initial-site-measurement");
 
   // 🧩 --- Handlers ---
   const handleConfirmDelete = () => {
+    if (shouldDisableBlockedActions) return;
     if (!confirmDelete) return;
     setReplaceDocId(confirmDelete);
     setConfirmDelete(null);
@@ -206,6 +216,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
       createdAt?: string;
     },
     index?: number,
+    disableActions?: boolean,
   ) => {
     const uploadedAt = file.uploadedAt ?? file.createdAt;
 
@@ -221,6 +232,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
           }}
           index={index}
           canDelete={canDelete}
+          disableActions={disableActions}
           onDelete={(id) => setConfirmDelete(Number(id))}
         />
       );
@@ -236,6 +248,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
           signedUrl: file.signedUrl,
         }}
         canDelete={canDelete}
+        disableActions={disableActions}
         onDelete={(id) => setConfirmDelete(Number(id))}
       />
     );
@@ -316,8 +329,8 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
           <div className="p-6">
             {pdfDocs.length > 0 ? (
               <div className="space-y-4">
-                {pdfDocs.map((doc, index) =>
-                  renderFileCard(
+                {pdfDocs.map((doc, index) => {
+                  return renderFileCard(
                     {
                       id: doc.id,
                       originalName: doc.originalName,
@@ -325,8 +338,9 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                       signedUrl: doc.signedUrl,
                     },
                     index,
-                  ),
-                )}
+                    shouldDisableBlockedActions,
+                  );
+                })}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-10">
@@ -368,16 +382,33 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                 </h1>
               </div>
 
-              {canEditOrUpload && (
-                <Button
-                  size="sm"
-                  onClick={() => setOpenEditModal(true)}
-                  className="gap-2"
-                >
-                  <Edit2 size={16} />
-                  <span className="text-sm">Edit</span>
-                </Button>
-              )}
+              {canEditOrUpload &&
+                (shouldDisableBlockedActions ? (
+                  <div className="flex justify-end">
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <Button
+                          size="sm"
+                          disabled
+                          className="gap-2"
+                        >
+                          <Edit2 size={16} />
+                          <span className="text-sm">Edit</span>
+                        </Button>
+                      }
+                    />
+                  </div>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={() => setOpenEditModal(true)}
+                    className="gap-2"
+                  >
+                    <Edit2 size={16} />
+                    <span className="text-sm">Edit</span>
+                  </Button>
+                ))}
             </div>
 
             {/* Body */}
@@ -400,10 +431,10 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                 <div className="bg-muted border border-border rounded-lg px-3 py-2 text-sm">
                   {payment.payment_date
                     ? new Date(payment.payment_date).toLocaleDateString("en-IN", {
-                        day: "2-digit",
-                        month: "long",
-                        year: "numeric",
-                      })
+                      day: "2-digit",
+                      month: "long",
+                      year: "numeric",
+                    })
                     : "N/A"}
                 </div>
               </div>
@@ -479,8 +510,8 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
           className="p-6 bg-[#fff] dark:bg-[#0a0a0a]"
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {currentSitePhotos.map((doc, index) =>
-              renderFileCard(
+            {currentSitePhotos.map((doc, index) => {
+              return renderFileCard(
                 {
                   id: doc.id,
                   originalName: doc.originalName,
@@ -488,28 +519,49 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                   signedUrl: doc.signedUrl,
                 },
                 index,
-              ),
-            )}
+                shouldDisableBlockedActions,
+              );
+            })}
 
             {/* Add button card */}
-            {canEditOrUpload && (
-              <div
-                onClick={() => setOpenImageModal(true)}
-                className="
-            flex flex-col items-center justify-center 
-            h-28 
-            border-2 border-dashed border-border 
-            rounded-xl cursor-pointer 
-            hover:bg-mutedBg dark:hover:bg-neutral-800 
-            transition-all duration-200
+            {canEditOrUpload &&
+              (shouldDisableBlockedActions ? (
+                <CustomeTooltip
+                  value={blockedTooltip}
+                  truncateValue={
+                    <div
+                      className="
+            flex flex-col items-center justify-center
+            h-28
+            border-2 border-dashed border-border
+            rounded-xl
+            opacity-60
+            cursor-not-allowed
           "
-              >
-                <Plus size={26} className="text-muted-foreground mb-1" />
-                <span className="text-xs font-medium text-muted-foreground">
-                  Add Photos
-                </span>
-              </div>
-            )}
+                    >
+                      <Plus size={26} className="text-muted-foreground mb-1" />
+                      <span className="text-xs font-medium text-muted-foreground">
+                        Add Photos
+                      </span>
+                    </div>
+                  }
+                />
+              ) : (
+                <div
+                  onClick={() => setOpenImageModal(true)}
+                  className="
+        flex flex-col items-center justify-center
+        h-28
+        border-2 border-dashed border-border
+        rounded-xl cursor-pointer
+      "
+                >
+                  <Plus size={26} className="text-muted-foreground mb-1" />
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Add Photos
+                  </span>
+                </div>
+              ))}
           </div>
         </motion.div>
       </motion.section>
@@ -566,8 +618,8 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
             className="p-6 bg-[#fff] dark:bg-[#0a0a0a]"
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {paymentImages.map((doc, index) =>
-                renderFileCard(
+              {paymentImages.map((doc, index) => {
+                return renderFileCard(
                   {
                     id: doc.id,
                     originalName: doc.originalName,
@@ -575,8 +627,9 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                     signedUrl: doc.signedUrl,
                   },
                   index,
-                ),
-              )}
+                  shouldDisableBlockedActions,
+                );
+              })}
             </div>
           </motion.div>
         </motion.section>
@@ -657,8 +710,8 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                   </h2>
                 </div>
                 <div className="space-y-3">
-                  {bookingDoneIsmPdfDocs.map((doc: any, index: number) =>
-                    renderFileCard(
+                  {bookingDoneIsmPdfDocs.map((doc: any, index: number) => {
+                    return renderFileCard(
                       {
                         id: doc.id,
                         originalName: doc.originalName,
@@ -666,8 +719,9 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                         signedUrl: doc.signedUrl,
                       },
                       index,
-                    ),
-                  )}
+                      shouldDisableBlockedActions,
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -682,8 +736,8 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                   </h2>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {bookingDoneIsmCurrentSitePhotos.map((doc: any, index: any) =>
-                    renderFileCard(
+                  {bookingDoneIsmCurrentSitePhotos.map((doc: any, index: any) => {
+                    return renderFileCard(
                       {
                         id: doc.id,
                         originalName: doc.originalName,
@@ -691,8 +745,8 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                         signedUrl: doc.signedUrl,
                       },
                       index,
-                    ),
-                  )}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -706,8 +760,8 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                   </h2>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {bookingDoneIsmPaymentImages.map((doc: any, index: any) =>
-                    renderFileCard(
+                  {bookingDoneIsmPaymentImages.map((doc: any, index: any) => {
+                    return renderFileCard(
                       {
                         id: doc.id,
                         originalName: doc.originalName,
@@ -715,8 +769,9 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                         signedUrl: doc.signedUrl,
                       },
                       index,
-                    ),
-                  )}
+                      shouldDisableBlockedActions,
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -770,7 +825,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
             <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDelete}
-              disabled={deleting}
+              disabled={deleting || shouldDisableBlockedActions}
             >
               {deleting ? "Deleting..." : "Delete"}
             </AlertDialogAction>

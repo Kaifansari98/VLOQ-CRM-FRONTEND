@@ -67,6 +67,7 @@ export interface DataTableRowAction<TData> {
     | "dispatchplanningapproval"
     | "Dispatch"
     | "miscellaneous"
+    | "smallorderrequest"
 }
 
 export interface DataTableRowActionOpen<TData> {

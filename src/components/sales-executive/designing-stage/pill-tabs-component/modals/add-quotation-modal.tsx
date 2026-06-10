@@ -149,16 +149,32 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
       },
       {
         onSuccess: () => {
-          toastManager.add({ title: `${data.upload_pdf.length} quotation${
+          toastManager.add({
+            title: `${data.upload_pdf.length} quotation${
               data.upload_pdf.length > 1 ? "s" : ""
-            } uploaded successfully!`, type: "success" });
+            } uploaded successfully!`,
+            type: "success",
+          });
           queryClient.invalidateQueries({
             queryKey: ["designingStageCounts", vendorId, leadId],
           });
           form.reset({ upload_pdf: [], design_document_id: "" });
           onOpenChange(false);
+          form.reset({ upload_pdf: [] });
+          onOpenChange(false);
         },
-        onError: (err: any) => toastManager.add({ title: err?.message || "Upload failed", type: "error" }),
+        onError: (err: any) => {
+          const errorMessage =
+            err?.response?.data?.error ||
+            err?.response?.data?.message ||
+            err?.message ||
+            "Something went wrong";
+
+          toastManager.add({
+            title: errorMessage,
+            type: "error",
+          });
+        },
       }
     );
   };
@@ -188,6 +204,7 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
                   <DocumentsUploader
                     value={field.value}
                     onChange={field.onChange}
+                  
                   />
                 </FormControl>
                 <FormMessage />

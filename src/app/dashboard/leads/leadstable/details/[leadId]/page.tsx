@@ -22,9 +22,6 @@ import {
   Clock,
   EllipsisVertical,
   HouseIcon,
-  PanelsTopLeftIcon,
-  BoxIcon,
-  UsersRoundIcon,
   CircleArrowOutUpRight,
   UserPlus,
   MessageSquare,
@@ -92,22 +89,8 @@ import {
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
 import AddVisitModal from "@/components/sales-executive/Lead/add-visit-modal";
+import { formatBlockedAt } from "@/lib/utils";
 
-const formatBlockedAt = (value?: string | null) => {
-  if (!value) return "";
-
-  const parsedDate = new Date(value);
-  if (Number.isNaN(parsedDate.getTime())) return "";
-
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  }).format(parsedDate);
-};
 
 export default function LeadDetails() {
   const router = useRouter();
@@ -139,7 +122,7 @@ export default function LeadDetails() {
   const unblockLeadMutation = useUnblockLead();
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
-  const { data: leadBlockStatus } = useLeadBlockStatus(leadIdNum, vendorId);
+  const { data: leadBlockStatus, isLoading: isLeadBlockStatusLoading } = useLeadBlockStatus(leadIdNum, vendorId);
   const lead = data?.data?.lead;
   const isDraftLead = !!lead?.is_draft;
   const leadCode = lead?.lead_code ?? "";
@@ -149,11 +132,16 @@ export default function LeadDetails() {
 
   const uiDisabled = isLoading || !lead;
   const isLeadBlocked = leadBlockStatus?.is_blocked ?? !!lead?.is_blocked;
-  const blockedAtTooltip = isLeadBlocked
-    ? `This lead has been blocked at ${formatBlockedAt(
-        leadBlockStatus?.lead_blocked_at ?? lead?.lead_blocked_at ?? null,
+
+
+  const blockedAtTooltip =
+    isLeadBlocked &&
+      (leadBlockStatus?.lead_blocked_at || lead?.lead_blocked_at)
+      ? `This lead has been blocked at ${formatBlockedAt(
+        leadBlockStatus?.lead_blocked_at ??
+        lead?.lead_blocked_at,
       )}`
-    : "";
+      : "Lead is blocked";
   const isBlockActionPending =
     blockLeadMutation.isPending || unblockLeadMutation.isPending;
 
@@ -176,17 +164,17 @@ export default function LeadDetails() {
   const canReassign =
     normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.reassign_lead",
-        )
+        "leads.open_leads.details_of_lead.reassign_lead",
+      )
       : canReassignLeadButton(userType);
   const canAccessAssignTask =
     normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.assign_task.ism_assign_task",
-        ) ||
-        customPrivilegeCodes.includes(
-          "leads.open_leads.assign_task.follow_up_task",
-        )
+        "leads.open_leads.assign_task.ism_assign_task",
+      ) ||
+      customPrivilegeCodes.includes(
+        "leads.open_leads.assign_task.follow_up_task",
+      )
       : canAssignISM(userType);
   const canDelete =
     normalizedUserType === "custom"
@@ -195,14 +183,14 @@ export default function LeadDetails() {
   const canMarkOnHold =
     normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.mark_on_hold",
-        )
+        "leads.open_leads.details_of_lead.mark_on_hold",
+      )
       : true;
   const canMarkAsLost =
     normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.mark_as_lost",
-        )
+        "leads.open_leads.details_of_lead.mark_as_lost",
+      )
       : true;
   const canEdit =
     normalizedUserType === "custom"
@@ -211,20 +199,20 @@ export default function LeadDetails() {
   const canViewPayment =
     normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.payment_information.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.payment_information.enable_disable",
+      )
       : canViewPaymentTab(userType);
   const canViewSiteHistory =
     normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.site_history.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.site_history.enable_disable",
+      )
       : canViewSiteHistoryTab(userType);
   const canViewChats =
     normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.chat.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.chat.enable_disable",
+      )
       : true;
 
   const handleToggleLeadBlock = () => {
@@ -326,11 +314,14 @@ export default function LeadDetails() {
 
   useEffect(() => {
     if (!lead) return;
+    if (isLeadBlockStatusLoading) return;
     if (isChatNotification) return;
+    if (hasAutoOpenedAssign.current) return;
     if (hasAutoOpenedAssign.current) return;
 
     if (
       !lead.is_draft &&
+      !isLeadBlocked &&
       canAccessAssignTask &&
       userType?.toLowerCase() !== "admin" &&
       userType?.toLowerCase() !== "super-admin"
@@ -339,15 +330,23 @@ export default function LeadDetails() {
       setAssignOpen(true);
       setActiveTab("projects");
     }
-  }, [isChatNotification, lead?.id, userType, canAccessAssignTask]);
+  }, [
+    isChatNotification,
+    lead?.id,
+    userType,
+    canAccessAssignTask,
+    isLeadBlocked,
+    isLeadBlockStatusLoading,
+  ]);
 
   // 🔹 Tabs state
   const [activeTab, setActiveTab] = useState("details");
   useChatTabFromUrl(setActiveTab);
 
   return (
-    <>  
+    <>
       {/* Header */}
+      
       <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b bg-background">
         <div className="flex items-center gap-2">
           <SidebarTrigger className="-ml-1" />
@@ -367,14 +366,20 @@ export default function LeadDetails() {
         </div>
         <div className="flex items-center space-x-2">
           {isClientVisitEnabled && (
-            <Button
-              size="sm"
-              className="hidden sm:flex"
-              onClick={() => setVisitOpen(true)}
-              disabled={uiDisabled}
-            >
-              Add Visit
-            </Button>
+            <CustomeTooltip
+              value={blockedAtTooltip}
+              truncateValue={
+                <span>
+                  <Button
+                    size="sm"
+                    onClick={() => setVisitOpen(true)}
+                    disabled={isLeadBlocked || uiDisabled}
+                  >
+                    Add Visit
+                  </Button>
+                </span>
+              }
+            />
           )}
 
           {canAccessAssignTask &&
@@ -435,19 +440,41 @@ export default function LeadDetails() {
                 </DropdownMenuItem>
               )}
 
-              {canEdit && (
-                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                  <SquarePen className=" h-4 w-4" />
-                  Edit
-                </DropdownMenuItem>
-              )}
+              {canEdit &&
+                (isLeadBlocked ? (
+                  <CustomeTooltip
+                    value={blockedAtTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <SquarePen className="h-4 w-4" />
+                        Edit
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                    <SquarePen className="h-4 w-4" />
+                    Edit
+                  </DropdownMenuItem>
+                ))}
 
-              {canReassign && (
-                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                  <Users className="h-4 w-4" />
-                  Reassign Lead
-                </DropdownMenuItem>
-              )}
+              {canReassign &&
+                (isLeadBlocked ? (
+                  <CustomeTooltip
+                    value={blockedAtTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <Users className="h-4 w-4" />
+                        Reassign Lead
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                    <Users className="h-4 w-4" />
+                    Reassign Lead
+                  </DropdownMenuItem>
+                ))}
 
               {isSuperAdmin && (
                 <CustomeTooltip
@@ -470,58 +497,74 @@ export default function LeadDetails() {
                 />
               )}
 
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger className="flex items-center gap-2">
-                  <CircleArrowOutUpRight className="h-4 w-4" />
-                  <span>Lead Status</span>
-                </DropdownMenuSubTrigger>
+              {isLeadBlocked ? (
+                <CustomeTooltip
+                  value={blockedAtTooltip}
+                  truncateValue={
+                    <DropdownMenuItem disabled>
+                      <CircleArrowOutUpRight className="h-4 w-4" />
+                      Lead Status
+                    </DropdownMenuItem>
+                  }
+                />
+              ) : (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="flex items-center gap-2">
+                    <CircleArrowOutUpRight className="h-4 w-4" />
+                    <span>Lead Status</span>
+                  </DropdownMenuSubTrigger>
 
-                {!uiDisabled && (
-                  <DropdownMenuSubContent>
-                    {canMarkOnHold && (
-                      <DropdownMenuItem
-                        onSelect={() => {
-                          setActivityType("onHold");
-                          setActivityModalOpen(true);
-                        }}
-                      >
-                        <Clock className="h-4 w-4 mr-2" />
-                        Mark On Hold
-                      </DropdownMenuItem>
-                    )}
+                  {!uiDisabled && (
+                    <DropdownMenuSubContent>
+                      {canMarkOnHold && (
+                        <DropdownMenuItem
+                          onSelect={() => {
+                            setActivityType("onHold");
+                            setActivityModalOpen(true);
+                          }}
+                        >
+                          <Clock className="h-4 w-4 mr-2" />
+                          Mark On Hold
+                        </DropdownMenuItem>
+                      )}
 
-                    {canMarkAsLost && (
-                      <DropdownMenuItem
-                        onSelect={() => {
-                          setActivityType(
-                            shouldDirectlyMarkLost ? "lost" : "lostApproval",
-                          );
-                          setActivityModalOpen(true);
-                        }}
-                      >
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Mark As Lost
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuSubContent>
-                )}
-              </DropdownMenuSub>
-
+                      {canMarkAsLost && (
+                        <DropdownMenuItem
+                          onSelect={() => {
+                            setActivityType(
+                              shouldDirectlyMarkLost
+                                ? "lost"
+                                : "lostApproval"
+                            );
+                            setActivityModalOpen(true);
+                          }}
+                        >
+                          <XCircle className="h-4 w-4 mr-2" />
+                          Mark As Lost
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuSubContent>
+                  )}
+                </DropdownMenuSub>
+              )}
               {canDelete && (
                 <>
                   <DropdownMenuSeparator />
-                  {uiDisabled ? (
-                    <CustomeTooltip
-                      truncateValue={
-                        <DropdownMenuItem disabled>Delete</DropdownMenuItem>
-                      }
-                      value="Please wait while the lead loads."
-                    />
-                  ) : (
-                    <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
-                      Delete
-                    </DropdownMenuItem>
-                  )}
+                  {canDelete &&
+                    (isLeadBlocked ? (
+                      <CustomeTooltip
+                        value={blockedAtTooltip}
+                        truncateValue={
+                          <DropdownMenuItem disabled>
+                            Delete
+                          </DropdownMenuItem>
+                        }
+                      />
+                    ) : (
+                      <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
+                        Delete
+                      </DropdownMenuItem>
+                    ))}
                 </>
               )}
             </DropdownMenuContent>

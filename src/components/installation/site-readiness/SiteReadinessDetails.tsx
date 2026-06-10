@@ -29,6 +29,9 @@ import { canViewAndWorkSiteRedinessStage } from "@/components/utils/privileges";
 import CustomeTooltip from "@/components/custom-tooltip";
 import { useQueryClient } from "@tanstack/react-query";
 
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useLeadById } from "@/hooks/useLeadsQueries";
+
 interface SiteReadinessDetailsProps {
   leadId: number;
   accountId: number;
@@ -86,6 +89,23 @@ export default function SiteReadinessDetails({
   const createMutation = useCreateSiteReadiness();
   const updateMutation = useUpdateSiteReadiness();
 
+  const { data: leadResponse } = useLeadById(
+    leadId,
+    vendor_id,
+    user_id,
+  );
+
+  const lead = leadResponse?.data?.lead;
+
+  const {
+    blockedTooltip,
+    shouldDisableBlockedActions,
+  } = useLeadAccessControl({
+    leadId,
+    userType,
+    lead,
+  });
+
   useEffect(() => {
     const fetchRecords = async () => {
       if (!vendor_id || !leadId) return;
@@ -105,11 +125,11 @@ export default function SiteReadinessDetails({
             );
             return existing
               ? {
-                  ...item,
-                  id: existing.id,
-                  value: existing.value,
-                  remark: existing.remark || "",
-                }
+                ...item,
+                id: existing.id,
+                value: existing.value,
+                remark: existing.remark || "",
+              }
               : item;
           });
           setChecklistData(updatedChecklist);
@@ -139,18 +159,18 @@ export default function SiteReadinessDetails({
         );
         return existing
           ? {
-              type: item.type,
-              label: item.label,
-              id: existing.id,
-              value: existing.value,
-              remark: existing.remark || "",
-            }
+            type: item.type,
+            label: item.label,
+            id: existing.id,
+            value: existing.value,
+            remark: existing.remark || "",
+          }
           : {
-              type: item.type,
-              label: item.label,
-              value: null,
-              remark: "",
-            };
+            type: item.type,
+            label: item.label,
+            value: null,
+            remark: "",
+          };
       });
       setChecklistData(updated);
     }
@@ -252,11 +272,14 @@ export default function SiteReadinessDetails({
 
   const canViewAndWork = canViewAndWorkSiteRedinessStage(userType, leadStatus);
   const canEditChecklist =
-    userType === "custom"
-      ? customPrivilegeCodes.includes(
+    !shouldDisableBlockedActions &&
+    (
+      userType === "custom"
+        ? customPrivilegeCodes.includes(
           "installation.site_readiness.checklist_of_site_readiness.update_edit",
         )
-      : canViewAndWork;
+        : canViewAndWork
+    );
 
   return (
     <div className="space-y-4 w-full mx-auto">
@@ -316,9 +339,8 @@ export default function SiteReadinessDetails({
               <CustomeTooltip
                 truncateValue={
                   <div
-                    className={`${
-                      !canEditChecklist ? "opacity-70 pointer-events-none" : ""
-                    }`}
+                    className={`${!canEditChecklist ? "opacity-70 pointer-events-none" : ""
+                      }`}
                   >
                     <Button
                       onClick={handleSubmit}
@@ -340,13 +362,15 @@ export default function SiteReadinessDetails({
                   </div>
                 }
                 value={
-                  !canEditChecklist && userType === "site-supervisor"
-                    ? "This lead stage has progressed. Site Supervisors cannot modify this section."
-                    : !canEditChecklist && userType === "custom"
-                      ? "You do not have permission to update the Site Readiness checklist."
-                      : !canEditChecklist
-                      ? "You do not have access to save changes."
-                      : undefined
+                  shouldDisableBlockedActions
+                    ? blockedTooltip
+                    : !canEditChecklist && userType === "site-supervisor"
+                      ? "This lead stage has progressed. Site Supervisors cannot modify this section."
+                      : !canEditChecklist && userType === "custom"
+                        ? "You do not have permission to update the Site Readiness checklist."
+                        : !canEditChecklist
+                          ? "You do not have access to save changes."
+                          : undefined
                 }
               />
             </div>
@@ -397,39 +421,82 @@ export default function SiteReadinessDetails({
 
                 {/* Compact Yes/No Toggle */}
                 <div className="flex gap-1.5">
-                  <button
-                    type="button"
-                    disabled={!canEditChecklist}
-                    onClick={() => handleChecklistChange(index, "value", true)}
-                    className={cn(
-                      "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 text-xs font-medium transition-all duration-150",
-                      "focus:outline-none focus:ring-1 focus:ring-green-500 focus:ring-offset-1",
-                      item.value === true
-                        ? "bg-green-500 border-green-500 text-white shadow-sm"
-                        : "bg-background border-border text-muted-foreground hover:border-green-400 hover:text-green-600",
-                      !canEditChecklist && "opacity-60 cursor-not-allowed",
-                    )}
-                  >
-                    <Check className="h-3.5 w-3.5" />
-                    <span>Yes</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={!canEditChecklist}
-                    onClick={() => handleChecklistChange(index, "value", false)}
-                    className={cn(
-                      "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 text-xs font-medium transition-all duration-150",
-                      "focus:outline-none focus:ring-1 focus:ring-red-500 focus:ring-offset-1",
-                      item.value === false
-                        ? "bg-red-500 border-red-500 text-white shadow-sm"
-                        : "bg-background border-border text-muted-foreground hover:border-red-400 hover:text-red-600",
-                      !canEditChecklist && "opacity-60 cursor-not-allowed",
-                    )}
-                  >
-                    <X className="h-3.5 w-3.5" />
-                    <span>No</span>
-                  </button>
+                  <CustomeTooltip
+                    value={
+                      shouldDisableBlockedActions
+                        ? blockedTooltip
+                        : undefined
+                    }
+                    truncateValue={
+                      <span>
+                        <button
+                          type="button"
+                          disabled={
+                            !canEditChecklist ||
+                            shouldDisableBlockedActions
+                          }
+                          onClick={() =>
+                            handleChecklistChange(
+                              index,
+                              "value",
+                              true,
+                            )
+                          }
+                          className={cn(
+                            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 text-xs font-medium transition-all duration-150",
+                            "focus:outline-none focus:ring-1 focus:ring-green-500 focus:ring-offset-1",
+                            item.value === true
+                              ? "bg-green-500 border-green-500 text-white shadow-sm"
+                              : "bg-background border-border text-muted-foreground hover:border-green-400 hover:text-green-600",
+                            (!canEditChecklist ||
+                              shouldDisableBlockedActions) &&
+                            "opacity-60 cursor-not-allowed",
+                          )}
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                          <span>Yes</span>
+                        </button>
+                      </span>
+                    }
+                  />
+                  <CustomeTooltip
+                    value={
+                      shouldDisableBlockedActions
+                        ? blockedTooltip
+                        : undefined
+                    }
+                    truncateValue={
+                      <span>
+                        <button
+                          type="button"
+                          disabled={
+                            !canEditChecklist ||
+                            shouldDisableBlockedActions
+                          }
+                          onClick={() =>
+                            handleChecklistChange(
+                              index,
+                              "value",
+                              false,
+                            )
+                          }
+                          className={cn(
+                            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 text-xs font-medium transition-all duration-150",
+                            "focus:outline-none focus:ring-1 focus:ring-red-500 focus:ring-offset-1",
+                            item.value === false
+                              ? "bg-red-500 border-red-500 text-white shadow-sm"
+                              : "bg-background border-border text-muted-foreground hover:border-red-400 hover:text-red-600",
+                            (!canEditChecklist ||
+                              shouldDisableBlockedActions) &&
+                            "opacity-60 cursor-not-allowed",
+                          )}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                          <span>No</span>
+                        </button>
+                      </span>
+                    }
+                  />
                 </div>
               </div>
 
@@ -444,17 +511,39 @@ export default function SiteReadinessDetails({
                     (Optional)
                   </span>
                 </Label>
-                <Textarea
-                  id={`remark-${item.type}`}
-                  value={item.remark}
-                  onChange={(e) =>
-                    handleChecklistChange(index, "remark", e.target.value)
-                  }
-                  placeholder="Add any relevant notes or observations..."
-                  disabled={!canEditChecklist}
-                  className="resize-none text-xs h-16 py-2"
-                  rows={2}
-                />
+                {shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <div className="w-full">
+                        <Textarea
+                          id={`remark-${item.type}`}
+                          value={item.remark}
+                          disabled
+                          placeholder="Add any relevant notes or observations..."
+                          className="resize-none text-xs h-16 py-2 cursor-not-allowed"
+                          rows={2}
+                        />
+                      </div>
+                    }
+                  />
+                ) : (
+                  <Textarea
+                    id={`remark-${item.type}`}
+                    value={item.remark}
+                    onChange={(e) =>
+                      handleChecklistChange(
+                        index,
+                        "remark",
+                        e.target.value,
+                      )
+                    }
+                    placeholder="Add any relevant notes or observations..."
+                    disabled={!canEditChecklist}
+                    className="resize-none text-xs h-16 py-2"
+                    rows={2}
+                  />
+                )}
               </div>
 
               {/* Status Indicator Dot */}

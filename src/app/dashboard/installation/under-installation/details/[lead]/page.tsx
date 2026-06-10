@@ -30,6 +30,7 @@ import {
   Users,
   XCircle,
   Hammer,
+  BoxIcon,
   // Under Installation icon,
   Clock,
   Handshake,
@@ -92,6 +93,13 @@ import { useChatTabFromUrl } from "@/hooks/useChatTabFromUrl";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import SmallOrderRequestModal from "@/components/installation/small-order/SmallOrderRequestModal";
+import {
+  useBlockLead,
+  useUnblockLead,
+} from "@/hooks/useLeadsQueries";
+import { Lock, LockOpen } from "lucide-react";
 
 export default function UnderInstallationLeadDetails() {
   const { lead: leadId } = useParams();
@@ -129,6 +137,7 @@ export default function UnderInstallationLeadDetails() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
+  const [openSmallOrderModal, setOpenSmallOrderModal] = useState(false);
   const [showMoveModal, setShowMoveModal] = useState(false);
   const moveMutation = useMoveToFinalHandover();
   const [activityModalOpen, setActivityModalOpen] = useState(false);
@@ -149,55 +158,85 @@ export default function UnderInstallationLeadDetails() {
   const canReassign = canReassignLeadButton(effectiveUserType ?? "");
   const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
   const canEdit = canEditLeadButton(effectiveUserType ?? "");
+  const normalizedEffectiveUserType = effectiveUserType?.toLowerCase() ?? "";
+  const isProductionEnvironment =
+    process.env.NEXT_PUBLIC_ENVIRONMENT === "PRODUCTION";
+  const canCreateSmallOrder = [
+    "sales-executive",
+    "admin",
+    "super-admin",
+  ].includes(normalizedEffectiveUserType) && !isProductionEnvironment;
   const deleteLeadMutation = useDeleteLead();
   const canAccessTodoTab =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.some((code) =>
-          code.startsWith("installation.under_installation."),
-        )
+        code.startsWith("installation.under_installation."),
+      )
       : canAccessTodoTaskTabUnderInstallationStage(effectiveUserType ?? "");
   const canStartInstallation =
     effectiveUserType === "custom"
       ? customPrivilegeCodes.includes(
-          "installation.under_installation.start_installation.action",
-        )
+        "installation.under_installation.start_installation.action",
+      )
       : canAccessTodoTab;
   const canMoveToFinalHandover =
     effectiveUserType === "custom"
       ? customPrivilegeCodes.includes(
-          "installation.under_installation.move_to_final_handover.enable_disable_action",
-        )
+        "installation.under_installation.move_to_final_handover.enable_disable_action",
+      )
       : true;
   const canRedirectToFinalHandover =
     effectiveUserType === "custom"
       ? customPrivilegeCodes.some((code) =>
-          code.startsWith("installation.final_handover."),
-        )
+        code.startsWith("installation.final_handover."),
+      )
       : true;
   const canViewPayment =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.payment_information.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.payment_information.enable_disable",
+      )
       : canViewPaymentTab(effectiveUserType ?? "");
   const canViewSiteHistory =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.site_history.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.site_history.enable_disable",
+      )
       : canViewSiteHistoryTab(effectiveUserType ?? "");
   const canViewChats =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "leads.open_leads.details_of_lead.chat.enable_disable",
-        )
+        "leads.open_leads.details_of_lead.chat.enable_disable",
+      )
       : true;
   const canViewDocuments =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.some((code) =>
-          code.startsWith("leads.open_leads.details_of_lead.documents_section."),
-        )
+        code.startsWith("leads.open_leads.details_of_lead.documents_section."),
+      )
       : true;
+
+
+  const {
+    isLeadBlocked,
+    blockedTooltip,
+    shouldDisableBlockedActions,
+  } = useLeadAccessControl({
+    leadId: leadIdNum,
+    userType,
+    lead,
+  });
+
+
+  const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
+
+  const blockLeadMutation = useBlockLead();
+  const unblockLeadMutation = useUnblockLead();
+
+  const isBlockActionPending =
+    blockLeadMutation.isPending ||
+    unblockLeadMutation.isPending;
+
 
   const miscStatusReady = miscStatus?.all_resolved;
   const isUsableHandoverCompleted = Boolean(
@@ -252,6 +291,44 @@ export default function UnderInstallationLeadDetails() {
     return `${time} – ${dayName}, ${fullDate}`;
   }
 
+
+
+  const handleToggleLeadBlock = () => {
+    if (!vendorId || !userId || !leadIdNum) return;
+
+    const mutation = isLeadBlocked
+      ? unblockLeadMutation
+      : blockLeadMutation;
+
+    mutation.mutate(
+      {
+        vendorId,
+        leadId: leadIdNum,
+        updatedBy: userId,
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: isLeadBlocked
+              ? "Lead unblocked successfully!"
+              : "Lead blocked successfully!",
+            type: "success",
+          });
+
+          setOpenBlockConfirm(false);
+
+          queryClient.invalidateQueries({
+            queryKey: ["leadBlockStatus", vendorId, leadIdNum],
+          });
+
+          queryClient.invalidateQueries({
+            queryKey: ["leadById"],
+          });
+        },
+      }
+    );
+  };
+
   return (
     <>
       {/* 🔹 Header */}
@@ -287,122 +364,138 @@ export default function UnderInstallationLeadDetails() {
           {/*  MOVE TO FINAL HANDOVER BUTTON WITH CONDITIONS */}
           {/* ───────────────────────────────────────────── */}
           {canMoveToFinalHandover &&
-            (!underDetails?.actual_installation_start_date ? (
-            // 1️⃣ Installation NOT started → block
-            <CustomeTooltip
-              truncateValue={
-                <div className="opacity-60 cursor-not-allowed">
-                  <Button
-                    variant="default"
-                    size="sm"
-                    disabled
-                    className="pointer-events-none hidden sm:flex"
-                  >
-                    Move to Final Handover
-                  </Button>
-                </div>
-              }
-              value="Start Installation first to move this lead to Final Handover."
-            />
-          ) : isLoadingUsableHandover ? (
-            <CustomeTooltip
-              truncateValue={
-                <div className="opacity-60 cursor-not-allowed">
-                  <Button
-                    variant="default"
-                    size="sm"
-                    disabled
-                    className="pointer-events-none hidden sm:flex"
-                  >
-                    Move to Final Handover
-                  </Button>
-                </div>
-              }
-              value="Checking usable handover completion status..."
-            />
-          ) : !isUsableHandoverCompleted ? (
-            <CustomeTooltip
-              truncateValue={
-                <div className="opacity-60 cursor-not-allowed">
-                  <Button
-                    variant="default"
-                    size="sm"
-                    disabled
-                    className="pointer-events-none hidden sm:flex"
-                  >
-                    Move to Final Handover
-                  </Button>
-                </div>
-              }
-              value="Mark Usable Handover as completed before moving to Final Handover."
-            />
-          ) : isLoadingMisc ? (
-            // 2️⃣ Checking misc status → block
-            <CustomeTooltip
-              truncateValue={
-                <div className="opacity-60 cursor-not-allowed">
-                  <Button
-                    variant="default"
-                    size="sm"
-                    disabled
-                    className="pointer-events-none hidden sm:flex"
-                  >
-                    Move to Final Handover
-                  </Button>
-                </div>
-              }
-              value="Checking miscellaneous status..."
-            />
-          ) : !miscStatusReady ? (
-            // 3️⃣ Misc pending/awaiting → block
-            <CustomeTooltip
-              truncateValue={
-                <div className="opacity-60 cursor-not-allowed">
-                  <Button
-                    variant="default"
-                    size="sm"
-                    disabled
-                    className="pointer-events-none hidden sm:flex"
-                  >
-                    Move to Final Handover
-                  </Button>
-                </div>
-              }
-              value="All miscellaneous items must be Resolved or Rejected before moving to Final Handover."
-            />
-          ) : !finalReady?.isReady ? (
-            // 2️⃣ Installation started but NOT eligible → show WHY
-            <CustomeTooltip
-              truncateValue={
-                <div className="opacity-60 cursor-not-allowed">
-                  <Button
-                    variant="default"
-                    size="sm"
-                    disabled
-                    className="pointer-events-none hidden sm:flex"
-                  >
-                    Move to Final Handover
-                  </Button>
-                </div>
-              }
-              value={
-                finalReady?.message ||
-                "Lead is not ready for Final Handover yet."
-              }
-            />
-          ) : (
-            // 3️⃣ Eligible → allow moving
-            <Button
-              variant="default"
-              size="sm"
-              className="hidden sm:flex"
-              onClick={() => {
-                setShowMoveModal(true);
-              }}
-            >
-              Move to Final Handover
-            </Button>
-          ))}
+            (shouldDisableBlockedActions ? (
+              <CustomeTooltip
+                truncateValue={
+                  <div className="opacity-60 cursor-not-allowed">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      disabled
+                      className="pointer-events-none hidden sm:flex"
+                    >
+                      Move to Final Handover
+                    </Button>
+                  </div>
+                }
+                value={blockedTooltip}
+              />
+            ) : !underDetails?.actual_installation_start_date ? (
+              // 1️⃣ Installation NOT started → block
+              <CustomeTooltip
+                truncateValue={
+                  <div className="opacity-60 cursor-not-allowed">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      disabled
+                      className="pointer-events-none hidden sm:flex"
+                    >
+                      Move to Final Handover
+                    </Button>
+                  </div>
+                }
+                value="Start Installation first to move this lead to Final Handover."
+              />
+            ) : isLoadingUsableHandover ? (
+              <CustomeTooltip
+                truncateValue={
+                  <div className="opacity-60 cursor-not-allowed">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      disabled
+                      className="pointer-events-none hidden sm:flex"
+                    >
+                      Move to Final Handover
+                    </Button>
+                  </div>
+                }
+                value="Checking usable handover completion status..."
+              />
+            ) : !isUsableHandoverCompleted ? (
+              <CustomeTooltip
+                truncateValue={
+                  <div className="opacity-60 cursor-not-allowed">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      disabled
+                      className="pointer-events-none hidden sm:flex"
+                    >
+                      Move to Final Handover
+                    </Button>
+                  </div>
+                }
+                value="Mark Usable Handover as completed before moving to Final Handover."
+              />
+            ) : isLoadingMisc ? (
+              // 2️⃣ Checking misc status → block
+              <CustomeTooltip
+                truncateValue={
+                  <div className="opacity-60 cursor-not-allowed">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      disabled
+                      className="pointer-events-none hidden sm:flex"
+                    >
+                      Move to Final Handover
+                    </Button>
+                  </div>
+                }
+                value="Checking miscellaneous status..."
+              />
+            ) : !miscStatusReady ? (
+              // 3️⃣ Misc pending/awaiting → block
+              <CustomeTooltip
+                truncateValue={
+                  <div className="opacity-60 cursor-not-allowed">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      disabled
+                      className="pointer-events-none hidden sm:flex"
+                    >
+                      Move to Final Handover
+                    </Button>
+                  </div>
+                }
+                value="All miscellaneous items must be Resolved or Rejected before moving to Final Handover."
+              />
+            ) : !finalReady?.isReady ? (
+              // 2️⃣ Installation started but NOT eligible → show WHY
+              <CustomeTooltip
+                truncateValue={
+                  <div className="opacity-60 cursor-not-allowed">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      disabled
+                      className="pointer-events-none hidden sm:flex"
+                    >
+                      Move to Final Handover
+                    </Button>
+                  </div>
+                }
+                value={
+                  finalReady?.message ||
+                  "Lead is not ready for Final Handover yet."
+                }
+              />
+            ) : (
+              // 3️⃣ Eligible → allow moving
+              <Button
+                variant="default"
+                size="sm"
+                className="hidden sm:flex"
+                onClick={() => {
+                  setShowMoveModal(true);
+                }}
+              >
+                Move to Final Handover
+              </Button>
+            ))}
 
           <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
           <NotificationBell />
@@ -428,115 +521,222 @@ export default function UnderInstallationLeadDetails() {
                 Assign Task
               </DropdownMenuItem>
               {canMoveToFinalHandover &&
-                (!underDetails?.actual_installation_start_date ? (
-                // 1️⃣ Installation NOT started → block
+                (shouldDisableBlockedActions ? (
+                  // Lead block handling added for DropdownMenu action
+                  <CustomeTooltip
+                    truncateValue={
+                      <DropdownMenuItem className="sm:hidden" disabled>
+                        <Handshake size={20} />
+                        Move to Final Handover
+                      </DropdownMenuItem>
+                    }
+                    value={blockedTooltip}
+                  />
+                ) : !underDetails?.actual_installation_start_date ? (
+                  // 1️⃣ Installation NOT started → block
+                  <CustomeTooltip
+                    truncateValue={
+                      <DropdownMenuItem className="sm:hidden" disabled>
+                        <Handshake size={20} />
+                        Move to Final Handover
+                      </DropdownMenuItem>
+                    }
+                    value="Start Installation first to move this lead to Final Handover."
+                  />
+                ) : isLoadingUsableHandover ? (
+                  <CustomeTooltip
+                    truncateValue={
+                      <DropdownMenuItem className="sm:hidden" disabled>
+                        <Handshake size={20} />
+                        Move to Final Handover
+                      </DropdownMenuItem>
+                    }
+                    value="Checking usable handover completion status..."
+                  />
+                ) : !isUsableHandoverCompleted ? (
+                  <CustomeTooltip
+                    truncateValue={
+                      <DropdownMenuItem className="sm:hidden" disabled>
+                        <Handshake size={20} />
+                        Move to Final Handover
+                      </DropdownMenuItem>
+                    }
+                    value="Mark Usable Handover as completed before moving to Final Handover."
+                  />
+                ) : isLoadingMisc ? (
+                  // 2️⃣ Checking misc status → block
+                  <CustomeTooltip
+                    truncateValue={
+                      <DropdownMenuItem className="sm:hidden" disabled>
+                        <Handshake size={20} />
+                        Move to Final Handover
+                      </DropdownMenuItem>
+                    }
+                    value="Checking miscellaneous status..."
+                  />
+                ) : !miscStatusReady ? (
+                  // 3️⃣ Misc pending/awaiting → block
+                  <CustomeTooltip
+                    truncateValue={
+                      <DropdownMenuItem className="sm:hidden" disabled>
+                        <Handshake size={20} />
+                        Move to Final Handover
+                      </DropdownMenuItem>
+                    }
+                    value="All miscellaneous items must be Resolved or Rejected before moving to Final Handover."
+                  />
+                ) : !finalReady?.isReady ? (
+                  // 2️⃣ Installation started but NOT eligible → show WHY
+                  <CustomeTooltip
+                    truncateValue={
+                      <DropdownMenuItem className="sm:hidden" disabled>
+                        <Handshake size={20} />
+                        Move to Final Handover
+                      </DropdownMenuItem>
+                    }
+                    value={
+                      finalReady?.message ||
+                      "Lead is not ready for Final Handover yet."
+                    }
+                  />
+                ) : (
+                  // 3️⃣ Eligible → allow moving
+                  <DropdownMenuItem
+                    className="sm:hidden"
+                    onClick={() => {
+                      setShowMoveModal(true);
+                    }}
+                  >
+                    <Handshake size={20} />
+                    Move to Final Handover
+                  </DropdownMenuItem>
+                ))}
+              {/* Lead block handling added for DropdownMenu action */}
+              {shouldDisableBlockedActions ? (
                 <CustomeTooltip
+                  value={blockedTooltip}
                   truncateValue={
-                    <DropdownMenuItem className="sm:hidden" disabled>
-                      <Handshake size={20} />
-                      Move to Final Handover
+                    <DropdownMenuItem disabled>
+                      <Clock className=" h-4 w-4" />
+                      Mark On Hold
                     </DropdownMenuItem>
-                  }
-                  value="Start Installation first to move this lead to Final Handover."
-                />
-              ) : isLoadingUsableHandover ? (
-                <CustomeTooltip
-                  truncateValue={
-                    <DropdownMenuItem className="sm:hidden" disabled>
-                      <Handshake size={20} />
-                      Move to Final Handover
-                    </DropdownMenuItem>
-                  }
-                  value="Checking usable handover completion status..."
-                />
-              ) : !isUsableHandoverCompleted ? (
-                <CustomeTooltip
-                  truncateValue={
-                    <DropdownMenuItem className="sm:hidden" disabled>
-                      <Handshake size={20} />
-                      Move to Final Handover
-                    </DropdownMenuItem>
-                  }
-                  value="Mark Usable Handover as completed before moving to Final Handover."
-                />
-              ) : isLoadingMisc ? (
-                // 2️⃣ Checking misc status → block
-                <CustomeTooltip
-                  truncateValue={
-                    <DropdownMenuItem className="sm:hidden" disabled>
-                      <Handshake size={20} />
-                      Move to Final Handover
-                    </DropdownMenuItem>
-                  }
-                  value="Checking miscellaneous status..."
-                />
-              ) : !miscStatusReady ? (
-                // 3️⃣ Misc pending/awaiting → block
-                <CustomeTooltip
-                  truncateValue={
-                    <DropdownMenuItem className="sm:hidden" disabled>
-                      <Handshake size={20} />
-                      Move to Final Handover
-                    </DropdownMenuItem>
-                  }
-                  value="All miscellaneous items must be Resolved or Rejected before moving to Final Handover."
-                />
-              ) : !finalReady?.isReady ? (
-                // 2️⃣ Installation started but NOT eligible → show WHY
-                <CustomeTooltip
-                  truncateValue={
-                    <DropdownMenuItem className="sm:hidden" disabled>
-                      <Handshake size={20} />
-                      Move to Final Handover
-                    </DropdownMenuItem>
-                  }
-                  value={
-                    finalReady?.message ||
-                    "Lead is not ready for Final Handover yet."
                   }
                 />
               ) : (
-                // 3️⃣ Eligible → allow moving
                 <DropdownMenuItem
-                  className="sm:hidden"
-                  onClick={() => {
-                    setShowMoveModal(true);
+                  onSelect={() => {
+                    setActivityType("onHold");
+                    setActivityModalOpen(true);
                   }}
                 >
-                  <Handshake size={20} />
-                  Move to Final Handover
+                  <Clock className=" h-4 w-4" />
+                  Mark On Hold
                 </DropdownMenuItem>
-              ))}
-              <DropdownMenuItem
-                onSelect={() => {
-                  setActivityType("onHold");
-                  setActivityModalOpen(true);
-                }}
-              >
-                <Clock className=" h-4 w-4" />
-                Mark On Hold
-              </DropdownMenuItem>
+              )}
+              {canCreateSmallOrder &&
+                (shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <BoxIcon size={20} />
+                        Create Small Order
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setOpenSmallOrderModal(true);
+                    }}
+                  >
+                    <BoxIcon size={20} />
+                    Create Small Order
+                  </DropdownMenuItem>
+                ))}
               {canEdit && (
-                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                  <SquarePen size={20} />
-                  Edit
-                </DropdownMenuItem>
+                // Lead block handling added for DropdownMenu action
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <SquarePen size={20} />
+                        Edit
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                    <SquarePen size={20} />
+                    Edit
+                  </DropdownMenuItem>
+                )
               )}
 
               {canReassign && (
-                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                  <Users size={20} />
-                  Reassign Lead
-                </DropdownMenuItem>
+                // Lead block handling added for DropdownMenu action
+                shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <Users size={20} />
+                        Reassign Lead
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                    <Users size={20} />
+                    Reassign Lead
+                  </DropdownMenuItem>
+                )
+              )}
+
+
+              {userType === "super-admin" && (
+                <>
+
+                  <DropdownMenuItem
+                    onClick={() => setOpenBlockConfirm(true)}
+                    disabled={isBlockActionPending}
+                  >
+                    {isLeadBlocked ? (
+                      <>
+                        <LockOpen className="w-4 h-4" />
+                        Unblock Lead
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="w-4 h-4" />
+                        Block Lead
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                </>
               )}
 
               {canDelete && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setOpenDelete(true)}>
-                    <XCircle size={20} className="text-red-500" />
-                    Delete
-                  </DropdownMenuItem>
+                  {/* Lead block handling added for DropdownMenu action */}
+                  {shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <XCircle size={20} className="text-red-500" />
+                          Delete
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem onClick={() => setOpenDelete(true)}>
+                      <XCircle size={20} className="text-red-500" />
+                      Delete
+                    </DropdownMenuItem>
+                  )}
                 </>
               )}
             </DropdownMenuContent>
@@ -614,28 +814,44 @@ export default function UnderInstallationLeadDetails() {
           </ScrollArea>
 
           <div className="flex">
-            {!underDetails?.actual_installation_start_date ? (
-              canStartInstallation ? (
-                // ✅ User allowed — normal working button
-                <Button size="sm" onClick={() => setOpenStartModal(true)}>
-                  Start Installation
-                </Button>
-              ) : (
-                // ❌ No access — show tooltip + disabled button
-                <CustomeTooltip
-                  value="You do not have permission to access this action."
-                  truncateValue={
-                    <Button
-                      size="sm"
-                      disabled
-                      className="cursor-not-allowed opacity-60"
-                    >
-                      Start Installation
-                    </Button>
-                  }
-                />
-              )
-            ) : (
+ {!underDetails?.actual_installation_start_date ? (
+  <CustomeTooltip
+    value={
+      shouldDisableBlockedActions
+        ? blockedTooltip
+        : !canStartInstallation
+          ? "You do not have permission to access this action."
+          : undefined
+    }
+    truncateValue={
+      <div className={shouldDisableBlockedActions || !canStartInstallation ? "opacity-60 cursor-not-allowed" : ""}>
+        <Button
+          size="sm"
+          disabled={
+            shouldDisableBlockedActions ||
+            !canStartInstallation
+          }
+          className={
+            shouldDisableBlockedActions || !canStartInstallation
+              ? "pointer-events-none"
+              : ""
+          }
+          onClick={() => {
+            if (
+              shouldDisableBlockedActions ||
+              !canStartInstallation
+            )
+              return;
+
+            setOpenStartModal(true);
+          }}
+        >
+          Start Installation
+        </Button>
+      </div>
+    }
+  />
+) : (
               // Existing installation date display block (unchanged)
               <div className="flex flex-col items-start">
                 <p className="text-xs font-semibold">Installation Started On</p>
@@ -721,6 +937,13 @@ export default function UnderInstallationLeadDetails() {
         open={assignOpenLead}
         onOpenChange={setAssignOpenLead}
         leadData={{ id: leadIdNum, assignTo: lead?.assignedTo }}
+      />
+
+      <SmallOrderRequestModal
+        open={openSmallOrderModal}
+        onOpenChange={setOpenSmallOrderModal}
+        source="under_installation"
+        leadId={leadIdNum}
       />
 
       <EditLeadModal
@@ -903,6 +1126,44 @@ export default function UnderInstallationLeadDetails() {
         }}
         loading={updateStatusMutation.isPending}
       />
+
+      <AlertDialog
+        open={openBlockConfirm}
+        onOpenChange={setOpenBlockConfirm}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isLeadBlocked
+                ? "Unblock Lead?"
+                : "Block Lead?"}
+            </AlertDialogTitle>
+
+            <AlertDialogDescription>
+              {isLeadBlocked
+                ? "This will unblock the lead and allow normal actions."
+                : "This will block the lead and prevent stage actions."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={handleToggleLeadBlock}
+              disabled={isBlockActionPending}
+            >
+              {isBlockActionPending
+                ? "Processing..."
+                : isLeadBlocked
+                  ? "Unblock"
+                  : "Block"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

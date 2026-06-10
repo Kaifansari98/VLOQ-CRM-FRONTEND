@@ -1,4 +1,4 @@
-import { useQuery, UseQueryResult } from "@tanstack/react-query";
+import { useMutation, useQuery, UseQueryResult } from "@tanstack/react-query";
 import { apiClient } from "@/lib/apiClient";
 
 // ===============================
@@ -63,6 +63,12 @@ export interface ActiveLeadTask {
   createdBy?: {
     user_name: string;
   } | null;
+}
+
+export interface ActOnSmallOrderRequestTaskPayload {
+  action: "approve" | "reject";
+  acted_by: number;
+  remark?: string | null;
 }
 
 // ===============================
@@ -264,5 +270,31 @@ export const useActiveLeadTasks = (
     enabled: enabled && !!vendorId && !!leadId,
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
+  });
+};
+
+export const actOnSmallOrderRequestTask = async (
+  leadId: number,
+  taskId: number,
+  payload: ActOnSmallOrderRequestTaskPayload,
+) => {
+  const { data } = await apiClient.patch(
+    `/leads/tasks/leadId/${leadId}/taskId/${taskId}/small-order-request/action`,
+    payload,
+  );
+  return data;
+};
+
+export const useActOnSmallOrderRequestTask = () => {
+  return useMutation({
+    mutationFn: ({
+      leadId,
+      taskId,
+      payload,
+    }: {
+      leadId: number;
+      taskId: number;
+      payload: ActOnSmallOrderRequestTaskPayload;
+    }) => actOnSmallOrderRequestTask(leadId, taskId, payload),
   });
 };

@@ -1,3 +1,5 @@
+// lib/reports/miscIssueLogReport.ts
+
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import { apiClient } from "@/lib/apiClient";
@@ -10,6 +12,7 @@ interface GenerateMiscIssueLogReportParams {
   leadId?: number | null;
   fromDate: string;
   toDate: string;
+  teamIds: number[];
   onProgress?: (stage: string) => void;
 }
 
@@ -21,10 +24,16 @@ interface MiscIssueLogRow {
   client_name: string | null;
   franchise_store: string | null;
   miscl_issue_type: string | null;
+  sales_executive: string | null;
+  site_supervisor: string | null;
   responsible_team: string | null;
   issue_impact: string | null;
   instance: string | null;
   reorder_material_type: string | null;
+  // ✅ new fields
+  problem_description: string | null;
+  reorder_material_details: string | null;
+  issue_description: string | null;
   approve_reject_date: string | null;
   rtd_date: string | null;
   dispatch_req_date: string | null;
@@ -39,12 +48,15 @@ async function fetchReportData(
   leadId: number | null,
   fromDate: string,
   toDate: string,
+  teamIds: number[], // ✅ was missing
 ): Promise<MiscIssueLogRow[]> {
   const params: Record<string, string> = {};
   if (franchiseId !== null) params.franchise_id = String(franchiseId);
   if (leadId !== null) params.lead_id = String(leadId);
   if (fromDate) params.from_date = fromDate;
   if (toDate) params.to_date = toDate;
+  // ✅ pass teamIds as comma-separated or repeated param
+  if (teamIds.length > 0) params.team_ids = teamIds.join(",");
 
   const { data } = await apiClient.get(
     `/leads/installation/under-installation/vendorId/${vendorId}/report/misc-issue-log-data`,
@@ -72,6 +84,7 @@ function buildMiscIssueSheet(
 ) {
   const sheet = workbook.addWorksheet(sheetName);
 
+  // ✅ 18 columns now
   sheet.columns = [
     { key: "srNo", width: 8 },
     { key: "leadCode", width: 16 },
@@ -79,10 +92,15 @@ function buildMiscIssueSheet(
     { key: "franchiseStore", width: 24 },
     { key: "typeLabel", width: 18 },
     { key: "type", width: 24 },
+    { key: "salesExecutive", width: 22 },
+    { key: "siteSupervisor", width: 22 },
     { key: "team", width: 24 },
     { key: "impact", width: 18 },
     { key: "instance", width: 14 },
     { key: "reorderMaterialType", width: 24 },
+    { key: "reorderMaterialDetails", width: 30 },
+    { key: "problemDescription", width: 30 },
+    { key: "issueDescription", width: 30 },
     { key: "approveRejectDate", width: 20 },
     { key: "rtdDate", width: 18 },
     { key: "dispatchReqDate", width: 22 },
@@ -97,10 +115,15 @@ function buildMiscIssueSheet(
     "Franchise Store",
     "Type",
     "Miscl/Issue Type",
+    "Sales Executive",
+    "Site Supervisor",
     "Responsible Team",
     "Issue Impact",
     "Instance",
     "Reorder Material Type",
+    "Reorder Material Details",
+    "Problem Description",
+    "Issue Description",
     "Miscl Approve/Reject Date",
     "Miscl RTD Date",
     "Miscl Disp Req Date",
@@ -124,11 +147,7 @@ function buildMiscIssueSheet(
   headers.forEach((header, index) => {
     const cell = headerRow.getCell(index + 1);
     cell.value = header;
-    cell.alignment = {
-      horizontal: "center",
-      vertical: "middle",
-      wrapText: true,
-    };
+    cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
     cell.fill = {
       type: "pattern",
       pattern: "solid",
@@ -152,10 +171,15 @@ function buildMiscIssueSheet(
       entry.franchise_store ?? "-",
       entry.row_type === "misc" ? "Miscellaneous" : "Issue Log",
       entry.miscl_issue_type ?? "-",
+      entry.sales_executive ?? "-",
+      entry.site_supervisor ?? "-",
       entry.responsible_team ?? "-",
       entry.issue_impact ?? "-",
       entry.instance ?? "-",
       entry.reorder_material_type ?? "-",
+      entry.reorder_material_details ?? "-", // moved
+      entry.problem_description ?? "-",
+      entry.issue_description ?? "-",
       formatDate(entry.approve_reject_date),
       formatDate(entry.rtd_date),
       formatDate(entry.dispatch_req_date),
@@ -165,10 +189,12 @@ function buildMiscIssueSheet(
 
     row.height = 18;
     row.eachCell({ includeEmpty: true }, (cell, colNum) => {
-      const isCenter = [1, 10, 11, 12, 13, 14].includes(colNum);
+      // center: Sr.No(1), dates(16-20)
+      const isCenter = colNum === 1 || (colNum >= 16 && colNum <= 20);
       cell.alignment = {
         horizontal: isCenter ? "center" : "left",
         vertical: "middle",
+        wrapText: [13, 14, 15].includes(colNum), // wrap for description cols
       };
       cell.font = { size: 10 };
       cell.border = {
@@ -185,20 +211,36 @@ function buildMiscIssueSheet(
         };
       }
     });
+
+    // ✅ auto-height for description rows that might wrap
+    const hasLongText = [
+      entry.problem_description,
+      entry.reorder_material_details,
+      entry.issue_description,
+    ].some((v) => v && v.length > 40);
+    if (hasLongText) row.height = 36;
   });
 }
 
 export async function generateMiscIssueLogReport(
   params: GenerateMiscIssueLogReportParams,
 ) {
-  const { vendorId, franchiseId, leadId = null, fromDate, toDate, onProgress } = params;
+  const {
+    vendorId,
+    franchiseId,
+    leadId = null,
+    fromDate,
+    toDate,
+    teamIds, // ✅ now used
+    onProgress,
+  } = params;
 
   onProgress?.("Fetching misc and issue logs...");
 
   const rows =
     franchiseId === "all"
-      ? await fetchReportData(vendorId, null, leadId, fromDate, toDate)
-      : await fetchReportData(vendorId, franchiseId, leadId, fromDate, toDate);
+      ? await fetchReportData(vendorId, null, leadId, fromDate, toDate, teamIds)
+      : await fetchReportData(vendorId, franchiseId, leadId, fromDate, toDate, teamIds);
 
   if (rows.length === 0) {
     throw new Error(
@@ -212,11 +254,14 @@ export async function generateMiscIssueLogReport(
   workbook.creator = "FurnixCRM";
   workbook.created = new Date();
   const usedSheetNames = new Set<string>();
+
   buildMiscIssueSheet(
     workbook,
     rows,
     buildSheetName(
-      franchiseId === "all" ? "Consolidated - All Franchisee" : "Miscl + Issue Log",
+      franchiseId === "all"
+        ? "Consolidated - All Franchisee"
+        : "Miscl + Issue Log",
       usedSheetNames,
     ),
   );
@@ -246,5 +291,8 @@ export async function generateMiscIssueLogReport(
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
 
-  saveAs(blob, buildReportFileName(params.vendorReportCode, "Miscl + Issue Log Report"));
+  saveAs(
+    blob,
+    buildReportFileName(params.vendorReportCode, "Miscl + Issue Log Report"),
+  );
 }
