@@ -85,6 +85,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   );
 
   const lead = leadResponse?.data?.lead;
+  const isSmallOrderRequestLead = lead?.is_small_order_request === true;
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const { data: instancesResponse } = useLeadProductStructureInstances(leadId, vendorId);
 
@@ -215,13 +216,19 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
     })) || [];
 
   // Titles
-  const mandatoryTitles = ["Carcass", "Shutter", "Stock Hardware"];
+  const mandatoryTitles = isSmallOrderRequestLead
+    ? []
+    : ["Carcass", "Shutter", "Stock Hardware"];
   const defaultTitles = [
     ...mandatoryTitles,
-    "Special Hardware",
-    "Profile Shutter",
-    "Outsourced Shutter",
-    "Glass Material",
+    ...(isSmallOrderRequestLead
+      ? []
+      : [
+          "Special Hardware",
+          "Profile Shutter",
+          "Outsourced Shutter",
+          "Glass Material",
+        ]),
   ];
 
   const defaultCards = useMemo(
@@ -271,6 +278,25 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   // "Order Login Completed" button is ONLY VISIBLE when isValid = true.
   // ─────────────────────────────────────────────────────────
   const mandatoryValidation = useMemo(() => {
+    if (isSmallOrderRequestLead) {
+      const hasAtLeastOneFilledCard = (orderLoginData || []).some((item: any) => {
+        const local = breakups[item.item_type] ?? {
+          item_desc: item.item_desc || "",
+          company_vendor_id: item.company_vendor_id || null,
+        };
+        const hasVendor = !!local.company_vendor_id;
+        const hasDesc = !!local.item_desc?.trim();
+        return hasVendor && hasDesc;
+      });
+
+      return {
+        isValid: hasAtLeastOneFilledCard,
+        missingFields: hasAtLeastOneFilledCard
+          ? []
+          : ["Add and fill at least one order login section"],
+      };
+    }
+
     const missing: string[] = [];
 
     mandatoryTitles.forEach((title) => {
@@ -288,7 +314,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
       isValid: missing.length === 0,
       missingFields: missing,
     };
-  }, [breakups]);
+  }, [breakups, isSmallOrderRequestLead, orderLoginData]);
 
   // Completed button is visible only when role can access AND mandatory fields filled
   const canShowCompletedButton =
@@ -411,7 +437,7 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
     const trimmedTitle = nextTitle.trim();
 
     if (!trimmedTitle) { toastManager.add({ title: "Section name cannot be empty", type: "error" }); return false; }
-    if (defaultTitles.includes(trimmedTitle)) { toastManager.add({ title: "Section name cannot match a default section", type: "error" }); return false; }
+    if (!isSmallOrderRequestLead && defaultTitles.includes(trimmedTitle)) { toastManager.add({ title: "Section name cannot match a default section", type: "error" }); return false; }
     if (trimmedTitle === item.item_type) return true;
     if (breakups[trimmedTitle]) { toastManager.add({ title: "Section name already exists", type: "error" }); return false; }
     if (!item?.id) { toastManager.add({ title: "Unable to update section name", type: "error" }); return false; }
