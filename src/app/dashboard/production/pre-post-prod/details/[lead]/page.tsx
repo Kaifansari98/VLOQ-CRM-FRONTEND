@@ -140,6 +140,17 @@ export default function ProductionLeadDetails() {
 
   const { data, isLoading, isError } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
+  const smallOrderTypeKey =
+    lead?.smallOrderRequest?.requestType?.type_key ?? null;
+  const isSmallOrderLead = lead?.is_small_order_request === true;
+  const isSmallOrderSingleUploadFlow =
+    isSmallOrderLead &&
+    [
+      "additional_panel",
+      "one_cabinet",
+      "additional_hardware",
+      "additional_accessory",
+    ].includes(String(smallOrderTypeKey ?? "").toLowerCase());
   const { data: instancesResponse } = useLeadProductStructureInstances(
     leadIdNum,
     vendorId,
@@ -369,14 +380,27 @@ export default function ProductionLeadDetails() {
   const missingDocsOrRemarks: string[] = [];
 
   if (validInstanceId) {
-    if (!instanceCompleteness?.qc_photos) {
-      missingDocsOrRemarks.push("QC photos");
-    }
-    if (!instanceCompleteness?.hardware_docs) {
-      missingDocsOrRemarks.push("Hardware packing docs");
-    }
-    if (!instanceCompleteness?.woodwork_docs) {
-      missingDocsOrRemarks.push("Woodwork packing docs");
+    if (isSmallOrderSingleUploadFlow) {
+      const hasAnyPostProductionUpload =
+        !!instanceCompleteness?.qc_photos ||
+        !!instanceCompleteness?.hardware_docs ||
+        !!instanceCompleteness?.woodwork_docs;
+
+      if (!hasAnyPostProductionUpload) {
+        missingDocsOrRemarks.push(
+          "Any one of QC photos, Hardware packing docs, or Woodwork packing docs",
+        );
+      }
+    } else {
+      if (!instanceCompleteness?.qc_photos) {
+        missingDocsOrRemarks.push("QC photos");
+      }
+      if (!instanceCompleteness?.hardware_docs) {
+        missingDocsOrRemarks.push("Hardware packing docs");
+      }
+      if (!instanceCompleteness?.woodwork_docs) {
+        missingDocsOrRemarks.push("Woodwork packing docs");
+      }
     }
   }
 
