@@ -372,6 +372,7 @@ export default function LeadDetails() {
                 <span>
                   <Button
                     size="sm"
+                    className="hidden sm:flex"
                     onClick={() => setVisitOpen(true)}
                     disabled={isLeadBlocked || uiDisabled}
                   >
@@ -386,7 +387,7 @@ export default function LeadDetails() {
             (isDraftLead ? (
               <CustomeTooltip
                 truncateValue={
-                  <Button size="sm" disabled>
+                  <Button size="sm" className="hidden sm:flex" disabled>
                     Assign Task
                   </Button>
                 }

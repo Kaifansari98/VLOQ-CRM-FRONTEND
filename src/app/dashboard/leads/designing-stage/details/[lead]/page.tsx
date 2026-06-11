@@ -513,16 +513,18 @@ export default function DesigningStageLead() {
             {!canMoveToBooking ||
               isBookingLockedByEligibleDays ||
               isLeadBlocked ? (
-              <CustomeTooltip
-                truncateValue={
-                  <div className="flex items-center opacity-50 cursor-not-allowed px-2">
-                    <ClipboardCheck className="mr-2 h-4 w-4" />
-                    Move To Booking
-                  </div>
-                }
-                value={isLeadBlocked ? blockedTooltip : moveToBookingTooltip}
-                contentClassName="max-w-80 text-left"
-              />
+              <div className="hidden md:block">
+                <CustomeTooltip
+                  truncateValue={
+                    <div className="flex items-center opacity-50 cursor-not-allowed px-2">
+                      <ClipboardCheck className="mr-2 h-4 w-4" />
+                      Move To Booking
+                    </div>
+                  }
+                  value={isLeadBlocked ? blockedTooltip : moveToBookingTooltip}
+                  contentClassName="max-w-80 text-left"
+                />
+              </div>
             ) : (
               <Button
                 size="sm"
@@ -564,35 +566,37 @@ export default function DesigningStageLead() {
                 Assign Task
               </DropdownMenuItem>
               {/* Move to Booking */}
-              {isLeadBlocked ? (
-                // Lead block handling added for DropdownMenu action
-                <CustomeTooltip
-                  value={blockedTooltip}
-                  truncateValue={
-                    <DropdownMenuItem disabled>
-                      <ClipboardCheck className="h-4 w-4" />
-                      Move To Booking
-                    </DropdownMenuItem>
-                  }
-                  contentClassName="max-w-80 text-center"
-                />
-              ) : canOpenBookingModal ? (
-                <DropdownMenuItem onClick={() => setBookingOpenLead(true)}>
-                  <ClipboardCheck className="h-4 w-4" />
-                  Move To Booking
-                </DropdownMenuItem>
-              ) : (
-                <CustomeTooltip
-                  truncateValue={
-                    <div className="flex items-center opacity-50 cursor-not-allowed px-2">
-                      <ClipboardCheck className="mr-2 h-4 w-4" />
-                      Move To Booking
-                    </div>
-                  }
-                  value={moveToBookingTooltip}
-                  contentClassName="max-w-80 text-left"
-                />
-              )}
+              <div className="md:hidden">
+                {isLeadBlocked ? (
+                  // Lead block handling added for DropdownMenu action
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <ClipboardCheck className="h-4 w-4" />
+                        Move To Booking
+                      </DropdownMenuItem>
+                    }
+                    contentClassName="max-w-80 text-center"
+                  />
+                ) : canOpenBookingModal ? (
+                  <DropdownMenuItem onClick={() => setBookingOpenLead(true)}>
+                    <ClipboardCheck className="h-4 w-4" />
+                    Move To Booking
+                  </DropdownMenuItem>
+                ) : (
+                  <CustomeTooltip
+                    truncateValue={
+                      <div className="flex items-center opacity-50 cursor-not-allowed px-2 py-1.5 text-sm">
+                        <ClipboardCheck className="mr-2 h-4 w-4" />
+                        Move To Booking
+                      </div>
+                    }
+                    value={moveToBookingTooltip}
+                    contentClassName="max-w-80 text-left"
+                  />
+                )}
+              </div>
 
               {/* Lead Status submenu */}
               {canSeeLeadStatusMenu && (

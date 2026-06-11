@@ -25,8 +25,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, EllipsisVertical, Plus } from "lucide-react";
 import clsx from "clsx";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
@@ -321,7 +327,7 @@ export default function LeadsGenerationPage() {
             {/* ✅ Show only for admin, super-admin, sales-executive */}
             {canShowAddNewLeadButton && (
               <>
-                <Button size="sm" onClick={() => setOpenCreateLead(true)}>
+                <Button size="sm" className="hidden sm:flex" onClick={() => setOpenCreateLead(true)}>
                   Add New Lead
                 </Button>
 
@@ -334,6 +340,26 @@ export default function LeadsGenerationPage() {
 
             <NotificationBell />
             <AnimatedThemeToggler />
+
+            {canShowAddNewLeadButton && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="sm:hidden relative bg-accent p-1.5 rounded-sm h-8 w-8"
+                  >
+                    <EllipsisVertical size={20} />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setOpenCreateLead(true)}>
+                    <Plus size={16} className="mr-2" />
+                    Add New Lead
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
       </header>

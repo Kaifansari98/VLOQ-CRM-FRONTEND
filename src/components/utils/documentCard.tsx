@@ -429,7 +429,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
                   title="Preview"
                 >
                   <Eye className="w-4 h-4" />
-                  {!hasStatus && "Preview"}
+                  {!hasStatus && <span className="hidden sm:inline">Preview</span>}
                 </button>
               )}
 
@@ -451,12 +451,12 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
                 {isDownloading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    {progress ? `${progress}%` : "Preparing..."}
+                    <span className="hidden sm:inline">{progress ? `${progress}%` : "Preparing..."}</span>
                   </>
                 ) : (
                   <>
                     <Download className="w-4 h-4" />
-                    {!hasStatus && "Download"}
+                    {!hasStatus && <span className="hidden sm:inline">Download</span>}
                   </>
                 )}
               </button>
