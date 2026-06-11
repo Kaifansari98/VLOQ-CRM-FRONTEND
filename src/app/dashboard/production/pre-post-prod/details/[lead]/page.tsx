@@ -92,6 +92,7 @@ import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useCheckPostProductionReady } from "@/api/production/production-api";
 import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
 import { useMoveLeadToReadyToDispatch } from "@/api/production/useReadyToDispatchLeads";
+import { useMoveLeadToDispatchPlanning } from "@/api/installation/useSiteReadinessLeads";
 import { useRouter } from "next/navigation";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
@@ -137,6 +138,7 @@ export default function ProductionLeadDetails() {
   const queryClient = useQueryClient();
 
   const moveLeadMutation = useMoveLeadToReadyToDispatch();
+  const moveLeadToDispatchPlanningMutation = useMoveLeadToDispatchPlanning();
 
   const { data, isLoading, isError } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
@@ -544,6 +546,58 @@ export default function ProductionLeadDetails() {
       },
     );
   };
+
+  const handleReadyToDispatchClick = async () => {
+    if (!vendorId || !userId || !leadIdNum) {
+      toastManager.add({
+        title: "Missing vendor or user information!",
+        type: "error",
+      });
+      return;
+    }
+
+    if (!isSmallOrderLead) {
+      setOpenReadyToDispatch(true);
+      return;
+    }
+
+    try {
+      await moveLeadToDispatchPlanningMutation.mutateAsync({
+        vendorId,
+        leadId: leadIdNum,
+        updated_by: userId,
+      });
+
+      toastManager.add({
+        title: "Lead moved to Dispatch Planning successfully!",
+        type: "success",
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["leadById", leadIdNum],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["leadStats", vendorId, userId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["universal-stage-leads"],
+        exact: false,
+      });
+
+      setTimeout(() => {
+        router.push("/dashboard/installation/dispatch-planning");
+      }, 400);
+    } catch (err: any) {
+      toastManager.add({
+        title:
+          err?.response?.data?.message ||
+          err?.message ||
+          "Failed to move lead to Dispatch Planning",
+        type: "error",
+      });
+    }
+  };
+
   if (isLoading && !lead) {
     return <p className="p-6">Loading production lead details...</p>;
   }
@@ -669,7 +723,8 @@ export default function ProductionLeadDetails() {
                 size="sm"
                 className="hidden md:flex"
                 variant="default"
-                onClick={() => setOpenReadyToDispatch(true)}
+                disabled={moveLeadToDispatchPlanningMutation.isPending}
+                onClick={handleReadyToDispatchClick}
               >
                 Ready To Dispatch
               </Button>
@@ -774,7 +829,7 @@ export default function ProductionLeadDetails() {
                 ) : allInstancesCompleted ? (
                   <DropdownMenuItem
                     className="md:hidden"
-                    onClick={() => setOpenReadyToDispatch(true)}
+                    onClick={handleReadyToDispatchClick}
                   >
                     <Truck size={20} />
                     Ready To Dispatch
