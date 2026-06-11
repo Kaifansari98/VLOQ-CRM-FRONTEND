@@ -330,6 +330,9 @@ export default function LeadDetailsProductionUtil({
       <SmoothTab
         items={allTabs}
         defaultTabId={(() => {
+          if (lead?.is_small_order_request === true) {
+            return "productionFiles";
+          }
           if (
             tabFromUrl &&
             allTabs.some((tab) => tab.id === tabFromUrl && !tab.disabled)
