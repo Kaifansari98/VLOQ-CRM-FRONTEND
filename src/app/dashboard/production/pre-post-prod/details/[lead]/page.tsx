@@ -556,46 +556,7 @@ export default function ProductionLeadDetails() {
       return;
     }
 
-    if (!isSmallOrderLead) {
-      setOpenReadyToDispatch(true);
-      return;
-    }
-
-    try {
-      await moveLeadToDispatchPlanningMutation.mutateAsync({
-        vendorId,
-        leadId: leadIdNum,
-        updated_by: userId,
-      });
-
-      toastManager.add({
-        title: "Lead moved to Dispatch Planning successfully!",
-        type: "success",
-      });
-
-      queryClient.invalidateQueries({
-        queryKey: ["leadById", leadIdNum],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["leadStats", vendorId, userId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["universal-stage-leads"],
-        exact: false,
-      });
-
-      setTimeout(() => {
-        router.push("/dashboard/installation/dispatch-planning");
-      }, 400);
-    } catch (err: any) {
-      toastManager.add({
-        title:
-          err?.response?.data?.message ||
-          err?.message ||
-          "Failed to move lead to Dispatch Planning",
-        type: "error",
-      });
-    }
+    setOpenReadyToDispatch(true);
   };
 
   if (isLoading && !lead) {
@@ -1191,16 +1152,24 @@ export default function ProductionLeadDetails() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Move to Ready To Dispatch?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {isSmallOrderLead
+                ? "Move to Dispatch Planning?"
+                : "Move to Ready To Dispatch?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This will move the lead from Production to the Ready-To-Dispatch
-              stage. Are you sure you want to continue?
+              {isSmallOrderLead
+                ? "This will move the small-order lead from Production directly to the Dispatch Planning stage. Are you sure you want to continue?"
+                : "This will move the lead from Production to the Ready-To-Dispatch stage. Are you sure you want to continue?"}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              disabled={moveLeadMutation.isPending}
+              disabled={
+                moveLeadMutation.isPending ||
+                moveLeadToDispatchPlanningMutation.isPending
+              }
               onClick={async () => {
                 if (!vendorId || !userId || !leadIdNum) {
                   toastManager.add({
@@ -1211,19 +1180,31 @@ export default function ProductionLeadDetails() {
                 }
 
                 try {
-                  await moveLeadMutation.mutateAsync({
-                    vendorId,
-                    leadId: leadIdNum,
-                    updated_by: userId,
-                  });
+                  if (isSmallOrderLead) {
+                    await moveLeadToDispatchPlanningMutation.mutateAsync({
+                      vendorId,
+                      leadId: leadIdNum,
+                      updated_by: userId,
+                    });
 
-                  toastManager.add({
-                    title: "Lead moved to Ready-To-Dispatch successfully!",
-                    type: "success",
-                  });
+                    toastManager.add({
+                      title: "Lead moved to Dispatch Planning successfully!",
+                      type: "success",
+                    });
+                  } else {
+                    await moveLeadMutation.mutateAsync({
+                      vendorId,
+                      leadId: leadIdNum,
+                      updated_by: userId,
+                    });
+
+                    toastManager.add({
+                      title: "Lead moved to Ready-To-Dispatch successfully!",
+                      type: "success",
+                    });
+                  }
                   setOpenReadyToDispatch(false);
 
-                  // ✅ Refetch relevant queries
                   queryClient.invalidateQueries({
                     queryKey: ["leadById", leadIdNum],
                   });
@@ -1236,15 +1217,21 @@ export default function ProductionLeadDetails() {
                     exact: false,
                   });
 
-                  // ✅ Redirect after a short delay for smooth UX
                   setTimeout(() => {
-                    router.push("/dashboard/production/ready-to-dispatch");
+                    router.push(
+                      isSmallOrderLead
+                        ? "/dashboard/installation/dispatch-planning"
+                        : "/dashboard/production/ready-to-dispatch",
+                    );
                   }, 400);
                 } catch (err: any) {
                   toastManager.add({
                     title:
+                      err?.response?.data?.message ||
                       err?.message ||
-                      "Failed to move lead to Ready-To-Dispatch",
+                      (isSmallOrderLead
+                        ? "Failed to move lead to Dispatch Planning"
+                        : "Failed to move lead to Ready-To-Dispatch"),
                     type: "error",
                   });
                 }
