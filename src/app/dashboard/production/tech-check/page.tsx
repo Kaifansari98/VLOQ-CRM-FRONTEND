@@ -24,7 +24,9 @@ type row = {
 };
 // 🔵 Navigation for Tech-Check rows
 const navigateTechCheck = (row: row) =>
-  `/dashboard/production/tech-check/details/${row.id}?accountId=${row.accountId}`;
+  `/dashboard/production/tech-check/details/${row.id}?accountId=${row.accountId}${
+    (row as any).instanceId ? `&instance_id=${(row as any).instanceId}` : ""
+  }`;
 
 export default function TechCheckStagePage() {
   return (

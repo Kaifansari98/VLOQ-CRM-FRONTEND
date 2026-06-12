@@ -150,7 +150,7 @@ export const useVendorOverallLeads = (
 };
 
 export function useLeadById(leadId?: number, vendorId?: number, userId?: number) {
-  return useQuery({
+  const query = useQuery({
     queryKey: ["lead", leadId, vendorId, userId],
     queryFn: () => getLeadById(leadId!, vendorId!, userId!),
     enabled: !!leadId && !!vendorId && !!userId,
@@ -160,6 +160,15 @@ export function useLeadById(leadId?: number, vendorId?: number, userId?: number)
     refetchOnWindowFocus: false,      // ← YEH SABSE IMPORTANT FIX HAI
     refetchOnReconnect: false,
   });
+
+  const waitingForQueryPrerequisites =
+    !!leadId && (!vendorId || !userId);
+
+  return {
+    ...query,
+    isLoading: query.isLoading || waitingForQueryPrerequisites,
+    isPending: query.isPending || waitingForQueryPrerequisites,
+  };
 }
 
 export function useLeadBlockStatus(leadId?: number, vendorId?: number) {

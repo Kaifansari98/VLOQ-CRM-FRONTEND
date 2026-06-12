@@ -20,7 +20,9 @@ import { UniversalTable } from "@/components/custom/UniversalTable";
 
 // 🔵 Row Navigation
 const navigateProductionStage = (row: any) =>
-  `/dashboard/production/pre-post-prod/details/${row.id}?accountId=${row.accountId}`;
+  `/dashboard/production/pre-post-prod/details/${row.id}?accountId=${row.accountId}${
+    row.instanceId ? `&instance_id=${row.instanceId}` : ""
+  }`;
 
 export default function ProductionPage() {
   const searchParams = useSearchParams();

@@ -270,6 +270,14 @@ export default function DispatchPlanningLeadDetails() {
     setOpenDelete(false);
   };
 
+  if (isLoading && !lead) {
+    return <p className="p-6">Loading lead details...</p>;
+  }
+
+  if (!lead) {
+    return <p className="p-6">Lead details not found or you do not have access.</p>;
+  }
+
   return (
     <>
       {/* Header */}

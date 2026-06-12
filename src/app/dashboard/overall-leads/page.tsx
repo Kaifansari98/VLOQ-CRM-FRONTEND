@@ -67,7 +67,9 @@ const navigateOverallLeads = (row: LeadColumn) => {
     return "/dashboard/overall-leads";
   }
 
-  return `${basePath}/${row.id}?accountId=${row.accountId}`;
+  return `${basePath}/${row.id}?accountId=${row.accountId}${
+    row.instanceId ? `&instance_id=${row.instanceId}` : ""
+  }`;
 };
 
 export default function OverallLeadsPage() {
