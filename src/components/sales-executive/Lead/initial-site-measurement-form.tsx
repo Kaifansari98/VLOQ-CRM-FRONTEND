@@ -232,6 +232,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
   const [uploadingInstanceId, setUploadingInstanceId] = React.useState<
     number | null
   >(null);
+  const [multiInstanceErrors, setMultiInstanceErrors] = React.useState<number[]>([]);
 
   React.useEffect(() => {
     if (!isMultiInstanceUploadFlow) {
@@ -446,6 +447,43 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
     ],
   );
 
+  const getExistingSitePhotosByInstance = React.useCallback(
+    (instanceId: number) =>
+      existingSitePhotos.filter(
+        (doc: SiteMeasurementFile) =>
+          doc.product_structure_instance_id === instanceId,
+      ),
+    [existingSitePhotos],
+  );
+
+  const getExistingMeasurementDocsByInstance = React.useCallback(
+    (instanceId: number) =>
+      existingMeasurementDocs.filter(
+        (doc: SiteMeasurementFile) =>
+          doc.product_structure_instance_id === instanceId,
+      ),
+    [existingMeasurementDocs],
+  );
+
+  const allInstancesAlreadyHaveRequiredUploads = React.useMemo(() => {
+    if (!isMultiInstanceUploadFlow || structureInstances.length === 0) {
+      return false;
+    }
+
+    return structureInstances.every((instance) => {
+      const hasExistingDocuments =
+        getExistingMeasurementDocsByInstance(instance.id).length > 0;
+      const hasSavedThisSession = savedInstanceIds.includes(instance.id);
+
+      return hasExistingDocuments || hasSavedThisSession;
+    });
+  }, [
+    getExistingMeasurementDocsByInstance,
+    isMultiInstanceUploadFlow,
+    structureInstances,
+    savedInstanceIds,
+  ]);
+
   const handleInstanceUpload = async (instance: LeadProductStructureInstance) => {
     if (!leadId || !accountId) {
       toastManager.add({
@@ -544,12 +582,39 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       });
 
       if (missingRequiredUploads.length > 0) {
+        const missingIds = missingRequiredUploads.map((i) => i.id);
+        setMultiInstanceErrors(missingIds);
+
+        const firstMissing = missingRequiredUploads[0];
         toastManager.add({
-          title: `Please upload all required ISM files for ${missingRequiredUploads[0].title}.`,
+          title: `Please upload all required ISM files for ${firstMissing.title}.`,
           type: "error",
         });
+
+        setTimeout(() => {
+          const el = document.getElementById(`instance-${firstMissing.id}`);
+          if (el) {
+            const isHidden = el.getBoundingClientRect().height === 0;
+            const targetScrollEl = isHidden ? (el.parentElement || el) : el;
+
+            const scrollContainer = targetScrollEl.closest("[data-radix-scroll-area-viewport]") || targetScrollEl.closest("form");
+            if (scrollContainer instanceof HTMLElement) {
+              const containerRect = scrollContainer.getBoundingClientRect();
+              const elRect = targetScrollEl.getBoundingClientRect();
+              const scrollOffset = elRect.top - containerRect.top + scrollContainer.scrollTop - (containerRect.height / 2) + (elRect.height / 2);
+              scrollContainer.scrollTo({
+                top: scrollOffset,
+                behavior: "smooth",
+              });
+            } else {
+              targetScrollEl.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+          }
+        }, 100);
+
         return;
       }
+      setMultiInstanceErrors([]);
     } else {
       values.current_site_photos?.forEach((file: File) => {
         flattenedSitePhotos.push({ file, instanceId: null });
@@ -648,41 +713,6 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
     }));
   };
 
-  const getExistingSitePhotosByInstance = React.useCallback(
-    (instanceId: number) =>
-      existingSitePhotos.filter(
-        (doc: SiteMeasurementFile) =>
-          doc.product_structure_instance_id === instanceId,
-      ),
-    [existingSitePhotos],
-  );
-
-  const getExistingMeasurementDocsByInstance = React.useCallback(
-    (instanceId: number) =>
-      existingMeasurementDocs.filter(
-        (doc: SiteMeasurementFile) =>
-          doc.product_structure_instance_id === instanceId,
-      ),
-    [existingMeasurementDocs],
-  );
-
-  const allInstancesAlreadyHaveRequiredUploads = React.useMemo(() => {
-    if (!isMultiInstanceUploadFlow || structureInstances.length === 0) {
-      return false;
-    }
-
-    return structureInstances.every((instance) => {
-      const hasExistingDocuments =
-        getExistingMeasurementDocsByInstance(instance.id).length > 0;
-
-      return hasExistingDocuments;
-    });
-  }, [
-    getExistingMeasurementDocsByInstance,
-    isMultiInstanceUploadFlow,
-    structureInstances,
-  ]);
-
   return (
     <BaseModal
       open={open}
@@ -752,7 +782,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                       getExistingMeasurementDocsByInstance(instance.id);
 
                     return (
-                      <Card key={instance.id}>
+                      <Card key={instance.id} id={`instance-${instance.id}`}>
                         <CardContent className="space-y-4">
                           <div>
                             <h4 className="text-sm font-semibold">
@@ -793,12 +823,14 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                             </div>
 
                             <div className="space-y-2">
-                              <FormLabel className="text-sm">
+                              <FormLabel className={cn("text-sm", multiInstanceErrors.includes(instance.id) ? "text-destructive" : "")}>
                                 Initial Site Measurement Document *
                               </FormLabel>
                               <SinglePdfUploadField
                                 value={uploads.upload_pdf}
-                                onChange={(files) =>
+                                invalid={multiInstanceErrors.includes(instance.id)}
+                                onChange={(files) => {
+                                  setMultiInstanceErrors((prev) => prev.filter(id => id !== instance.id));
                                   setInstanceFiles(
                                     instance.id,
                                     "upload_pdf",
@@ -807,8 +839,8 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                                       : files
                                         ? [files]
                                         : [],
-                                  )
-                                }
+                                  );
+                                }}
                                 allowedMimeTypes={[]}
                                 accept="*/*"
                                 title="Upload Measurement Document"
