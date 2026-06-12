@@ -57,7 +57,10 @@ export default function RootLayout({
         <link rel="preconnect" href="https://maps.googleapis.com" />
       </head>
 
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body
+        suppressHydrationWarning
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
         <Script
           src={`https://maps.googleapis.com/maps/api/js?key=AIzaSyC1FZNdpxsDhZvcDJcTbbxEfvjJYQUFgSg&libraries=places,geometry`}
           strategy="beforeInteractive"
