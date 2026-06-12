@@ -34,6 +34,7 @@ import {
   getSmallOrderRequestsByLead,
   getLeadProductStructureInstances,
   getClientVisits,
+  markSmallOrderRequestResolved,
   SmallOrderRequestListItem,
   uploadMoreSitePhotos,
   unblockLead,
@@ -502,5 +503,19 @@ export const useSmallOrderRequestsByLead = (
     enabled: !!vendorId && !!leadId,
     staleTime: 1000 * 60 * 2,
     refetchOnWindowFocus: false,
+  });
+};
+
+export const useMarkSmallOrderRequestResolved = () => {
+  return useMutation({
+    mutationFn: ({
+      vendorId,
+      requestId,
+      updatedBy,
+    }: {
+      vendorId: number;
+      requestId: number;
+      updatedBy: number;
+    }) => markSmallOrderRequestResolved({ vendorId, requestId, updatedBy }),
   });
 };

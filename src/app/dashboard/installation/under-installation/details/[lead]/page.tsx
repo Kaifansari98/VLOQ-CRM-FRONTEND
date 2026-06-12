@@ -96,6 +96,7 @@ import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/ass
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 import SmallOrderRequestModal from "@/components/installation/small-order/SmallOrderRequestModal";
 import {
+  useMarkSmallOrderRequestResolved,
   useBlockLead,
   useUnblockLead,
 } from "@/hooks/useLeadsQueries";
@@ -140,6 +141,7 @@ export default function UnderInstallationLeadDetails() {
   const [openSmallOrderModal, setOpenSmallOrderModal] = useState(false);
   const [showMoveModal, setShowMoveModal] = useState(false);
   const moveMutation = useMoveToFinalHandover();
+  const markResolvedMutation = useMarkSmallOrderRequestResolved();
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [activityType, setActivityType] = useState<"onHold">("onHold");
 
@@ -155,6 +157,10 @@ export default function UnderInstallationLeadDetails() {
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
   const accountId = lead?.account_id;
+  const isSmallOrderLead = lead?.is_small_order_request === true;
+  const smallOrderRequestId = lead?.smallOrderRequest?.id ?? null;
+  const isSmallOrderRequestResolved =
+    lead?.smallOrderRequest?.is_request_resolved === true;
   const canReassign = canReassignLeadButton(effectiveUserType ?? "");
   const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
   const canEdit = canEditLeadButton(effectiveUserType ?? "");
@@ -242,6 +248,12 @@ export default function UnderInstallationLeadDetails() {
   const isUsableHandoverCompleted = Boolean(
     usableHandoverData?.usable_handover_completed,
   );
+  const primaryActionLabel = isSmallOrderLead
+    ? "Mark as Resolved"
+    : "Move to Final Handover";
+  const primaryActionCompletedLabel = isSmallOrderLead
+    ? "Resolved"
+    : "Completed";
 
   console.log("miscStatus: ", miscStatus?.all_resolved);
 
@@ -337,6 +349,94 @@ export default function UnderInstallationLeadDetails() {
     return <p className="p-6">Lead details not found or you do not have access.</p>;
   }
 
+  const handlePrimaryActionConfirm = () => {
+    if (!vendorId || !userId) {
+      toastManager.add({
+        title: "Missing vendor or user information!",
+        type: "error",
+      });
+      return;
+    }
+
+    if (isSmallOrderLead) {
+      if (!smallOrderRequestId) {
+        toastManager.add({
+          title: "Small order request record not found for this lead.",
+          type: "error",
+        });
+        return;
+      }
+
+      markResolvedMutation.mutate(
+        {
+          vendorId,
+          requestId: smallOrderRequestId,
+          updatedBy: userId,
+        },
+        {
+          onSuccess: () => {
+            toastManager.add({
+              title: "Small order request marked as resolved successfully!",
+              type: "success",
+            });
+            setShowMoveModal(false);
+            queryClient.invalidateQueries({
+              queryKey: ["lead", leadIdNum, vendorId, userId],
+            });
+            queryClient.invalidateQueries({
+              queryKey: ["smallOrderRequestsByLead"],
+              exact: false,
+            });
+          },
+          onError: (error: any) => {
+            toastManager.add({
+              title:
+                error?.response?.data?.message ||
+                "Failed to mark small order request as resolved",
+              type: "error",
+            });
+          },
+        },
+      );
+
+      return;
+    }
+
+    moveMutation.mutate(
+      {
+        vendorId: lead.vendor_id,
+        leadId: lead.id,
+        updated_by: userId,
+      },
+      {
+        onSuccess: () => {
+          queryClient.removeQueries({
+            queryKey: ["lead-status", leadIdNum, vendorId],
+          });
+
+          queryClient.removeQueries({
+            queryKey: ["leadById", leadIdNum],
+          });
+
+          queryClient.invalidateQueries({
+            queryKey: ["leadStats"],
+            exact: false,
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["universal-stage-leads"],
+            exact: false,
+          });
+
+          if (canRedirectToFinalHandover) {
+            router.push("/dashboard/installation/final-handover");
+          } else {
+            router.push("/dashboard/installation/under-installation");
+          }
+        },
+      },
+    );
+  };
+
   return (
     <>
       {/* 🔹 Header */}
@@ -372,7 +472,16 @@ export default function UnderInstallationLeadDetails() {
           {/*  MOVE TO FINAL HANDOVER BUTTON WITH CONDITIONS */}
           {/* ───────────────────────────────────────────── */}
           {canMoveToFinalHandover &&
-            (shouldDisableBlockedActions ? (
+            (isSmallOrderLead && isSmallOrderRequestResolved ? (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled
+                className="hidden sm:flex border-emerald-200 bg-emerald-500/10 text-emerald-600"
+              >
+                {primaryActionCompletedLabel}
+              </Button>
+            ) : shouldDisableBlockedActions ? (
               <CustomeTooltip
                 truncateValue={
                   <div className="opacity-60 cursor-not-allowed">
@@ -382,7 +491,7 @@ export default function UnderInstallationLeadDetails() {
                       disabled
                       className="pointer-events-none hidden sm:flex"
                     >
-                      Move to Final Handover
+                      {primaryActionLabel}
                     </Button>
                   </div>
                 }
@@ -399,11 +508,11 @@ export default function UnderInstallationLeadDetails() {
                       disabled
                       className="pointer-events-none hidden sm:flex"
                     >
-                      Move to Final Handover
+                      {primaryActionLabel}
                     </Button>
                   </div>
                 }
-                value="Start Installation first to move this lead to Final Handover."
+                value={`Start Installation first to ${primaryActionLabel.toLowerCase()}.`}
               />
             ) : isLoadingUsableHandover ? (
               <CustomeTooltip
@@ -415,7 +524,7 @@ export default function UnderInstallationLeadDetails() {
                       disabled
                       className="pointer-events-none hidden sm:flex"
                     >
-                      Move to Final Handover
+                      {primaryActionLabel}
                     </Button>
                   </div>
                 }
@@ -431,11 +540,11 @@ export default function UnderInstallationLeadDetails() {
                       disabled
                       className="pointer-events-none hidden sm:flex"
                     >
-                      Move to Final Handover
+                      {primaryActionLabel}
                     </Button>
                   </div>
                 }
-                value="Mark Usable Handover as completed before moving to Final Handover."
+                value={`Mark Usable Handover as completed before ${primaryActionLabel.toLowerCase()}.`}
               />
             ) : isLoadingMisc ? (
               // 2️⃣ Checking misc status → block
@@ -448,7 +557,7 @@ export default function UnderInstallationLeadDetails() {
                       disabled
                       className="pointer-events-none hidden sm:flex"
                     >
-                      Move to Final Handover
+                      {primaryActionLabel}
                     </Button>
                   </div>
                 }
@@ -465,11 +574,27 @@ export default function UnderInstallationLeadDetails() {
                       disabled
                       className="pointer-events-none hidden sm:flex"
                     >
-                      Move to Final Handover
+                      {primaryActionLabel}
                     </Button>
                   </div>
                 }
-                value="All miscellaneous items must be Resolved or Rejected before moving to Final Handover."
+                value={`All miscellaneous items must be Resolved or Rejected before ${primaryActionLabel.toLowerCase()}.`}
+              />
+            ) : isSmallOrderLead && !smallOrderRequestId ? (
+              <CustomeTooltip
+                truncateValue={
+                  <div className="opacity-60 cursor-not-allowed">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      disabled
+                      className="pointer-events-none hidden sm:flex"
+                    >
+                      {primaryActionLabel}
+                    </Button>
+                  </div>
+                }
+                value="Small order request record not found for this lead."
               />
             ) : !finalReady?.isReady ? (
               // 2️⃣ Installation started but NOT eligible → show WHY
@@ -482,7 +607,7 @@ export default function UnderInstallationLeadDetails() {
                       disabled
                       className="pointer-events-none hidden sm:flex"
                     >
-                      Move to Final Handover
+                      {primaryActionLabel}
                     </Button>
                   </div>
                 }
@@ -501,7 +626,7 @@ export default function UnderInstallationLeadDetails() {
                   setShowMoveModal(true);
                 }}
               >
-                Move to Final Handover
+                {primaryActionLabel}
               </Button>
             ))}
 
@@ -529,13 +654,18 @@ export default function UnderInstallationLeadDetails() {
                 Assign Task
               </DropdownMenuItem>
               {canMoveToFinalHandover &&
-                (shouldDisableBlockedActions ? (
+                (isSmallOrderLead && isSmallOrderRequestResolved ? (
+                  <DropdownMenuItem className="sm:hidden" disabled>
+                    <Handshake size={20} />
+                    {primaryActionCompletedLabel}
+                  </DropdownMenuItem>
+                ) : shouldDisableBlockedActions ? (
                   // Lead block handling added for DropdownMenu action
                   <CustomeTooltip
                     truncateValue={
                       <DropdownMenuItem className="sm:hidden" disabled>
                         <Handshake size={20} />
-                        Move to Final Handover
+                        {primaryActionLabel}
                       </DropdownMenuItem>
                     }
                     value={blockedTooltip}
@@ -546,17 +676,17 @@ export default function UnderInstallationLeadDetails() {
                     truncateValue={
                       <DropdownMenuItem className="sm:hidden" disabled>
                         <Handshake size={20} />
-                        Move to Final Handover
+                        {primaryActionLabel}
                       </DropdownMenuItem>
                     }
-                    value="Start Installation first to move this lead to Final Handover."
+                    value={`Start Installation first to ${primaryActionLabel.toLowerCase()}.`}
                   />
                 ) : isLoadingUsableHandover ? (
                   <CustomeTooltip
                     truncateValue={
                       <DropdownMenuItem className="sm:hidden" disabled>
                         <Handshake size={20} />
-                        Move to Final Handover
+                        {primaryActionLabel}
                       </DropdownMenuItem>
                     }
                     value="Checking usable handover completion status..."
@@ -566,10 +696,10 @@ export default function UnderInstallationLeadDetails() {
                     truncateValue={
                       <DropdownMenuItem className="sm:hidden" disabled>
                         <Handshake size={20} />
-                        Move to Final Handover
+                        {primaryActionLabel}
                       </DropdownMenuItem>
                     }
-                    value="Mark Usable Handover as completed before moving to Final Handover."
+                    value={`Mark Usable Handover as completed before ${primaryActionLabel.toLowerCase()}.`}
                   />
                 ) : isLoadingMisc ? (
                   // 2️⃣ Checking misc status → block
@@ -577,7 +707,7 @@ export default function UnderInstallationLeadDetails() {
                     truncateValue={
                       <DropdownMenuItem className="sm:hidden" disabled>
                         <Handshake size={20} />
-                        Move to Final Handover
+                        {primaryActionLabel}
                       </DropdownMenuItem>
                     }
                     value="Checking miscellaneous status..."
@@ -588,10 +718,20 @@ export default function UnderInstallationLeadDetails() {
                     truncateValue={
                       <DropdownMenuItem className="sm:hidden" disabled>
                         <Handshake size={20} />
-                        Move to Final Handover
+                        {primaryActionLabel}
                       </DropdownMenuItem>
                     }
-                    value="All miscellaneous items must be Resolved or Rejected before moving to Final Handover."
+                    value={`All miscellaneous items must be Resolved or Rejected before ${primaryActionLabel.toLowerCase()}.`}
+                  />
+                ) : isSmallOrderLead && !smallOrderRequestId ? (
+                  <CustomeTooltip
+                    truncateValue={
+                      <DropdownMenuItem className="sm:hidden" disabled>
+                        <Handshake size={20} />
+                        {primaryActionLabel}
+                      </DropdownMenuItem>
+                    }
+                    value="Small order request record not found for this lead."
                   />
                 ) : !finalReady?.isReady ? (
                   // 2️⃣ Installation started but NOT eligible → show WHY
@@ -599,7 +739,7 @@ export default function UnderInstallationLeadDetails() {
                     truncateValue={
                       <DropdownMenuItem className="sm:hidden" disabled>
                         <Handshake size={20} />
-                        Move to Final Handover
+                        {primaryActionLabel}
                       </DropdownMenuItem>
                     }
                     value={
@@ -616,7 +756,7 @@ export default function UnderInstallationLeadDetails() {
                     }}
                   >
                     <Handshake size={20} />
-                    Move to Final Handover
+                    {primaryActionLabel}
                   </DropdownMenuItem>
                 ))}
               {/* Lead block handling added for DropdownMenu action */}
@@ -1020,65 +1160,38 @@ export default function UnderInstallationLeadDetails() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="text-lg font-semibold">
-              Move Lead to Final Handover?
+              {isSmallOrderLead
+                ? "Mark Small Order as Resolved?"
+                : "Move Lead to Final Handover?"}
             </AlertDialogTitle>
           </AlertDialogHeader>
 
           <p className="text-sm text-muted-foreground">
-            Are you sure you want to mark this lead as <b>Final Handover</b>?
-            This action will update the lead’s stage.
+            {isSmallOrderLead ? (
+              <>
+                Are you sure you want to mark this small order request as{" "}
+                <b>resolved</b>? This action will update the linked request.
+              </>
+            ) : (
+              <>
+                Are you sure you want to mark this lead as <b>Final Handover</b>?
+                This action will update the lead’s stage.
+              </>
+            )}
           </p>
 
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
 
             <AlertDialogAction
-              onClick={() => {
-                if (!lead?.vendor_id || !userId) {
-                  toastManager.add({
-                    title: "Missing vendor or user information!",
-                    type: "error",
-                  });
-                  return;
-                }
-
-                moveMutation.mutate(
-                  {
-                    vendorId: lead.vendor_id,
-                    leadId: lead.id,
-                    updated_by: userId,
-                  },
-                  {
-                    onSuccess: () => {
-                      // ✅ Correct key now
-                      queryClient.removeQueries({
-                        queryKey: ["lead-status", leadIdNum, vendorId],
-                      });
-
-                      queryClient.removeQueries({
-                        queryKey: ["leadById", leadIdNum],
-                      });
-
-                      queryClient.invalidateQueries({
-                        queryKey: ["leadStats"],
-                        exact: false,
-                      });
-                      queryClient.invalidateQueries({
-                        queryKey: ["universal-stage-leads"],
-                        exact: false,
-                      });
-
-                      if (canRedirectToFinalHandover) {
-                        router.push("/dashboard/installation/final-handover");
-                      } else {
-                        router.push("/dashboard/installation/under-installation");
-                      }
-                    },
-                  },
-                );
-              }}
+              onClick={handlePrimaryActionConfirm}
+              disabled={moveMutation.isPending || markResolvedMutation.isPending}
             >
-              Confirm
+              {moveMutation.isPending || markResolvedMutation.isPending
+                ? isSmallOrderLead
+                  ? "Saving..."
+                  : "Moving..."
+                : "Confirm"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

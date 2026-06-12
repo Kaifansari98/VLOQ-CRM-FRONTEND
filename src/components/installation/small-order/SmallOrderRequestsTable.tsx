@@ -25,6 +25,7 @@ type SmallOrderRequestRow = {
   request_type: string;
   request_source: "post_dispatch" | "final_handover";
   status: "pending_approval" | "pending_approvals" | "approved" | "rejected";
+  is_request_resolved: boolean;
   required_date: string;
   requested_by: string;
   created_at: string;
@@ -97,6 +98,21 @@ function ApprovalBadge({ approved }: { approved: boolean }) {
   );
 }
 
+function ResolutionBadge({ resolved }: { resolved: boolean }) {
+  return resolved ? (
+    <Badge
+      variant="outline"
+      className="border-emerald-200 bg-emerald-500/10 text-emerald-600"
+    >
+      Resolved
+    </Badge>
+  ) : (
+    <Badge variant="outline" className="text-muted-foreground">
+      Pending
+    </Badge>
+  );
+}
+
 const columns: ColumnDef<SmallOrderRequestRow>[] = [
   {
     accessorKey: "srNo",
@@ -139,6 +155,16 @@ const columns: ColumnDef<SmallOrderRequestRow>[] = [
       <DataTableColumnHeader column={column} title="Status" />
     ),
     cell: ({ row }) => <StatusBadge value={row.original.status} />,
+    enableSorting: false,
+  },
+  {
+    accessorKey: "is_request_resolved",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Resolved" />
+    ),
+    cell: ({ row }) => (
+      <ResolutionBadge resolved={row.original.is_request_resolved} />
+    ),
     enableSorting: false,
   },
   {
@@ -232,6 +258,7 @@ export default function SmallOrderRequestsTable({
         request_type: request.requestType?.type ?? "—",
         request_source: request.request_source,
         status: request.status,
+        is_request_resolved: request.is_request_resolved,
         required_date: request.required_date,
         requested_by: request.createdBy?.user_name?.trim() || "—",
         created_at: request.created_at,

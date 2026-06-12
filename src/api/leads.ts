@@ -102,6 +102,7 @@ export interface Lead {
   } | null;
   smallOrderRequest?: {
     id: number;
+    is_request_resolved?: boolean;
     request_source?: "post_dispatch" | "final_handover";
     request_type_id: number;
     requestType: {
@@ -228,6 +229,7 @@ export interface SmallOrderRequestListItem {
   id: number;
   parent_lead_code: string;
   so_code: string | null;
+  is_request_resolved: boolean;
   customer_name: string;
   status: "pending_approval" | "pending_approvals" | "approved" | "rejected";
   request_source: "post_dispatch" | "final_handover";
@@ -360,6 +362,23 @@ export const getSmallOrderRequestsByLead = async (
     message: string;
     success?: boolean;
   };
+};
+
+export const markSmallOrderRequestResolved = async ({
+  vendorId,
+  requestId,
+  updatedBy,
+}: {
+  vendorId: number;
+  requestId: number;
+  updatedBy: number;
+}) => {
+  const response = await apiClient.patch(
+    `/leads/small-order-requests/vendor/${vendorId}/request/${requestId}/resolve`,
+    { updated_by: updatedBy },
+  );
+
+  return response.data;
 };
 
 export const createClientVisit = async (payload: CreateClientVisitPayload) => {
