@@ -1418,11 +1418,11 @@ export default function ClientApprovalLeadDetails() {
                             );
                           }}
                         >
-                          {/* File Icon */}
-                          <div className="flex gap-2   items-center">
+                          {/* File Icon or Preview */}
+                          <div className="flex gap-2 items-center">
                             <div
                               className={cn(
-                                "w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0",
+                                "w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden",
                                 isRejected
                                   ? "bg-red-100 dark:bg-red-900/50"
                                   : isApproved
@@ -1432,18 +1432,26 @@ export default function ClientApprovalLeadDetails() {
                                       : "bg-blue-50 dark:bg-blue-900/30 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50",
                               )}
                             >
-                              <FileText
-                                className={
-                                  isRejected
-                                    ? "text-red-500 dark:text-red-400"
-                                    : isApproved
-                                      ? "text-green-500 dark:text-green-400"
-                                      : isSelected
-                                        ? "text-amber-600 dark:text-amber-400"
-                                        : "text-blue-500 dark:text-blue-400"
-                                }
-                                size={24}
-                              />
+                              {doc.doc_og_name?.match(/\.(jpeg|jpg|gif|png|webp|bmp)$/i) && doc.signed_url ? (
+                                <img
+                                  src={doc.signed_url}
+                                  alt={doc.doc_og_name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <FileText
+                                  className={
+                                    isRejected
+                                      ? "text-red-500 dark:text-red-400"
+                                      : isApproved
+                                        ? "text-green-500 dark:text-green-400"
+                                        : isSelected
+                                          ? "text-amber-600 dark:text-amber-400"
+                                          : "text-blue-500 dark:text-blue-400"
+                                  }
+                                  size={24}
+                                />
+                              )}
                             </div>
 
                             {/* Document Info */}
