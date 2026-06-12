@@ -47,6 +47,12 @@ export default function SmallOrderRequestActionModal({
   const userId = useAppSelector((state) => state.auth.user?.id);
   const queryClient = useQueryClient();
   const actionMutation = useActOnSmallOrderRequestTask();
+  const requestDetailLines = String(data?.remark ?? "")
+    .replace(/\s+/g, " ")
+    .replace(/\s+(Lead:|Customer:|Type:|Required Date:|Remarks:)/g, "\n$1")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
 
   const resetState = () => {
     setMode(null);
@@ -154,8 +160,10 @@ export default function SmallOrderRequestActionModal({
           {data?.remark ? (
             <div className="space-y-2">
               <p className="text-2xl font-semibold">Request Details</p>
-              <div className="rounded-xl border bg-slate-50 p-4 text-base leading-8 text-slate-700 whitespace-pre-wrap">
-                {data.remark}
+              <div className="rounded-xl border bg-slate-50 p-4 text-base leading-7 text-slate-700">
+                {requestDetailLines.map((line, index) => (
+                  <p key={`${line}-${index}`}>{line}</p>
+                ))}
               </div>
             </div>
           ) : null}
