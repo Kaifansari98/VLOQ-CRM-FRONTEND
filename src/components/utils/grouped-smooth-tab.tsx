@@ -158,6 +158,25 @@ export default function GroupedSmoothTab({
 
   const [hoveredGroup, setHoveredGroup] = React.useState<GroupKey | null>(null);
 
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setHoveredGroup(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, []);
+
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type as string | undefined
   );
@@ -262,7 +281,7 @@ export default function GroupedSmoothTab({
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" ref={containerRef}>
       {/* ShadCN-style tabs with hover dropdowns */}
       <div className="flex flex-wrap items-center gap-2 border-b px-1 -mt-2">
         {(Object.keys(visibleGroups) as GroupKey[]).map((g) => {
@@ -279,6 +298,7 @@ export default function GroupedSmoothTab({
             >
               <Button
                 variant="ghost"
+                onClick={() => setHoveredGroup(hoveredGroup === g ? null : g)}
                 className={cn(
                   "relative px-4 h-10 rounded-none border-b-0.5 transition-all duration-200",
                   isActive

@@ -34,6 +34,7 @@ interface DocumentCardProps {
   status?: "APPROVED" | "REJECTED" | "PENDING" | string;
   isLatest?: boolean;
   disableActions?: boolean;
+  alwaysShowText?: boolean;
 }
 
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"];
@@ -229,6 +230,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
   status,
   isLatest = false,
   disableActions = false,
+  alwaysShowText = false,
 }) => {
   const params = useParams();
   const routeLeadId = Number(params?.lead ?? params?.leadId ?? 0);
@@ -352,6 +354,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
           bg-white dark:bg-neutral-900
           hover:bg-muted/40 dark:hover:bg-neutral-800
           transition-all duration-200
+          @container
           ${isLatest
             ? "border-emerald-400 ring-1 ring-emerald-200 dark:border-emerald-500/70 dark:ring-emerald-500/20"
             : "border-border"
@@ -463,7 +466,11 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
                   title="Preview"
                 >
                   <Eye className="w-4 h-4" />
-                  {!hasStatus && "Preview"}
+                  {alwaysShowText ? (
+                    <span>Preview</span>
+                  ) : (
+                    !hasStatus && <span className="hidden @sm:inline">Preview</span>
+                  )}
                 </button>
               )}
 
@@ -485,12 +492,18 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
                 {isDownloading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    {progress ? `${progress}%` : "Preparing..."}
+                    <span className={alwaysShowText ? "" : "hidden @sm:inline"}>
+                      {progress ? `${progress}%` : "Preparing..."}
+                    </span>
                   </>
                 ) : (
                   <>
                     <Download className="w-4 h-4" />
-                    {!hasStatus && "Download"}
+                    {alwaysShowText ? (
+                      <span>Download</span>
+                    ) : (
+                      !hasStatus && <span className="hidden @sm:inline">Download</span>
+                    )}
                   </>
                 )}
               </button>

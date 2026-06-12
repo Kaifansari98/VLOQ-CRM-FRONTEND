@@ -374,18 +374,19 @@ export default function SmoothTab({
   return (
     <div className="flex flex-col h-full gap-3">
       {/* Bottom Toolbar */}
-      <div
-        ref={containerRef}
-        role="tablist"
-        aria-label="Smooth tabs"
-        className={cn(
-          "flex items-center justify-between gap-1 py-1 mt-auto relative",
-          "bg-background w-fit",
-          "border rounded-xl",
-          "transition-all duration-200",
-          className
-        )}
-      >
+      <div className="w-full overflow-x-auto flex-shrink-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div
+          ref={containerRef}
+          role="tablist"
+          aria-label="Smooth tabs"
+          className={cn(
+            "flex items-center justify-between gap-1 py-1 mt-auto relative min-w-max",
+            "bg-background w-fit",
+            "border rounded-xl",
+            "transition-all duration-200",
+            className
+          )}
+        >
         {/* Sliding Background */}
         <motion.div
           className={cn(
@@ -474,6 +475,7 @@ export default function SmoothTab({
             );
           })}
         </div>
+      </div>
       </div>
 
       {/* Card Content Area */}

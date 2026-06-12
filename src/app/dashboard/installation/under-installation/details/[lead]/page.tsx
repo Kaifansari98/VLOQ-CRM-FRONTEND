@@ -751,7 +751,7 @@ export default function UnderInstallationLeadDetails() {
         className="w-full p-3 md:p-6"
       >
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between mb-3">
-          <ScrollArea>
+          <ScrollArea className="w-full lg:flex-1 lg:min-w-0">
             <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
               {/* Under Installation Details */}
               <TabsTrigger value="details">
@@ -813,7 +813,7 @@ export default function UnderInstallationLeadDetails() {
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
 
-          <div className="flex">
+          <div className="flex shrink-0">
  {!underDetails?.actual_installation_start_date ? (
   <CustomeTooltip
     value={

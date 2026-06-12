@@ -926,7 +926,7 @@ export default function ProductionLeadDetails() {
         className="w-full p-3 md:p-6"
       >
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between mb-3">
-          <ScrollArea>
+          <ScrollArea className="w-full lg:flex-1 lg:min-w-0">
             <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
               <TabsTrigger value="details">
                 <Factory size={16} className="mr-1 opacity-60" />
@@ -980,7 +980,7 @@ export default function ProductionLeadDetails() {
 
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
-          <div className="w-60 flex flex-col">
+          <div className="w-60 flex flex-col shrink-0">
             <label className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-1 flex items-center gap-1 ml-1">
               <CalendarCheck2 size={12} />
               Expected Ready Date of Order

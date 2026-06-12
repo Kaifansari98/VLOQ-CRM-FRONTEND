@@ -865,7 +865,7 @@ export default function ClientApprovalLeadDetails() {
       >
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between mb-3">
           {/* ---------------- Tabs (Scrollable on mobile only) ---------------- */}
-          <ScrollArea>
+          <ScrollArea className="w-full lg:flex-1 lg:min-w-0">
             <TabsList className="flex h-auto gap-2 mb-3 px-1.5 py-1.5">
               <TabsTrigger value="details">
                 <HouseIcon size={16} className="mr-1 opacity-60" />
@@ -931,11 +931,11 @@ export default function ClientApprovalLeadDetails() {
             </TabsList>
 
             {/* Scrollbar ONLY for tabs */}
-            <ScrollBar orientation="horizontal" className="lg:hidden" />
+            <ScrollBar orientation="horizontal" />
           </ScrollArea>
 
           {/* ---------------- Actions ---------------- */}
-          <div className="flex sm:flex-row gap-2">
+          <div className="flex sm:flex-row gap-2 shrink-0">
             {/* Tech Check Workflow */}
             {shouldDisableBlockedActions ? (
               <CustomeTooltip
