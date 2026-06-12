@@ -34,11 +34,11 @@ export default function ServicingPage() {
 
           <Breadcrumb>
             <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">
+              {/* <BreadcrumbItem className="hidden md:block">
                 <BreadcrumbLink href="/dashboard">Project</BreadcrumbLink>
-              </BreadcrumbItem>
+              </BreadcrumbItem> */}
 
-              <BreadcrumbSeparator className="hidden md:block" />
+              {/* <BreadcrumbSeparator className="hidden md:block" /> */}
 
               <BreadcrumbItem>
                 <BreadcrumbPage>Servicing</BreadcrumbPage>
