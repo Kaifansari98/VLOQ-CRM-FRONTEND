@@ -249,6 +249,11 @@ export interface SmallOrderRequestListItem {
     user_name: string | null;
     user_email: string | null;
   } | null;
+  linked_lead: {
+    id: number;
+    lead_code: string | null;
+    account_id: number | null;
+  } | null;
 }
 
 export interface ClientVisitDocument {

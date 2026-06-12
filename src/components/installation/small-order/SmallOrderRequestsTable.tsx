@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
   getCoreRowModel,
@@ -31,6 +32,8 @@ type SmallOrderRequestRow = {
   admin_approved: boolean;
   document_count: number;
   remarks: string | null;
+  linked_lead_id: number | null;
+  linked_lead_account_id: number | null;
 };
 
 function formatDate(value?: string | null) {
@@ -209,6 +212,7 @@ export default function SmallOrderRequestsTable({
   leadId: number;
   requestSource?: "post_dispatch" | "final_handover";
 }) {
+  const router = useRouter();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const { data, isLoading, isError, error } = useSmallOrderRequestsByLead(
     vendorId,
@@ -235,6 +239,8 @@ export default function SmallOrderRequestsTable({
         admin_approved: request.admin_approved,
         document_count: request.document_count ?? 0,
         remarks: request.remarks,
+        linked_lead_id: request.linked_lead?.id ?? null,
+        linked_lead_account_id: request.linked_lead?.account_id ?? null,
       })),
     [data, requestSource],
   );
@@ -273,7 +279,27 @@ export default function SmallOrderRequestsTable({
             No small order requests found for this lead.
           </div>
         ) : (
-          <DataTable table={table} />
+          <DataTable
+            table={table}
+            onRowDoubleClick={(row) => {
+              if (
+                row.status !== "approved" ||
+                !row.linked_lead_id ||
+                !row.linked_lead_account_id
+              ) {
+                return;
+              }
+
+              router.push(
+                `/dashboard/leads/details/${row.linked_lead_id}?accountId=${row.linked_lead_account_id}`,
+              );
+            }}
+            rowClassName={(row) =>
+              row.status === "approved" && row.linked_lead_id
+                ? "cursor-pointer"
+                : undefined
+            }
+          />
         )}
       </CardContent>
     </Card>
