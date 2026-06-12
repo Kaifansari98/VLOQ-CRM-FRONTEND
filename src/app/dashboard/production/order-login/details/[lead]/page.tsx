@@ -206,22 +206,25 @@ export default function OrderLoginLeadDetails() {
   const updateStatusMutation = useUpdateActivityStatus();
   const queryClient = useQueryClient();
   const lead = data?.data?.lead;
+  const isSmallOrderLead = lead?.is_small_order_request === true;
   const smallOrderTypeKey =
     lead?.smallOrderRequest?.requestType?.type_key ?? null;
-  const shouldRequireProductionFiles =
-    !lead?.is_small_order_request ||
+  const requiresProductionFilesForMove =
+    !isSmallOrderLead ||
     ["additional_panel", "one_cabinet"].includes(
       String(smallOrderTypeKey ?? "").toLowerCase(),
     );
-  const effectiveLacksProdFiles = shouldRequireProductionFiles && lacksProdFiles;
+  const isBlockedByMissingProductionFiles =
+    requiresProductionFilesForMove && lacksProdFiles;
   const canMove =
-    readiness?.readyForProduction === true ||
-    (!!readiness && !shouldRequireProductionFiles && lacksProdFiles);
+    !isBlockedByMissingProductionFiles &&
+    (readiness?.readyForProduction === true ||
+      (isSmallOrderLead && !requiresProductionFilesForMove && !!readiness));
   const disabledReason = readinessLoading
     ? "Checking production prerequisites..."
     : !readiness
       ? "Production readiness data unavailable"
-      : effectiveLacksProdFiles
+      : isBlockedByMissingProductionFiles
         ? "Production files are required before moving forward"
         : "";
   const client_required_order_login_complition_date =
@@ -265,7 +268,7 @@ export default function OrderLoginLeadDetails() {
     : "";
   const accountId = Number(lead?.account_id);
   const requiresOrderLoginCompletedBeforeProduction =
-    lead?.is_small_order_request === true;
+    isSmallOrderLead;
   const isBlockedByIncompleteSmallOrderLogin =
     requiresOrderLoginCompletedBeforeProduction &&
     !isSmallOrderOrderLoginCompleted;
