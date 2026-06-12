@@ -207,10 +207,7 @@ export default function FinalHandoverLeadDetails() {
     (mapping: any) => mapping.productType?.tag === "Type 7",
   );
   const resolvedApprovedSmallOrderCount = (smallOrderRequestsResponse?.data ?? [])
-    .filter(
-      (request) =>
-        request.status === "approved" && request.is_request_resolved === true,
-    )
+    .filter((request) => request.status === "approved")
     .length;
   const hasReachedSmallOrderLimit = resolvedApprovedSmallOrderCount >= 2;
   const usableHandoverCompletedAt = lead?.usable_handover_completed_at

@@ -167,10 +167,7 @@ export default function UnderInstallationLeadDetails() {
   const isSmallOrderRequestResolved =
     lead?.smallOrderRequest?.is_request_resolved === true;
   const resolvedApprovedSmallOrderCount = (smallOrderRequestsResponse?.data ?? [])
-    .filter(
-      (request) =>
-        request.status === "approved" && request.is_request_resolved === true,
-    )
+    .filter((request) => request.status === "approved")
     .length;
   const hasReachedSmallOrderLimit = resolvedApprovedSmallOrderCount >= 2;
   const canReassign = canReassignLeadButton(effectiveUserType ?? "");
