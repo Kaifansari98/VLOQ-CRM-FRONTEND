@@ -84,7 +84,11 @@ import {
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
-import { useBlockLead, useUnblockLead } from "@/hooks/useLeadsQueries";
+import {
+  useBlockLead,
+  useMarkSmallOrderRequestResolved,
+  useUnblockLead,
+} from "@/hooks/useLeadsQueries";
 import { Lock, LockOpen } from "lucide-react";
 
 export default function DispatchPlanningLeadDetails() {
@@ -117,6 +121,7 @@ export default function DispatchPlanningLeadDetails() {
 
   const [openMoveConfirm, setOpenMoveConfirm] = useState(false);
   const moveMutation = useMoveLeadToUnderInstallation();
+  const markResolvedMutation = useMarkSmallOrderRequestResolved();
 
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [activityType, setActivityType] = useState<"onHold">("onHold");
@@ -132,6 +137,19 @@ export default function DispatchPlanningLeadDetails() {
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
   const accountId = lead?.account_id;
+  const isSmallOrderLead = lead?.is_small_order_request === true;
+  const smallOrderRequestId = lead?.smallOrderRequest?.id ?? null;
+  const isSmallOrderRequestResolved =
+    lead?.smallOrderRequest?.is_request_resolved === true;
+  const isPostDispatchSmallOrderLead =
+    isSmallOrderLead &&
+    lead?.smallOrderRequest?.request_source === "post_dispatch";
+  const primaryActionLabel = isPostDispatchSmallOrderLead
+    ? "Mark as Resolved"
+    : "Move to Under Installation";
+  const primaryActionCompletedLabel = isPostDispatchSmallOrderLead
+    ? "Resolved"
+    : "Completed";
 
 
   const {
@@ -164,6 +182,90 @@ export default function DispatchPlanningLeadDetails() {
   const canMoveToUnderInstallation =
     canAccessButton &&
     !shouldDisableBlockedActions;
+
+  const handlePrimaryActionConfirm = () => {
+    if (!vendorId || !userId) {
+      toastManager.add({
+        title: "Missing vendor or user information!",
+        type: "error",
+      });
+      return;
+    }
+
+    if (isPostDispatchSmallOrderLead) {
+      if (!smallOrderRequestId) {
+        toastManager.add({
+          title: "Small order request record not found for this lead.",
+          type: "error",
+        });
+        return;
+      }
+
+      markResolvedMutation.mutate(
+        {
+          vendorId,
+          requestId: smallOrderRequestId,
+          updatedBy: userId,
+        },
+        {
+          onSuccess: () => {
+            toastManager.add({
+              title: "Small order request marked as resolved successfully!",
+              type: "success",
+            });
+            setOpenMoveConfirm(false);
+            queryClient.invalidateQueries({
+              queryKey: ["lead", leadIdNum, vendorId, userId],
+            });
+            queryClient.invalidateQueries({
+              queryKey: ["smallOrderRequestsByLead"],
+              exact: false,
+            });
+            queryClient.invalidateQueries({
+              queryKey: ["universal-stage-leads"],
+              exact: false,
+            });
+          },
+          onError: (err: unknown) => {
+            toastManager.add({
+              title: getErrorMessage(err),
+              type: "error",
+            });
+          },
+        },
+      );
+
+      return;
+    }
+
+    moveMutation.mutate(
+      { vendorId, leadId: leadIdNum, updated_by: userId },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title:
+              "Lead successfully moved to Under Installation stage!",
+            type: "success",
+          });
+          setOpenMoveConfirm(false);
+          queryClient.invalidateQueries({
+            queryKey: ["universal-stage-leads"],
+            exact: false,
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["vendorOverallLeads"],
+          });
+          router.push("/dashboard/installation/under-installation");
+        },
+        onError: (err: unknown) => {
+          toastManager.add({
+            title: getErrorMessage(err),
+            type: "error",
+          });
+        },
+      },
+    );
+  };
 
   const handleToggleLeadBlock = () => {
     if (!vendorId || !userId || !leadIdNum) return;
@@ -302,7 +404,16 @@ export default function DispatchPlanningLeadDetails() {
         <div className="flex items-center space-x-2">
           <div className="flex items-center gap-2">
             {/* Move to Under Installation Button + Tooltip Logic */}
-            {shouldDisableBlockedActions ? (
+            {isPostDispatchSmallOrderLead && isSmallOrderRequestResolved ? (
+              <Button
+                size="sm"
+                disabled
+                variant="outline"
+                className="hidden sm:block border-emerald-200 bg-emerald-500/10 text-emerald-600"
+              >
+                {primaryActionCompletedLabel}
+              </Button>
+            ) : shouldDisableBlockedActions ? (
               <CustomeTooltip
                 value={blockedTooltip}
                 truncateValue={
@@ -311,7 +422,20 @@ export default function DispatchPlanningLeadDetails() {
                     disabled
                     className="hidden sm:block"
                   >
-                    Move to Under Installation
+                    {primaryActionLabel}
+                  </Button>
+                }
+              />
+            ) : isPostDispatchSmallOrderLead && !smallOrderRequestId ? (
+              <CustomeTooltip
+                value="Small order request record not found for this lead."
+                truncateValue={
+                  <Button
+                    size="sm"
+                    disabled
+                    className="hidden sm:block"
+                  >
+                    {primaryActionLabel}
                   </Button>
                 }
               />
@@ -323,7 +447,7 @@ export default function DispatchPlanningLeadDetails() {
                   onClick={() => setOpenMoveConfirm(true)}
                   className="hidden sm:block"
                 >
-                  Move to Under Installation
+                  {primaryActionLabel}
                 </Button>
               )
             ) : (
@@ -335,7 +459,7 @@ export default function DispatchPlanningLeadDetails() {
                       disabled
                       className="hidden sm:block"
                     >
-                      Move to Under Installation
+                      {primaryActionLabel}
                     </Button>
                   }
                   value={
@@ -377,7 +501,15 @@ export default function DispatchPlanningLeadDetails() {
                 Assign Task
               </DropdownMenuItem>
 
-              {shouldDisableBlockedActions ? (
+              {isPostDispatchSmallOrderLead && isSmallOrderRequestResolved ? (
+                <DropdownMenuItem
+                  disabled
+                  className="sm:hidden"
+                >
+                  <Move size={20} />
+                  {primaryActionCompletedLabel}
+                </DropdownMenuItem>
+              ) : shouldDisableBlockedActions ? (
                 // Lead block handling added for DropdownMenu action
                 <CustomeTooltip
                   value={blockedTooltip}
@@ -387,7 +519,20 @@ export default function DispatchPlanningLeadDetails() {
                       className="sm:hidden"
                     >
                       <Move size={20} />
-                      Move to Under Installation
+                      {primaryActionLabel}
+                    </DropdownMenuItem>
+                  }
+                />
+              ) : isPostDispatchSmallOrderLead && !smallOrderRequestId ? (
+                <CustomeTooltip
+                  value="Small order request record not found for this lead."
+                  truncateValue={
+                    <DropdownMenuItem
+                      disabled
+                      className="sm:hidden"
+                    >
+                      <Move size={20} />
+                      {primaryActionLabel}
                     </DropdownMenuItem>
                   }
                 />
@@ -398,7 +543,7 @@ export default function DispatchPlanningLeadDetails() {
                     className="sm:hidden"
                   >
                     <Move size={20} />
-                    Move to Under Installation
+                    {primaryActionLabel}
                   </DropdownMenuItem>
                 )
               ) : (
@@ -410,7 +555,7 @@ export default function DispatchPlanningLeadDetails() {
                         className="sm:hidden"
                       >
                         <Move size={20} />
-                        Move to Under Installation
+                        {primaryActionLabel}
                       </DropdownMenuItem>
                     }
                     value={
@@ -712,57 +857,36 @@ export default function DispatchPlanningLeadDetails() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Move Lead to Under Installation?
+              {isPostDispatchSmallOrderLead
+                ? "Mark Small Order as Resolved?"
+                : "Move Lead to Under Installation?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This will move the current lead from <b>Dispatch Planning</b> to
-              the <b>Under Installation</b> stage. Do you wish to continue?
+              {isPostDispatchSmallOrderLead ? (
+                <>
+                  This will mark the linked small order request as <b>resolved</b>.
+                  Do you wish to continue?
+                </>
+              ) : (
+                <>
+                  This will move the current lead from <b>Dispatch Planning</b> to
+                  the <b>Under Installation</b> stage. Do you wish to continue?
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
 
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => {
-                if (!vendorId || !userId) {
-                  toastManager.add({
-                    title: "Missing vendor or user information!",
-                    type: "error",
-                  });
-                  return;
-                }
-
-                moveMutation.mutate(
-                  { vendorId, leadId: leadIdNum, updated_by: userId },
-                  {
-                    onSuccess: () => {
-                      toastManager.add({
-                        title:
-                          "Lead successfully moved to Under Installation stage!",
-                        type: "success",
-                      });
-                      setOpenMoveConfirm(false);
-                      queryClient.invalidateQueries({
-                        queryKey: ["universal-stage-leads"],
-                        exact: false,
-                      });
-                      queryClient.invalidateQueries({
-                        queryKey: ["vendorOverallLeads"],
-                      });
-                      // Optionally redirect to the new stage’s page
-                      router.push("/dashboard/installation/under-installation");
-                    },
-                    onError: (err: unknown) => {
-                      toastManager.add({
-                        title: getErrorMessage(err),
-                        type: "error",
-                      });
-                    },
-                  },
-                );
-              }}
+              onClick={handlePrimaryActionConfirm}
+              disabled={moveMutation.isPending || markResolvedMutation.isPending}
             >
-              {moveMutation.isPending ? "Moving..." : "Confirm Move"}
+              {moveMutation.isPending || markResolvedMutation.isPending
+                ? isPostDispatchSmallOrderLead
+                  ? "Saving..."
+                  : "Moving..."
+                : "Confirm Move"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
