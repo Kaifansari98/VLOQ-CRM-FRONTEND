@@ -422,6 +422,17 @@ export default function ProductionLeadDetails() {
     missingDocsOrRemarks.length === 0 &&
     missingPrerequisites.length === 0;
 
+  const pendingProductionRequirements = isSmallOrderSingleUploadFlow
+    ? [
+        ...((missingDocsOrRemarks.length > 0
+          ? [
+              "Any one of QC photos, Hardware packing docs, or Woodwork packing docs",
+            ]
+          : []) as string[]),
+        ...missingPrerequisites,
+      ]
+    : [...missingDocsOrRemarks, ...missingPrerequisites];
+
   const productionCompletedTooltip = !validInstanceId
     ? "instance_id is required to mark production completed."
     : currentInstance?.is_production_completed
@@ -429,10 +440,8 @@ export default function ProductionLeadDetails() {
         ? ` Pending Instances: ${incompleteTitles.join(", ")}`
         : ""
       }`
-      : missingDocsOrRemarks.length || missingPrerequisites.length
-        ? `Pending: ${[...missingDocsOrRemarks, ...missingPrerequisites].join(
-          ", ",
-        )}`
+      : pendingProductionRequirements.length
+        ? `Pending: ${pendingProductionRequirements.join(", ")}`
         : incompleteTitles.length
           ? `Other pending instances: ${incompleteTitles.join(", ")}`
           : "Ready to mark production completed.";
