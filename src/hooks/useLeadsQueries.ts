@@ -31,8 +31,10 @@ import {
   SimilarLeadCheckResult,
   createSmallOrderRequest,
   CreateSmallOrderRequestPayload,
+  getSmallOrderRequestsByLead,
   getLeadProductStructureInstances,
   getClientVisits,
+  SmallOrderRequestListItem,
   uploadMoreSitePhotos,
   unblockLead,
   ClientVisit,
@@ -487,5 +489,18 @@ export const useCreateSmallOrderRequest = () => {
   return useMutation({
     mutationFn: (payload: CreateSmallOrderRequestPayload) =>
       createSmallOrderRequest(payload),
+  });
+};
+
+export const useSmallOrderRequestsByLead = (
+  vendorId?: number,
+  leadId?: number,
+) => {
+  return useQuery<{ data: SmallOrderRequestListItem[]; message: string }, Error>({
+    queryKey: ["smallOrderRequestsByLead", vendorId, leadId],
+    queryFn: () => getSmallOrderRequestsByLead(vendorId!, leadId!),
+    enabled: !!vendorId && !!leadId,
+    staleTime: 1000 * 60 * 2,
+    refetchOnWindowFocus: false,
   });
 };

@@ -224,6 +224,33 @@ export interface CreateSmallOrderRequestPayload {
   documents?: File[];
 }
 
+export interface SmallOrderRequestListItem {
+  id: number;
+  parent_lead_code: string;
+  so_code: string | null;
+  customer_name: string;
+  status: "pending_approval" | "pending_approvals" | "approved" | "rejected";
+  request_source: "post_dispatch" | "final_handover";
+  required_date: string;
+  remarks: string | null;
+  supervisor_approved: boolean;
+  supervisor_approved_at: string | null;
+  admin_approved: boolean;
+  admin_approved_at: string | null;
+  created_at: string;
+  document_count: number;
+  requestType: {
+    id: number;
+    type: string;
+    type_key: string;
+  } | null;
+  createdBy: {
+    id: number;
+    user_name: string | null;
+    user_email: string | null;
+  } | null;
+}
+
 export interface ClientVisitDocument {
   id: number;
   role: "supporting_document" | "payment_proof";
@@ -313,6 +340,21 @@ export const createSmallOrderRequest = async (
   });
 
   return response.data;
+};
+
+export const getSmallOrderRequestsByLead = async (
+  vendorId: number,
+  leadId: number,
+) => {
+  const response = await apiClient.get(
+    `/leads/small-order-requests/vendor/${vendorId}/lead/${leadId}`,
+  );
+
+  return response.data as {
+    data: SmallOrderRequestListItem[];
+    message: string;
+    success?: boolean;
+  };
 };
 
 export const createClientVisit = async (payload: CreateClientVisitPayload) => {
