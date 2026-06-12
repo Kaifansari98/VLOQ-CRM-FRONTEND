@@ -312,8 +312,8 @@ export default function ClientApprovalDetails({ leadId }: Props) {
           {/* Header */}
           <div
             className="
-      flex items-center justify-between 
-      px-5 py-3 
+      flex flex-col sm:flex-row sm:items-center justify-between 
+      px-5 py-3 gap-4
       border-b border-border 
       bg-[#fff] dark:bg-[#0a0a0a]
     "
@@ -334,6 +334,7 @@ export default function ClientApprovalDetails({ leadId }: Props) {
           rounded-lg border-border 
           bg-[#fff] dark:bg-[#0a0a0a]
           dark:border-neutral-700
+          w-full sm:w-auto
         "
               >
                 Add More Screenshots

@@ -570,11 +570,11 @@ export default function FinalHandoverLeadDetails() {
         onValueChange={(val) => setActiveTab(val)}
         className="w-full px-6 pt-4"
       >
-        <div className="w-full flex justify-between">
-          <div>
-            <ScrollArea>
-              <div className="w-full h-full flex justify-between items-center mb-4">
-                <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
+        <div className="w-full flex justify-between overflow-hidden mb-4">
+          <div className="w-full max-w-full overflow-hidden">
+            <ScrollArea className="w-full max-w-full">
+              <div className="w-max flex items-center pb-3">
+                <TabsList className="h-auto gap-2 px-1.5 py-1.5 flex-nowrap w-max">
                   {/* Final Handover Details */}
                   <TabsTrigger value="details">
                     <CheckCircle2 size={16} className="mr-1 opacity-60" />

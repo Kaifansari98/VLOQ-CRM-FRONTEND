@@ -239,21 +239,21 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
           {/* Header */}
           <div
             className="
-      flex items-center justify-between 
+      flex flex-col sm:flex-row sm:items-center justify-between items-start gap-1 sm:gap-2 
       px-5 py-3 
       border-b border-border
       bg-[#fff] dark:bg-[#0a0a0a]
     "
           >
             <div className="flex items-center gap-2">
-              <FileText size={20} />
-              <h1 className="text-lg font-semibold tracking-tight flex items-center gap-1">
+              <FileText size={20} className="shrink-0" />
+              <h1 className="text-lg font-semibold tracking-tight">
                 Measurement Document
-                <span className="text-xs font-medium text-muted-foreground">
-                  ({pdfDocs.length} {pdfDocs.length === 1 ? "File" : "Files"})
-                </span>
               </h1>
             </div>
+            <span className="text-xs font-medium text-muted-foreground shrink-0 text-right">
+              {pdfDocs.length} {pdfDocs.length === 1 ? "File" : "Files"}
+            </span>
           </div>
 
           {/* Body */}
@@ -414,27 +414,12 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
         >
           <div className="flex flex-col items-start">
             <h1 className="text-lg font-semibold tracking-tight">
-              Current Site Photos
+              Site Photos
             </h1>
             <p className="text-xs text-gray-500">
-              All the Lead Related Photos uploaded by the client or team.
+              Uploaded photos of the site before design/production begins.
             </p>
           </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            className="
-        rounded-lg 
-        border-border 
-        hover:bg-mutedBg dark:hover:bg-neutral-800 
-        dark:border-neutral-700
-        transition
-      "
-          >
-            <RefreshCcw size={15} />
-            Refresh
-          </Button>
         </div>
 
         {/* Body */}
@@ -531,21 +516,6 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                 Uploaded payment transaction receipts & confirmation photos.
               </p>
             </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              className="
-          rounded-lg 
-          border-border 
-          hover:bg-mutedBg dark:hover:bg-neutral-800 
-          dark:border-neutral-700
-          transition
-        "
-            >
-              <RefreshCcw size={15} />
-              Refresh
-            </Button>
           </div>
 
           {/* Body */}

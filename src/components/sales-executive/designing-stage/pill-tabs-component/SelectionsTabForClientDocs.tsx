@@ -1009,7 +1009,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     return (
       <div className="flex-1 space-y-6 py-4 px-5">
         <div className="space-y-4">
-          <div className="flex items-center justify-between w-full">
+          <div className="flex flex-col md:flex-row md:items-center justify-between w-full gap-4">
             <div>
               <h4 className="text-sm font-semibold">Design Selections</h4>
               {!effectiveCanEditSelections && (
@@ -1305,8 +1305,8 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                   </div>
                 </div>
 
-                <div className="w-full flex items-center justify-between">
-                  <div className="flex items-center justify-between">
+                <div className="w-full flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
                     {(uploadForm.watch("pptDocuments").length > 0 ||
                       uploadForm.watch("pythaDocuments").length > 0) && (
                       <Badge variant="secondary">
@@ -1571,17 +1571,17 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                     onClick={() => handleOpenUploadModal(instance)}
                   >
                     <CardContent className="px-6">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
                           <div
-                            className="w-12 h-12 rounded-xl flex items-center justify-center 
+                            className="w-12 h-12 shrink-0 rounded-xl flex items-center justify-center 
                             border bg-neutral-50 dark:bg-neutral-800 text-primary"
                           >
                             <FolderOpen className="size-6" />
                           </div>
 
-                          <div>
-                            <h3 className="font-semibold text-sm">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-sm truncate">
                               {instance.title}
                             </h3>
                             <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">

@@ -288,28 +288,28 @@ export default function PreProductionFilesSection({
 
       <div className="border rounded-lg bg-background shadow-sm">
         {/* -------------------------------- HEADER -------------------------------- */}
-        <div className="px-6 py-4 border-b bg-muted/30 flex items-center justify-between">
+        <div className="px-6 py-4 border-b bg-muted/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-0">
             <div className="flex items-center gap-2">
-              <FolderOpen className="w-5 h-5 text-primary" />
+              <FolderOpen className="w-5 h-5 text-primary shrink-0" />
               <h2 className="text-lg font-semibold tracking-tight">
                 Pre-Production Files
               </h2>
             </div>
-            <p className="text-xs text-muted-foreground ml-7">
+            <p className="text-xs text-muted-foreground ml-7 mt-1">
               Upload final production files before proceeding to Under
               Production.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
             {/* {hasFiles && (
             <span className="text-xs text-muted-foreground">
               {files.length} File{files.length > 1 && "s"}
             </span>
           )} */}
             {isPreProdDone ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 w-full justify-center sm:w-auto">
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 Pre Prod Completed
               </span>
@@ -318,12 +318,13 @@ export default function PreProductionFilesSection({
               effectiveInstanceId && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span tabIndex={!hasFiles ? 0 : undefined}>
+                    <span tabIndex={!hasFiles ? 0 : undefined} className="w-full sm:w-auto block sm:inline-block">
                       <Button
                         size="sm"
                         variant="default"
                         onClick={handleMarkPreProdDone}
                         disabled={markingDone || !hasFiles}
+                        className="w-full sm:w-auto"
                       >
                         {markingDone ? (
                           <>
@@ -357,12 +358,12 @@ export default function PreProductionFilesSection({
               multiple
             />
 
-            <div className="flex justify-end">
+            <div className="flex sm:justify-end">
               <Button
                 size="sm"
                 onClick={handleUpload}
                 disabled={isPending || selectedFiles.length === 0}
-                className="flex items-center gap-2"
+                className="flex items-center justify-center gap-2 w-full sm:w-auto"
               >
                 {isPending ? (
                   <>
@@ -390,12 +391,12 @@ export default function PreProductionFilesSection({
                 disabled={!canEditPreProdRemark}
               />
 
-              <div className="flex justify-end">
+              <div className="flex sm:justify-end">
                 <Button
                   size="sm"
                   onClick={handleRemarkUpdate}
                   disabled={!remark.trim() || !canEditPreProdRemark}
-                  className="flex items-center gap-2"
+                  className="flex items-center justify-center gap-2 w-full sm:w-auto"
                 >
                   <Paperclip size={16} />
                   {normalizedRemark ? "Update Remark" : "Add Remark"}

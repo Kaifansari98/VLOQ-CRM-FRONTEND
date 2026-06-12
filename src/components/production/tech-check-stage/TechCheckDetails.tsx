@@ -574,13 +574,13 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
           {/* Main Header */}
           <div
             className="
-      flex items-center justify-between px-5 py-3
+      flex flex-col sm:flex-row sm:items-center justify-between gap-2 items-start px-5 py-3
       border-b border-border
       bg-[#fff] dark:bg-[#0a0a0a]
     "
           >
             <div className="flex items-center gap-2">
-              <Layers3 size={20} className="opacity-70" />
+              <Layers3 size={20} className="opacity-70 shrink-0" />
               <h1 className="text-lg font-semibold tracking-tight">
                 Client Documentation
               </h1>
@@ -599,21 +599,21 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
             >
               <div
                 className="
-          flex items-center justify-between 
+          flex flex-col sm:flex-row sm:items-center justify-between items-start gap-1 sm:gap-2 
           px-4 py-2 border border-border rounded-xl
           bg-[#fff] dark:bg-[#0a0a0a]
         "
               >
                 <div className="flex items-center gap-2">
-                  <Layers3 size={18} className="opacity-70" />
+                  <Layers3 size={18} className="opacity-70 shrink-0" />
                   <h2 className="text-base font-semibold tracking-tight">
                     Project Files
                   </h2>
-                  <span className="text-xs text-muted-foreground">
-                    ({filteredPptDocs.length}{" "}
-                    {filteredPptDocs.length === 1 ? "Document" : "Documents"})
-                  </span>
                 </div>
+                <span className="text-xs text-muted-foreground shrink-0 text-right">
+                  {filteredPptDocs.length}{" "}
+                  {filteredPptDocs.length === 1 ? "Document" : "Documents"}
+                </span>
               </div>
 
               {/* Body */}
@@ -639,7 +639,7 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   {/* Image Files */}
                   {filteredPptImages?.map((doc: any, index: number) => (
-                    <div key={doc.id} className="space-y-2">
+                    <div key={doc.id} className="space-y-2 min-w-0">
                       {hasMultipleInstances && (
                         <div className="text-xs px-2 py-1 rounded-md border bg-muted/40 w-fit">
                           {getInstanceTitleForDoc(doc)}
@@ -662,7 +662,7 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
 
                   {/* Document Files */}
                   {filteredPptDocuments.map((doc) => (
-                    <div key={doc.id} className="space-y-2">
+                    <div key={doc.id} className="space-y-2 min-w-0">
                       {hasMultipleInstances && (
                         <div className="text-xs px-2 py-1 rounded-md border bg-muted/40 w-fit">
                           {getInstanceTitleForDoc(doc)}
@@ -689,21 +689,21 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
             <motion.div variants={itemVariants} className="space-y-4">
               <div
                 className="
-          flex items-center justify-between 
+          flex flex-col sm:flex-row sm:items-center justify-between items-start gap-1 sm:gap-2 
           px-4 py-2 border border-border rounded-xl
           bg-[#fff] dark:bg-[#0a0a0a]
         "
               >
                 <div className="flex items-center gap-2">
-                  <Layers3 size={18} className="opacity-70" />
+                  <Layers3 size={18} className="opacity-70 shrink-0" />
                   <h2 className="text-base font-semibold tracking-tight">
                     Design Files
                   </h2>
-                  <span className="text-xs text-muted-foreground">
-                    ({filteredPythaDocs.length}{" "}
-                    {filteredPythaDocs.length === 1 ? "Document" : "Documents"})
-                  </span>
                 </div>
+                <span className="text-xs text-muted-foreground shrink-0 text-right">
+                  {filteredPythaDocs.length}{" "}
+                  {filteredPythaDocs.length === 1 ? "Document" : "Documents"}
+                </span>
               </div>
 
               {/* Body */}
@@ -728,7 +728,7 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   {filteredPythaDocuments.map((doc: any) => (
-                    <div key={doc.id} className="space-y-2">
+                    <div key={doc.id} className="space-y-2 min-w-0">
                       {hasMultipleInstances && (
                         <div className="text-xs px-2 py-1 rounded-md border bg-muted/40 w-fit">
                           {getInstanceTitleForDoc(doc)}
@@ -820,22 +820,22 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
             {/* Header */}
             <div
               className="
-      flex items-center justify-between 
+      flex flex-col sm:flex-row sm:items-center justify-between items-start gap-1 sm:gap-2 
       px-5 py-3 
       border-b border-border 
       bg-[#fff] dark:bg-[#0a0a0a]
     "
             >
               <div className="flex items-center gap-2">
-                <Camera size={20} className="opacity-80" />
-                <h1 className="text-lg font-semibold tracking-tight flex items-center gap-1">
+                <Camera size={20} className="opacity-80 shrink-0" />
+                <h1 className="text-lg font-semibold tracking-tight">
                   Initial Site Measurement
-                  <span className="text-xs font-medium text-muted-foreground">
-                    ({ismDocs.length}{" "}
-                    {ismDocs.length === 1 ? "Document" : "Documents"})
-                  </span>
                 </h1>
               </div>
+              <span className="text-xs font-medium text-muted-foreground shrink-0 text-right">
+                {ismDocs.length}{" "}
+                {ismDocs.length === 1 ? "Document" : "Documents"}
+              </span>
             </div>
 
             {/* Body */}
@@ -862,7 +862,8 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   {ismDocs.map((doc: any) => (
-                    <DocumentCard
+                    <div key={doc.id} className="min-w-0">
+                      <DocumentCard
                       key={doc.id}
                       doc={{
                         id: doc.id,
@@ -874,6 +875,7 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
                       status={doc.tech_check_status}
                       onDelete={(id) => setConfirmDelete(id)}
                     />
+                    </div>
                   ))}
                 </div>
               )}
@@ -892,22 +894,22 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
             {/* Header */}
             <div
               className="
-      flex items-center justify-between 
+      flex flex-col sm:flex-row sm:items-center justify-between items-start gap-1 sm:gap-2 
       px-5 py-3 
       border-b border-border 
       bg-[#fff] dark:bg-[#0a0a0a]
     "
             >
               <div className="flex items-center gap-2">
-                <Layers3 size={20} className="opacity-80" />
-                <h1 className="text-lg font-semibold tracking-tight flex items-center gap-1">
+                <Layers3 size={20} className="opacity-80 shrink-0" />
+                <h1 className="text-lg font-semibold tracking-tight">
                   Final Measurement Documents
-                  <span className="text-xs font-medium text-muted-foreground">
-                    ({finalDocs.length}{" "}
-                    {finalDocs.length === 1 ? "Document" : "Documents"})
-                  </span>
                 </h1>
               </div>
+              <span className="text-xs font-medium text-muted-foreground shrink-0 text-right">
+                {finalDocs.length}{" "}
+                {finalDocs.length === 1 ? "Document" : "Documents"}
+              </span>
             </div>
 
             {/* Body */}

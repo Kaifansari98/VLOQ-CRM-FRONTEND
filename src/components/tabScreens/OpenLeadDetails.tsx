@@ -830,15 +830,15 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   {structureInstances.map((item: any) => (
                     <div
                       key={`${item.product_structure_id}-${item.quantity_index}`}
-                      className="group rounded-xl border bg-white/60 p-5 transition-all hover:border-border/80 dark:bg-[#0a0a0a]"
+                      className="group rounded-xl border bg-white/60 p-5 transition-all hover:border-border/80 dark:bg-[#0a0a0a] min-w-0"
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0 flex-1 space-y-1">
                           <div className="flex items-start justify-between gap-3">
-                            <p className="truncate text-base font-semibold leading-tight text-heading transition-colors group-hover:text-foreground dark:text-neutral-200">
+                            <p className="flex-1 min-w-0 line-clamp-2 text-base font-semibold leading-tight text-heading transition-colors group-hover:text-foreground dark:text-neutral-200 text-wrap break-words">
                               {item.title || item.productStructure?.type || "—"}
                             </p>
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1 shrink-0">
                               {canEditStructures && (
                                 <>
                                   <Tooltip>

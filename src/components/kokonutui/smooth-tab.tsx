@@ -321,7 +321,7 @@ export default function SmoothTab({
 
         setDimensions({
           width: rect.width,
-          left: rect.left - containerRect.left,
+          left: selectedButton.offsetLeft,
         });
       }
     };
@@ -379,9 +379,9 @@ export default function SmoothTab({
         role="tablist"
         aria-label="Smooth tabs"
         className={cn(
-          "flex items-center justify-between gap-1 py-1 mt-auto relative",
-          "bg-background w-fit",
-          "border rounded-xl",
+          "flex items-center justify-start sm:justify-between gap-1 py-1 mt-auto relative",
+          "bg-background w-full sm:w-fit max-w-full",
+          "border rounded-xl overflow-x-auto no-scrollbar",
           "transition-all duration-200",
           className
         )}

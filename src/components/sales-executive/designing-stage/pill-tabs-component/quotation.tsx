@@ -119,31 +119,22 @@ const QuotationTab = () => {
         {/* Header */}
         <div
           className="
-      flex items-center justify-between
+      flex flex-col sm:flex-row sm:items-center justify-between items-start gap-1 sm:gap-2
       px-5 py-3
       border-b border-border
       bg-[#fff] dark:bg-[#0a0a0a]
     "
         >
           <div className="flex items-center gap-2">
-            <ScrollText size={20} />
-            <h1 className="text-lg font-semibold tracking-tight flex items-center gap-1">
+            <ScrollText size={20} className="shrink-0" />
+            <h1 className="text-lg font-semibold tracking-tight">
               Quotation
-              <span className="text-xs font-medium text-muted-foreground">
-                ({designQuotationDocs.length}{" "}
-                {designQuotationDocs.length === 1 ? "Document" : "Documents"})
-              </span>
             </h1>
           </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-1"
-          >
-            <RefreshCcw size={15} />
-            Refresh
-          </Button>
+          <span className="text-xs font-medium text-muted-foreground shrink-0 text-right">
+            {designQuotationDocs.length}{" "}
+            {designQuotationDocs.length === 1 ? "Document" : "Documents"}
+          </span>
         </div>
 
         {/* Body */}

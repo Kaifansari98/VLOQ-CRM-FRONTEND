@@ -18,6 +18,13 @@ import { useTechCheckInstanceStatus } from "@/api/tech-check";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 import ComingSoon from "@/components/generics/ComingSoon";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface LeadDetailsProductionUtilProps {
   leadId: number;
@@ -267,9 +274,34 @@ export default function LeadDetailsProductionUtil({
     <div className="h-full">
       {showInstanceTabs && (
         <div className="mb-4">
-          <div className="border-b border-border">
+          {/* Mobile Dropdown */}
+          <div className="block sm:hidden mb-4">
+            <Select
+              value={scopedInstanceId?.toString()}
+              onValueChange={(val) => setActiveInstanceId(Number(val))}
+            >
+              <SelectTrigger className="w-full bg-background border-border h-auto py-2">
+                <SelectValue placeholder="Select Product Instance" />
+              </SelectTrigger>
+              <SelectContent>
+                {clientDocInstances.map((instance: any) => (
+                  <SelectItem key={instance.id} value={instance.id.toString()}>
+                    <div className="flex flex-col items-start text-left">
+                      <span className="font-semibold">{instance.title}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {instance.productStructure?.type || "Product Structure"}
+                      </span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Desktop Tabs */}
+          <div className="hidden sm:block border-b border-border">
             <ScrollArea className="w-full whitespace-nowrap">
-              <div className="flex items-end gap-2 sm:flex-wrap">
+              <div className="flex items-end gap-2 flex-wrap">
                 {clientDocInstances.map((instance: any) => {
                   const isActive = scopedInstanceId === instance.id;
                   return (
