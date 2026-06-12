@@ -70,7 +70,7 @@ export default function GlobalLeadSearchModal({ open, onOpenChange }: Props) {
       "/dashboard/installation/under-installation/details",
     finalHandoverStage: "/dashboard/installation/final-handover/details",
 
-    projectCompletedStage: "", // no details page
+    projectCompletedStage: "/dashboard/installation/final-handover/details",
   };
 
   // -----------------------------------------------

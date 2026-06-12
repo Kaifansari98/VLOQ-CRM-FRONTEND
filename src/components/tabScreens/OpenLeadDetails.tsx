@@ -91,11 +91,15 @@ const itemVariants = {
 const SectionCard = ({ title, children, action }: any) => (
   <motion.section
     variants={itemVariants}
-    className="bg-[#fff] dark:bg-[#0a0a0a] rounded-2xl border border-border shadow-soft p-6 space-y-6"
+    className="bg-[#fff] dark:bg-[#0a0a0a] rounded-2xl border border-border shadow-soft p-4 sm:p-6 space-y-4 sm:space-y-6"
   >
-    <div className="flex items-center justify-between gap-3">
+    <div className="flex items-center justify-between gap-4">
       <h3 className="text-lg font-semibold tracking-tight">{title}</h3>
-      {action}
+      {action && (
+        <div className="flex-shrink-0">
+          {action}
+        </div>
+      )}
     </div>
     {children}
   </motion.section>
@@ -703,10 +707,10 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
               canEditStructures && !isKitchenType && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div>
+                    <div className="w-auto">
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <div>
+                          <div className="w-auto">
                             <Button
                               onClick={() => {
                                 if (shouldDisableBlockedActions) return;
@@ -718,8 +722,8 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                                   : ""
                               }
                             >
-                              <Plus />
-                              Add Furniture Structure
+                              <Plus className="h-5 w-5 sm:h-4 sm:w-4 sm:mr-2" />
+                              <span className="hidden sm:inline">Add Furniture Structure</span>
                             </Button>
                           </div>
                         </TooltipTrigger>
@@ -743,7 +747,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
             }
           >
             <div className="space-y-4">
-              <div className="flex items-center w-full justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center w-full justify-between gap-3 items-start">
                 <InfoRow
                   icon={Package}
                   label={
