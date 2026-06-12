@@ -92,6 +92,7 @@ export interface Lead {
   assignedTo: AssignTo | null;
   statusType: StatusType;
   initial_site_measurement_date: string;
+  usable_handover_completed_at?: string | null;
   activity_status?: string;
   count?: number;
   site_map_link: string;

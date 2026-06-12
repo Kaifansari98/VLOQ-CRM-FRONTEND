@@ -10,7 +10,12 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
-import { useBlockLead, useLeadById, useUnblockLead } from "@/hooks/useLeadsQueries";
+import {
+  useBlockLead,
+  useLeadById,
+  useSmallOrderRequestsByLead,
+  useUnblockLead,
+} from "@/hooks/useLeadsQueries";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
@@ -188,6 +193,10 @@ export default function FinalHandoverLeadDetails() {
     blockLeadMutation.isPending ||
     unblockLeadMutation.isPending;
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
+  const { data: smallOrderRequestsResponse } = useSmallOrderRequestsByLead(
+    vendorId,
+    leadIdNum,
+  );
   const lead = data?.data?.lead;
 
   const leadCode = lead?.lead_code ?? "";
@@ -197,6 +206,29 @@ export default function FinalHandoverLeadDetails() {
   const isSmallOrderLead = !!lead?.productMappings?.some(
     (mapping: any) => mapping.productType?.tag === "Type 7",
   );
+  const resolvedApprovedSmallOrderCount = (smallOrderRequestsResponse?.data ?? [])
+    .filter(
+      (request) =>
+        request.status === "approved" && request.is_request_resolved === true,
+    )
+    .length;
+  const hasReachedSmallOrderLimit = resolvedApprovedSmallOrderCount >= 2;
+  const usableHandoverCompletedAt = lead?.usable_handover_completed_at
+    ? new Date(lead.usable_handover_completed_at)
+    : null;
+  const isSmallOrderCreationExpired =
+    usableHandoverCompletedAt != null &&
+    !Number.isNaN(usableHandoverCompletedAt.getTime()) &&
+    (() => {
+      const expiryDate = new Date(usableHandoverCompletedAt);
+      expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+      return new Date() > expiryDate;
+    })();
+  const smallOrderCreationTooltip = hasReachedSmallOrderLimit
+    ? "Maximum Small Order limit reached for this project."
+    : isSmallOrderCreationExpired
+      ? "Small Order creation period has expired."
+      : "";
   const allowServicingTabFromDeliveredProjects = !isSmallOrderLead;
   const hasAnyUploadPrivilege =
     normalizedUserType === "custom" &&
@@ -228,6 +260,10 @@ export default function FinalHandoverLeadDetails() {
   const blockedReason = shouldDisableBlockedActions
     ? blockedTooltip
     : "";
+  const shouldDisableSmallOrderCreation =
+    shouldDisableBlockedActions ||
+    hasReachedSmallOrderLimit ||
+    isSmallOrderCreationExpired;
 
   const { data: readiness, isLoading: readinessLoading } =
     useFinalHandoverReadiness(vendorId!, leadIdNum);
@@ -494,9 +530,13 @@ export default function FinalHandoverLeadDetails() {
                 </DropdownMenuItem>
               )}
               {canCreateSmallOrder &&
-                (shouldDisableBlockedActions ? (
+                (shouldDisableSmallOrderCreation ? (
                   <CustomeTooltip
-                    value={blockedTooltip}
+                    value={
+                      shouldDisableBlockedActions
+                        ? blockedTooltip
+                        : smallOrderCreationTooltip
+                    }
                     truncateValue={
                       <DropdownMenuItem disabled>
                         <BoxIcon size={20} />

@@ -96,6 +96,7 @@ import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/ass
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 import SmallOrderRequestModal from "@/components/installation/small-order/SmallOrderRequestModal";
 import {
+  useSmallOrderRequestsByLead,
   useMarkSmallOrderRequestResolved,
   useBlockLead,
   useUnblockLead,
@@ -153,6 +154,10 @@ export default function UnderInstallationLeadDetails() {
   useChatTabFromUrl(setActiveTab);
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
+  const { data: smallOrderRequestsResponse } = useSmallOrderRequestsByLead(
+    vendorId,
+    leadIdNum,
+  );
   const lead = data?.data?.lead;
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
@@ -161,6 +166,13 @@ export default function UnderInstallationLeadDetails() {
   const smallOrderRequestId = lead?.smallOrderRequest?.id ?? null;
   const isSmallOrderRequestResolved =
     lead?.smallOrderRequest?.is_request_resolved === true;
+  const resolvedApprovedSmallOrderCount = (smallOrderRequestsResponse?.data ?? [])
+    .filter(
+      (request) =>
+        request.status === "approved" && request.is_request_resolved === true,
+    )
+    .length;
+  const hasReachedSmallOrderLimit = resolvedApprovedSmallOrderCount >= 2;
   const canReassign = canReassignLeadButton(effectiveUserType ?? "");
   const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
   const canEdit = canEditLeadButton(effectiveUserType ?? "");
@@ -254,6 +266,26 @@ export default function UnderInstallationLeadDetails() {
   const primaryActionCompletedLabel = isSmallOrderLead
     ? "Resolved"
     : "Completed";
+  const usableHandoverCompletedAt = lead?.usable_handover_completed_at
+    ? new Date(lead.usable_handover_completed_at)
+    : null;
+  const isSmallOrderCreationExpired =
+    usableHandoverCompletedAt != null &&
+    !Number.isNaN(usableHandoverCompletedAt.getTime()) &&
+    (() => {
+      const expiryDate = new Date(usableHandoverCompletedAt);
+      expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+      return new Date() > expiryDate;
+    })();
+  const smallOrderCreationTooltip = hasReachedSmallOrderLimit
+    ? "Maximum Small Order limit reached for this project."
+    : isSmallOrderCreationExpired
+      ? "Small Order creation period has expired."
+      : "";
+  const shouldDisableSmallOrderCreation =
+    shouldDisableBlockedActions ||
+    hasReachedSmallOrderLimit ||
+    isSmallOrderCreationExpired;
 
   console.log("miscStatus: ", miscStatus?.all_resolved);
 
@@ -782,9 +814,13 @@ export default function UnderInstallationLeadDetails() {
                 </DropdownMenuItem>
               )}
               {canCreateSmallOrder &&
-                (shouldDisableBlockedActions ? (
+                (shouldDisableSmallOrderCreation ? (
                   <CustomeTooltip
-                    value={blockedTooltip}
+                    value={
+                      shouldDisableBlockedActions
+                        ? blockedTooltip
+                        : smallOrderCreationTooltip
+                    }
                     truncateValue={
                       <DropdownMenuItem disabled>
                         <BoxIcon size={20} />
