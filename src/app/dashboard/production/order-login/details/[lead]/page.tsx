@@ -224,10 +224,6 @@ export default function OrderLoginLeadDetails() {
       : effectiveLacksProdFiles
         ? "Production files are required before moving forward"
         : "";
-  const moveToProductionDisabledReason = isOrderLoginApprovalPending
-    ? orderLoginApprovalTooltip
-    : disabledReason || "Not eligible to move to Production yet";
-
   const client_required_order_login_complition_date =
     lead?.client_required_order_login_complition_date;
 
@@ -236,6 +232,16 @@ export default function OrderLoginLeadDetails() {
   const instances = Array.isArray(instancesResponse?.data)
     ? instancesResponse?.data
     : instancesResponse?.data?.data || [];
+  const resolvedCurrentInstance =
+    validInstanceId != null
+      ? instances.find(
+          (instance: any) => Number(instance.id) === Number(validInstanceId),
+        )
+      : instances.length === 1
+        ? instances[0]
+        : null;
+  const isSmallOrderOrderLoginCompleted =
+    resolvedCurrentInstance?.is_order_login_filled === true;
   const totalInstanceCount =
     instances.length || lead?.productStructureInstances?.length || 0;
   const instanceSuffix =
@@ -258,6 +264,11 @@ export default function OrderLoginLeadDetails() {
     )?.title ?? "")
     : "";
   const accountId = Number(lead?.account_id);
+  const requiresOrderLoginCompletedBeforeProduction =
+    lead?.is_small_order_request === true;
+  const isBlockedByIncompleteSmallOrderLogin =
+    requiresOrderLoginCompletedBeforeProduction &&
+    !isSmallOrderOrderLoginCompleted;
 
 
 
@@ -360,6 +371,11 @@ export default function OrderLoginLeadDetails() {
         "leads.open_leads.details_of_lead.payment_information.enable_disable",
       )
       : canViewPaymentTab(effectiveUserType ?? "");
+  const moveToProductionDisabledReason = isBlockedByIncompleteSmallOrderLogin
+    ? "Mark Order Login Completed before moving this small-order lead to Production"
+    : isOrderLoginApprovalPending
+      ? orderLoginApprovalTooltip
+      : disabledReason || "Not eligible to move to Production yet";
   return (
     <>
       {/* Header */}
@@ -442,7 +458,11 @@ export default function OrderLoginLeadDetails() {
                   );
                 }
 
-                if (canMove && !isOrderLoginApprovalPending) {
+                if (
+                  canMove &&
+                  !isOrderLoginApprovalPending &&
+                  !isBlockedByIncompleteSmallOrderLogin
+                ) {
                   return (
                     <Button
                       size="sm"
@@ -526,7 +546,11 @@ export default function OrderLoginLeadDetails() {
                     );
                   }
 
-                  if (canMove && !isOrderLoginApprovalPending) {
+                  if (
+                    canMove &&
+                    !isOrderLoginApprovalPending &&
+                    !isBlockedByIncompleteSmallOrderLogin
+                  ) {
                     return (
                       <DropdownMenuItem
                         className="md:hidden"
