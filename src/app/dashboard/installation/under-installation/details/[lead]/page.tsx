@@ -174,13 +174,11 @@ export default function UnderInstallationLeadDetails() {
   const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
   const canEdit = canEditLeadButton(effectiveUserType ?? "");
   const normalizedEffectiveUserType = effectiveUserType?.toLowerCase() ?? "";
-  const isProductionEnvironment =
-    process.env.NEXT_PUBLIC_ENVIRONMENT === "PRODUCTION";
   const canCreateSmallOrder = [
     "sales-executive",
     "admin",
     "super-admin",
-  ].includes(normalizedEffectiveUserType) && !isProductionEnvironment;
+  ].includes(normalizedEffectiveUserType);
   const deleteLeadMutation = useDeleteLead();
   const canAccessTodoTab =
     effectiveUserType?.toLowerCase() === "custom"

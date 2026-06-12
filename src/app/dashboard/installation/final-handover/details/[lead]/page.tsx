@@ -172,13 +172,11 @@ export default function FinalHandoverLeadDetails() {
       : canAccessTodoTaskTabUnderFinalHandoverStage(effectiveUserType ?? "");
   const normalizedUserType = userType?.toLowerCase() ?? "";
   const normalizedEffectiveUserType = effectiveUserType?.toLowerCase() ?? "";
-  const isProductionEnvironment =
-    process.env.NEXT_PUBLIC_ENVIRONMENT === "PRODUCTION";
   const canCreateSmallOrder = [
     "sales-executive",
     "admin",
     "super-admin",
-  ].includes(normalizedEffectiveUserType) && !isProductionEnvironment;
+  ].includes(normalizedEffectiveUserType);
   const isSiteSupervisor = normalizedUserType === "site-supervisor";
 
 
