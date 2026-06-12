@@ -987,19 +987,38 @@ export function UniversalTable({
     const primarySort = activeSorting[0];
     const shouldSortByCreatedAt = primarySort?.id === "createdAt";
     const createdAtDirection = primarySort?.desc ? "desc" : "asc";
+    const filteredActiveData = activeData.filter((lead: any) => {
+      if (lead?.is_small_order_request !== true) {
+        return true;
+      }
+
+      const requestSource = String(
+        lead?.smallOrderRequest?.request_source ?? "",
+      ).toLowerCase();
+
+      if (requestSource === "post_dispatch") {
+        return !["type 15", "type 16", "type 17"].includes(normalizedType);
+      }
+
+      if (requestSource === "final_handover") {
+        return !["type 16", "type 17"].includes(normalizedType);
+      }
+
+      return true;
+    });
 
     let rows: LeadColumn[];
 
     if (!isType8 && !isType9 && !isType10) {
       const baseData = shouldSortByCreatedAt
-        ? [...activeData].sort((a, b) => {
+        ? [...filteredActiveData].sort((a, b) => {
             const comparison = compareCreatedAt(
               a?.created_at ?? null,
               b?.created_at ?? null,
             );
             return createdAtDirection === "desc" ? -comparison : comparison;
           })
-        : activeData;
+        : filteredActiveData;
 
       rows = baseData.map((item, idx) =>
         mapUniversalRow(item, idx, { rowKey: String(item.id) }),
@@ -1007,7 +1026,7 @@ export function UniversalTable({
     } else {
       const expanded: LeadColumn[] = [];
 
-      activeData.forEach((lead) => {
+      filteredActiveData.forEach((lead) => {
         const type8StatusLoggedAt = STATUS_LOG_SORTED_STAGE_TYPES.has(
           normalizedType,
         )

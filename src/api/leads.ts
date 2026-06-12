@@ -102,6 +102,7 @@ export interface Lead {
   } | null;
   smallOrderRequest?: {
     id: number;
+    request_source?: "post_dispatch" | "final_handover";
     request_type_id: number;
     requestType: {
       id: number;
