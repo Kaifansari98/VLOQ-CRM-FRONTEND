@@ -84,7 +84,7 @@ export default function LeadDetailsGrouped({
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const { data: leadResponse } = useLeadById(leadId, vendorId, userId);
-  const lead = leadResponse?.data;
+  const lead = leadResponse?.data?.lead;
   const servicingSource = searchParams.get("source");
   const showServicingTab =
     pathname?.startsWith("/dashboard/installation/servicing") ||

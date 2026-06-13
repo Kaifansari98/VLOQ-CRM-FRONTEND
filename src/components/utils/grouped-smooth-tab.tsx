@@ -202,13 +202,23 @@ export default function GroupedSmoothTab({
     return filteredGroups;
   }, [groups, maxVisibleStage]);
 
+  const nonEmptyGroupKeys = React.useMemo(
+    () =>
+      (Object.keys(visibleGroups) as GroupKey[]).filter(
+        (key) => visibleGroups[key].length > 0,
+      ),
+    [visibleGroups],
+  );
+
   const [activeGroup, setActiveGroup] = React.useState<GroupKey>(() => {
-    const foundGroup = (Object.keys(groups) as GroupKey[]).find((g) =>
-      groups[g].some((i) => i.id === defaultTabId)
+    const foundGroup = (Object.keys(visibleGroups) as GroupKey[]).find((g) =>
+      visibleGroups[g].some((i) => i.id === defaultTabId)
     );
-    return foundGroup && visibleGroups[foundGroup].length > 0
-      ? (foundGroup as GroupKey)
-      : "leads";
+    return (
+      foundGroup ??
+      nonEmptyGroupKeys[0] ??
+      "leads"
+    );
   });
 
   const allItems = React.useMemo(
@@ -250,6 +260,15 @@ export default function GroupedSmoothTab({
     }
   }, [activeTab, allItems, defaultTabId, onChange, visibleGroups]);
 
+  React.useEffect(() => {
+    if (
+      nonEmptyGroupKeys.length > 0 &&
+      !nonEmptyGroupKeys.includes(activeGroup)
+    ) {
+      setActiveGroup(nonEmptyGroupKeys[0]);
+    }
+  }, [activeGroup, nonEmptyGroupKeys]);
+
   const handleSelect = (g: GroupKey, id: StageId) => {
     setActiveGroup(g);
     setActiveTab(id);
@@ -265,7 +284,7 @@ export default function GroupedSmoothTab({
     <div className="flex flex-col h-full">
       {/* ShadCN-style tabs with hover dropdowns */}
       <div className="flex flex-wrap items-center gap-2 border-b px-1 -mt-2">
-        {(Object.keys(visibleGroups) as GroupKey[]).map((g) => {
+        {nonEmptyGroupKeys.map((g) => {
           const isActive = activeGroup === g;
           const isHovered = hoveredGroup === g;
           const items = visibleGroups[g];
