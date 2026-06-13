@@ -70,7 +70,11 @@ const formatDisplayDate = (date: Date) =>
 const formSchema = z.object({
   orderType: z.string().min(1, "Type of Order is required"),
   requiredDate: z.string().min(1, "Required Date is required"),
-  remarks: z.string().max(2000).optional(),
+  remarks: z
+    .string()
+    .trim()
+    .min(1, "Remarks is required")
+    .max(2000, "Remarks must be 2000 characters or less"),
   documents: z.array(z.instanceof(File)),
 });
 
@@ -171,7 +175,7 @@ export default function SmallOrderRequestModal({
           source === "final_handover" ? "final_handover" : "post_dispatch",
         requestTypeId: selectedOrderTypeMaster.id,
         requiredDate: values.requiredDate,
-        remarks: values.remarks,
+        remarks: values.remarks.trim(),
         documents: values.documents,
       });
 

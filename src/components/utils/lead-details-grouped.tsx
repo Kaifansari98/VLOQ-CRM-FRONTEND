@@ -20,6 +20,8 @@ import { StageId } from "@/types/lead-stage-types";
 import UnderInstallationTabsWrapper from "../installation/under-installation/UnderInstallationTabsWrapper";
 import FinalHandoverWrapper from "../installation/final-handover/FinalHandoverWrapper";
 import ServicingWrapper from "../installation/servicing/ServicingWrapper";
+import { useAppSelector } from "@/redux/store";
+import { useLeadById } from "@/hooks/useLeadsQueries";
 type GroupKey =
   | "leads"
   | "project"
@@ -79,12 +81,18 @@ export default function LeadDetailsGrouped({
 }: LeadDetailsGroupedProps) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const userId = useAppSelector((state) => state.auth.user?.id);
+  const { data: leadResponse } = useLeadById(leadId, vendorId, userId);
+  const lead = leadResponse?.data;
   const servicingSource = searchParams.get("source");
   const showServicingTab =
     pathname?.startsWith("/dashboard/installation/servicing") ||
     servicingSource === "servicing" ||
     (servicingSource === "delivered-projects" &&
       allowServicingTabFromDeliveredProjects);
+  const isSmallOrderLead = Boolean(lead?.is_small_order_request);
+  const smallOrderRequestSource = lead?.smallOrderRequest?.request_source;
   const groups = {
     leads: [
       {
@@ -266,6 +274,17 @@ export default function LeadDetailsGrouped({
   ];
 
   const visibleGroups = React.useMemo(() => {
+    const smallOrderAllowedTabs = new Set<StageId>([
+      "details",
+      "orderLogin",
+      "production",
+      "dispatchPlanning",
+      "dispatch",
+      ...(smallOrderRequestSource === "final_handover"
+        ? (["underInstallation"] as StageId[])
+        : []),
+    ]);
+
     const effectiveParentTab =
       showServicingTab && defaultParentTab === "installation"
         ? "servicing"
@@ -289,16 +308,29 @@ export default function LeadDetailsGrouped({
         const effectiveStatus =
           showServicingTab && status === "finalHandover" ? "servicing" : status;
         const maxIndex = stageOrder.indexOf(effectiveStatus);
-        filtered[key] = stages.filter(
-          (s) => stageOrder.indexOf(s.id) <= maxIndex
-        );
+        filtered[key] = stages.filter((s) => {
+          const withinStatusRange = stageOrder.indexOf(s.id) <= maxIndex;
+          const allowedForSmallOrder = isSmallOrderLead
+            ? smallOrderAllowedTabs.has(s.id)
+            : true;
+
+          return withinStatusRange && allowedForSmallOrder;
+        });
       } else {
-        filtered[key] = [...stages];
+        filtered[key] = stages.filter((s) =>
+          isSmallOrderLead ? smallOrderAllowedTabs.has(s.id) : true,
+        );
       }
     }
 
     return filtered;
-  }, [defaultParentTab, status, showServicingTab]);
+  }, [
+    defaultParentTab,
+    isSmallOrderLead,
+    showServicingTab,
+    smallOrderRequestSource,
+    status,
+  ]);
 
   React.useEffect(() => {
     if (status && !stageOrder.includes(status)) {
@@ -337,8 +369,14 @@ export default function LeadDetailsGrouped({
   const tabParam = searchParams.get("tab") as StageId | null;
   const resolvedTab =
     tabParam && stageOrder.includes(tabParam) ? tabParam : undefined;
-  const initialTab: StageId =
+  const visibleTabIds = Object.values(visibleGroups).flatMap((group) =>
+    group.map((item) => item.id),
+  );
+  const preferredInitialTab =
     resolvedTab ?? defaultTab ?? (status ? status : "details");
+  const initialTab: StageId = visibleTabIds.includes(preferredInitialTab)
+    ? preferredInitialTab
+    : (visibleTabIds[0] ?? "details");
 
   return (
     <GroupedSmoothTab
