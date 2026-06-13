@@ -211,15 +211,13 @@ export default function SmallOrderRequestModal({
       open={open}
       onOpenChange={onOpenChange}
     >
-      <DialogContent className="w-[95vw] max-w-4xl overflow-hidden p-0">
+      <DialogContent className="w-[95vw] min-w-4xl overflow-hidden p-0">
         <DialogHeader className="border-b bg-muted/30 px-6 py-4">
           <DialogTitle className="text-left text-2xl font-semibold">
             Small Order Request
           </DialogTitle>
           <DialogDescription className="text-left text-base text-muted-foreground">
-            {`Raised from ${sourceLabel}. Required Date starts from ${formatDisplayDate(
-              earliestRequiredDate,
-            )}.`}
+            {`Raised from ${sourceLabel}.`}
           </DialogDescription>
         </DialogHeader>
 

@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import type { ColumnDef } from "@tanstack/react-table";
+import { ExternalLink } from "lucide-react";
 import {
   getCoreRowModel,
   getPaginationRowModel,
@@ -11,12 +12,31 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 
+import { Button } from "@/components/ui/button";
 import { useSmallOrderRequestsByLead } from "@/hooks/useLeadsQueries";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ImageComponent } from "@/components/utils/ImageCard";
+import DocumentCard from "@/components/utils/documentCard";
 import { cn } from "@/lib/utils";
+
+type SmallOrderRequestDocument = {
+  id: number;
+  document_id: number;
+  original_name: string;
+  signed_url: string | null;
+  created_at: string;
+};
 
 type SmallOrderRequestRow = {
   srNo: number;
@@ -33,6 +53,7 @@ type SmallOrderRequestRow = {
   admin_approved: boolean;
   document_count: number;
   remarks: string | null;
+  documents: SmallOrderRequestDocument[];
   linked_lead_id: number | null;
   linked_lead_account_id: number | null;
 };
@@ -55,6 +76,23 @@ function formatLabel(value?: string | null) {
   return normalized
     .replace(/_/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatRequestSource(value?: SmallOrderRequestRow["request_source"] | null) {
+  if (value === "post_dispatch") return "Under Installation";
+  if (value === "final_handover") return "Final Handover";
+  return "—";
+}
+
+function isImageFile(fileName?: string | null) {
+  const extension = String(fileName ?? "")
+    .split(".")
+    .pop()
+    ?.toLowerCase();
+
+  return ["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg"].includes(
+    extension ?? "",
+  );
 }
 
 function StatusBadge({
@@ -229,6 +267,155 @@ const columns: ColumnDef<SmallOrderRequestRow>[] = [
   },
 ];
 
+function SmallOrderRequestPreviewModal({
+  open,
+  onOpenChange,
+  request,
+  onOpenDetailsPage,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  request: SmallOrderRequestRow | null;
+  onOpenDetailsPage: (request: SmallOrderRequestRow) => void;
+}) {
+  if (!request) return null;
+
+  const canOpenDetailsPage =
+    request.status === "approved" &&
+    Boolean(request.linked_lead_id) &&
+    Boolean(request.linked_lead_account_id);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] w-[95vw] min-w-4xl overflow-hidden p-0">
+        <DialogHeader className="border-b bg-muted/30 px-6 py-4">
+          <DialogTitle className="text-left text-2xl font-semibold">
+            Small Order Request
+          </DialogTitle>
+          <DialogDescription className="text-left text-sm text-muted-foreground">
+            Review the details submitted when this small order request was created.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="max-h-[calc(90vh-140px)] space-y-6 overflow-y-auto p-6">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl border bg-background p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Raised From
+              </p>
+              <p className="mt-1 text-sm font-semibold text-foreground">
+                {formatRequestSource(request.request_source)}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border bg-background p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Type Of Order
+              </p>
+              <p className="mt-1 text-sm font-semibold text-foreground">
+                {request.request_type}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border bg-background p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Required Date
+              </p>
+              <p className="mt-1 text-sm font-semibold text-foreground">
+                {formatDate(request.required_date)}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border bg-background p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Created At
+              </p>
+              <p className="mt-1 text-sm font-semibold text-foreground">
+                {formatDate(request.created_at)}
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border bg-background p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Remarks
+            </p>
+            <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">
+              {request.remarks?.trim() || "—"}
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                Uploaded Files
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Documents and images attached during request creation.
+              </p>
+            </div>
+
+            {request.documents.length === 0 ? (
+              <div className="rounded-2xl border bg-background p-4 text-sm text-muted-foreground">
+                No files were uploaded with this request.
+              </div>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-2">
+                {request.documents
+                  .filter((doc) => doc.signed_url)
+                  .map((doc) =>
+                    isImageFile(doc.original_name) ? (
+                      <ImageComponent
+                        key={doc.id}
+                        doc={{
+                          id: doc.document_id,
+                          doc_og_name: doc.original_name,
+                          signedUrl: doc.signed_url!,
+                          created_at: doc.created_at,
+                        }}
+                        disableActions
+                      />
+                    ) : (
+                      <DocumentCard
+                        key={doc.id}
+                        doc={{
+                          id: doc.document_id,
+                          originalName: doc.original_name,
+                          signedUrl: doc.signed_url!,
+                          created_at: doc.created_at,
+                        }}
+                        disableActions
+                      />
+                    ),
+                  )}
+              </div>
+            )}
+          </div>
+
+          {!canOpenDetailsPage ? (
+            <div className="rounded-2xl border bg-muted/30 p-4 text-sm text-muted-foreground">
+              Details page becomes available after the small order request is approved and its linked lead is created.
+            </div>
+          ) : null}
+        </div>
+
+        <DialogFooter className="border-t px-6 py-4">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+          <Button
+            onClick={() => onOpenDetailsPage(request)}
+            disabled={!canOpenDetailsPage}
+          >
+            <ExternalLink className="mr-2 h-4 w-4" />
+            Details Page
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function SmallOrderRequestsTable({
   vendorId,
   leadId,
@@ -240,6 +427,8 @@ export default function SmallOrderRequestsTable({
 }) {
   const router = useRouter();
   const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [selectedRequest, setSelectedRequest] =
+    React.useState<SmallOrderRequestRow | null>(null);
   const { data, isLoading, isError, error } = useSmallOrderRequestsByLead(
     vendorId,
     leadId,
@@ -266,10 +455,29 @@ export default function SmallOrderRequestsTable({
         admin_approved: request.admin_approved,
         document_count: request.document_count ?? 0,
         remarks: request.remarks,
+        documents: request.documents ?? [],
         linked_lead_id: request.linked_lead?.id ?? null,
         linked_lead_account_id: request.linked_lead?.account_id ?? null,
       })),
     [data, requestSource],
+  );
+
+  const handleOpenDetailsPage = React.useCallback(
+    (row: SmallOrderRequestRow) => {
+      if (
+        row.status !== "approved" ||
+        !row.linked_lead_id ||
+        !row.linked_lead_account_id
+      ) {
+        return;
+      }
+
+      setSelectedRequest(null);
+      router.push(
+        `/dashboard/leads/details/${row.linked_lead_id}?accountId=${row.linked_lead_account_id}`,
+      );
+    },
+    [router],
   );
 
   const table = useReactTable({
@@ -306,27 +514,23 @@ export default function SmallOrderRequestsTable({
             No small order requests found for this lead.
           </div>
         ) : (
-          <DataTable
-            table={table}
-            onRowDoubleClick={(row) => {
-              if (
-                row.status !== "approved" ||
-                !row.linked_lead_id ||
-                !row.linked_lead_account_id
-              ) {
-                return;
-              }
-
-              router.push(
-                `/dashboard/leads/details/${row.linked_lead_id}?accountId=${row.linked_lead_account_id}`,
-              );
-            }}
-            rowClassName={(row) =>
-              row.status === "approved" && row.linked_lead_id
-                ? "cursor-pointer"
-                : undefined
-            }
-          />
+          <>
+            <DataTable
+              table={table}
+              onRowClick={(row) => setSelectedRequest(row)}
+              rowClassName={() => "cursor-pointer"}
+            />
+            <SmallOrderRequestPreviewModal
+              open={Boolean(selectedRequest)}
+              onOpenChange={(open) => {
+                if (!open) {
+                  setSelectedRequest(null);
+                }
+              }}
+              request={selectedRequest}
+              onOpenDetailsPage={handleOpenDetailsPage}
+            />
+          </>
         )}
       </CardContent>
     </Card>

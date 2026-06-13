@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 interface DataTableProps<TData> extends React.ComponentProps<"div"> {
   table: TanstackTable<TData>;
   actionBar?: React.ReactNode;
+  onRowClick?: (row: TData) => void;
   onRowDoubleClick?: (row: TData) => void;
   renderRowContextMenu?: (row: TData) => React.ReactNode;
   rowClassName?: (row: TData) => string | undefined;
@@ -32,6 +33,7 @@ export function DataTable<TData>({
   actionBar,
   children,
   className,
+  onRowClick,
   onRowDoubleClick,
   renderRowContextMenu,
   rowClassName,
@@ -76,6 +78,18 @@ export function DataTable<TData>({
                   <TableRow
                     key={row.id}
                     data-state={row.getIsSelected() && "selected"}
+                    onClick={(event) => {
+                      if (
+                        event.target instanceof HTMLElement &&
+                        (event.target.closest('[data-slot="action-button"]') ||
+                          event.target.closest("button") ||
+                          event.target.closest('[role="button"]') ||
+                          event.target.closest("[data-radix-menu-content]"))
+                      ) {
+                        return;
+                      }
+                      onRowClick?.(row.original);
+                    }}
                     onDoubleClick={(event) => {
                       if (
                         event.target instanceof HTMLElement &&
@@ -89,7 +103,7 @@ export function DataTable<TData>({
                       onRowDoubleClick?.(row.original);
                     }}
                     className={cn(
-                      onRowDoubleClick || renderRowContextMenu
+                      onRowClick || onRowDoubleClick || renderRowContextMenu
                         ? "cursor-pointer"
                         : undefined,
                       rowClassName?.(row.original),

@@ -242,6 +242,13 @@ export interface SmallOrderRequestListItem {
   admin_approved_at: string | null;
   created_at: string;
   document_count: number;
+  documents: {
+    id: number;
+    document_id: number;
+    original_name: string;
+    signed_url: string | null;
+    created_at: string;
+  }[];
   requestType: {
     id: number;
     type: string;
