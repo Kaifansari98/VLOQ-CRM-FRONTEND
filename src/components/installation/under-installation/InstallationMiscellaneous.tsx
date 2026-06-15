@@ -437,7 +437,7 @@ export default function InstallationMiscellaneous({
           ? values.selectedTeams.map((t) => Number(t.value))
           : undefined,
       created_by: userId!,
-      files: values.files,
+      files: files,
     };
 
     createMutation.mutate(payload, {
@@ -979,14 +979,15 @@ export default function InstallationMiscellaneous({
                 placeholder="Enter cost"
               />
             </div>
-            <div className="flex justify-end gap-3 pt-4 border-t">
-              <Button type="button" variant="outline" onClick={() => { setIsAddModalOpen(false); resetForm(); }} disabled={createMutation.isPending}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={createMutation.isPending}>
-                {createMutation.isPending ? "Creating..." : "Create Miscellaneous"}
-              </Button>
-            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 pb-6 border-t mt-6">
+            <Button type="button" size="sm" variant="outline" onClick={() => { setIsAddModalOpen(false); resetForm(); }} disabled={createMutation.isPending}>
+              Cancel
+            </Button>
+            <Button type="submit" size="sm" disabled={createMutation.isPending}>
+              {createMutation.isPending ? "Creating..." : "Create Miscellaneous"}
+            </Button>
           </div>
           </form>
         </Form>

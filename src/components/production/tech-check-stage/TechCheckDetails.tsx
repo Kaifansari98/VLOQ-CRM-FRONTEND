@@ -636,7 +636,7 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
                   {/* Image Files */}
                   {filteredPptImages?.map((doc: any, index: number) => (
                     <div key={doc.id} className="space-y-2">
@@ -726,7 +726,7 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
                   {filteredPythaDocuments.map((doc: any) => (
                     <div key={doc.id} className="space-y-2">
                       {hasMultipleInstances && (
@@ -860,7 +860,7 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
                   {ismDocs.map((doc: any) => (
                     <DocumentCard
                       key={doc.id}
@@ -873,6 +873,7 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
                       canDelete={canDeleteTechCheckDocs}
                       status={doc.tech_check_status}
                       onDelete={(id) => setConfirmDelete(id)}
+                      alwaysShowText={true}
                     />
                   ))}
                 </div>
@@ -932,7 +933,7 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
                   {finalDocs.map((doc: any) => (
                     <DocumentCard
                       key={doc.id}
@@ -945,6 +946,7 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
                       canDelete={canDeleteTechCheckDocs}
                       status={doc.tech_check_status}
                       onDelete={(id) => setConfirmDelete(id)}
+                      alwaysShowText={true}
                     />
                   ))}
                 </div>

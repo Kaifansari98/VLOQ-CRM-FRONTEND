@@ -485,7 +485,7 @@ export default function ReadyToDispatchLeadDetails() {
         className="w-full px-6 pt-4"
       >
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between mb-3">
-          <ScrollArea>
+          <ScrollArea className="w-full lg:flex-1 lg:min-w-0">
             <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
               {/* ✅ Ready To Dispatch Details */}
               <TabsTrigger value="details">
@@ -546,7 +546,7 @@ export default function ReadyToDispatchLeadDetails() {
 
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
-          <div className="flex flex-col items-start">
+          <div className="flex flex-col items-start shrink-0">
             <p className="text-xs font-semibold">Expected Dispatch Date</p>
 
             {/* Stylish formatted date & time */}
