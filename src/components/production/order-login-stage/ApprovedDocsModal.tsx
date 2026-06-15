@@ -48,7 +48,8 @@ export default function ApprovedDocsSection({
   // ✅ Fetch approved docs
   const { data, isLoading, isError } = useApprovedTechCheckDocuments(
     vendorId,
-    leadId
+    leadId,
+    !isSmallOrderRequestLead,
   );
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);

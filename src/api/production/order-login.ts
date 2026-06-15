@@ -182,11 +182,12 @@ export const getApprovedTechCheckDocuments = async (
 export const useApprovedTechCheckDocuments = (
   vendorId: number | undefined,
   leadId: number | undefined,
+  enabled: boolean = true,
 ) =>
   useQuery({
     queryKey: ["approvedTechCheckDocuments", vendorId, leadId],
     queryFn: () => getApprovedTechCheckDocuments(vendorId!, leadId!),
-    enabled: !!vendorId && !!leadId,
+    enabled: enabled && !!vendorId && !!leadId,
   });
 
 // ✅ --- Upload Production Files ---
