@@ -86,6 +86,8 @@ export interface pagination {
 export interface UniversalStageLead {
   id: number;
   lead_code: string;
+  is_small_order_request?: boolean;
+  is_draft?: boolean;
 
   firstname: string;
   lastname: string;
@@ -114,6 +116,10 @@ export interface UniversalStageLead {
   source: SourceInfo | null;
 
   assignedTo?: AssignedUser | null;
+  smallOrderRequest?: {
+    is_request_resolved?: boolean;
+    request_source?: string | null;
+  } | null;
 
   productMappings: ProductMapping[];
   leadProductStructureMapping: ProductStructureMapping[];
@@ -130,6 +136,29 @@ export interface UniversalStageLeadResponse {
   data: UniversalStageLead[];
   pagination: pagination;
 }
+
+const filterResolvedSmallOrderLeadsForType15 = (
+  response: UniversalStageLeadResponse,
+  tag?: string,
+): UniversalStageLeadResponse => {
+  if (String(tag ?? "").trim().toLowerCase() !== "type 15") {
+    return response;
+  }
+
+  const filteredData = (response.data ?? []).filter((lead) => {
+    if (lead?.is_small_order_request !== true) {
+      return true;
+    }
+
+    return lead?.smallOrderRequest?.is_request_resolved !== true;
+  });
+
+  return {
+    ...response,
+    count: filteredData.length,
+    data: filteredData,
+  };
+};
 
 export const getUniversalStageLeads = async (
   vendorId: number,
@@ -179,6 +208,7 @@ export const useUniversalStageLeads = (
     enabled: !!vendorId && !!userId && !!franchiseId,
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000,
+    select: (response) => filterResolvedSmallOrderLeadsForType15(response, tag),
   });
 };
 
@@ -270,6 +300,8 @@ export const useUniversalStageLeadsPost = (
 
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
+    select: (response) =>
+      filterResolvedSmallOrderLeadsForType15(response, payload?.tag),
   });
 };
 
@@ -341,6 +373,8 @@ export const useVendorLeadsByTagPost = (
 
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
+    select: (response) =>
+      filterResolvedSmallOrderLeadsForType15(response, payload?.tag),
   });
 };
 
