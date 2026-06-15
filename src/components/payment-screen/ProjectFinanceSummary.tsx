@@ -56,13 +56,12 @@ export default function ProjectFinanceSummary({
 
   const { data, isLoading, refetch } = usePaymentLogs(leadId, vendorId);
 
-  const projectFinance = data?.project_finance ?? {
-    total_project_amount: 0,
-    pending_amount: 0,
-    booking_amount: 0,
-  };
+  const projectFinance = data?.project_finance;
 
-  const mrpValue = projectFinance.mrp_value ?? 0;
+  const totalProjectAmount = projectFinance?.total_project_amount ?? 0;
+  const pendingAmount = projectFinance?.pending_amount ?? 0;
+  const bookingAmount = projectFinance?.booking_amount ?? 0;
+  const mrpValue = projectFinance?.mrp_value ?? 0;
 
   const schema = useMemo(
     () =>
@@ -71,8 +70,8 @@ export default function ProjectFinanceSummary({
           .number({ message: "Amount is required" })
           .positive("Amount must be greater than 0")
           .max(
-            projectFinance.pending_amount,
-            `Amount cannot exceed pending amount (₹${projectFinance.pending_amount.toLocaleString()})`,
+            pendingAmount,
+            `Amount cannot exceed pending amount (₹${pendingAmount.toLocaleString()})`,
           ),
         payment_date: z
           .string({ message: "Payment date is required" })
@@ -96,7 +95,7 @@ export default function ProjectFinanceSummary({
             "Only image files are allowed (JPG/PNG)",
           ),
       }),
-    [projectFinance.pending_amount],
+    [pendingAmount],
   );
 
   const {
@@ -166,25 +165,25 @@ export default function ProjectFinanceSummary({
           <div>
             <p className="text-muted-foreground text-sm">Total Project</p>
             <p className="font-bold text-lg">
-              {formatCurrencyINR(projectFinance.total_project_amount)}
+              {formatCurrencyINR(totalProjectAmount)}
             </p>
           </div>
           <div>
             <p className="text-muted-foreground text-sm">MRP Value</p>
             <p className="font-bold text-lg">{formatCurrencyINR(mrpValue)}</p>
           </div>
-          {projectFinance.booking_amount > 0 && (
+          {bookingAmount > 0 && (
             <div>
               <p className="text-muted-foreground text-sm">Booking Amount</p>
               <p className="font-bold text-lg">
-                {formatCurrencyINR(projectFinance.booking_amount)}
+                {formatCurrencyINR(bookingAmount)}
               </p>
             </div>
           )}
           <div>
             <p className="text-muted-foreground text-sm">Pending Amount</p>
             <p className="font-bold text-lg text-red-500">
-              {formatCurrencyINR(projectFinance.pending_amount)}
+              {formatCurrencyINR(pendingAmount)}
             </p>
           </div>
         </div>
