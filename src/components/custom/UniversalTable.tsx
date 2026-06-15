@@ -988,6 +988,10 @@ export function UniversalTable({
     const shouldSortByCreatedAt = primarySort?.id === "createdAt";
     const createdAtDirection = primarySort?.desc ? "desc" : "asc";
     const filteredActiveData = activeData.filter((lead: any) => {
+      if (normalizedType === "type 1" && lead?.is_draft === true) {
+        return false;
+      }
+
       if (lead?.is_small_order_request !== true) {
         return true;
       }
