@@ -12,6 +12,7 @@ import {
   Trash2,
   Download,
   Eye,
+  Play,
 } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { Loader2 } from "lucide-react";
@@ -19,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { useParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import VideoViewerModal from "./VideoViewerModal";
 
 interface DocumentData {
   id: number;
@@ -38,6 +40,7 @@ interface DocumentCardProps {
 }
 
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"];
+const VIDEO_EXTENSIONS = ["mp4", "mov", "avi", "mkv", "webm", "m4v", "3gp", "wmv", "flv", "ogg"];
 const PREVIEWABLE_EXTENSIONS = ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", ...IMAGE_EXTENSIONS];
 const OFFICE_EXTENSIONS = ["doc", "docx", "xls", "xlsx", "ppt", "pptx"];
 
@@ -247,11 +250,13 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
   const fileExt = doc.originalName?.split(".").pop()?.toLowerCase() || "file";
   const { icon: Icon } = getFileIcon(fileExt);
   const isImage = IMAGE_EXTENSIONS.includes(fileExt);
+  const isVideo = VIDEO_EXTENSIONS.includes(fileExt);
   const canPreview = PREVIEWABLE_EXTENSIONS.includes(fileExt);
 
   const [isDownloading, setIsDownloading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
 
   const getStatusLabel = () => {
     switch (status?.toUpperCase()) {
@@ -398,6 +403,25 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
                 alt={doc.originalName}
                 className="w-full h-full object-cover"
               />
+            ) : isVideo ? (
+              <div
+                className="relative w-full h-full cursor-pointer flex items-center justify-center"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowVideo(true);
+                }}
+              >
+                <video
+                  src={doc.signedUrl}
+                  className="w-full h-full object-cover"
+                  muted
+                  preload="metadata"
+                />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/25 hover:bg-black/40 transition-colors">
+                  <Play className="w-5 h-5 text-white" />
+                </div>
+              </div>
             ) : (
               <Icon className="text-neutral-700 dark:text-neutral-300" size={22} />
             )}
@@ -446,6 +470,33 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
           {/* Actions + Status */}
           <div className="flex items-end justify-between gap-3 mt-3">
             <div className="flex items-center gap-2">
+              {/* Play Button for videos */}
+              {isVideo && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowVideo(true);
+                  }}
+                  className="
+                    flex items-center gap-1.5 px-3 py-1.5 rounded-md 
+                    border border-border 
+                    bg-muted/30 dark:bg-neutral-800/40 
+                    text-neutral-700 dark:text-neutral-300 text-xs font-medium
+                    hover:bg-muted transition dark:hover:bg-neutral-700
+                  "
+                  aria-label="Play video"
+                  title="Play"
+                >
+                  <Play className="w-4 h-4" />
+                  {alwaysShowText ? (
+                    <span>Play</span>
+                  ) : (
+                    !hasStatus && <span className="hidden @sm:inline">Play</span>
+                  )}
+                </button>
+              )}
               {/* Preview Button — only for previewable types */}
               {canPreview && (
                 <button
@@ -529,6 +580,16 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
           fileName={doc.originalName}
           fileExt={fileExt}
           onClose={() => setShowPreview(false)}
+        />
+      )}
+
+      {/* Video Viewer Modal */}
+      {showVideo && (
+        <VideoViewerModal
+          open={showVideo}
+          videoUrl={doc.signedUrl}
+          title={doc.originalName}
+          onClose={() => setShowVideo(false)}
         />
       )}
     </>

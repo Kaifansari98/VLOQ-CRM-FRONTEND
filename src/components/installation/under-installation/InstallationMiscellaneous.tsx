@@ -437,7 +437,7 @@ export default function InstallationMiscellaneous({
           ? values.selectedTeams.map((t) => Number(t.value))
           : undefined,
       created_by: userId!,
-      files: values.files,
+      files: files,
     };
 
     createMutation.mutate(payload, {
