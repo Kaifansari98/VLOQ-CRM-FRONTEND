@@ -359,17 +359,16 @@ export default function VideoViewerModal({
       {/* ── Video Container ── */}
       <div
         ref={containerRef}
-        className="relative rounded-xl overflow-hidden bg-black shadow-2xl"
-        style={{ width: "75vw" }}
+        className="relative rounded-xl overflow-hidden bg-black shadow-2xl w-[95vw] sm:w-[90vw] md:w-[80vw] lg:w-[75vw] max-w-7xl"
         onMouseMove={resetHideTimer}
         onMouseLeave={() => playing && setShowControls(false)}
       >
         {/* Close Button */}
         <button
           onClick={handleClose}
-          className="absolute top-4 right-4 z-30 bg-white p-2 rounded-md"
+          className="absolute top-2 right-2 sm:top-4 sm:right-4 z-30 bg-white p-1.5 sm:p-2 rounded-md"
         >
-          <X size={20} className="text-black" />
+          <X className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
         </button>
 
         {/* ── Top Bar ── */}
@@ -440,8 +439,8 @@ export default function VideoViewerModal({
           `}
         >
           {!playing && (
-            <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
-              <Play className="w-7 h-7 text-white fill-white ml-1" />
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
+              <Play className="w-5 h-5 sm:w-7 sm:h-7 text-white fill-white ml-0.5 sm:ml-1" />
             </div>
           )}
         </div>
@@ -449,7 +448,7 @@ export default function VideoViewerModal({
         {/* ── Bottom Controls ── */}
         <div
           className={`
-            absolute bottom-0 left-0 right-0 z-20 px-4 pb-4 pt-8
+            absolute bottom-0 left-0 right-0 z-20 px-2 pb-1.5 pt-6 sm:px-4 sm:pb-4 sm:pt-8
             bg-gradient-to-t from-black/80 to-transparent
             transition-opacity duration-300
             ${showControls ? "opacity-100" : "opacity-0"}
@@ -458,7 +457,7 @@ export default function VideoViewerModal({
           {/* Progress Bar */}
           <div
             ref={progressRef}
-            className="relative w-full h-1.5 rounded-full bg-white/20 cursor-pointer mb-3 group/progress"
+            className="relative w-full h-1.5 rounded-full bg-white/20 cursor-pointer mb-1.5 sm:mb-3 group/progress"
             onClick={handleProgressClick}
           >
             <div
@@ -485,7 +484,7 @@ export default function VideoViewerModal({
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => skip(-10)}
-                className="p-1.5 rounded-full hover:bg-white/10 transition-colors text-white"
+                className="hidden sm:block p-1.5 rounded-full hover:bg-white/10 transition-colors text-white"
                 title="Rewind 10s (←)"
               >
                 <RotateCcw className="w-4 h-4" />
@@ -503,7 +502,7 @@ export default function VideoViewerModal({
 
               <button
                 onClick={() => skip(10)}
-                className="p-1.5 rounded-full hover:bg-white/10 transition-colors text-white"
+                className="hidden sm:block p-1.5 rounded-full hover:bg-white/10 transition-colors text-white"
                 title="Forward 10s (→)"
               >
                 <RotateCw className="w-4 h-4" />
@@ -528,7 +527,7 @@ export default function VideoViewerModal({
                   step={0.05}
                   value={muted ? 0 : volume}
                   onChange={handleVolumeChange}
-                  className="w-16 accent-white h-1 cursor-pointer"
+                  className="w-16 accent-white h-1 cursor-pointer hidden sm:block"
                 />
               </div>
 
@@ -542,7 +541,7 @@ export default function VideoViewerModal({
               {/* Loop */}
               <button
                 onClick={toggleLoop}
-                className={`p-1.5 rounded-full transition-colors ${
+                className={`hidden sm:block p-1.5 rounded-full transition-colors ${
                   loop
                     ? "bg-white/20 text-white"
                     : "hover:bg-white/10 text-white/50 hover:text-white"
@@ -555,7 +554,7 @@ export default function VideoViewerModal({
               {/* PiP */}
               <button
                 onClick={togglePiP}
-                className={`p-1.5 rounded-full transition-colors ${
+                className={`hidden sm:block p-1.5 rounded-full transition-colors ${
                   isPiP
                     ? "bg-white/20 text-white"
                     : "hover:bg-white/10 text-white/50 hover:text-white"
@@ -660,7 +659,7 @@ export default function VideoViewerModal({
               {/* Fullscreen */}
               <button
                 onClick={toggleFullscreen}
-                className="p-1.5 rounded-full hover:bg-white/10 transition-colors text-white"
+                className="hidden sm:block p-1.5 rounded-full hover:bg-white/10 transition-colors text-white"
                 title="Fullscreen (F)"
               >
                 {isFullscreen

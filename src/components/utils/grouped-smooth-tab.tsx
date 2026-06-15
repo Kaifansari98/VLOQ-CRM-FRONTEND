@@ -184,7 +184,7 @@ export default function GroupedSmoothTab({
       "production",
       "readyToDispatch",
       "siteReadiness",
-      "dispatchPlanning", 
+      "dispatchPlanning",
       "dispatch",
       "underInstallation",
       "finalHandover",
@@ -212,15 +212,15 @@ export default function GroupedSmoothTab({
   });
 
   const allItems = React.useMemo(
-  () => [
-    ...(visibleGroups.leads || []),
-    ...(visibleGroups.project || []),
-    ...(visibleGroups.production || []),
-    ...(visibleGroups.installation || []),
-    ...(visibleGroups.servicing || []),
-  ],
-  [visibleGroups]
-);
+    () => [
+      ...(visibleGroups.leads || []),
+      ...(visibleGroups.project || []),
+      ...(visibleGroups.production || []),
+      ...(visibleGroups.installation || []),
+      ...(visibleGroups.servicing || []),
+    ],
+    [visibleGroups]
+  );
 
   const activeComponent = React.useMemo(
     () => allItems.find((i) => i.id === activeTab)?.component,
@@ -314,30 +314,30 @@ export default function GroupedSmoothTab({
                           const canViewOrderLogin =
                             userType === "custom"
                               ? customPrivilegeCodes.some((code) =>
-                                  code.startsWith("production.order_login."),
-                                )
+                                code.startsWith("production.order_login."),
+                              )
                               : canViewToOrderLoginDetails(
-                                  effectiveUserType ?? "",
-                                );
+                                effectiveUserType ?? "",
+                              );
                           const canViewProduction =
                             userType === "custom"
                               ? customPrivilegeCodes.some((code) =>
-                                  code.startsWith("production.production."),
-                                )
+                                code.startsWith("production.production."),
+                              )
                               : canViewAndWorkProductionDetails(
-                                  effectiveUserType ?? "",
-                                );
+                                effectiveUserType ?? "",
+                              );
                           const canViewReadyToDispatch =
                             userType === "custom"
                               ? customPrivilegeCodes.includes(
-                                  "production.production.ready_to_dispatch.enable_disable",
-                                )
+                                "production.production.ready_to_dispatch.enable_disable",
+                              )
                               : true;
                           const canViewTechCheckForCustomUser =
                             userType === "custom"
                               ? customPrivilegeCodes.includes(
-                                  "production.tech_check.tech_check_details.view",
-                                )
+                                "production.tech_check.tech_check_details.view",
+                              )
                               : true;
 
                           // 👇 Compute disabled state and tooltip dynamically
@@ -353,10 +353,10 @@ export default function GroupedSmoothTab({
                             ? item.id === "techcheck"
                               ? "You don’t have permission to access Tech Check"
                               : item.id === "orderLogin"
-                              ? "You don’t have permission to access Order Login"
-                              : item.id === "readyToDispatch"
-                                ? "You don’t have permission to access Ready To Dispatch"
-                              : "You don’t have permission to access Production Stage"
+                                ? "You don’t have permission to access Order Login"
+                                : item.id === "readyToDispatch"
+                                  ? "You don’t have permission to access Ready To Dispatch"
+                                  : "You don’t have permission to access Production Stage"
                             : null;
 
                           return (
@@ -375,7 +375,7 @@ export default function GroupedSmoothTab({
                                           ? "opacity-50 cursor-not-allowed"
                                           : "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground outline-none",
                                         activeTab === item.id &&
-                                          "bg-primary/10 text-primary font-medium rounded-sm"
+                                        "bg-primary/10 text-primary font-medium rounded-sm"
                                       )}
                                     >
                                       {item.title}
@@ -406,7 +406,7 @@ export default function GroupedSmoothTab({
                                       ? "opacity-50 cursor-not-allowed"
                                       : "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground outline-none",
                                     activeTab === item.id &&
-                                      "bg-primary/10 text-primary font-medium rounded-sm"
+                                    "bg-primary/10 text-primary font-medium rounded-sm"
                                   )}
                                 >
                                   {item.title}
