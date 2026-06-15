@@ -232,7 +232,7 @@ const canDeleteDocuments =
         </div>
 
         {hasFiles && (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0 ml-3">
             {sitePhotos.length} File{sitePhotos.length > 1 && "s"}
           </span>
         )}

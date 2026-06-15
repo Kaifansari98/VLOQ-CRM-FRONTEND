@@ -309,6 +309,33 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
     (u: any) =>
       String(u.user_type?.user_type ?? "").toLowerCase() !== "master-admin",
   );
+  const customFollowUpAssignableUsers = React.useMemo(() => {
+    const users = followUpAssignableUsers.filter((u: any) =>
+      ["custom", "super-admin"].includes(
+        String(u.user_type?.user_type ?? "").toLowerCase(),
+      ),
+    );
+
+    if (!userId || !loggedInUserName || normalizedUserType !== "custom") {
+      return users;
+    }
+
+    const hasSelf = users.some((u: any) => u.id === userId);
+    if (hasSelf) return users;
+
+    const mergedUsers = [
+      ...users,
+      {
+        id: userId,
+        user_name: loggedInUserName,
+        user_type: { user_type: "custom" },
+      },
+    ];
+    return mergedUsers.filter(
+      (user: any, index: number, array: any[]) =>
+        array.findIndex((candidate: any) => candidate.id === user.id) === index,
+    );
+  }, [followUpAssignableUsers, loggedInUserName, normalizedUserType, userId]);
   const customSiteReadinessUsers = React.useMemo(
     () =>
       (customSiteReadinessUsersData?.data?.sales_executives ?? []).filter(
@@ -337,26 +364,26 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
           tooltip: undefined,
         }))
     : normalizedUserType === "custom"
+      ? customFollowUpAssignableUsers.map((u: any) => ({
+          id: u.id,
+          label: u.user_name,
+          disabled: false,
+          tooltip: undefined,
+        }))
+      : taskType === "Follow Up"
         ? followUpAssignableUsers.map((u: any) => ({
             id: u.id,
             label: u.user_name,
-            disabled: false,
-            tooltip: undefined,
+            disabled:
+              u.id !== userId &&
+              followUpConflicts.some((task) => task.assignee?.id === u.id),
+            tooltip:
+              u.id !== userId &&
+              followUpConflicts.some((task) => task.assignee?.id === u.id)
+                ? followUpTooltip
+                : undefined,
           }))
-        : taskType === "Follow Up"
-          ? followUpAssignableUsers.map((u: any) => ({
-              id: u.id,
-              label: u.user_name,
-              disabled:
-                u.id !== userId &&
-                followUpConflicts.some((task) => task.assignee?.id === u.id),
-              tooltip:
-                u.id !== userId &&
-                followUpConflicts.some((task) => task.assignee?.id === u.id)
-                  ? followUpTooltip
-                  : undefined,
-            }))
-          : siteSupervisorList;
+        : siteSupervisorList;
 
   const assignedSupervisorId =
     assignedSiteSupervisor?.supervisor?.id ??

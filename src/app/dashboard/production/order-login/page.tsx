@@ -19,7 +19,9 @@ import { UniversalTable } from "@/components/custom/UniversalTable";
 
 // 🔵 Navigation for Order Login rows
 const navigateOrderLogin = (row: any) =>
-  `/dashboard/production/order-login/details/${row.id}?accountId=${row.accountId}`;
+  `/dashboard/production/order-login/details/${row.id}?accountId=${row.accountId}${
+    row.instanceId ? `&instance_id=${row.instanceId}` : ""
+  }`;
 
 export default function OrderLoginPage() {
   return (

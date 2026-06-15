@@ -25,11 +25,21 @@ import {
 interface ApprovedDocsSectionProps {
   leadId: number;
   instanceId?: number | null;
+  isSmallOrderRequestLead?: boolean;
+  smallOrderRequestDocuments?: Array<{
+    id: number;
+    document_id: number;
+    original_name: string;
+    signed_url: string | null;
+    created_at: string;
+  }>;
 }
 
 export default function ApprovedDocsSection({
   leadId,
   instanceId,
+  isSmallOrderRequestLead = false,
+  smallOrderRequestDocuments = [],
 }: ApprovedDocsSectionProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
@@ -38,7 +48,8 @@ export default function ApprovedDocsSection({
   // ✅ Fetch approved docs
   const { data, isLoading, isError } = useApprovedTechCheckDocuments(
     vendorId,
-    leadId
+    leadId,
+    !isSmallOrderRequestLead,
   );
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
@@ -52,8 +63,9 @@ export default function ApprovedDocsSection({
     file?.doc_name ||
     "";
 
-  const scopedDocs =
-    instanceId != null
+  const scopedDocs = isSmallOrderRequestLead
+    ? smallOrderRequestDocuments
+    : instanceId != null
       ? (data || []).filter(
           (file: any) => file?.product_structure_instance_id === instanceId
         )
@@ -131,7 +143,9 @@ export default function ApprovedDocsSection({
           </h3>
 
           <p className="text-xs text-muted-foreground text-center max-w-sm leading-relaxed">
-            Once documents are approved, you can preview or download them here.
+            {isSmallOrderRequestLead
+              ? "No documents were found for this small order request."
+              : "Once documents are approved, you can preview or download them here."}
           </p>
         </div>
       ) : (
@@ -149,13 +163,13 @@ export default function ApprovedDocsSection({
                   <ImageComponent
                     key={doc.id}
                     doc={{
-                      id: doc.id,
+                      id: doc.document_id ?? doc.id,
                       doc_og_name: getDocName(doc),
                       signedUrl: doc.signed_url,
                       created_at: doc.created_at,
                     }}
                     index={index}
-                    canDelete={canDelete}
+                    canDelete={canDelete && !isSmallOrderRequestLead}
                     onDelete={(id) => setConfirmDelete(Number(id))}
                   />
                 ))}
@@ -176,12 +190,12 @@ export default function ApprovedDocsSection({
                   <DocumentCard
                     key={doc.id}
                     doc={{
-                      id: doc.id,
+                      id: doc.document_id ?? doc.id,
                       originalName: getDocName(doc),
                       signedUrl: doc.signed_url,
                       created_at: doc.created_at,
                     }}
-                    canDelete={canDelete}
+                    canDelete={canDelete && !isSmallOrderRequestLead}
                     onDelete={(id) => setConfirmDelete(id)}
                   />
                 ))}
@@ -193,7 +207,7 @@ export default function ApprovedDocsSection({
 
       {/* 🌟 Delete Confirmation Modal */}
       <AlertDialog
-        open={!!confirmDelete}
+        open={!isSmallOrderRequestLead && !!confirmDelete}
         onOpenChange={() => setConfirmDelete(null)}
       >
         <AlertDialogContent>

@@ -10,7 +10,12 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
-import { useBlockLead, useLeadById, useUnblockLead } from "@/hooks/useLeadsQueries";
+import {
+  useBlockLead,
+  useLeadById,
+  useSmallOrderRequestsByLead,
+  useUnblockLead,
+} from "@/hooks/useLeadsQueries";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
@@ -93,6 +98,7 @@ import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 import { useChatTabFromUrl } from "@/hooks/useChatTabFromUrl";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
+import SmallOrderRequestModal from "@/components/installation/small-order/SmallOrderRequestModal";
 
 export default function FinalHandoverLeadDetails() {
   const router = useRouter();
@@ -117,6 +123,7 @@ export default function FinalHandoverLeadDetails() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
+  const [openSmallOrderModal, setOpenSmallOrderModal] = useState(false);
 
   const [activeTab, setActiveTab] = useState(
     userType === "site-supervisor" ? "todo" : "details"
@@ -165,6 +172,11 @@ export default function FinalHandoverLeadDetails() {
       : canAccessTodoTaskTabUnderFinalHandoverStage(effectiveUserType ?? "");
   const normalizedUserType = userType?.toLowerCase() ?? "";
   const normalizedEffectiveUserType = effectiveUserType?.toLowerCase() ?? "";
+  const canCreateSmallOrder = [
+    "sales-executive",
+    "admin",
+    "super-admin",
+  ].includes(normalizedEffectiveUserType);
   const isSiteSupervisor = normalizedUserType === "site-supervisor";
 
 
@@ -179,6 +191,10 @@ export default function FinalHandoverLeadDetails() {
     blockLeadMutation.isPending ||
     unblockLeadMutation.isPending;
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
+  const { data: smallOrderRequestsResponse } = useSmallOrderRequestsByLead(
+    vendorId,
+    leadIdNum,
+  );
   const lead = data?.data?.lead;
 
   const leadCode = lead?.lead_code ?? "";
@@ -188,6 +204,26 @@ export default function FinalHandoverLeadDetails() {
   const isSmallOrderLead = !!lead?.productMappings?.some(
     (mapping: any) => mapping.productType?.tag === "Type 7",
   );
+  const resolvedApprovedSmallOrderCount = (smallOrderRequestsResponse?.data ?? [])
+    .filter((request) => request.status === "approved")
+    .length;
+  const hasReachedSmallOrderLimit = resolvedApprovedSmallOrderCount >= 2;
+  const usableHandoverCompletedAt = lead?.usable_handover_completed_at
+    ? new Date(lead.usable_handover_completed_at)
+    : null;
+  const isSmallOrderCreationExpired =
+    usableHandoverCompletedAt != null &&
+    !Number.isNaN(usableHandoverCompletedAt.getTime()) &&
+    (() => {
+      const expiryDate = new Date(usableHandoverCompletedAt);
+      expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+      return new Date() > expiryDate;
+    })();
+  const smallOrderCreationTooltip = hasReachedSmallOrderLimit
+    ? "Maximum Small Order limit reached for this project."
+    : isSmallOrderCreationExpired
+      ? "Small Order creation period has expired."
+      : "";
   const allowServicingTabFromDeliveredProjects = !isSmallOrderLead;
   const hasAnyUploadPrivilege =
     normalizedUserType === "custom" &&
@@ -219,6 +255,10 @@ export default function FinalHandoverLeadDetails() {
   const blockedReason = shouldDisableBlockedActions
     ? blockedTooltip
     : "";
+  const shouldDisableSmallOrderCreation =
+    shouldDisableBlockedActions ||
+    hasReachedSmallOrderLimit ||
+    isSmallOrderCreationExpired;
 
   const { data: readiness, isLoading: readinessLoading } =
     useFinalHandoverReadiness(vendorId!, leadIdNum);
@@ -325,6 +365,15 @@ export default function FinalHandoverLeadDetails() {
       }
     );
   };
+
+  if (isLoading && !lead) {
+    return <p className="p-6">Loading lead details...</p>;
+  }
+
+  if (!lead) {
+    return <p className="p-6">Lead details not found or you do not have access.</p>;
+  }
+
   return (
     <>
       {/* 🔹 Header */}
@@ -475,6 +524,31 @@ export default function FinalHandoverLeadDetails() {
                   Mark On Hold
                 </DropdownMenuItem>
               )}
+              {canCreateSmallOrder &&
+                (shouldDisableSmallOrderCreation ? (
+                  <CustomeTooltip
+                    value={
+                      shouldDisableBlockedActions
+                        ? blockedTooltip
+                        : smallOrderCreationTooltip
+                    }
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <BoxIcon size={20} />
+                        Create Small Order
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setOpenSmallOrderModal(true);
+                    }}
+                  >
+                    <BoxIcon size={20} />
+                    Create Small Order
+                  </DropdownMenuItem>
+                ))}
 
               {canEdit && (
                 // Lead block handling added for DropdownMenu action
@@ -718,6 +792,13 @@ export default function FinalHandoverLeadDetails() {
         open={assignOpenLead}
         onOpenChange={setAssignOpenLead}
         leadData={{ id: leadIdNum, assignTo: lead?.assignedTo }}
+      />
+
+      <SmallOrderRequestModal
+        open={openSmallOrderModal}
+        onOpenChange={setOpenSmallOrderModal}
+        source="final_handover"
+        leadId={leadIdNum}
       />
 
       <EditLeadModal

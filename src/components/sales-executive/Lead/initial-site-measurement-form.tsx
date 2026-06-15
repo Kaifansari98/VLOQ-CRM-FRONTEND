@@ -25,11 +25,16 @@ import { SinglePdfUploadField } from "@/components/utils/single-pdf-uploader";
 import BaseModal from "@/components/utils/baseModal";
 import { useRouter } from "next/navigation";
 import CurrencyInput from "@/components/custom/CurrencyInput";
-import { toastError } from "@/lib/utils";
+import { toastError, cn } from "@/lib/utils";
 import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import { LeadProductStructureInstance } from "@/api/leads";
 import { Card, CardContent } from "@/components/ui/card";
+import { CheckCircle2, Loader2 } from "lucide-react";
+import { useSiteMeasurementLeadById } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
+import DocumentCard from "@/components/utils/documentCard";
+import { ImageComponent } from "@/components/utils/ImageCard";
+import { SiteMeasurementFile } from "@/types/site-measrument-types";
 
 interface LeadViewModalProps {
   open: boolean;
@@ -102,57 +107,6 @@ const formSchema = z
     payment_date: z.string().optional(),
     payment_image: z.any().optional(),
     payment_text: z.string().optional(),
-  })
-  // ✅ Replaced .refine() with granular .superRefine()
-  .superRefine((data, ctx) => {
-    const hasAmount = !!data.amount;
-    const hasPaymentDate = !!data.payment_date;
-    const hasPaymentText = !!data.payment_text?.trim();
-    const hasPaymentImage =
-      Array.isArray(data.payment_image) && data.payment_image.length > 0;
-
-    const anyFieldFilled =
-      hasAmount || hasPaymentDate || hasPaymentText || hasPaymentImage;
-
-    if (anyFieldFilled) {
-      // 💰 Amount missing
-      if (!hasAmount) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["amount"],
-          message: "Amount is required when adding payment details.",
-        });
-      }
-
-      // 📅 Payment date missing
-      if (!hasPaymentDate) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["payment_date"],
-          message: "Payment date is required when adding payment details.",
-        });
-      }
-
-      // 📝 Payment text missing
-      if (!hasPaymentText) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["payment_text"],
-          message:
-            "Payment details text is required when adding payment details.",
-        });
-      }
-
-      // 🖼️ Payment image missing
-      if (!hasPaymentImage) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["payment_image"],
-          message:
-            "At least one payment image is required when adding payment details.",
-        });
-      }
-    }
   });
 
 type InitialSiteMeasurementFormValues = z.infer<typeof formSchema>;
@@ -163,15 +117,6 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
   data,
 }) => {
   const router = useRouter();
-
-  const form = useForm<InitialSiteMeasurementFormValues>({
-    resolver: zodResolver(formSchema) as unknown as any,
-    defaultValues: {
-      current_site_photos: [],
-      upload_pdf: [],
-      payment_image: [],
-    },
-  });
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -186,6 +131,9 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
   const leadId = data?.id;
   const accountId = data?.accountId;
   const { data: leadByIdResponse } = useLeadById(leadId, vendorId, userId);
+  const { data: siteMeasurementDetails } = useSiteMeasurementLeadById(
+    leadId ?? 0,
+  );
   const leadById = leadByIdResponse?.data?.lead;
   const isCustomVendorFlow =
     isCustomVendorFlowFromAuth ||
@@ -205,9 +153,86 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
   const isMultiInstanceUploadFlow =
     structureInstances.length > 1 &&
     (isCustomVendorFlow || isCustomDocNomenclatureEnabled);
+
+  const dynamicFormSchema = React.useMemo(() => {
+    return z
+      .object({
+        current_site_photos: z.any().optional(),
+        upload_pdf: isMultiInstanceUploadFlow
+          ? z.array(z.instanceof(File)).default([])
+          : z.array(z.instanceof(File)).min(1, "Please upload at least one document"),
+        amount: z.number().optional(),
+        payment_date: z.string().optional(),
+        payment_image: z.any().optional(),
+        payment_text: z.string().optional(),
+      })
+      .superRefine((data, ctx) => {
+        const hasAmount = !!data.amount;
+        const hasPaymentDate = !!data.payment_date;
+        const hasPaymentText = !!data.payment_text?.trim();
+        const hasPaymentImage =
+          Array.isArray(data.payment_image) && data.payment_image.length > 0;
+
+        const anyFieldFilled =
+          hasAmount || hasPaymentDate || hasPaymentText || hasPaymentImage;
+
+        if (anyFieldFilled) {
+          if (!hasAmount) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["amount"],
+              message: "Amount is required when adding payment details.",
+            });
+          }
+          if (!hasPaymentDate) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["payment_date"],
+              message: "Payment date is required when adding payment details.",
+            });
+          }
+          if (!hasPaymentText) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["payment_text"],
+              message: "Payment details text is required when adding payment details.",
+            });
+          }
+          if (!hasPaymentImage) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["payment_image"],
+              message: "At least one payment image is required when adding payment details.",
+            });
+          }
+        }
+      });
+  }, [isMultiInstanceUploadFlow]);
+
+  const form = useForm<InitialSiteMeasurementFormValues>({
+    resolver: zodResolver(dynamicFormSchema) as unknown as any,
+    defaultValues: {
+      current_site_photos: [],
+      upload_pdf: [],
+      payment_image: [],
+    },
+  });
+  const existingSitePhotos = React.useMemo(
+    () => siteMeasurementDetails?.current_site_photos ?? [],
+    [siteMeasurementDetails?.current_site_photos],
+  );
+  const existingMeasurementDocs = React.useMemo(
+    () => siteMeasurementDetails?.initial_site_measurement_documents ?? [],
+    [siteMeasurementDetails?.initial_site_measurement_documents],
+  );
   const [instanceUploads, setInstanceUploads] = React.useState<
     Record<number, { current_site_photos: File[]; upload_pdf: File[] }>
   >({});
+  const [savedInstanceIds, setSavedInstanceIds] = React.useState<number[]>([]);
+  const [uploadingInstanceId, setUploadingInstanceId] = React.useState<
+    number | null
+  >(null);
+  const [multiInstanceErrors, setMultiInstanceErrors] = React.useState<number[]>([]);
 
   React.useEffect(() => {
     if (!isMultiInstanceUploadFlow) {
@@ -254,6 +279,9 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       queryClient.invalidateQueries({
         queryKey: ["vendorAllTasks"],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["siteMeasurementLeadDetails", leadId],
+      });
       handleReset();
       onOpenChange(false);
 
@@ -264,8 +292,246 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       toastError(error);
     },
   });
+  const partialInstanceMutation = useMutation({
+    mutationFn: uploadInitialSiteMeasurement,
+    onSuccess: () => {
+      toastManager.add({
+        title: "Instance documents uploaded successfully!",
+        type: "success",
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["leadStats", vendorId, userId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["universal-stage-leads"],
+        exact: false,
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["vendorUserTasks"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["vendorAllTasks"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["allLeadDocuments"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["siteMeasurementLeadDetails", leadId],
+      });
+    },
+    onError: (error: unknown) => {
+      toastError(error);
+    },
+  });
 
   const clientId = 1;
+
+  const clientName = React.useMemo(
+    () =>
+      data?.name?.trim() ||
+      leadById?.account?.name?.trim() ||
+      [leadById?.firstname, leadById?.lastname].filter(Boolean).join(" ").trim() ||
+      "Client",
+    [data?.name, leadById],
+  );
+  const furnitureTypeName = React.useMemo(
+    () =>
+      structureInstances[0]?.productType?.type?.trim() ||
+      leadById?.productMappings?.[0]?.productType?.type?.trim() ||
+      "Furniture Type",
+    [leadById, structureInstances],
+  );
+  const singleInstanceTitle = React.useMemo(
+    () => (structureInstances.length === 1 ? structureInstances[0]?.title?.trim() : ""),
+    [structureInstances],
+  );
+
+  const buildInitialSiteMeasurementPayload = React.useCallback(
+    ({
+      sitePhotos,
+      documents,
+      values,
+    }: {
+      sitePhotos: Array<{ file: File; instanceId: number | null }>;
+      documents: Array<{ file: File; instanceId: number | null }>;
+      values?: InitialSiteMeasurementFormValues;
+    }) => {
+      const uploadDate = formatFileDate(new Date());
+      let currentSitePhotoSequence = 0;
+      let measurementDocumentSequence = 0;
+      const formData = new FormData();
+
+      formData.append("lead_id", leadId?.toString() || "");
+      formData.append("account_id", accountId?.toString() || "");
+      formData.append("vendor_id", vendorId?.toString() || "");
+      formData.append("created_by", userId?.toString() || "");
+      formData.append("client_id", clientId.toString() || "");
+      formData.append("user_id", userId?.toString() || "");
+
+      sitePhotos.forEach(({ file, instanceId }) => {
+        const instanceTitle = structureInstances.find(
+          (instance) => instance.id === instanceId,
+        )?.title;
+        const renamedFile = isCustomDocNomenclatureEnabled
+          ? renameIsmFiles({
+              files: [file],
+              clientName,
+              targetLabel:
+                instanceTitle || singleInstanceTitle || furnitureTypeName,
+              startIndex: currentSitePhotoSequence,
+              uploadDate,
+              prefix: "CSP",
+            })[0]
+          : file;
+        if (isCustomDocNomenclatureEnabled) {
+          currentSitePhotoSequence += 1;
+        }
+        formData.append("current_site_photos", renamedFile);
+      });
+      formData.append(
+        "current_site_photo_instance_ids",
+        JSON.stringify(sitePhotos.map(({ instanceId }) => instanceId)),
+      );
+
+      documents.forEach(({ file, instanceId }) => {
+        const instanceTitle = structureInstances.find(
+          (instance) => instance.id === instanceId,
+        )?.title;
+        const renamedFile = isCustomDocNomenclatureEnabled
+          ? renameIsmFiles({
+              files: [file],
+              clientName,
+              targetLabel:
+                instanceTitle || singleInstanceTitle || furnitureTypeName,
+              startIndex: measurementDocumentSequence,
+              uploadDate,
+              prefix: "MD",
+            })[0]
+          : file;
+        if (isCustomDocNomenclatureEnabled) {
+          measurementDocumentSequence += 1;
+        }
+        formData.append("upload_pdf", renamedFile);
+      });
+      formData.append(
+        "upload_pdf_instance_ids",
+        JSON.stringify(documents.map(({ instanceId }) => instanceId)),
+      );
+
+      if (values?.amount) {
+        formData.append("amount", values.amount.toString());
+      }
+      if (values?.payment_date) {
+        formData.append("payment_date", values.payment_date);
+      }
+      if (values?.payment_text) {
+        formData.append("payment_text", values.payment_text);
+      }
+      values?.payment_image?.forEach((file: File) => {
+        formData.append("payment_image", file);
+      });
+
+      return formData;
+    },
+    [
+      accountId,
+      clientId,
+      clientName,
+      furnitureTypeName,
+      isCustomDocNomenclatureEnabled,
+      leadId,
+      singleInstanceTitle,
+      structureInstances,
+      userId,
+      vendorId,
+    ],
+  );
+
+  const getExistingSitePhotosByInstance = React.useCallback(
+    (instanceId: number) =>
+      existingSitePhotos.filter(
+        (doc: SiteMeasurementFile) =>
+          doc.product_structure_instance_id === instanceId,
+      ),
+    [existingSitePhotos],
+  );
+
+  const getExistingMeasurementDocsByInstance = React.useCallback(
+    (instanceId: number) =>
+      existingMeasurementDocs.filter(
+        (doc: SiteMeasurementFile) =>
+          doc.product_structure_instance_id === instanceId,
+      ),
+    [existingMeasurementDocs],
+  );
+
+  const allInstancesAlreadyHaveRequiredUploads = React.useMemo(() => {
+    if (!isMultiInstanceUploadFlow || structureInstances.length === 0) {
+      return false;
+    }
+
+    return structureInstances.every((instance) => {
+      const hasExistingDocuments =
+        getExistingMeasurementDocsByInstance(instance.id).length > 0;
+      const hasSavedThisSession = savedInstanceIds.includes(instance.id);
+
+      return hasExistingDocuments || hasSavedThisSession;
+    });
+  }, [
+    getExistingMeasurementDocsByInstance,
+    isMultiInstanceUploadFlow,
+    structureInstances,
+    savedInstanceIds,
+  ]);
+
+  const handleInstanceUpload = async (instance: LeadProductStructureInstance) => {
+    if (!leadId || !accountId) {
+      toastManager.add({
+        title: "Lead or account data is missing!",
+        type: "error",
+      });
+      return;
+    }
+
+    const uploads = instanceUploads[instance.id] ?? {
+      current_site_photos: [],
+      upload_pdf: [],
+    };
+
+    if (uploads.upload_pdf.length === 0) {
+      toastManager.add({
+        title: `Please upload Initial Site Measurement Document for ${instance.title}.`,
+        type: "error",
+      });
+      return;
+    }
+
+    const formData = buildInitialSiteMeasurementPayload({
+      sitePhotos: uploads.current_site_photos.map((file) => ({
+        file,
+        instanceId: instance.id,
+      })),
+      documents: uploads.upload_pdf.map((file) => ({
+        file,
+        instanceId: instance.id,
+      })),
+    });
+    formData.append("skip_status_update", "true");
+
+    try {
+      setUploadingInstanceId(instance.id);
+      await partialInstanceMutation.mutateAsync(formData);
+      setSavedInstanceIds((prev) =>
+        prev.includes(instance.id) ? prev : [...prev, instance.id],
+      );
+      setInstanceUploads((prev) => ({
+        ...prev,
+        [instance.id]: { current_site_photos: [], upload_pdf: [] },
+      }));
+    } finally {
+      setUploadingInstanceId(null);
+    }
+  };
 
   const onSubmit = (values: InitialSiteMeasurementFormValues) => {
     if (!leadId || !accountId) {
@@ -296,19 +562,59 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
         });
       }
 
-      const missingDocuments = structureInstances.filter(
-        (instance) =>
-          !instanceUploads[instance.id] ||
-          instanceUploads[instance.id].upload_pdf.length === 0,
-      );
+      const missingRequiredUploads = structureInstances.filter((instance) => {
+        const uploads = instanceUploads[instance.id] ?? {
+          current_site_photos: [],
+          upload_pdf: [],
+        };
+        const hasSavedThisSession = savedInstanceIds.includes(instance.id);
+        const hasExistingSitePhotos =
+          getExistingSitePhotosByInstance(instance.id).length > 0;
+        const hasExistingDocuments =
+          getExistingMeasurementDocsByInstance(instance.id).length > 0;
+        const hasLocalSitePhotos = uploads.current_site_photos.length > 0;
+        const hasLocalDocuments = uploads.upload_pdf.length > 0;
 
-      if (missingDocuments.length > 0) {
+        const hasRequiredDocuments =
+          hasSavedThisSession || hasExistingDocuments || hasLocalDocuments;
+
+        return !hasRequiredDocuments;
+      });
+
+      if (missingRequiredUploads.length > 0) {
+        const missingIds = missingRequiredUploads.map((i) => i.id);
+        setMultiInstanceErrors(missingIds);
+
+        const firstMissing = missingRequiredUploads[0];
         toastManager.add({
-          title: `Please upload Initial Site Measurement Document for ${missingDocuments[0].title}.`,
+          title: `Please upload all required ISM files for ${firstMissing.title}.`,
           type: "error",
         });
+
+        setTimeout(() => {
+          const el = document.getElementById(`instance-${firstMissing.id}`);
+          if (el) {
+            const isHidden = el.getBoundingClientRect().height === 0;
+            const targetScrollEl = isHidden ? (el.parentElement || el) : el;
+
+            const scrollContainer = targetScrollEl.closest("[data-radix-scroll-area-viewport]") || targetScrollEl.closest("form");
+            if (scrollContainer instanceof HTMLElement) {
+              const containerRect = scrollContainer.getBoundingClientRect();
+              const elRect = targetScrollEl.getBoundingClientRect();
+              const scrollOffset = elRect.top - containerRect.top + scrollContainer.scrollTop - (containerRect.height / 2) + (elRect.height / 2);
+              scrollContainer.scrollTo({
+                top: scrollOffset,
+                behavior: "smooth",
+              });
+            } else {
+              targetScrollEl.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+          }
+        }, 100);
+
         return;
       }
+      setMultiInstanceErrors([]);
     } else {
       values.current_site_photos?.forEach((file: File) => {
         flattenedSitePhotos.push({ file, instanceId: null });
@@ -319,7 +625,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       });
     }
 
-    if (flattenedDocuments.length === 0) {
+    if (!isMultiInstanceUploadFlow && flattenedDocuments.length === 0) {
       toastManager.add({
         title: "Please upload at least one document",
         type: "error",
@@ -327,88 +633,39 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       return;
     }
 
-    const clientName =
-      data?.name?.trim() ||
-      leadById?.account?.name?.trim() ||
-      [leadById?.firstname, leadById?.lastname].filter(Boolean).join(" ").trim() ||
-      "Client";
-    const furnitureTypeName =
-      structureInstances[0]?.productType?.type?.trim() ||
-      leadById?.productMappings?.[0]?.productType?.type?.trim() ||
-      "Furniture Type";
-    const singleInstanceTitle =
-      structureInstances.length === 1 ? structureInstances[0]?.title?.trim() : "";
-    const uploadDate = formatFileDate(new Date());
-    let currentSitePhotoSequence = 0;
-    let measurementDocumentSequence = 0;
-
-    const formData = new FormData();
-    formData.append("lead_id", leadId?.toString() || "");
-    formData.append("account_id", accountId?.toString() || "");
-    formData.append("vendor_id", vendorId?.toString() || "");
-    formData.append("created_by", userId?.toString() || "");
-    formData.append("client_id", clientId.toString() || "");
-    formData.append("user_id", userId?.toString() || "");
-
-    flattenedSitePhotos.forEach(({ file, instanceId }) => {
-      const instanceTitle = structureInstances.find(
-        (instance) => instance.id === instanceId,
-      )?.title;
-      const renamedFile = isCustomDocNomenclatureEnabled
-        ? renameIsmFiles({
-            files: [file],
-            clientName,
-            targetLabel: instanceTitle || singleInstanceTitle || furnitureTypeName,
-            startIndex: currentSitePhotoSequence,
-            uploadDate,
-            prefix: "CSP",
-          })[0]
-        : file;
-      if (isCustomDocNomenclatureEnabled) {
-        currentSitePhotoSequence += 1;
+    if (
+      isMultiInstanceUploadFlow &&
+      flattenedDocuments.length === 0 &&
+      flattenedSitePhotos.length === 0
+    ) {
+      if (
+        isCustomVendorFlowFromAuth &&
+        !allInstancesAlreadyHaveRequiredUploads
+      ) {
+        toastManager.add({
+          title: "Please upload all required ISM files for every instance.",
+          type: "error",
+        });
+        return;
       }
-      formData.append("current_site_photos", renamedFile);
-    });
-    formData.append(
-      "current_site_photo_instance_ids",
-      JSON.stringify(flattenedSitePhotos.map(({ instanceId }) => instanceId)),
-    );
 
-    flattenedDocuments.forEach(({ file, instanceId }) => {
-      const instanceTitle = structureInstances.find(
-        (instance) => instance.id === instanceId,
-      )?.title;
-      const renamedFile = isCustomDocNomenclatureEnabled
-        ? renameIsmFiles({
-            files: [file],
-            clientName,
-            targetLabel: instanceTitle || singleInstanceTitle || furnitureTypeName,
-            startIndex: measurementDocumentSequence,
-            uploadDate,
-            prefix: "MD",
-          })[0]
-        : file;
-      if (isCustomDocNomenclatureEnabled) {
-        measurementDocumentSequence += 1;
-      }
-      formData.append("upload_pdf", renamedFile);
-    });
-    formData.append(
-      "upload_pdf_instance_ids",
-      JSON.stringify(flattenedDocuments.map(({ instanceId }) => instanceId)),
-    );
+      mutation.mutate(
+        buildInitialSiteMeasurementPayload({
+          sitePhotos: [],
+          documents: [],
+          values,
+        }),
+      );
+      queryClient.invalidateQueries({
+        queryKey: ["allLeadDocuments"],
+      });
+      return;
+    }
 
-    if (values.amount) {
-      formData.append("amount", values.amount.toString());
-    }
-    if (values.payment_date) {
-      formData.append("payment_date", values.payment_date);
-    }
-    if (values.payment_text) {
-      formData.append("payment_text", values.payment_text);
-    }
-    values.payment_image?.forEach((file: File) => {
-      formData.append("payment_image", file);
+    const formData = buildInitialSiteMeasurementPayload({
+      sitePhotos: flattenedSitePhotos,
+      documents: flattenedDocuments,
+      values,
     });
 
     mutation.mutate(formData);
@@ -418,7 +675,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
     });
   };
 
-  const handleReset = () => {
+  const handleReset = React.useCallback(() => {
     form.reset({
       current_site_photos: [],
       upload_pdf: [],
@@ -427,6 +684,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       payment_image: [],
       payment_text: "",
     });
+    form.clearErrors();
     setInstanceUploads((prev) => {
       const next = { ...prev };
       Object.keys(next).forEach((key) => {
@@ -434,7 +692,12 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       });
       return next;
     });
-  };
+    setSavedInstanceIds([]);
+  }, [form]);
+
+  React.useEffect(() => {
+    handleReset();
+  }, [open, handleReset]);
 
   const setInstanceFiles = (
     instanceId: number,
@@ -460,7 +723,38 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
     >
       <div className="px-5 py-4">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+          <form
+            onSubmit={form.handleSubmit(onSubmit, (errors) => {
+              const errorKeys = Object.keys(errors);
+              if (errorKeys.length > 0) {
+                const firstErrorKey = errorKeys[0];
+                const el = document.querySelector(`[data-name="${firstErrorKey}"]`);
+                if (el) {
+                  const isHidden = el.getBoundingClientRect().height === 0;
+                  const targetScrollEl = isHidden ? (el.parentElement || el) : el;
+                  
+                  const scrollContainer = targetScrollEl.closest("[data-radix-scroll-area-viewport]") || targetScrollEl.closest("form");
+                  if (scrollContainer instanceof HTMLElement) {
+                    const containerRect = scrollContainer.getBoundingClientRect();
+                    const elRect = targetScrollEl.getBoundingClientRect();
+                    const scrollOffset = elRect.top - containerRect.top + scrollContainer.scrollTop - (containerRect.height / 2) + (elRect.height / 2);
+                    scrollContainer.scrollTo({
+                      top: scrollOffset,
+                      behavior: "smooth",
+                    });
+                  } else {
+                    targetScrollEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }
+
+                  const focusable = el.querySelector("input, select, textarea, button");
+                  if (focusable instanceof HTMLElement) {
+                    focusable.focus({ preventScroll: true });
+                  }
+                }
+              }
+            })}
+            className="space-y-5"
+          >
             {(isCustomVendorFlow || isCustomDocNomenclatureEnabled) &&
             isStructureInstancesLoading ? (
               <div className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">
@@ -482,9 +776,13 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                       current_site_photos: [],
                       upload_pdf: [],
                     };
+                    const existingInstanceSitePhotos =
+                      getExistingSitePhotosByInstance(instance.id);
+                    const existingInstanceMeasurementDocs =
+                      getExistingMeasurementDocsByInstance(instance.id);
 
                     return (
-                      <Card key={instance.id}>
+                      <Card key={instance.id} id={`instance-${instance.id}`}>
                         <CardContent className="space-y-4">
                           <div>
                             <h4 className="text-sm font-semibold">
@@ -494,6 +792,12 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                               <p className="text-xs text-muted-foreground">
                                 {instance.productType.type}
                               </p>
+                            )}
+                            {savedInstanceIds.includes(instance.id) && (
+                              <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700">
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                Saved
+                              </div>
                             )}
                           </div>
 
@@ -519,12 +823,14 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                             </div>
 
                             <div className="space-y-2">
-                              <FormLabel className="text-sm">
+                              <FormLabel className={cn("text-sm", multiInstanceErrors.includes(instance.id) ? "text-destructive" : "")}>
                                 Initial Site Measurement Document *
                               </FormLabel>
                               <SinglePdfUploadField
                                 value={uploads.upload_pdf}
-                                onChange={(files) =>
+                                invalid={multiInstanceErrors.includes(instance.id)}
+                                onChange={(files) => {
+                                  setMultiInstanceErrors((prev) => prev.filter(id => id !== instance.id));
                                   setInstanceFiles(
                                     instance.id,
                                     "upload_pdf",
@@ -533,8 +839,8 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                                       : files
                                         ? [files]
                                         : [],
-                                  )
-                                }
+                                  );
+                                }}
                                 allowedMimeTypes={[]}
                                 accept="*/*"
                                 title="Upload Measurement Document"
@@ -544,6 +850,98 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                                 maxFiles={10}
                               />
                             </div>
+                          </div>
+
+                          {(existingInstanceSitePhotos.length > 0 ||
+                            existingInstanceMeasurementDocs.length > 0) && (
+                            <div className="space-y-4 rounded-xl border border-dashed p-4">
+                              <div>
+                                <h5 className="text-sm font-semibold">
+                                  Uploaded Files
+                                </h5>
+                                <p className="text-xs text-muted-foreground">
+                                  These files are already saved for this instance.
+                                </p>
+                              </div>
+
+                              {existingInstanceSitePhotos.length > 0 && (
+                                <div className="space-y-3">
+                                  <p className="text-xs font-medium text-muted-foreground">
+                                    Current Site Photos
+                                  </p>
+                                  <div className="flex flex-wrap gap-4">
+                                    {existingInstanceSitePhotos.map((
+                                      doc: SiteMeasurementFile,
+                                      index: number,
+                                    ) => (
+                                      <div
+                                        key={doc.id}
+                                        className="w-fit max-w-full"
+                                      >
+                                        <ImageComponent
+                                          doc={{
+                                            id: doc.id,
+                                            doc_og_name: doc.originalName,
+                                            signedUrl: doc.signedUrl,
+                                            created_at: doc.uploadedAt,
+                                          }}
+                                          index={index}
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {existingInstanceMeasurementDocs.length > 0 && (
+                                <div className="space-y-3">
+                                  <p className="text-xs font-medium text-muted-foreground">
+                                    Initial Site Measurement Documents
+                                  </p>
+                                  <div className="flex flex-wrap gap-4">
+                                    {existingInstanceMeasurementDocs.map(
+                                      (doc: SiteMeasurementFile) => (
+                                      <div
+                                        key={doc.id}
+                                        className="w-fit max-w-full"
+                                      >
+                                        <DocumentCard
+                                          doc={{
+                                            id: doc.id,
+                                            originalName: doc.originalName,
+                                            signedUrl: doc.signedUrl,
+                                            created_at: doc.uploadedAt,
+                                          }}
+                                        />
+                                      </div>
+                                      ),
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="flex justify-end">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => handleInstanceUpload(instance)}
+                              disabled={
+                                partialInstanceMutation.isPending &&
+                                uploadingInstanceId === instance.id
+                              }
+                            >
+                              {partialInstanceMutation.isPending &&
+                              uploadingInstanceId === instance.id ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Uploading...
+                                </>
+                              ) : (
+                                "Upload This Instance"
+                              )}
+                            </Button>
                           </div>
                         </CardContent>
                       </Card>
@@ -557,13 +955,14 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                   control={form.control}
                   name="current_site_photos"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem data-name="current_site_photos">
                       <FormLabel className="text-sm">Current Site Photos</FormLabel>
                       <FormControl>
                         <FileUploadField
                           value={field.value}
                           onChange={field.onChange}
                           accept=".png, .jpg, .jpeg, .gif"
+                          invalid={!!form.formState.errors.current_site_photos}
                         />
                       </FormControl>
                       <FormDescription className="text-xs">
@@ -578,7 +977,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                   control={form.control}
                   name="upload_pdf"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem data-name="upload_pdf">
                       <FormLabel className="text-sm">
                         Initial Site Measurement Document *
                       </FormLabel>
@@ -593,6 +992,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                           buttonLabel="Select File"
                           multiple
                           maxFiles={10}
+                          invalid={!!form.formState.errors.upload_pdf}
                         />
                       </FormControl>
                       <FormMessage />
@@ -608,7 +1008,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                 control={form.control}
                 name="amount"
                 render={({ field }) => (
-                  <FormItem className="w-full">
+                  <FormItem className={cn("w-full", form.formState.errors.amount && "text-destructive [&_input]:border-destructive [&_input]:focus-visible:ring-destructive")} data-name="amount">
                     <FormLabel className="text-sm">
                       Initial Site Measurement Payable Amount
                     </FormLabel>
@@ -631,7 +1031,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                 control={form.control}
                 name="payment_date"
                 render={({ field }) => (
-                  <FormItem className="w-full">
+                  <FormItem className={cn("w-full", form.formState.errors.payment_date && "text-destructive [&_button]:border-destructive [&_button]:focus-visible:ring-destructive")} data-name="payment_date">
                     <FormLabel className="text-sm">
                       Initial Site Measurement Amount Payment Date
                     </FormLabel>
@@ -653,7 +1053,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
               control={form.control}
               name="payment_image"
               render={({ field }) => (
-                <FormItem>
+                <FormItem data-name="payment_image">
                   <FormLabel className="text-sm">Payment Details</FormLabel>
                   <FormControl>
                     <FileUploadField
@@ -661,6 +1061,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                       onChange={field.onChange}
                       multiple={false}
                       accept=".png, .jpg, .jpeg, .gif"
+                      invalid={!!form.formState.errors.payment_image}
                     />
                   </FormControl>
                   <FormDescription className="text-xs">
@@ -676,7 +1077,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
               control={form.control}
               name="payment_text"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className={cn(form.formState.errors.payment_text && "text-destructive [&_textarea]:border-destructive [&_textarea]:focus-visible:ring-destructive")} data-name="payment_text">
                   <FormLabel className="text-sm">
                     Payment Details Text
                   </FormLabel>

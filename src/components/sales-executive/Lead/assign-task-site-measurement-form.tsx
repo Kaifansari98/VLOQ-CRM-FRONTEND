@@ -322,9 +322,6 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
 
   const approvalRequestUsers = React.useMemo(() => {
     const users = approvalRequestAssignableUsersData?.users ?? [];
-    const shouldRestrictToFranchise =
-      normalizedUserType === "admin" ||
-      normalizedUserType === "sales-executive";
 
     return users.filter((user) => {
       const normalizedAssignableUserType = String(
@@ -334,31 +331,55 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
       if (user.id === userId) return false;
       if (normalizedAssignableUserType === "master-admin") return false;
 
-      if (shouldRestrictToFranchise) {
-        return user.franchise_id === franchiseId;
-      }
-
       return true;
     });
   }, [
     approvalRequestAssignableUsersData?.users,
-    normalizedUserType,
     userId,
-    franchiseId,
   ]);
+  const approvalRequestMappedUsers = React.useMemo(
+    () =>
+      approvalRequestUsers.map((user) => ({
+        id: user.id,
+        label: user.user_name,
+      })),
+    [approvalRequestUsers],
+  );
 
   const followUpAssignableUsers = isCustomUser
-    ? eligibleCustomUsers
+    ? (() => {
+        const superAdminUsers = (followUpUsersData?.data?.users ?? []).filter(
+          (u: any) =>
+            String(u.user_type?.user_type ?? "").toLowerCase() ===
+            "super-admin",
+        );
+
+        const mergedUsers = [...eligibleCustomUsers, ...superAdminUsers];
+
+        if (userId && loggedInUserName) {
+          const hasSelf = mergedUsers.some((u: any) => u.id === userId);
+          if (!hasSelf) {
+            mergedUsers.push({
+              id: userId,
+              user_name: loggedInUserName,
+              user_type: { user_type: "custom" },
+            });
+          }
+        }
+
+        return mergedUsers.filter(
+          (user: any, index: number, array: any[]) =>
+            array.findIndex((candidate: any) => candidate.id === user.id) ===
+            index,
+        );
+      })()
     : (followUpUsersData?.data?.users ?? []).filter(
         (u: any) =>
           String(u.user_type?.user_type ?? "").toLowerCase() !== "master-admin",
       );
 
   const mappedData = isApprovalRequestTask
-    ? approvalRequestUsers.map((user) => ({
-        id: user.id,
-        label: user.user_name,
-      }))
+    ? approvalRequestMappedUsers
     : isSelfAssignTask
       ? normalizedUserType === "master-admin"
         ? []

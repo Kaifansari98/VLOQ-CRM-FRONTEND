@@ -160,7 +160,22 @@ const BookingEditModal: React.FC<LeadViewModalProps> = ({
           <div className="px-5 py-4">
             <Form {...form}>
               <form
-                onSubmit={form.handleSubmit(handleSubmit)}
+                onSubmit={form.handleSubmit(handleSubmit, (errors) => {
+                  const errorKeys = Object.keys(errors);
+                  if (errorKeys.length > 0) {
+                    const firstErrorKey = errorKeys[0];
+                    const el = document.querySelector(`[data-name="${firstErrorKey}"]`);
+                    if (el) {
+                      const isHidden = el.getBoundingClientRect().height === 0;
+                      const targetScrollEl = isHidden ? (el.parentElement || el) : el;
+                      targetScrollEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                      const focusable = el.querySelector("input, select, textarea, button");
+                      if (focusable instanceof HTMLElement) {
+                        focusable.focus({ preventScroll: true });
+                      }
+                    }
+                  }
+                })}
                 className="space-y-6"
               >
                 {/* Amount fields */}
@@ -169,7 +184,7 @@ const BookingEditModal: React.FC<LeadViewModalProps> = ({
                     control={form.control}
                     name="amount_received"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem data-name="amount_received">
                         <FormLabel className="text-sm">
                           Booking Advance Received
                         </FormLabel>
@@ -197,7 +212,7 @@ const BookingEditModal: React.FC<LeadViewModalProps> = ({
                     control={form.control}
                     name="final_booking_amount"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem data-name="final_booking_amount">
                         <FormLabel className="text-sm">
                         Total Booking Value *
                         </FormLabel>
@@ -226,7 +241,7 @@ const BookingEditModal: React.FC<LeadViewModalProps> = ({
                   control={form.control}
                   name="assign_to"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem data-name="assign_to">
                       <FormLabel className="text-sm">Assign To *</FormLabel>
                       <Select
                         value={field.value || ""}
@@ -255,7 +270,7 @@ const BookingEditModal: React.FC<LeadViewModalProps> = ({
                   control={form.control}
                   name="payment_text"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem data-name="payment_text">
                       <FormLabel className="text-sm">Payment Details</FormLabel>
                       <FormControl>
                         <TextAreaInput

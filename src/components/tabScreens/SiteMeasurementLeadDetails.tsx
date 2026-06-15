@@ -58,6 +58,18 @@ const documentMimeTypes = [
   "image/gif",
 ];
 const documentAccept = ".png,.jpg,.jpeg";
+const imageExtensions = new Set([
+  "jpg",
+  "jpeg",
+  "png",
+  "gif",
+  "webp",
+  "bmp",
+  "svg",
+  "heic",
+  "heif",
+  "avif",
+]);
 
 export default function SiteMeasurementLeadDetails({ leadId }: Props) {
   // 🧩 --- Redux & Auth Context ---
@@ -185,6 +197,64 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
     }
   };
 
+  const isImageFile = (fileName?: string | null) => {
+    const extension = String(fileName ?? "")
+      .split(".")
+      .pop()
+      ?.trim()
+      .toLowerCase();
+
+    return extension ? imageExtensions.has(extension) : false;
+  };
+
+  const renderFileCard = (
+    file: {
+      id: number;
+      originalName: string;
+      signedUrl: string;
+      uploadedAt?: string;
+      createdAt?: string;
+    },
+    index?: number,
+    disableActions?: boolean,
+  ) => {
+    const uploadedAt = file.uploadedAt ?? file.createdAt;
+
+    if (isImageFile(file.originalName)) {
+      return (
+        <ImageComponent
+          key={file.id}
+          doc={{
+            id: file.id,
+            doc_og_name: file.originalName,
+            signedUrl: file.signedUrl,
+            created_at: uploadedAt,
+          }}
+          index={index}
+          canDelete={canDelete}
+          disableActions={disableActions}
+          onDelete={(id) => setConfirmDelete(Number(id))}
+        />
+      );
+    }
+
+    return (
+      <DocumentCard
+        key={file.id}
+        doc={{
+          id: file.id,
+          originalName: file.originalName,
+          created_at: uploadedAt,
+          signedUrl: file.signedUrl,
+        }}
+        canDelete={canDelete}
+        disableActions={disableActions}
+        onDelete={(id) => setConfirmDelete(Number(id))}
+        alwaysShowText={true}
+      />
+    );
+  };
+
   // 🧩 --- Loading & Error States ---
   if (isLoading)
     return (
@@ -260,20 +330,18 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
           <div className="p-6">
             {pdfDocs.length > 0 ? (
               <div className="space-y-4">
-                {pdfDocs.map((doc) => (
-                  <DocumentCard
-                    key={doc.id}
-                    doc={{
+                {pdfDocs.map((doc, index) => {
+                  return renderFileCard(
+                    {
                       id: doc.id,
                       originalName: doc.originalName,
-                      created_at: doc.uploadedAt,
+                      uploadedAt: doc.uploadedAt,
                       signedUrl: doc.signedUrl,
-                    }}
-                    canDelete={canDelete}
-                    disableActions={shouldDisableBlockedActions}
-                    onDelete={(id) => setConfirmDelete(id)}
-                  />
-                ))}
+                    },
+                    index,
+                    shouldDisableBlockedActions,
+                  );
+                })}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-10">
@@ -427,22 +495,19 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
           variants={itemVariants}
           className="p-6 bg-[#fff] dark:bg-[#0a0a0a]"
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {currentSitePhotos.map((doc, index) => (
-              <ImageComponent
-                key={doc.id}
-                doc={{
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
+            {currentSitePhotos.map((doc, index) => {
+              return renderFileCard(
+                {
                   id: doc.id,
-                  doc_og_name: doc.originalName,
+                  originalName: doc.originalName,
+                  uploadedAt: doc.uploadedAt,
                   signedUrl: doc.signedUrl,
-                  created_at: doc.uploadedAt,
-                }}
-                index={index}
-                canDelete={canDelete}
-                disableActions={shouldDisableBlockedActions}
-                onDelete={(id) => setConfirmDelete(Number(id))}
-              />
-            ))}
+                },
+                index,
+                shouldDisableBlockedActions,
+              );
+            })}
 
             {/* Add button card */}
             {canEditOrUpload &&
@@ -524,21 +589,18 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
             className="p-6 bg-[#fff] dark:bg-[#0a0a0a]"
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {paymentImages.map((doc, index) => (
-                <ImageComponent
-                  key={doc.id}
-                  doc={{
+              {paymentImages.map((doc, index) => {
+                return renderFileCard(
+                  {
                     id: doc.id,
-                    doc_og_name: doc.originalName,
+                    originalName: doc.originalName,
+                    uploadedAt: doc.uploadedAt,
                     signedUrl: doc.signedUrl,
-                    created_at: doc.uploadedAt,
-                  }}
-                  index={index}
-                  canDelete={canDelete}
-                  disableActions={shouldDisableBlockedActions}
-                  onDelete={(id) => setConfirmDelete(Number(id))}
-                />
-              ))}
+                  },
+                  index,
+                  shouldDisableBlockedActions,
+                );
+              })}
             </div>
           </motion.div>
         </motion.section>
@@ -619,20 +681,18 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                   </h2>
                 </div>
                 <div className="space-y-3">
-                  {bookingDoneIsmPdfDocs.map((doc: any) => (
-                    <DocumentCard
-                      key={doc.id}
-                      doc={{
+                  {bookingDoneIsmPdfDocs.map((doc: any, index: number) => {
+                    return renderFileCard(
+                      {
                         id: doc.id,
                         originalName: doc.originalName,
-                        created_at: doc.createdAt,
+                        createdAt: doc.createdAt,
                         signedUrl: doc.signedUrl,
-                      }}
-                      canDelete={canDelete}
-                      disableActions={shouldDisableBlockedActions}
-                      onDelete={(id) => setConfirmDelete(id)}
-                    />
-                  ))}
+                      },
+                      index,
+                      shouldDisableBlockedActions,
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -646,24 +706,18 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                     {bookingDoneIsmCurrentSitePhotos.length})
                   </h2>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {bookingDoneIsmCurrentSitePhotos.map(
-                    (doc: any, index: any) => (
-                      <ImageComponent
-                        key={doc.id}
-                        doc={{
-                          id: doc.id,
-                          doc_og_name: doc.originalName,
-                          signedUrl: doc.signedUrl,
-                          created_at: doc.createdAt,
-                        }}
-                        index={index}
-                        canDelete={canDelete}
-                        disableActions={shouldDisableBlockedActions}
-                        onDelete={(id) => setConfirmDelete(Number(id))}
-                      />
-                    )
-                  )}
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
+                  {bookingDoneIsmCurrentSitePhotos.map((doc: any, index: any) => {
+                    return renderFileCard(
+                      {
+                        id: doc.id,
+                        originalName: doc.originalName,
+                        createdAt: doc.createdAt,
+                        signedUrl: doc.signedUrl,
+                      },
+                      index,
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -676,22 +730,19 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                     Payment Images ({bookingDoneIsmPaymentImages.length})
                   </h2>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {bookingDoneIsmPaymentImages.map((doc: any, index: any) => (
-                    <ImageComponent
-                      key={doc.id}
-                      doc={{
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
+                  {bookingDoneIsmPaymentImages.map((doc: any, index: any) => {
+                    return renderFileCard(
+                      {
                         id: doc.id,
-                        doc_og_name: doc.originalName,
+                        originalName: doc.originalName,
+                        createdAt: doc.createdAt,
                         signedUrl: doc.signedUrl,
-                        created_at: doc.createdAt,
-                      }}
-                      index={index}
-                      canDelete={canDelete}
-                      disableActions={shouldDisableBlockedActions}
-                      onDelete={(id) => setConfirmDelete(Number(id))}
-                    />
-                  ))}
+                      },
+                      index,
+                      shouldDisableBlockedActions,
+                    );
+                  })}
                 </div>
               </div>
             )}

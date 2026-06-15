@@ -399,6 +399,9 @@ export function UniversalTable({
   // -------------------- GLOBAL STATE --------------------
 
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
+  const isCustomUserTypeOnlyVendor = useAppSelector(
+    (s) => s.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
+  );
   const franchiseId = useAppSelector(
     (s) => s.auth.franchise_id ?? s.auth.user?.franchise_id,
   );
@@ -430,12 +433,12 @@ export function UniversalTable({
   // ✅ SEPARATE PAGINATION FOR BOTH VIEWS
   const [myPagination, setMyPagination] = useState({
     pageIndex: 0,
-    pageSize: 20,
+    pageSize: 50,
   });
 
   const [overallPagination, setOverallPagination] = useState({
     pageIndex: 0,
-    pageSize: 20,
+    pageSize: 50,
   });
 
   // ✅ SEPARATE GLOBAL FILTER FOR BOTH VIEWS
@@ -916,47 +919,64 @@ export function UniversalTable({
       instanceTitle?: string;
       instanceDescription?: string;
     },
-  ): LeadColumn => ({
-    rowKey: options?.rowKey,
-    instanceId: options?.instanceId,
-    id: lead.id,
-    srNo: index + 1,
-    lead_code: `${lead.lead_code ?? ""}${options?.leadCodeSuffix ?? ""}`,
-    name: toTitleCase(`${lead.firstname ?? ""} ${lead.lastname ?? ""}`),
-    email: lead.email ?? "",
-    contact: `${lead.country_code ?? ""}${lead.contact_no ?? ""}`,
-    siteAddress: lead.site_address ?? "",
-    site_map_link: lead.site_map_link ?? "",
-    architechName: lead.archetech_name ?? "",
-    designerRemark: lead.designer_remark ?? "",
-    furnitureType:
-      lead.productMappings?.map((p: any) => p.productType?.type).join(", ") ??
-      "",
-    furnitueStructures: options?.furnitureStructureOverride
-      ? [options.furnitureStructureOverride]
-      : (lead.leadProductStructureMapping?.map(
-          (p: any) => p.productStructure?.type,
-        ) ?? []),
-    productionStatus: options?.productionStatus,
-    type8StatusLoggedAt: options?.type8StatusLoggedAt,
-    techCheckCompletedAt: options?.techCheckCompletedAt,
-    orderLoginCompletedAt: options?.orderLoginCompletedAt,
-    instanceTitle: options?.instanceTitle,
-    instanceDescription: options?.instanceDescription,
-    source: lead.source?.type ?? "",
-    siteType: lead.siteType?.type ?? "",
-    createdAt: lead.created_at ? new Date(lead.created_at).getTime() : "",
-    updatedAt: lead.updated_at ?? "",
-    altContact: lead.alt_contact_no ?? "",
-    status: lead.statusType?.type ?? "",
-    statusTag: lead.statusType?.tag ?? "",
-    sales_executive: lead.assignedTo?.user_name ?? "",
-    assignedToId: lead.assignedTo?.id ?? "",
-    accountId: lead.account?.id ?? lead.account_id ?? 0,
-    priority: lead.priority ?? "",
-    servicing: getPendingServicingLabel(lead),
-    scheduledAt: getNextPendingService(lead)?.scheduled_for ?? "",
-  });
+  ): LeadColumn => {
+    const designerMapping = Array.isArray(lead.userMappings)
+      ? lead.userMappings.find(
+          (mapping: any) =>
+            String(mapping?.type ?? "designer").toLowerCase() === "designer" &&
+            String(mapping?.status ?? "active").toLowerCase() === "active",
+        )
+      : undefined;
+
+    const designerName =
+      designerMapping?.user?.user_name ??
+      designerMapping?.userMaster?.user_name ??
+      "";
+
+    return {
+      rowKey: options?.rowKey,
+      instanceId: options?.instanceId,
+      id: lead.id,
+      srNo: index + 1,
+      lead_code: `${lead.lead_code ?? ""}${options?.leadCodeSuffix ?? ""}`,
+      name: toTitleCase(`${lead.firstname ?? ""} ${lead.lastname ?? ""}`),
+      email: lead.email ?? "",
+      contact: `${lead.country_code ?? ""}${lead.contact_no ?? ""}`,
+      siteAddress: lead.site_address ?? "",
+      site_map_link: lead.site_map_link ?? "",
+      architechName: lead.archetech_name ?? "",
+      designerRemark: lead.designer_remark ?? "",
+      furnitureType:
+        lead.productMappings?.map((p: any) => p.productType?.type).join(", ") ??
+        "",
+      furnitueStructures: options?.furnitureStructureOverride
+        ? [options.furnitureStructureOverride]
+        : (lead.leadProductStructureMapping?.map(
+            (p: any) => p.productStructure?.type,
+          ) ?? []),
+      productionStatus: options?.productionStatus,
+      type8StatusLoggedAt: options?.type8StatusLoggedAt,
+      techCheckCompletedAt: options?.techCheckCompletedAt,
+      orderLoginCompletedAt: options?.orderLoginCompletedAt,
+      instanceTitle: options?.instanceTitle,
+      instanceDescription: options?.instanceDescription,
+      source: lead.source?.type ?? "",
+      siteType: lead.siteType?.type ?? "",
+      createdAt: lead.created_at ? new Date(lead.created_at).getTime() : "",
+      updatedAt: lead.updated_at ?? "",
+      altContact: lead.alt_contact_no ?? "",
+      status: lead.statusType?.type ?? "",
+      statusTag: lead.statusType?.tag ?? "",
+      sales_executive: lead.assignedTo?.user_name ?? "",
+      designer: designerName,
+      assignedToId: lead.assignedTo?.id ?? "",
+      isDraft: lead.is_draft === true,
+      accountId: lead.account?.id ?? lead.account_id ?? 0,
+      priority: lead.priority ?? "",
+      servicing: getPendingServicingLabel(lead),
+      scheduledAt: getNextPendingService(lead)?.scheduled_for ?? "",
+    };
+  };
 
   // -------------------- TABLE DATA --------------------
 
@@ -967,19 +987,38 @@ export function UniversalTable({
     const primarySort = activeSorting[0];
     const shouldSortByCreatedAt = primarySort?.id === "createdAt";
     const createdAtDirection = primarySort?.desc ? "desc" : "asc";
+    const filteredActiveData = activeData.filter((lead: any) => {
+      if (lead?.is_small_order_request !== true) {
+        return true;
+      }
+
+      const requestSource = String(
+        lead?.smallOrderRequest?.request_source ?? "",
+      ).toLowerCase();
+
+      if (requestSource === "post_dispatch") {
+        return !["type 15", "type 16", "type 17"].includes(normalizedType);
+      }
+
+      if (requestSource === "final_handover") {
+        return !["type 16", "type 17"].includes(normalizedType);
+      }
+
+      return true;
+    });
 
     let rows: LeadColumn[];
 
     if (!isType8 && !isType9 && !isType10) {
       const baseData = shouldSortByCreatedAt
-        ? [...activeData].sort((a, b) => {
+        ? [...filteredActiveData].sort((a, b) => {
             const comparison = compareCreatedAt(
               a?.created_at ?? null,
               b?.created_at ?? null,
             );
             return createdAtDirection === "desc" ? -comparison : comparison;
           })
-        : activeData;
+        : filteredActiveData;
 
       rows = baseData.map((item, idx) =>
         mapUniversalRow(item, idx, { rowKey: String(item.id) }),
@@ -987,7 +1026,7 @@ export function UniversalTable({
     } else {
       const expanded: LeadColumn[] = [];
 
-      activeData.forEach((lead) => {
+      filteredActiveData.forEach((lead) => {
         const type8StatusLoggedAt = STATUS_LOG_SORTED_STAGE_TYPES.has(
           normalizedType,
         )
@@ -1178,12 +1217,14 @@ export function UniversalTable({
         showProductionStatusColumn,
         showPriorityColumn,
         showServicingColumn,
+        showDesignerColumn: isCustomUserTypeOnlyVendor,
       }),
     [
       showStageColumn,
       showProductionStatusColumn,
       showPriorityColumn,
       showServicingColumn,
+      isCustomUserTypeOnlyVendor,
     ],
   );
 
@@ -1388,6 +1429,11 @@ export function UniversalTable({
       <DataTable
         table={table}
         onRowDoubleClick={handleRowClick}
+        rowClassName={(row) =>
+          row.isDraft
+            ? "bg-orange-50/80 dark:bg-orange-950/20 hover:bg-orange-100/80 dark:hover:bg-orange-950/30"
+            : undefined
+        }
         className="pt-3 px-4"
       >
         {/* 🖥️ DESKTOP FILTERS (Horizontal Layout) */}

@@ -51,14 +51,14 @@ const BaseModal: React.FC<BaseModalProps> = ({
           <DialogHeader className="flex flex-row items-center gap-4 px-6 py-4 border-b bg-muted/30">
             {icon}
 
-            <div className="space-y-0.5 overflow-hidden">
+            <div className="space-y-1 min-w-0 flex-1">
               {title && (
-                <DialogTitle className="text-base text-left  font-semibold leading-tight truncate">
+                <DialogTitle className="text-base text-left font-semibold leading-normal truncate">
                   {title}
                 </DialogTitle>
               )}
               {description && (
-                <DialogDescription className="text-left text-xs md:text-sm text-muted-foreground leading-snug truncate break-words  whitespace-normal">
+                <DialogDescription className="text-left text-xs md:text-sm text-muted-foreground leading-snug break-words whitespace-normal">
                   {description}
                 </DialogDescription>
               )}

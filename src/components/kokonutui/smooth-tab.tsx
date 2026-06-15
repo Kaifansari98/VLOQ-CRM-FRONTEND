@@ -506,5 +506,7 @@ export default function SmoothTab({
         </div>
       </div>
     </div>
+
+  
   );
 }

@@ -288,7 +288,7 @@ export function NavMain({
                   >
                     {/* ✅ No wrapper div — icon direct child of Link */}
                     {item.icon && <item.icon className="!size-5 shrink-0" />}
-                    <span>{item.title}</span>
+                    <span className="whitespace-nowrap">{item.title}</span>
                     {(() => {
                       if (!item.showCount || isOpen) return null;
                       const count = getGroupCount(item);
@@ -324,7 +324,7 @@ export function NavMain({
                               isSubActive && "font-bold rounded-md"
                             )}
                           >
-                            <span>{subItem.title}</span>
+                            <span className="whitespace-nowrap">{subItem.title}</span>
                             {(() => {
                               const hasShowCount = !!subItem.showCount;
                               const hasCustomCount =
@@ -379,7 +379,7 @@ export function NavMain({
           >
             {/* ✅ No wrapper div — icon direct child of Link */}
             {item.icon && <item.icon className={cn("!size-5 shrink-0", item.iconClassName)} />}
-            <span>{item.title}</span>
+            <span className="whitespace-nowrap">{item.title}</span>
             {(item.showCount || item.customCount !== undefined) && (
               <Badge
                 className={cn(

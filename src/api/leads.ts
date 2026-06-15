@@ -20,6 +20,13 @@ interface ApiErrorResponse {
   error?: string;
   details?: unknown;
 }
+
+export interface UploadProgressInfo {
+  percent: number;
+  uploadedBytes: number;
+  totalBytes: number;
+}
+
 export interface CreateLeadPayload {
   firstname: string;
   lastname: string;
@@ -31,6 +38,7 @@ export interface CreateLeadPayload {
   site_type_id: number;
   source_id: number;
   archetech_name?: string;
+  archetech_number?: string;
   designer_remark?: string;
   vendor_id: number;
   franchise_id: number;
@@ -49,6 +57,7 @@ export interface Lead {
   id: number;
   lead_code?: string;
   is_draft?: boolean;
+  is_small_order_request?: boolean;
   is_blocked?: boolean;
   lead_blocked_at?: string | null;
   firstname: string;
@@ -62,6 +71,7 @@ export interface Lead {
   source_id: number;
   account_id: number;
   archetech_name: string;
+  archetech_number?: string | null;
   designer_remark: string;
   created_by: number;
   created_at: number;
@@ -82,6 +92,9 @@ export interface Lead {
   assignedTo: AssignTo | null;
   statusType: StatusType;
   initial_site_measurement_date: string;
+  usable_handover_completed_at?: string | null;
+  is_carcass_installation_completed?: boolean | null;
+  is_shutter_installation_completed?: boolean | null;
   activity_status?: string;
   count?: number;
   site_map_link: string;
@@ -89,6 +102,24 @@ export interface Lead {
     user_id: number;
     user_name: string | null;
     created_at: string;
+  } | null;
+  smallOrderRequest?: {
+    id: number;
+    is_request_resolved?: boolean;
+    request_source?: "post_dispatch" | "final_handover";
+    request_type_id: number;
+    documents?: {
+      id: number;
+      document_id: number;
+      original_name: string;
+      signed_url: string | null;
+      created_at: string;
+    }[];
+    requestType: {
+      id: number;
+      type: string;
+      type_key: string;
+    } | null;
   } | null;
 }
 
@@ -174,6 +205,7 @@ export interface EditLeadPayload {
   source_id?: number;
   priority?: string;
   archetech_name?: string;
+  archetech_number?: string;
   designer_remark?: string;
   updated_by: number;
   initial_site_measurement_date?: string;
@@ -190,6 +222,57 @@ export interface CreateClientVisitPayload {
   expense_incurred?: number;
   documents?: File[];
   payment_proof_documents?: File[];
+}
+
+export interface CreateSmallOrderRequestPayload {
+  leadId: number;
+  vendorId: number;
+  createdBy: number;
+  requestSource: "post_dispatch" | "final_handover";
+  requestTypeId: number;
+  requiredDate: string;
+  remarks?: string;
+  documents?: File[];
+}
+
+export interface SmallOrderRequestListItem {
+  id: number;
+  parent_lead_code: string;
+  so_code: string | null;
+  is_request_resolved: boolean;
+  customer_name: string;
+  status: "pending_approval" | "pending_approvals" | "approved" | "rejected";
+  request_source: "post_dispatch" | "final_handover";
+  required_date: string;
+  remarks: string | null;
+  supervisor_approved: boolean;
+  supervisor_approved_at: string | null;
+  admin_approved: boolean;
+  admin_approved_at: string | null;
+  created_at: string;
+  document_count: number;
+  documents: {
+    id: number;
+    document_id: number;
+    original_name: string;
+    signed_url: string | null;
+    created_at: string;
+  }[];
+  requestType: {
+    id: number;
+    type: string;
+    type_key: string;
+  } | null;
+  createdBy: {
+    id: number;
+    user_name: string | null;
+    user_email: string | null;
+  } | null;
+  linked_lead: {
+    id: number;
+    lead_code: string | null;
+    account_id: number | null;
+  } | null;
 }
 
 export interface ClientVisitDocument {
@@ -250,6 +333,66 @@ export const uploadMoreSitePhotos = async ({
     "/leads/upload-more-site-photos",
     formData,
     { headers: { "Content-Type": "multipart/form-data" } },
+  );
+
+  return response.data;
+};
+
+export const createSmallOrderRequest = async (
+  payload: CreateSmallOrderRequestPayload,
+) => {
+  const formData = new FormData();
+  formData.append("lead_id", payload.leadId.toString());
+  formData.append("vendor_id", payload.vendorId.toString());
+  formData.append("created_by", payload.createdBy.toString());
+  formData.append("request_source", payload.requestSource);
+  formData.append("request_type_id", payload.requestTypeId.toString());
+  formData.append("required_date", payload.requiredDate);
+
+  if (payload.remarks?.trim()) {
+    formData.append("remarks", payload.remarks.trim());
+  }
+
+  (payload.documents ?? []).forEach((file) => {
+    formData.append("documents", file);
+  });
+
+  const response = await apiClient.post("/leads/small-order-requests", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+
+  return response.data;
+};
+
+export const getSmallOrderRequestsByLead = async (
+  vendorId: number,
+  leadId: number,
+) => {
+  const response = await apiClient.get(
+    `/leads/small-order-requests/vendor/${vendorId}/lead/${leadId}`,
+  );
+
+  return response.data as {
+    data: SmallOrderRequestListItem[];
+    message: string;
+    success?: boolean;
+  };
+};
+
+export const markSmallOrderRequestResolved = async ({
+  vendorId,
+  requestId,
+  updatedBy,
+}: {
+  vendorId: number;
+  requestId: number;
+  updatedBy: number;
+}) => {
+  const response = await apiClient.patch(
+    `/leads/small-order-requests/vendor/${vendorId}/request/${requestId}/resolve`,
+    { updated_by: updatedBy },
   );
 
   return response.data;
@@ -1069,4 +1212,11 @@ export const useAllLeadDocuments = (
     enabled: !!vendorId && !!leadId,
     staleTime: 2 * 60 * 1000,
   });
+};
+
+export const unshortenUrl = async (url: string): Promise<string> => {
+  const { data } = await apiClient.get<{ success: boolean; resolvedUrl: string }>(
+    `/leads/unshorten-url?url=${encodeURIComponent(url)}`
+  );
+  return data.resolvedUrl;
 };

@@ -86,27 +86,6 @@ export function getDraftLeadsColumns(): ColumnDef<DraftLeadRow>[] {
     },
 
     {
-      accessorKey: "servicing",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Servicing" />
-      ),
-      cell: ({ row }) => {
-        const value = row.getValue("servicing") as string | undefined;
-        return (
-          <span className="text-sm text-foreground">
-            {value && value.trim() ? value : "—"}
-          </span>
-        );
-      },
-      meta: {
-        label: "Servicing",
-      },
-      enableSorting: false,
-      enableHiding: true,
-      enableColumnFilter: true,
-    },
-
-    {
       accessorKey: "priority",
       filterFn: tableSingleValueMultiSelectFilter,
       header: ({ column }) => (
@@ -301,44 +280,7 @@ export function getDraftLeadsColumns(): ColumnDef<DraftLeadRow>[] {
         );
       },
     },
-    // 4.2) Production Status
-    {
-      accessorKey: "productionStatus",
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title="Production Status"
-        />
-      ),
-      cell: ({ row }) => {
-        const status = (row.getValue("productionStatus") as string) || "";
-        if (!status) return "—";
 
-        const dotColor =
-          status === "Completed"
-            ? "bg-green-500"
-            : status === "Post Production"
-              ? "bg-violet-500"
-            : status === "Under Production"
-              ? "bg-orange-500"
-              : status === "Pre Prod Done"
-                ? "bg-yellow-400"
-                : "bg-blue-500"; // Pending
-
-        return (
-          <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 px-2.5 py-1 text-xs font-medium">
-            <span className={cn("h-2 w-2 rounded-full", dotColor)} />
-            {status}
-          </span>
-        );
-      },
-      meta: {
-        label: "Production Status",
-      },
-      enableSorting: false,
-      enableHiding: true,
-      enableColumnFilter: false,
-    },
 
     // 5) Address / Map Link
     {

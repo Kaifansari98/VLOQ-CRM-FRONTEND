@@ -609,6 +609,13 @@ export const fetchProductTypes = async (vendorId: number) => {
   return res.data
 }
 
+export const fetchSmallOrderRequestTypes = async (vendorId: number) => {
+  const res = await apiClient.get(
+    `/leads/get-all-small-order-request-types/${vendorId}`,
+  );
+  return res.data;
+}
+
 export interface FranchiseMasterEntry {
   id: number;
   franchise_name: string;

@@ -33,6 +33,7 @@ import {
   createLeadProductStructureInstance,
   getLeadProductStructureInstances,
   LeadProductStructureInstance,
+  unshortenUrl,
 } from "@/api/leads";
 import MultipleSelector, { Option } from "@/components/ui/multiselect";
 import StructureQuantityCards from "@/components/sales-executive/Lead/structure-quantity-cards";
@@ -44,7 +45,7 @@ import {
 import { parsePhoneNumber } from "libphonenumber-js";
 import TextAreaInput from "@/components/origin-text-area";
 import MapPicker from "@/components/MapPicker";
-import { MapPin } from "lucide-react";
+import { MapPin, Loader2 } from "lucide-react";
 import CustomeDatePicker from "@/components/date-picker";
 import AssignToPicker from "@/components/assign-to-picker";
 import {
@@ -102,6 +103,16 @@ const optionalPhoneField = z
     },
   );
 
+const optionalArchitectPhoneField = z
+  .string()
+  .optional()
+  .refine(
+    (value) => !value || value.trim() === "" || isPhoneValueValid(value),
+    {
+      message: "Please enter a valid architect number",
+    },
+  );
+
 const optionalDateField = z
   .string()
   .optional()
@@ -124,12 +135,20 @@ const completeFormSchema = z.object({
     .email("Please enter a valid email")
     .or(z.literal("")),
   site_type_id: z.string().min(1, "Please select a site type"),
-  site_address: z.string().min(1, "Site Address is required").max(2000),
+  site_address: z
+    .string()
+    .min(1, "Site Address is required")
+    .max(2000)
+    .refine(
+      (val) => !/^(https?:\/\/[^\s]+)/i.test(val.trim()),
+      { message: "Invalid link" }
+    ),
   site_map_link: z.string().optional().or(z.literal("")),
   source_id: z.string().min(1, "Please select a source"),
   priority: z.enum(["High", "Medium", "Low"]),
   alt_contact_no: optionalPhoneField,
   archetech_name: z.string().max(300).optional(),
+  archetech_number: optionalArchitectPhoneField,
   designer_remark: z.string().max(2000).optional(),
   product_types: z.array(z.string()).optional(),
   product_structures: z.array(z.string()).optional(),
@@ -154,12 +173,19 @@ const draftFormSchema = z.object({
     .email("Please enter a valid email")
     .or(z.literal("")),
   site_type_id: z.string().optional(),
-  site_address: z.string().max(2000).optional(),
+  site_address: z
+    .string()
+    .optional()
+    .refine(
+      (val) => !val || !/^(https?:\/\/[^\s]+)/i.test(val.trim()),
+      { message: "Invalid link" }
+    ),
   site_map_link: z.string().optional().or(z.literal("")),
   source_id: z.string().optional(),
   priority: z.enum(["High", "Medium", "Low"]).or(z.literal("")),
   alt_contact_no: optionalPhoneField,
   archetech_name: z.string().max(300).optional(),
+  archetech_number: optionalArchitectPhoneField,
   designer_remark: z.string().max(2000).optional(),
   product_types: z.array(z.string()).optional(),
   product_structures: z.array(z.string()).optional(),
@@ -178,6 +204,10 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
   const [isDraftLead, setIsDraftLead] = useState(false);
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const createdBy = useAppSelector((state) => state.auth.user?.id);
+  const isCustomVendorFlow = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
+  );
   const queryClient = useQueryClient();
   const [mapOpen, setMapOpen] = useState(false);
   const [savedMapLocation, setSavedMapLocation] = useState<{
@@ -185,6 +215,153 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
     lng: number;
     address: string;
   } | null>(null);
+  const [isResolvingAddress, setIsResolvingAddress] = useState(false);
+
+  const handleAddressChange = async (value: string, onChangeField: (v: string) => void) => {
+    onChangeField(value);
+    
+    const isUrl = /^(https?:\/\/[^\s]+)/i.test(value.trim());
+    if (!isUrl) {
+      form.clearErrors("site_address");
+      if (savedMapLocation) {
+        setSavedMapLocation((prev) =>
+          prev ? { ...prev, address: value } : null
+        );
+      }
+      return;
+    }
+
+    const isGoogleMapsUrl = /^(https?:\/\/)?(www\.)?(google\.[a-z.]{2,6}\/maps|maps\.google\.[a-z.]{2,6}|maps\.app\.goo\.gl|goo\.gl\/maps|share\.google)/i.test(value.trim());
+    if (!isGoogleMapsUrl) {
+      form.setError("site_address", { type: "manual", message: "Invalid link" });
+      return;
+    }
+
+    setIsResolvingAddress(true);
+    form.clearErrors("site_address");
+
+    try {
+      let targetUrl = value.trim();
+      if (/maps\.app\.goo\.gl|goo\.gl\/maps|share\.google/i.test(targetUrl)) {
+        try {
+          targetUrl = await unshortenUrl(targetUrl);
+        } catch (e) {
+          form.setError("site_address", { type: "manual", message: "Invalid link" });
+          setIsResolvingAddress(false);
+          return;
+        }
+      }
+      let lat: number | null = null;
+      let lng: number | null = null;
+
+      const atMatch = targetUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+      const llMatch = targetUrl.match(/ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
+
+      if (atMatch) {
+        lat = parseFloat(atMatch[1]);
+        lng = parseFloat(atMatch[2]);
+      } else if (llMatch) {
+        lat = parseFloat(llMatch[1]);
+        lng = parseFloat(llMatch[2]);
+      }
+
+      let searchQuery: string | null = null;
+      const placeNameMatch = targetUrl.match(/\/place\/([^\/]+)/);
+      const qQueryMatch = targetUrl.match(/[?&]q=([^&]+)/);
+
+      if (placeNameMatch) {
+        const decoded = decodeURIComponent(placeNameMatch[1].replace(/\+/g, ' '));
+        if (!/^-?\d+\.\d+,-?\d+\.\d+$/.test(decoded.trim())) {
+          searchQuery = decoded;
+        }
+      }
+      if (!searchQuery && qQueryMatch) {
+        const decoded = decodeURIComponent(qQueryMatch[1].replace(/\+/g, ' '));
+        if (!/^-?\d+\.\d+,-?\d+\.\d+$/.test(decoded.trim())) {
+          searchQuery = decoded;
+        }
+      }
+
+      if (typeof window === "undefined" || !(window as any).google?.maps) {
+        form.setError("site_address", { type: "manual", message: "Maps API not loaded" });
+        setIsResolvingAddress(false);
+        return;
+      }
+
+      const geocoder = new (window as any).google.maps.Geocoder();
+
+      if (searchQuery) {
+        geocoder.geocode({ address: searchQuery }, (results: any, status: any) => {
+          if (form.getValues("site_address") !== value) {
+            setIsResolvingAddress(false);
+            return;
+          }
+          if (status === "OK" && results?.[0]) {
+            const address = results[0].formatted_address;
+            const location = results[0].geometry.location;
+            onChangeField(address);
+            setSavedMapLocation({ lat: location.lat(), lng: location.lng(), address });
+            form.setValue("site_map_link", `https://www.google.com/maps?q=${location.lat()},${location.lng()}`, {
+              shouldDirty: true,
+              shouldTouch: true,
+              shouldValidate: true,
+            });
+            form.clearErrors("site_address");
+            setIsResolvingAddress(false);
+          } else if (lat !== null && lng !== null) {
+            // Fallback to coordinates
+            geocoder.geocode({ location: { lat, lng } }, (res: any, st: any) => {
+              if (form.getValues("site_address") !== value) return;
+              if (st === "OK" && res?.[0]) {
+                const address = res[0].formatted_address;
+                onChangeField(address);
+                setSavedMapLocation({ lat, lng, address });
+                form.setValue("site_map_link", `https://www.google.com/maps?q=${lat},${lng}`, {
+                  shouldDirty: true,
+                  shouldTouch: true,
+                  shouldValidate: true,
+                });
+                form.clearErrors("site_address");
+              } else {
+                form.setError("site_address", { type: "manual", message: "Invalid link" });
+              }
+              setIsResolvingAddress(false);
+            });
+          } else {
+            form.setError("site_address", { type: "manual", message: "Invalid link" });
+            setIsResolvingAddress(false);
+          }
+        });
+      } else if (lat !== null && lng !== null) {
+        geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
+          if (form.getValues("site_address") !== value) {
+            setIsResolvingAddress(false);
+            return;
+          }
+          if (status === "OK" && results?.[0]) {
+            const address = results[0].formatted_address;
+            onChangeField(address);
+            setSavedMapLocation({ lat, lng, address });
+            form.setValue("site_map_link", `https://www.google.com/maps?q=${lat},${lng}`, {
+              shouldDirty: true,
+              shouldTouch: true,
+              shouldValidate: true,
+            });
+            form.clearErrors("site_address");
+          } else {
+            form.setError("site_address", { type: "manual", message: "Invalid link" });
+          }
+          setIsResolvingAddress(false);
+        });
+      } else {
+        form.setError("site_address", { type: "manual", message: "Invalid link" });
+        setIsResolvingAddress(false);
+      }
+    } catch (error) {
+      form.setError("site_address", { type: "manual", message: "Invalid link" });
+      setIsResolvingAddress(false);
+    }
+  };
 
   // Product type & structure state
   const [structureInstanceDetails, setStructureInstanceDetails] = useState<
@@ -224,6 +401,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
       source_id: "",
       priority: "Medium",
       archetech_name: "",
+      archetech_number: "",
       designer_remark: "",
       initial_site_measurement_date: "",
       product_types: [],
@@ -458,6 +636,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           source_id: lead.source_id ? String(lead.source_id) : "",
           priority: lead.priority || "Medium",
           archetech_name: lead.archetech_name || "",
+          archetech_number: lead.archetech_number || "",
           designer_remark: lead.designer_remark || "",
           initial_site_measurement_date: formattedDate,
           product_types: productTypeIds,
@@ -590,6 +769,18 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
     }
     if (isDirty("archetech_name"))
       payload.archetech_name = values.archetech_name || "";
+    if (isDirty("archetech_number") && values.archetech_number?.trim()) {
+      try {
+        const parsedArchitect = parsePhoneNumber(values.archetech_number);
+        if (parsedArchitect) {
+          payload.archetech_number = parsedArchitect.nationalNumber.toString();
+        }
+      } catch {
+        payload.archetech_number = values.archetech_number.replace(/\D/g, "");
+      }
+    } else if (isDirty("archetech_number")) {
+      payload.archetech_number = "";
+    }
     if (isDirty("designer_remark"))
       payload.designer_remark = values.designer_remark || "";
     if (
@@ -937,21 +1128,23 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                 </Button>
               </div>
               <FormControl>
-                <TextAreaInput
-                  value={field.value}
-                  onChange={(value) => {
-                    field.onChange(value);
-                    if (
-                      savedMapLocation &&
-                      value !== savedMapLocation.address
-                    ) {
-                      setSavedMapLocation((prev) =>
-                        prev ? { ...prev, address: value } : null,
-                      );
-                    }
-                  }}
-                  placeholder="Enter address or use map"
-                />
+                <div className="w-full relative">
+                  <TextAreaInput
+                    value={field.value}
+                    onChange={(value) => {
+                      handleAddressChange(value, field.onChange);
+                    }}
+                    placeholder="Enter address or use map"
+                    disabled={isResolvingAddress}
+                    className={isResolvingAddress ? "text-transparent" : ""}
+                  />
+                  {isResolvingAddress && (
+                    <div className="absolute top-2 left-3 z-10 flex items-center gap-1.5 text-sm text-muted-foreground pointer-events-none">
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      <span>Resolving address...</span>
+                    </div>
+                  )}
+                </div>
               </FormControl>
               <FormMessage />
 
@@ -1132,7 +1325,11 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           }}
         />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+        <div
+          className={`grid grid-cols-1 gap-3 items-start ${
+            isCustomVendorFlow ? "sm:grid-cols-3" : "sm:grid-cols-2"
+          }`}
+        >
           {/* Architect Name */}
           <FormField
             control={form.control}
@@ -1152,6 +1349,30 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
               </FormItem>
             )}
           />
+
+          {isCustomVendorFlow && (
+            <FormField
+              control={form.control}
+              name="archetech_number"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm">Architect Number</FormLabel>
+                  <FormControl>
+                    <PhoneInput
+                      defaultCountry="IN"
+                      placeholder="Enter architect number"
+                      className="text-sm"
+                      value={field.value}
+                      onChange={(val) => field.onChange(val)}
+                      onBlur={field.onBlur}
+                      validateIndianNumber={true}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
 
           <FormField
             control={form.control}

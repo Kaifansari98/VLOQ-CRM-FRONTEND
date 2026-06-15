@@ -7,9 +7,11 @@ import UnderInstallationDetails from "./UnderInstallationDetails";
 import InstallationMiscellaneous from "./InstallationMiscellaneous";
 import InstallationIssueLog from "./InstallationIssueLog";
 import UsableHandover from "./UsableHandoverDetails";
+import SmallOrderRequestsTable from "../small-order/SmallOrderRequestsTable";
 
 import { useUnderInstallationDetails } from "@/api/installation/useUnderInstallationStageLeads";
 import { useUsableHandoverReady } from "@/api/installation/useUnderInstallationStageLeads";
+import { useSmallOrderRequestsByLead } from "@/hooks/useLeadsQueries";
 
 import { useAppSelector } from "@/redux/store";
 
@@ -42,6 +44,14 @@ export default function UnderInstallationTabsWrapper({
 
   // 🔥 Fetch usable handover readiness
   const { data: readyData } = useUsableHandoverReady(vendorId, leadId);
+  const { data: smallOrderRequestsData } = useSmallOrderRequestsByLead(
+    vendorId,
+    leadId,
+  );
+  const hasPostDispatchSmallOrderRequests =
+    (smallOrderRequestsData?.data ?? []).some(
+      (request) => request.request_source === "post_dispatch",
+    );
 
   const usableReady = readyData?.isReady ?? false;
 
@@ -169,10 +179,26 @@ export default function UnderInstallationTabsWrapper({
         />
       ),
     },
+    {
+      id: "smallOrderRequest",
+      title: "Small Order Request",
+      color: "bg-zinc-900 hover:bg-zinc-900",
+      disabled: false,
+      disabledReason: "",
+      cardContent: (
+        <SmallOrderRequestsTable
+          vendorId={vendorId}
+          leadId={leadId}
+          requestSource="post_dispatch"
+        />
+      ),
+    },
   ].filter((tab) => {
     if (tab.id === "misc") return canViewMiscellaneousTab;
     if (tab.id === "issueLog") return canViewIssueLogTab;
     if (tab.id === "handover") return canViewUsableHandoverTab;
+    if (tab.id === "smallOrderRequest")
+      return hasPostDispatchSmallOrderRequests;
     return true;
   });
 

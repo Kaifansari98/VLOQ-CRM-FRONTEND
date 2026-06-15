@@ -158,6 +158,25 @@ export default function GroupedSmoothTab({
 
   const [hoveredGroup, setHoveredGroup] = React.useState<GroupKey | null>(null);
 
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setHoveredGroup(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, []);
+
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type as string | undefined
   );
@@ -202,13 +221,23 @@ export default function GroupedSmoothTab({
     return filteredGroups;
   }, [groups, maxVisibleStage]);
 
+  const nonEmptyGroupKeys = React.useMemo(
+    () =>
+      (Object.keys(visibleGroups) as GroupKey[]).filter(
+        (key) => visibleGroups[key].length > 0,
+      ),
+    [visibleGroups],
+  );
+
   const [activeGroup, setActiveGroup] = React.useState<GroupKey>(() => {
-    const foundGroup = (Object.keys(groups) as GroupKey[]).find((g) =>
-      groups[g].some((i) => i.id === defaultTabId)
+    const foundGroup = (Object.keys(visibleGroups) as GroupKey[]).find((g) =>
+      visibleGroups[g].some((i) => i.id === defaultTabId)
     );
-    return foundGroup && visibleGroups[foundGroup].length > 0
-      ? (foundGroup as GroupKey)
-      : "leads";
+    return (
+      foundGroup ??
+      nonEmptyGroupKeys[0] ??
+      "leads"
+    );
   });
 
   const allItems = React.useMemo(
@@ -250,6 +279,15 @@ export default function GroupedSmoothTab({
     }
   }, [activeTab, allItems, defaultTabId, onChange, visibleGroups]);
 
+  React.useEffect(() => {
+    if (
+      nonEmptyGroupKeys.length > 0 &&
+      !nonEmptyGroupKeys.includes(activeGroup)
+    ) {
+      setActiveGroup(nonEmptyGroupKeys[0]);
+    }
+  }, [activeGroup, nonEmptyGroupKeys]);
+
   const handleSelect = (g: GroupKey, id: StageId) => {
     setActiveGroup(g);
     setActiveTab(id);
@@ -262,10 +300,10 @@ export default function GroupedSmoothTab({
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" ref={containerRef}>
       {/* ShadCN-style tabs with hover dropdowns */}
       <div className="flex flex-wrap items-center gap-2 border-b px-1 -mt-2">
-        {(Object.keys(visibleGroups) as GroupKey[]).map((g) => {
+        {nonEmptyGroupKeys.map((g) => {
           const isActive = activeGroup === g;
           const isHovered = hoveredGroup === g;
           const items = visibleGroups[g];
@@ -279,6 +317,7 @@ export default function GroupedSmoothTab({
             >
               <Button
                 variant="ghost"
+                onClick={() => setHoveredGroup(hoveredGroup === g ? null : g)}
                 className={cn(
                   "relative px-4 h-10 rounded-none border-b-0.5 transition-all duration-200",
                   isActive

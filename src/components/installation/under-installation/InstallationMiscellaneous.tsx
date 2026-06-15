@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
 import {
   AlertCircle,
   Plus,
@@ -199,6 +200,29 @@ export default function InstallationMiscellaneous({
     },
   });
 
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const formData = form.watch();
+  const setFormData = (
+    updater:
+      | Partial<MiscFormValues>
+      | ((prev: MiscFormValues) => Partial<MiscFormValues> | MiscFormValues),
+  ) => {
+    const currentValues = form.getValues();
+    const nextValues =
+      typeof updater === "function" ? updater(currentValues) : updater;
+
+    Object.entries(nextValues).forEach(([key, value]) => {
+      form.setValue(key as keyof MiscFormValues, value as never, {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
+    });
+  };
+  const resetForm = () => {
+    form.reset();
+    setFiles([]);
+    setFormErrors({});
+  };
   const watchedInstanceId = form.watch("selected_instance_id");
 
   const resolveMisc = useResolveMiscellaneousEntry();
@@ -329,9 +353,67 @@ export default function InstallationMiscellaneous({
     }
   }, [initialTaskId, entries, initialModalHandled]);
 
-  const handleCreateEntry = form.handleSubmit((values: MiscFormValues) => {
-    const selectedInstanceTitle = values.selected_instance_id
-      ? instanceTitleById.get(Number(values.selected_instance_id)) || ""
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+    if (!formData.misc_type_id) {
+      errors.misc_type_id = "Please select an issue type";
+    }
+    if (!formData.selectedTeams || formData.selectedTeams.length === 0) {
+      errors.selectedTeams = "Please select at least one responsible team";
+    }
+    if (!formData.problem_description || !formData.problem_description.trim()) {
+      errors.problem_description = "Problem description is required";
+    }
+    if (!formData.selected_instance_id) {
+      errors.selected_instance_id = "Please select an instance";
+    }
+    if (!formData.reorder_material_details || !formData.reorder_material_details.trim()) {
+      errors.reorder_material_details = "Please select a material type";
+    }
+    if (!formData.supervisor_remark || !formData.supervisor_remark.trim()) {
+      errors.supervisor_remark = "Material details are required";
+    }
+    if (files.length === 0) {
+      errors.files = "Please upload at least one document";
+    }
+    setFormErrors(errors);
+    return errors;
+  };
+
+  const handleCreateEntry = () => {
+    const values = form.getValues();
+    const errors = validateForm();
+    const errorKeys = Object.keys(errors);
+    if (errorKeys.length > 0) {
+      const firstErrorKey = errorKeys[0];
+      const el = document.querySelector(`[data-name="${firstErrorKey}"]`);
+      if (el) {
+        const isHidden = el.getBoundingClientRect().height === 0;
+        const targetScrollEl = isHidden ? (el.parentElement || el) : el;
+        
+        const scrollContainer = targetScrollEl.closest("[data-radix-scroll-area-viewport]") || targetScrollEl.closest(".space-y-4");
+        if (scrollContainer instanceof HTMLElement) {
+          const containerRect = scrollContainer.getBoundingClientRect();
+          const elRect = targetScrollEl.getBoundingClientRect();
+          const scrollOffset = elRect.top - containerRect.top + scrollContainer.scrollTop - (containerRect.height / 2) + (elRect.height / 2);
+          scrollContainer.scrollTo({
+            top: scrollOffset,
+            behavior: "smooth",
+          });
+        } else {
+          targetScrollEl.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+
+        const focusable = el.querySelector("input, select, textarea, button");
+        if (focusable instanceof HTMLElement) {
+          focusable.focus({ preventScroll: true });
+        }
+      }
+      return;
+    }
+
+    const selectedInstanceTitle = formData.selected_instance_id
+      ? instanceTitleById.get(Number(formData.selected_instance_id)) || ""
       : "";
     const formattedReorderMaterial =
       selectedInstanceTitle && values.reorder_material_details
@@ -342,8 +424,8 @@ export default function InstallationMiscellaneous({
       vendorId,
       leadId,
       account_id: accountId,
-      misc_type_id: values.misc_type_id!,
-      problem_description: values.problem_description.trim() || undefined,
+      misc_type_id: formData.misc_type_id!,
+      problem_description: formData.problem_description.trim() || undefined,
       reorder_material_details: formattedReorderMaterial.trim() || undefined,
       quantity: values.quantity,
       cost: values.cost,
@@ -355,7 +437,7 @@ export default function InstallationMiscellaneous({
           ? values.selectedTeams.map((t) => Number(t.value))
           : undefined,
       created_by: userId!,
-      files: values.files,
+      files: files,
     };
 
     createMutation.mutate(payload, {
@@ -374,9 +456,9 @@ export default function InstallationMiscellaneous({
         toastManager.add({ title: errorMessage, type: "error" });
       },
     });
-  });
-
-  const resetForm = () => { form.reset(); };
+    setFiles([]);
+    setFormErrors({});
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -649,177 +731,264 @@ export default function InstallationMiscellaneous({
         size="lg"
       >
         <Form {...form}>
-          <form onSubmit={handleCreateEntry} className="space-y-4 py-4 px-6" noValidate>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="misc_type_id"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col gap-1">
-                    <FormLabel className="text-sm font-medium">Miscellaneous Type *</FormLabel>
-                    <FormControl>
-                      <AssignToPicker
-                        data={typeSelectData}
-                        value={field.value}
-                        onChange={(id) => field.onChange(id ?? undefined)}
-                        placeholder="Select issue type"
-                        emptyLabel="Select issue type"
-                        disabled={loadingTypes}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleCreateEntry();
+            }}
+            className="space-y-4 py-4 px-6"
+          >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Miscellaneous Type */}
+            <div className={cn("flex flex-col gap-2", formErrors.misc_type_id && "text-destructive [&_button]:border-destructive")} data-name="misc_type_id">
+              <label className="text-sm font-medium">
+                Miscellaneous Type *
+              </label>
+              <AssignToPicker
+                data={typeSelectData}
+                value={formData.misc_type_id}
+                onChange={(id) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    misc_type_id: id || undefined,
+                  }));
+                  setFormErrors((prev) => ({ ...prev, misc_type_id: "" }));
+                }}
+                placeholder="Select issue type"
+                emptyLabel="Select issue type"
+                disabled={loadingTypes}
               />
-              <FormField
-                control={form.control}
-                name="selectedTeams"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col gap-1">
-                    <FormLabel className="text-sm font-medium">Team Responsible *</FormLabel>
-                    <FormControl>
-                      <MultipleSelector
-                        value={field.value}
-                        onChange={(options) => field.onChange(options)}
-                        defaultOptions={teamOptions}
-                        options={teamOptions}
-                        placeholder="Select teams..."
-                        emptyIndicator={<p className="text-center text-sm text-muted-foreground">No teams found</p>}
-                        disabled={loadingTeams}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <FormField
-              control={form.control}
-              name="problem_description"
-              render={({ field }) => (
-                <FormItem className="flex flex-col gap-1">
-                  <FormLabel className="text-sm font-medium">Problem Description *</FormLabel>
-                  <FormControl>
-                    <TextAreaInput value={field.value} onChange={(value) => field.onChange(value)} placeholder="Describe the issue in detail..." maxLength={1000} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+              {formErrors.misc_type_id && (
+                <p className="text-xs font-medium text-destructive mt-1">
+                  {formErrors.misc_type_id}
+                </p>
               )}
-            />
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="selected_instance_id"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col gap-1">
-                    <FormLabel className="text-sm font-medium">Select Instance *</FormLabel>
-                    <FormControl>
-                      <TextSelectPicker
-                        options={instanceOptions.map((opt) => opt.label)}
-                        value={instanceOptions.find((opt) => Number(opt.value) === field.value)?.label || ""}
-                        onChange={(selectedText) => {
-                          const match = instanceOptions.find((opt) => opt.label === selectedText);
-                          field.onChange(match ? Number(match.value) : undefined);
-                        }}
-                        placeholder={instances.length === 0 ? "No instances available" : "Select instance..."}
-                        emptyLabel="Select instance"
-                        disabled={instances.length === 0}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="reorder_material_details"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col gap-1">
-                    <FormLabel className="text-sm font-medium">Reorder Material Type *</FormLabel>
-                    <FormControl>
-                      <TextSelectPicker
-                        options={filteredOrderLoginSummary.map((item: any) => item.item_desc || item.item_type || "Untitled Item") || []}
-                        value={field.value}
-                        onChange={(selectedText) => field.onChange(selectedText)}
-                        placeholder={loadingSummary ? "Loading materials..." : "Select material details..."}
-                        emptyLabel="Select material details"
-                        disabled={loadingSummary}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
-            <FormField
-              control={form.control}
-              name="supervisor_remark"
-              render={({ field }) => (
-                <FormItem className="flex flex-col gap-1">
-                  <FormLabel className="text-sm font-medium">Reorder Material Details *</FormLabel>
-                  <FormControl>
-                    <TextAreaInput value={field.value} onChange={(value) => field.onChange(value)} placeholder="Any remarks from supervisor..." maxLength={1000} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+
+            {/* Team Responsible */}
+            <div className={cn("flex flex-col gap-2", formErrors.selectedTeams && "text-destructive")} data-name="selectedTeams">
+              <label className="text-sm font-medium">Team Responsible *</label>
+              <MultipleSelector
+                value={formData.selectedTeams}
+                onChange={(options) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    selectedTeams: options,
+                  }));
+                  setFormErrors((prev) => ({ ...prev, selectedTeams: "" }));
+                }}
+                defaultOptions={teamOptions}
+                placeholder="Select teams..."
+                emptyIndicator={
+                  <p className="text-center text-sm text-muted-foreground">
+                    No teams found
+                  </p>
+                }
+                disabled={loadingTeams}
+                className={cn(formErrors.selectedTeams && "border-destructive focus-within:border-destructive focus-within:ring-destructive/20")}
+              />
+              {formErrors.selectedTeams && (
+                <p className="text-xs font-medium text-destructive mt-1">
+                  {formErrors.selectedTeams}
+                </p>
               )}
+            </div>
+          </div>
+
+          {/* Problem Description */}
+          <div className={cn("flex flex-col gap-2", formErrors.problem_description && "text-destructive")} data-name="problem_description">
+            <label className="text-sm font-medium">Problem Description *</label>
+            <TextAreaInput
+              value={formData.problem_description}
+              onChange={(value) => {
+                setFormData((prev) => ({
+                  ...prev,
+                  problem_description: value,
+                }));
+                if (value.trim()) {
+                  setFormErrors((prev) => ({ ...prev, problem_description: "" }));
+                }
+              }}
+              placeholder="Describe the issue in detail..."
+              maxLength={1000}
+              className={cn(formErrors.problem_description && "border-destructive focus-visible:ring-destructive")}
             />
-            <FormField
-              control={form.control}
-              name="files"
-              render={({ field }) => (
-                <FormItem className="flex flex-col gap-1">
-                  <FormLabel className="text-sm font-medium">Supporting Proofs *</FormLabel>
-                  <FormControl>
-                    <FileUploadField value={field.value} onChange={(newFiles) => field.onChange(newFiles)} accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.mp4,.mov,.avi," multiple />
-                  </FormControl>
-                  <p className="text-xs text-muted-foreground">Max 10 files. Supported: Images, PDFs, Documents</p>
-                  <FormMessage />
-                </FormItem>
+            {formErrors.problem_description && (
+              <p className="text-xs font-medium text-destructive mt-1">
+                {formErrors.problem_description}
+              </p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {/* Select Instance */}
+            <div className={cn("flex flex-col gap-2", formErrors.selected_instance_id && "text-destructive [&_button]:border-destructive")} data-name="selected_instance_id">
+              <label className="text-sm font-medium">Select Instance *</label>
+              <TextSelectPicker
+                options={instanceOptions.map((opt) => opt.label)}
+                value={
+                  instanceOptions.find(
+                    (opt) =>
+                      Number(opt.value) === formData.selected_instance_id,
+                  )?.label || ""
+                }
+                onChange={(selectedText) => {
+                  const match = instanceOptions.find(
+                    (opt) => opt.label === selectedText,
+                  );
+                  setFormData((prev) => ({
+                    ...prev,
+                    selected_instance_id: match
+                      ? Number(match.value)
+                      : undefined,
+                  }));
+                  setFormErrors((prev) => ({ ...prev, selected_instance_id: "" }));
+                }}
+                placeholder={
+                  instances.length === 0
+                    ? "No instances available"
+                    : "Select instance..."
+                }
+                emptyLabel="Select instance"
+                disabled={instances.length === 0}
+              />
+              {formErrors.selected_instance_id && (
+                <p className="text-xs font-medium text-destructive mt-1">
+                  {formErrors.selected_instance_id}
+                </p>
               )}
+            </div>
+
+            {/* Reorder Material Type */}
+            <div className={cn("flex flex-col gap-2", formErrors.reorder_material_details && "text-destructive [&_button]:border-destructive")} data-name="reorder_material_details">
+              <label className="text-sm font-medium">
+                Reorder Material Type *
+              </label>
+              <TextSelectPicker
+                options={
+                  filteredOrderLoginSummary.map(
+                    (item: any) =>
+                      item.item_desc || item.item_type || "Untitled Item",
+                  ) || []
+                }
+                value={formData.reorder_material_details}
+                onChange={(selectedText) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    reorder_material_details: selectedText,
+                  }));
+                  if (selectedText.trim()) {
+                    setFormErrors((prev) => ({ ...prev, reorder_material_details: "" }));
+                  }
+                }}
+                placeholder={
+                  loadingSummary
+                    ? "Loading materials..."
+                    : "Select material details..."
+                }
+                emptyLabel="Select material details"
+                disabled={loadingSummary}
+              />
+              {formErrors.reorder_material_details && (
+                <p className="text-xs font-medium text-destructive mt-1">
+                  {formErrors.reorder_material_details}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Reorder Material Details */}
+          <div className={cn("flex flex-col gap-2", formErrors.supervisor_remark && "text-destructive")} data-name="supervisor_remark">
+            <label className="text-sm font-medium">
+              Reorder Material Details *
+            </label>
+            <TextAreaInput
+              value={formData.supervisor_remark}
+              onChange={(value) => {
+                setFormData((prev) => ({
+                  ...prev,
+                  supervisor_remark: value,
+                }));
+                if (value.trim()) {
+                  setFormErrors((prev) => ({ ...prev, supervisor_remark: "" }));
+                }
+              }}
+              placeholder="Any remarks from supervisor..."
+              maxLength={1000}
+              className={cn(formErrors.supervisor_remark && "border-destructive focus-visible:ring-destructive")}
             />
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="quantity"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col gap-1">
-                    <FormLabel className="text-sm font-medium">Quantity</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        value={field.value ?? ""}
-                        onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                        placeholder="Enter quantity"
-                        min="0"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="cost"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col gap-1">
-                    <FormLabel className="text-sm font-medium">Cost (₹)</FormLabel>
-                    <FormControl>
-                      <CurrencyInput value={field.value} onChange={(value) => field.onChange(value)} placeholder="Enter cost" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+            {formErrors.supervisor_remark && (
+              <p className="text-xs font-medium text-destructive mt-1">
+                {formErrors.supervisor_remark}
+              </p>
+            )}
+          </div>
+
+          {/* Supporting Proofs */}
+          <div className={cn("flex flex-col gap-2", formErrors.files && "text-destructive")} data-name="files">
+            <label className="text-sm font-medium">Supporting Proofs *</label>
+            <FileUploadField
+              value={files}
+              onChange={(nextFiles) => {
+                setFiles(nextFiles);
+                if (nextFiles.length > 0) {
+                  setFormErrors((prev) => ({ ...prev, files: "" }));
+                }
+              }}
+              accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.mp4,.mov,.avi,"
+              multiple
+              invalid={Boolean(formErrors.files)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Max 10 files. Supported: Images, PDFs, Documents
+            </p>
+            {formErrors.files && (
+              <p className="text-xs font-medium text-destructive mt-1">
+                {formErrors.files}
+              </p>
+            )}
+          </div>
+
+          {/* Quantity + Cost */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium">Quantity</label>
+              <Input
+                type="number"
+                value={formData.quantity || ""}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    quantity: e.target.value
+                      ? Number(e.target.value)
+                      : undefined,
+                  }))
+                }
+                placeholder="Enter quantity"
+                min="0"
               />
             </div>
-            <div className="flex justify-end gap-3 pt-4 border-t">
-              <Button type="button" variant="outline" onClick={() => { setIsAddModalOpen(false); resetForm(); }} disabled={createMutation.isPending}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={createMutation.isPending}>
-                {createMutation.isPending ? "Creating..." : "Create Miscellaneous"}
-              </Button>
+
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium">Cost (₹)</label>
+              <CurrencyInput
+                value={formData.cost}
+                onChange={(value) =>
+                  setFormData((prev) => ({ ...prev, cost: value }))
+                }
+                placeholder="Enter cost"
+              />
             </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 pb-6 border-t mt-6">
+            <Button type="button" size="sm" variant="outline" onClick={() => { setIsAddModalOpen(false); resetForm(); }} disabled={createMutation.isPending}>
+              Cancel
+            </Button>
+            <Button type="submit" size="sm" disabled={createMutation.isPending}>
+              {createMutation.isPending ? "Creating..." : "Create Miscellaneous"}
+            </Button>
+          </div>
           </form>
         </Form>
       </BaseModal>

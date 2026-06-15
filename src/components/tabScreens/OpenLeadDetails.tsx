@@ -982,6 +982,13 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                 label="Architect Name"
                 value={lead.archetech_name}
               />
+              {lead.archetech_number && (
+                <InfoRow
+                  icon={Phone}
+                  label="Architect Number"
+                  value={lead.archetech_number}
+                />
+              )}
               <InfoRow
                 icon={Building}
                 label="Site Type"

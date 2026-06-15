@@ -120,7 +120,13 @@ export default function GlobalLeadSearchModal({ open, onOpenChange }: Props) {
       return;
     }
 
-    router.push(`${basePath}/${lead.id}?accountId=${lead.account_id}`);
+    if (stageKey === "projectCompletedStage") {
+      router.push(
+        `${basePath}/${lead.id}?accountId=${lead.account_id}&tab=servicing&source=servicing`
+      );
+    } else {
+      router.push(`${basePath}/${lead.id}?accountId=${lead.account_id}`);
+    }
   };
 
   return (

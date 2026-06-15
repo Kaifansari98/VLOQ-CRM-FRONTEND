@@ -92,6 +92,7 @@ import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useCheckPostProductionReady } from "@/api/production/production-api";
 import LeadDetailsGrouped from "@/components/utils/lead-details-grouped";
 import { useMoveLeadToReadyToDispatch } from "@/api/production/useReadyToDispatchLeads";
+import { useMoveLeadToDispatchPlanning } from "@/api/installation/useSiteReadinessLeads";
 import { useRouter } from "next/navigation";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
@@ -137,9 +138,21 @@ export default function ProductionLeadDetails() {
   const queryClient = useQueryClient();
 
   const moveLeadMutation = useMoveLeadToReadyToDispatch();
+  const moveLeadToDispatchPlanningMutation = useMoveLeadToDispatchPlanning();
 
   const { data, isLoading, isError } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
+  const smallOrderTypeKey =
+    lead?.smallOrderRequest?.requestType?.type_key ?? null;
+  const isSmallOrderLead = lead?.is_small_order_request === true;
+  const isSmallOrderSingleUploadFlow =
+    isSmallOrderLead &&
+    [
+      "additional_panel",
+      "one_cabinet",
+      "additional_hardware",
+      "additional_accessory",
+    ].includes(String(smallOrderTypeKey ?? "").toLowerCase());
   const { data: instancesResponse } = useLeadProductStructureInstances(
     leadIdNum,
     vendorId,
@@ -369,14 +382,27 @@ export default function ProductionLeadDetails() {
   const missingDocsOrRemarks: string[] = [];
 
   if (validInstanceId) {
-    if (!instanceCompleteness?.qc_photos) {
-      missingDocsOrRemarks.push("QC photos");
-    }
-    if (!instanceCompleteness?.hardware_docs) {
-      missingDocsOrRemarks.push("Hardware packing docs");
-    }
-    if (!instanceCompleteness?.woodwork_docs) {
-      missingDocsOrRemarks.push("Woodwork packing docs");
+    if (isSmallOrderSingleUploadFlow) {
+      const hasAnyPostProductionUpload =
+        !!instanceCompleteness?.qc_photos ||
+        !!instanceCompleteness?.hardware_docs ||
+        !!instanceCompleteness?.woodwork_docs;
+
+      if (!hasAnyPostProductionUpload) {
+        missingDocsOrRemarks.push(
+          "Any one of QC photos, Hardware packing docs, or Woodwork packing docs",
+        );
+      }
+    } else {
+      if (!instanceCompleteness?.qc_photos) {
+        missingDocsOrRemarks.push("QC photos");
+      }
+      if (!instanceCompleteness?.hardware_docs) {
+        missingDocsOrRemarks.push("Hardware packing docs");
+      }
+      if (!instanceCompleteness?.woodwork_docs) {
+        missingDocsOrRemarks.push("Woodwork packing docs");
+      }
     }
   }
 
@@ -396,6 +422,17 @@ export default function ProductionLeadDetails() {
     missingDocsOrRemarks.length === 0 &&
     missingPrerequisites.length === 0;
 
+  const pendingProductionRequirements = isSmallOrderSingleUploadFlow
+    ? [
+        ...((missingDocsOrRemarks.length > 0
+          ? [
+              "Any one of QC photos, Hardware packing docs, or Woodwork packing docs",
+            ]
+          : []) as string[]),
+        ...missingPrerequisites,
+      ]
+    : [...missingDocsOrRemarks, ...missingPrerequisites];
+
   const productionCompletedTooltip = !validInstanceId
     ? "instance_id is required to mark production completed."
     : currentInstance?.is_production_completed
@@ -403,10 +440,8 @@ export default function ProductionLeadDetails() {
         ? ` Pending Instances: ${incompleteTitles.join(", ")}`
         : ""
       }`
-      : missingDocsOrRemarks.length || missingPrerequisites.length
-        ? `Pending: ${[...missingDocsOrRemarks, ...missingPrerequisites].join(
-          ", ",
-        )}`
+      : pendingProductionRequirements.length
+        ? `Pending: ${pendingProductionRequirements.join(", ")}`
         : incompleteTitles.length
           ? `Other pending instances: ${incompleteTitles.join(", ")}`
           : "Ready to mark production completed.";
@@ -520,6 +555,19 @@ export default function ProductionLeadDetails() {
       },
     );
   };
+
+  const handleReadyToDispatchClick = async () => {
+    if (!vendorId || !userId || !leadIdNum) {
+      toastManager.add({
+        title: "Missing vendor or user information!",
+        type: "error",
+      });
+      return;
+    }
+
+    setOpenReadyToDispatch(true);
+  };
+
   if (isLoading && !lead) {
     return <p className="p-6">Loading production lead details...</p>;
   }
@@ -645,7 +693,8 @@ export default function ProductionLeadDetails() {
                 size="sm"
                 className="hidden md:flex"
                 variant="default"
-                onClick={() => setOpenReadyToDispatch(true)}
+                disabled={moveLeadToDispatchPlanningMutation.isPending}
+                onClick={handleReadyToDispatchClick}
               >
                 Ready To Dispatch
               </Button>
@@ -750,7 +799,7 @@ export default function ProductionLeadDetails() {
                 ) : allInstancesCompleted ? (
                   <DropdownMenuItem
                     className="md:hidden"
-                    onClick={() => setOpenReadyToDispatch(true)}
+                    onClick={handleReadyToDispatchClick}
                   >
                     <Truck size={20} />
                     Ready To Dispatch
@@ -926,7 +975,7 @@ export default function ProductionLeadDetails() {
         className="w-full p-3 md:p-6"
       >
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between mb-3">
-          <ScrollArea>
+          <ScrollArea className="w-full lg:flex-1 lg:min-w-0">
             <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
               <TabsTrigger value="details">
                 <Factory size={16} className="mr-1 opacity-60" />
@@ -980,7 +1029,7 @@ export default function ProductionLeadDetails() {
 
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
-          <div className="w-60 flex flex-col">
+          <div className="w-60 flex flex-col shrink-0">
             <label className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-1 flex items-center gap-1 ml-1">
               <CalendarCheck2 size={12} />
               Expected Ready Date of Order
@@ -1112,16 +1161,24 @@ export default function ProductionLeadDetails() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Move to Ready To Dispatch?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {isSmallOrderLead
+                ? "Move to Dispatch Planning?"
+                : "Move to Ready To Dispatch?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This will move the lead from Production to the Ready-To-Dispatch
-              stage. Are you sure you want to continue?
+              {isSmallOrderLead
+                ? "This will move the small-order lead from Production directly to the Dispatch Planning stage. Are you sure you want to continue?"
+                : "This will move the lead from Production to the Ready-To-Dispatch stage. Are you sure you want to continue?"}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              disabled={moveLeadMutation.isPending}
+              disabled={
+                moveLeadMutation.isPending ||
+                moveLeadToDispatchPlanningMutation.isPending
+              }
               onClick={async () => {
                 if (!vendorId || !userId || !leadIdNum) {
                   toastManager.add({
@@ -1132,19 +1189,31 @@ export default function ProductionLeadDetails() {
                 }
 
                 try {
-                  await moveLeadMutation.mutateAsync({
-                    vendorId,
-                    leadId: leadIdNum,
-                    updated_by: userId,
-                  });
+                  if (isSmallOrderLead) {
+                    await moveLeadToDispatchPlanningMutation.mutateAsync({
+                      vendorId,
+                      leadId: leadIdNum,
+                      updated_by: userId,
+                    });
 
-                  toastManager.add({
-                    title: "Lead moved to Ready-To-Dispatch successfully!",
-                    type: "success",
-                  });
+                    toastManager.add({
+                      title: "Lead moved to Dispatch Planning successfully!",
+                      type: "success",
+                    });
+                  } else {
+                    await moveLeadMutation.mutateAsync({
+                      vendorId,
+                      leadId: leadIdNum,
+                      updated_by: userId,
+                    });
+
+                    toastManager.add({
+                      title: "Lead moved to Ready-To-Dispatch successfully!",
+                      type: "success",
+                    });
+                  }
                   setOpenReadyToDispatch(false);
 
-                  // ✅ Refetch relevant queries
                   queryClient.invalidateQueries({
                     queryKey: ["leadById", leadIdNum],
                   });
@@ -1157,15 +1226,21 @@ export default function ProductionLeadDetails() {
                     exact: false,
                   });
 
-                  // ✅ Redirect after a short delay for smooth UX
                   setTimeout(() => {
-                    router.push("/dashboard/production/ready-to-dispatch");
+                    router.push(
+                      isSmallOrderLead
+                        ? "/dashboard/installation/dispatch-planning"
+                        : "/dashboard/production/ready-to-dispatch",
+                    );
                   }, 400);
                 } catch (err: any) {
                   toastManager.add({
                     title:
+                      err?.response?.data?.message ||
                       err?.message ||
-                      "Failed to move lead to Ready-To-Dispatch",
+                      (isSmallOrderLead
+                        ? "Failed to move lead to Dispatch Planning"
+                        : "Failed to move lead to Ready-To-Dispatch"),
                     type: "error",
                   });
                 }

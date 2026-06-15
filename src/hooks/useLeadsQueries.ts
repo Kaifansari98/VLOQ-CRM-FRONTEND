@@ -29,8 +29,13 @@ import {
   checkSimilarLeadExists,
   SimilarLeadCheckPayload,
   SimilarLeadCheckResult,
+  createSmallOrderRequest,
+  CreateSmallOrderRequestPayload,
+  getSmallOrderRequestsByLead,
   getLeadProductStructureInstances,
   getClientVisits,
+  markSmallOrderRequestResolved,
+  SmallOrderRequestListItem,
   uploadMoreSitePhotos,
   unblockLead,
   ClientVisit,
@@ -148,7 +153,7 @@ export const useVendorOverallLeads = (
 };
 
 export function useLeadById(leadId?: number, vendorId?: number, userId?: number) {
-  return useQuery({
+  const query = useQuery({
     queryKey: ["lead", leadId, vendorId, userId],
     queryFn: () => getLeadById(leadId!, vendorId!, userId!),
     enabled: !!leadId && !!vendorId && !!userId,
@@ -158,6 +163,15 @@ export function useLeadById(leadId?: number, vendorId?: number, userId?: number)
     refetchOnWindowFocus: false,      // ← YEH SABSE IMPORTANT FIX HAI
     refetchOnReconnect: false,
   });
+
+  const waitingForQueryPrerequisites =
+    !!leadId && (!vendorId || !userId);
+
+  return {
+    ...query,
+    isLoading: query.isLoading || waitingForQueryPrerequisites,
+    isPending: query.isPending || waitingForQueryPrerequisites,
+  };
 }
 
 export function useLeadBlockStatus(leadId?: number, vendorId?: number) {
@@ -469,5 +483,39 @@ export const useUploadMoreSitePhotos = () => {
       createdBy: number;
       files: File[];
     }) => uploadMoreSitePhotos({ vendorId, leadId, createdBy, files }),
+  });
+};
+
+export const useCreateSmallOrderRequest = () => {
+  return useMutation({
+    mutationFn: (payload: CreateSmallOrderRequestPayload) =>
+      createSmallOrderRequest(payload),
+  });
+};
+
+export const useSmallOrderRequestsByLead = (
+  vendorId?: number,
+  leadId?: number,
+) => {
+  return useQuery<{ data: SmallOrderRequestListItem[]; message: string }, Error>({
+    queryKey: ["smallOrderRequestsByLead", vendorId, leadId],
+    queryFn: () => getSmallOrderRequestsByLead(vendorId!, leadId!),
+    enabled: !!vendorId && !!leadId,
+    staleTime: 1000 * 60 * 2,
+    refetchOnWindowFocus: false,
+  });
+};
+
+export const useMarkSmallOrderRequestResolved = () => {
+  return useMutation({
+    mutationFn: ({
+      vendorId,
+      requestId,
+      updatedBy,
+    }: {
+      vendorId: number;
+      requestId: number;
+      updatedBy: number;
+    }) => markSmallOrderRequestResolved({ vendorId, requestId, updatedBy }),
   });
 };

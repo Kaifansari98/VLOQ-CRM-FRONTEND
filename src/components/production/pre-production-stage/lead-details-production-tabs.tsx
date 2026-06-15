@@ -16,7 +16,10 @@ import PreProductionFilesSection from "./PreProductionFilesSection";
 import { useClientDocumentationDetails } from "@/hooks/client-documentation/use-clientdocumentation";
 import { useTechCheckInstanceStatus } from "@/api/tech-check";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
+import {
+  useLeadById,
+  useLeadProductStructureInstances,
+} from "@/hooks/useLeadsQueries";
 import ComingSoon from "@/components/generics/ComingSoon";
 import {
   Select,
@@ -62,6 +65,7 @@ export default function LeadDetailsProductionUtil({
     userId!,
     instanceFromUrl!,
   );
+  const { data: leadResponse } = useLeadById(leadId, vendorId, userId);
   const clientDocInstances = clientDocs?.product_structure_instances ?? [];
   const hasMultipleInstances = (clientDocs?.instance_count ?? 0) > 1;
   const [activeInstanceId, setActiveInstanceId] = useState<number | null>(
@@ -115,6 +119,15 @@ export default function LeadDetailsProductionUtil({
     leadId,
     vendorId,
   );
+  const lead = leadResponse?.data?.lead;
+  const smallOrderTypeKey =
+    lead?.smallOrderRequest?.requestType?.type_key ?? null;
+  const showPreProductionTab =
+    lead?.is_small_order_request !== true ||
+    ["additional_panel", "one_cabinet"].includes(
+      String(smallOrderTypeKey ?? "").toLowerCase(),
+    );
+  const shouldRequirePreProduction = showPreProductionTab;
 
   const readyForPostProduction = data?.readyForPostProduction ?? false;
   const structureInstances: any[] = Array.isArray(instancesResponse?.data)
@@ -144,6 +157,7 @@ export default function LeadDetailsProductionUtil({
     isOrderLoginFilled,
     is_pre_prod_done: resolvedCurrentInstance?.is_pre_prod_done,
     readyForUnderProduction,
+    shouldRequirePreProduction,
   });
 
   const defaultTab = canViewDefaultSubTabProductionStage(
@@ -204,33 +218,41 @@ export default function LeadDetailsProductionUtil({
         />
       ),
     },
-    {
-      id: "preProductionFiles",
-      title: "Pre Production",
-      color: "bg-zinc-900 hover:bg-zinc-900",
-      disabled: !canViewPreProductionFiles,
-      disabledReason:
-        userType === "custom"
-          ? "You don’t have permission to access Pre Production."
-          : "Only super-admin and factory can access this tab.",
-      cardContent: (
-        <PreProductionFilesSection
-          leadId={leadId}
-          accountId={accountId ?? null}
-          instanceId={effectiveInstanceId}
-        />
-      ),
-    },
+    ...(showPreProductionTab
+      ? [
+          {
+            id: "preProductionFiles",
+            title: "Pre Production",
+            color: "bg-zinc-900 hover:bg-zinc-900",
+            disabled: !canViewPreProductionFiles,
+            disabledReason:
+              userType === "custom"
+                ? "You don’t have permission to access Pre Production."
+                : "Only super-admin and factory can access this tab.",
+            cardContent: (
+              <PreProductionFilesSection
+                leadId={leadId}
+                accountId={accountId ?? null}
+                instanceId={effectiveInstanceId}
+              />
+            ),
+          },
+        ]
+      : []),
     {
       id: "preProduction",
       title: "Under Production",
       color: "bg-zinc-900 hover:bg-zinc-900",
-      disabled: !canAccessUnderProduction || !readyForUnderProduction,
+      disabled:
+        !canAccessUnderProduction ||
+        (shouldRequirePreProduction && !readyForUnderProduction),
       disabledReason: !canAccessUnderProduction
         ? userType === "custom"
           ? "You don’t have permission to access Under Production."
           : "Only super-admin and factory can access this tab."
-        : "Click Mark Pre Prod Done first to enable Under Production.",
+        : shouldRequirePreProduction
+          ? "Click Mark Pre Prod Done first to enable Under Production."
+          : "",
       cardContent: isOrderLoginFilled ? (
         <PreProductionDetails
           leadId={leadId}
@@ -340,6 +362,9 @@ export default function LeadDetailsProductionUtil({
       <SmoothTab
         items={allTabs}
         defaultTabId={(() => {
+          if (lead?.is_small_order_request === true) {
+            return "productionFiles";
+          }
           if (
             tabFromUrl &&
             allTabs.some((tab) => tab.id === tabFromUrl && !tab.disabled)

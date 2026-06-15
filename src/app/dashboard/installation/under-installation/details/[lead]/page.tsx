@@ -30,6 +30,7 @@ import {
   Users,
   XCircle,
   Hammer,
+  BoxIcon,
   // Under Installation icon,
   Clock,
   Handshake,
@@ -93,7 +94,10 @@ import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import SmallOrderRequestModal from "@/components/installation/small-order/SmallOrderRequestModal";
 import {
+  useSmallOrderRequestsByLead,
+  useMarkSmallOrderRequestResolved,
   useBlockLead,
   useUnblockLead,
 } from "@/hooks/useLeadsQueries";
@@ -135,8 +139,10 @@ export default function UnderInstallationLeadDetails() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
+  const [openSmallOrderModal, setOpenSmallOrderModal] = useState(false);
   const [showMoveModal, setShowMoveModal] = useState(false);
   const moveMutation = useMoveToFinalHandover();
+  const markResolvedMutation = useMarkSmallOrderRequestResolved();
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [activityType, setActivityType] = useState<"onHold">("onHold");
 
@@ -148,13 +154,31 @@ export default function UnderInstallationLeadDetails() {
   useChatTabFromUrl(setActiveTab);
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
+  const { data: smallOrderRequestsResponse } = useSmallOrderRequestsByLead(
+    vendorId,
+    leadIdNum,
+  );
   const lead = data?.data?.lead;
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
   const accountId = lead?.account_id;
+  const isSmallOrderLead = lead?.is_small_order_request === true;
+  const smallOrderRequestId = lead?.smallOrderRequest?.id ?? null;
+  const isSmallOrderRequestResolved =
+    lead?.smallOrderRequest?.is_request_resolved === true;
+  const resolvedApprovedSmallOrderCount = (smallOrderRequestsResponse?.data ?? [])
+    .filter((request) => request.status === "approved")
+    .length;
+  const hasReachedSmallOrderLimit = resolvedApprovedSmallOrderCount >= 2;
   const canReassign = canReassignLeadButton(effectiveUserType ?? "");
   const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
   const canEdit = canEditLeadButton(effectiveUserType ?? "");
+  const normalizedEffectiveUserType = effectiveUserType?.toLowerCase() ?? "";
+  const canCreateSmallOrder = [
+    "sales-executive",
+    "admin",
+    "super-admin",
+  ].includes(normalizedEffectiveUserType);
   const deleteLeadMutation = useDeleteLead();
   const canAccessTodoTab =
     effectiveUserType?.toLowerCase() === "custom"
@@ -231,6 +255,32 @@ export default function UnderInstallationLeadDetails() {
   const isUsableHandoverCompleted = Boolean(
     usableHandoverData?.usable_handover_completed,
   );
+  const primaryActionLabel = isSmallOrderLead
+    ? "Mark as Resolved"
+    : "Move to Final Handover";
+  const primaryActionCompletedLabel = isSmallOrderLead
+    ? "Resolved"
+    : "Completed";
+  const usableHandoverCompletedAt = lead?.usable_handover_completed_at
+    ? new Date(lead.usable_handover_completed_at)
+    : null;
+  const isSmallOrderCreationExpired =
+    usableHandoverCompletedAt != null &&
+    !Number.isNaN(usableHandoverCompletedAt.getTime()) &&
+    (() => {
+      const expiryDate = new Date(usableHandoverCompletedAt);
+      expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+      return new Date() > expiryDate;
+    })();
+  const smallOrderCreationTooltip = hasReachedSmallOrderLimit
+    ? "Maximum Small Order limit reached for this project."
+    : isSmallOrderCreationExpired
+      ? "Small Order creation period has expired."
+      : "";
+  const shouldDisableSmallOrderCreation =
+    shouldDisableBlockedActions ||
+    hasReachedSmallOrderLimit ||
+    isSmallOrderCreationExpired;
 
   console.log("miscStatus: ", miscStatus?.all_resolved);
 
@@ -318,6 +368,102 @@ export default function UnderInstallationLeadDetails() {
     );
   };
 
+  if (isLoading && !lead) {
+    return <p className="p-6">Loading lead details...</p>;
+  }
+
+  if (!lead) {
+    return <p className="p-6">Lead details not found or you do not have access.</p>;
+  }
+
+  const handlePrimaryActionConfirm = () => {
+    if (!vendorId || !userId) {
+      toastManager.add({
+        title: "Missing vendor or user information!",
+        type: "error",
+      });
+      return;
+    }
+
+    if (isSmallOrderLead) {
+      if (!smallOrderRequestId) {
+        toastManager.add({
+          title: "Small order request record not found for this lead.",
+          type: "error",
+        });
+        return;
+      }
+
+      markResolvedMutation.mutate(
+        {
+          vendorId,
+          requestId: smallOrderRequestId,
+          updatedBy: userId,
+        },
+        {
+          onSuccess: () => {
+            toastManager.add({
+              title: "Small order request marked as resolved successfully!",
+              type: "success",
+            });
+            setShowMoveModal(false);
+            queryClient.invalidateQueries({
+              queryKey: ["lead", leadIdNum, vendorId, userId],
+            });
+            queryClient.invalidateQueries({
+              queryKey: ["smallOrderRequestsByLead"],
+              exact: false,
+            });
+          },
+          onError: (error: any) => {
+            toastManager.add({
+              title:
+                error?.response?.data?.message ||
+                "Failed to mark small order request as resolved",
+              type: "error",
+            });
+          },
+        },
+      );
+
+      return;
+    }
+
+    moveMutation.mutate(
+      {
+        vendorId: lead.vendor_id,
+        leadId: lead.id,
+        updated_by: userId,
+      },
+      {
+        onSuccess: () => {
+          queryClient.removeQueries({
+            queryKey: ["lead-status", leadIdNum, vendorId],
+          });
+
+          queryClient.removeQueries({
+            queryKey: ["leadById", leadIdNum],
+          });
+
+          queryClient.invalidateQueries({
+            queryKey: ["leadStats"],
+            exact: false,
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["universal-stage-leads"],
+            exact: false,
+          });
+
+          if (canRedirectToFinalHandover) {
+            router.push("/dashboard/installation/final-handover");
+          } else {
+            router.push("/dashboard/installation/under-installation");
+          }
+        },
+      },
+    );
+  };
+
   return (
     <>
       {/* 🔹 Header */}
@@ -353,7 +499,16 @@ export default function UnderInstallationLeadDetails() {
           {/*  MOVE TO FINAL HANDOVER BUTTON WITH CONDITIONS */}
           {/* ───────────────────────────────────────────── */}
           {canMoveToFinalHandover &&
-            (shouldDisableBlockedActions ? (
+            (isSmallOrderLead && isSmallOrderRequestResolved ? (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled
+                className="hidden sm:flex border-emerald-200 bg-emerald-500/10 text-emerald-600"
+              >
+                {primaryActionCompletedLabel}
+              </Button>
+            ) : shouldDisableBlockedActions ? (
               <CustomeTooltip
                 truncateValue={
                   <div className="opacity-60 cursor-not-allowed">
@@ -363,7 +518,7 @@ export default function UnderInstallationLeadDetails() {
                       disabled
                       className="pointer-events-none hidden sm:flex"
                     >
-                      Move to Final Handover
+                      {primaryActionLabel}
                     </Button>
                   </div>
                 }
@@ -380,11 +535,11 @@ export default function UnderInstallationLeadDetails() {
                       disabled
                       className="pointer-events-none hidden sm:flex"
                     >
-                      Move to Final Handover
+                      {primaryActionLabel}
                     </Button>
                   </div>
                 }
-                value="Start Installation first to move this lead to Final Handover."
+                value={`Start Installation first to ${primaryActionLabel.toLowerCase()}.`}
               />
             ) : isLoadingUsableHandover ? (
               <CustomeTooltip
@@ -396,7 +551,7 @@ export default function UnderInstallationLeadDetails() {
                       disabled
                       className="pointer-events-none hidden sm:flex"
                     >
-                      Move to Final Handover
+                      {primaryActionLabel}
                     </Button>
                   </div>
                 }
@@ -412,11 +567,11 @@ export default function UnderInstallationLeadDetails() {
                       disabled
                       className="pointer-events-none hidden sm:flex"
                     >
-                      Move to Final Handover
+                      {primaryActionLabel}
                     </Button>
                   </div>
                 }
-                value="Mark Usable Handover as completed before moving to Final Handover."
+                value={`Mark Usable Handover as completed before ${primaryActionLabel.toLowerCase()}.`}
               />
             ) : isLoadingMisc ? (
               // 2️⃣ Checking misc status → block
@@ -429,7 +584,7 @@ export default function UnderInstallationLeadDetails() {
                       disabled
                       className="pointer-events-none hidden sm:flex"
                     >
-                      Move to Final Handover
+                      {primaryActionLabel}
                     </Button>
                   </div>
                 }
@@ -446,11 +601,27 @@ export default function UnderInstallationLeadDetails() {
                       disabled
                       className="pointer-events-none hidden sm:flex"
                     >
-                      Move to Final Handover
+                      {primaryActionLabel}
                     </Button>
                   </div>
                 }
-                value="All miscellaneous items must be Resolved or Rejected before moving to Final Handover."
+                value={`All miscellaneous items must be Resolved or Rejected before ${primaryActionLabel.toLowerCase()}.`}
+              />
+            ) : isSmallOrderLead && !smallOrderRequestId ? (
+              <CustomeTooltip
+                truncateValue={
+                  <div className="opacity-60 cursor-not-allowed">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      disabled
+                      className="pointer-events-none hidden sm:flex"
+                    >
+                      {primaryActionLabel}
+                    </Button>
+                  </div>
+                }
+                value="Small order request record not found for this lead."
               />
             ) : !finalReady?.isReady ? (
               // 2️⃣ Installation started but NOT eligible → show WHY
@@ -463,7 +634,7 @@ export default function UnderInstallationLeadDetails() {
                       disabled
                       className="pointer-events-none hidden sm:flex"
                     >
-                      Move to Final Handover
+                      {primaryActionLabel}
                     </Button>
                   </div>
                 }
@@ -482,7 +653,7 @@ export default function UnderInstallationLeadDetails() {
                   setShowMoveModal(true);
                 }}
               >
-                Move to Final Handover
+                {primaryActionLabel}
               </Button>
             ))}
 
@@ -510,13 +681,18 @@ export default function UnderInstallationLeadDetails() {
                 Assign Task
               </DropdownMenuItem>
               {canMoveToFinalHandover &&
-                (shouldDisableBlockedActions ? (
+                (isSmallOrderLead && isSmallOrderRequestResolved ? (
+                  <DropdownMenuItem className="sm:hidden" disabled>
+                    <Handshake size={20} />
+                    {primaryActionCompletedLabel}
+                  </DropdownMenuItem>
+                ) : shouldDisableBlockedActions ? (
                   // Lead block handling added for DropdownMenu action
                   <CustomeTooltip
                     truncateValue={
                       <DropdownMenuItem className="sm:hidden" disabled>
                         <Handshake size={20} />
-                        Move to Final Handover
+                        {primaryActionLabel}
                       </DropdownMenuItem>
                     }
                     value={blockedTooltip}
@@ -527,17 +703,17 @@ export default function UnderInstallationLeadDetails() {
                     truncateValue={
                       <DropdownMenuItem className="sm:hidden" disabled>
                         <Handshake size={20} />
-                        Move to Final Handover
+                        {primaryActionLabel}
                       </DropdownMenuItem>
                     }
-                    value="Start Installation first to move this lead to Final Handover."
+                    value={`Start Installation first to ${primaryActionLabel.toLowerCase()}.`}
                   />
                 ) : isLoadingUsableHandover ? (
                   <CustomeTooltip
                     truncateValue={
                       <DropdownMenuItem className="sm:hidden" disabled>
                         <Handshake size={20} />
-                        Move to Final Handover
+                        {primaryActionLabel}
                       </DropdownMenuItem>
                     }
                     value="Checking usable handover completion status..."
@@ -547,10 +723,10 @@ export default function UnderInstallationLeadDetails() {
                     truncateValue={
                       <DropdownMenuItem className="sm:hidden" disabled>
                         <Handshake size={20} />
-                        Move to Final Handover
+                        {primaryActionLabel}
                       </DropdownMenuItem>
                     }
-                    value="Mark Usable Handover as completed before moving to Final Handover."
+                    value={`Mark Usable Handover as completed before ${primaryActionLabel.toLowerCase()}.`}
                   />
                 ) : isLoadingMisc ? (
                   // 2️⃣ Checking misc status → block
@@ -558,7 +734,7 @@ export default function UnderInstallationLeadDetails() {
                     truncateValue={
                       <DropdownMenuItem className="sm:hidden" disabled>
                         <Handshake size={20} />
-                        Move to Final Handover
+                        {primaryActionLabel}
                       </DropdownMenuItem>
                     }
                     value="Checking miscellaneous status..."
@@ -569,10 +745,20 @@ export default function UnderInstallationLeadDetails() {
                     truncateValue={
                       <DropdownMenuItem className="sm:hidden" disabled>
                         <Handshake size={20} />
-                        Move to Final Handover
+                        {primaryActionLabel}
                       </DropdownMenuItem>
                     }
-                    value="All miscellaneous items must be Resolved or Rejected before moving to Final Handover."
+                    value={`All miscellaneous items must be Resolved or Rejected before ${primaryActionLabel.toLowerCase()}.`}
+                  />
+                ) : isSmallOrderLead && !smallOrderRequestId ? (
+                  <CustomeTooltip
+                    truncateValue={
+                      <DropdownMenuItem className="sm:hidden" disabled>
+                        <Handshake size={20} />
+                        {primaryActionLabel}
+                      </DropdownMenuItem>
+                    }
+                    value="Small order request record not found for this lead."
                   />
                 ) : !finalReady?.isReady ? (
                   // 2️⃣ Installation started but NOT eligible → show WHY
@@ -580,7 +766,7 @@ export default function UnderInstallationLeadDetails() {
                     truncateValue={
                       <DropdownMenuItem className="sm:hidden" disabled>
                         <Handshake size={20} />
-                        Move to Final Handover
+                        {primaryActionLabel}
                       </DropdownMenuItem>
                     }
                     value={
@@ -597,7 +783,7 @@ export default function UnderInstallationLeadDetails() {
                     }}
                   >
                     <Handshake size={20} />
-                    Move to Final Handover
+                    {primaryActionLabel}
                   </DropdownMenuItem>
                 ))}
               {/* Lead block handling added for DropdownMenu action */}
@@ -622,6 +808,31 @@ export default function UnderInstallationLeadDetails() {
                   Mark On Hold
                 </DropdownMenuItem>
               )}
+              {canCreateSmallOrder &&
+                (shouldDisableSmallOrderCreation ? (
+                  <CustomeTooltip
+                    value={
+                      shouldDisableBlockedActions
+                        ? blockedTooltip
+                        : smallOrderCreationTooltip
+                    }
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <BoxIcon size={20} />
+                        Create Small Order
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setOpenSmallOrderModal(true);
+                    }}
+                  >
+                    <BoxIcon size={20} />
+                    Create Small Order
+                  </DropdownMenuItem>
+                ))}
               {canEdit && (
                 // Lead block handling added for DropdownMenu action
                 shouldDisableBlockedActions ? (
@@ -719,7 +930,7 @@ export default function UnderInstallationLeadDetails() {
         className="w-full p-3 md:p-6"
       >
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between mb-3">
-          <ScrollArea>
+          <ScrollArea className="w-full lg:flex-1 lg:min-w-0">
             <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
               {/* Under Installation Details */}
               <TabsTrigger value="details">
@@ -781,59 +992,60 @@ export default function UnderInstallationLeadDetails() {
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
 
-          <div className="flex">
- {!underDetails?.actual_installation_start_date ? (
-  <CustomeTooltip
-    value={
-      shouldDisableBlockedActions
-        ? blockedTooltip
-        : !canStartInstallation
-          ? "You do not have permission to access this action."
-          : undefined
-    }
-    truncateValue={
-      <div className={shouldDisableBlockedActions || !canStartInstallation ? "opacity-60 cursor-not-allowed" : ""}>
-        <Button
-          size="sm"
-          disabled={
-            shouldDisableBlockedActions ||
-            !canStartInstallation
-          }
-          className={
-            shouldDisableBlockedActions || !canStartInstallation
-              ? "pointer-events-none"
-              : ""
-          }
-          onClick={() => {
-            if (
-              shouldDisableBlockedActions ||
-              !canStartInstallation
-            )
-              return;
+          {!isSmallOrderLead && (
+            <div className="flex">
+              {!underDetails?.actual_installation_start_date ? (
+                <CustomeTooltip
+                  value={
+                    shouldDisableBlockedActions
+                      ? blockedTooltip
+                      : !canStartInstallation
+                        ? "You do not have permission to access this action."
+                        : undefined
+                  }
+                  truncateValue={
+                    <div className={shouldDisableBlockedActions || !canStartInstallation ? "opacity-60 cursor-not-allowed" : ""}>
+                      <Button
+                        size="sm"
+                        disabled={
+                          shouldDisableBlockedActions ||
+                          !canStartInstallation
+                        }
+                        className={
+                          shouldDisableBlockedActions || !canStartInstallation
+                            ? "pointer-events-none"
+                            : ""
+                        }
+                        onClick={() => {
+                          if (
+                            shouldDisableBlockedActions ||
+                            !canStartInstallation
+                          )
+                            return;
 
-            setOpenStartModal(true);
-          }}
-        >
-          Start Installation
-        </Button>
-      </div>
-    }
-  />
-) : (
-              // Existing installation date display block (unchanged)
-              <div className="flex flex-col items-start">
-                <p className="text-xs font-semibold">Installation Started On</p>
-                <div className="flex justify-between gap-2 items-center bg-muted py-2 px-3 rounded-md ">
-                  <p className="text-sm">
-                    {formatInstallationDate(
-                      underDetails.actual_installation_start_date,
-                    )}
-                  </p>
-                  <CalendarOff size={16} />
+                          setOpenStartModal(true);
+                        }}
+                      >
+                        Start Installation
+                      </Button>
+                    </div>
+                  }
+                />
+              ) : (
+                <div className="flex flex-col items-start">
+                  <p className="text-xs font-semibold">Installation Started On</p>
+                  <div className="flex justify-between gap-2 items-center bg-muted py-2 px-3 rounded-md ">
+                    <p className="text-sm">
+                      {formatInstallationDate(
+                        underDetails.actual_installation_start_date,
+                      )}
+                    </p>
+                    <CalendarOff size={16} />
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* 🔹 Start Installation Button / Date Display */}
@@ -907,6 +1119,13 @@ export default function UnderInstallationLeadDetails() {
         leadData={{ id: leadIdNum, assignTo: lead?.assignedTo }}
       />
 
+      <SmallOrderRequestModal
+        open={openSmallOrderModal}
+        onOpenChange={setOpenSmallOrderModal}
+        source="under_installation"
+        leadId={leadIdNum}
+      />
+
       <EditLeadModal
         open={openEditModal}
         onOpenChange={setOpenEditModal}
@@ -973,65 +1192,38 @@ export default function UnderInstallationLeadDetails() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="text-lg font-semibold">
-              Move Lead to Final Handover?
+              {isSmallOrderLead
+                ? "Mark Small Order as Resolved?"
+                : "Move Lead to Final Handover?"}
             </AlertDialogTitle>
           </AlertDialogHeader>
 
           <p className="text-sm text-muted-foreground">
-            Are you sure you want to mark this lead as <b>Final Handover</b>?
-            This action will update the lead’s stage.
+            {isSmallOrderLead ? (
+              <>
+                Are you sure you want to mark this small order request as{" "}
+                <b>resolved</b>? This action will update the linked request.
+              </>
+            ) : (
+              <>
+                Are you sure you want to mark this lead as <b>Final Handover</b>?
+                This action will update the lead’s stage.
+              </>
+            )}
           </p>
 
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
 
             <AlertDialogAction
-              onClick={() => {
-                if (!lead?.vendor_id || !userId) {
-                  toastManager.add({
-                    title: "Missing vendor or user information!",
-                    type: "error",
-                  });
-                  return;
-                }
-
-                moveMutation.mutate(
-                  {
-                    vendorId: lead.vendor_id,
-                    leadId: lead.id,
-                    updated_by: userId,
-                  },
-                  {
-                    onSuccess: () => {
-                      // ✅ Correct key now
-                      queryClient.removeQueries({
-                        queryKey: ["lead-status", leadIdNum, vendorId],
-                      });
-
-                      queryClient.removeQueries({
-                        queryKey: ["leadById", leadIdNum],
-                      });
-
-                      queryClient.invalidateQueries({
-                        queryKey: ["leadStats"],
-                        exact: false,
-                      });
-                      queryClient.invalidateQueries({
-                        queryKey: ["universal-stage-leads"],
-                        exact: false,
-                      });
-
-                      if (canRedirectToFinalHandover) {
-                        router.push("/dashboard/installation/final-handover");
-                      } else {
-                        router.push("/dashboard/installation/under-installation");
-                      }
-                    },
-                  },
-                );
-              }}
+              onClick={handlePrimaryActionConfirm}
+              disabled={moveMutation.isPending || markResolvedMutation.isPending}
             >
-              Confirm
+              {moveMutation.isPending || markResolvedMutation.isPending
+                ? isSmallOrderLead
+                  ? "Saving..."
+                  : "Moving..."
+                : "Confirm"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -49,7 +49,7 @@ import {
   Loader2,
   Upload,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
@@ -124,6 +124,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const customPrivilegeCodes = useAppSelector((s) => s.customPrivileges.codes);
   const queryClient = useQueryClient();
   const router = useRouter();
+  const pathname = usePathname();
 
   // ✅ Lead block access control
   const { shouldDisableBlockedActions, blockedTooltip } = useLeadAccessControl({
@@ -272,7 +273,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const effectiveCanDeleteDesignFiles =
     canDeleteDesignFiles && !shouldDisableBlockedActions;
   const effectiveCanMoveToClientApproval =
-    canMoveToClientApproval && !shouldDisableBlockedActions;
+    canMoveToClientApproval && !shouldDisableBlockedActions && !pathname?.includes("/client-approval");
 
   const structureInstances: LeadProductStructureInstance[] = React.useMemo(
     () =>

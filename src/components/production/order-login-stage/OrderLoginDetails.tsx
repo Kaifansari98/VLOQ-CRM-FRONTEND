@@ -10,7 +10,7 @@ import OrderLoginTab from "./OrderloginTab";
 import { useTechCheckInstanceStatus } from "@/api/tech-check";
 import { useAppSelector } from "@/redux/store";
 import { useClientDocumentationDetails } from "@/hooks/client-documentation/use-clientdocumentation";
-import { useLeadSuperAdminApprovalLockIns } from "@/hooks/useLeadsQueries";
+import { useLeadById, useLeadSuperAdminApprovalLockIns } from "@/hooks/useLeadsQueries";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
 
@@ -52,6 +52,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     data: orderLoginLockIns = [],
     isLoading: orderLoginLockInsLoading,
   } = useLeadSuperAdminApprovalLockIns(vendorId, leadId, "order_login");
+  const { data: leadResponse } = useLeadById(leadId, vendorId, userId);
 
   const { data: clientDocs } = useClientDocumentationDetails(
     vendorId,
@@ -59,6 +60,8 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     userId!,
     instanceFromUrl!,
   );
+  const isSmallOrderRequestLead =
+    leadResponse?.data?.lead?.is_small_order_request === true;
   const instances = clientDocs?.product_structure_instances ?? [];
   const hasMultipleInstances = (clientDocs?.instance_count ?? 0) > 1;
   const [activeInstanceId, setActiveInstanceId] = useState<number | null>(
@@ -147,6 +150,60 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     (activeTab === "order-login" || activeTab === "production-files")
       ? "approved-docs"
       : activeTab;
+  const resolvedDefaultTab =
+    safeDefaultTab;
+  const smallOrderRequestDocuments =
+    leadResponse?.data?.lead?.smallOrderRequest?.documents ?? [];
+  const tabItems = [
+    {
+      id: "approved-docs",
+      title: "Approved Documents",
+      color: "bg-zinc-800 hover:bg-zinc-900",
+      disabled: !canViewApprovedDocuments,
+      disabledReason:
+        "You don’t have permission to access Approved Documents.",
+      cardContent: (
+        <ApprovedDocsSection
+          leadId={leadId}
+          instanceId={scopedInstanceId}
+          isSmallOrderRequestLead={isSmallOrderRequestLead}
+          smallOrderRequestDocuments={smallOrderRequestDocuments}
+        />
+      ),
+    },
+    {
+      id: "production-files",
+      title: "Production Files",
+      color: "bg-zinc-800 hover:bg-zinc-900",
+      disabled: isOrderLoginLocked || !canViewProductionFiles,
+      disabledReason: !canViewProductionFiles
+        ? "You don’t have permission to access Production Files."
+        : lockedTabsTooltip,
+      cardContent: (
+        <ProductionFilesSection
+          leadId={leadId}
+          accountId={accountId}
+          instanceId={scopedInstanceId}
+        />
+      ),
+    },
+    {
+      id: "order-login",
+      title: "Order Login",
+      color: "bg-zinc-800 hover:bg-zinc-900",
+      disabled: isOrderLoginLocked || !canAccessOrderLoginDetails,
+      disabledReason: !canAccessOrderLoginDetails
+        ? "You don’t have permission to access Order Login."
+        : lockedTabsTooltip,
+      cardContent: (
+        <OrderLoginTab
+          leadId={leadId}
+          accountId={accountId}
+          instanceId={scopedInstanceId}
+        />
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6 bg-[#fff] dark:bg-[#0a0a0a]">
@@ -213,56 +270,10 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
         )}
 
       <SmoothTab
-        key={`${leadId}-${scopedInstanceId ?? "all"}-${safeDefaultTab}-${isOrderLoginLocked ? "locked" : "open"}`}
-        defaultTabId={safeDefaultTab}
+        key={`${leadId}-${scopedInstanceId ?? "all"}-${resolvedDefaultTab}-${isOrderLoginLocked ? "locked" : "open"}-${isSmallOrderRequestLead ? "small-order" : "standard"}`}
+        defaultTabId={resolvedDefaultTab}
         className="-mt-3"
-        items={[
-          {
-            id: "approved-docs",
-            title: "Approved Documents",
-            color: "bg-zinc-800 hover:bg-zinc-900",
-            disabled: !canViewApprovedDocuments,
-            disabledReason: "You don’t have permission to access Approved Documents.",
-            cardContent: (
-              <ApprovedDocsSection
-                leadId={leadId}
-                instanceId={scopedInstanceId}
-              />
-            ),
-          },
-          {
-            id: "production-files",
-            title: "Production Files",
-            color: "bg-zinc-800 hover:bg-zinc-900",
-            disabled: isOrderLoginLocked || !canViewProductionFiles,
-            disabledReason: !canViewProductionFiles
-              ? "You don’t have permission to access Production Files."
-              : lockedTabsTooltip,
-            cardContent: (
-              <ProductionFilesSection
-                leadId={leadId}
-                accountId={accountId}
-                instanceId={scopedInstanceId}
-              />
-            ),
-          },
-          {
-            id: "order-login",
-            title: "Order Login",
-            color: "bg-zinc-800 hover:bg-zinc-900",
-            disabled: isOrderLoginLocked || !canAccessOrderLoginDetails,
-            disabledReason: !canAccessOrderLoginDetails
-              ? "You don’t have permission to access Order Login."
-              : lockedTabsTooltip,
-            cardContent: (
-              <OrderLoginTab
-                leadId={leadId}
-                accountId={accountId}
-                instanceId={scopedInstanceId}
-              />
-            ),
-          },
-        ]}
+        items={tabItems}
       />
     </div>
   );

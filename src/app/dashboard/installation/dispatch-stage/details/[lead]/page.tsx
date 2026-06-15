@@ -84,7 +84,10 @@ import {
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
-import { useBlockLead, useUnblockLead } from "@/hooks/useLeadsQueries";
+import {
+  useBlockLead,
+  useUnblockLead,
+} from "@/hooks/useLeadsQueries";
 import { Lock, LockOpen } from "lucide-react";
 
 export default function DispatchPlanningLeadDetails() {
@@ -132,6 +135,7 @@ export default function DispatchPlanningLeadDetails() {
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
   const accountId = lead?.account_id;
+  const primaryActionLabel = "Move to Under Installation";
 
 
   const {
@@ -164,6 +168,44 @@ export default function DispatchPlanningLeadDetails() {
   const canMoveToUnderInstallation =
     canAccessButton &&
     !shouldDisableBlockedActions;
+
+  const handlePrimaryActionConfirm = () => {
+    if (!vendorId || !userId) {
+      toastManager.add({
+        title: "Missing vendor or user information!",
+        type: "error",
+      });
+      return;
+    }
+
+    moveMutation.mutate(
+      { vendorId, leadId: leadIdNum, updated_by: userId },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title:
+              "Lead successfully moved to Under Installation stage!",
+            type: "success",
+          });
+          setOpenMoveConfirm(false);
+          queryClient.invalidateQueries({
+            queryKey: ["universal-stage-leads"],
+            exact: false,
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["vendorOverallLeads"],
+          });
+          router.push("/dashboard/installation/under-installation");
+        },
+        onError: (err: unknown) => {
+          toastManager.add({
+            title: getErrorMessage(err),
+            type: "error",
+          });
+        },
+      },
+    );
+  };
 
   const handleToggleLeadBlock = () => {
     if (!vendorId || !userId || !leadIdNum) return;
@@ -270,6 +312,14 @@ export default function DispatchPlanningLeadDetails() {
     setOpenDelete(false);
   };
 
+  if (isLoading && !lead) {
+    return <p className="p-6">Loading lead details...</p>;
+  }
+
+  if (!lead) {
+    return <p className="p-6">Lead details not found or you do not have access.</p>;
+  }
+
   return (
     <>
       {/* Header */}
@@ -303,7 +353,7 @@ export default function DispatchPlanningLeadDetails() {
                     disabled
                     className="hidden sm:block"
                   >
-                    Move to Under Installation
+                    {primaryActionLabel}
                   </Button>
                 }
               />
@@ -315,7 +365,7 @@ export default function DispatchPlanningLeadDetails() {
                   onClick={() => setOpenMoveConfirm(true)}
                   className="hidden sm:block"
                 >
-                  Move to Under Installation
+                  {primaryActionLabel}
                 </Button>
               )
             ) : (
@@ -327,7 +377,7 @@ export default function DispatchPlanningLeadDetails() {
                       disabled
                       className="hidden sm:block"
                     >
-                      Move to Under Installation
+                      {primaryActionLabel}
                     </Button>
                   }
                   value={
@@ -379,7 +429,7 @@ export default function DispatchPlanningLeadDetails() {
                       className="sm:hidden"
                     >
                       <Move size={20} />
-                      Move to Under Installation
+                      {primaryActionLabel}
                     </DropdownMenuItem>
                   }
                 />
@@ -390,7 +440,7 @@ export default function DispatchPlanningLeadDetails() {
                     className="sm:hidden"
                   >
                     <Move size={20} />
-                    Move to Under Installation
+                    {primaryActionLabel}
                   </DropdownMenuItem>
                 )
               ) : (
@@ -402,7 +452,7 @@ export default function DispatchPlanningLeadDetails() {
                         className="sm:hidden"
                       >
                         <Move size={20} />
-                        Move to Under Installation
+                        {primaryActionLabel}
                       </DropdownMenuItem>
                     }
                     value={
@@ -703,9 +753,7 @@ export default function DispatchPlanningLeadDetails() {
       <AlertDialog open={openMoveConfirm} onOpenChange={setOpenMoveConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              Move Lead to Under Installation?
-            </AlertDialogTitle>
+            <AlertDialogTitle>Move Lead to Under Installation?</AlertDialogTitle>
             <AlertDialogDescription>
               This will move the current lead from <b>Dispatch Planning</b> to
               the <b>Under Installation</b> stage. Do you wish to continue?
@@ -715,44 +763,8 @@ export default function DispatchPlanningLeadDetails() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => {
-                if (!vendorId || !userId) {
-                  toastManager.add({
-                    title: "Missing vendor or user information!",
-                    type: "error",
-                  });
-                  return;
-                }
-
-                moveMutation.mutate(
-                  { vendorId, leadId: leadIdNum, updated_by: userId },
-                  {
-                    onSuccess: () => {
-                      toastManager.add({
-                        title:
-                          "Lead successfully moved to Under Installation stage!",
-                        type: "success",
-                      });
-                      setOpenMoveConfirm(false);
-                      queryClient.invalidateQueries({
-                        queryKey: ["universal-stage-leads"],
-                        exact: false,
-                      });
-                      queryClient.invalidateQueries({
-                        queryKey: ["vendorOverallLeads"],
-                      });
-                      // Optionally redirect to the new stage’s page
-                      router.push("/dashboard/installation/under-installation");
-                    },
-                    onError: (err: unknown) => {
-                      toastManager.add({
-                        title: getErrorMessage(err),
-                        type: "error",
-                      });
-                    },
-                  },
-                );
-              }}
+              onClick={handlePrimaryActionConfirm}
+              disabled={moveMutation.isPending}
             >
               {moveMutation.isPending ? "Moving..." : "Confirm Move"}
             </AlertDialogAction>

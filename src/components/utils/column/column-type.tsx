@@ -10,6 +10,7 @@ export type LeadColumn = {
   status: string; // R
   siteType: string; // R
   sales_executive?: string; // R
+  designer?: string;
   assignedToId?: number;
   siteAddress: string; // R
   architechName: string;
@@ -27,6 +28,7 @@ export type LeadColumn = {
   techCheckCompletedAt?: string | null;
   orderLoginCompletedAt?: string | null;
   designerRemark: string;
+  isDraft?: boolean;
   accountId: number; // n
   updatedAt: string; //n
   site_map_link?: string;

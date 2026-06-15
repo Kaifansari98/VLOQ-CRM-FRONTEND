@@ -455,18 +455,60 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     approvalRequestAssignableUsersData?.users,
     userId,
   ]);
+  const approvalRequestMappedUsers = React.useMemo(
+    () =>
+      approvalRequestUsers.map((user) => ({
+        id: user.id,
+        label: user.user_name,
+      })),
+    [approvalRequestUsers],
+  );
 
   const followUpAssignableUsers = (followUpUsersData?.data?.users ?? []).filter(
     (u: any) =>
       String(u.user_type?.user_type ?? "").toLowerCase() !== "master-admin",
   );
+  const customFollowUpAssignableUsers = React.useMemo(() => {
+    const superAdminUsers = (followUpUsersData?.data?.users ?? []).filter(
+      (u: any) =>
+        String(u.user_type?.user_type ?? "").toLowerCase() === "super-admin",
+    );
+    const users = [...eligibleCustomUsers, ...superAdminUsers];
+
+    if (!userId || !loggedInUserName || !isCustomUser) {
+      return users.filter(
+        (user: any, index: number, array: any[]) =>
+          array.findIndex((candidate: any) => candidate.id === user.id) ===
+          index,
+      );
+    }
+
+    const hasSelf = users.some((u: any) => u.id === userId);
+    if (hasSelf) return users;
+
+    return [
+      ...users,
+      {
+        id: userId,
+        user_name: loggedInUserName,
+        user_type: { user_type: "custom" },
+      },
+    ].filter(
+      (user: any, index: number, array: any[]) =>
+        array.findIndex((candidate: any) => candidate.id === user.id) ===
+        index,
+    );
+  }, [
+    eligibleCustomUsers,
+    followUpUsersData?.data?.users,
+    isCustomUser,
+    loggedInUserName,
+    userId,
+  ]);
 
   const mappedData = React.useMemo(() => {
     if (taskType === "Approval Request") {
-      return approvalRequestUsers.map((user) => ({
-        id: user.id,
-        label: user.user_name,
-      }));
+      return approvalRequestMappedUsers;
     }
 
     if (isSelfAssignTask) {
@@ -483,7 +525,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     }
 
     if (isCustomUser) {
-      return eligibleCustomUsers.map((user: any) => ({
+      return customFollowUpAssignableUsers.map((user: any) => ({
         id: user.id,
         label: user.user_name,
         disabled:
@@ -530,7 +572,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       })) ?? []
     );
   }, [
-    approvalRequestUsers,
+    approvalRequestMappedUsers,
     eligibleFinalMeasurementCustomUsers,
     eligibleCustomUsers,
     finalMeasurementUsers,

@@ -31,7 +31,7 @@ import {
 import { PhoneInput } from "@/components/ui/phone-input";
 import { toastManager } from "@/components/ui/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createLead } from "@/api/leads";
+import { createLead, unshortenUrl } from "@/api/leads";
 import { useAppSelector } from "@/redux/store";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 
@@ -41,7 +41,7 @@ import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUse
 import TextAreaInput from "@/components/origin-text-area";
 import CustomeDatePicker from "@/components/date-picker";
 import MapPicker from "@/components/MapPicker";
-import { MapPin } from "lucide-react";
+import { MapPin, Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -74,6 +74,53 @@ const priorityOptions = [
   { id: 3, label: "Low", value: "Low" },
 ] as const;
 
+const formatFileDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const sanitizeFileSegment = (value: string) =>
+  value
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const getFileExtension = (fileName: string) => {
+  const lastDotIndex = fileName.lastIndexOf(".");
+  return lastDotIndex >= 0 ? fileName.slice(lastDotIndex) : "";
+};
+
+const renameLeadSitePhotoFiles = ({
+  files,
+  clientName,
+  targetLabel,
+  uploadDate,
+}: {
+  files: File[];
+  clientName: string;
+  targetLabel: string;
+  uploadDate: string;
+}) => {
+  const safeClientName = sanitizeFileSegment(clientName || "Client");
+  const safeTargetLabel = sanitizeFileSegment(targetLabel || "Furniture Type");
+
+  return files.map(
+    (file, index) =>
+      new File(
+        [file],
+        `CSP${index + 1}-${safeClientName}-${safeTargetLabel}-${uploadDate}${getFileExtension(
+          file.name,
+        )}`,
+        {
+          type: file.type,
+          lastModified: file.lastModified,
+        },
+      ),
+  );
+};
+
 // Schema for Create Lead - all fields required as per business logic
 const createFormSchema = (userType: string | undefined) => {
   const isAdminOrSuperAdmin =
@@ -90,7 +137,14 @@ const createFormSchema = (userType: string | undefined) => {
       .optional()
       .or(z.literal("")),
     site_type_id: z.string().min(1, "Please select a site type"),
-    site_address: z.string().min(1, "Site Address is required").max(2000),
+    site_address: z
+      .string()
+      .min(1, "Site Address is required")
+      .max(2000)
+      .refine(
+        (val) => !/^(https?:\/\/[^\s]+)/i.test(val.trim()),
+        { message: "Invalid link" }
+      ),
     source_id: z.string().min(1, "Please select a source"),
     product_types: z
       .array(z.string())
@@ -104,6 +158,11 @@ const createFormSchema = (userType: string | undefined) => {
     assigned_by: isAdminOrSuperAdmin ? z.string() : z.string().optional(),
     documents: z.string().optional(),
     archetech_name: z.string().max(300).optional(),
+    archetech_number: z
+      .string()
+      .regex(/^\+?\d{7,20}$/, "Please enter a valid architect number")
+      .optional()
+      .or(z.literal("")),
     designer_remark: z.string().max(2000).optional(),
     initial_site_measurement_date: z.string().optional(),
     priority: z.enum(["High", "Medium", "Low"], {
@@ -129,13 +188,25 @@ const draftFormSchema = (userType: string | undefined) => {
     alt_contact_no: z.string().optional().or(z.literal("")),
     email: z.string().optional().or(z.literal("")),
     site_type_id: z.string().optional().or(z.literal("")),
-    site_address: z.string().optional().or(z.literal("")),
+    site_address: z
+      .string()
+      .optional()
+      .or(z.literal(""))
+      .refine(
+        (val) => !val || !/^(https?:\/\/[^\s]+)/i.test(val.trim()),
+        { message: "Invalid link" }
+      ),
     source_id: z.string().optional().or(z.literal("")),
     product_types: z.array(z.string()).optional(),
     product_structures: z.array(z.string()).optional(),
     assigned_by: z.string().optional(),
     documents: z.string().optional(),
     archetech_name: z.string().optional(),
+    archetech_number: z
+      .string()
+      .regex(/^\+?\d{7,20}$/, "Please enter a valid architect number")
+      .optional()
+      .or(z.literal("")),
     designer_remark: z.string().optional(),
     initial_site_measurement_date: z.string().optional(),
     priority: z.enum(["High", "Medium", "Low"]).optional(),
@@ -197,6 +268,140 @@ export default function LeadsGenerationForm({
     lng: number;
     address: string;
   } | null>(null);
+  const [isResolvingAddress, setIsResolvingAddress] = useState(false);
+
+  const handleAddressChange = async (value: string, onChangeField: (v: string) => void) => {
+    onChangeField(value);
+    
+    const isUrl = /^(https?:\/\/[^\s]+)/i.test(value.trim());
+    if (!isUrl) {
+      form.clearErrors("site_address");
+      if (savedMapLocation) {
+        setSavedMapLocation((prev) =>
+          prev ? { ...prev, address: value } : prev
+        );
+      }
+      return;
+    }
+
+    const isGoogleMapsUrl = /^(https?:\/\/)?(www\.)?(google\.[a-z.]{2,6}\/maps|maps\.google\.[a-z.]{2,6}|maps\.app\.goo\.gl|goo\.gl\/maps|share\.google)/i.test(value.trim());
+    if (!isGoogleMapsUrl) {
+      form.setError("site_address", { type: "manual", message: "Invalid link" });
+      return;
+    }
+
+    setIsResolvingAddress(true);
+    form.clearErrors("site_address");
+
+    try {
+      let targetUrl = value.trim();
+      if (/maps\.app\.goo\.gl|goo\.gl\/maps|share\.google/i.test(targetUrl)) {
+        try {
+          targetUrl = await unshortenUrl(targetUrl);
+        } catch (e) {
+          form.setError("site_address", { type: "manual", message: "Invalid link" });
+          setIsResolvingAddress(false);
+          return;
+        }
+      }
+
+      let lat: number | null = null;
+      let lng: number | null = null;
+
+      const atMatch = targetUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+      const llMatch = targetUrl.match(/ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
+
+      if (atMatch) {
+        lat = parseFloat(atMatch[1]);
+        lng = parseFloat(atMatch[2]);
+      } else if (llMatch) {
+        lat = parseFloat(llMatch[1]);
+        lng = parseFloat(llMatch[2]);
+      }
+
+      let searchQuery: string | null = null;
+      const placeNameMatch = targetUrl.match(/\/place\/([^\/]+)/);
+      const qQueryMatch = targetUrl.match(/[?&]q=([^&]+)/);
+
+      if (placeNameMatch) {
+        const decoded = decodeURIComponent(placeNameMatch[1].replace(/\+/g, ' '));
+        if (!/^-?\d+\.\d+,-?\d+\.\d+$/.test(decoded.trim())) {
+          searchQuery = decoded;
+        }
+      }
+      if (!searchQuery && qQueryMatch) {
+        const decoded = decodeURIComponent(qQueryMatch[1].replace(/\+/g, ' '));
+        if (!/^-?\d+\.\d+,-?\d+\.\d+$/.test(decoded.trim())) {
+          searchQuery = decoded;
+        }
+      }
+
+      if (typeof window === "undefined" || !(window as any).google?.maps) {
+        form.setError("site_address", { type: "manual", message: "Maps API not loaded" });
+        setIsResolvingAddress(false);
+        return;
+      }
+
+      const geocoder = new (window as any).google.maps.Geocoder();
+
+      if (searchQuery) {
+        geocoder.geocode({ address: searchQuery }, (results: any, status: any) => {
+          if (form.getValues("site_address") !== value) {
+            setIsResolvingAddress(false);
+            return;
+          }
+          if (status === "OK" && results?.[0]) {
+            const address = results[0].formatted_address;
+            const location = results[0].geometry.location;
+            onChangeField(address);
+            setSavedMapLocation({ lat: location.lat(), lng: location.lng(), address });
+            form.clearErrors("site_address");
+            setIsResolvingAddress(false);
+          } else if (lat !== null && lng !== null) {
+            // Fallback to coordinates
+            geocoder.geocode({ location: { lat, lng } }, (res: any, st: any) => {
+              if (form.getValues("site_address") !== value) return;
+              if (st === "OK" && res?.[0]) {
+                const address = res[0].formatted_address;
+                onChangeField(address);
+                setSavedMapLocation({ lat, lng, address });
+                form.clearErrors("site_address");
+              } else {
+                form.setError("site_address", { type: "manual", message: "Invalid link" });
+              }
+              setIsResolvingAddress(false);
+            });
+          } else {
+            form.setError("site_address", { type: "manual", message: "Invalid link" });
+            setIsResolvingAddress(false);
+          }
+        });
+      } else if (lat !== null && lng !== null) {
+        geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
+          if (form.getValues("site_address") !== value) {
+            setIsResolvingAddress(false);
+            return;
+          }
+          if (status === "OK" && results?.[0]) {
+            const address = results[0].formatted_address;
+            onChangeField(address);
+            setSavedMapLocation({ lat, lng, address });
+            form.clearErrors("site_address");
+          } else {
+            form.setError("site_address", { type: "manual", message: "Invalid link" });
+          }
+          setIsResolvingAddress(false);
+        });
+      } else {
+        form.setError("site_address", { type: "manual", message: "Invalid link" });
+        setIsResolvingAddress(false);
+      }
+    } catch (error) {
+      form.setError("site_address", { type: "manual", message: "Invalid link" });
+      setIsResolvingAddress(false);
+    }
+  };
+
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type as string | undefined
   );
@@ -216,6 +421,7 @@ export default function LeadsGenerationForm({
       product_structures: [],
       documents: "",
       archetech_name: "",
+      archetech_number: "",
       designer_remark: "N/A",
       priority: "Medium",
       assign_to: "",
@@ -450,6 +656,7 @@ export default function LeadsGenerationForm({
       form.reset();
       setFiles([]);
       onClose();
+      router.push("/dashboard/leads/leadstable");
     },
     onError: (error: any) => {
       console.error("Form submission error:", error);
@@ -472,9 +679,13 @@ export default function LeadsGenerationForm({
       queryClient.invalidateQueries({
         queryKey: ["vendorUserLeads", vendorId, userId],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["draft-lead-table-data"],
+      });
       form.reset();
       setFiles([]);
       onClose();
+      router.push("/dashboard/leads/draft-lead");
     },
     onError: (error: any) => {
       console.error("Draft save error:", error);
@@ -703,6 +914,7 @@ export default function LeadsGenerationForm({
       site_type_id: Number(values.site_type_id),
       source_id: Number(values.source_id),
       archetech_name: values.archetech_name || undefined,
+      archetech_number: values.archetech_number || undefined,
       designer_remark: values.designer_remark || undefined,
       vendor_id: vendorId,
       franchise_id: franchiseId,
@@ -814,6 +1026,7 @@ export default function LeadsGenerationForm({
         : undefined,
       source_id: values.source_id ? Number(values.source_id) : undefined,
       archetech_name: values.archetech_name || undefined,
+      archetech_number: values.archetech_number || undefined,
       designer_remark: values.designer_remark || undefined,
       vendor_id: vendorId,
       franchise_id: franchiseId,
@@ -850,7 +1063,37 @@ export default function LeadsGenerationForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 p-5">
+      <form 
+          onSubmit={form.handleSubmit(onSubmit, (errors) => {
+            const errorKeys = Object.keys(errors);
+            if (errorKeys.length > 0) {
+              const firstErrorKey = errorKeys[0];
+              const el = document.querySelector(`[data-name="${firstErrorKey}"]`);
+              if (el) {
+                const isHidden = el.getBoundingClientRect().height === 0;
+                const targetScrollEl = isHidden ? (el.parentElement || el) : el;
+                
+                const scrollContainer = targetScrollEl.closest("[data-radix-scroll-area-viewport]") || targetScrollEl.closest("form");
+                if (scrollContainer instanceof HTMLElement) {
+                  const containerRect = scrollContainer.getBoundingClientRect();
+                  const elRect = targetScrollEl.getBoundingClientRect();
+                  const scrollOffset = elRect.top - containerRect.top + scrollContainer.scrollTop - (containerRect.height / 2) + (elRect.height / 2);
+                  scrollContainer.scrollTo({
+                    top: scrollOffset,
+                    behavior: "smooth",
+                  });
+                } else {
+                  targetScrollEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                }
+
+                const focusable = el.querySelector("input, select, textarea, button");
+                if (focusable instanceof HTMLElement) {
+                  focusable.focus({ preventScroll: true });
+                }
+              }
+            }
+          })}
+          className="space-y-4 p-5">
         {/* File Upload */}
 
         {/* First Name & Last Name */}
@@ -859,7 +1102,7 @@ export default function LeadsGenerationForm({
             control={form.control}
             name="firstname"
             render={({ field }) => (
-              <FormItem>
+              <FormItem data-name={field?.name || ""} >
                 <FormLabel className="text-sm">First Name *</FormLabel>
                 <FormControl>
                   <Input
@@ -878,7 +1121,7 @@ export default function LeadsGenerationForm({
             control={form.control}
             name="lastname"
             render={({ field }) => (
-              <FormItem>
+              <FormItem data-name={field?.name || ""} >
                 <FormLabel className="text-sm">Last Name *</FormLabel>
                 <FormControl>
                   <Input
@@ -903,7 +1146,7 @@ export default function LeadsGenerationForm({
             control={form.control}
             name="contact_no"
             render={({ field }) => (
-              <FormItem>
+              <FormItem data-name={field?.name || ""} >
                 <FormLabel className="text-sm">Phone Number *</FormLabel>
                 <FormControl>
                   <PhoneInput
@@ -940,7 +1183,7 @@ export default function LeadsGenerationForm({
             control={form.control}
             name="alt_contact_no"
             render={({ field }) => (
-              <FormItem>
+              <FormItem data-name={field?.name || ""} >
                 <FormLabel className="text-sm">Alt. Phone Number</FormLabel>
                 <FormControl>
                   {/* Use regular Input instead of PhoneInput */}
@@ -977,7 +1220,7 @@ export default function LeadsGenerationForm({
           control={form.control}
           name="email"
           render={({ field }) => (
-            <FormItem>
+            <FormItem data-name={field?.name || ""} >
               <FormLabel className="text-sm">Email</FormLabel>
               <FormControl>
                 <Input
@@ -1016,7 +1259,7 @@ export default function LeadsGenerationForm({
                 })) || [];
 
               return (
-                <FormItem>
+                <FormItem data-name={field?.name || ""} >
                   <FormLabel className="text-sm">Site Type *</FormLabel>
 
                   {isLoading ? (
@@ -1044,7 +1287,7 @@ export default function LeadsGenerationForm({
             control={form.control}
             name="priority"
             render={({ field }) => (
-              <FormItem>
+              <FormItem data-name={field?.name || ""} >
                 <FormLabel className="text-sm">Priority *</FormLabel>
                 <AssignToPicker
                   data={priorityOptions.map((option) => ({
@@ -1084,7 +1327,7 @@ export default function LeadsGenerationForm({
                 })) || [];
 
               return (
-                <FormItem>
+                <FormItem data-name={field?.name || ""} >
                   <FormLabel className="text-sm">Source *</FormLabel>
 
                   {isLoading ? (
@@ -1114,7 +1357,7 @@ export default function LeadsGenerationForm({
           control={form.control}
           name="site_address"
           render={({ field }) => (
-            <FormItem>
+            <FormItem data-name={field?.name || ""} >
               <div className="w-full flex justify-between ">
                 <FormLabel className="text-sm">Site Address *</FormLabel>
                 <Button
@@ -1130,21 +1373,22 @@ export default function LeadsGenerationForm({
               </div>
               <div className="flex gap-2">
                 <FormControl className="flex-1">
-                  <div className="w-full">
+                  <div className="w-full relative">
                     <TextAreaInput
                       value={field.value}
                       onChange={(value) => {
-                        field.onChange(value);
-
-                        // ✅ Preserve the lat/lng even if user edits text
-                        if (savedMapLocation) {
-                          setSavedMapLocation((prev) =>
-                            prev ? { ...prev, address: value } : prev
-                          );
-                        }
+                        handleAddressChange(value, field.onChange);
                       }}
                       placeholder="Enter address or use map"
+                      disabled={isResolvingAddress}
+                      className={isResolvingAddress ? "text-transparent" : ""}
                     />
+                    {isResolvingAddress && (
+                      <div className="absolute top-2 left-3 z-10 flex items-center gap-1.5 text-sm text-muted-foreground pointer-events-none">
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        <span>Resolving address...</span>
+                      </div>
+                    )}
                   </div>
                 </FormControl>
               </div>
@@ -1207,7 +1451,7 @@ export default function LeadsGenerationForm({
                 })) || [];
 
               return (
-                <FormItem>
+                <FormItem data-name={field?.name || ""} >
                 <FormLabel className="text-sm">Furniture Type *</FormLabel>
 
                   {isProductTypesLoading ? (
@@ -1265,7 +1509,7 @@ export default function LeadsGenerationForm({
                   : "";
 
               return (
-                <FormItem>
+                <FormItem data-name={field?.name || ""} >
                   <FormLabel className="text-sm">
                     Furniture Structure *
                   </FormLabel>
@@ -1349,7 +1593,7 @@ export default function LeadsGenerationForm({
                   })) || [];
 
                 return (
-                  <FormItem>
+                  <FormItem data-name={field?.name || ""} >
                     <FormLabel className="text-sm">Assign Lead To *</FormLabel>
 
                     <AssignToPicker
@@ -1369,13 +1613,17 @@ export default function LeadsGenerationForm({
             />
           </div>
         )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+        <div
+          className={`grid grid-cols-1 gap-3 items-start ${
+            isCustomVendorFlow ? "sm:grid-cols-3" : "sm:grid-cols-2"
+          }`}
+        >
           {/* Architect Name */}
           <FormField
             control={form.control}
             name="archetech_name"
             render={({ field }) => (
-              <FormItem>
+              <FormItem data-name={field?.name || ""} >
                 <FormLabel className="text-sm">Architect Name</FormLabel>
                 <FormControl>
                   <Input
@@ -1389,11 +1637,33 @@ export default function LeadsGenerationForm({
               </FormItem>
             )}
           />
+          {isCustomVendorFlow && (
+            <FormField
+              control={form.control}
+              name="archetech_number"
+              render={({ field }) => (
+                <FormItem data-name={field?.name || ""} >
+                  <FormLabel className="text-sm">Architect Number</FormLabel>
+                  <FormControl>
+                    <PhoneInput
+                      defaultCountry="IN"
+                      placeholder="Enter architect number"
+                      className="text-sm"
+                      value={field.value}
+                      onChange={(val) => field.onChange(val)}
+                      validateIndianNumber={true}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
           <FormField
             control={form.control}
             name="initial_site_measurement_date"
             render={({ field }) => (
-              <FormItem>
+              <FormItem data-name={field?.name || ""} >
                 <FormLabel className="text-sm">
                   Initial Site Measurement Date
                 </FormLabel>
@@ -1415,7 +1685,7 @@ export default function LeadsGenerationForm({
           control={form.control}
           name="designer_remark"
           render={({ field }) => (
-            <FormItem>
+            <FormItem data-name={field?.name || ""} >
               <FormLabel className="text-sm">Designer's Remark</FormLabel>
               <FormControl>
                 <TextAreaInput placeholder="Enter your remarks" {...field} />
@@ -1431,8 +1701,8 @@ export default function LeadsGenerationForm({
         <FormField
           control={form.control}
           name="documents"
-          render={() => (
-            <FormItem>
+          render={({ field }) => (
+            <FormItem data-name={field?.name || ""} >
               <FormLabel className="text-sm">Site Photos</FormLabel>
               <FormControl>
                 {isMultiInstanceSitePhotoUploadFlow ? (
