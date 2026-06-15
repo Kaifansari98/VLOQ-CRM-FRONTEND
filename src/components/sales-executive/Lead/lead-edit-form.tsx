@@ -56,6 +56,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toastError } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 // ✅ Utility: Normalize phone numbers to E.164 format
 const toE164 = (number?: string, countryCode?: string): string => {
@@ -208,6 +209,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
     (state) =>
       state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
   );
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [mapOpen, setMapOpen] = useState(false);
   const [savedMapLocation, setSavedMapLocation] = useState<{
@@ -874,6 +876,14 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
         queryClient.invalidateQueries({
           queryKey: ["vendorUserLeadsOpenuniversal-stage-leads"],
         }),
+        queryClient.invalidateQueries({
+          queryKey: ["draft-lead-table-data"],
+          exact: false,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["leadStats"],
+          exact: false,
+        }),
       ]);
 
       toastManager.add({
@@ -885,6 +895,10 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
         type: "success",
       });
       onClose();
+      
+      if (shouldConvertDraft) {
+        router.push("/dashboard/leads/leadstable");
+      }
     } catch (error: any) {
       toastManager.add({
         title: error?.response?.data?.message || "Failed to update lead",

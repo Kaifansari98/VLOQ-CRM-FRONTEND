@@ -178,7 +178,7 @@ export default function DraftLeadsTable({
 
   const handleRowClick = (row: DraftLeadRow) => {
     if (row.id) {
-      router.push(`/dashboard/leads/leadstable/details/${row.id}`);
+      router.push(`/dashboard/leads/draft-lead/details/${row.id}`);
     }
   };
 
