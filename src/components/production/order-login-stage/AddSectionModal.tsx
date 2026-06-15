@@ -97,7 +97,7 @@ const AddSectionModal: React.FC<AddSectionModalProps> = ({
       // 🚀 Call the API
       await uploadFileBreakup(payload);
 
-      toastManager.add({ title: `${newTitle} section added successfully ✅`, type: "success" });
+      toastManager.add({ title: `${newTitle} section added successfully`, type: "success" });
 
       // 🔁 Notify parent to refresh sections
       onSectionAdded({ title: newTitle });

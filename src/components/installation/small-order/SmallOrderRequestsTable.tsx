@@ -377,8 +377,8 @@ function SmallOrderRequestPreviewModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] w-[95vw] min-w-4xl overflow-hidden p-0">
-        <DialogHeader className="border-b bg-muted/30 px-6 py-4">
+      <DialogContent className="flex max-h-[90vh] w-[95vw] max-w-4xl flex-col overflow-hidden p-0">
+        <DialogHeader className="shrink-0 border-b bg-muted/30 px-6 py-4">
           <DialogTitle className="text-left text-2xl font-semibold">
             Small Order Request
           </DialogTitle>
@@ -387,7 +387,7 @@ function SmallOrderRequestPreviewModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-[calc(90vh-140px)] space-y-6 overflow-y-auto p-6">
+        <div className="flex-1 space-y-6 overflow-y-auto p-6">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="rounded-2xl border bg-background p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -489,7 +489,7 @@ function SmallOrderRequestPreviewModal({
           ) : null}
         </div>
 
-        <DialogFooter className="border-t px-6 py-4">
+        <DialogFooter className="shrink-0 border-t px-6 py-4">
           {canMarkResolved ? (
             <Button
               variant="outline"

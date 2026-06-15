@@ -1239,23 +1239,18 @@ export default function SiteHistoryTab({
       transition={{ duration: 0.4 }}
       className="relative pb-4 w-full mx-auto"
     >
-      <div className="mb-5">
-        <h2 className="text-lg font-semibold text-foreground">Site History</h2>
-        <p className="text-xs text-muted-foreground">
-          {isApprovalTimeline
-            ? "View all approval requests and their status"
-            : "Track all activities and changes for this lead"}
-        </p>
-      </div>
+      <div className="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Site History</h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            {isApprovalTimeline
+              ? "View all approval requests and their status"
+              : "Track all activities and changes for this lead"}
+          </p>
+        </div>
 
-      <div className="relative">
-        <SmoothTab
-          items={tabItems}
-          defaultTabId={defaultTabId}
-          onChange={(tabId) => setActiveTab(tabId as TabId)}
-        />
-        <div className="absolute top-0 right-0 flex items-center gap-2">
-          <div className="relative">
+        <div className="flex items-center gap-2 self-start sm:self-auto w-full sm:w-auto">
+          <div className="relative flex-1 sm:flex-none">
             <Search
               size={13}
               className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
@@ -1264,7 +1259,7 @@ export default function SiteHistoryTab({
               placeholder={isApprovalTimeline ? "Search approvals..." : "Search history..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-8 pl-8 pr-7 text-xs w-48"
+              className="h-8 pl-8 pr-7 text-xs w-full sm:w-48"
             />
             {searchQuery && (
               <button
@@ -1278,7 +1273,7 @@ export default function SiteHistoryTab({
           <Button
             variant="default"
             size="sm"
-            className="shrink-0 gap-2"
+            className="shrink-0 gap-2 h-8"
             disabled={isExporting}
             onClick={handleExport}
           >
@@ -1287,9 +1282,18 @@ export default function SiteHistoryTab({
             ) : (
               <FileSpreadsheet className="size-4" />
             )}
-            {isExporting ? "Exporting..." : "Export"}
+            <span className="hidden sm:inline">{isExporting ? "Exporting..." : "Export"}</span>
+            <span className="sm:hidden">Export</span>
           </Button>
         </div>
+      </div>
+
+      <div className="relative mt-2">
+        <SmoothTab
+          items={tabItems}
+          defaultTabId={defaultTabId}
+          onChange={(tabId) => setActiveTab(tabId as TabId)}
+        />
       </div>
     </motion.div>
   );
