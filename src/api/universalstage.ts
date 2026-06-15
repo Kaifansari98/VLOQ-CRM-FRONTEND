@@ -137,29 +137,6 @@ export interface UniversalStageLeadResponse {
   pagination: pagination;
 }
 
-const filterResolvedSmallOrderLeadsForType15 = (
-  response: UniversalStageLeadResponse,
-  tag?: string,
-): UniversalStageLeadResponse => {
-  if (String(tag ?? "").trim().toLowerCase() !== "type 15") {
-    return response;
-  }
-
-  const filteredData = (response.data ?? []).filter((lead) => {
-    if (lead?.is_small_order_request !== true) {
-      return true;
-    }
-
-    return lead?.smallOrderRequest?.is_request_resolved !== true;
-  });
-
-  return {
-    ...response,
-    count: filteredData.length,
-    data: filteredData,
-  };
-};
-
 export const getUniversalStageLeads = async (
   vendorId: number,
   userId: number,
@@ -208,7 +185,6 @@ export const useUniversalStageLeads = (
     enabled: !!vendorId && !!userId && !!franchiseId,
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000,
-    select: (response) => filterResolvedSmallOrderLeadsForType15(response, tag),
   });
 };
 
@@ -300,8 +276,6 @@ export const useUniversalStageLeadsPost = (
 
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
-    select: (response) =>
-      filterResolvedSmallOrderLeadsForType15(response, payload?.tag),
   });
 };
 
@@ -373,8 +347,6 @@ export const useVendorLeadsByTagPost = (
 
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
-    select: (response) =>
-      filterResolvedSmallOrderLeadsForType15(response, payload?.tag),
   });
 };
 
