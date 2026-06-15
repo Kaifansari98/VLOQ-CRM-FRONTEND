@@ -82,6 +82,7 @@ const data = {
         {
           title: "Draft Lead",
           url: "/dashboard/leads/draft-lead",
+          showCount: "total_draft_leads" as const,
         },
         {
           title: "Open Leads",

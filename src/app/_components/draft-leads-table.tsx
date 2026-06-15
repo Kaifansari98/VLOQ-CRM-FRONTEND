@@ -54,7 +54,7 @@ export default function DraftLeadsTable({
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [pagination, setPagination] = React.useState({
     pageIndex: 0,
-    pageSize: 20,
+    pageSize: 50,
   });
 
   const [sorting, setSorting] = React.useState<SortingState>([
