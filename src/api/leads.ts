@@ -108,6 +108,13 @@ export interface Lead {
     is_request_resolved?: boolean;
     request_source?: "post_dispatch" | "final_handover";
     request_type_id: number;
+    documents?: {
+      id: number;
+      document_id: number;
+      original_name: string;
+      signed_url: string | null;
+      created_at: string;
+    }[];
     requestType: {
       id: number;
       type: string;

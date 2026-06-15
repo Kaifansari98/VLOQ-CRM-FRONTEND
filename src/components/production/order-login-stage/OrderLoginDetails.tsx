@@ -151,9 +151,9 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
       ? "approved-docs"
       : activeTab;
   const resolvedDefaultTab =
-    isSmallOrderRequestLead && safeDefaultTab === "approved-docs"
-      ? "order-login"
-      : safeDefaultTab;
+    safeDefaultTab;
+  const smallOrderRequestDocuments =
+    leadResponse?.data?.lead?.smallOrderRequest?.documents ?? [];
   const tabItems = [
     {
       id: "approved-docs",
@@ -163,7 +163,12 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
       disabledReason:
         "You don’t have permission to access Approved Documents.",
       cardContent: (
-        <ApprovedDocsSection leadId={leadId} instanceId={scopedInstanceId} />
+        <ApprovedDocsSection
+          leadId={leadId}
+          instanceId={scopedInstanceId}
+          isSmallOrderRequestLead={isSmallOrderRequestLead}
+          smallOrderRequestDocuments={smallOrderRequestDocuments}
+        />
       ),
     },
     {
@@ -198,9 +203,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
         />
       ),
     },
-  ].filter((item) =>
-    isSmallOrderRequestLead ? item.id !== "approved-docs" : true,
-  );
+  ];
 
   return (
     <div className="space-y-6 bg-[#fff] dark:bg-[#0a0a0a]">
