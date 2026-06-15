@@ -93,6 +93,8 @@ export interface Lead {
   statusType: StatusType;
   initial_site_measurement_date: string;
   usable_handover_completed_at?: string | null;
+  is_carcass_installation_completed?: boolean | null;
+  is_shutter_installation_completed?: boolean | null;
   activity_status?: string;
   count?: number;
   site_map_link: string;

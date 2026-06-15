@@ -13,7 +13,12 @@ import {
 } from "@tanstack/react-table";
 
 import { Button } from "@/components/ui/button";
-import { useSmallOrderRequestsByLead } from "@/hooks/useLeadsQueries";
+import { useAppSelector } from "@/redux/store";
+import {
+  useLeadById,
+  useMarkSmallOrderRequestResolved,
+  useSmallOrderRequestsByLead,
+} from "@/hooks/useLeadsQueries";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +33,10 @@ import {
 } from "@/components/ui/dialog";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
+import CustomeTooltip from "@/components/custom-tooltip";
+import { toastManager } from "@/components/ui/toast";
+import { getErrorMessage } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 
 type SmallOrderRequestDocument = {
@@ -272,18 +281,99 @@ function SmallOrderRequestPreviewModal({
   onOpenChange,
   request,
   onOpenDetailsPage,
+  vendorId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   request: SmallOrderRequestRow | null;
   onOpenDetailsPage: (request: SmallOrderRequestRow) => void;
+  vendorId: number;
 }) {
+  const userId = useAppSelector((state) => state.auth.user?.id);
+  const queryClient = useQueryClient();
+  const markResolvedMutation = useMarkSmallOrderRequestResolved();
+  const { data: linkedLeadResponse } = useLeadById(
+    request?.linked_lead_id ?? undefined,
+    vendorId,
+    userId,
+  );
+
   if (!request) return null;
+
+  const linkedLead = linkedLeadResponse?.data?.lead;
 
   const canOpenDetailsPage =
     request.status === "approved" &&
     Boolean(request.linked_lead_id) &&
     Boolean(request.linked_lead_account_id);
+
+  const linkedLeadStatusTag = linkedLead?.statusType?.tag ?? null;
+  const isType15 = linkedLeadStatusTag === "Type 15";
+  const isPostDispatchRequest = request.request_source === "post_dispatch";
+  const isFinalHandoverRequest = request.request_source === "final_handover";
+  const hasCompletedInstallations =
+    linkedLead?.is_shutter_installation_completed === true &&
+    linkedLead?.is_carcass_installation_completed === true;
+
+  const canMarkResolved = request.is_request_resolved
+    ? false
+    : isFinalHandoverRequest
+      ? isType15
+      : isPostDispatchRequest
+        ? isType15 && hasCompletedInstallations
+        : false;
+
+  const markResolvedTooltip = request.is_request_resolved
+    ? "This small order request is already resolved."
+    : !request.linked_lead_id
+      ? "Linked small order lead is not available yet."
+      : !linkedLead
+        ? "Loading linked lead status..."
+        : isFinalHandoverRequest && !isType15
+          ? "Mark as Resolved is enabled only when the linked lead reaches stage Type 15."
+          : isPostDispatchRequest && !isType15
+            ? "Mark as Resolved is enabled only when the linked lead reaches stage Type 15."
+            : isPostDispatchRequest && !hasCompletedInstallations
+              ? "Mark as Resolved is enabled only after both carcass and shutter installation are completed."
+              : null;
+
+  const handleMarkResolved = () => {
+    if (!userId || !vendorId || !request?.id || !canMarkResolved) {
+      return;
+    }
+
+    markResolvedMutation.mutate(
+      {
+        vendorId,
+        requestId: request.id,
+        updatedBy: userId,
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: "Small order request marked as resolved successfully.",
+            type: "success",
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["smallOrderRequestsByLead"],
+            exact: false,
+          });
+          if (request.linked_lead_id) {
+            queryClient.invalidateQueries({
+              queryKey: ["lead", request.linked_lead_id, vendorId, userId],
+            });
+          }
+          onOpenChange(false);
+        },
+        onError: (error: unknown) => {
+          toastManager.add({
+            title: getErrorMessage(error),
+            type: "error",
+          });
+        },
+      },
+    );
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -400,9 +490,24 @@ function SmallOrderRequestPreviewModal({
         </div>
 
         <DialogFooter className="border-t px-6 py-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
-          </Button>
+          {canMarkResolved ? (
+            <Button
+              variant="outline"
+              onClick={handleMarkResolved}
+              disabled={markResolvedMutation.isPending}
+            >
+              {markResolvedMutation.isPending ? "Saving..." : "Mark as Resolved"}
+            </Button>
+          ) : (
+            <CustomeTooltip
+              value={markResolvedTooltip ?? "Mark as Resolved is not available."}
+              truncateValue={
+                <Button variant="outline" disabled>
+                  {request.is_request_resolved ? "Resolved" : "Mark as Resolved"}
+                </Button>
+              }
+            />
+          )}
           <Button
             onClick={() => onOpenDetailsPage(request)}
             disabled={!canOpenDetailsPage}
@@ -529,6 +634,7 @@ export default function SmallOrderRequestsTable({
               }}
               request={selectedRequest}
               onOpenDetailsPage={handleOpenDetailsPage}
+              vendorId={vendorId}
             />
           </>
         )}
