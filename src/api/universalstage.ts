@@ -343,3 +343,70 @@ export const useVendorLeadsByTagPost = (
     refetchOnWindowFocus: false,
   });
 };
+
+// -------------------------
+// Draft Lead Table Data
+// -------------------------
+export interface DraftLeadTableDataPostPayload {
+  userId: number;
+  franchise_id?: number;
+  tag?: string;
+
+  page: number;
+  limit: number;
+
+  global_search?: string;
+
+  filter_lead_code?: string;
+  filter_name?: string;
+  contact?: string;
+
+  alt_contact_no?: string;
+  email?: string;
+  site_address?: string;
+  archetech_name?: string;
+  designer_remark?: string;
+
+  furniture_type?: number[];
+  furniture_structure?: number[];
+  site_type?: number[];
+  source?: number[];
+  assign_to?: number[];
+  priority?: string[];
+  site_map_link?: boolean | null;
+
+  created_at?: SortOrder;
+  date_range?: {
+    from: string;
+    to: string;
+  };
+}
+
+export const postDraftLeadTableData = async (
+  vendorId: number,
+  payload: DraftLeadTableDataPostPayload,
+): Promise<UniversalStageLeadResponse> => {
+  console.log("[API] postDraftLeadTableData", { vendorId, payload });
+  const { data } = await apiClient.post(
+    `/leads/bookingStage/draft-lead-table-data/vendorId/${vendorId}`,
+    payload,
+  );
+
+  return data;
+};
+
+export const useDraftLeadTableDataPost = (
+  vendorId: number,
+  payload: DraftLeadTableDataPostPayload,
+) => {
+  return useQuery<UniversalStageLeadResponse>({
+    queryKey: ["draft-lead-table-data", vendorId, payload],
+
+    queryFn: () => postDraftLeadTableData(vendorId, payload),
+
+    enabled: !!vendorId && !!payload?.userId,
+
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+};

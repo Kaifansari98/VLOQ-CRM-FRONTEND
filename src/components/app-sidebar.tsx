@@ -80,6 +80,10 @@ const data = {
       showCount: "total_leads_group" as const,
       items: [
         {
+          title: "Draft Lead",
+          url: "/dashboard/leads/draft-lead",
+        },
+        {
           title: "Open Leads",
           url: "/dashboard/leads/leadstable",
           showCount: "total_open_leads" as const,
