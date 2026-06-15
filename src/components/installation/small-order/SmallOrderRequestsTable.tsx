@@ -318,9 +318,9 @@ function SmallOrderRequestPreviewModal({
   const canMarkResolved = request.is_request_resolved
     ? false
     : isFinalHandoverRequest
-      ? isType15
+      ? isType15 && hasCompletedInstallations
       : isPostDispatchRequest
-        ? isType15 && hasCompletedInstallations
+        ? isType15
         : false;
 
   const markResolvedTooltip = request.is_request_resolved
@@ -330,11 +330,11 @@ function SmallOrderRequestPreviewModal({
       : !linkedLead
         ? "Loading linked lead status..."
         : isFinalHandoverRequest && !isType15
-          ? "Mark as Resolved is enabled only when the linked lead reaches stage Type 15."
-          : isPostDispatchRequest && !isType15
-            ? "Mark as Resolved is enabled only when the linked lead reaches stage Type 15."
-            : isPostDispatchRequest && !hasCompletedInstallations
+          ? "Mark as Resolved is enabled only when the request is fullfilled."
+          : isFinalHandoverRequest && !hasCompletedInstallations
               ? "Mark as Resolved is enabled only after both carcass and shutter installation are completed."
+            : isPostDispatchRequest && !isType15
+              ? "Mark as Resolved is enabled only when the request is fullfilled."
               : null;
 
   const handleMarkResolved = () => {
