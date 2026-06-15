@@ -86,7 +86,6 @@ import ProjectDocumentsTimeline from "@/components/installation/final-handover/P
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 import {
   useBlockLead,
-  useMarkSmallOrderRequestResolved,
   useUnblockLead,
 } from "@/hooks/useLeadsQueries";
 import { Lock, LockOpen } from "lucide-react";
@@ -121,7 +120,6 @@ export default function DispatchPlanningLeadDetails() {
 
   const [openMoveConfirm, setOpenMoveConfirm] = useState(false);
   const moveMutation = useMoveLeadToUnderInstallation();
-  const markResolvedMutation = useMarkSmallOrderRequestResolved();
 
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [activityType, setActivityType] = useState<"onHold">("onHold");
@@ -137,19 +135,7 @@ export default function DispatchPlanningLeadDetails() {
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
   const accountId = lead?.account_id;
-  const isSmallOrderLead = lead?.is_small_order_request === true;
-  const smallOrderRequestId = lead?.smallOrderRequest?.id ?? null;
-  const isSmallOrderRequestResolved =
-    lead?.smallOrderRequest?.is_request_resolved === true;
-  const isPostDispatchSmallOrderLead =
-    isSmallOrderLead &&
-    lead?.smallOrderRequest?.request_source === "post_dispatch";
-  const primaryActionLabel = isPostDispatchSmallOrderLead
-    ? "Mark as Resolved"
-    : "Move to Under Installation";
-  const primaryActionCompletedLabel = isPostDispatchSmallOrderLead
-    ? "Resolved"
-    : "Completed";
+  const primaryActionLabel = "Move to Under Installation";
 
 
   const {
@@ -189,52 +175,6 @@ export default function DispatchPlanningLeadDetails() {
         title: "Missing vendor or user information!",
         type: "error",
       });
-      return;
-    }
-
-    if (isPostDispatchSmallOrderLead) {
-      if (!smallOrderRequestId) {
-        toastManager.add({
-          title: "Small order request record not found for this lead.",
-          type: "error",
-        });
-        return;
-      }
-
-      markResolvedMutation.mutate(
-        {
-          vendorId,
-          requestId: smallOrderRequestId,
-          updatedBy: userId,
-        },
-        {
-          onSuccess: () => {
-            toastManager.add({
-              title: "Small order request marked as resolved successfully!",
-              type: "success",
-            });
-            setOpenMoveConfirm(false);
-            queryClient.invalidateQueries({
-              queryKey: ["lead", leadIdNum, vendorId, userId],
-            });
-            queryClient.invalidateQueries({
-              queryKey: ["smallOrderRequestsByLead"],
-              exact: false,
-            });
-            queryClient.invalidateQueries({
-              queryKey: ["universal-stage-leads"],
-              exact: false,
-            });
-          },
-          onError: (err: unknown) => {
-            toastManager.add({
-              title: getErrorMessage(err),
-              type: "error",
-            });
-          },
-        },
-      );
-
       return;
     }
 
@@ -404,31 +344,9 @@ export default function DispatchPlanningLeadDetails() {
         <div className="flex items-center space-x-2">
           <div className="flex items-center gap-2">
             {/* Move to Under Installation Button + Tooltip Logic */}
-            {isPostDispatchSmallOrderLead && isSmallOrderRequestResolved ? (
-              <Button
-                size="sm"
-                disabled
-                variant="outline"
-                className="hidden sm:block border-emerald-200 bg-emerald-500/10 text-emerald-600"
-              >
-                {primaryActionCompletedLabel}
-              </Button>
-            ) : shouldDisableBlockedActions ? (
+            {shouldDisableBlockedActions ? (
               <CustomeTooltip
                 value={blockedTooltip}
-                truncateValue={
-                  <Button
-                    size="sm"
-                    disabled
-                    className="hidden sm:block"
-                  >
-                    {primaryActionLabel}
-                  </Button>
-                }
-              />
-            ) : isPostDispatchSmallOrderLead && !smallOrderRequestId ? (
-              <CustomeTooltip
-                value="Small order request record not found for this lead."
                 truncateValue={
                   <Button
                     size="sm"
@@ -501,31 +419,10 @@ export default function DispatchPlanningLeadDetails() {
                 Assign Task
               </DropdownMenuItem>
 
-              {isPostDispatchSmallOrderLead && isSmallOrderRequestResolved ? (
-                <DropdownMenuItem
-                  disabled
-                  className="sm:hidden"
-                >
-                  <Move size={20} />
-                  {primaryActionCompletedLabel}
-                </DropdownMenuItem>
-              ) : shouldDisableBlockedActions ? (
+              {shouldDisableBlockedActions ? (
                 // Lead block handling added for DropdownMenu action
                 <CustomeTooltip
                   value={blockedTooltip}
-                  truncateValue={
-                    <DropdownMenuItem
-                      disabled
-                      className="sm:hidden"
-                    >
-                      <Move size={20} />
-                      {primaryActionLabel}
-                    </DropdownMenuItem>
-                  }
-                />
-              ) : isPostDispatchSmallOrderLead && !smallOrderRequestId ? (
-                <CustomeTooltip
-                  value="Small order request record not found for this lead."
                   truncateValue={
                     <DropdownMenuItem
                       disabled
@@ -856,23 +753,10 @@ export default function DispatchPlanningLeadDetails() {
       <AlertDialog open={openMoveConfirm} onOpenChange={setOpenMoveConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {isPostDispatchSmallOrderLead
-                ? "Mark Small Order as Resolved?"
-                : "Move Lead to Under Installation?"}
-            </AlertDialogTitle>
+            <AlertDialogTitle>Move Lead to Under Installation?</AlertDialogTitle>
             <AlertDialogDescription>
-              {isPostDispatchSmallOrderLead ? (
-                <>
-                  This will mark the linked small order request as <b>resolved</b>.
-                  Do you wish to continue?
-                </>
-              ) : (
-                <>
-                  This will move the current lead from <b>Dispatch Planning</b> to
-                  the <b>Under Installation</b> stage. Do you wish to continue?
-                </>
-              )}
+              This will move the current lead from <b>Dispatch Planning</b> to
+              the <b>Under Installation</b> stage. Do you wish to continue?
             </AlertDialogDescription>
           </AlertDialogHeader>
 
@@ -880,13 +764,9 @@ export default function DispatchPlanningLeadDetails() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handlePrimaryActionConfirm}
-              disabled={moveMutation.isPending || markResolvedMutation.isPending}
+              disabled={moveMutation.isPending}
             >
-              {moveMutation.isPending || markResolvedMutation.isPending
-                ? isPostDispatchSmallOrderLead
-                  ? "Saving..."
-                  : "Moving..."
-                : "Confirm Move"}
+              {moveMutation.isPending ? "Moving..." : "Confirm Move"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
