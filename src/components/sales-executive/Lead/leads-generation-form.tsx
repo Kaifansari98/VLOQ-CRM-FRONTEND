@@ -31,7 +31,7 @@ import {
 import { PhoneInput } from "@/components/ui/phone-input";
 import { toastManager } from "@/components/ui/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createLead } from "@/api/leads";
+import { createLead, unshortenUrl } from "@/api/leads";
 import { useAppSelector } from "@/redux/store";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 
@@ -41,7 +41,7 @@ import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUse
 import TextAreaInput from "@/components/origin-text-area";
 import CustomeDatePicker from "@/components/date-picker";
 import MapPicker from "@/components/MapPicker";
-import { MapPin } from "lucide-react";
+import { MapPin, Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -137,7 +137,14 @@ const createFormSchema = (userType: string | undefined) => {
       .optional()
       .or(z.literal("")),
     site_type_id: z.string().min(1, "Please select a site type"),
-    site_address: z.string().min(1, "Site Address is required").max(2000),
+    site_address: z
+      .string()
+      .min(1, "Site Address is required")
+      .max(2000)
+      .refine(
+        (val) => !/^(https?:\/\/[^\s]+)/i.test(val.trim()),
+        { message: "Invalid link" }
+      ),
     source_id: z.string().min(1, "Please select a source"),
     product_types: z
       .array(z.string())
@@ -181,7 +188,14 @@ const draftFormSchema = (userType: string | undefined) => {
     alt_contact_no: z.string().optional().or(z.literal("")),
     email: z.string().optional().or(z.literal("")),
     site_type_id: z.string().optional().or(z.literal("")),
-    site_address: z.string().optional().or(z.literal("")),
+    site_address: z
+      .string()
+      .optional()
+      .or(z.literal(""))
+      .refine(
+        (val) => !val || !/^(https?:\/\/[^\s]+)/i.test(val.trim()),
+        { message: "Invalid link" }
+      ),
     source_id: z.string().optional().or(z.literal("")),
     product_types: z.array(z.string()).optional(),
     product_structures: z.array(z.string()).optional(),
@@ -254,6 +268,140 @@ export default function LeadsGenerationForm({
     lng: number;
     address: string;
   } | null>(null);
+  const [isResolvingAddress, setIsResolvingAddress] = useState(false);
+
+  const handleAddressChange = async (value: string, onChangeField: (v: string) => void) => {
+    onChangeField(value);
+    
+    const isUrl = /^(https?:\/\/[^\s]+)/i.test(value.trim());
+    if (!isUrl) {
+      form.clearErrors("site_address");
+      if (savedMapLocation) {
+        setSavedMapLocation((prev) =>
+          prev ? { ...prev, address: value } : prev
+        );
+      }
+      return;
+    }
+
+    const isGoogleMapsUrl = /^(https?:\/\/)?(www\.)?(google\.[a-z.]{2,6}\/maps|maps\.google\.[a-z.]{2,6}|maps\.app\.goo\.gl|goo\.gl\/maps|share\.google)/i.test(value.trim());
+    if (!isGoogleMapsUrl) {
+      form.setError("site_address", { type: "manual", message: "Invalid link" });
+      return;
+    }
+
+    setIsResolvingAddress(true);
+    form.clearErrors("site_address");
+
+    try {
+      let targetUrl = value.trim();
+      if (/maps\.app\.goo\.gl|goo\.gl\/maps|share\.google/i.test(targetUrl)) {
+        try {
+          targetUrl = await unshortenUrl(targetUrl);
+        } catch (e) {
+          form.setError("site_address", { type: "manual", message: "Invalid link" });
+          setIsResolvingAddress(false);
+          return;
+        }
+      }
+
+      let lat: number | null = null;
+      let lng: number | null = null;
+
+      const atMatch = targetUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+      const llMatch = targetUrl.match(/ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
+
+      if (atMatch) {
+        lat = parseFloat(atMatch[1]);
+        lng = parseFloat(atMatch[2]);
+      } else if (llMatch) {
+        lat = parseFloat(llMatch[1]);
+        lng = parseFloat(llMatch[2]);
+      }
+
+      let searchQuery: string | null = null;
+      const placeNameMatch = targetUrl.match(/\/place\/([^\/]+)/);
+      const qQueryMatch = targetUrl.match(/[?&]q=([^&]+)/);
+
+      if (placeNameMatch) {
+        const decoded = decodeURIComponent(placeNameMatch[1].replace(/\+/g, ' '));
+        if (!/^-?\d+\.\d+,-?\d+\.\d+$/.test(decoded.trim())) {
+          searchQuery = decoded;
+        }
+      }
+      if (!searchQuery && qQueryMatch) {
+        const decoded = decodeURIComponent(qQueryMatch[1].replace(/\+/g, ' '));
+        if (!/^-?\d+\.\d+,-?\d+\.\d+$/.test(decoded.trim())) {
+          searchQuery = decoded;
+        }
+      }
+
+      if (typeof window === "undefined" || !(window as any).google?.maps) {
+        form.setError("site_address", { type: "manual", message: "Maps API not loaded" });
+        setIsResolvingAddress(false);
+        return;
+      }
+
+      const geocoder = new (window as any).google.maps.Geocoder();
+
+      if (searchQuery) {
+        geocoder.geocode({ address: searchQuery }, (results: any, status: any) => {
+          if (form.getValues("site_address") !== value) {
+            setIsResolvingAddress(false);
+            return;
+          }
+          if (status === "OK" && results?.[0]) {
+            const address = results[0].formatted_address;
+            const location = results[0].geometry.location;
+            onChangeField(address);
+            setSavedMapLocation({ lat: location.lat(), lng: location.lng(), address });
+            form.clearErrors("site_address");
+            setIsResolvingAddress(false);
+          } else if (lat !== null && lng !== null) {
+            // Fallback to coordinates
+            geocoder.geocode({ location: { lat, lng } }, (res: any, st: any) => {
+              if (form.getValues("site_address") !== value) return;
+              if (st === "OK" && res?.[0]) {
+                const address = res[0].formatted_address;
+                onChangeField(address);
+                setSavedMapLocation({ lat, lng, address });
+                form.clearErrors("site_address");
+              } else {
+                form.setError("site_address", { type: "manual", message: "Invalid link" });
+              }
+              setIsResolvingAddress(false);
+            });
+          } else {
+            form.setError("site_address", { type: "manual", message: "Invalid link" });
+            setIsResolvingAddress(false);
+          }
+        });
+      } else if (lat !== null && lng !== null) {
+        geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
+          if (form.getValues("site_address") !== value) {
+            setIsResolvingAddress(false);
+            return;
+          }
+          if (status === "OK" && results?.[0]) {
+            const address = results[0].formatted_address;
+            onChangeField(address);
+            setSavedMapLocation({ lat, lng, address });
+            form.clearErrors("site_address");
+          } else {
+            form.setError("site_address", { type: "manual", message: "Invalid link" });
+          }
+          setIsResolvingAddress(false);
+        });
+      } else {
+        form.setError("site_address", { type: "manual", message: "Invalid link" });
+        setIsResolvingAddress(false);
+      }
+    } catch (error) {
+      form.setError("site_address", { type: "manual", message: "Invalid link" });
+      setIsResolvingAddress(false);
+    }
+  };
+
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type as string | undefined
   );
@@ -1220,21 +1368,22 @@ export default function LeadsGenerationForm({
               </div>
               <div className="flex gap-2">
                 <FormControl className="flex-1">
-                  <div className="w-full">
+                  <div className="w-full relative">
                     <TextAreaInput
                       value={field.value}
                       onChange={(value) => {
-                        field.onChange(value);
-
-                        // ✅ Preserve the lat/lng even if user edits text
-                        if (savedMapLocation) {
-                          setSavedMapLocation((prev) =>
-                            prev ? { ...prev, address: value } : prev
-                          );
-                        }
+                        handleAddressChange(value, field.onChange);
                       }}
                       placeholder="Enter address or use map"
+                      disabled={isResolvingAddress}
+                      className={isResolvingAddress ? "text-transparent" : ""}
                     />
+                    {isResolvingAddress && (
+                      <div className="absolute top-2 left-3 z-10 flex items-center gap-1.5 text-sm text-muted-foreground pointer-events-none">
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        <span>Resolving address...</span>
+                      </div>
+                    )}
                   </div>
                 </FormControl>
               </div>

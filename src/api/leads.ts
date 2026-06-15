@@ -1119,3 +1119,10 @@ export const useAllLeadDocuments = (
     staleTime: 2 * 60 * 1000,
   });
 };
+
+export const unshortenUrl = async (url: string): Promise<string> => {
+  const { data } = await apiClient.get<{ success: boolean; resolvedUrl: string }>(
+    `/leads/unshorten-url?url=${encodeURIComponent(url)}`
+  );
+  return data.resolvedUrl;
+};
