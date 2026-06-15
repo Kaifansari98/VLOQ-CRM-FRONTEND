@@ -992,59 +992,60 @@ export default function UnderInstallationLeadDetails() {
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
 
-          <div className="flex">
- {!underDetails?.actual_installation_start_date ? (
-  <CustomeTooltip
-    value={
-      shouldDisableBlockedActions
-        ? blockedTooltip
-        : !canStartInstallation
-          ? "You do not have permission to access this action."
-          : undefined
-    }
-    truncateValue={
-      <div className={shouldDisableBlockedActions || !canStartInstallation ? "opacity-60 cursor-not-allowed" : ""}>
-        <Button
-          size="sm"
-          disabled={
-            shouldDisableBlockedActions ||
-            !canStartInstallation
-          }
-          className={
-            shouldDisableBlockedActions || !canStartInstallation
-              ? "pointer-events-none"
-              : ""
-          }
-          onClick={() => {
-            if (
-              shouldDisableBlockedActions ||
-              !canStartInstallation
-            )
-              return;
+          {!isSmallOrderLead && (
+            <div className="flex">
+              {!underDetails?.actual_installation_start_date ? (
+                <CustomeTooltip
+                  value={
+                    shouldDisableBlockedActions
+                      ? blockedTooltip
+                      : !canStartInstallation
+                        ? "You do not have permission to access this action."
+                        : undefined
+                  }
+                  truncateValue={
+                    <div className={shouldDisableBlockedActions || !canStartInstallation ? "opacity-60 cursor-not-allowed" : ""}>
+                      <Button
+                        size="sm"
+                        disabled={
+                          shouldDisableBlockedActions ||
+                          !canStartInstallation
+                        }
+                        className={
+                          shouldDisableBlockedActions || !canStartInstallation
+                            ? "pointer-events-none"
+                            : ""
+                        }
+                        onClick={() => {
+                          if (
+                            shouldDisableBlockedActions ||
+                            !canStartInstallation
+                          )
+                            return;
 
-            setOpenStartModal(true);
-          }}
-        >
-          Start Installation
-        </Button>
-      </div>
-    }
-  />
-) : (
-              // Existing installation date display block (unchanged)
-              <div className="flex flex-col items-start">
-                <p className="text-xs font-semibold">Installation Started On</p>
-                <div className="flex justify-between gap-2 items-center bg-muted py-2 px-3 rounded-md ">
-                  <p className="text-sm">
-                    {formatInstallationDate(
-                      underDetails.actual_installation_start_date,
-                    )}
-                  </p>
-                  <CalendarOff size={16} />
+                          setOpenStartModal(true);
+                        }}
+                      >
+                        Start Installation
+                      </Button>
+                    </div>
+                  }
+                />
+              ) : (
+                <div className="flex flex-col items-start">
+                  <p className="text-xs font-semibold">Installation Started On</p>
+                  <div className="flex justify-between gap-2 items-center bg-muted py-2 px-3 rounded-md ">
+                    <p className="text-sm">
+                      {formatInstallationDate(
+                        underDetails.actual_installation_start_date,
+                      )}
+                    </p>
+                    <CalendarOff size={16} />
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* 🔹 Start Installation Button / Date Display */}
