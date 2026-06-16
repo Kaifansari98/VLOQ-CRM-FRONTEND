@@ -311,14 +311,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const isCrmEnabled = user?.vendor?.is_crm_enabled !== false;
   const isInventoryEnabled = user?.vendor?.is_inventory_enabled === true;
   const isTrackTraceEnabled = user?.vendor?.is_tracktrace_enabled === true;
-  const canSeeOverallLeads = userType === "admin" || userType === "super-admin";
-  const isSuperAdmin = userType === "super-admin";
+  const canSeeOverallLeads = userType === "admin" || userType === "super-admin" || userType === "auditor";
+  const isSuperAdmin = userType === "super-admin" || userType === "auditor";
   const isMasterAdmin = userType === "master-admin";
   const shouldBootstrapFranchise =
-    userType === "admin" || userType === "super-admin";
+    userType === "admin" || userType === "super-admin" || userType === "auditor";
   const canSeeMiscLeads =
     userType === "admin" ||
     userType === "super-admin" ||
+    userType === "auditor" ||
     userType === "backend" ||
     userType === "factory" ||
     userType === "site-supervisor";
@@ -393,7 +394,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       : withoutOverall;
 
     const adminOnlyItems =
-      userType === "admin" || userType === "super-admin"
+      userType === "admin" || userType === "super-admin" || userType === "auditor"
         ? baseItems
         : baseItems.filter(
             (item) =>

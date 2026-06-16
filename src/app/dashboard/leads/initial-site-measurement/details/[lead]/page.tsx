@@ -128,6 +128,7 @@ export default function SiteMeasurementLead() {
 
   const blockLeadMutation = useBlockLead();
   const unblockLeadMutation = useUnblockLead();
+  const isAuditor = userType?.trim().toLowerCase() === "auditor";
   const {
     isLeadBlocked,
     blockedTooltip,
@@ -259,17 +260,19 @@ export default function SiteMeasurementLead() {
   const canDelete = canDeleteLeadButton(userType);
   const canEdit = canEditLeadForSalesExecutiveButton(userType);
   const canViewPayment =
-    userType?.toLowerCase() === "custom"
+    isAuditor ||
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
         "leads.open_leads.details_of_lead.payment_information.enable_disable",
       )
-      : canViewPaymentTab(userType);
+      : canViewPaymentTab(userType));
   const canViewSiteHistory =
-    userType?.toLowerCase() === "custom"
+    isAuditor ||
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
         "leads.open_leads.details_of_lead.site_history.enable_disable",
       )
-      : canViewSiteHistoryTab(userType);
+      : canViewSiteHistoryTab(userType));
   const canViewChats =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
@@ -327,18 +330,21 @@ export default function SiteMeasurementLead() {
           </Breadcrumb>
         </div>
         <div className="flex items-center space-x-2">
-          <Button
-            size="sm"
-            className="hidden md:block"
-            onClick={() => setAssignOpen(true)}
-          >
-            Assign Task
-          </Button>
+          {!isAuditor && (
+            <Button
+              size="sm"
+              className="hidden md:block"
+              onClick={() => setAssignOpen(true)}
+            >
+              Assign Task
+            </Button>
+          )}
           <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
-          <NotificationBell />
+          {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          {!isAuditor && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
               <Button
                 size="icon"
                 variant="ghost"
@@ -519,6 +525,7 @@ export default function SiteMeasurementLead() {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+          )}
         </div>
       </header>
 
@@ -540,7 +547,7 @@ export default function SiteMeasurementLead() {
               <HouseIcon size={16} className="mr-1 opacity-60" />
               Lead Details
             </TabsTrigger>
-            {canAccessTodoTask &&
+            {!isAuditor && canAccessTodoTask &&
               (shouldDisableBlockedActions ? (
                 <CustomeTooltip
                   value={blockedTooltip}

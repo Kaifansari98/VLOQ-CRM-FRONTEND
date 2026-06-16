@@ -386,12 +386,10 @@ export function UniversalTable({
   title,
   description,
   enableAdminTabs = true,
-  enableOverallData = true,
   showStageColumn = false,
   defaultViewType = "my",
   type,
   dataMode = "universal",
-  activityStatus,
   pendingServicesOnly = false,
   showServicingColumn = false,
   initialProductionStatusFilter,
@@ -411,10 +409,13 @@ export function UniversalTable({
   const router = useRouter();
   const normalizedUserType = userType?.toLowerCase();
   const isAdmin =
-    normalizedUserType === "admin" || normalizedUserType === "super-admin";
+    normalizedUserType === "admin" ||
+    normalizedUserType === "super-admin" ||
+    normalizedUserType === "auditor";
   const shouldIncludeFranchise =
     normalizedUserType === "admin" ||
     normalizedUserType === "super-admin" ||
+    normalizedUserType === "auditor" ||
     normalizedUserType === "sales-executive" ||
     normalizedUserType === "head-site-supervisor";
   const normalizedType = String(type || "")

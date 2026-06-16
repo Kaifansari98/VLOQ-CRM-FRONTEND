@@ -108,6 +108,7 @@ export default function BookingStageLeadsDetails() {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
   );
+  const isAuditor = userType?.trim().toLowerCase() === "auditor";
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
@@ -200,17 +201,19 @@ export default function BookingStageLeadsDetails() {
   const canDelete = canDeleteLeadButton(userType);
   const canEdit = canEditLeadForSalesExecutiveButton(userType);
   const canViewPayment =
-    userType?.toLowerCase() === "custom"
+    isAuditor ||
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
         "leads.open_leads.details_of_lead.payment_information.enable_disable",
       )
-      : canViewPaymentTab(userType);
+      : canViewPaymentTab(userType));
   const canViewSiteHistory =
-    userType?.toLowerCase() === "custom"
+    isAuditor ||
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
         "leads.open_leads.details_of_lead.site_history.enable_disable",
       )
-      : canViewSiteHistoryTab(userType);
+      : canViewSiteHistoryTab(userType));
   const canViewChats =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
@@ -313,30 +316,33 @@ export default function BookingStageLeadsDetails() {
           </Breadcrumb>
         </div>
         <div className="flex items-center space-x-2">
-          {canAccessAssignTask ? (
-            <Button
-              className="hidden md:block"
-              size="sm"
-              onClick={() => setAssignOpen(true)}
-            >
-              Assign Task
-            </Button>
-          ) : (
-            <CustomeTooltip
-              truncateValue={
-                <Button className="hidden md:block" size="sm" disabled>
-                  Assign Task
-                </Button>
-              }
-              value="You don't have permission to assign Final Measurement tasks."
-            />
+          {!isAuditor && (
+            canAccessAssignTask ? (
+              <Button
+                className="hidden md:block"
+                size="sm"
+                onClick={() => setAssignOpen(true)}
+              >
+                Assign Task
+              </Button>
+            ) : (
+              <CustomeTooltip
+                truncateValue={
+                  <Button className="hidden md:block" size="sm" disabled>
+                    Assign Task
+                  </Button>
+                }
+                value="You don't have permission to assign Final Measurement tasks."
+              />
+            )
           )}
 
           <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
-          <NotificationBell />
+          {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          {!isAuditor && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
               <Button
                 size="icon"
                 variant="ghost"
@@ -474,6 +480,7 @@ export default function BookingStageLeadsDetails() {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+          )}
         </div>
       </header>
 
@@ -496,7 +503,7 @@ export default function BookingStageLeadsDetails() {
               <HouseIcon size={16} className="mr-1 opacity-60" />
               Lead Details
             </TabsTrigger>
-            {canAccessAssignTask && (
+            {!isAuditor && canAccessAssignTask && (
               <TabsTrigger value="projects">
                 <PencilLine size={16} className="mr-1 opacity-60" />
                 To-Do Task

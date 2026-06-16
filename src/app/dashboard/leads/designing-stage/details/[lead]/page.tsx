@@ -183,6 +183,7 @@ export default function DesigningStageLead() {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
   );
+  const isAuditor = userType?.trim().toLowerCase() === "auditor";
   const eligibleBookingDaysValue = useAppSelector(
     (state) => state.auth.user?.vendor?.eligible_booking_days ?? null,
   );
@@ -213,11 +214,12 @@ export default function DesigningStageLead() {
   const canMoveToBooking =
     countsData?.QuotationDoc > 0 && countsData?.DesignsDoc > 0;
   const canViewSiteHistory =
-    userType?.toLowerCase() === "custom"
+    isAuditor ||
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
         "leads.open_leads.details_of_lead.site_history.enable_disable",
       )
-      : canViewSiteHistoryTab(userType);
+      : canViewSiteHistoryTab(userType));
   const canPerformMoveToBooking =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
@@ -329,11 +331,12 @@ export default function DesigningStageLead() {
       ? customPrivilegeCodes.includes("leads.designing_stage.details.edit")
       : canEditLeadForSalesExecutiveButton(userType);
   const canViewPayment =
-    userType?.toLowerCase() === "custom"
+    isAuditor ||
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
         "leads.open_leads.details_of_lead.payment_information.enable_disable",
       )
-      : canViewPaymentTab(userType);
+      : canViewPaymentTab(userType));
   const canViewChats =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
@@ -508,47 +511,52 @@ export default function DesigningStageLead() {
           </Breadcrumb>
         </div>
         <div className="flex items-center space-x-2">
-          <div>
-            {/* Move to Booking */}
-            {!canMoveToBooking ||
-              isBookingLockedByEligibleDays ||
-              isLeadBlocked ? (
-              <div className="hidden md:block">
-                <CustomeTooltip
-                  truncateValue={
-                    <div className="flex items-center opacity-50 cursor-not-allowed px-2">
-                      <ClipboardCheck className="mr-2 h-4 w-4" />
-                      Move To Booking
-                    </div>
-                  }
-                  value={isLeadBlocked ? blockedTooltip : moveToBookingTooltip}
-                  contentClassName="max-w-80 text-left"
-                />
-              </div>
-            ) : (
-              <Button
-                size="sm"
-                className="hidden md:block"
-                onClick={() => setBookingOpenLead(true)}
-              >
-                Move To Booking
-              </Button>
-            )}
-          </div>
-          <Button
-            size="sm"
-            className="hidden lg:block"
-            onClick={() => setAssignOpen(true)}
-          >
-            Assign Task
-          </Button>
+          {!isAuditor && (
+            <div>
+              {/* Move to Booking */}
+              {!canMoveToBooking ||
+                isBookingLockedByEligibleDays ||
+                isLeadBlocked ? (
+                <div className="hidden md:block">
+                  <CustomeTooltip
+                    truncateValue={
+                      <div className="flex items-center opacity-50 cursor-not-allowed px-2">
+                        <ClipboardCheck className="mr-2 h-4 w-4" />
+                        Move To Booking
+                      </div>
+                    }
+                    value={isLeadBlocked ? blockedTooltip : moveToBookingTooltip}
+                    contentClassName="max-w-80 text-left"
+                  />
+                </div>
+              ) : (
+                <Button
+                  size="sm"
+                  className="hidden md:block"
+                  onClick={() => setBookingOpenLead(true)}
+                >
+                  Move To Booking
+                </Button>
+              )}
+            </div>
+          )}
+          {!isAuditor && (
+            <Button
+              size="sm"
+              className="hidden lg:block"
+              onClick={() => setAssignOpen(true)}
+            >
+              Assign Task
+            </Button>
+          )}
           <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
-          <NotificationBell />
+          {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
 
           {/* 🔹 Dropdown for actions */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          {!isAuditor && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
               <Button
                 size="icon"
                 variant="ghost"
@@ -732,6 +740,7 @@ export default function DesigningStageLead() {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+          )}
         </div>
       </header>
 
@@ -767,7 +776,7 @@ export default function DesigningStageLead() {
                   Lead Details
                 </TabsTrigger>
 
-                {canAccessTodoTab ? (
+                {!isAuditor && canAccessTodoTab ? (
                   isLeadBlocked ? (
                     <CustomeTooltip
                       truncateValue={
@@ -785,15 +794,21 @@ export default function DesigningStageLead() {
                     </TabsTrigger>
                   )
                 ) : (
-                  <CustomeTooltip
-                    truncateValue={
-                      <TabsTrigger value="todo" disabled>
-                        <PencilLine size={16} className="mr-1 opacity-60" />
-                        To-Do Task
-                      </TabsTrigger>
-                    }
-                    value="Only Sales Executive can access this tab"
-                  />
+                  !isAuditor && (
+                    <CustomeTooltip
+                      truncateValue={
+                        <TabsTrigger value="todo" disabled>
+                          <PencilLine size={16} className="mr-1 opacity-60" />
+                          To-Do Task
+                        </TabsTrigger>
+                      }
+                      value={
+                        lead?.is_draft
+                          ? "This action cannot be performed because the lead is still in Draft mode."
+                          : "You do not have permission to access the To-Do Task tab."
+                      }
+                    />
+                  )
                 )}
                 {canViewSiteHistory && (
                   <TabsTrigger value="history">
