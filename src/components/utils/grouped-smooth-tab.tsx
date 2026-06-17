@@ -350,22 +350,25 @@ export default function GroupedSmoothTab({
                       <TooltipProvider>
                         {items.map((item) => {
                           // 🔍 Role-based permission checks
+                          const isAuditor = userType?.toLowerCase() === "auditor";
                           const canViewOrderLogin =
-                            userType === "custom"
+                            isAuditor ||
+                            (userType === "custom"
                               ? customPrivilegeCodes.some((code) =>
                                 code.startsWith("production.order_login."),
                               )
                               : canViewToOrderLoginDetails(
                                 effectiveUserType ?? "",
-                              );
+                              ));
                           const canViewProduction =
-                            userType === "custom"
+                            isAuditor ||
+                            (userType === "custom"
                               ? customPrivilegeCodes.some((code) =>
                                 code.startsWith("production.production."),
                               )
                               : canViewAndWorkProductionDetails(
                                 effectiveUserType ?? "",
-                              );
+                              ));
                           const canViewReadyToDispatch =
                             userType === "custom"
                               ? customPrivilegeCodes.includes(

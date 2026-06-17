@@ -338,19 +338,22 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 
 
   const normalizedUserType = (userType || "").toLowerCase();
+  const isAuditor = normalizedUserType === "auditor";
   const canEditLeadDetailsForCustomUser = customPrivilegeCodes.includes(
     "leads.open_leads.details_of_lead.edit",
   );
   const canEditStructures =
-    normalizedUserType === "custom"
+    !isAuditor &&
+    (normalizedUserType === "custom"
       ? canEditLeadDetailsForCustomUser
-      : isBookingStage || ["admin", "super-admin"].includes(userType || "");
+      : isBookingStage || ["admin", "super-admin"].includes(userType || ""));
   const canEditProductType =
-    normalizedUserType === "custom"
+    !isAuditor &&
+    (normalizedUserType === "custom"
       ? canEditLeadDetailsForCustomUser
       : normalizedUserType === "admin" ||
       normalizedUserType === "super-admin" ||
-      (normalizedUserType === "sales-executive" && isBookingStage);
+      (normalizedUserType === "sales-executive" && isBookingStage));
   const currentProductTypeId =
     lead?.productMappings?.[0]?.product_type_id ||
     lead?.productMappings?.[0]?.productType?.id ||
@@ -470,13 +473,14 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   console.log("Lead Stage In Lead Details: ", leadStage);
 
   const canUploadSitePhotos =
-    normalizedUserType === "custom"
+    !isAuditor &&
+    (normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
         "leads.open_leads.details_of_lead.add_current_site_photos",
       )
       : userType === "admin" ||
       userType === "super-admin" ||
-      (userType === "sales-executive" && leadStage === "open");
+      (userType === "sales-executive" && leadStage === "open"));
 
   // ✅ 11. EVENT HANDLERS
   const handleOpenProductTypeEdit = () => {

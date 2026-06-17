@@ -184,14 +184,17 @@ const {
   };
 
   const isPreProd = userType?.toLowerCase() === "pre-prod";
+  const isAuditor = userType?.trim().toLowerCase() === "auditor";
   const effectiveUserType = userType === "admin" ? "sales-executive" : userType;
   const canDelete =
     !isPreProd &&
+    !isAuditor &&
     (userType === "super-admin" ||
       (userType === "factory" &&
         (leadStatusIns ?? leadStatus) === "production-stage"));
   const canViewAndWork =
     !isPreProd &&
+    !isAuditor &&
     canViewAndWorkProductionStage(effectiveUserType, leadStatusIns ?? leadStatus);
 const canUploadQcPhotos =
   !shouldDisableBlockedActions &&

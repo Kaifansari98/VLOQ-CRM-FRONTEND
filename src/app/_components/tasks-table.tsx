@@ -155,10 +155,12 @@ const MyTaskTable = () => {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type as string | undefined,
   );
+  const isAuditor = userType?.toLowerCase() === "auditor";
   const isAdminUser =
     userType?.toLowerCase() === "admin" ||
-    userType?.toLowerCase() === "super-admin";
-  const isSuperAdmin = userType?.toLowerCase() === "super-admin";
+    userType?.toLowerCase() === "super-admin" ||
+    isAuditor;
+  const isSuperAdmin = userType?.toLowerCase() === "super-admin" || isAuditor;
   const { data: franchises = [] } = useFranchisesByVendorId(
     vendorId ?? 0,
     !!vendorId && isSuperAdmin,
@@ -262,7 +264,7 @@ const MyTaskTable = () => {
   const [openPreProdCompleted, setOpenPreProdCompleted] = useState(false);
   const [openMiscTaskModal, setOpenMiscTaskModal] = useState(false);
 
-  const showScopeToggle = isAdminUser;
+  const showScopeToggle = isAdminUser && !isAuditor;
   const {
     data: selfAssignTaskTypes = [],
   } = useVendorSelfAssignTaskTypes(vendorId, !!vendorId);
@@ -446,9 +448,14 @@ const MyTaskTable = () => {
 
   // Set initial view scope
   useEffect(() => {
-    setViewScope("my");
-    setMyPagination((prev) => ({ ...prev, pageIndex: 0 }));
-  }, [isAdminUser]);
+    if (isAuditor) {
+      setViewScope("overall");
+      setOverallPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    } else {
+      setViewScope("my");
+      setMyPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    }
+  }, [isAdminUser, isAuditor]);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -457,6 +464,34 @@ const MyTaskTable = () => {
 
   const handleRowDoubleClick = useCallback(
     (row: ProcessedTask) => {
+      if (isAuditor) {
+        const opensModal = [
+          "Initial Site Measurement",
+          "BookingDone - ISM",
+          "Booking Done Approval",
+          "Order Login Approval",
+          "Dispatch Planning Approval",
+          "Approval Request",
+          "Small order request",
+          "Final Measurements",
+          "Follow Up",
+          "Pending Materials",
+          "Pending Work",
+          "Order Login Completed",
+          "Pre Prod Completed",
+        ].includes(row.taskType) ||
+        selfAssignTaskTypeNames.has(row.taskType) ||
+        (row.taskType === "Miscellaneous" && (row.remark || "").toLowerCase().includes("required delivery date"));
+
+        if (opensModal) {
+          toastManager.add({
+            title: "Auditors cannot perform actions on tasks.",
+            type: "error",
+          });
+          return;
+        }
+      }
+
       const isBlocked = row.is_blocked;
       const isFollowUpTask = row.taskType === "Follow Up";
 
@@ -639,7 +674,7 @@ const MyTaskTable = () => {
         console.log("follow up is under development");
       }
     },
-    [router, selfAssignTaskTypeNames],
+    [router, selfAssignTaskTypeNames, isAuditor],
   );
 
   // Process leads into table data

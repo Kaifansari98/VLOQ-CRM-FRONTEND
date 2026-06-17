@@ -125,6 +125,7 @@ export default function ClientApprovalLeadDetails() {
     (state) => state.customPrivileges.codes,
   );
   const effectiveUserType = userType;
+  const isAuditor = effectiveUserType?.trim().toLowerCase() === "auditor";
 
   const canAccessTechCheckWorkflow =
     userType === "custom"
@@ -442,17 +443,19 @@ export default function ClientApprovalLeadDetails() {
   const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
   const canEdit = canEditLeadButton(effectiveUserType ?? "");
   const canViewPayment =
-    effectiveUserType?.toLowerCase() === "custom"
+    isAuditor ||
+    (effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
         "leads.open_leads.details_of_lead.payment_information.enable_disable",
       )
-      : canViewPaymentTab(effectiveUserType ?? "");
+      : canViewPaymentTab(effectiveUserType ?? ""));
   const canViewSiteHistory =
-    effectiveUserType?.toLowerCase() === "custom"
+    isAuditor ||
+    (effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
         "leads.open_leads.details_of_lead.site_history.enable_disable",
       )
-      : canViewSiteHistoryTab(effectiveUserType ?? "");
+      : canViewSiteHistoryTab(effectiveUserType ?? ""));
   const canViewChats =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
@@ -562,13 +565,15 @@ export default function ClientApprovalLeadDetails() {
           </Breadcrumb>
         </div>
         <div className="flex w-full flex-wrap items-center justify-end gap-2 md:w-auto">
-          <Button
-            size="sm"
-            className="hidden md:block"
-            onClick={() => setAssignOpen(true)}
-          >
-            Assign Task
-          </Button>
+          {!isAuditor && (
+            <Button
+              size="sm"
+              className="hidden md:block"
+              onClick={() => setAssignOpen(true)}
+            >
+              Assign Task
+            </Button>
+          )}
 
           {/* ✅ Move To Order Login Button (Role & Status Based) */}
           <div className="hidden lg:flex">
@@ -648,23 +653,24 @@ export default function ClientApprovalLeadDetails() {
                 );
               })()}
           </div>
-          <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
-          <NotificationBell />
+          {!isAuditor && <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />}
+          {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="relative bg-accent p-1.5 rounded-sm"
-              >
-                <EllipsisVertical size={25} />
-              </Button>
-            </DropdownMenuTrigger>
+          {!isAuditor && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="relative bg-accent p-1.5 rounded-sm"
+                >
+                  <EllipsisVertical size={25} />
+                </Button>
+              </DropdownMenuTrigger>
 
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
                 className="md:hidden"
                 onClick={() => setAssignOpen(true)}
               >
@@ -841,6 +847,7 @@ export default function ClientApprovalLeadDetails() {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+          )}
         </div>
       </header>
       {/* Tabs */}
@@ -872,35 +879,35 @@ export default function ClientApprovalLeadDetails() {
                 Lead Details
               </TabsTrigger>
 
-              {canAccessTechCheckWorkflow ? (
-
-                shouldDisableBlockedActions ? (
+              {!isAuditor && (
+                canAccessTechCheckWorkflow ? (
+                  shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <TabsTrigger value="" disabled>
+                          <PencilLine size={16} className="mr-1 opacity-60" />
+                          To-Do Task
+                        </TabsTrigger>
+                      }
+                    />
+                  ) : (
+                    <TabsTrigger value="todo">
+                      <PencilLine size={16} className="mr-1 opacity-60" />
+                      To-Do Task
+                    </TabsTrigger>
+                  )
+                ) : (
                   <CustomeTooltip
-                    value={blockedTooltip}
                     truncateValue={
                       <TabsTrigger value="" disabled>
-                        <PencilLine size={16} className="mr-1 opacity-60" />
+                        <PencilLine size={16} />
                         To-Do Task
                       </TabsTrigger>
                     }
+                    value="You don’t have permission to access To-Do Tasks."
                   />
-                ) : (
-                  <TabsTrigger value="todo">
-                    <PencilLine size={16} className="mr-1 opacity-60" />
-                    To-Do Task
-                  </TabsTrigger>
                 )
-
-              ) : (
-                <CustomeTooltip
-                  truncateValue={
-                    <TabsTrigger value="" disabled>
-                      <PencilLine size={16} />
-                      To-Do Task
-                    </TabsTrigger>
-                  }
-                  value="You don’t have permission to access To-Do Tasks."
-                />
               )}
 
               {canViewSiteHistory && (
@@ -937,83 +944,87 @@ export default function ClientApprovalLeadDetails() {
           {/* ---------------- Actions ---------------- */}
           <div className="flex sm:flex-row gap-2 shrink-0">
             {/* Tech Check Workflow */}
-            {shouldDisableBlockedActions ? (
-              <CustomeTooltip
-                value={blockedTooltip}
-                truncateValue={
-                  <span>
-                    <Button disabled>
-                      Tech Check Workflow
-                    </Button>
-                  </span>
-                }
-              />
-            ) : canAccessTechCheckWorkflow ? (
-              <Button
-                onClick={() => setOpenRejectDocsModal(true)}
-              >
-                Tech Check Workflow
-              </Button>
-            ) : (
-              <CustomeTooltip
-                value="You don’t have permission to access Tech-Check Workflow."
-                truncateValue={
-                  <span>
-                    <Button disabled variant="outline">
-                      <Settings2 className="mr-1" size={16} />
-                      Tech-Check Workflow
-                    </Button>
-                  </span>
-                }
-              />
+            {!isAuditor && (
+              shouldDisableBlockedActions ? (
+                <CustomeTooltip
+                  value={blockedTooltip}
+                  truncateValue={
+                    <span>
+                      <Button disabled>
+                        Tech Check Workflow
+                      </Button>
+                    </span>
+                  }
+                />
+              ) : canAccessTechCheckWorkflow ? (
+                <Button
+                  onClick={() => setOpenRejectDocsModal(true)}
+                >
+                  Tech Check Workflow
+                </Button>
+              ) : (
+                <CustomeTooltip
+                  value="You don’t have permission to access Tech-Check Workflow."
+                  truncateValue={
+                    <span>
+                      <Button disabled variant="outline">
+                        <Settings2 className="mr-1" size={16} />
+                        Tech-Check Workflow
+                      </Button>
+                    </span>
+                  }
+                />
+              )
             )}
 
             {/* Upload Revised Docs */}
-            {shouldDisableBlockedActions ? (
-              <CustomeTooltip
-                value={blockedTooltip}
-                truncateValue={
-                  <span>
-                    <Button disabled className="w-max">
-                      <UploadIcon size={16} />
-                      Upload Revised Docs
-                    </Button>
-                  </span>
-                }
-              />
-            ) : !canAccessUploadRevisedDocs ? (
-              <CustomeTooltip
-                value="You don’t have permission to upload revised docs."
-                truncateValue={
-                  <span>
-                    <Button disabled className="w-max">
-                      <UploadIcon size={16} />
-                      Upload Revised Docs
-                    </Button>
-                  </span>
-                }
-              />
-            ) : !hasRejectedDocs ? (
-              <CustomeTooltip
-                value="No rejected client documentation found."
-                truncateValue={
-                  <span>
-                    <Button disabled className="w-max">
-                      <UploadIcon size={16} />
-                      Upload Revised Docs
-                    </Button>
-                  </span>
-                }
-              />
-            ) : (
-              <Button
-                onClick={() => setOpenUploadDocsModal(true)}
-                variant="outline"
-                className="w-max"
-              >
-                <UploadIcon size={16} />
-                Upload Revised Docs
-              </Button>
+            {!isAuditor && (
+              shouldDisableBlockedActions ? (
+                <CustomeTooltip
+                  value={blockedTooltip}
+                  truncateValue={
+                    <span>
+                      <Button disabled className="w-max">
+                        <UploadIcon size={16} />
+                        Upload Revised Docs
+                      </Button>
+                    </span>
+                  }
+                />
+              ) : !canAccessUploadRevisedDocs ? (
+                <CustomeTooltip
+                  value="You don’t have permission to upload revised docs."
+                  truncateValue={
+                    <span>
+                      <Button disabled className="w-max">
+                        <UploadIcon size={16} />
+                        Upload Revised Docs
+                      </Button>
+                    </span>
+                  }
+                />
+              ) : !hasRejectedDocs ? (
+                <CustomeTooltip
+                  value="No rejected client documentation found."
+                  truncateValue={
+                    <span>
+                      <Button disabled className="w-max">
+                        <UploadIcon size={16} />
+                        Upload Revised Docs
+                      </Button>
+                    </span>
+                  }
+                />
+              ) : (
+                <Button
+                  onClick={() => setOpenUploadDocsModal(true)}
+                  variant="outline"
+                  className="w-max"
+                >
+                  <UploadIcon size={16} />
+                  Upload Revised Docs
+                </Button>
+              )
             )}
           </div>
         </div>

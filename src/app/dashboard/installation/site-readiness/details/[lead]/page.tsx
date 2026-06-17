@@ -107,6 +107,7 @@ export default function ReadyToDispatchLeadDetails() {
     (state) => state.customPrivileges.codes,
   );
   const effectiveUserType = userType;
+  const isAuditor = userType?.trim().toLowerCase() === "auditor";
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -179,17 +180,21 @@ export default function ReadyToDispatchLeadDetails() {
   const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
   const canEdit = canEditLeadButton(effectiveUserType ?? "");
   const canViewPayment =
-    effectiveUserType?.toLowerCase() === "custom"
-      ? customPrivilegeCodes.includes(
-        "leads.open_leads.details_of_lead.payment_information.enable_disable",
-      )
-      : canViewPaymentTab(effectiveUserType ?? "");
+    isAuditor || (
+      effectiveUserType?.toLowerCase() === "custom"
+        ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.payment_information.enable_disable",
+        )
+        : canViewPaymentTab(effectiveUserType ?? "")
+    );
   const canViewSiteHistory =
-    effectiveUserType?.toLowerCase() === "custom"
-      ? customPrivilegeCodes.includes(
-        "leads.open_leads.details_of_lead.site_history.enable_disable",
-      )
-      : canViewSiteHistoryTab(effectiveUserType ?? "");
+    isAuditor || (
+      effectiveUserType?.toLowerCase() === "custom"
+        ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.site_history.enable_disable",
+        )
+        : canViewSiteHistoryTab(effectiveUserType ?? "")
+    );
   const canViewChats =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
@@ -203,11 +208,13 @@ export default function ReadyToDispatchLeadDetails() {
       )
       : true;
   const canShowTodoTab =
-    effectiveUserType?.toLowerCase() === "custom"
-      ? customPrivilegeCodes.some((code) =>
-        code.startsWith("installation.site_readiness."),
-      )
-      : canDoSR(effectiveUserType ?? "");
+    !isAuditor && (
+      effectiveUserType?.toLowerCase() === "custom"
+        ? customPrivilegeCodes.some((code) =>
+          code.startsWith("installation.site_readiness."),
+        )
+        : canDoSR(effectiveUserType ?? "")
+    );
 
   const handleMoveToDispatch = async () => {
     try {
@@ -360,224 +367,232 @@ export default function ReadyToDispatchLeadDetails() {
         </div>
 
         <div className="flex items-center space-x-2">
-          {shouldDisableBlockedActions ? (
-            <CustomeTooltip
-              value={blockedTooltip}
-              truncateValue={
-                <span>
+          {!isAuditor && (
+            shouldDisableBlockedActions ? (
+              <CustomeTooltip
+                value={blockedTooltip}
+                truncateValue={
+                  <span>
+                    <Button
+                      size="sm"
+                      disabled
+                      className="hidden sm:flex"
+                    >
+                      <Truck size={16} />
+                      Move to Dispatch Planning
+                    </Button>
+                  </span>
+                }
+              />
+            ) : isCompleted && canMoveToDispatchPlanning ? (
+              <Button
+                size="sm"
+                variant="default"
+                className="hidden sm:flex"
+                onClick={() => setOpenMoveConfirm(true)}
+                disabled={moveToDispatchMutation.isPending}
+              >
+                <Truck size={16} />
+                Move to Dispatch Planning
+              </Button>
+            ) : (
+              <CustomeTooltip
+                truncateValue={
                   <Button
                     size="sm"
                     disabled
+                    variant="outline"
                     className="hidden sm:flex"
                   >
-                    <Truck size={16} />
                     Move to Dispatch Planning
                   </Button>
-                </span>
-              }
-            />
-          ) : isCompleted && canMoveToDispatchPlanning ? (
-            <Button
-              size="sm"
-              variant="default"
-              className="hidden sm:flex"
-              onClick={() => setOpenMoveConfirm(true)}
-              disabled={moveToDispatchMutation.isPending}
-            >
-              <Truck size={16} />
-              Move to Dispatch Planning
-            </Button>
-          ) : (
-            <CustomeTooltip
-              truncateValue={
-                <Button
-                  size="sm"
-                  disabled
-                  variant="outline"
-                  className="hidden sm:flex"
-                >
-                  Move to Dispatch Planning
-                </Button>
-              }
-              value={
-                !isCompleted
-                  ? "Complete all 6 Site Readiness items and upload at least one current site photo to enable this action."
-                  : "You do not have permission to move this lead to Dispatch Planning."
-              }
-            />
+                }
+                value={
+                  !isCompleted
+                    ? "Complete all 6 Site Readiness items and upload at least one current site photo to enable this action."
+                    : "You do not have permission to move this lead to Dispatch Planning."
+                }
+              />
+            )
           )}
 
           {/* Assign Task Button */}
-          <Button
-            size="sm"
-            className="hidden lg:flex"
-            onClick={() => setAssignOpen(true)}
-          >
-            Assign Task
-          </Button>
+          {!isAuditor && (
+            <Button
+              size="sm"
+              className="hidden lg:flex"
+              onClick={() => setAssignOpen(true)}
+            >
+              Assign Task
+            </Button>
+          )}
 
-          <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
-          <NotificationBell />
+        
+            <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
+      
+          {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="relative bg-accent p-1.5 rounded-sm"
-              >
-                <EllipsisVertical size={25} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem className="lg:hidden">
-                <UserPlus size={20} />
-                Assign Task
-              </DropdownMenuItem>
-
-              {shouldDisableBlockedActions ? (
-                // Lead block handling added for DropdownMenu action
-                <CustomeTooltip
-                  value={blockedTooltip}
-                  truncateValue={
-                    <DropdownMenuItem className="sm:hidden" disabled>
-                      <Truck size={16} />
-                      Move to Dispatch Planning
-                    </DropdownMenuItem>
-                  }
-                />
-              ) : isCompleted && canMoveToDispatchPlanning ? (
-                <DropdownMenuItem
-                  className="sm:hidden"
-                  onClick={() => setOpenMoveConfirm(true)}
+          {!isAuditor && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="relative bg-accent p-1.5 rounded-sm"
                 >
-                  <Truck size={16} />
-                  Move to Dispatch Planning
+                  <EllipsisVertical size={25} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem className="lg:hidden">
+                  <UserPlus size={20} />
+                  Assign Task
                 </DropdownMenuItem>
-              ) : (
-                <CustomeTooltip
-                  truncateValue={
-                    <DropdownMenuItem className="sm:hidden" disabled>
-                      <Truck size={16} />
-                      Move to Dispatch Planning
-                    </DropdownMenuItem>
-                  }
-                  value={
-                    !isCompleted
-                      ? "Complete all 6 Site Readiness items and upload at least one current site photo to enable this action."
-                      : "You do not have permission to move this lead to Dispatch Planning."
-                  }
-                />
-              )}
-              {/* Lead block handling added for DropdownMenu action */}
-              {shouldDisableBlockedActions ? (
-                <CustomeTooltip
-                  value={blockedTooltip}
-                  truncateValue={
-                    <DropdownMenuItem disabled>
-                      <Clock className=" h-4 w-4" />
-                      Mark On Hold
-                    </DropdownMenuItem>
-                  }
-                />
-              ) : (
-                <DropdownMenuItem
-                  onSelect={() => {
-                    setActivityType("onHold");
-                    setActivityModalOpen(true);
-                  }}
-                >
-                  <Clock className=" h-4 w-4" />
-                  Mark On Hold
-                </DropdownMenuItem>
-              )}
 
-              {canEdit && (
-                // Lead block handling added for DropdownMenu action
-                shouldDisableBlockedActions ? (
+                {shouldDisableBlockedActions ? (
+                  // Lead block handling added for DropdownMenu action
                   <CustomeTooltip
                     value={blockedTooltip}
                     truncateValue={
-                      <DropdownMenuItem disabled>
-                        <SquarePen size={20} />
-                        Edit
+                      <DropdownMenuItem className="sm:hidden" disabled>
+                        <Truck size={16} />
+                        Move to Dispatch Planning
                       </DropdownMenuItem>
                     }
                   />
-                ) : (
-                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                    <SquarePen size={20} />
-                    Edit
-                  </DropdownMenuItem>
-                )
-              )}
-
-              {canReassign && (
-                // Lead block handling added for DropdownMenu action
-                shouldDisableBlockedActions ? (
-                  <CustomeTooltip
-                    value={blockedTooltip}
-                    truncateValue={
-                      <DropdownMenuItem disabled>
-                        <Users size={20} />
-                        Reassign Lead
-                      </DropdownMenuItem>
-                    }
-                  />
-                ) : (
-                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                    <Users size={20} />
-                    Reassign Lead
-                  </DropdownMenuItem>
-                )
-              )}
-
-
-              {userType === "super-admin" && (
-                <>
-
+                ) : isCompleted && canMoveToDispatchPlanning ? (
                   <DropdownMenuItem
-                    onClick={() => setOpenBlockConfirm(true)}
+                    className="sm:hidden"
+                    onClick={() => setOpenMoveConfirm(true)}
                   >
-                    {isLeadBlocked ? (
-                      <>
-                        <LockOpen size={16} />
-                        Unblock Lead
-                      </>
-                    ) : (
-                      <>
-                        <Lock size={16} />
-                        Block Lead
-                      </>
-                    )}
+                    <Truck size={16} />
+                    Move to Dispatch Planning
                   </DropdownMenuItem>
-                </>
-              )}
-              {canDelete && (
-                <>
-                  <DropdownMenuSeparator />
-                  {/* Lead block handling added for DropdownMenu action */}
-                  {shouldDisableBlockedActions ? (
+                ) : (
+                  <CustomeTooltip
+                    truncateValue={
+                      <DropdownMenuItem className="sm:hidden" disabled>
+                        <Truck size={16} />
+                        Move to Dispatch Planning
+                      </DropdownMenuItem>
+                    }
+                    value={
+                      !isCompleted
+                        ? "Complete all 6 Site Readiness items and upload at least one current site photo to enable this action."
+                        : "You do not have permission to move this lead to Dispatch Planning."
+                    }
+                  />
+                )}
+                {/* Lead block handling added for DropdownMenu action */}
+                {shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <Clock className=" h-4 w-4" />
+                        Mark On Hold
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setActivityType("onHold");
+                      setActivityModalOpen(true);
+                    }}
+                  >
+                    <Clock className=" h-4 w-4" />
+                    Mark On Hold
+                  </DropdownMenuItem>
+                )}
+
+                {canEdit && (
+                  // Lead block handling added for DropdownMenu action
+                  shouldDisableBlockedActions ? (
                     <CustomeTooltip
                       value={blockedTooltip}
                       truncateValue={
                         <DropdownMenuItem disabled>
-                          <XCircle size={20} className="text-red-500" />
-                          Delete
+                          <SquarePen size={20} />
+                          Edit
                         </DropdownMenuItem>
                       }
                     />
                   ) : (
-                    <DropdownMenuItem onClick={() => setOpenDelete(true)}>
-                      <XCircle size={20} className="text-red-500" />
-                      Delete
+                    <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                      <SquarePen size={20} />
+                      Edit
                     </DropdownMenuItem>
-                  )}
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                  )
+                )}
+
+                {canReassign && (
+                  // Lead block handling added for DropdownMenu action
+                  shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <Users size={20} />
+                          Reassign Lead
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                      <Users size={20} />
+                      Reassign Lead
+                    </DropdownMenuItem>
+                  )
+                )}
+
+
+                {userType === "super-admin" && (
+                  <>
+
+                    <DropdownMenuItem
+                      onClick={() => setOpenBlockConfirm(true)}
+                    >
+                      {isLeadBlocked ? (
+                        <>
+                          <LockOpen size={16} />
+                          Unblock Lead
+                        </>
+                      ) : (
+                        <>
+                          <Lock size={16} />
+                          Block Lead
+                        </>
+                      )}
+                    </DropdownMenuItem>
+                  </>
+                )}
+                {canDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    {/* Lead block handling added for DropdownMenu action */}
+                    {shouldDisableBlockedActions ? (
+                      <CustomeTooltip
+                        value={blockedTooltip}
+                        truncateValue={
+                          <DropdownMenuItem disabled>
+                            <XCircle size={20} className="text-red-500" />
+                            Delete
+                          </DropdownMenuItem>
+                        }
+                      />
+                    ) : (
+                      <DropdownMenuItem onClick={() => setOpenDelete(true)}>
+                        <XCircle size={20} className="text-red-500" />
+                        Delete
+                      </DropdownMenuItem>
+                    )}
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </header>
 
@@ -596,25 +611,27 @@ export default function ReadyToDispatchLeadDetails() {
             </TabsTrigger>
 
             {/* ✅ To-Do Task (Conditional Access) */}
-            {canShowTodoTab ? (
-              <TabsTrigger value="todo">
-                <PencilLine size={16} className="mr-1 opacity-60" />
-                To-Do Task
-              </TabsTrigger>
-            ) : (
-              <CustomeTooltip
-                truncateValue={
-                  <TabsTrigger value="todo" disabled>
-                    <PencilLine size={16} className="mr-1 opacity-60" />
-                    To-Do Task
-                  </TabsTrigger>
-                }
-                value={
-                  effectiveUserType?.toLowerCase() === "custom"
-                    ? "You don’t have permission to access To-Do Tasks."
-                    : "Only Admin or Site Supervisor can access this tab"
-                }
-              />
+            {!isAuditor && (
+              canShowTodoTab ? (
+                <TabsTrigger value="todo">
+                  <PencilLine size={16} className="mr-1 opacity-60" />
+                  To-Do Task
+                </TabsTrigger>
+              ) : (
+                <CustomeTooltip
+                  truncateValue={
+                    <TabsTrigger value="todo" disabled>
+                      <PencilLine size={16} className="mr-1 opacity-60" />
+                      To-Do Task
+                    </TabsTrigger>
+                  }
+                  value={
+                    effectiveUserType?.toLowerCase() === "custom"
+                      ? "You don’t have permission to access To-Do Tasks."
+                      : "Only Admin or Site Supervisor can access this tab"
+                  }
+                />
+              )
             )}
 
             {/* ✅ Site History */}

@@ -46,7 +46,7 @@ export default function DashboardWrapper() {
     );
   }
 
-  if (normalizedUserType === "super-admin") {
+  if (normalizedUserType === "super-admin" || normalizedUserType === "auditor") {
     return (
       <FadeInProvider>
         <SuperAdminDashboard />

@@ -71,6 +71,7 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const normalizedUserType = (userType || "").toLowerCase();
   const isCustomUser = normalizedUserType === "custom";
+  const isAuditor = normalizedUserType === "auditor";
   const canCompleteService = isCustomUser
     ? customPrivilegeCodes.includes(
       "installation.servicing.service_actions.mark_as_complete",
@@ -108,15 +109,18 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
   );
   const canSetAmcNo = ["admin", "super-admin"].includes(normalizedUserType);
   const canToggleAmc =
+    !isAuditor &&
     !updateAmcOptedMutation.isPending &&
     ((!isAmcOpted && canSetAmcYes) || (isAmcOpted && canSetAmcNo));
-  const amcDisabledReason = !["site-supervisor", "admin", "super-admin"].includes(
-    normalizedUserType,
-  )
-    ? "Only site-supervisor, admin, and super-admin can update AMC status."
-    : isAmcOpted && !canSetAmcNo
-      ? "Only admin and super-admin can mark AMC back to No."
-      : undefined;
+  const amcDisabledReason = isAuditor
+    ? "Auditor cannot update AMC status."
+    : !["site-supervisor", "admin", "super-admin"].includes(
+      normalizedUserType,
+    )
+      ? "Only site-supervisor, admin, and super-admin can update AMC status."
+      : isAmcOpted && !canSetAmcNo
+        ? "Only admin and super-admin can mark AMC back to No."
+        : undefined;
 
   const formatAmcDateTime = (dateString?: string) => {
     if (!dateString) return "";
@@ -242,10 +246,12 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
                   <Checkbox
                     checked={isAmcOpted}
                     disabled={
+                      isAuditor ||
                       shouldDisableBlockedActions ||
                       !canToggleAmc
                     }
                     onCheckedChange={() => {
+                      if (isAuditor) return;
                       if (shouldDisableBlockedActions) return;
                       if (!canToggleAmc) return;
 
@@ -258,7 +264,7 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
               <div className="space-y-1">
                 <label
                   htmlFor="is-amc-opted-servicing"
-                  className={`text-sm ${canToggleAmc
+                  className={`text-sm ${canToggleAmc && !isAuditor
                       ? "cursor-pointer"
                       : "cursor-not-allowed opacity-70"
                     }`}
@@ -270,7 +276,7 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
                     {formatAmcDateTime(amcOptedAt)}
                   </p>
                 )}
-                {!canToggleAmc && amcDisabledReason && (
+                {(!canToggleAmc || isAuditor) && amcDisabledReason && (
                   <p className="text-xs text-muted-foreground">
                     {amcDisabledReason}
                   </p>
@@ -279,7 +285,7 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
             </div>
           ) : null}
 
-          {canCompleteService ? (
+          {!isAuditor && canCompleteService ? (
             <div className="flex items-center justify-between gap-3 rounded-xl border p-3">
               <div className="flex flex-col gap-1">
                 <span className="text-base font-semibold">Mark as Complete</span>
@@ -327,81 +333,82 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
             </div>
           ) : null}
 
-{canRescheduleService ? (
-  <div className="flex items-center justify-between gap-3 rounded-xl border p-3">
-    <div className="flex flex-col gap-1">
-      <span className="text-base font-semibold">
-        Mark as Reschedule
-      </span>
-      <p className="text-sm text-muted-foreground">
-        Move this servicing visit to the next month on the same date.
-      </p>
-    </div>
+          {!isAuditor && canRescheduleService ? (
+            <div className="flex items-center justify-between gap-3 rounded-xl border p-3">
+              <div className="flex flex-col gap-1">
+                <span className="text-base font-semibold">
+                  Mark as Reschedule
+                </span>
+                <p className="text-sm text-muted-foreground">
+                  Move this servicing visit to the next month on the same date.
+                </p>
+              </div>
 
-    {shouldDisableBlockedActions ? (
-      <div className="shrink-0">
-        <CustomeTooltip
-          value={blockedTooltip}
-          truncateValue={
-            <Button
-              className="w-28"
-              variant="outline"
-              disabled
-            >
-              Reschedule
-            </Button>
-          }
-        />
-      </div>
-    ) : isRejectedService ? (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span tabIndex={0}>
-            <Button
-              className="w-28"
-              variant="outline"
-              disabled
-            >
-              Reschedule
-            </Button>
-          </span>
-        </TooltipTrigger>
-        <TooltipContent side="top">
-          {rejectedTooltipMessage}
-        </TooltipContent>
-      </Tooltip>
-    ) : isRescheduled ? (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span tabIndex={0}>
-            <Button
-              className="w-28"
-              variant="outline"
-              disabled
-            >
-              Reschedule
-            </Button>
-          </span>
-        </TooltipTrigger>
-        <TooltipContent side="top">
-          This service has been already rescheduled.
-        </TooltipContent>
-      </Tooltip>
-    ) : (
-      <div className="shrink-0">
-        <Button
-          className="w-28"
-          variant="outline"
-          disabled={rescheduleMutation.isPending}
-          onClick={() => setOpenRescheduleConfirm(true)}
-        >
-          Reschedule
-        </Button>
-      </div>
-    )}
-  </div>
-) : null}
-          {canRejectService && !isRejectedService ? (
+              {shouldDisableBlockedActions ? (
+                <div className="shrink-0">
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <Button
+                        className="w-28"
+                        variant="outline"
+                        disabled
+                      >
+                        Reschedule
+                      </Button>
+                    }
+                  />
+                </div>
+              ) : isRejectedService ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span tabIndex={0}>
+                      <Button
+                        className="w-28"
+                        variant="outline"
+                        disabled
+                      >
+                        Reschedule
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    {rejectedTooltipMessage}
+                  </TooltipContent>
+                </Tooltip>
+              ) : isRescheduled ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span tabIndex={0}>
+                      <Button
+                        className="w-28"
+                        variant="outline"
+                        disabled
+                      >
+                        Reschedule
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    This service has been already rescheduled.
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <div className="shrink-0">
+                  <Button
+                    className="w-28"
+                    variant="outline"
+                    disabled={rescheduleMutation.isPending}
+                    onClick={() => setOpenRescheduleConfirm(true)}
+                  >
+                    Reschedule
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : null}
+
+          {!isAuditor && canRejectService && !isRejectedService ? (
             <div className="space-y-4 rounded-xl border p-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex flex-col gap-1">
@@ -445,7 +452,7 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
             </div>
           ) : null}
 
-          {isRejectedService && canReopenRejected ? (
+          {!isAuditor && isRejectedService && canReopenRejected ? (
             <div className="flex items-center justify-between gap-3 rounded-xl border p-3">
               <div className="flex flex-col gap-1">
                 <span className="text-base font-semibold">Mark as Open</span>

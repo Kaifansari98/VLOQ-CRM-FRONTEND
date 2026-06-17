@@ -196,10 +196,12 @@ export default function ProductionFilesSection({
   // ✅ Permission logic for delete
   console.log("UserType: ", userType);
   console.log("Lead Status data with istance id ", data);
+  const isAuditor = userType?.trim().toLowerCase() === "auditor";
   const effectiveStage =
     data?.derived_stage ?? leadStatusData?.status ?? "";
   const canManageProductionFiles =
     !readOnly &&
+    !isAuditor &&
     canUploadOrDeleteOrderLogin(userType ?? "", effectiveStage);
   const canUploadProductionFiles =
     !shouldDisableBlockedActions &&
@@ -328,6 +330,7 @@ export default function ProductionFilesSection({
               value={remark}
               onChange={setRemark}
               maxLength={500}
+              disabled={!canUploadProductionFiles}
               placeholder="Add any notes related to production files..."
               className="h-[130px] bg-muted/20 rounded-lg"
             />

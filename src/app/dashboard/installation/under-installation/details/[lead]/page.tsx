@@ -120,6 +120,7 @@ export default function UnderInstallationLeadDetails() {
     (state) => state.customPrivileges.codes,
   );
   const effectiveUserType = userType;
+  const isAuditor = userType?.trim().toLowerCase() === "auditor";
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const { data: underDetails } = useUnderInstallationDetails(
@@ -181,11 +182,13 @@ export default function UnderInstallationLeadDetails() {
   ].includes(normalizedEffectiveUserType);
   const deleteLeadMutation = useDeleteLead();
   const canAccessTodoTab =
-    effectiveUserType?.toLowerCase() === "custom"
-      ? customPrivilegeCodes.some((code) =>
-        code.startsWith("installation.under_installation."),
-      )
-      : canAccessTodoTaskTabUnderInstallationStage(effectiveUserType ?? "");
+    !isAuditor && (
+      effectiveUserType?.toLowerCase() === "custom"
+        ? customPrivilegeCodes.some((code) =>
+          code.startsWith("installation.under_installation."),
+        )
+        : canAccessTodoTaskTabUnderInstallationStage(effectiveUserType ?? "")
+    );
   const canStartInstallation =
     effectiveUserType === "custom"
       ? customPrivilegeCodes.includes(
@@ -205,17 +208,21 @@ export default function UnderInstallationLeadDetails() {
       )
       : true;
   const canViewPayment =
-    effectiveUserType?.toLowerCase() === "custom"
-      ? customPrivilegeCodes.includes(
-        "leads.open_leads.details_of_lead.payment_information.enable_disable",
-      )
-      : canViewPaymentTab(effectiveUserType ?? "");
+    isAuditor || (
+      effectiveUserType?.toLowerCase() === "custom"
+        ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.payment_information.enable_disable",
+        )
+        : canViewPaymentTab(effectiveUserType ?? "")
+    );
   const canViewSiteHistory =
-    effectiveUserType?.toLowerCase() === "custom"
-      ? customPrivilegeCodes.includes(
-        "leads.open_leads.details_of_lead.site_history.enable_disable",
-      )
-      : canViewSiteHistoryTab(effectiveUserType ?? "");
+    isAuditor || (
+      effectiveUserType?.toLowerCase() === "custom"
+        ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.site_history.enable_disable",
+        )
+        : canViewSiteHistoryTab(effectiveUserType ?? "")
+    );
   const canViewChats =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
@@ -487,18 +494,20 @@ export default function UnderInstallationLeadDetails() {
 
         {/* 🔹 Header Actions */}
         <div className="flex items-center space-x-2">
-          <Button
-            size="sm"
-            className="hidden sm:flex"
-            onClick={() => setAssignOpen(true)}
-          >
-            Assign Task
-          </Button>
+          {!isAuditor && (
+            <Button
+              size="sm"
+              className="hidden sm:flex"
+              onClick={() => setAssignOpen(true)}
+            >
+              Assign Task
+            </Button>
+          )}
 
           {/* ───────────────────────────────────────────── */}
           {/*  MOVE TO FINAL HANDOVER BUTTON WITH CONDITIONS */}
           {/* ───────────────────────────────────────────── */}
-          {canMoveToFinalHandover &&
+          {!isAuditor && canMoveToFinalHandover &&
             (isSmallOrderLead && isSmallOrderRequestResolved ? (
               <Button
                 variant="outline"
@@ -658,134 +667,135 @@ export default function UnderInstallationLeadDetails() {
             ))}
 
           <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
-          <NotificationBell />
+          {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="relative bg-accent p-1.5 rounded-sm"
-              >
-                <EllipsisVertical size={25} />
-              </Button>
-            </DropdownMenuTrigger>
+          {!isAuditor && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="relative bg-accent p-1.5 rounded-sm"
+                >
+                  <EllipsisVertical size={25} />
+                </Button>
+              </DropdownMenuTrigger>
 
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                className="sm:hidden"
-                onClick={() => setAssignOpen(true)}
-              >
-                <Handshake size={20} />
-                Assign Task
-              </DropdownMenuItem>
-              {canMoveToFinalHandover &&
-                (isSmallOrderLead && isSmallOrderRequestResolved ? (
-                  <DropdownMenuItem className="sm:hidden" disabled>
-                    <Handshake size={20} />
-                    {primaryActionCompletedLabel}
-                  </DropdownMenuItem>
-                ) : shouldDisableBlockedActions ? (
-                  // Lead block handling added for DropdownMenu action
-                  <CustomeTooltip
-                    truncateValue={
-                      <DropdownMenuItem className="sm:hidden" disabled>
-                        <Handshake size={20} />
-                        {primaryActionLabel}
-                      </DropdownMenuItem>
-                    }
-                    value={blockedTooltip}
-                  />
-                ) : !underDetails?.actual_installation_start_date ? (
-                  // 1️⃣ Installation NOT started → block
-                  <CustomeTooltip
-                    truncateValue={
-                      <DropdownMenuItem className="sm:hidden" disabled>
-                        <Handshake size={20} />
-                        {primaryActionLabel}
-                      </DropdownMenuItem>
-                    }
-                    value={`Start Installation first to ${primaryActionLabel.toLowerCase()}.`}
-                  />
-                ) : isLoadingUsableHandover ? (
-                  <CustomeTooltip
-                    truncateValue={
-                      <DropdownMenuItem className="sm:hidden" disabled>
-                        <Handshake size={20} />
-                        {primaryActionLabel}
-                      </DropdownMenuItem>
-                    }
-                    value="Checking usable handover completion status..."
-                  />
-                ) : !isUsableHandoverCompleted ? (
-                  <CustomeTooltip
-                    truncateValue={
-                      <DropdownMenuItem className="sm:hidden" disabled>
-                        <Handshake size={20} />
-                        {primaryActionLabel}
-                      </DropdownMenuItem>
-                    }
-                    value={`Mark Usable Handover as completed before ${primaryActionLabel.toLowerCase()}.`}
-                  />
-                ) : isLoadingMisc ? (
-                  // 2️⃣ Checking misc status → block
-                  <CustomeTooltip
-                    truncateValue={
-                      <DropdownMenuItem className="sm:hidden" disabled>
-                        <Handshake size={20} />
-                        {primaryActionLabel}
-                      </DropdownMenuItem>
-                    }
-                    value="Checking miscellaneous status..."
-                  />
-                ) : !miscStatusReady ? (
-                  // 3️⃣ Misc pending/awaiting → block
-                  <CustomeTooltip
-                    truncateValue={
-                      <DropdownMenuItem className="sm:hidden" disabled>
-                        <Handshake size={20} />
-                        {primaryActionLabel}
-                      </DropdownMenuItem>
-                    }
-                    value={`All miscellaneous items must be Resolved or Rejected before ${primaryActionLabel.toLowerCase()}.`}
-                  />
-                ) : isSmallOrderLead && !smallOrderRequestId ? (
-                  <CustomeTooltip
-                    truncateValue={
-                      <DropdownMenuItem className="sm:hidden" disabled>
-                        <Handshake size={20} />
-                        {primaryActionLabel}
-                      </DropdownMenuItem>
-                    }
-                    value="Small order request record not found for this lead."
-                  />
-                ) : !finalReady?.isReady ? (
-                  // 2️⃣ Installation started but NOT eligible → show WHY
-                  <CustomeTooltip
-                    truncateValue={
-                      <DropdownMenuItem className="sm:hidden" disabled>
-                        <Handshake size={20} />
-                        {primaryActionLabel}
-                      </DropdownMenuItem>
-                    }
-                    value={
-                      finalReady?.message ||
-                      "Lead is not ready for Final Handover yet."
-                    }
-                  />
-                ) : (
-                  // 3️⃣ Eligible → allow moving
-                  <DropdownMenuItem
-                    className="sm:hidden"
-                    onClick={() => {
-                      setShowMoveModal(true);
-                    }}
-                  >
-                    <Handshake size={20} />
-                    {primaryActionLabel}
-                  </DropdownMenuItem>
-                ))}
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="sm:hidden"
+                  onClick={() => setAssignOpen(true)}
+                >
+                  <Handshake size={20} />
+                  Assign Task
+                </DropdownMenuItem>
+                {canMoveToFinalHandover &&
+                  (isSmallOrderLead && isSmallOrderRequestResolved ? (
+                    <DropdownMenuItem className="sm:hidden" disabled>
+                      <Handshake size={20} />
+                      {primaryActionCompletedLabel}
+                    </DropdownMenuItem>
+                  ) : shouldDisableBlockedActions ? (
+                    // Lead block handling added for DropdownMenu action
+                    <CustomeTooltip
+                      truncateValue={
+                        <DropdownMenuItem className="sm:hidden" disabled>
+                          <Handshake size={20} />
+                          {primaryActionLabel}
+                        </DropdownMenuItem>
+                      }
+                      value={blockedTooltip}
+                    />
+                  ) : !underDetails?.actual_installation_start_date ? (
+                    // 1️⃣ Installation NOT started → block
+                    <CustomeTooltip
+                      truncateValue={
+                        <DropdownMenuItem className="sm:hidden" disabled>
+                          <Handshake size={20} />
+                          {primaryActionLabel}
+                        </DropdownMenuItem>
+                      }
+                      value={`Start Installation first to ${primaryActionLabel.toLowerCase()}.`}
+                    />
+                  ) : isLoadingUsableHandover ? (
+                    <CustomeTooltip
+                      truncateValue={
+                        <DropdownMenuItem className="sm:hidden" disabled>
+                          <Handshake size={20} />
+                          {primaryActionLabel}
+                        </DropdownMenuItem>
+                      }
+                      value="Checking usable handover completion status..."
+                    />
+                  ) : !isUsableHandoverCompleted ? (
+                    <CustomeTooltip
+                      truncateValue={
+                        <DropdownMenuItem className="sm:hidden" disabled>
+                          <Handshake size={20} />
+                          {primaryActionLabel}
+                        </DropdownMenuItem>
+                      }
+                      value={`Mark Usable Handover as completed before ${primaryActionLabel.toLowerCase()}.`}
+                    />
+                  ) : isLoadingMisc ? (
+                    // 2️⃣ Checking misc status → block
+                    <CustomeTooltip
+                      truncateValue={
+                        <DropdownMenuItem className="sm:hidden" disabled>
+                          <Handshake size={20} />
+                          {primaryActionLabel}
+                        </DropdownMenuItem>
+                      }
+                      value="Checking miscellaneous status..."
+                    />
+                  ) : !miscStatusReady ? (
+                    // 3️⃣ Misc pending/awaiting → block
+                    <CustomeTooltip
+                      truncateValue={
+                        <DropdownMenuItem className="sm:hidden" disabled>
+                          <Handshake size={20} />
+                          {primaryActionLabel}
+                        </DropdownMenuItem>
+                      }
+                      value={`All miscellaneous items must be Resolved or Rejected before ${primaryActionLabel.toLowerCase()}.`}
+                    />
+                  ) : isSmallOrderLead && !smallOrderRequestId ? (
+                    <CustomeTooltip
+                      truncateValue={
+                        <DropdownMenuItem className="sm:hidden" disabled>
+                          <Handshake size={20} />
+                          {primaryActionLabel}
+                        </DropdownMenuItem>
+                      }
+                      value="Small order request record not found for this lead."
+                    />
+                  ) : !finalReady?.isReady ? (
+                    // 2️⃣ Installation started but NOT eligible → show WHY
+                    <CustomeTooltip
+                      truncateValue={
+                        <DropdownMenuItem className="sm:hidden" disabled>
+                          <Handshake size={20} />
+                          {primaryActionLabel}
+                        </DropdownMenuItem>
+                      }
+                      value={
+                        finalReady?.message ||
+                        "Lead is not ready for Final Handover yet."
+                      }
+                    />
+                  ) : (
+                    // 3️⃣ Eligible → allow moving
+                    <DropdownMenuItem
+                      className="sm:hidden"
+                      onClick={() => {
+                        setShowMoveModal(true);
+                      }}
+                    >
+                      <Handshake size={20} />
+                      {primaryActionLabel}
+                    </DropdownMenuItem>
+                  ))}
               {/* Lead block handling added for DropdownMenu action */}
               {shouldDisableBlockedActions ? (
                 <CustomeTooltip
@@ -920,6 +930,7 @@ export default function UnderInstallationLeadDetails() {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+          )}
         </div>
       </header>
 
@@ -939,25 +950,27 @@ export default function UnderInstallationLeadDetails() {
               </TabsTrigger>
 
               {/* To-Do Tab — Disabled */}
-              {canAccessTodoTab ? (
-                <TabsTrigger value="todo">
-                  <PencilLine size={16} className="mr-1 opacity-60" />
-                  To-Do Task
-                </TabsTrigger>
-              ) : (
-                <CustomeTooltip
-                  truncateValue={
-                    <TabsTrigger disabled value="todo">
-                      <PencilLine size={16} className="mr-1 opacity-60" />
-                      To-Do Task
-                    </TabsTrigger>
-                  }
-                  value={
-                    effectiveUserType?.toLowerCase() === "custom"
-                      ? "You don’t have permission to access To-Do Tasks."
-                      : "Only Site Supervisor can access this tab"
-                  }
-                />
+              {!isAuditor && (
+                canAccessTodoTab ? (
+                  <TabsTrigger value="todo">
+                    <PencilLine size={16} className="mr-1 opacity-60" />
+                    To-Do Task
+                  </TabsTrigger>
+                ) : (
+                  <CustomeTooltip
+                    truncateValue={
+                      <TabsTrigger disabled value="todo">
+                        <PencilLine size={16} className="mr-1 opacity-60" />
+                        To-Do Task
+                      </TabsTrigger>
+                    }
+                    value={
+                      effectiveUserType?.toLowerCase() === "custom"
+                        ? "You don’t have permission to access To-Do Tasks."
+                        : "Only Site Supervisor can access this tab"
+                    }
+                  />
+                )
               )}
 
               {/* Site History */}
@@ -995,42 +1008,44 @@ export default function UnderInstallationLeadDetails() {
           {!isSmallOrderLead && (
             <div className="flex">
               {!underDetails?.actual_installation_start_date ? (
-                <CustomeTooltip
-                  value={
-                    shouldDisableBlockedActions
-                      ? blockedTooltip
-                      : !canStartInstallation
-                        ? "You do not have permission to access this action."
-                        : undefined
-                  }
-                  truncateValue={
-                    <div className={shouldDisableBlockedActions || !canStartInstallation ? "opacity-60 cursor-not-allowed" : ""}>
-                      <Button
-                        size="sm"
-                        disabled={
-                          shouldDisableBlockedActions ||
-                          !canStartInstallation
-                        }
-                        className={
-                          shouldDisableBlockedActions || !canStartInstallation
-                            ? "pointer-events-none"
-                            : ""
-                        }
-                        onClick={() => {
-                          if (
+                !isAuditor && (
+                  <CustomeTooltip
+                    value={
+                      shouldDisableBlockedActions
+                        ? blockedTooltip
+                        : !canStartInstallation
+                          ? "You do not have permission to access this action."
+                          : undefined
+                    }
+                    truncateValue={
+                      <div className={shouldDisableBlockedActions || !canStartInstallation ? "opacity-60 cursor-not-allowed" : ""}>
+                        <Button
+                          size="sm"
+                          disabled={
                             shouldDisableBlockedActions ||
                             !canStartInstallation
-                          )
-                            return;
+                          }
+                          className={
+                            shouldDisableBlockedActions || !canStartInstallation
+                              ? "pointer-events-none"
+                              : ""
+                          }
+                          onClick={() => {
+                            if (
+                              shouldDisableBlockedActions ||
+                              !canStartInstallation
+                            )
+                              return;
 
-                          setOpenStartModal(true);
-                        }}
-                      >
-                        Start Installation
-                      </Button>
-                    </div>
-                  }
-                />
+                            setOpenStartModal(true);
+                          }}
+                        >
+                          Start Installation
+                        </Button>
+                      </div>
+                    }
+                  />
+                )
               ) : (
                 <div className="flex flex-col items-start">
                   <p className="text-xs font-semibold">Installation Started On</p>
