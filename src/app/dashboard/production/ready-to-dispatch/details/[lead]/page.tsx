@@ -157,21 +157,24 @@ export default function ReadyToDispatchLeadDetails() {
     unblockLeadMutation.isPending;
 
 
+  const isAuditor = userType?.trim().toLowerCase() === "auditor";
   const canReassign = canReassignLeadButton(userType);
   const canDelete = canDeleteLeadButton(userType);
   const canEdit = canEditLeadButton(userType);
   const canViewPayment =
-    userType?.toLowerCase() === "custom"
+    isAuditor ||
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
         "leads.open_leads.details_of_lead.payment_information.enable_disable",
       )
-      : canViewPaymentTab(userType);
+      : canViewPaymentTab(userType));
   const canViewSiteHistory =
-    userType?.toLowerCase() === "custom"
+    isAuditor ||
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
         "leads.open_leads.details_of_lead.site_history.enable_disable",
       )
-      : canViewSiteHistoryTab(userType);
+      : canViewSiteHistoryTab(userType));
   const canViewChats =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
@@ -185,11 +188,12 @@ export default function ReadyToDispatchLeadDetails() {
       )
       : true;
   const canShowTodoTab =
-    userType === "custom"
+    !isAuditor &&
+    (userType === "custom"
       ? customPrivilegeCodes.some((code) =>
         code.startsWith("production.production.ready_to_dispatch"),
       )
-      : canAssignSR(userType);
+      : canAssignSR(userType));
   const handleExpectedDateChange = async (newDate?: string) => {
     if (!newDate || !vendorId || !userId || !leadIdNum) return;
 
@@ -330,143 +334,151 @@ export default function ReadyToDispatchLeadDetails() {
         </div>
 
         <div className="flex items-center space-x-2">
-          <Button
-            size="sm"
-            className="hidden md:block"
-            onClick={() => setAssignOpen(true)}
-          >
-            Assign Task
-          </Button>
+          {!isAuditor && (
+            <>
+              <Button
+                size="sm"
+                className="hidden md:block"
+                onClick={() => setAssignOpen(true)}
+              >
+                Assign Task
+              </Button>
 
-          <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
-          <NotificationBell />
+        
+              <NotificationBell />
+            </>
+          )}
+
+                <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
           <AnimatedThemeToggler />
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="relative bg-accent p-1.5 rounded-sm"
-              >
-                <EllipsisVertical size={25} />
-              </Button>
-            </DropdownMenuTrigger>
-
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem>
-                <UserPlus size={20} />
-                Assign Task
-              </DropdownMenuItem>
-              {/* Lead block handling added for DropdownMenu action */}
-              {shouldDisableBlockedActions ? (
-                <CustomeTooltip
-                  value={blockedTooltip}
-                  truncateValue={
-                    <DropdownMenuItem disabled>
-                      <Clock className=" h-4 w-4" />
-                      Mark On Hold
-                    </DropdownMenuItem>
-                  }
-                />
-              ) : (
-                <DropdownMenuItem
-                  onSelect={() => {
-                    setActivityType("onHold");
-                    setActivityModalOpen(true);
-                  }}
+          {!isAuditor && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="relative bg-accent p-1.5 rounded-sm"
                 >
-                  <Clock className=" h-4 w-4" />
-                  Mark On Hold
+                  <EllipsisVertical size={25} />
+                </Button>
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem>
+                  <UserPlus size={20} />
+                  Assign Task
                 </DropdownMenuItem>
-              )}
-
-              {canEdit && (
-                // Lead block handling added for DropdownMenu action
-                shouldDisableBlockedActions ? (
+                {/* Lead block handling added for DropdownMenu action */}
+                {shouldDisableBlockedActions ? (
                   <CustomeTooltip
                     value={blockedTooltip}
                     truncateValue={
                       <DropdownMenuItem disabled>
-                        <SquarePen size={20} />
-                        Edit
+                        <Clock className=" h-4 w-4" />
+                        Mark On Hold
                       </DropdownMenuItem>
                     }
                   />
                 ) : (
-                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                    <SquarePen size={20} />
-                    Edit
-                  </DropdownMenuItem>
-                )
-              )}
-
-              {canReassign && (
-                // Lead block handling added for DropdownMenu action
-                shouldDisableBlockedActions ? (
-                  <CustomeTooltip
-                    value={blockedTooltip}
-                    truncateValue={
-                      <DropdownMenuItem disabled>
-                        <Users size={20} />
-                        Reassign Lead
-                      </DropdownMenuItem>
-                    }
-                  />
-                ) : (
-                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                    <Users size={20} />
-                    Reassign Lead
-                  </DropdownMenuItem>
-                )
-              )}
-
-
-              {userType === "super-admin" && (
-                <>
-
-
                   <DropdownMenuItem
-                    onClick={() => setOpenBlockConfirm(true)}
+                    onSelect={() => {
+                      setActivityType("onHold");
+                      setActivityModalOpen(true);
+                    }}
                   >
-                    {isLeadBlocked ? (
-                      <>
-                        <LockOpen size={16} />
-                        Unblock Lead
-                      </>
-                    ) : (
-                      <>
-                        <Lock size={16} />
-                        Block Lead
-                      </>
-                    )}
+                    <Clock className=" h-4 w-4" />
+                    Mark On Hold
                   </DropdownMenuItem>
-                </>
-              )}
-              {canDelete && (
-                <>
-                  <DropdownMenuSeparator />
-                  {/* Lead block handling added for DropdownMenu action */}
-                  {shouldDisableBlockedActions ? (
+                )}
+
+                {canEdit && (
+                  // Lead block handling added for DropdownMenu action
+                  shouldDisableBlockedActions ? (
                     <CustomeTooltip
                       value={blockedTooltip}
                       truncateValue={
                         <DropdownMenuItem disabled>
-                          <XCircle size={20} className="text-red-500" />
-                          Delete
+                          <SquarePen size={20} />
+                          Edit
                         </DropdownMenuItem>
                       }
                     />
                   ) : (
-                    <DropdownMenuItem onClick={() => setOpenDelete(true)}>
-                      <XCircle size={20} className="text-red-500" />
-                      Delete
+                    <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                      <SquarePen size={20} />
+                      Edit
                     </DropdownMenuItem>
-                  )}
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                  )
+                )}
+
+                {canReassign && (
+                  // Lead block handling added for DropdownMenu action
+                  shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <Users size={20} />
+                          Reassign Lead
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                      <Users size={20} />
+                      Reassign Lead
+                    </DropdownMenuItem>
+                  )
+                )}
+
+
+                {userType === "super-admin" && (
+                  <>
+
+
+                    <DropdownMenuItem
+                      onClick={() => setOpenBlockConfirm(true)}
+                    >
+                      {isLeadBlocked ? (
+                        <>
+                          <LockOpen size={16} />
+                          Unblock Lead
+                        </>
+                      ) : (
+                        <>
+                          <Lock size={16} />
+                          Block Lead
+                        </>
+                      )}
+                    </DropdownMenuItem>
+                  </>
+                )}
+                {canDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    {/* Lead block handling added for DropdownMenu action */}
+                    {shouldDisableBlockedActions ? (
+                      <CustomeTooltip
+                        value={blockedTooltip}
+                        truncateValue={
+                          <DropdownMenuItem disabled>
+                            <XCircle size={20} className="text-red-500" />
+                            Delete
+                          </DropdownMenuItem>
+                        }
+                      />
+                    ) : (
+                      <DropdownMenuItem onClick={() => setOpenDelete(true)}>
+                        <XCircle size={20} className="text-red-500" />
+                        Delete
+                      </DropdownMenuItem>
+                    )}
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </header>
 

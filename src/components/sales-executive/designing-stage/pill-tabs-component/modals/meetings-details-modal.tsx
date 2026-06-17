@@ -145,6 +145,7 @@ const MeetingDetailsModal = ({
   }, [open, meeting.designMeetingDocsMapping]);
 
   // 🧩 Permission logic
+  const isAuditor = userType?.trim().toLowerCase() === "auditor";
   const canDelete =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes("leads.designing_stage.meetings.delete")
@@ -152,11 +153,12 @@ const MeetingDetailsModal = ({
         userType === "super-admin" ||
         (userType === "sales-executive" && leadStatus === "designing-stage");
   const canEditMeetingFiles =
-    userType?.toLowerCase() === "custom"
+    !isAuditor &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes("leads.designing_stage.meetings.edit")
       : userType === "admin" ||
         userType === "super-admin" ||
-        (userType === "sales-executive" && leadStatus === "designing-stage");
+        (userType === "sales-executive" && leadStatus === "designing-stage"));
 
   // 🧩 Delete confirmation
   const handleConfirmDelete = () => {

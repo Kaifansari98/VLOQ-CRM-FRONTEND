@@ -131,6 +131,7 @@ const {
   });
 
   const canViewAndWork = canViewAndWorkProductionStage(effectiveUserType ?? "", leadStatusIns ?? leadStatus);
+  const isAuditor = userType?.trim().toLowerCase() === "auditor";
   const canEditBoxes =
     userType === "custom"
       ? customPrivilegeCodes.includes(
@@ -344,7 +345,7 @@ const {
       : "Click to edit the number of boxes for this order."
   }
 />
-            ) : (
+            ) : isAuditor ? null : (
         <CustomeTooltip
   truncateValue={
     <span>

@@ -55,6 +55,7 @@ export default function PendingLeadDetails() {
     (state) => state.auth.user?.user_type.user_type as string | undefined,
   );
   const normalizedUserType = userType?.trim().toLowerCase();
+  const isAuditor = normalizedUserType === "auditor";
   const shouldDirectlyMarkLost =
     normalizedUserType === "admin" || normalizedUserType === "super-admin";
 
@@ -183,12 +184,13 @@ export default function PendingLeadDetails() {
               </TooltipContent>
             </Tooltip>
           )}
-          <NotificationBell />
+          {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
 
           {/* 🔹 Dynamic Actions Menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          {!isAuditor && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
               <Button
                 size="icon"
                 variant="ghost"
@@ -266,6 +268,7 @@ export default function PendingLeadDetails() {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+          )}
         </div>
       </header>
 

@@ -128,12 +128,15 @@ export default function HardwarePackingDetailsSection({
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
 
   const isPreProd = userType?.toLowerCase() === "pre-prod";
+  const isAuditor = userType?.trim().toLowerCase() === "auditor";
   const effectiveUserType = userType === "admin" ? "sales-executive" : userType;
   const canViewAndWork =
     !isPreProd &&
+    !isAuditor &&
     canViewAndWorkProductionStage(effectiveUserType, leadStatusIns ?? leadStatus);
   const canDelete =
     !isPreProd &&
+    !isAuditor &&
     (userType === "super-admin" ||
       (userType === "factory" &&
         (leadStatusIns ?? leadStatus) === "production-stage"));
@@ -379,6 +382,7 @@ export default function HardwarePackingDetailsSection({
               value={remark}
               onChange={setRemark}
               maxLength={500}
+              disabled={!canUploadHardwarePackingDetails}
               placeholder="Add any notes related to hardware packing..."
               className="h-[130px] bg-muted/20 rounded-lg"
             />

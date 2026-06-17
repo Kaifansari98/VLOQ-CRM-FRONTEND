@@ -53,6 +53,7 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
     const userType = useAppSelector(
       (state) => state.auth.user?.user_type.user_type,
     );
+    const isAuditor = userType?.trim().toLowerCase() === "auditor";
     const vendorCustomUserTypeOnly = useAppSelector(
       (state) =>
         state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only ===
@@ -88,19 +89,22 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
       userType?.toLowerCase() === "super-admin";
     const canShowButtons = isAdmin || leadCurrentStatus === "Type 3";
     const canUploadQuotation =
-      userType?.toLowerCase() === "custom"
+      !isAuditor &&
+      (userType?.toLowerCase() === "custom"
         ? customPrivilegeCodes.includes(
             "leads.designing_stage.quotation.upload",
           )
-        : true;
+        : true);
     const canUploadMeetings =
-      userType?.toLowerCase() === "custom"
+      !isAuditor &&
+      (userType?.toLowerCase() === "custom"
         ? customPrivilegeCodes.includes("leads.designing_stage.meetings.upload")
-        : true;
+        : true);
     const canUploadDesigns =
-      userType?.toLowerCase() === "custom"
+      !isAuditor &&
+      (userType?.toLowerCase() === "custom"
         ? customPrivilegeCodes.includes("leads.designing_stage.designs.upload")
-        : true;
+        : true);
     const isSuperAdmin = userType?.toLowerCase() === "super-admin";
     const canAssignDesigner =
       vendorCustomUserTypeOnly &&

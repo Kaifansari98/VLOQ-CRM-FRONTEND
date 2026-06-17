@@ -105,6 +105,7 @@ export default function FinalMeasurementLeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
   );
+  const isAuditor = userType?.trim().toLowerCase() === "auditor";
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
@@ -248,17 +249,19 @@ export default function FinalMeasurementLeadDetails() {
   const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
   const canEdit = canEditLeadButton(effectiveUserType ?? "");
   const canViewPayment =
-    effectiveUserType?.toLowerCase() === "custom"
+    isAuditor ||
+    (effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
           "leads.open_leads.details_of_lead.payment_information.enable_disable",
         )
-      : canViewPaymentTab(effectiveUserType ?? "");
+      : canViewPaymentTab(effectiveUserType ?? ""));
   const canViewSiteHistory =
-    effectiveUserType?.toLowerCase() === "custom"
+    isAuditor ||
+    (effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
           "leads.open_leads.details_of_lead.site_history.enable_disable",
         )
-      : canViewSiteHistoryTab(effectiveUserType ?? "");
+      : canViewSiteHistoryTab(effectiveUserType ?? ""));
   const canViewChats =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
@@ -301,20 +304,23 @@ export default function FinalMeasurementLeadDetails() {
 
         {/* ACTIONS */}
         <div className="flex items-center space-x-2">
-          <Button
-            size="sm"
-            className="hidden md:flex"
-            onClick={() => setAssignOpen(true)}
-          >
-            Assign Task
-          </Button>
+          {!isAuditor && (
+            <Button
+              size="sm"
+              className="hidden md:flex"
+              onClick={() => setAssignOpen(true)}
+            >
+              Assign Task
+            </Button>
+          )}
 
           <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
-          <NotificationBell />
+          {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          {!isAuditor && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
               <Button
                 size="icon"
                 variant="ghost"
@@ -463,6 +469,7 @@ export default function FinalMeasurementLeadDetails() {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+          )}
         </div>
       </header>
 
@@ -487,7 +494,7 @@ export default function FinalMeasurementLeadDetails() {
               Lead Details
             </TabsTrigger>
 
-        {canAccessFinalMeasurementTodo ? (
+        {!isAuditor && canAccessFinalMeasurementTodo ? (
   shouldDisableBlockedActions ? (
     <CustomeTooltip
       value={blockedTooltip}
@@ -504,7 +511,7 @@ export default function FinalMeasurementLeadDetails() {
       To-Do Task
     </TabsTrigger>
   )
-) : (
+) : !isAuditor && (
   <CustomeTooltip
     value="Only Site Supervisor can access this tab"
     truncateValue={

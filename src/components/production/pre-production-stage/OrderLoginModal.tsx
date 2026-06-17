@@ -271,6 +271,7 @@ export default function OrderLoginModal({
   console.log("instance id from orderlogin modal : ", instanceId);
 
   const isPreProd = userType?.toLowerCase() === "pre-prod";
+  const isAuditor = userType?.trim().toLowerCase() === "auditor";
   const canWorkAndView =
     !isPreProd &&
     canViewAndWorkProductionStage(userType, leadStatusIns ?? leadStatus);
@@ -282,60 +283,67 @@ export default function OrderLoginModal({
       : canWorkAndView;
 
   // ✅ Vendor tooltip — blocked takes highest priority
-  const vendorTooltipMessage = shouldDisableBlockedActions
-    ? blockedTooltip
-    : canWorkAndView && !isCompleted
-      ? undefined
-      : isPreProd
-        ? "Pre-prod users can only view this section."
-        : !canWorkAndView && userType === "factory"
-          ? "This lead stage has progressed. Factory users cannot modify this section."
-          : !canWorkAndView
-            ? "You do not have access to assign or change vendors."
-            : "You cannot change the vendor after this order-login is marked as ready.";
+  const vendorTooltipMessage = isAuditor
+    ? undefined
+    : shouldDisableBlockedActions
+      ? blockedTooltip
+      : canWorkAndView && !isCompleted
+        ? undefined
+        : isPreProd
+          ? "Pre-prod users can only view this section."
+          : !canWorkAndView && userType === "factory"
+            ? "This lead stage has progressed. Factory users cannot modify this section."
+            : !canWorkAndView
+              ? "You do not have access to assign or change vendors."
+              : "You cannot change the vendor after this order-login is marked as ready.";
 
   // ✅ Date tooltip — blocked takes highest priority
-  const dateTooltipMessage = shouldDisableBlockedActions
-    ? blockedTooltip
-    : !canTakeUnderProductionAction
-      ? "You do not have permission to take action on this."
-      : isPreProd
-        ? "Pre-prod users can only view this section."
-        : !canWorkAndView && userType === "factory"
-          ? "This lead stage has progressed. Factory users cannot modify this section."
-          : !canWorkAndView
-            ? "You do not have access to change or set production-ready dates."
-            : isCompleted
-              ? "You cannot change the date after this order-login is marked as ready."
-              : "Select a production ready date.";
+  const dateTooltipMessage = isAuditor
+    ? undefined
+    : shouldDisableBlockedActions
+      ? blockedTooltip
+      : !canTakeUnderProductionAction
+        ? "You do not have permission to take action on this."
+        : isPreProd
+          ? "Pre-prod users can only view this section."
+          : !canWorkAndView && userType === "factory"
+            ? "This lead stage has progressed. Factory users cannot modify this section."
+            : !canWorkAndView
+              ? "You do not have access to change or set production-ready dates."
+              : isCompleted
+                ? "You cannot change the date after this order-login is marked as ready."
+                : "Select a production ready date.";
 
   // ✅ Mark as Ready tooltip — blocked takes highest priority
-  const markAsReadyTooltipMessage = shouldDisableBlockedActions
-    ? blockedTooltip
-    : !canTakeUnderProductionAction
-      ? "You do not have permission to take action on this."
-      : isPreProd
-        ? "Pre-prod users can only view this section."
-        : !canWorkAndView && userType === "factory"
-          ? "This lead stage has progressed. Factory users cannot modify this section."
-          : !canWorkAndView
-            ? "You do not have access to mark this order-login as completed."
-            : isCompleted
-              ? "This order-login is already completed."
-              : !productionReadyDate
-                ? "Please set the Production Ready Date before marking as completed."
-                : !isProductionDateReached
-                  ? "You can mark as completed only once the Production Ready Date has arrived."
-                  : "Mark this order-login as completed.";
+  const markAsReadyTooltipMessage = isAuditor
+    ? undefined
+    : shouldDisableBlockedActions
+      ? blockedTooltip
+      : !canTakeUnderProductionAction
+        ? "You do not have permission to take action on this."
+        : isPreProd
+          ? "Pre-prod users can only view this section."
+          : !canWorkAndView && userType === "factory"
+            ? "This lead stage has progressed. Factory users cannot modify this section."
+            : !canWorkAndView
+              ? "You do not have access to mark this order-login as completed."
+              : isCompleted
+                ? "This order-login is already completed."
+                : !productionReadyDate
+                  ? "Please set the Production Ready Date before marking as completed."
+                  : !isProductionDateReached
+                    ? "You can mark as completed only once the Production Ready Date has arrived."
+                    : "Mark this order-login as completed.";
 
   // ✅ Whether each action is actually disabled
   const isVendorDisabled =
-    shouldDisableBlockedActions || !canWorkAndView || isCompleted;
+    isAuditor || shouldDisableBlockedActions || !canWorkAndView || isCompleted;
 
   const isDateDisabled =
-    shouldDisableBlockedActions || isCompleted || !canTakeUnderProductionAction;
+    isAuditor || shouldDisableBlockedActions || isCompleted || !canTakeUnderProductionAction;
 
   const isMarkAsReadyDisabled =
+    isAuditor ||
     shouldDisableBlockedActions ||
     isCompleted ||
     !productionReadyDate ||
