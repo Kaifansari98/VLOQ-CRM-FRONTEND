@@ -215,8 +215,8 @@ export default function SmallOrderRequestModal({
       open={open}
       onOpenChange={onOpenChange}
     >
-      <DialogContent className="w-[95vw] min-w-4xl overflow-hidden p-0">
-        <DialogHeader className="border-b bg-muted/30 px-6 py-4">
+      <DialogContent className="flex max-h-[90vh] w-[95vw] max-w-4xl flex-col overflow-hidden p-0">
+        <DialogHeader className="shrink-0 border-b bg-muted/30 px-6 py-4">
           <DialogTitle className="text-left text-2xl font-semibold">
             Small Order Request
           </DialogTitle>
@@ -225,7 +225,7 @@ export default function SmallOrderRequestModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-[80vh] overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-6">
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(handleSubmit)}
@@ -321,7 +321,7 @@ export default function SmallOrderRequestModal({
               )}
             />
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex justify-end gap-2 pt-2 pb-2">
               <Button type="button" variant="outline" onClick={handleClose}>
                 Cancel
               </Button>

@@ -60,32 +60,54 @@ interface DispatchPlanningDetailsProps {
   instanceId?: number | null;
 }
 
-const dispatchSchema = z.object({
-  required_date_for_dispatch: z
-    .string()
-    .nonempty("Required OnSite Delivery Date is mandatory"),
-  onsite_contact_person_name: z
-    .string()
-    .nonempty("Onsite contact person name is mandatory"),
-  onsite_contact_person_number: z
-    .string()
-    .min(10, "Enter a valid contact number"),
-  material_lift_availability: z
-    .boolean()
-    .optional()
-    .refine((val) => val === true || val === false, {
-      message: "Please select material lift availability",
-    }),
-  vehicle_approachability: z
-    .boolean()
-    .optional()
-    .refine((val) => val === true || val === false, {
-      message: "Please select vehicle approachability",
-    }),
-  alt_onsite_contact_person_name: z.string().optional(),
-  alt_onsite_contact_person_number: z.string().optional(),
-  dispatch_planning_remark: z.string().optional(),
-});
+const dispatchSchema = z
+  .object({
+    required_date_for_dispatch: z
+      .string()
+      .nonempty("Required OnSite Delivery Date is mandatory"),
+    onsite_contact_person_name: z
+      .string()
+      .nonempty("Onsite contact person name is mandatory"),
+    onsite_contact_person_number: z
+      .string()
+      .min(10, "Enter a valid contact number"),
+    material_lift_availability: z
+      .boolean()
+      .optional()
+      .refine((val) => val === true || val === false, {
+        message: "Please select material lift availability",
+      }),
+    material_lift_size: z.string().optional(),
+    vehicle_approachability: z
+      .boolean()
+      .optional()
+      .refine((val) => val === true || val === false, {
+        message: "Please select vehicle approachability",
+      }),
+    alt_onsite_contact_person_name: z.string().optional(),
+    alt_onsite_contact_person_number: z.string().optional(),
+    dispatch_planning_remark: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.material_lift_availability === true) {
+      if (!data.material_lift_size || data.material_lift_size.trim() === "") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Material lift size is mandatory when lift is available",
+          path: ["material_lift_size"],
+        });
+      } else {
+        const parsed = parseFloat(data.material_lift_size);
+        if (isNaN(parsed) || parsed <= 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Material lift size must be a positive number",
+            path: ["material_lift_size"],
+          });
+        }
+      }
+    }
+  });
 
 const paymentSchema = z
   .object({
@@ -197,6 +219,7 @@ export default function DispatchPlanningDetails({
       alt_onsite_contact_person_name: "",
       alt_onsite_contact_person_number: "",
       material_lift_availability: undefined as any,
+      material_lift_size: "",
       vehicle_approachability: undefined as any,
       dispatch_planning_remark: "",
     },
@@ -240,6 +263,7 @@ export default function DispatchPlanningDetails({
       const apiValue = dispatchInfoData.material_lift_availability;
       const vehicleApiValue =
         dispatchInfoData.vehicle_approachability_for_dispatch;
+      const liftSizeApiValue = dispatchInfoData.material_lift_size;
 
       const normalizedLiftAvailability =
         apiValue === true ? true : apiValue === false ? false : undefined;
@@ -265,6 +289,7 @@ export default function DispatchPlanningDetails({
         alt_onsite_contact_person_number:
           dispatchInfoData.alt_onsite_contact_person_number || "",
         material_lift_availability: normalizedLiftAvailability,
+        material_lift_size: liftSizeApiValue !== null && liftSizeApiValue !== undefined ? String(liftSizeApiValue) : "",
         vehicle_approachability: normalizedVehicleApproachability,
         dispatch_planning_remark:
           dispatchInfoData.dispatch_planning_remark || "",
@@ -308,6 +333,9 @@ export default function DispatchPlanningDetails({
         material_lift_availability: values.material_lift_availability
           ? "true"
           : "false",
+        material_lift_size: values.material_lift_availability
+          ? values.material_lift_size
+          : undefined,
         vehicle_approachability: values.vehicle_approachability
           ? "true"
           : "false",
@@ -682,6 +710,9 @@ export default function DispatchPlanningDetails({
                                   false,
                                   { shouldValidate: true },
                                 );
+                                setValueDispatch("material_lift_size", "", {
+                                  shouldValidate: true,
+                                });
                               }
                             }}
                           />
@@ -692,6 +723,28 @@ export default function DispatchPlanningDetails({
                         <p className="text-xs text-red-500">
                           {errorsDispatch.material_lift_availability.message}
                         </p>
+                      )}
+
+                      {/* Material Lift Size Input */}
+                      {watchLiftAvailability === true && (
+                        <div className="space-y-2 pt-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                          <Label htmlFor="material_lift_size" className="text-xs font-semibold">
+                            Material Lift Size (ft) <span className="text-red-500">*</span>
+                          </Label>
+                          <Input
+                            id="material_lift_size"
+                            type="number"
+                            step="any"
+                            placeholder="Enter lift size (e.g. 5.5)"
+                            {...registerDispatch("material_lift_size")}
+                            disabled={isDispatchInputDisabled}
+                          />
+                          {errorsDispatch.material_lift_size && (
+                            <p className="text-xs text-red-500">
+                              {errorsDispatch.material_lift_size.message}
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
 

@@ -56,13 +56,12 @@ export default function ProjectFinanceSummary({
 
   const { data, isLoading, refetch } = usePaymentLogs(leadId, vendorId);
 
-  const projectFinance = data?.project_finance ?? {
-    total_project_amount: 0,
-    pending_amount: 0,
-    booking_amount: 0,
-  };
+  const projectFinance = data?.project_finance;
 
-  const mrpValue = projectFinance.mrp_value ?? 0;
+  const totalProjectAmount = projectFinance?.total_project_amount ?? 0;
+  const pendingAmount = projectFinance?.pending_amount ?? 0;
+  const bookingAmount = projectFinance?.booking_amount ?? 0;
+  const mrpValue = projectFinance?.mrp_value ?? 0;
 
   const schema = useMemo(
     () =>
@@ -71,8 +70,8 @@ export default function ProjectFinanceSummary({
           .number({ message: "Amount is required" })
           .positive("Amount must be greater than 0")
           .max(
-            projectFinance.pending_amount,
-            `Amount cannot exceed pending amount (₹${projectFinance.pending_amount.toLocaleString()})`,
+            pendingAmount,
+            `Amount cannot exceed pending amount (₹${pendingAmount.toLocaleString()})`,
           ),
         payment_date: z
           .string({ message: "Payment date is required" })
@@ -96,7 +95,7 @@ export default function ProjectFinanceSummary({
             "Only image files are allowed (JPG/PNG)",
           ),
       }),
-    [projectFinance.pending_amount],
+    [pendingAmount],
   );
 
   const {
@@ -162,29 +161,29 @@ export default function ProjectFinanceSummary({
       {/* ── Project Finance Summary ──────────────────────────────────────────── */}
       <Card className="p-4 w-full shadow-sm text-center">
         <h2 className="text-lg font-semibold mb-4">Project Finance Summary</h2>
-        <div className="grid grid-cols-4 gap-4">
-          <div>
+        <div className={`grid gap-4 ${bookingAmount > 0 ? "grid-cols-4" : "grid-cols-3"}`}>
+          <div className="flex flex-col justify-between h-full">
             <p className="text-muted-foreground text-sm">Total Project</p>
             <p className="font-bold text-lg">
-              {formatCurrencyINR(projectFinance.total_project_amount)}
+              {formatCurrencyINR(totalProjectAmount)}
             </p>
           </div>
-          <div>
+          <div className="flex flex-col justify-between h-full">
             <p className="text-muted-foreground text-sm">MRP Value</p>
             <p className="font-bold text-lg">{formatCurrencyINR(mrpValue)}</p>
           </div>
-          {projectFinance.booking_amount > 0 && (
-            <div>
+          {bookingAmount > 0 && (
+            <div className="flex flex-col justify-between h-full">
               <p className="text-muted-foreground text-sm">Booking Amount</p>
               <p className="font-bold text-lg">
-                {formatCurrencyINR(projectFinance.booking_amount)}
+                {formatCurrencyINR(bookingAmount)}
               </p>
             </div>
           )}
-          <div>
+          <div className="flex flex-col justify-between h-full">
             <p className="text-muted-foreground text-sm">Pending Amount</p>
             <p className="font-bold text-lg text-red-500">
-              {formatCurrencyINR(projectFinance.pending_amount)}
+              {formatCurrencyINR(pendingAmount)}
             </p>
           </div>
         </div>
