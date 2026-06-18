@@ -13,6 +13,11 @@ import {
   Download,
   Eye,
   Play,
+  ExternalLink,
+  ChevronLeft,
+  ChevronRight,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { Loader2 } from "lucide-react";
@@ -37,6 +42,7 @@ interface DocumentCardProps {
   isLatest?: boolean;
   disableActions?: boolean;
   alwaysShowText?: boolean;
+  compact?: boolean;
 }
 
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"];
@@ -166,10 +172,17 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ url, fileName, fileExt, onC
             <span className="text-sm font-medium text-neutral-800 dark:text-neutral-200 truncate">
               {fileName}
             </span>
+            <button
+              onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
+              className="p-1 rounded text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+              title="Open in new tab"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+            </button>
           </div>
           <button
             onClick={onClose}
-            className="ml-3 shrink-0 p-1.5 rounded-full text-neutral-500 dark:text-neutral-400"
+            className="ml-3 shrink-0 p-1.5 rounded-full text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
             aria-label="Close preview"
           >
             ✕
@@ -177,10 +190,10 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ url, fileName, fileExt, onC
         </div>
 
         {/* Iframe area */}
-        <div className="relative flex-1 min-h-0 bg-neutral-100 dark:bg-neutral-950">
+        <div className="relative flex-1 min-h-0 bg-neutral-100 dark:bg-neutral-950 flex flex-col">
           {!previewError && (!previewUrl || (!iframeLoaded && !isImage)) && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-neutral-400 dark:text-neutral-500 bg-white dark:bg-neutral-900">
-              <Loader2 className="w-6 h-6 animate-spin" />
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
               <span className="text-xs">Loading preview…</span>
             </div>
           )}
@@ -211,7 +224,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ url, fileName, fileExt, onC
               <iframe
                 src={previewUrl}
                 title={`Preview — ${fileName}`}
-                className="w-full h-full border-0 bg-white"
+                className="absolute inset-0 w-full h-full border-0 bg-white"
                 onLoad={() => setIframeLoaded(true)}
                 allow="fullscreen"
               />
@@ -234,6 +247,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
   isLatest = false,
   disableActions = false,
   alwaysShowText = false,
+  compact = false,
 }) => {
   const params = useParams();
   const routeLeadId = Number(params?.lead ?? params?.leadId ?? 0);
@@ -348,6 +362,135 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
       setIsDownloading(false);
     }
   };
+
+  if (compact) {
+    return (
+      <>
+        <div
+          className={`
+            group relative flex items-center gap-3 rounded-lg p-2.5
+            border border-border bg-white dark:bg-neutral-900
+            hover:bg-muted/30 dark:hover:bg-neutral-800
+            transition-all duration-200 w-full min-w-[200px]
+          `}
+        >
+          {/* File Icon */}
+          <div className="relative flex-shrink-0 w-12 h-12 flex items-center justify-center">
+            <div
+              className="
+                relative w-11 h-11 rounded-md 
+                border border-border 
+                bg-gray-600/10 dark:bg-neutral-800 
+                flex items-center justify-center
+                overflow-hidden
+              "
+            >
+              {isImage ? (
+                <img
+                  src={doc.signedUrl}
+                  alt={doc.originalName}
+                  className="w-full h-full object-cover"
+                />
+              ) : isVideo ? (
+                <div
+                  className="relative w-full h-full cursor-pointer flex items-center justify-center"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowVideo(true);
+                  }}
+                >
+                  <video
+                    src={doc.signedUrl}
+                    className="w-full h-full object-cover"
+                    muted
+                    preload="metadata"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/25">
+                    <Play className="w-3.5 h-3.5 text-white" />
+                  </div>
+                </div>
+              ) : (
+                <Icon className="text-neutral-700 dark:text-neutral-300" size={18} />
+              )}
+            </div>
+          </div>
+
+          {/* File Info */}
+          <div className="flex flex-col justify-center flex-1 min-w-0">
+            <h3 className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 truncate pr-1" title={doc.originalName}>
+              {doc.originalName}
+            </h3>
+            <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">
+              {fileExt.toUpperCase()} file
+            </p>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-1.5 flex-shrink-0 ml-1">
+            {isVideo && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowVideo(true);
+                }}
+                className="p-1.5 rounded border border-border bg-muted/20 text-neutral-600 dark:text-neutral-400 hover:bg-muted transition"
+                aria-label="Play video"
+              >
+                <Play className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {canPreview && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowPreview(true);
+                }}
+                className="p-1.5 rounded border border-border bg-muted/20 text-neutral-600 dark:text-neutral-400 hover:bg-muted transition"
+                aria-label="Preview document"
+              >
+                <Eye className="w-3.5 h-3.5" />
+              </button>
+            )}
+            <button
+              onClick={handleDownload}
+              disabled={isDownloading}
+              className="p-1.5 rounded border border-border bg-muted/20 text-neutral-600 dark:text-neutral-400 hover:bg-muted transition disabled:opacity-50"
+              aria-label="Download document"
+            >
+              {isDownloading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Download className="w-3.5 h-3.5" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Modals */}
+        {showPreview && (
+          <PreviewModal
+            url={doc.signedUrl}
+            fileName={doc.originalName}
+            fileExt={fileExt}
+            onClose={() => setShowPreview(false)}
+          />
+        )}
+        {showVideo && (
+          <VideoViewerModal
+            open={showVideo}
+            videoUrl={doc.signedUrl}
+            title={doc.originalName}
+            onClose={() => setShowVideo(false)}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
     <>

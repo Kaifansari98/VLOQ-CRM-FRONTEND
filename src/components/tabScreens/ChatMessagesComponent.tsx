@@ -441,7 +441,7 @@ export default function ChatMessagesComponent({
 
                       {/* Documents - Use DocumentCard */}
                       {documents.length > 0 && (
-                        <div className={`flex flex-col gap-2 ${images.length > 0 ? "mt-2" : ""} max-w-sm`}>
+                        <div className={`flex flex-col gap-2 ${images.length > 0 ? "mt-2" : ""} w-[280px] sm:w-[320px] max-w-full`}>
                           {documents.map((doc) => (
                             <div key={doc.id} className="w-full">
                               <DocumentCard
@@ -452,6 +452,7 @@ export default function ChatMessagesComponent({
                                   created_at: doc.created_at,
                                 }}
                                 canDelete={false}
+                                compact={true}
                               />
                             </div>
                           ))}
