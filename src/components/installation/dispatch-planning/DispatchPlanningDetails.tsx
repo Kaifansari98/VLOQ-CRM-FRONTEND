@@ -96,15 +96,6 @@ const dispatchSchema = z
           message: "Material lift size is mandatory when lift is available",
           path: ["material_lift_size"],
         });
-      } else {
-        const parsed = parseFloat(data.material_lift_size);
-        if (isNaN(parsed) || parsed <= 0) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Material lift size must be a positive number",
-            path: ["material_lift_size"],
-          });
-        }
       }
     }
   });
@@ -728,18 +719,16 @@ export default function DispatchPlanningDetails({
                               htmlFor="material_lift_size"
                               className="text-xs font-bold whitespace-nowrap"
                             >
-                              Size
+                              Material Lift Size
                               <span className="text-red-500 ml-0.5">*</span>
                             </label>
                             <input
                               id="material_lift_size"
-                              type="number"
-                              step="any"
-                              min="0"
-                              placeholder="e.g. 5.5"
+                              type="text"
+                              placeholder="Enter a size"
                               {...registerDispatch("material_lift_size")}
                               disabled={isDispatchInputDisabled}
-                              className="w-20 border rounded-md px-2 py-1 text-sm bg-background outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 transition-shadow disabled:opacity-50 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              className="w-36 border rounded-md px-2.5 py-1.5 text-sm bg-background outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
                             />
                           </div>
                         )}
