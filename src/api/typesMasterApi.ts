@@ -271,6 +271,7 @@ export interface CreateCompanyVendorMasterPayload {
   contact_no: string;
   email?: string;
   address?: string;
+  in_house?: boolean;
   created_by: number;
 }
 
@@ -281,6 +282,7 @@ export interface UpdateCompanyVendorMasterPayload {
   contact_no?: string;
   email?: string;
   address?: string;
+  in_house?: boolean;
   updated_by: number;
 }
 
