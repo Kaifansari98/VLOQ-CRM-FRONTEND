@@ -769,11 +769,16 @@ export default function UserMastersTable({ vendorIdOverride }: UserMastersTableP
   const isEditingCustomUser =
     modalMode === "edit" && editingUserType?.toLowerCase() === "custom";
 
+  const isPasswordValid =
+    modalMode === "edit"
+      ? !form.password || passwordStrengthScore === 5
+      : passwordStrengthScore === 5;
+
   const isFormValid =
     form.user_name.trim() &&
     form.user_contact.trim() &&
     form.user_email.trim() &&
-    (modalMode === "edit" || form.password.trim()) &&
+    isPasswordValid &&
     form.franchise_id &&
     form.user_type_id;
 
