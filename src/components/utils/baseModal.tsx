@@ -51,9 +51,9 @@ const BaseModal: React.FC<BaseModalProps> = ({
           <DialogHeader className="flex flex-row items-center gap-4 px-6 py-4 border-b bg-muted/30">
             {icon}
 
-            <div className="space-y-1 min-w-0 flex-1">
+            <div className="space-y-1 min-w-0 flex-1 pr-12">
               {title && (
-                <DialogTitle className="text-base text-left font-semibold leading-normal truncate">
+                <DialogTitle className="text-base text-left font-semibold leading-normal break-words">
                   {title}
                 </DialogTitle>
               )}

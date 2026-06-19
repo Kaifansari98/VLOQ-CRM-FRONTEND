@@ -517,7 +517,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
                         <div className="h-3.5 w-16 bg-muted animate-pulse rounded" />
                       ) : liftSet ? (
                         <p className={`text-[11px] font-semibold leading-none ${isAvailable ? "text-foreground" : "text-destructive"}`}>
-                          {isAvailable ? "Available" : "Not Available"}
+                          {isAvailable ? `Available ${requiredDateData?.material_lift_size ? `(${requiredDateData.material_lift_size} ft)` : ""}` : "Not Available"}
                         </p>
                       ) : (
                         <p className="text-[11px] text-muted-foreground/50 italic leading-none">—</p>

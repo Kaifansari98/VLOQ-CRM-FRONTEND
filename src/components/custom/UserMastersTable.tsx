@@ -878,8 +878,8 @@ export default function UserMastersTable({ vendorIdOverride }: UserMastersTableP
     <>
       <Card className="rounded-2xl p-0 border-0">
         <CardContent className="space-y-4 p-0">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 flex-1">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-1 w-full">
               <ClearInput
                 value={globalFilter}
                 onChange={(e) => {
@@ -887,18 +887,30 @@ export default function UserMastersTable({ vendorIdOverride }: UserMastersTableP
                   setPagination((prev) => ({ ...prev, pageIndex: 0 }));
                 }}
                 placeholder="Search users..."
-                className="h-9 w-full max-w-md"
+                className="h-9 w-full sm:max-w-md"
               />
-              <FilterByStores
-                value={franchiseFilter}
-                onChange={(v) => {
-                  setFranchiseFilter(v);
-                  setPagination((prev) => ({ ...prev, pageIndex: 0 }));
-                }}
-                franchises={franchisesData}
-              />
+              <div className="flex items-center justify-between gap-2 w-full sm:w-auto">
+                <FilterByStores
+                  value={franchiseFilter}
+                  onChange={(v) => {
+                    setFranchiseFilter(v);
+                    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+                  }}
+                  franchises={franchisesData}
+                />
+                <Button 
+                  onClick={() => setOpenCreateModal(true)}
+                  className="sm:hidden"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create User
+                </Button>
+              </div>
             </div>
-            <Button onClick={() => setOpenCreateModal(true)}>
+            <Button 
+              onClick={() => setOpenCreateModal(true)}
+              className="hidden sm:flex"
+            >
               <Plus className="mr-2 h-4 w-4" />
               Create User
             </Button>
