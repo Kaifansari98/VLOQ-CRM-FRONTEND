@@ -89,7 +89,10 @@ export default function SmallOrderRequestModal({
   const userId = useAppSelector((state) => state.auth.user?.id);
   const createSmallOrderRequestMutation = useCreateSmallOrderRequest();
   const createdOn = useMemo(() => new Date(), [open]);
-  const earliestRequiredDate = useMemo(() => addDays(createdOn, 15), [createdOn]);
+  const earliestRequiredDate = useMemo(
+    () => addDays(createdOn, 15),
+    [createdOn],
+  );
   const minRequiredDate = useMemo(
     () => formatYmd(earliestRequiredDate),
     [earliestRequiredDate],
@@ -211,10 +214,7 @@ export default function SmallOrderRequestModal({
   };
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={onOpenChange}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90vh] w-[95vw] max-w-4xl flex-col overflow-hidden p-0">
         <DialogHeader className="shrink-0 border-b bg-muted/30 px-6 py-4">
           <DialogTitle className="text-left text-2xl font-semibold">
@@ -226,116 +226,116 @@ export default function SmallOrderRequestModal({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto p-6">
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(handleSubmit)}
-            className="space-y-5"
-          >
-            <div className="grid gap-4 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="orderType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Type of Order</FormLabel>
-                    <FormControl>
-                    <TextSelectPicker
-                      options={orderTypeOptions}
-                      value={field.value}
-                      onChange={field.onChange}
-                      emptyLabel="Select order type"
-                      placeholder="Search order type"
-                      disabled={loadingTypes}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                  </FormItem>
-                )}
-              />
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit(handleSubmit)}
+              className="space-y-5"
+            >
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="orderType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Type of Order</FormLabel>
+                      <FormControl>
+                        <TextSelectPicker
+                          options={orderTypeOptions}
+                          value={field.value}
+                          onChange={field.onChange}
+                          emptyLabel="Select order type"
+                          placeholder="Search order type"
+                          disabled={loadingTypes}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="requiredDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Required Date</FormLabel>
+                      <FormControl>
+                        <CustomeDatePicker
+                          value={field.value}
+                          onChange={field.onChange}
+                          restriction="futureOnly"
+                          minDate={minRequiredDate}
+                        />
+                      </FormControl>
+                      {/* <FormDescription>
+                      Earliest available date: {formatDisplayDate(earliestRequiredDate)}
+                    </FormDescription> */}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               <FormField
                 control={form.control}
-                name="requiredDate"
+                name="remarks"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Required Date</FormLabel>
+                    <FormLabel>Remarks</FormLabel>
                     <FormControl>
-                      <CustomeDatePicker
-                        value={field.value}
+                      <TextAreaInput
+                        value={field.value ?? ""}
                         onChange={field.onChange}
-                        restriction="futureOnly"
-                        minDate={minRequiredDate}
+                        placeholder="Enter remarks"
+                        maxLength={2000}
                       />
                     </FormControl>
-                    {/* <FormDescription>
-                      Earliest available date: {formatDisplayDate(earliestRequiredDate)}
-                    </FormDescription> */}
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            </div>
 
-            <FormField
-              control={form.control}
-              name="remarks"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Remarks</FormLabel>
-                  <FormControl>
-                    <TextAreaInput
-                      value={field.value ?? ""}
-                      onChange={field.onChange}
-                      placeholder="Enter remarks"
-                      maxLength={2000}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="documents"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      File Upload (All Documents)
+                      {isDocumentsRequired ? " *" : ""}
+                    </FormLabel>
+                    <FormControl>
+                      <FileUploadField
+                        value={field.value}
+                        onChange={field.onChange}
+                        multiple
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {isDocumentsRequired
+                        ? "Mandatory for Additional Panel Order and One Cabinet Order."
+                        : "Optional for the selected order type."}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="documents"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    File Upload (All Documents)
-                    {isDocumentsRequired ? " *" : ""}
-                  </FormLabel>
-                  <FormControl>
-                    <FileUploadField
-                      value={field.value}
-                      onChange={field.onChange}
-                      multiple
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    {isDocumentsRequired
-                      ? "Mandatory for Additional Panel Order and One Cabinet Order."
-                      : "Optional for the selected order type."}
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="flex justify-end gap-2 pt-2 pb-2">
-              <Button type="button" variant="outline" onClick={handleClose}>
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={createSmallOrderRequestMutation.isPending}
-              >
-                {createSmallOrderRequestMutation.isPending
-                  ? "Creating..."
-                  : "Create Request"}
-              </Button>
-            </div>
-          </form>
-        </Form>
+              <div className="flex justify-end gap-2 pt-2 pb-2">
+                <Button type="button" variant="outline" onClick={handleClose}>
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createSmallOrderRequestMutation.isPending}
+                >
+                  {createSmallOrderRequestMutation.isPending
+                    ? "Creating..."
+                    : "Create Request"}
+                </Button>
+              </div>
+            </form>
+          </Form>
         </div>
       </DialogContent>
     </Dialog>

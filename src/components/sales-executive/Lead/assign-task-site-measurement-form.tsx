@@ -164,35 +164,25 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   const shouldShowInitialSiteMeasurementOption = !onlyFollowUp;
 
   // ✅ useLeadAccessControl replaces useLeadBlockStatus + formatBlockedAt
-  const {
-    isLeadBlocked,
-    blockedTooltip,
-    shouldDisableBlockedActions,
-  } = useLeadAccessControl({
-    leadId,
-    userType,
-  });
-
-
+  const { isLeadBlocked, blockedTooltip, shouldDisableBlockedActions } =
+    useLeadAccessControl({
+      leadId,
+      userType,
+    });
 
   React.useEffect(() => {
-  if (!open) return;
+    if (!open) return;
 
-  if (
-    shouldDisableBlockedActions &&
-    canShowFollowUpOption &&
-    form.getValues("task_type") !== "Follow Up"
-  ) {
-    form.setValue("task_type", "Follow Up", {
-      shouldValidate: true,
-    });
-  }
-}, [
-  open,
-  shouldDisableBlockedActions,
-  canShowFollowUpOption,
-  form,
-]);
+    if (
+      shouldDisableBlockedActions &&
+      canShowFollowUpOption &&
+      form.getValues("task_type") !== "Follow Up"
+    ) {
+      form.setValue("task_type", "Follow Up", {
+        shouldValidate: true,
+      });
+    }
+  }, [open, shouldDisableBlockedActions, canShowFollowUpOption, form]);
   const initialSiteMeasurementTaskConflicts =
     taskConflicts?.restrictedTaskConflicts ?? [];
   const followUpConflicts = taskConflicts?.followUpConflicts ?? [];
@@ -305,10 +295,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     }
 
     if (vendorCustomUserTypeMode === false) {
-      const mergedUsers = [
-        ...franchiseSalesExecutives,
-        ...eligibleCustomUsers,
-      ];
+      const mergedUsers = [...franchiseSalesExecutives, ...eligibleCustomUsers];
 
       return mergedUsers.filter(
         (user: any, index: number, array: any[]) =>
@@ -333,10 +320,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
 
       return true;
     });
-  }, [
-    approvalRequestAssignableUsersData?.users,
-    userId,
-  ]);
+  }, [approvalRequestAssignableUsersData?.users, userId]);
   const approvalRequestMappedUsers = React.useMemo(
     () =>
       approvalRequestUsers.map((user) => ({
@@ -707,14 +691,16 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
                       ) : (
                         <>
                           {/* ── Initial Site Measurement ── */}
-                          {shouldShowInitialSiteMeasurementOption && (
-                            shouldDisableBlockedActions ? (
+                          {shouldShowInitialSiteMeasurementOption &&
+                            (shouldDisableBlockedActions ? (
                               <CustomeTooltip
                                 value={blockedTooltip}
                                 truncateValue={
                                   <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
                                     <span>Initial Site Measurement</span>
-                                    <span className="text-xs italic">(blocked)</span>
+                                    <span className="text-xs italic">
+                                      (blocked)
+                                    </span>
                                   </div>
                                 }
                               />
@@ -724,7 +710,9 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
                                 truncateValue={
                                   <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
                                     <span>Initial Site Measurement</span>
-                                    <span className="text-xs italic">(locked)</span>
+                                    <span className="text-xs italic">
+                                      (locked)
+                                    </span>
                                   </div>
                                 }
                               />
@@ -732,8 +720,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
                               <SelectItem value="Initial Site Measurement">
                                 Initial Site Measurement
                               </SelectItem>
-                            )
-                          )}
+                            ))}
 
                           {/* ── Follow Up — always selectable even when blocked ── */}
                           {canShowFollowUpOption && (
@@ -741,14 +728,16 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
                           )}
 
                           {/* ── Approval Request ── */}
-                          {canShowApprovalRequestOption && (
-                            shouldDisableBlockedActions ? (
+                          {canShowApprovalRequestOption &&
+                            (shouldDisableBlockedActions ? (
                               <CustomeTooltip
                                 value={blockedTooltip}
                                 truncateValue={
                                   <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
                                     <span>Approval Request</span>
-                                    <span className="text-xs italic">(blocked)</span>
+                                    <span className="text-xs italic">
+                                      (blocked)
+                                    </span>
                                   </div>
                                 }
                               />
@@ -756,8 +745,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
                               <SelectItem value="Approval Request">
                                 Approval Request
                               </SelectItem>
-                            )
-                          )}
+                            ))}
 
                           {/* ── Self Assign Task Types ── */}
                           {selfAssignTaskTypeNames.map((taskTypeName) =>
@@ -768,12 +756,17 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
                                 truncateValue={
                                   <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
                                     <span>{taskTypeName}</span>
-                                    <span className="text-xs italic">(blocked)</span>
+                                    <span className="text-xs italic">
+                                      (blocked)
+                                    </span>
                                   </div>
                                 }
                               />
                             ) : (
-                              <SelectItem key={taskTypeName} value={taskTypeName}>
+                              <SelectItem
+                                key={taskTypeName}
+                                value={taskTypeName}
+                              >
                                 {taskTypeName}
                               </SelectItem>
                             ),
