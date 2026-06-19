@@ -47,6 +47,7 @@ export default function ProjectFinanceSummary({
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((s) => s.auth.user?.id) || 0;
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const isAuditor = userType?.toLowerCase() === "auditor";
 
   // ✅ Lead block access control
   const { blockedTooltip, shouldDisableBlockedActions } = useLeadAccessControl({
@@ -190,8 +191,9 @@ export default function ProjectFinanceSummary({
       </Card>
 
       {/* ── Add Additional Payment Form ───────────────────────────────────────── */}
-      <Card className="p-4 shadow-sm">
-        <h3 className="text-md font-semibold mb-3">Add Additional Payment</h3>
+      {!isAuditor && (
+        <Card className="p-4 shadow-sm">
+          <h3 className="text-md font-semibold mb-3">Add Additional Payment</h3>
 
         <form
           onSubmit={
@@ -347,6 +349,7 @@ export default function ProjectFinanceSummary({
           </div>
         </form>
       </Card>
+      )}
     </motion.div>
   );
 }

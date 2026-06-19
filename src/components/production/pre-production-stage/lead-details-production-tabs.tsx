@@ -199,7 +199,10 @@ export default function LeadDetailsProductionUtil({
         customPrivilegeCodes.includes(
           "production.production.post_production_qc_photos.view",
         )
-      : canAccessAllTabs;
+      : canAccessAllTabs ||
+        ["site-supervisor", "sales-executive", "admin", "head-site-supervisor"].includes(
+          normalizedUserType ?? "",
+        );
 
   const allTabs = [
     {
@@ -272,7 +275,12 @@ export default function LeadDetailsProductionUtil({
       id: "postProduction",
       title: "Post Production",
       color: "bg-zinc-900 hover:bg-zinc-900",
-      disabled: !canViewPostProduction || !readyForPostProduction,
+      disabled:
+        !canViewPostProduction ||
+        (!readyForPostProduction &&
+          !["sales-executive", "site-supervisor", "admin", "head-site-supervisor"].includes(
+            normalizedUserType ?? "",
+          )),
       disabledReason: !canViewPostProduction
         ? "You don’t have permission to access Post Production."
         : "You can access Post Production only after completing Under-Production.",
@@ -364,14 +372,27 @@ export default function LeadDetailsProductionUtil({
       <SmoothTab
         items={allTabs}
         defaultTabId={(() => {
-          if (lead?.is_small_order_request === true) {
-            return "productionFiles";
-          }
           if (
             tabFromUrl &&
             allTabs.some((tab) => tab.id === tabFromUrl && !tab.disabled)
           ) {
             return tabFromUrl;
+          }
+          if (
+            ["sales-executive", "site-supervisor", "admin", "head-site-supervisor"].includes(
+              normalizedUserType ?? "",
+            )
+          ) {
+            const postProdTab = allTabs.find((t) => t.id === "postProduction");
+            if (postProdTab && !postProdTab.disabled) {
+              return "postProduction";
+            }
+          }
+          if (lead?.is_small_order_request === true) {
+            const prodFilesTab = allTabs.find((t) => t.id === "productionFiles");
+            if (prodFilesTab && !prodFilesTab.disabled) {
+              return "productionFiles";
+            }
           }
           if (canAccessAllTabs) {
             return defaultTab ? "preProductionFiles" : "postProduction";
