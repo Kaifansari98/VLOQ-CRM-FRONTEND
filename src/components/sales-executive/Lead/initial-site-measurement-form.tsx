@@ -876,7 +876,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                                     ) => (
                                       <div
                                         key={doc.id}
-                                        className="w-fit max-w-full"
+                                        className="w-full sm:w-[300px] md:w-[350px] max-w-full"
                                       >
                                         <ImageComponent
                                           doc={{
@@ -903,7 +903,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                                       (doc: SiteMeasurementFile) => (
                                       <div
                                         key={doc.id}
-                                        className="w-fit max-w-full"
+                                        className="w-full sm:w-[300px] md:w-[350px] max-w-full"
                                       >
                                         <DocumentCard
                                           doc={{

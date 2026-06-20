@@ -156,8 +156,9 @@ const PreviewModal: React.FC<PreviewModalProps> = ({ url, fileName, fileExt, onC
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[999999] bg-black/80 backdrop-blur-sm p-4 sm:p-6"
+      className="fixed inset-0 z-[999999] bg-black/80 backdrop-blur-sm p-4 sm:p-6 flex flex-col"
       onClick={onClose}
+      style={{ pointerEvents: "auto" }}
     >
       <div
         className="relative h-full w-full overflow-hidden rounded-xl border border-border bg-white dark:bg-neutral-900 flex flex-col"
