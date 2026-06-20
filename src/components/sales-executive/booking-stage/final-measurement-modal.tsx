@@ -736,7 +736,7 @@ const FinalMeasurementModal = ({
                     getExistingSitePhotosByInstance(instance.id);
 
                   return (
-                    <Card key={instance.id}>
+                    <Card key={instance.id} className="min-w-0 overflow-hidden">
                       <CardContent className="space-y-4">
                         <div>
                           <h4 className="text-sm font-semibold">
@@ -818,7 +818,7 @@ const FinalMeasurementModal = ({
                                 </p>
                                 <div className="flex flex-wrap gap-4">
                                   {existingInstanceDocs.map((doc) => (
-                                    <div key={doc.id} className="w-fit max-w-full">
+                                    <div key={doc.id} className="w-full sm:w-fit max-w-full min-w-0">
                                       <DocumentCard
                                         doc={{
                                           id: doc.id,
@@ -840,7 +840,7 @@ const FinalMeasurementModal = ({
                                 </p>
                                 <div className="flex flex-wrap gap-4">
                                   {existingInstanceSitePhotos.map((doc, index) => (
-                                    <div key={doc.id} className="w-fit max-w-full">
+                                    <div key={doc.id} className="w-full sm:w-fit max-w-full min-w-0">
                                       <ImageComponent
                                         doc={{
                                           id: doc.id,
