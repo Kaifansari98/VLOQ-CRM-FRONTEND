@@ -813,6 +813,9 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
           queryClient.invalidateQueries({
             queryKey: ["siteSupervisorAssigned", vendorId, leadId],
           });
+          queryClient.invalidateQueries({
+            queryKey: ["vendorSiteSupervisors", vendorId],
+          });
           setReassignConfirmOpen(false);
           setReassignOpen(false);
           setSelectedSupervisor(null);
@@ -883,10 +886,33 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                 </p>
 
                 {vendorCustomUserTypeMode === true ? (
+                  assignedIsmUserFromMapping?.user_name ? (
+                    <p className="text-xs font-semibold tracking-tight text-heading dark:text-neutral-100">
+                      {assignedIsmUserFromMapping.user_name}
+                    </p>
+                  ) : (
+                    <div className="w-fit">
+                      <CustomeTooltip
+                        value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                        truncateValue={
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            disabled={shouldDisableBlockedActions}
+                            onClick={() => setReassignOpen(true)}
+                          >
+                            Assign Site Supervisor
+                          </Button>
+                        }
+                      />
+                    </div>
+                  )
+                ) : currentSupervisor?.userName ? (
                   <p className="text-xs font-semibold tracking-tight text-heading dark:text-neutral-100">
-                    {assignedIsmUserFromMapping?.user_name || "Not Assigned Yet"}
+                    {currentSupervisor.userName}
                   </p>
-                ) : !isSupervisorAssigned && canAssignSiteSupervisor ? (
+                ) : (
                   <div className="w-fit">
                     <CustomeTooltip
                       value={shouldDisableBlockedActions ? blockedTooltip : ""}
@@ -903,10 +929,6 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                       }
                     />
                   </div>
-                ) : (
-                  <p className="text-xs font-semibold tracking-tight text-heading dark:text-neutral-100">
-                    {currentSupervisor?.userName || "Not Assigned Yet"}
-                  </p>
                 )}
               </div>
 
