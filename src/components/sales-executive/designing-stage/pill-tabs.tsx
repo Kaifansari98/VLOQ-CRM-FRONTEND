@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { CloudUpload, Palette, Plus } from "lucide-react";
+import { CloudUpload, Palette, Plus, Pencil } from "lucide-react";
 import React, { useState } from "react";
 import AddQuotationModal from "./pill-tabs-component/modals/add-quotation-modal";
 import DesignsModal from "./pill-tabs-component/modals/designs-modal";
@@ -218,12 +218,12 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
                   (assignedDesigner || canAssignDesigner) && (
                     <>
                       {assignedDesigner ? (
-                        <div className="h-9 rounded-md border bg-background px-3 flex items-center gap-2 whitespace-nowrap">
+                        <div className="h-9 rounded-md border bg-background pl-3 pr-1.5 flex items-center gap-2 whitespace-nowrap">
                           <Palette
                             size={16}
                             className="text-muted-foreground"
                           />
-                          <div className="flex flex-col leading-tight">
+                          <div className="flex flex-col leading-tight pr-1">
                             <span className="text-xs font-medium">
                               {assignedDesigner.user_name}
                             </span>
@@ -231,6 +231,17 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
                               Designer
                             </span>
                           </div>
+                          {canAssignDesigner && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6 text-muted-foreground hover:text-foreground bg-muted/50"
+                              onClick={() => setOpenAssignDesignerModal(true)}
+                              title="Change Designer"
+                            >
+                              <Pencil size={12} />
+                            </Button>
+                          )}
                         </div>
                       ) : canAssignDesigner ? (
                         <Button
