@@ -71,7 +71,14 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
       userType,
       lead: leadDetailsData?.data?.lead,
     });
+    const uniqueId = React.useId();
     const [activeTab, setActiveTab] = React.useState(defaultActiveId);
+
+    React.useEffect(() => {
+      if (defaultActiveId) {
+        setActiveTab(defaultActiveId);
+      }
+    }, [defaultActiveId]);
     const [openQuotationModal, setOpenQuotationModal] = useState(false);
     const [openDesignsModal, setOpenDesignsModal] = useState(false);
     const [openMeetingsModal, setOpenMeetingsModal] = useState(false);
@@ -144,7 +151,7 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
                 >
                   {activeTab === tab.id && (
                     <motion.div
-                      layoutId="pill-tabs-active-pill"
+                      layoutId={`pill-tabs-active-pill-${uniqueId}`}
                       className="absolute inset-0 bg-primary rounded-full"
                       transition={{ type: "spring", duration: 0.5 }}
                     />

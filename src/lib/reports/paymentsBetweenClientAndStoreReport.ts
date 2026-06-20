@@ -6,7 +6,7 @@ import { buildReportFileName, buildSheetName } from "@/lib/reports/fileName";
 interface GeneratePaymentsBetweenClientAndStoreReportParams {
   vendorId: number;
   vendorReportCode: string;
-  franchiseId: number | "all";
+  franchiseId: number | number[] | "all";
   leadId?: number | null;
   fromDate: string;
   toDate: string;
@@ -285,6 +285,14 @@ export async function generatePaymentsBetweenClientAndStoreReport(
   const rows =
     franchiseId === "all"
       ? await fetchReportData(vendorId, null, leadId, fromDate, toDate)
+      : Array.isArray(franchiseId)
+      ? (
+          await Promise.all(
+            franchiseId.map((id) =>
+              fetchReportData(vendorId, id, leadId, fromDate, toDate),
+            ),
+          )
+        ).flat()
       : await fetchReportData(vendorId, franchiseId, leadId, fromDate, toDate);
 
   if (rows.length === 0) {
@@ -302,14 +310,14 @@ export async function generatePaymentsBetweenClientAndStoreReport(
     workbook,
     rows,
     buildSheetName(
-      franchiseId === "all"
-        ? "Consolidated - All Franchisee"
+      franchiseId === "all" || Array.isArray(franchiseId)
+        ? "Consolidated"
         : "Payments Report",
       usedSheetNames,
     ),
   );
 
-  if (franchiseId === "all") {
+  if (franchiseId === "all" || Array.isArray(franchiseId)) {
     const groupedRows = new Map<string, PaymentsBetweenClientAndStoreReportRow[]>();
     for (const row of rows) {
       const key = row.franchise_store || "Unknown Franchise";

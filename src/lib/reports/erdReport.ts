@@ -6,7 +6,7 @@ import { buildReportFileName, buildSheetName } from "@/lib/reports/fileName";
 interface GenerateErdReportParams {
   vendorId: number;
   vendorReportCode: string;
-  franchiseId: number | "all";
+  franchiseId: number | number[] | "all";
   fromDate: string;
   toDate: string;
   onProgress?: (stage: string) => void;
@@ -153,6 +153,14 @@ export async function generateErdReport(params: GenerateErdReportParams) {
   const rows =
     franchiseId === "all"
       ? await fetchReportData(vendorId, null, fromDate, toDate)
+      : Array.isArray(franchiseId)
+      ? (
+          await Promise.all(
+            franchiseId.map((id) =>
+              fetchReportData(vendorId, id, fromDate, toDate),
+            ),
+          )
+        ).flat()
       : await fetchReportData(vendorId, franchiseId, fromDate, toDate);
 
   if (rows.length === 0) {
@@ -169,12 +177,12 @@ export async function generateErdReport(params: GenerateErdReportParams) {
     workbook,
     rows,
     buildSheetName(
-      franchiseId === "all" ? "Consolidated - All Franchisee" : "ERD Report",
+      franchiseId === "all" || Array.isArray(franchiseId) ? "Consolidated" : "ERD Report",
       usedSheetNames,
     ),
   );
 
-  if (franchiseId === "all") {
+  if (franchiseId === "all" || Array.isArray(franchiseId)) {
     const groupedRows = new Map<string, ErdReportRow[]>();
     for (const row of rows) {
       const key = row.franchise_store || "Unknown Franchise";
