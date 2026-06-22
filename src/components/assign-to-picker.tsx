@@ -104,7 +104,7 @@ export default function AssignToPicker({
 
   return (
     <div className="relative w-full min-w-0 *:not-first:mt-2 group">
-      <Popover open={open && !disabled} onOpenChange={setOpen}>
+      <Popover modal={true} open={open && !disabled} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             id={id}
@@ -143,7 +143,7 @@ export default function AssignToPicker({
             <TooltipProvider>
               <Command className="max-h-[320px] overflow-hidden">
                 <CommandInput placeholder={placeholder} />
-                <CommandList>
+                <CommandList className="max-h-64 overflow-y-auto overscroll-contain">
                   <CommandEmpty>No options found.</CommandEmpty>
                   <CommandGroup></CommandGroup>
                   {groups && groups.length > 0 ? (
