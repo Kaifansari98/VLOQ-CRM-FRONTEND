@@ -14,6 +14,7 @@ const API_URLS = {
 };
 
 const baseURL = API_URLS[environment] || API_URLS.PRODUCTION;
+console.log("baseURL",baseURL);
 // const baseURL =
 //   environment === "STAGING"
 //     ? "https://staging-api.furnixcrm.com/api"
