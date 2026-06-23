@@ -165,9 +165,18 @@ export function ReportCards() {
         return;
       }
       const rawFranchiseId = filters?._franchiseId ?? adminFranchiseId ?? "all";
-      const franchiseId = rawFranchiseId === "all" ? "all" : Number(rawFranchiseId);
-      const franchise = franchiseId !== "all" ? franchises.find((f) => f.id === franchiseId) : null;
-      const franchiseName = franchiseId === "all" ? "All Franchises" : (franchise?.franchise_name ?? "Unknown");
+      const franchiseId =
+        rawFranchiseId === "all"
+          ? "all"
+          : Array.isArray(rawFranchiseId)
+          ? rawFranchiseId.map(Number)
+          : Number(rawFranchiseId);
+      const franchiseName =
+        franchiseId === "all"
+          ? "All Franchises"
+          : Array.isArray(franchiseId)
+          ? "Multiple Franchises"
+          : (franchises.find((f) => f.id === franchiseId)?.franchise_name ?? "Unknown");
 
       setStage(reportId, "Fetching leads...");
       try {
@@ -202,7 +211,12 @@ export function ReportCards() {
       }
 
       const rawFranchiseId = filters?._franchiseId ?? adminFranchiseId ?? "all";
-      const franchiseId = rawFranchiseId === "all" ? "all" : Number(rawFranchiseId);
+      const franchiseId =
+        rawFranchiseId === "all"
+          ? "all"
+          : Array.isArray(rawFranchiseId)
+          ? rawFranchiseId.map(Number)
+          : Number(rawFranchiseId);
 
      setStage(reportId, "Fetching logs...");
 
@@ -249,7 +263,12 @@ try {
       }
 
       const rawFranchiseId = filters?._franchiseId ?? adminFranchiseId ?? "all";
-      const franchiseId = rawFranchiseId === "all" ? "all" : Number(rawFranchiseId);
+      const franchiseId =
+        rawFranchiseId === "all"
+          ? "all"
+          : Array.isArray(rawFranchiseId)
+          ? rawFranchiseId.map(Number)
+          : Number(rawFranchiseId);
 
       setStage(reportId, "Fetching leads...");
       try {
@@ -282,7 +301,12 @@ try {
       }
 
       const rawFranchiseId = filters?._franchiseId ?? adminFranchiseId ?? "all";
-      const franchiseId = rawFranchiseId === "all" ? "all" : Number(rawFranchiseId);
+      const franchiseId =
+        rawFranchiseId === "all"
+          ? "all"
+          : Array.isArray(rawFranchiseId)
+          ? rawFranchiseId.map(Number)
+          : Number(rawFranchiseId);
 
       setStage(reportId, "Fetching tech check data...");
       try {
@@ -315,7 +339,12 @@ try {
       }
 
       const rawFranchiseId = filters?._franchiseId ?? adminFranchiseId ?? "all";
-      const franchiseId = rawFranchiseId === "all" ? "all" : Number(rawFranchiseId);
+      const franchiseId =
+        rawFranchiseId === "all"
+          ? "all"
+          : Array.isArray(rawFranchiseId)
+          ? rawFranchiseId.map(Number)
+          : Number(rawFranchiseId);
 
       setStage(reportId, "Fetching ERD data...");
       try {
@@ -348,7 +377,12 @@ try {
       }
 
       const rawFranchiseId = filters?._franchiseId ?? adminFranchiseId ?? "all";
-      const franchiseId = rawFranchiseId === "all" ? "all" : Number(rawFranchiseId);
+      const franchiseId =
+        rawFranchiseId === "all"
+          ? "all"
+          : Array.isArray(rawFranchiseId)
+          ? rawFranchiseId.map(Number)
+          : Number(rawFranchiseId);
 
       setStage(reportId, "Fetching payment data...");
       try {
@@ -382,7 +416,12 @@ try {
       }
 
       const rawFranchiseId = filters?._franchiseId ?? adminFranchiseId ?? "all";
-      const franchiseId = rawFranchiseId === "all" ? "all" : Number(rawFranchiseId);
+      const franchiseId =
+        rawFranchiseId === "all"
+          ? "all"
+          : Array.isArray(rawFranchiseId)
+          ? rawFranchiseId.map(Number)
+          : Number(rawFranchiseId);
 
       setStage(reportId, "Fetching tracking data...");
       try {
@@ -417,10 +456,19 @@ try {
     }
 
     const rawFranchiseId = filters._franchiseId ?? adminFranchiseId ?? "all";
-    const franchiseId = rawFranchiseId === "all" ? "all" : Number(rawFranchiseId);
+    const franchiseId =
+      rawFranchiseId === "all"
+        ? "all"
+        : Array.isArray(rawFranchiseId)
+        ? rawFranchiseId.map(Number)
+        : Number(rawFranchiseId);
     const userId = filters.userId === "all" ? "all" : Number(filters.userId);
-    const franchise = franchiseId !== "all" ? franchises.find((f) => f.id === franchiseId) : null;
-    const franchiseName = franchiseId === "all" ? "All Franchises" : (franchise?.franchise_name ?? "Unknown");
+    const franchiseName =
+      franchiseId === "all"
+        ? "All Franchises"
+        : Array.isArray(franchiseId)
+        ? "Multiple Franchises"
+        : (franchises.find((f) => f.id === franchiseId)?.franchise_name ?? "Unknown");
 
     setStage(reportId, "Fetching data...");
     try {

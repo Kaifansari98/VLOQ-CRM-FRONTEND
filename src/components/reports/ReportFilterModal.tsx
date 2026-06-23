@@ -52,7 +52,7 @@ export interface ReportFilters {
   leadId?: string;
   fromDate: string;
   toDate: string;
-  _franchiseId?: number | "all";
+  _franchiseId?: number | number[] | "all";
   _employeeName?: string;
   _leadName?: string;
   selectedTeams?: Option[];
@@ -104,26 +104,40 @@ export function ReportFilterModal({
     _franchiseId: isSuperAdmin ? "all" : (adminFranchiseId ?? undefined),
   }), [adminFranchiseId, isAdmin, isSuperAdmin]);
 
-  const [selectedFranchiseId, setSelectedFranchiseId] = useState<string>(
-    defaultFilters._franchiseId === "all"
-      ? "all"
-      : defaultFilters._franchiseId
-        ? String(defaultFilters._franchiseId)
-        : "",
-  );
+  const [selectedFranchiseOptions, setSelectedFranchiseOptions] = useState<Option[]>([]);
   const [filters, setFilters] = useState<ReportFilters>(initialFilters ?? defaultFilters);
+
+  const selectedFranchiseIds = useMemo(() => {
+    return selectedFranchiseOptions
+      .filter((opt) => opt.value !== "all")
+      .map((opt) => Number(opt.value));
+  }, [selectedFranchiseOptions]);
+
+  const { data: franchises = [] } = useFranchisesByVendorId(vendorId, isSuperAdmin);
 
   useEffect(() => {
     const nextFilters = initialFilters ?? defaultFilters;
     setFilters(nextFilters);
-    setSelectedFranchiseId(
-      nextFilters._franchiseId === "all"
-        ? "all"
-        : nextFilters._franchiseId
-          ? String(nextFilters._franchiseId)
-          : "",
-    );
-  }, [defaultFilters, initialFilters, open]);
+
+    if (nextFilters._franchiseId === "all" || !nextFilters._franchiseId) {
+      setSelectedFranchiseOptions([]);
+    } else if (Array.isArray(nextFilters._franchiseId)) {
+      const selected = nextFilters._franchiseId.map((id) => {
+        const found = franchises.find((f) => f.id === Number(id));
+        return {
+          value: String(id),
+          label: found ? found.franchise_name : `Franchise ${id}`,
+        };
+      });
+      setSelectedFranchiseOptions(selected);
+    } else {
+      const id = nextFilters._franchiseId;
+      const found = franchises.find((f) => f.id === Number(id));
+      setSelectedFranchiseOptions(
+        found ? [{ value: String(id), label: found.franchise_name }] : []
+      );
+    }
+  }, [defaultFilters, initialFilters, open, franchises]);
 
   const selectedDateRange = useMemo<DateRange | undefined>(() => {
     if (!filters.fromDate && !filters.toDate) return undefined;
@@ -144,20 +158,28 @@ export function ReportFilterModal({
     isMiscIssueLogReport ||
     isLeadTrackingReport ||
     isPaymentsReport;
-  const isAllFranchise = selectedFranchiseId === "all";
+  const isAllFranchise =
+    selectedFranchiseOptions.length === 0 ||
+    selectedFranchiseOptions.some((o) => o.value === "all");
   const isAllUserType = selectedUserType === "all";
   const isVendorLevel = VENDOR_LEVEL_TYPES.includes(selectedUserType) || isAllFranchise;
 
   // For API calls: undefined when "all" or not selected, number when specific
   const activeFranchiseId = isSuperAdmin
-    ? (selectedFranchiseId && !isAllFranchise) ? Number(selectedFranchiseId) : undefined
+    ? (selectedFranchiseIds.length === 1 ? selectedFranchiseIds[0] : undefined)
     : adminFranchiseId ?? undefined;
-
-  const { data: franchises = [] } = useFranchisesByVendorId(vendorId, isSuperAdmin);
 
   const { data: miscTeams = [], isLoading: loadingTeams } = useMiscTeams(vendorId);
 
-
+  const franchiseOptions: Option[] = useMemo(() => {
+    return [
+      { value: "all", label: "All Franchises" },
+      ...franchises.map((f) => ({
+        value: String(f.id),
+        label: f.franchise_name,
+      })),
+    ];
+  }, [franchises]);
 
   const teamOptions: Option[] = useMemo(() => {
     return miscTeams.map((team: any) => ({
@@ -177,18 +199,59 @@ export function ReportFilterModal({
       "report-lead-availability",
       reportTitle,
       vendorId,
-      activeFranchiseId ?? "all",
+      selectedFranchiseIds.length > 0 ? selectedFranchiseIds.join(",") : "all",
     ],
     queryFn: async () => {
-      const params =
-        activeFranchiseId !== undefined
-          ? { params: { franchise_id: activeFranchiseId } }
-          : undefined;
+      if (selectedFranchiseIds.length > 0) {
+        const promises = selectedFranchiseIds.map(async (fid) => {
+          const params = { params: { franchise_id: fid } };
+          if (isInstallationReport) {
+            const { data } = await apiClient.get(
+              `/leads/installation/under-installation/vendorId/${vendorId}/report/installation-data`,
+              params,
+            );
+            return (data?.data ?? []) as ReportLeadAvailabilityRow[];
+          }
+          if (isMiscIssueLogReport) {
+            const { data } = await apiClient.get(
+              `/leads/installation/under-installation/vendorId/${vendorId}/report/misc-issue-log-data`,
+              params,
+            );
+            return (data?.data ?? []) as ReportLeadAvailabilityRow[];
+          }
+          if (isLeadTrackingReport) {
+            const { data } = await apiClient.get(
+              "/vendors/reports/lead-tracking",
+              {
+                params: {
+                  vendor_id: vendorId,
+                  franchise_id: fid,
+                },
+              },
+            );
+            return (data?.data ?? []) as ReportLeadAvailabilityRow[];
+          }
+          if (isPaymentsReport) {
+            const { data } = await apiClient.get(
+              "/vendors/reports/payments-between-client-and-store",
+              {
+                params: {
+                  vendor_id: vendorId,
+                  franchise_id: fid,
+                },
+              },
+            );
+            return (data?.data ?? []) as ReportLeadAvailabilityRow[];
+          }
+          return [];
+        });
+        const results = await Promise.all(promises);
+        return results.flat();
+      }
 
       if (isInstallationReport) {
         const { data } = await apiClient.get(
           `/leads/installation/under-installation/vendorId/${vendorId}/report/installation-data`,
-          params,
         );
         return (data?.data ?? []) as ReportLeadAvailabilityRow[];
       }
@@ -196,7 +259,6 @@ export function ReportFilterModal({
       if (isMiscIssueLogReport) {
         const { data } = await apiClient.get(
           `/leads/installation/under-installation/vendorId/${vendorId}/report/misc-issue-log-data`,
-          params,
         );
         return (data?.data ?? []) as ReportLeadAvailabilityRow[];
       }
@@ -207,9 +269,6 @@ export function ReportFilterModal({
           {
             params: {
               vendor_id: vendorId,
-              ...(activeFranchiseId !== undefined
-                ? { franchise_id: activeFranchiseId }
-                : {}),
             },
           },
         );
@@ -222,9 +281,6 @@ export function ReportFilterModal({
           {
             params: {
               vendor_id: vendorId,
-              ...(activeFranchiseId !== undefined
-                ? { franchise_id: activeFranchiseId }
-                : {}),
             },
           },
         );
@@ -239,15 +295,15 @@ export function ReportFilterModal({
   // Sales Executive — franchise-aware
   const { data: salesData, isLoading: isSalesLoading } = useVendorSalesExecutiveUsers(
     vendorId,
-    !isVendorLevel && activeFranchiseId ? activeFranchiseId : undefined,
+    !isVendorLevel && selectedFranchiseIds.length === 1 ? selectedFranchiseIds[0] : undefined,
   );
 
   // Site Supervisor — franchise-aware (reuse leads API)
   const { data: siteSuperData, isLoading: isSiteSuperLoading } = useQuery({
-    queryKey: ["siteSupervisorUsers", vendorId, activeFranchiseId],
+    queryKey: ["siteSupervisorUsers", vendorId, selectedFranchiseIds],
     queryFn: async () => {
-      const params = !isVendorLevel && activeFranchiseId
-        ? { params: { franchise_id: activeFranchiseId } }
+      const params = !isVendorLevel && selectedFranchiseIds.length === 1
+        ? { params: { franchise_id: selectedFranchiseIds[0] } }
         : undefined;
       const { data } = await apiClient.get(`/leads/site-supervisor/vendor/${vendorId}`, params);
       return (data?.data?.site_supervisors ?? data?.data ?? []) as { id: number; user_name: string }[];
@@ -301,8 +357,8 @@ export function ReportFilterModal({
     return (vendorLeads as Lead[])
       .filter((lead) => {
         if (!eligibleLeadIds.has(lead.id)) return false;
-        if (!selectedFranchiseId || selectedFranchiseId === "all") return true;
-        return Number(lead.franchise_id) === Number(selectedFranchiseId);
+        if (selectedFranchiseIds.length === 0) return true;
+        return selectedFranchiseIds.includes(Number(lead.franchise_id));
       })
       .map((lead) => ({
         id: String(lead.id),
@@ -315,13 +371,13 @@ export function ReportFilterModal({
           lead.lead_code?.slice(0, 2).toUpperCase() ||
           "LD",
       }));
-  }, [eligibleLeadIds, selectedFranchiseId, supportsLeadFilter, vendorLeads]);
+  }, [eligibleLeadIds, selectedFranchiseIds, supportsLeadFilter, vendorLeads]);
 
   const isUsersLoading =
     isSalesLoading || isSiteSuperLoading || isFactoryLoading || isBackendLoading || isTechCheckLoading;
 
   const showFranchiseSelect = isSuperAdmin;
-  const franchiseChosen = !showFranchiseSelect || !!selectedFranchiseId;
+  const franchiseChosen = !showFranchiseSelect || selectedFranchiseIds.length >= 0;
   const userTypeChosen = !!selectedUserType;
   // User select is disabled when userType is "all" (userId auto-becomes "all") or nothing selected yet
   const userSelectDisabled =
@@ -330,24 +386,32 @@ export function ReportFilterModal({
     !franchiseChosen ||
     isAllUserType ||
     isAllFranchise;
-  const leadSelectDisabled = !supportsLeadFilter || (showFranchiseSelect ? isAllFranchise : false);
+  const leadSelectDisabled = !supportsLeadFilter;
 
-  const syncDraft = (nextFilters: ReportFilters, franchiseId: string = selectedFranchiseId) => {
-    onDraftChange?.({
-      ...nextFilters,
-      _franchiseId: franchiseId === "all" ? "all" : franchiseId ? Number(franchiseId) : undefined,
-    });
+  const syncDraft = (nextFilters: ReportFilters) => {
+    onDraftChange?.(nextFilters);
   };
 
   const handleReset = () => {
     setFilters(defaultFilters);
-    setSelectedFranchiseId(
-      defaultFilters._franchiseId === "all"
-        ? "all"
-        : defaultFilters._franchiseId
-          ? String(defaultFilters._franchiseId)
-          : "",
-    );
+    if (defaultFilters._franchiseId === "all" || !defaultFilters._franchiseId) {
+      setSelectedFranchiseOptions([]);
+    } else if (Array.isArray(defaultFilters._franchiseId)) {
+      const selected = defaultFilters._franchiseId.map((id) => {
+        const found = franchises.find((f) => f.id === Number(id));
+        return {
+          value: String(id),
+          label: found ? found.franchise_name : `Franchise ${id}`,
+        };
+      });
+      setSelectedFranchiseOptions(selected);
+    } else {
+      const id = defaultFilters._franchiseId;
+      const found = franchises.find((f) => f.id === Number(id));
+      setSelectedFranchiseOptions(
+        found ? [{ value: String(id), label: found.franchise_name }] : []
+      );
+    }
     onResetDraft?.();
   };
 
@@ -360,9 +424,9 @@ export function ReportFilterModal({
     );
     const resolvedFranchiseId: ReportFilters["_franchiseId"] = isAllFranchise
       ? "all"
-      : selectedFranchiseId
-        ? Number(selectedFranchiseId)
-        : activeFranchiseId;
+      : selectedFranchiseIds.length === 1
+        ? selectedFranchiseIds[0]
+        : selectedFranchiseIds;
     const nextFilters: ReportFilters = {
       ...filters,
 
@@ -398,10 +462,10 @@ export function ReportFilterModal({
     syncDraft(nextFilters);
   };
 
-  const updateFilters = (updater: (prev: ReportFilters) => ReportFilters, franchiseId: string = selectedFranchiseId) => {
+  const updateFilters = (updater: (prev: ReportFilters) => ReportFilters) => {
     setFilters((prev) => {
       const next = updater(prev);
-      syncDraft(next, franchiseId);
+      syncDraft(next);
       return next;
     });
   };
@@ -420,31 +484,43 @@ export function ReportFilterModal({
         {showFranchiseSelect && (
           <div className="space-y-1">
             <Label className="text-xs">Filter by Franchise</Label>
-            <ReportAssignToPicker
-              value={selectedFranchiseId}
-              onChange={(val) => {
-                const nextValue = String(val ?? "");
-                setSelectedFranchiseId(nextValue);
-                updateFilters(
-                  (prev) => ({
-                    ...prev,
-                    userType: nextValue === "all" ? "all" : "",
-                    userId: "all",
-                    leadId: "",
-                    _franchiseId: nextValue === "all" ? "all" : Number(nextValue),
-                  }),
-                  nextValue,
-                );
+            <MultipleSelector
+              value={selectedFranchiseOptions}
+              onChange={(options) => {
+                let nextOptions = options || [];
+                const prevHasAll = selectedFranchiseOptions.some((o) => o.value === "all");
+                const nextHasAll = nextOptions.some((o) => o.value === "all");
+
+                if (nextHasAll) {
+                  if (!prevHasAll) {
+                    // "all" was newly added -> clear all specific franchises
+                    nextOptions = [{ value: "all", label: "All Franchises" }];
+                  } else if (nextOptions.length > 1) {
+                    // "all" was already present, and other franchises were added -> remove "all"
+                    nextOptions = nextOptions.filter((o) => o.value !== "all");
+                  }
+                }
+
+                setSelectedFranchiseOptions(nextOptions);
+                const isAllSelectedOrEmpty = nextOptions.length === 0 || nextOptions.some((o) => o.value === "all");
+                const ids = isAllSelectedOrEmpty ? [] : nextOptions.map((o) => Number(o.value));
+
+                updateFilters((prev) => ({
+                  ...prev,
+                  userType: isAllSelectedOrEmpty ? "all" : "",
+                  userId: "all",
+                  leadId: "",
+                  _franchiseId: isAllSelectedOrEmpty ? "all" : (ids.length === 1 ? ids[0] : ids),
+                }));
               }}
-              data={[
-                { id: "all", label: "All Franchises" },
-                ...franchises.map((f) => ({
-                  id: String(f.id),
-                  label: f.franchise_name,
-                })),
-              ]}
-              emptyLabel="Select franchise"
-              placeholder="Search franchise..."
+              defaultOptions={franchiseOptions}
+              options={franchiseOptions}
+              placeholder={selectedFranchiseOptions.length === 0 ? "All Franchises (Select multiple...)" : "Select franchises..."}
+              emptyIndicator={
+                <p className="text-center text-sm text-muted-foreground">
+                  No franchises found
+                </p>
+              }
             />
           </div>
         )}
@@ -495,7 +571,7 @@ export function ReportFilterModal({
                   <span className="block w-full">
                     <ReportAssignToPicker
                       value={filters.userType}
-                      disabled={showFranchiseSelect && !selectedFranchiseId}
+                      disabled={false}
                       onChange={(val) =>
                         updateFilters((prev) => ({
                           ...prev,
@@ -510,18 +586,11 @@ export function ReportFilterModal({
                           label: USER_TYPE_LABELS[value] ?? value,
                         })),
                       ]}
-                      emptyLabel={
-                        showFranchiseSelect && !selectedFranchiseId
-                          ? "Select a franchise first"
-                          : "Select user type"
-                      }
+                      emptyLabel="Select user type"
                       placeholder="Search user type..."
                     />
                   </span>
                 </TooltipTrigger>
-                {showFranchiseSelect && !selectedFranchiseId && (
-                  <TooltipContent side="top">Select a franchise first</TooltipContent>
-                )}
               </Tooltip>
             </div>
 
@@ -544,15 +613,13 @@ export function ReportFilterModal({
                         label: u.user_name,
                       }))}
                       emptyLabel={
-                        showFranchiseSelect && !selectedFranchiseId
-                          ? "Select a franchise first"
-                          : !selectedUserType
-                            ? "Select a user type first"
-                            : isAllUserType || isAllFranchise
-                              ? "All Users"
-                              : isUsersLoading
-                                ? "Loading users..."
-                                : "Select user"
+                        !selectedUserType
+                          ? "Select a user type first"
+                          : isAllUserType || isAllFranchise
+                            ? "All Users"
+                            : isUsersLoading
+                              ? "Loading users..."
+                              : "Select user"
                       }
                       placeholder="Search user..."
                     />
@@ -560,15 +627,13 @@ export function ReportFilterModal({
                 </TooltipTrigger>
                 {userSelectDisabled && (
                   <TooltipContent side="top">
-                    {showFranchiseSelect && !selectedFranchiseId
-                      ? "Select a franchise first"
-                      : !selectedUserType
-                        ? "Select a user type first"
-                        : isAllUserType || isAllFranchise
-                          ? "All users will be included"
-                          : isUsersLoading
-                            ? "Loading users..."
-                            : null}
+                    {!selectedUserType
+                      ? "Select a user type first"
+                      : isAllUserType || isAllFranchise
+                        ? "All users will be included"
+                        : isUsersLoading
+                          ? "Loading users..."
+                          : null}
                   </TooltipContent>
                 )}
               </Tooltip>

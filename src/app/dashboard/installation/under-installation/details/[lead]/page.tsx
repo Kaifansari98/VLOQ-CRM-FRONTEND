@@ -164,9 +164,12 @@ export default function UnderInstallationLeadDetails() {
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
   const accountId = lead?.account_id;
   const isSmallOrderLead = lead?.is_small_order_request === true;
+  const smallOrderRequestSource = lead?.smallOrderRequest?.request_source;
   const smallOrderRequestId = lead?.smallOrderRequest?.id ?? null;
   const isSmallOrderRequestResolved =
     lead?.smallOrderRequest?.is_request_resolved === true;
+  const shouldShowStartInstallationButton =
+    !isSmallOrderLead || smallOrderRequestSource === "final_handover";
   const resolvedApprovedSmallOrderCount = (smallOrderRequestsResponse?.data ?? [])
     .filter((request) => request.status === "approved")
     .length;
@@ -951,7 +954,7 @@ export default function UnderInstallationLeadDetails() {
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
 
-          {!isSmallOrderLead && (
+          {shouldShowStartInstallationButton && (
             <div className="flex">
               {!underDetails?.actual_installation_start_date ? (
                 !isAuditor && (

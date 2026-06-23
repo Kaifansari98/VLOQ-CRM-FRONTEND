@@ -28,6 +28,10 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
 } from "recharts";
 import {
   ChevronDown,
@@ -371,11 +375,45 @@ function RevenueChart({ vendorId, franchises }: RevenueChartProps) {
 
 // ─── Franchise Bar Chart ──────────────────────────────────────────────────────
 
+// ─── Franchise Pie Chart ──────────────────────────────────────────────────────
+
+const COLORS = [
+  "#a29c95", // Lightest warm gray
+  "#8f8880",
+  "#6d6561",
+  "#5b5551",
+  "#4b4643",
+  "#272423", // Darkest warm gray
+];
+
+
 interface FranchiseChartProps {
   data?: FranchiseLeadCount[];
   isLoading?: boolean;
   onBarDoubleClick?: (franchise: FranchiseLeadCount) => void;
 }
+
+const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+  const RADIAN = Math.PI / 180;
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+  if (percent < 0.05) return null;
+
+  return (
+    <text
+      x={x}
+      y={y}
+      fill="#ffffff"
+      textAnchor="middle"
+      dominantBaseline="central"
+      className="text-[10px] font-bold"
+    >
+      {`${(percent * 100).toFixed(0)}%`}
+    </text>
+  );
+};
 
 function FranchiseChart({
   data = [],
@@ -391,7 +429,7 @@ function FranchiseChart({
           Leads by Franchise
         </CardTitle>
         <p className="text-xs text-muted-foreground">
-          Top {chartData.length} franchises · Double-click a bar to view leads
+          Top {chartData.length} franchises · Double-click a slice to view leads
         </p>
       </CardHeader>
 
@@ -402,69 +440,43 @@ function FranchiseChart({
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={chartData}
-              margin={{ left: 0, right: 0, top: 5, bottom: 0 }}
-            >
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="hsl(var(--border))"
-                opacity={0.3}
-                vertical={false}
-              />
-              <XAxis
-                dataKey="code"
-                tick={{ fill: "var(--foreground)", fontSize: 11 }}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                tick={{ fill: "var(--foreground)", fontSize: 11 }}
-                tickLine={false}
-                axisLine={false}
-                allowDecimals={false}
-              />
+            <PieChart>
+              <Pie
+                data={chartData}
+                dataKey="leads"
+                nameKey="code"
+                cx="50%"
+                cy="50%"
+                outerRadius={65}
+                innerRadius={35}
+                paddingAngle={2}
+                label={renderCustomizedLabel}
+                labelLine={false}
+              >
+                {chartData.map((entry, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={COLORS[index % COLORS.length]}
+                    style={{ cursor: onBarDoubleClick ? "pointer" : "default" }}
+                    onDoubleClick={() => onBarDoubleClick?.(entry)}
+                  />
+                ))}
+              </Pie>
               <Tooltip
-                formatter={(value, _name, props) => [
-                  value,
-                  props.payload?.name ?? "Leads",
+                formatter={(value: any, name: any, props: any) => [
+                  `${value} Leads`,
+                  props.payload?.name ?? name,
                 ]}
                 contentStyle={{
                   border: "1px solid hsl(var(--border))",
                   borderRadius: "10px",
                   boxShadow: "0px 4px 12px rgba(0,0,0,0.15)",
+                  backgroundColor: "var(--background)",
+                  color: "var(--foreground)",
                 }}
-                labelFormatter={(_label, payload) =>
-                  payload?.[0]?.payload?.name ?? _label
-                }
-                labelStyle={{ fontSize: "12px", fontWeight: 500 }}
-                itemStyle={{ fontSize: "12px" }}
+                itemStyle={{ fontSize: "12px", color: "var(--foreground)" }}
               />
-              <Bar
-                dataKey="leads"
-                radius={[6, 6, 0, 0]}
-                shape={(props: any) => {
-                  const { x, y, width, height, payload } = props;
-                  return (
-                    <rect
-                      x={x}
-                      y={y}
-                      width={width}
-                      height={height}
-                      fill="var(--primary)"
-                      rx={6}
-                      ry={6}
-                      style={{
-                        cursor: onBarDoubleClick ? "pointer" : "default",
-                      }}
-                      onDoubleClick={() =>
-                        onBarDoubleClick?.(payload as FranchiseLeadCount)
-                      }
-                    />
-                  );
-                }}
-              />
-            </BarChart>
+            </PieChart>
           </ResponsiveContainer>
         )}
       </CardContent>

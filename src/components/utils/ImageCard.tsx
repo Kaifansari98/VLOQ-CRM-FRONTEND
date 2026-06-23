@@ -152,6 +152,7 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
         group relative flex items-center gap-4 rounded-xl p-4 
         border border-border bg-white dark:bg-neutral-900
         transition-all duration-200 hover:bg-muted/40 dark:hover:bg-neutral-800
+        w-full min-w-[250px] sm:min-w-[300px]
       "
       >
         {/* Delete Button */}

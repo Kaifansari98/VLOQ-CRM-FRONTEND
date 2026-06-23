@@ -782,7 +782,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                       getExistingMeasurementDocsByInstance(instance.id);
 
                     return (
-                      <Card key={instance.id} id={`instance-${instance.id}`}>
+                      <Card key={instance.id} id={`instance-${instance.id}`} className="min-w-0 overflow-hidden">
                         <CardContent className="space-y-4">
                           <div>
                             <h4 className="text-sm font-semibold">
@@ -876,7 +876,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                                     ) => (
                                       <div
                                         key={doc.id}
-                                        className="w-fit max-w-full"
+                                        className="w-full sm:w-[300px] md:w-[350px] max-w-full min-w-0"
                                       >
                                         <ImageComponent
                                           doc={{
@@ -903,7 +903,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                                       (doc: SiteMeasurementFile) => (
                                       <div
                                         key={doc.id}
-                                        className="w-fit max-w-full"
+                                        className="w-full sm:w-[300px] md:w-[350px] max-w-full"
                                       >
                                         <DocumentCard
                                           doc={{

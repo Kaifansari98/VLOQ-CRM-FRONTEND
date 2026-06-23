@@ -3,7 +3,7 @@
 import { NotificationItem } from "@/types/notifications";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { Bell, Briefcase, MessageCircle, Target, Circle } from "lucide-react";
+import { Bell, Briefcase, CheckSquare, MessageCircle, Target, Circle } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const TYPE_STYLES: Record<
@@ -39,6 +39,12 @@ const TYPE_STYLES: Record<
     bg: "bg-sky-50 dark:bg-sky-950",
     text: "text-sky-500 dark:text-sky-500",
     Icon: Bell,
+  },
+  APPROVAL: {
+    label: "Approval",
+    bg: "bg-teal-50 dark:bg-teal-950",
+    text: "text-teal-500 dark:text-teal-500",
+    Icon: CheckSquare,
   },
 };
 

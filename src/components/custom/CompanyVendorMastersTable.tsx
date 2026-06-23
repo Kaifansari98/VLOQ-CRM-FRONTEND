@@ -36,6 +36,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type CompanyVendorRow = {
   srNo: number;
@@ -46,6 +47,7 @@ type CompanyVendorRow = {
   contact_no: string;
   email?: string | null;
   address?: string | null;
+  in_house: boolean;
   status: "active" | "inactive";
 };
 
@@ -94,6 +96,29 @@ const getCompanyVendorColumns = ({
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Contact No." />
     ),
+    enableSorting: true,
+    enableHiding: false,
+  },
+  {
+    accessorKey: "in_house",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="In House" />
+    ),
+    cell: ({ row }) => {
+      const inHouse = row.getValue("in_house") as boolean;
+      return (
+        <span
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize",
+            inHouse
+              ? "border-blue-200 bg-blue-500/10 text-blue-600"
+              : "border-zinc-200 bg-zinc-100 text-zinc-600",
+          )}
+        >
+          {inHouse ? "Yes" : "No"}
+        </span>
+      );
+    },
     enableSorting: true,
     enableHiding: false,
   },
@@ -180,6 +205,7 @@ export default function CompanyVendorMastersTable({
     contact_no: "",
     email: "",
     address: "",
+    in_house: false,
   });
 
   const tableData = React.useMemo<CompanyVendorRow[]>(
@@ -193,6 +219,7 @@ export default function CompanyVendorMastersTable({
         contact_no: item.contact_no,
         email: item.email,
         address: item.address,
+        in_house: item.in_house ?? false,
         status: item.is_deleted ? "inactive" : "active",
       })),
     [data],
@@ -210,6 +237,7 @@ export default function CompanyVendorMastersTable({
           contact_no: row.contact_no,
           email: row.email ?? "",
           address: row.address ?? "",
+          in_house: row.in_house ?? false,
         });
         setOpenEditModal(true);
       },
@@ -251,6 +279,7 @@ export default function CompanyVendorMastersTable({
       contact_no: "",
       email: "",
       address: "",
+      in_house: false,
     });
   };
 
@@ -272,6 +301,7 @@ export default function CompanyVendorMastersTable({
         contact_no: form.contact_no.trim(),
         email: form.email.trim() || undefined,
         address: form.address.trim() || undefined,
+        in_house: form.in_house,
         created_by: userId!,
       },
       {
@@ -297,6 +327,7 @@ export default function CompanyVendorMastersTable({
           contact_no: form.contact_no.trim(),
           email: form.email.trim() || undefined,
           address: form.address.trim() || undefined,
+          in_house: form.in_house,
           updated_by: userId!,
         },
       },
@@ -387,6 +418,43 @@ export default function CompanyVendorMastersTable({
           onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
           placeholder="Enter address"
         />
+      </div>
+      <div className="space-y-2">
+        <Label>Is this in house ?</Label>
+        <div className="flex items-center gap-6 pt-1">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="in-house-yes"
+              checked={form.in_house === true}
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  setForm((prev) => ({ ...prev, in_house: true }));
+                } else {
+                  setForm((prev) => ({ ...prev, in_house: false }));
+                }
+              }}
+            />
+            <Label htmlFor="in-house-yes" className="font-normal cursor-pointer">
+              Yes
+            </Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="in-house-no"
+              checked={form.in_house === false}
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  setForm((prev) => ({ ...prev, in_house: false }));
+                } else {
+                  setForm((prev) => ({ ...prev, in_house: true }));
+                }
+              }}
+            />
+            <Label htmlFor="in-house-no" className="font-normal cursor-pointer">
+              No
+            </Label>
+          </div>
+        </div>
       </div>
     </>
   );

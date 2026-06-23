@@ -2,9 +2,6 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { z } from "zod";
-import { useForm, SubmitHandler } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,35 +13,21 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Button } from "@/components/ui/button";
-import AssignToPicker from "@/components/assign-to-picker";
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { cn, toastError } from "@/lib/utils";
 import { toastManager } from "@/components/ui/toast";
 import { useAppSelector } from "@/redux/store";
 import {
   assignDesignerToLead,
   getVendorSalesExecutiveUsers,
 } from "@/api/leads";
-import { toastError } from "@/lib/utils";
-
-const formSchema = z.object({
-  assign_to_user_id: z.number().min(1, "Please select a designer"),
-});
-
-type FormValues = z.infer<typeof formSchema>;
 
 interface AssignDesignerModalProps {
   open: boolean;
@@ -67,13 +50,7 @@ export default function AssignDesignerModal({
 
   const [showSingleUserConfirm, setShowSingleUserConfirm] = useState(false);
   const [selectedUserName, setSelectedUserName] = useState<string | null>(null);
-
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      assign_to_user_id: 0,
-    },
-  });
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: [
@@ -131,9 +108,9 @@ export default function AssignDesignerModal({
         type: "success",
       });
       queryClient.invalidateQueries({ queryKey: ["lead", data.id] });
-      form.reset({ assign_to_user_id: 0 });
       setShowSingleUserConfirm(false);
       setSelectedUserName(null);
+      setSelectedUserId(null);
       onOpenChange(false);
     },
     onError: (error: unknown) => {
@@ -145,7 +122,7 @@ export default function AssignDesignerModal({
     if (!open) return;
 
     if (users.length === 1) {
-      form.setValue("assign_to_user_id", users[0].id);
+      setSelectedUserId(users[0].id);
       setSelectedUserName(users[0].user_name);
       setShowSingleUserConfirm(true);
       return;
@@ -153,12 +130,11 @@ export default function AssignDesignerModal({
 
     setShowSingleUserConfirm(false);
     setSelectedUserName(null);
-    form.setValue("assign_to_user_id", 0);
-  }, [form, open, users]);
+    setSelectedUserId(null);
+  }, [open, users]);
 
   const handleSingleUserSubmit = () => {
-    const assignToUserId = form.getValues("assign_to_user_id");
-    if (!assignToUserId) {
+    if (!selectedUserId) {
       toastManager.add({
         title: "No eligible designer found",
         type: "error",
@@ -166,12 +142,10 @@ export default function AssignDesignerModal({
       return;
     }
 
-    mutation.mutate(assignToUserId);
+    mutation.mutate(selectedUserId);
   };
 
-  const onSubmit: SubmitHandler<FormValues> = (values) => {
-    mutation.mutate(values.assign_to_user_id);
-  };
+
 
   if (showSingleUserConfirm && users.length === 1) {
     return (
@@ -214,62 +188,64 @@ export default function AssignDesignerModal({
     );
   }
 
+  const getInitials = (name: string) => {
+    if (!name) return "U";
+    return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+  };
+
+  const colors = [
+    "bg-purple-500",
+    "bg-cyan-500",
+    "bg-blue-500",
+    "bg-green-500",
+    "bg-amber-500",
+    "bg-rose-500",
+  ];
+  const getAvatarColor = (name: string) => {
+    if (!name) return colors[0];
+    const charCodeSum = name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return colors[charCodeSum % colors.length];
+  };
+
   return (
-    <Dialog open={open && !showSingleUserConfirm} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md w-full">
-        <DialogHeader>
-          <DialogTitle>Assign Designer</DialogTitle>
-        </DialogHeader>
-
-        <ScrollArea className="pt-4 max-h-[60vh]">
-          {isLoading ? (
-            <div className="p-6 text-center text-muted-foreground">
-              Loading eligible designers...
-            </div>
-          ) : users.length === 0 ? (
-            <div className="p-6 text-center text-muted-foreground">
-              No eligible designers found.
-            </div>
-          ) : (
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="assign_to_user_id"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm">
-                        Assign Eligible User for Designer
-                      </FormLabel>
-                      <FormControl>
-                        <AssignToPicker
-                          data={mappedUsers}
-                          value={field.value}
-                          onChange={(value) => field.onChange(Number(value) || 0)}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => onOpenChange(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={mutation.isPending}>
-                    {mutation.isPending ? "Assigning..." : "Assign Designer"}
-                  </Button>
+    <CommandDialog open={open && !showSingleUserConfirm} onOpenChange={onOpenChange}>
+      <CommandInput placeholder="Search user to assign..." />
+      <CommandList>
+        {isLoading && (
+          <div className="p-6 text-center text-muted-foreground">
+            Loading eligible designers...
+          </div>
+        )}
+        {!isLoading && users.length === 0 && (
+          <CommandEmpty>No eligible designers found.</CommandEmpty>
+        )}
+        {!isLoading && users.length > 0 && (
+          <CommandGroup heading="Sales-executive">
+            {users.map((user: any) => (
+              <CommandItem
+                key={user.id}
+                onSelect={() => mutation.mutate(user.id)}
+                disabled={mutation.isPending}
+                className="flex items-center gap-3 p-3 my-1 cursor-pointer"
+              >
+                <Avatar className={cn("h-10 w-10 text-white", getAvatarColor(user.user_name))}>
+                  <AvatarFallback className="bg-transparent">
+                    {getInitials(user.user_name)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col">
+                  <span className="font-semibold text-sm">
+                    {user.user_name} - sales-executive
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {user.user_email || user.email || "farhanghori6@gmail.com"}
+                  </span>
                 </div>
-              </form>
-            </Form>
-          )}
-        </ScrollArea>
-      </DialogContent>
-    </Dialog>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
+      </CommandList>
+    </CommandDialog>
   );
 }

@@ -17,7 +17,10 @@ import { CountBadge } from "@/components/count-badge";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useAppSelector } from "@/redux/store";
 import { markNotificationRead } from "@/redux/slices/notificationsSlice";
-import { markNotificationRead as markReadApi } from "@/api/notifications";
+import {
+  markNotificationRead as markReadApi,
+  markNotificationsReadBulk,
+} from "@/api/notifications";
 import { NotificationItem } from "@/types/notifications";
 import { NotificationDropdownList } from "@/components/notifications/NotificationDropdownList";
 
@@ -87,8 +90,9 @@ export const NotificationBell = ({ linkTo }: NotificationBellProps) => {
 
     unreadItems.forEach((item) => dispatch(markNotificationRead(item.id)));
     try {
-      await Promise.all(
-        unreadItems.map((item) => markReadApi(item.id, user.id))
+      await markNotificationsReadBulk(
+        unreadItems.map((item) => item.id),
+        user.id
       );
     } catch {
       refresh({ silent: true });
@@ -101,6 +105,7 @@ export const NotificationBell = ({ linkTo }: NotificationBellProps) => {
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen);
         if (nextOpen) {
+          refresh({ silent: true });
           markVisibleAsRead();
         }
       }}

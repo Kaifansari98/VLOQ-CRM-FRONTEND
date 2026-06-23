@@ -86,6 +86,8 @@ export interface pagination {
 export interface UniversalStageLead {
   id: number;
   lead_code: string;
+  is_small_order_request?: boolean;
+  is_draft?: boolean;
 
   firstname: string;
   lastname: string;
@@ -114,6 +116,10 @@ export interface UniversalStageLead {
   source: SourceInfo | null;
 
   assignedTo?: AssignedUser | null;
+  smallOrderRequest?: {
+    is_request_resolved?: boolean;
+    request_source?: string | null;
+  } | null;
 
   productMappings: ProductMapping[];
   leadProductStructureMapping: ProductStructureMapping[];

@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import axios from "axios";
 import { toastManager } from "@/components/ui/toast";
 import { fetchNotifications } from "@/api/notifications"
 import { useAppSelector } from "@/redux/store"
@@ -26,10 +27,18 @@ export const useNotifications = () => {
   const hasInitializedRef = useRef(false)
   const previousUnreadRef = useRef<Set<number>>(new Set())
   const notificationsRef = useRef<NotificationItem[]>([])
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   const refresh = useCallback(
     async (options: { silent?: boolean } = {}) => {
       if (!user?.id || !user?.vendor_id) return
+
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+      const abortController = new AbortController()
+      abortControllerRef.current = abortController
+
       if (!options.silent) {
         setIsLoading(true)
       }
@@ -37,7 +46,8 @@ export const useNotifications = () => {
       try {
         const { notifications, unreadCount } = await fetchNotifications(
           user.vendor_id,
-          user.id
+          user.id,
+          { signal: abortController.signal }
         )
         const sortedItems = [...notifications].sort(
           (a, b) =>
@@ -73,12 +83,15 @@ export const useNotifications = () => {
           hasInitializedRef.current = true
         }
       } catch (error) {
+        if (axios.isCancel(error)) {
+          return
+        }
         if (!options.silent) {
           toastManager.add({ title: "Failed to load notifications", type: "error" })
         }
         console.error(error)
       } finally {
-        if (!options.silent) {
+        if (abortControllerRef.current === abortController) {
           setIsLoading(false)
         }
       }

@@ -8,7 +8,7 @@ interface GenerateLeadTrackingReportParams {
   vendorReportCode: string;
   userId: number | "all";
   userType: string;
-  franchiseId: number | "all";
+  franchiseId: number | number[] | "all";
   leadId?: number | null;
   fromDate: string;
   toDate: string;
@@ -300,6 +300,22 @@ export async function generateLeadTrackingReport(
           fromDate,
           toDate,
         )
+      : Array.isArray(franchiseId)
+      ? (
+          await Promise.all(
+            franchiseId.map((id) =>
+              fetchReportData(
+                vendorId,
+                id,
+                userType || null,
+                userId === "all" ? null : userId,
+                leadId,
+                fromDate,
+                toDate,
+              ),
+            ),
+          )
+        ).flat()
       : await fetchReportData(
           vendorId,
           franchiseId,
@@ -325,12 +341,12 @@ export async function generateLeadTrackingReport(
     workbook,
     rows,
     buildSheetName(
-      franchiseId === "all" ? "Consolidated - All Franchisee" : "Lead Tracking Report",
+      franchiseId === "all" || Array.isArray(franchiseId) ? "Consolidated" : "Lead Tracking Report",
       usedSheetNames,
     ),
   );
 
-  if (franchiseId === "all") {
+  if (franchiseId === "all" || Array.isArray(franchiseId)) {
     const groupedRows = new Map<string, LeadTrackingReportRow[]>();
     for (const row of rows) {
       const key = row.franchise_store || "Unknown Franchise";
