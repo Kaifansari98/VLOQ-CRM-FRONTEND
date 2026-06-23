@@ -41,6 +41,8 @@ import {
 } from "@/hooks/useApprovalRequests";
 import { useSelfAssignTaskTypes } from "@/hooks/useSelfAssignTaskTypes";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import FastProductionRequestModal from "@/components/sales-executive/Lead/fast-production-request-modal";
+import FastProductionTermsModal from "@/components/sales-executive/Lead/fast-production-terms-modal";
 
 interface Props {
   open: boolean;
@@ -50,6 +52,7 @@ interface Props {
     name: string;
   };
   onlyFollowUp?: boolean;
+  isFastProductionEnabled?: boolean;
 }
 
 const formSchema = z
@@ -90,6 +93,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   onOpenChange,
   data,
   onlyFollowUp,
+  isFastProductionEnabled = false,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const vendorCustomUserTypeMode = useAppSelector(
@@ -161,6 +165,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   const canShowFollowUpOption =
     normalizedUserType === "custom" ? canAssignFollowUpForCustomUser : true;
   const canShowApprovalRequestOption = isApprovalTaskEnabled !== false;
+  const canShowFastProductionOption = isFastProductionEnabled;
   const shouldShowInitialSiteMeasurementOption = !onlyFollowUp;
 
   // ✅ useLeadAccessControl replaces useLeadBlockStatus + formatBlockedAt
@@ -190,6 +195,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   const [approvalFiles, setApprovalFiles] = React.useState<File[]>([]);
   const isFollowUp = taskType === "Follow Up";
   const isApprovalRequestTask = taskType === "Approval Request";
+  const isFastProductionTask = taskType === "Request Fast Production";
 
   const {
     data: selfAssignTaskTypes = [],
@@ -223,7 +229,12 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   const isFollowUpOnlyRestricted =
     !!onlyFollowUp &&
     !canShowApprovalRequestOption &&
+    !canShowFastProductionOption &&
     selfAssignTaskTypeNames.length === 0;
+  const [fastProductionModalOpen, setFastProductionModalOpen] =
+    React.useState(false);
+  const [fastProductionTermsOpen, setFastProductionTermsOpen] =
+    React.useState(false);
 
   const {
     data: salesExecutiveUsers,
@@ -437,6 +448,14 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     }
 
     if (
+      currentTaskType === "Request Fast Production" &&
+      !canShowFastProductionOption
+    ) {
+      form.setValue("task_type", "Follow Up");
+      return;
+    }
+
+    if (
       currentTaskType === "Follow Up" &&
       !canShowFollowUpOption &&
       canShowInitialSiteMeasurementOption
@@ -448,6 +467,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     canShowFollowUpOption,
     canShowInitialSiteMeasurementOption,
     canShowApprovalRequestOption,
+    canShowFastProductionOption,
   ]);
 
   React.useEffect(() => {
@@ -504,6 +524,12 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     });
     setApprovalFiles([]);
   }, [form, onlyFollowUp]);
+
+  const openFastProductionModal = React.useCallback(() => {
+    resetForm();
+    onOpenChange(false);
+    setFastProductionTermsOpen(true);
+  }, [onOpenChange, resetForm]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     if (values.task_type === "Approval Request") {
@@ -642,54 +668,66 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   }
 
   return (
-    <BaseModal
-      open={open}
-      onOpenChange={onOpenChange}
-      title={
-        form.watch("task_type") === "Approval Request"
-          ? "Assign Approval Request"
-          : isSelfAssignTask
-            ? `Assign Task for ${form.watch("task_type")}`
-            : form.watch("task_type") === "Follow Up" || onlyFollowUp
+    <>
+      <BaseModal
+        open={open}
+        onOpenChange={onOpenChange}
+        title={
+          form.watch("task_type") === "Approval Request"
+            ? "Assign Approval Request"
+            : isFastProductionTask
+            ? "Assign Task for Request Fast Production"
+            : isSelfAssignTask
+              ? `Assign Task for ${form.watch("task_type")}`
+              : form.watch("task_type") === "Follow Up" || onlyFollowUp
               ? "Assign Task for Follow Up"
               : "Assign Task for Initial Site Measurement"
-      }
-      description={
-        form.watch("task_type") === "Approval Request"
-          ? "Use this form to assign an approval request."
-          : isSelfAssignTask
-            ? `Use this form to assign a ${form.watch("task_type").toLowerCase()} task to yourself.`
-            : form.watch("task_type") === "Follow Up" || onlyFollowUp
+        }
+        description={
+          form.watch("task_type") === "Approval Request"
+            ? "Use this form to assign an approval request."
+            : isFastProductionTask
+            ? "Use this form to assign a fast production request task."
+            : isSelfAssignTask
+              ? `Use this form to assign a ${form.watch("task_type").toLowerCase()} task to yourself.`
+              : form.watch("task_type") === "Follow Up" || onlyFollowUp
               ? "Use this form to assign a follow up task."
               : "Use this form to assign a site measurement task."
-      }
-      size="smd"
-    >
-      <div className="px-6 py-6 space-y-8">
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-            {/* Task Type */}
-            <Controller
-              control={form.control}
-              name="task_type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm">Task Type</FormLabel>
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    disabled={isFollowUpOnlyRestricted}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="text-sm w-full">
-                        <SelectValue placeholder="Select task type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {isFollowUpOnlyRestricted ? (
-                        <SelectItem value="Follow Up">Follow Up</SelectItem>
-                      ) : (
-                        <>
+        }
+        size="smd"
+      >
+        <div className="px-6 py-6 space-y-8">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+              {/* Task Type */}
+              <Controller
+                control={form.control}
+                name="task_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm">Task Type</FormLabel>
+                    <Select
+                      value={field.value}
+                      onValueChange={(value) => {
+                        if (value === "Request Fast Production") {
+                          openFastProductionModal();
+                          return;
+                        }
+
+                        field.onChange(value);
+                      }}
+                      disabled={isFollowUpOnlyRestricted}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="text-sm w-full">
+                          <SelectValue placeholder="Select task type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {isFollowUpOnlyRestricted ? (
+                          <SelectItem value="Follow Up">Follow Up</SelectItem>
+                        ) : (
+                          <>
                           {/* ── Initial Site Measurement ── */}
                           {shouldShowInitialSiteMeasurementOption &&
                             (shouldDisableBlockedActions ? (
@@ -747,6 +785,25 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
                               </SelectItem>
                             ))}
 
+                          {canShowFastProductionOption &&
+                            (shouldDisableBlockedActions ? (
+                              <CustomeTooltip
+                                value={blockedTooltip}
+                                truncateValue={
+                                  <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                    <span>Request Fast Production</span>
+                                    <span className="text-xs italic">
+                                      (blocked)
+                                    </span>
+                                  </div>
+                                }
+                              />
+                            ) : (
+                              <SelectItem value="Request Fast Production">
+                                Request Fast Production
+                              </SelectItem>
+                            ))}
+
                           {/* ── Self Assign Task Types ── */}
                           {selfAssignTaskTypeNames.map((taskTypeName) =>
                             shouldDisableBlockedActions ? (
@@ -771,14 +828,14 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
                               </SelectItem>
                             ),
                           )}
-                        </>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                          </>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
             {/* Assign Lead To + Due Date */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -874,10 +931,25 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
                   : "Submit"}
               </Button>
             </div>
-          </form>
-        </Form>
-      </div>
-    </BaseModal>
+            </form>
+          </Form>
+        </div>
+      </BaseModal>
+
+      <FastProductionRequestModal
+        open={fastProductionModalOpen}
+        onOpenChange={setFastProductionModalOpen}
+        leadId={data?.id}
+      />
+      <FastProductionTermsModal
+        open={fastProductionTermsOpen}
+        onOpenChange={setFastProductionTermsOpen}
+        onAgree={() => {
+          setFastProductionTermsOpen(false);
+          setFastProductionModalOpen(true);
+        }}
+      />
+    </>
   );
 };
 

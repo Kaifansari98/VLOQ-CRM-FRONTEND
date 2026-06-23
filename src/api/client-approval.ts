@@ -121,14 +121,12 @@ export const useRequestToTechCheck = () => {
       accountId,
       assign_to_user_id,
       created_by,
-      client_required_order_login_complition_date,
     }: {
       vendorId: number;
       leadId: number;
       accountId: number;
       assign_to_user_id: number;
       created_by: number;
-      client_required_order_login_complition_date: string;
     }) => {
       const { data } = await apiClient.post(
         `/leads/client-approval/vendorId/${vendorId}/leadId/${leadId}/request-to-tech-check`,
@@ -136,7 +134,6 @@ export const useRequestToTechCheck = () => {
           account_id: accountId,
           assign_to_user_id,
           created_by,
-          client_required_order_login_complition_date,
         }
       );
       return data;

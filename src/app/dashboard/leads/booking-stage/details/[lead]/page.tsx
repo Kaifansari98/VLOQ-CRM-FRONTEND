@@ -583,6 +583,7 @@ export default function BookingStageLeadsDetails() {
           setAssignOpen(open);
           if (!open) setActiveTab("details");
         }}
+        isFastProductionEnabled={true}
         data={{
           id: leadIdNum,
           name: "",

@@ -54,6 +54,7 @@ import TaskTypeFilter from "@/components/data-table/data-table-task-filter";
 import OrderLoginApprovalModal from "@/components/tasks/OrderLoginApprovalModal";
 import DispatchPlanningApprovalModal from "@/components/tasks/DispatchPlanningApprovalModal";
 import ApprovalRequestActionModal from "@/components/tasks/ApprovalRequestActionModal";
+import FastProductionRequestActionModal from "@/components/tasks/FastProductionRequestActionModal";
 import SmallOrderRequestActionModal from "@/components/tasks/SmallOrderRequestActionModal";
 import InitialSiteMeasurementTaskModal from "@/components/tasks/InitialSiteMeasurementTaskModal";
 import FinalMeasurementTaskModal from "@/components/tasks/FinalMeasurementTaskModal";
@@ -208,6 +209,8 @@ const MyTaskTable = () => {
   const [openDispatchPlanningApproval, setOpenDispatchPlanningApproval] =
     useState(false);
   const [openApprovalRequestAction, setOpenApprovalRequestAction] =
+    useState(false);
+  const [openFastProductionRequestAction, setOpenFastProductionRequestAction] =
     useState(false);
   const [openSmallOrderRequestAction, setOpenSmallOrderRequestAction] =
     useState(false);
@@ -472,6 +475,7 @@ const MyTaskTable = () => {
           "Order Login Approval",
           "Dispatch Planning Approval",
           "Approval Request",
+          "Request Fast Production",
           "Small order request",
           "Final Measurements",
           "Follow Up",
@@ -539,6 +543,12 @@ const MyTaskTable = () => {
           variant: "view",
         });
         setOpenApprovalRequestAction(true);
+      } else if (row.taskType === "Request Fast Production") {
+        setRowAction({
+          row: { original: row } as any,
+          variant: "view",
+        });
+        setOpenFastProductionRequestAction(true);
       } else if (row.taskType === "Small order request") {
         setRowAction({
           row: { original: row } as any,
@@ -1142,6 +1152,16 @@ const MyTaskTable = () => {
           leadId: rowAction?.row.original.leadId || 0,
           taskId: rowAction?.row.original.id || 0,
           dueDate: rowAction?.row.original.dueDate,
+          remark: rowAction?.row.original.remark,
+        }}
+      />
+
+      <FastProductionRequestActionModal
+        open={openFastProductionRequestAction}
+        onOpenChange={setOpenFastProductionRequestAction}
+        data={{
+          leadId: rowAction?.row.original.leadId || 0,
+          taskId: rowAction?.row.original.id || 0,
           remark: rowAction?.row.original.remark,
         }}
       />

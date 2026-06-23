@@ -792,6 +792,7 @@ export default function ClientApprovalLeadDetails() {
         open={assignOpen}
         onOpenChange={setAssignOpen}
         onlyFollowUp
+        isFastProductionEnabled={true}
         data={{ id: leadIdNum, name: "" }}
       />
 

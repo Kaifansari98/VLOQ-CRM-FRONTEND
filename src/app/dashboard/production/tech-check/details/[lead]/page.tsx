@@ -488,6 +488,8 @@ export default function ClientApprovalLeadDetails() {
     (d) => d.tech_check_status === "APPROVED",
   ).length;
   const approvedCount = approvedPPTCount + approvedPythaCount;
+  const hasPendingFastProductionRequest =
+    lead?.has_pending_fast_production_request === true;
   const pendingCount = moveScope.docs.filter(
     (d) =>
       !d.tech_check_status ||
@@ -500,12 +502,13 @@ export default function ClientApprovalLeadDetails() {
       moveScope.docs.length)
     : (no_of_client_documents_initially_submitted ?? moveScope.docs.length);
   const isMoveToOrderLoginDisabled =
-    requiredApprovalCount > 0
+    hasPendingFastProductionRequest ||
+    (requiredApprovalCount > 0
       ? approvedCount < requiredApprovalCount ||
       pendingCount > 0 ||
       approvedPPTCount === 0 ||
       approvedPythaCount === 0
-      : pendingCount > 0 || approvedPPTCount === 0 || approvedPythaCount === 0;
+      : pendingCount > 0 || approvedPPTCount === 0 || approvedPythaCount === 0);
 
   return (
     <>
@@ -604,7 +607,9 @@ export default function ClientApprovalLeadDetails() {
                 if (isMoveToOrderLoginDisabled) {
                   let tooltipMsg = "";
 
-                  if (
+                  if (hasPendingFastProductionRequest) {
+                    tooltipMsg = "Fast Production approval is pending.";
+                  } else if (
                     requiredApprovalCount &&
                     approvedCount < requiredApprovalCount
                   ) {
@@ -718,7 +723,9 @@ export default function ClientApprovalLeadDetails() {
                   if (isMoveToOrderLoginDisabled) {
                     let tooltipMsg = "";
 
-                    if (
+                    if (hasPendingFastProductionRequest) {
+                      tooltipMsg = "Fast Production approval is pending.";
+                    } else if (
                       requiredApprovalCount &&
                       approvedCount < requiredApprovalCount
                     ) {
@@ -1838,6 +1845,7 @@ export default function ClientApprovalLeadDetails() {
         open={assignOpen}
         onOpenChange={setAssignOpen}
         onlyFollowUp
+        isFastProductionEnabled={true}
         data={{ id: leadIdNum, name: "" }}
       />
 

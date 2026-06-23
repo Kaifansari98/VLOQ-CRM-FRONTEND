@@ -341,6 +341,16 @@ export const fetchHandleTypes = async (vendorId: number) => {
   };
 }
 
+export const fetchFastProductionTimelineRules = async (vendorId: number) => {
+  const res = await apiClient.get(
+    `/leads/get-fast-production-timeline-rules/${vendorId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
 export const fetchSiteTypes = async (vendorId: number) => {
   const res = await apiClient.get<SiteTypeMasterResponse>(`/leads/get-all-site-types/${vendorId}`)
   return {

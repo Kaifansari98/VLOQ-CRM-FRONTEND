@@ -614,6 +614,7 @@ export default function ClientDocumentationLeadDetails() {
         open={assignOpen}
         onOpenChange={setAssignOpen}
         onlyFollowUp
+        isFastProductionEnabled={true}
         data={{ id: leadIdNum, name: "" }}
       />
 

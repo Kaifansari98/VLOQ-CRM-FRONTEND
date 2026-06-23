@@ -619,6 +619,7 @@ export default function FinalMeasurementLeadDetails() {
         open={assignOpen}
         onOpenChange={setAssignOpen}
         onlyFollowUp
+        isFastProductionEnabled={true}
         data={{ id: leadIdNum, name: "" }}
       />
 

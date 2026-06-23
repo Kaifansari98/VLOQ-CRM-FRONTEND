@@ -98,6 +98,8 @@ export interface Lead {
   activity_status?: string;
   count?: number;
   site_map_link: string;
+  has_pending_fast_production_request?: boolean;
+  productStructureInstances?: LeadProductStructureInstance[];
   assigned_designer_from_mapping?: {
     user_id: number;
     user_name: string | null;
@@ -235,6 +237,33 @@ export interface CreateSmallOrderRequestPayload {
   documents?: File[];
 }
 
+export interface CreateFastProductionRequestPayload {
+  leadId: number;
+  vendorId: number;
+  createdBy: number;
+  instanceId: number;
+  carcassFinishCategory: string[];
+  carcassFinishDescription: string;
+  shutterFinishCategory: string[];
+  shutterFinishDescription: string;
+  handlesFinishCategory: string[];
+  handlesFinishDescription: string;
+  hardwareSelection: string;
+  accessorySelection: string;
+  specialRequirements: string;
+  clientRequiredDeliveryDate: string;
+  remarks?: string;
+  termsVersion?: string;
+  documents?: File[];
+}
+
+export interface FinalizeFastProductionRequestPayload {
+  leadId: number;
+  vendorId: number;
+  createdBy: number;
+  batchId?: number;
+}
+
 export interface SmallOrderRequestListItem {
   id: number;
   parent_lead_code: string;
@@ -362,6 +391,81 @@ export const createSmallOrderRequest = async (
       "Content-Type": "multipart/form-data",
     },
   });
+
+  return response.data;
+};
+
+export const createFastProductionRequest = async (
+  payload: CreateFastProductionRequestPayload,
+) => {
+  const formData = new FormData();
+
+  formData.append("lead_id", payload.leadId.toString());
+  formData.append("vendor_id", payload.vendorId.toString());
+  formData.append("created_by", payload.createdBy.toString());
+  formData.append("instance_id", payload.instanceId.toString());
+  payload.carcassFinishCategory.forEach((value) =>
+    formData.append("carcass_finish_category", value),
+  );
+  formData.append(
+    "carcass_finish_description",
+    payload.carcassFinishDescription,
+  );
+  payload.shutterFinishCategory.forEach((value) =>
+    formData.append("shutter_finish_category", value),
+  );
+  formData.append(
+    "shutter_finish_description",
+    payload.shutterFinishDescription,
+  );
+  payload.handlesFinishCategory.forEach((value) =>
+    formData.append("handles_finish_category", value),
+  );
+  formData.append(
+    "handles_finish_description",
+    payload.handlesFinishDescription,
+  );
+  formData.append("hardware_selection", payload.hardwareSelection);
+  formData.append("accessory_selection", payload.accessorySelection);
+  formData.append("special_requirements", payload.specialRequirements);
+  formData.append(
+    "client_required_delivery_date",
+    payload.clientRequiredDeliveryDate,
+  );
+
+  if (payload.remarks?.trim()) {
+    formData.append("remarks", payload.remarks.trim());
+  }
+
+  if (payload.termsVersion?.trim()) {
+    formData.append("terms_version", payload.termsVersion.trim());
+  }
+
+  (payload.documents ?? []).forEach((file) => {
+    formData.append("documents", file);
+  });
+
+  const response = await apiClient.post("/leads/fast-production-requests", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+
+  return response.data;
+};
+
+export const finalizeFastProductionRequest = async (
+  payload: FinalizeFastProductionRequestPayload,
+) => {
+  const response = await apiClient.post(
+    "/leads/fast-production-requests/finalize",
+    {
+      lead_id: payload.leadId,
+      vendor_id: payload.vendorId,
+      created_by: payload.createdBy,
+      ...(payload.batchId ? { batch_id: payload.batchId } : {}),
+    },
+  );
 
   return response.data;
 };
