@@ -103,6 +103,7 @@ export default function OrderLoginLeadDetails() {
     (state) => state.customPrivileges.codes,
   );
   const effectiveUserType = userType;
+  const isAuditor = effectiveUserType?.trim().toLowerCase() === "auditor";
 
   const { data: readiness, isLoading: readinessLoading } =
     useLeadProductionReadiness(
@@ -136,18 +137,20 @@ export default function OrderLoginLeadDetails() {
       )
       : canWorkTodoTaskOrderLoginStage(effectiveUserType);
   const canViewOrderLoginTabByDefault =
-    userType === "custom"
+    isAuditor ||
+    (userType === "custom"
       ? customPrivilegeCodes.some((code) =>
         code.startsWith("production.order_login."),
       )
-      : canOrderLogin(effectiveUserType);
+      : canOrderLogin(effectiveUserType));
   const canViewSiteHistory =
-    effectiveUserType?.toLowerCase() === "custom"
+    isAuditor ||
+    (effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
         "leads.open_leads.details_of_lead.site_history.enable_disable",
       )
       : canViewSiteHistoryTab(effectiveUserType) &&
-      effectiveUserType?.toLowerCase() !== "admin";
+      effectiveUserType?.toLowerCase() !== "admin");
   const canViewChats =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
@@ -369,11 +372,12 @@ export default function OrderLoginLeadDetails() {
   const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
   const canEdit = canEditLeadButton(effectiveUserType ?? "");
   const canViewPayment =
-    effectiveUserType?.toLowerCase() === "custom"
+    isAuditor ||
+    (effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
         "leads.open_leads.details_of_lead.payment_information.enable_disable",
       )
-      : canViewPaymentTab(effectiveUserType ?? "");
+      : canViewPaymentTab(effectiveUserType ?? ""));
   const moveToProductionDisabledReason = isBlockedByIncompleteSmallOrderLogin
     ? "Mark Order Login Completed before moving this small-order lead to Production"
     : isOrderLoginApprovalPending
@@ -496,31 +500,34 @@ export default function OrderLoginLeadDetails() {
                 );
               })()}
           </div>
-          <Button
-            size="sm"
-            className="hidden lg:block"
-            onClick={() => setAssignOpen(true)}
-          >
-            Assign Task
-          </Button>
+          {!isAuditor && (
+            <Button
+              size="sm"
+              className="hidden lg:block"
+              onClick={() => setAssignOpen(true)}
+            >
+              Assign Task
+            </Button>
+          )}
 
           <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
-          <NotificationBell />
+          {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="relative bg-accent p-1.5 rounded-sm"
-              >
-                <EllipsisVertical size={25} />
-              </Button>
-            </DropdownMenuTrigger>
+          {!isAuditor && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="relative bg-accent p-1.5 rounded-sm"
+                >
+                  <EllipsisVertical size={25} />
+                </Button>
+              </DropdownMenuTrigger>
 
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
                 className="lg:hidden"
                 onClick={() => setAssignOpen(true)}
               >
@@ -690,6 +697,7 @@ export default function OrderLoginLeadDetails() {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+          )}
         </div>
       </header>
 
@@ -708,27 +716,29 @@ export default function OrderLoginLeadDetails() {
                   Lead Details
                 </TabsTrigger>
 
-                {canViewTodoTask ? (
-                  // Actual Tab
-                  <TabsTrigger value="todo">
-                    <PencilLine size={16} className="mr-1" />
-                    To-Do Task
-                  </TabsTrigger>
-                ) : (
-                  // Restricted Tab With Tooltip Message
-                  <CustomeTooltip
-                    value={
-                      userType === "custom"
-                        ? "You don’t have permission to access To-Do Tasks."
-                        : "Only Backend access to this tab."
-                    }
-                    truncateValue={
-                      <TabsTrigger value="todo" disabled>
-                        <PencilLine size={16} className="mr-1 opacity-60" />
-                        To-Do Task
-                      </TabsTrigger>
-                    }
-                  />
+                {!isAuditor && (
+                  canViewTodoTask ? (
+                    // Actual Tab
+                    <TabsTrigger value="todo">
+                      <PencilLine size={16} className="mr-1" />
+                      To-Do Task
+                    </TabsTrigger>
+                  ) : (
+                    // Restricted Tab With Tooltip Message
+                    <CustomeTooltip
+                      value={
+                        userType === "custom"
+                          ? "You don’t have permission to access To-Do Tasks."
+                          : "Only Backend access to this tab."
+                      }
+                      truncateValue={
+                        <TabsTrigger value="todo" disabled>
+                          <PencilLine size={16} className="mr-1 opacity-60" />
+                          To-Do Task
+                        </TabsTrigger>
+                      }
+                    />
+                  )
                 )}
 
                 {canViewSiteHistory && (

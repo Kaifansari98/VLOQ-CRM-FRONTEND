@@ -164,30 +164,32 @@ export default function LeadDetailsProductionUtil({
     effectiveUserType ?? "",
   );
   const tabFromUrl = searchParams.get("tab");
+  const normalizedUserType = userType?.trim()?.toLowerCase();
   const canAccessAllTabs =
-    userType === "super-admin" ||
-    userType === "factory" ||
-    userType === "pre-prod";
+    normalizedUserType === "super-admin" ||
+    normalizedUserType === "factory" ||
+    normalizedUserType === "pre-prod" ||
+    normalizedUserType === "auditor";
   const canViewProductionFiles =
-    userType === "custom"
+    normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
           "production.production.production_files.view_download",
         )
       : canAccessAllTabs;
   const canViewPreProductionFiles =
-    userType === "custom"
+    normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
           "production.production.pre_production_files.view",
         )
       : canAccessAllTabs;
   const canAccessUnderProduction =
-    userType === "custom"
+    normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
           "production.production.under_production.enable_disable",
         )
       : canAccessAllTabs;
   const canViewPostProduction =
-    userType === "custom"
+    normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
           "production.production.post_production_woodwork.view",
         ) ||
@@ -197,7 +199,10 @@ export default function LeadDetailsProductionUtil({
         customPrivilegeCodes.includes(
           "production.production.post_production_qc_photos.view",
         )
-      : canAccessAllTabs;
+      : canAccessAllTabs ||
+        ["site-supervisor", "sales-executive", "admin", "head-site-supervisor"].includes(
+          normalizedUserType ?? "",
+        );
 
   const allTabs = [
     {
@@ -206,7 +211,7 @@ export default function LeadDetailsProductionUtil({
       color: "bg-zinc-900 hover:bg-zinc-900",
       disabled: !canViewProductionFiles,
       disabledReason:
-        userType === "custom"
+        normalizedUserType === "custom"
           ? "You don’t have permission to access Production Files."
           : "Only super-admin and factory can access this tab.",
       cardContent: (
@@ -226,7 +231,7 @@ export default function LeadDetailsProductionUtil({
             color: "bg-zinc-900 hover:bg-zinc-900",
             disabled: !canViewPreProductionFiles,
             disabledReason:
-              userType === "custom"
+              normalizedUserType === "custom"
                 ? "You don’t have permission to access Pre Production."
                 : "Only super-admin and factory can access this tab.",
             cardContent: (
@@ -247,7 +252,7 @@ export default function LeadDetailsProductionUtil({
         !canAccessUnderProduction ||
         (shouldRequirePreProduction && !readyForUnderProduction),
       disabledReason: !canAccessUnderProduction
-        ? userType === "custom"
+        ? normalizedUserType === "custom"
           ? "You don’t have permission to access Under Production."
           : "Only super-admin and factory can access this tab."
         : shouldRequirePreProduction
@@ -270,7 +275,12 @@ export default function LeadDetailsProductionUtil({
       id: "postProduction",
       title: "Post Production",
       color: "bg-zinc-900 hover:bg-zinc-900",
-      disabled: !canViewPostProduction || !readyForPostProduction,
+      disabled:
+        !canViewPostProduction ||
+        (!readyForPostProduction &&
+          !["sales-executive", "site-supervisor", "admin", "head-site-supervisor"].includes(
+            normalizedUserType ?? "",
+          )),
       disabledReason: !canViewPostProduction
         ? "You don’t have permission to access Post Production."
         : "You can access Post Production only after completing Under-Production.",
@@ -362,14 +372,27 @@ export default function LeadDetailsProductionUtil({
       <SmoothTab
         items={allTabs}
         defaultTabId={(() => {
-          if (lead?.is_small_order_request === true) {
-            return "productionFiles";
-          }
           if (
             tabFromUrl &&
             allTabs.some((tab) => tab.id === tabFromUrl && !tab.disabled)
           ) {
             return tabFromUrl;
+          }
+          if (
+            ["sales-executive", "site-supervisor", "admin", "head-site-supervisor"].includes(
+              normalizedUserType ?? "",
+            )
+          ) {
+            const postProdTab = allTabs.find((t) => t.id === "postProduction");
+            if (postProdTab && !postProdTab.disabled) {
+              return "postProduction";
+            }
+          }
+          if (lead?.is_small_order_request === true) {
+            const prodFilesTab = allTabs.find((t) => t.id === "productionFiles");
+            if (prodFilesTab && !prodFilesTab.disabled) {
+              return "productionFiles";
+            }
           }
           if (canAccessAllTabs) {
             return defaultTab ? "preProductionFiles" : "postProduction";

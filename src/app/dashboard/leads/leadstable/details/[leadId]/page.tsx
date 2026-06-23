@@ -158,6 +158,7 @@ export default function LeadDetails() {
   );
 
   const normalizedUserType = userType?.trim().toLowerCase();
+  const isAuditor = normalizedUserType === "auditor";
   const isSuperAdmin = normalizedUserType === "super-admin";
   const shouldDirectlyMarkLost =
     normalizedUserType === "admin" || normalizedUserType === "super-admin";
@@ -197,17 +198,19 @@ export default function LeadDetails() {
       ? customPrivilegeCodes.includes("leads.open_leads.details_of_lead.edit")
       : canEditLeadForSalesExecutiveButton(userType);
   const canViewPayment =
-    normalizedUserType === "custom"
+    isAuditor ||
+    (normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
         "leads.open_leads.details_of_lead.payment_information.enable_disable",
       )
-      : canViewPaymentTab(userType);
+      : canViewPaymentTab(userType));
   const canViewSiteHistory =
-    normalizedUserType === "custom"
+    isAuditor ||
+    (normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
         "leads.open_leads.details_of_lead.site_history.enable_disable",
       )
-      : canViewSiteHistoryTab(userType);
+      : canViewSiteHistoryTab(userType));
   const canViewChats =
     normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
@@ -365,7 +368,7 @@ export default function LeadDetails() {
           </Breadcrumb>
         </div>
         <div className="flex items-center space-x-2">
-          {isClientVisitEnabled && (
+          {isClientVisitEnabled && !isAuditor && (
             <CustomeTooltip
               value={blockedAtTooltip}
               truncateValue={
@@ -405,12 +408,13 @@ export default function LeadDetails() {
             ))}
 
           <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
-          <NotificationBell />
+          {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
 
           {/* Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          {!isAuditor && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
               <Button
                 size="icon"
                 variant="ghost"
@@ -570,6 +574,7 @@ export default function LeadDetails() {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+          )}
         </div>
       </header>
 

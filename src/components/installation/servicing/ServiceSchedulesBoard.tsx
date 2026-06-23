@@ -94,6 +94,7 @@ export default function ServiceSchedulesBoard({
     "backend",
     "pre-prod",
     "production",
+    "auditor",
   ].includes(normalizedUserType);
 
   const filteredServiceCards = useMemo(

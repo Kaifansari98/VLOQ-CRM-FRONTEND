@@ -44,7 +44,8 @@ export function TeamSwitcher({
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type,
   );
-  const isSuperAdmin = userType?.toLowerCase() === "super-admin";
+  const normalizedUserType = userType?.toLowerCase();
+  const isSuperAdmin = normalizedUserType === "super-admin" || normalizedUserType === "auditor";
   const [activeTeam, setActiveTeam] = React.useState(teams[0]);
   const [isSwitching, setIsSwitching] = React.useState(false);
   const [pendingTeam, setPendingTeam] = React.useState<

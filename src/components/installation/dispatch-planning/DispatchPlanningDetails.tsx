@@ -96,15 +96,6 @@ const dispatchSchema = z
           message: "Material lift size is mandatory when lift is available",
           path: ["material_lift_size"],
         });
-      } else {
-        const parsed = parseFloat(data.material_lift_size);
-        if (isNaN(parsed) || parsed <= 0) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Material lift size must be a positive number",
-            path: ["material_lift_size"],
-          });
-        }
       }
     }
   });
@@ -277,8 +268,8 @@ export default function DispatchPlanningDetails({
       const formValues = {
         required_date_for_dispatch: dispatchInfoData.required_date_for_dispatch
           ? new Date(dispatchInfoData.required_date_for_dispatch)
-              .toISOString()
-              .split("T")[0]
+            .toISOString()
+            .split("T")[0]
           : "",
         onsite_contact_person_name:
           dispatchInfoData.onsite_contact_person_name || "",
@@ -474,14 +465,14 @@ export default function DispatchPlanningDetails({
   const canAccessDispatchPlanningInformation =
     userType === "custom"
       ? customPrivilegeCodes.includes(
-          "installation.dispatch_planning.dispatch_planning_information.enable_disable",
-        )
+        "installation.dispatch_planning.dispatch_planning_information.enable_disable",
+      )
       : canViewAndWork;
   const canAccessPaymentInformation =
     userType === "custom"
       ? customPrivilegeCodes.includes(
-          "installation.dispatch_planning.payment_information.enable_disable",
-        )
+        "installation.dispatch_planning.payment_information.enable_disable",
+      )
       : canViewAndWork;
   const hasPendingDispatchPlanningApproval = dispatchPlanningLockIns.some(
     (lockIn) => !lockIn.is_approved,
@@ -546,11 +537,10 @@ export default function DispatchPlanningDetails({
           value={dispatchSectionTooltip}
           truncateValue={
             <div
-              className={`p-6 space-y-4 ${
-                isDispatchPlanningInfoLocked || shouldDisableBlockedActions
+              className={`p-6 space-y-4 ${isDispatchPlanningInfoLocked || shouldDisableBlockedActions
                   ? "opacity-60"
                   : ""
-              }`}
+                }`}
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
                 {/* Onsite Contact Person Name */}
@@ -656,12 +646,12 @@ export default function DispatchPlanningDetails({
                         )}
                         onChange={
                           isDispatchInputDisabled
-                            ? () => {}
+                            ? () => { }
                             : (value) =>
-                                setValueDispatch(
-                                  "required_date_for_dispatch",
-                                  value || "",
-                                )
+                              setValueDispatch(
+                                "required_date_for_dispatch",
+                                value || "",
+                              )
                         }
                         restriction="futureAfterTwoDays"
                         disableSundays
@@ -682,7 +672,9 @@ export default function DispatchPlanningDetails({
                         Material Lift Availability{" "}
                         <span className="text-red-500">*</span>
                       </Label>
-                      <div className="flex items-center gap-4">
+                      {/* Toggle row + inline size pill */}
+                      <div className="flex flex-wrap items-center gap-3">
+                        {/* Available toggle */}
                         <div className="flex items-center gap-2">
                           <Checkbox
                             disabled={isDispatchInputDisabled}
@@ -699,6 +691,8 @@ export default function DispatchPlanningDetails({
                           />
                           <label className="text-sm">Available</label>
                         </div>
+
+                        {/* Not Available toggle */}
                         <div className="flex items-center gap-2">
                           <Checkbox
                             disabled={isDispatchInputDisabled}
@@ -710,41 +704,45 @@ export default function DispatchPlanningDetails({
                                   false,
                                   { shouldValidate: true },
                                 );
-                                setValueDispatch("material_lift_size", "", {
-                                  shouldValidate: true,
-                                });
                               }
                             }}
                           />
                           <label className="text-sm">Not Available</label>
                         </div>
+
+                        {/* Inline compact size pill — only when Available is selected */}
+                        {watchLiftAvailability === true && (
+                          <div
+                            className="flex items-center gap-1.5 animate-in fade-in slide-in-from-left-2 duration-200"
+                          >
+                            <label
+                              htmlFor="material_lift_size"
+                              className="text-xs font-bold whitespace-nowrap"
+                            >
+                              Material Lift Size
+                              <span className="text-red-500 ml-0.5">*</span>
+                            </label>
+                            <input
+                              id="material_lift_size"
+                              type="text"
+                              placeholder="Enter a size"
+                              {...registerDispatch("material_lift_size")}
+                              disabled={isDispatchInputDisabled}
+                              className="w-36 border rounded-md px-2.5 py-1.5 text-sm bg-background outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
+                            />
+                          </div>
+                        )}
                       </div>
+
                       {errorsDispatch.material_lift_availability && (
                         <p className="text-xs text-red-500">
                           {errorsDispatch.material_lift_availability.message}
                         </p>
                       )}
-
-                      {/* Material Lift Size Input */}
-                      {watchLiftAvailability === true && (
-                        <div className="space-y-2 pt-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                          <Label htmlFor="material_lift_size" className="text-xs font-semibold">
-                            Material Lift Size (ft) <span className="text-red-500">*</span>
-                          </Label>
-                          <Input
-                            id="material_lift_size"
-                            type="number"
-                            step="any"
-                            placeholder="Enter lift size (e.g. 5.5)"
-                            {...registerDispatch("material_lift_size")}
-                            disabled={isDispatchInputDisabled}
-                          />
-                          {errorsDispatch.material_lift_size && (
-                            <p className="text-xs text-red-500">
-                              {errorsDispatch.material_lift_size.message}
-                            </p>
-                          )}
-                        </div>
+                      {errorsDispatch.material_lift_size && (
+                        <p className="text-xs text-red-500">
+                          {errorsDispatch.material_lift_size.message}
+                        </p>
                       )}
                     </div>
 
@@ -879,9 +877,8 @@ export default function DispatchPlanningDetails({
 
         {/* Body */}
         <div
-          className={`p-6 space-y-7 ${
-            shouldDisableBlockedActions ? "opacity-60" : ""
-          }`}
+          className={`p-6 space-y-7 ${shouldDisableBlockedActions ? "opacity-60" : ""
+            }`}
         >
           {!infoSaved && (
             <div className="bg-muted p-4 rounded-lg text-sm text-muted-foreground">
@@ -898,8 +895,8 @@ export default function DispatchPlanningDetails({
                 {(pendingPaymentDetails ||
                   (paymentProofFile && paymentProofFile.length > 0) ||
                   existingPaymentDoc) && (
-                  <span className="text-red-500 ml-1">*</span>
-                )}
+                    <span className="text-red-500 ml-1">*</span>
+                  )}
               </Label>
               <CustomeTooltip
                 value={shouldDisableBlockedActions ? blockedTooltip : ""}
@@ -941,8 +938,8 @@ export default function DispatchPlanningDetails({
                 {(pendingPayment ||
                   (paymentProofFile && paymentProofFile.length > 0) ||
                   existingPaymentDoc) && (
-                  <span className="text-red-500 ml-1">*</span>
-                )}
+                    <span className="text-red-500 ml-1">*</span>
+                  )}
               </Label>
               <CustomeTooltip
                 value={shouldDisableBlockedActions ? blockedTooltip : ""}

@@ -42,6 +42,7 @@ interface NavSubItem {
     | "total_leads"
     | "total_overall_leads"
     | "total_open_leads"
+    | "total_draft_leads"
     | "total_initial_site_measurement_leads"
     | "total_designing_stage_leads"
     | "total_booking_stage_leads"
@@ -80,6 +81,7 @@ interface NavItem {
     | "total_leads"
     | "total_overall_leads"
     | "total_open_leads"
+    | "total_draft_leads"
     | "total_initial_site_measurement_leads"
     | "total_designing_stage_leads"
     | "total_booking_stage_leads"
@@ -263,7 +265,7 @@ export function NavMain({
       );
 
       return (
-        <SidebarMenuItem key={item.title}>
+        <SidebarMenuItem key={item.title} id={`nav-item-${item.title.replace(/\s+/g, '-')}`}>
           <Collapsible
             asChild
             open={isOpen}
@@ -273,6 +275,15 @@ export function NavMain({
                 isNowOpen ? next.add(item.title) : next.delete(item.title);
                 return next;
               });
+
+              if (isNowOpen) {
+                setTimeout(() => {
+                  const element = document.getElementById(`nav-item-${item.title.replace(/\s+/g, '-')}`);
+                  if (element) {
+                    element.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                  }
+                }, 250); // Delay to allow the expand animation to start/finish
+              }
             }}
             className="group/collapsible"
           >

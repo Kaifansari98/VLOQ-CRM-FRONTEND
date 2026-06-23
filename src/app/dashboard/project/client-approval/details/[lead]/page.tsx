@@ -109,6 +109,7 @@ export default function ClientApprovalLeadDetails() {
   const userType = useAppSelector(
     (state) => state.auth?.user?.user_type.user_type,
   );
+  const isAuditor = userType?.trim().toLowerCase() === "auditor";
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
@@ -260,17 +261,19 @@ export default function ClientApprovalLeadDetails() {
   const canDelete = canDeleteLeadButton(userType);
   const canEdit = canEditLeadButton(userType);
   const canViewPayment =
-    userType?.toLowerCase() === "custom"
+    isAuditor ||
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
         "leads.open_leads.details_of_lead.payment_information.enable_disable",
       )
-      : canViewPaymentTab(userType);
+      : canViewPaymentTab(userType));
   const canViewSiteHistory =
-    userType?.toLowerCase() === "custom"
+    isAuditor ||
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
         "leads.open_leads.details_of_lead.site_history.enable_disable",
       )
-      : canViewSiteHistoryTab(userType);
+      : canViewSiteHistoryTab(userType));
   const canViewChats =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
@@ -321,7 +324,7 @@ export default function ClientApprovalLeadDetails() {
         {/* ACTION BUTTONS */}
         <div className="flex items-center space-x-2">
           {/* Tech Check */}
-{shouldDisableBlockedActions ? (
+{!isAuditor && (shouldDisableBlockedActions ? (
   <CustomeTooltip
     value={blockedTooltip}
     truncateValue={
@@ -380,23 +383,26 @@ export default function ClientApprovalLeadDetails() {
     }
     value="Only Sales Executive can request to Tech Check"
   />
-)}
+))}
 
-          <Button
-            size="sm"
-            className="hidden md:block"
-            onClick={() => setAssignOpen(true)}
-          >
-            Assign Task
-          </Button>
+          {!isAuditor && (
+            <Button
+              size="sm"
+              className="hidden md:block"
+              onClick={() => setAssignOpen(true)}
+            >
+              Assign Task
+            </Button>
+          )}
 
           <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
-          <NotificationBell />
+          {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
 
           {/* DROPDOWN */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          {!isAuditor && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
               <Button
                 size="icon"
                 variant="ghost"
@@ -602,6 +608,7 @@ export default function ClientApprovalLeadDetails() {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+          )}
         </div>
       </header>
 
@@ -643,7 +650,7 @@ export default function ClientApprovalLeadDetails() {
               Lead Details
             </TabsTrigger>
 
-            {canAccessClientApprovalForm ? (
+            {!isAuditor && canAccessClientApprovalForm ? (
               shouldDisableBlockedActions ? (
                 <CustomeTooltip
                   value={blockedTooltip}
@@ -660,7 +667,7 @@ export default function ClientApprovalLeadDetails() {
                   To-Do Task
                 </TabsTrigger>
               )
-            ) : (
+            ) : !isAuditor && (
               <CustomeTooltip
                 truncateValue={
                   <TabsTrigger value="" disabled>

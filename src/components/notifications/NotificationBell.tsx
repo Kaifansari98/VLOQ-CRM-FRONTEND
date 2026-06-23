@@ -36,6 +36,13 @@ export const NotificationBell = ({ linkTo }: NotificationBellProps) => {
   const [open, setOpen] = useState(false);
   const latestNotifications = notifications.slice(0, 5);
 
+  const userType = user?.user_type?.user_type as string | undefined;
+  const isAuditor = userType?.trim().toLowerCase() === "auditor";
+
+  if (isAuditor) {
+    return null;
+  }
+
   if (linkTo) {
     return (
       <Button

@@ -63,11 +63,13 @@ export default function LeadsGenerationPage() {
   const [openCreateLead, setOpenCreateLead] = useState(false);
 
   // Utility
-  const isPrivilegedUser = (userType?: string) =>
-    userType === "admin" || userType === "super-admin";
+  const normalizedUserType = userType?.trim().toLowerCase();
+  const isPrivilegedUser = (uType?: string) => {
+    const norm = uType?.trim().toLowerCase();
+    return norm === "admin" || norm === "super-admin" || norm === "auditor";
+  };
 
   const privileged = isPrivilegedUser(userType);
-  const normalizedUserType = userType?.trim().toLowerCase();
   const canShowOnHoldTab =
     normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(

@@ -54,6 +54,8 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
   const { leadId, accountId } = useDetails();
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id)!;
   const userId = useAppSelector((s) => s.auth.user?.id)!;
+  const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const isAuditor = userType?.trim().toLowerCase() === "auditor";
 
   const queryClient = useQueryClient();
   const form = useForm<DesignsFormValues>({
@@ -154,11 +156,13 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
                   Cancel
                 </Button>
 
-                <Button type="submit" disabled={submitDesignsMutation.isPending}>
-                  {submitDesignsMutation.isPending
-                    ? "Uploading..."
-                    : "Submit Designs"}
-                </Button>
+                {!isAuditor && (
+                  <Button type="submit" disabled={submitDesignsMutation.isPending}>
+                    {submitDesignsMutation.isPending
+                      ? "Uploading..."
+                      : "Submit Designs"}
+                  </Button>
+                )}
               </div>
             </form>
           </Form>

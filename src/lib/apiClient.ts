@@ -1,14 +1,26 @@
 import axios from "axios";
 import { clearClientSessionStorage } from "@/lib/sessionCleanup";
 
-const environment = (process.env.NEXT_PUBLIC_ENVIRONMENT ?? "PRODUCTION").toUpperCase();
+const environment = (
+  process.env.NEXT_PUBLIC_ENVIRONMENT ?? "PRODUCTION"
+).toUpperCase() as keyof typeof API_URLS;
 
-const baseURL =
-  environment === "STAGING"
-    ? "https://staging-api.furnixcrm.com/api"
-    : environment === "LOCAL"
-      ? "http://localhost:7777/api"
-      : "https://api.furnixcrm.com/api";
+const API_URLS = {
+  LOCAL: "http://localhost:7777/api",
+  STAGING: "https://staging-api.furnixcrm.com/api",
+  DEMO: "https://demo-api.furnixcrm.com/api",
+  PRODUCTION: "https://api.furnixcrm.com/api",
+  
+};
+
+const baseURL = API_URLS[environment] || API_URLS.PRODUCTION;
+console.log("baseURL",baseURL);
+// const baseURL =
+//   environment === "STAGING"
+//     ? "https://staging-api.furnixcrm.com/api"
+//     : environment === "LOCAL"
+//       ? "http://localhost:7777/api"
+//       : "https://api.furnixcrm.com/api";
 
 export const apiClient = axios.create({
   baseURL,

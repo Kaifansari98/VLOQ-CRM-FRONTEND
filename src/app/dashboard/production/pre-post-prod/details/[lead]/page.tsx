@@ -122,6 +122,7 @@ export default function ProductionLeadDetails() {
     (state) => state.customPrivileges.codes,
   );
   const effectiveUserType = userType;
+  const isAuditor = effectiveUserType?.trim().toLowerCase() === "auditor";
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -299,17 +300,19 @@ export default function ProductionLeadDetails() {
   const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
   const canEdit = canEditLeadButton(effectiveUserType ?? "");
   const canViewPayment =
-    effectiveUserType?.toLowerCase() === "custom"
+    isAuditor ||
+    (effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
         "leads.open_leads.details_of_lead.payment_information.enable_disable",
       )
-      : canViewPaymentTab(effectiveUserType ?? "");
+      : canViewPaymentTab(effectiveUserType ?? ""));
   const canViewSiteHistory =
-    effectiveUserType?.toLowerCase() === "custom"
+    isAuditor ||
+    (effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
         "leads.open_leads.details_of_lead.site_history.enable_disable",
       )
-      : canViewSiteHistoryTab(effectiveUserType ?? "");
+      : canViewSiteHistoryTab(effectiveUserType ?? ""));
   const canViewChats =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
@@ -327,11 +330,12 @@ export default function ProductionLeadDetails() {
     effectiveUserType ?? "",
   );
   const canViewProductionTabByDefault =
-    userType === "custom"
+    isAuditor ||
+    (userType === "custom"
       ? customPrivilegeCodes.some((code) =>
         code.startsWith("production.production."),
       )
-      : productionDefaultTab;
+      : productionDefaultTab);
 
   const deleteLeadMutation = useDeleteLead();
 
@@ -752,31 +756,34 @@ export default function ProductionLeadDetails() {
               />
             ))}
 
-          <Button
-            size="sm"
-            className="hidden lg:flex"
-            onClick={() => setAssignOpen(true)}
-          >
-            Assign Task
-          </Button>
+          {!isAuditor && (
+            <Button
+              size="sm"
+              className="hidden lg:flex"
+              onClick={() => setAssignOpen(true)}
+            >
+              Assign Task
+            </Button>
+          )}
 
-          <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
-          <NotificationBell />
+          {!isAuditor && <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />}
+          {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="relative bg-accent p-1.5 rounded-sm"
-              >
-                <EllipsisVertical size={25} />
-              </Button>
-            </DropdownMenuTrigger>
+          {!isAuditor && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="relative bg-accent p-1.5 rounded-sm"
+                >
+                  <EllipsisVertical size={25} />
+                </Button>
+              </DropdownMenuTrigger>
 
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem className="lg:hidden">
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem className="lg:hidden">
                 <UserPlus size={20} />
                 Assign Task
               </DropdownMenuItem>
@@ -965,6 +972,7 @@ export default function ProductionLeadDetails() {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+          )}
         </div>
       </header>
 
@@ -981,25 +989,27 @@ export default function ProductionLeadDetails() {
                 <Factory size={16} className="mr-1 opacity-60" />
                 Production Details
               </TabsTrigger>
-              {canShowTodoTab ? (
-                <TabsTrigger value="todo">
-                  <PencilLine size={16} className="mr-1 opacity-60" />
-                  To-Do Task
-                </TabsTrigger>
-              ) : (
-                <CustomeTooltip
-                  truncateValue={
-                    <TabsTrigger value="todo" disabled>
-                      <PencilLine size={16} className="mr-1 opacity-60" />
-                      To-Do Task
-                    </TabsTrigger>
-                  }
-                  value={
-                    userType === "custom"
-                      ? "You don’t have permission to access To-Do Tasks."
-                      : "Only factory user can access this tab"
-                  }
-                />
+              {!isAuditor && (
+                canShowTodoTab ? (
+                  <TabsTrigger value="todo">
+                    <PencilLine size={16} className="mr-1 opacity-60" />
+                    To-Do Task
+                  </TabsTrigger>
+                ) : (
+                  <CustomeTooltip
+                    truncateValue={
+                      <TabsTrigger value="todo" disabled>
+                        <PencilLine size={16} className="mr-1 opacity-60" />
+                        To-Do Task
+                      </TabsTrigger>
+                    }
+                    value={
+                      userType === "custom"
+                        ? "You don’t have permission to access To-Do Tasks."
+                        : "Only factory user can access this tab"
+                    }
+                  />
+                )
               )}
               {canViewSiteHistory && (
                 <TabsTrigger value="history">
@@ -1029,35 +1039,44 @@ export default function ProductionLeadDetails() {
 
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
-          <div className="w-60 flex flex-col shrink-0">
-            <label className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-1 flex items-center gap-1 ml-1">
-              <CalendarCheck2 size={12} />
-              Expected Ready Date of Order
-            </label>
-            <CustomeDatePicker
-              value={
-                (validInstanceId
-                  ? currentInstance?.production_erd_date
-                  : lead?.expected_order_login_ready_date) ||
-                (postProductionStatus?.all_order_login_dates_added &&
-                  latestOrderLoginDate
-                  ? (() => {
-                    const baseDate = new Date(latestOrderLoginDate);
-                    baseDate.setDate(baseDate.getDate() + 3); // ⏱ Add 3-day buffer
-                    return baseDate.toISOString().split("T")[0];
-                  })()
-                  : undefined)
-              }
-              onChange={handleExpectedDateChange}
-              restriction="futureOnly"
-              minDate={
+          {(() => {
+            const savedDateValue = validInstanceId
+              ? currentInstance?.production_erd_date
+              : lead?.expected_order_login_ready_date;
+
+            const expectedDateValue =
+              savedDateValue ||
+              (postProductionStatus?.all_order_login_dates_added &&
                 latestOrderLoginDate
-                  ? latestOrderLoginDate.split("T")[0] // ✅ user can only pick dates >= latest order login date
-                  : undefined
-              }
-              disabledReason={disabledReason}
-            />
-          </div>
+                ? (() => {
+                  const baseDate = new Date(latestOrderLoginDate);
+                  baseDate.setDate(baseDate.getDate() + 3); // ⏱ Add 3-day buffer
+                  return baseDate.toISOString().split("T")[0];
+                })()
+                : undefined);
+
+            if (isAuditor && !savedDateValue) return null;
+
+            return (
+              <div className="w-60 flex flex-col shrink-0">
+                <label className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-1 flex items-center gap-1 ml-1">
+                  <CalendarCheck2 size={12} />
+                  Expected Ready Date of Order
+                </label>
+                <CustomeDatePicker
+                  value={expectedDateValue}
+                  onChange={handleExpectedDateChange}
+                  restriction="futureOnly"
+                  minDate={
+                    latestOrderLoginDate
+                      ? latestOrderLoginDate.split("T")[0] // ✅ user can only pick dates >= latest order login date
+                      : undefined
+                  }
+                  disabledReason={isAuditor ? "Auditor cannot edit this field." : disabledReason}
+                />
+              </div>
+            );
+          })()}
         </div>
 
         {/* 🔹 Details Tab */}
