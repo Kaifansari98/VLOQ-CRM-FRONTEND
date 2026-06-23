@@ -856,8 +856,9 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
       >
         <div className="space-y-6">
           {/* -------- Top Summary Cards -------- */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 pt-2">
-            {/* Site Supervisor / Assigned User */}
+          <div className={`grid grid-cols-1 md:grid-cols-2 gap-5 pt-2 ${vendorCustomUserTypeMode ? "lg:grid-cols-3" : "lg:grid-cols-4"}`}>
+            {/* Site Supervisor / Assigned User — hidden for custom usertype vendors */}
+            {!vendorCustomUserTypeMode && (
             <div
               className="
     bg-white dark:bg-neutral-900
@@ -880,35 +881,10 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
               {/* Text */}
               <div className="flex-1">
                 <p className="text-sm text-muted-foreground font-medium mb-1">
-                  {vendorCustomUserTypeMode === true
-                    ? "Assigned User"
-                    : "Site Supervisor"}
+                  Site Supervisor
                 </p>
 
-                {vendorCustomUserTypeMode === true ? (
-                  assignedIsmUserFromMapping?.user_name ? (
-                    <p className="text-xs font-semibold tracking-tight text-heading dark:text-neutral-100">
-                      {assignedIsmUserFromMapping.user_name}
-                    </p>
-                  ) : (
-                    <div className="w-fit">
-                      <CustomeTooltip
-                        value={shouldDisableBlockedActions ? blockedTooltip : ""}
-                        truncateValue={
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            disabled={shouldDisableBlockedActions}
-                            onClick={() => setReassignOpen(true)}
-                          >
-                            Assign Site Supervisor
-                          </Button>
-                        }
-                      />
-                    </div>
-                  )
-                ) : currentSupervisor?.userName ? (
+                {currentSupervisor?.userName ? (
                   <p className="text-xs font-semibold tracking-tight text-heading dark:text-neutral-100">
                     {currentSupervisor.userName}
                   </p>
@@ -932,8 +908,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                 )}
               </div>
 
-              {vendorCustomUserTypeMode !== true &&
-                isSupervisorAssigned &&
+              {isSupervisorAssigned &&
                 canReassignSiteSupervisor && (
                   <div className="shrink-0">
                     <CustomeTooltip
@@ -953,6 +928,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                   </div>
                 )}
             </div>
+            )}
 
             {/* MRP Value */}
             {canViewMrpValue && (
