@@ -1207,6 +1207,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                   ) : (
                     <AssignToPicker
                       data={pickerData}
+                      disabled
                       value={
                         field.value?.length ? Number(field.value[0]) : undefined
                       }

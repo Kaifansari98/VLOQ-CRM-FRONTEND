@@ -1572,6 +1572,7 @@ export const useMiscellaneousResolutionStatus = (
 export interface PendingMiscellaneousPayload {
   franchise_id?: number;
   user_type?: string;
+  user_id?: number;
   page?: number;
   limit?: number;
 
@@ -1677,6 +1678,7 @@ export const getPendingMiscellaneousLeadCount = async (
   vendorId: number,
   franchiseId?: number,
   userType?: string,
+  userId?: number,
 ): Promise<PendingMiscellaneousCountResponse> => {
   const { data } = await apiClient.get(
     `/miscellaneous-master/vendor/${vendorId}/pending-miscellaneous/count`,
@@ -1684,6 +1686,7 @@ export const getPendingMiscellaneousLeadCount = async (
       params: {
         ...(franchiseId ? { franchise_id: franchiseId } : {}),
         ...(userType ? { user_type: userType } : {}),
+        ...(userId ? { user_id: userId } : {}),
       },
     },
   );
@@ -1695,11 +1698,12 @@ export const usePendingMiscellaneousCount = (
   vendorId: number,
   franchiseId?: number,
   userType?: string,
+  userId?: number,
 ) => {
   return useQuery<PendingMiscellaneousCountResponse>({
-    queryKey: ["pendingMiscellaneousCount", vendorId, franchiseId, userType],
+    queryKey: ["pendingMiscellaneousCount", vendorId, franchiseId, userType, userId],
     queryFn: () =>
-      getPendingMiscellaneousLeadCount(vendorId, franchiseId, userType),
+      getPendingMiscellaneousLeadCount(vendorId, franchiseId, userType, userId),
     enabled: !!vendorId,
     staleTime: 2 * 60 * 1000,
     refetchOnWindowFocus: true,
