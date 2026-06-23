@@ -131,6 +131,9 @@ const hasFastProductionTimeline = (rule: FastProductionTimelineRule) =>
   (rule.kitchen_manufacturing_days_for_fast_production ?? 0) > 0 ||
   (rule.other_manufacturing_days_for_fast_production ?? 0) > 0;
 
+const isKitchenParent = (parent?: string | null) =>
+  parent?.trim().toLowerCase() === "kitchen";
+
 const formatDateInputValue = (date: Date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -392,17 +395,21 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
 
   const minFastProductionDays = React.useMemo(() => {
     if (applicableFastProductionRules.length === 0) return null;
+    if (!currentInstance) return null;
+
+    const useKitchenTimeline = isKitchenParent(
+      currentInstance.productStructure?.parent,
+    );
 
     const maxDays = applicableFastProductionRules.reduce((currentMax, rule) => {
-      const ruleDays = Math.max(
-        rule.kitchen_manufacturing_days_for_fast_production ?? 0,
-        rule.other_manufacturing_days_for_fast_production ?? 0,
-      );
+      const ruleDays = useKitchenTimeline
+        ? (rule.kitchen_manufacturing_days_for_fast_production ?? 0)
+        : (rule.other_manufacturing_days_for_fast_production ?? 0);
       return Math.max(currentMax, ruleDays);
     }, 0);
 
     return maxDays > 0 ? maxDays : null;
-  }, [applicableFastProductionRules]);
+  }, [applicableFastProductionRules, currentInstance]);
 
   const clientRequiredDeliveryMinDate = React.useMemo(() => {
     if (minFastProductionDays == null) return undefined;
@@ -415,6 +422,8 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
   const clientRequiredDeliveryDisabledReason =
     selectedCarcassIds.length === 0
       ? "Select carcass first to enable delivery date."
+      : !currentInstance
+        ? "Select an instance first to enable delivery date."
       : minFastProductionDays == null
         ? "No fast production timeline is available for the selected carcass / shutter combination."
         : undefined;
