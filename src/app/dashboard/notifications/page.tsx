@@ -30,6 +30,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CheckCheck,
+  CheckSquare,
   Circle,
   MessageCircle,
   Target,
@@ -46,7 +47,7 @@ import { toastManager } from "@/components/ui/toast";
 
 const PAGE_SIZE = 20;
 
-type TabId = "all" | "leads" | "task" | "mention";
+type TabId = "all" | "leads" | "task" | "mention" | "approval";
 
 interface Filters {
   tab: TabId;
@@ -60,10 +61,11 @@ interface PageCache {
 }
 
 const TABS = [
-  { id: "all" as const,     label: "All Notifications", icon: Bell },
-  { id: "leads" as const,   label: "Leads",             icon: Target },
-  { id: "task" as const,    label: "Tasks",             icon: Briefcase },
-  { id: "mention" as const, label: "Mentions",          icon: MessageCircle },
+  { id: "all" as const,      label: "All Notifications", icon: Bell        },
+  { id: "leads" as const,    label: "Leads",             icon: Target       },
+  { id: "task" as const,     label: "Tasks",             icon: Briefcase    },
+  { id: "mention" as const,  label: "Mentions",          icon: MessageCircle },
+  { id: "approval" as const, label: "Approvals",         icon: CheckSquare  },
 ];
 
 const TYPE_CONFIG: Record<
@@ -75,6 +77,7 @@ const TYPE_CONFIG: Record<
   CHAT_MENTION:   { label: "Mention",     Icon: MessageCircle, color: "text-amber-500"   },
   LEAD_MILESTONE: { label: "Milestone",   Icon: Bell,          color: "text-purple-500"  },
   LEAD_ACTION:    { label: "Lead Action", Icon: Bell,          color: "text-sky-500"     },
+  APPROVAL:       { label: "Approval",    Icon: CheckSquare,   color: "text-teal-500"    },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
