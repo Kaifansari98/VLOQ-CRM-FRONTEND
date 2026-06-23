@@ -8,12 +8,12 @@ interface GenerateEmployeeTaskReportParams {
   vendorId: number;
   vendorReportCode: string;
   userId: number | "all";
-  franchiseId: number | "all";
+  franchiseId: number | number[] | "all";
   franchiseName: string;
   employeeName: string;
   fromDate: string;
   toDate: string;
-  allFranchises?: { id: number; name: string }[]; // required when franchiseId === "all"
+  allFranchises?: { id: number; name: string }[]; // required when franchiseId === "all" or array
   onProgress?: (stage: string) => void;
 }
 
@@ -52,7 +52,7 @@ async function fetchTasksForFranchise(
 async function fetchAllTasks(
   vendorId: number,
   userId: number | "all",
-  franchiseId: number | "all",
+  franchiseId: number | number[] | "all",
   franchiseName: string,
   fromDate: string,
   toDate: string,
@@ -64,6 +64,17 @@ async function fetchAllTasks(
     const results: TaggedTask[] = [];
     for (const f of allFranchises) {
       const tasks = await fetchTasksForFranchise(vendorId, userId, f.id, f.name, dateRange);
+      results.push(...tasks);
+    }
+    return results;
+  }
+
+  if (Array.isArray(franchiseId)) {
+    const results: TaggedTask[] = [];
+    for (const id of franchiseId) {
+      const found = allFranchises.find((f) => f.id === id);
+      const name = found ? found.name : `Franchise ${id}`;
+      const tasks = await fetchTasksForFranchise(vendorId, userId, id, name, dateRange);
       results.push(...tasks);
     }
     return results;
@@ -270,14 +281,14 @@ export async function generateEmployeeTaskReport(params: GenerateEmployeeTaskRep
     workbook,
     tasks,
     buildSheetName(
-      franchiseId === "all" ? "Consolidated - All Franchisee" : "Employee Task Report",
+      franchiseId === "all" || Array.isArray(franchiseId) ? "Consolidated" : "Employee Task Report",
       usedSheetNames,
     ),
     userId,
     employeeName,
   );
 
-  if (franchiseId === "all") {
+  if (franchiseId === "all" || Array.isArray(franchiseId)) {
     const groupedTasks = new Map<string, TaggedTask[]>();
     for (const task of tasks) {
       const key = task._franchiseName || "Unknown Franchise";

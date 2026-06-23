@@ -6,7 +6,7 @@ import { buildReportFileName, buildSheetName } from "@/lib/reports/fileName";
 interface GenerateInstallationReportParams {
   vendorId: number;
   vendorReportCode: string;
-  franchiseId: number | "all";
+  franchiseId: number | number[] | "all";
   leadId?: number | null;
   franchiseName: string;
   fromDate: string;
@@ -200,6 +200,14 @@ export async function generateInstallationReport(params: GenerateInstallationRep
   if (franchiseId === "all") {
     // Fetch all franchises together (backend handles null = all)
     leads = await fetchReportData(vendorId, null, leadId, fromDate, toDate);
+  } else if (Array.isArray(franchiseId)) {
+    leads = (
+      await Promise.all(
+        franchiseId.map((id) =>
+          fetchReportData(vendorId, id, leadId, fromDate, toDate),
+        ),
+      )
+    ).flat();
   } else {
     leads = await fetchReportData(vendorId, franchiseId, leadId, fromDate, toDate);
   }
@@ -221,12 +229,12 @@ export async function generateInstallationReport(params: GenerateInstallationRep
     workbook,
     leads,
     buildSheetName(
-      franchiseId === "all" ? "Consolidated - All Franchisee" : "Installation Report",
+      franchiseId === "all" || Array.isArray(franchiseId) ? "Consolidated" : "Installation Report",
       usedSheetNames,
     ),
   );
 
-  if (franchiseId === "all") {
+  if (franchiseId === "all" || Array.isArray(franchiseId)) {
     const groupedRows = new Map<string, InstallationReportLead[]>();
     for (const lead of leads) {
       const key = lead.franchise_name ?? "Unknown Franchise";

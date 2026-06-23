@@ -8,6 +8,9 @@ interface FetchNotificationsOptions {
   isRead?: boolean;
   take?: number;
   skip?: number;
+  search?: string;
+  tab?: string;
+  signal?: AbortSignal;
 }
 
 export const fetchNotifications = async (
@@ -22,7 +25,10 @@ export const fetchNotifications = async (
         take: options.take ?? 20,
         skip: options.skip ?? 0,
         ...(options.isRead !== undefined ? { is_read: options.isRead } : {}),
+        ...(options.search !== undefined ? { search: options.search } : {}),
+        ...(options.tab !== undefined ? { tab: options.tab } : {}),
       },
+      signal: options.signal,
     },
   );
 
@@ -47,6 +53,14 @@ export const fetchNotifications = async (
 
 export const markNotificationRead = async (id: number, userId: number) => {
   const { data } = await apiClient.patch(`/notifications/${id}/read`, {
+    user_id: userId,
+  });
+  return data;
+};
+
+export const markNotificationsReadBulk = async (ids: number[], userId: number) => {
+  const { data } = await apiClient.patch(`/notifications/read-bulk`, {
+    ids,
     user_id: userId,
   });
   return data;

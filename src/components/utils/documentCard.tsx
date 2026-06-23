@@ -500,9 +500,8 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
         className={`
           group relative flex items-center gap-4 rounded-xl p-4
           border bg-white dark:bg-neutral-900
-          bg-white dark:bg-neutral-900
           hover:bg-muted/40 dark:hover:bg-neutral-800
-          transition-all duration-200
+          transition-all duration-200 w-full min-w-[250px] sm:min-w-[300px]
           @container
           ${isLatest
             ? "border-emerald-400 ring-1 ring-emerald-200 dark:border-emerald-500/70 dark:ring-emerald-500/20"
