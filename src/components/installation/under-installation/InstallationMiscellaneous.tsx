@@ -1281,8 +1281,6 @@ export default function InstallationMiscellaneous({
                         </span>
                       }
                     />
-
-
                   </div>
 
                 )}
