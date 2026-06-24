@@ -522,6 +522,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                         onChange={(val) => field.onChange(val ? String(val) : "")}
                         placeholder="Search site supervisor..."
                         emptyLabel="Select an option"
+                        className="h-9"
                       />
                       <FormMessage />
                     </FormItem>
