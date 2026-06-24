@@ -585,40 +585,7 @@ export default function UnderInstallationLeadDetails() {
                 }
                 value={`Mark Usable Handover as completed before ${primaryActionLabel.toLowerCase()}.`}
               />
-            ) : isLoadingMisc ? (
-              // 2️⃣ Checking misc status → block
-              <CustomeTooltip
-                truncateValue={
-                  <div className="opacity-60 cursor-not-allowed">
-                    <Button
-                      variant="default"
-                      size="sm"
-                      disabled
-                      className="pointer-events-none hidden sm:flex"
-                    >
-                      {primaryActionLabel}
-                    </Button>
-                  </div>
-                }
-                value="Checking miscellaneous status..."
-              />
-            ) : !miscStatusReady ? (
-              // 3️⃣ Misc pending/awaiting → block
-              <CustomeTooltip
-                truncateValue={
-                  <div className="opacity-60 cursor-not-allowed">
-                    <Button
-                      variant="default"
-                      size="sm"
-                      disabled
-                      className="pointer-events-none hidden sm:flex"
-                    >
-                      {primaryActionLabel}
-                    </Button>
-                  </div>
-                }
-                value={`All miscellaneous items must be Resolved or Rejected before ${primaryActionLabel.toLowerCase()}.`}
-              />
+
             ) : isSmallOrderLead && !smallOrderRequestId ? (
               <CustomeTooltip
                 truncateValue={
@@ -741,28 +708,7 @@ export default function UnderInstallationLeadDetails() {
                       }
                       value={`Mark Usable Handover as completed before ${primaryActionLabel.toLowerCase()}.`}
                     />
-                  ) : isLoadingMisc ? (
-                    // 2️⃣ Checking misc status → block
-                    <CustomeTooltip
-                      truncateValue={
-                        <DropdownMenuItem className="sm:hidden" disabled>
-                          <Handshake size={20} />
-                          {primaryActionLabel}
-                        </DropdownMenuItem>
-                      }
-                      value="Checking miscellaneous status..."
-                    />
-                  ) : !miscStatusReady ? (
-                    // 3️⃣ Misc pending/awaiting → block
-                    <CustomeTooltip
-                      truncateValue={
-                        <DropdownMenuItem className="sm:hidden" disabled>
-                          <Handshake size={20} />
-                          {primaryActionLabel}
-                        </DropdownMenuItem>
-                      }
-                      value={`All miscellaneous items must be Resolved or Rejected before ${primaryActionLabel.toLowerCase()}.`}
-                    />
+
                   ) : isSmallOrderLead && !smallOrderRequestId ? (
                     <CustomeTooltip
                       truncateValue={

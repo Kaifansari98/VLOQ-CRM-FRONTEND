@@ -138,6 +138,7 @@ interface InstallationMiscellaneousProps {
   leadId: number;
   accountId: number;
   initialTaskId?: number;
+  hideAddButton?: boolean;
 }
 
 interface UploadCardProps {
@@ -172,6 +173,7 @@ export default function InstallationMiscellaneous({
   leadId,
   accountId,
   initialTaskId,
+  hideAddButton,
 }: InstallationMiscellaneousProps) {
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
@@ -580,7 +582,7 @@ export default function InstallationMiscellaneous({
         </div>
 
         <div className="w-full sm:w-auto flex justify-end">
-          {canWork && canAddMiscellaneous && (
+          {canWork && canAddMiscellaneous && !hideAddButton && (
             // ✅ Add Miscellaneous button — blocked tooltip
             <CustomeTooltip
               value={shouldDisableBlockedActions ? blockedTooltip : ""}

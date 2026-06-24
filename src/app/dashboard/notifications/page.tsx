@@ -41,6 +41,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { toastManager } from "@/components/ui/toast";
+import ApprovalRequestActionModal from "@/components/tasks/ApprovalRequestActionModal";
 
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -133,6 +134,7 @@ export default function NotificationsPage() {
   // Pagination reuses `isPaging` so existing content stays visible.
   const [isLoading, setIsLoading]         = useState(false);
   const [isPaging, setIsPaging]           = useState(false);
+  const [approvalModalData, setApprovalModalData] = useState<{ leadId: number; taskId: number } | null>(null);
 
   const markedIdsRef       = useRef<Set<number>>(new Set());
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -376,6 +378,17 @@ export default function NotificationsPage() {
         setFilters((f) => ({ ...f }));
       }
     }
+
+    if (notification.type === "APPROVAL" && notification.redirect_url) {
+      const url = new URL(notification.redirect_url, window.location.origin);
+      const taskId = Number(url.searchParams.get("taskId"));
+      const leadId = Number(url.searchParams.get("leadId"));
+      if (taskId && leadId) {
+        setApprovalModalData({ leadId, taskId });
+        return;
+      }
+    }
+
     if (notification.redirect_url) {
       /^https?:\/\//i.test(notification.redirect_url)
         ? window.location.assign(notification.redirect_url)
@@ -635,6 +648,13 @@ export default function NotificationsPage() {
           </AnimatePresence>
         </div>
       </main>
+      <ApprovalRequestActionModal
+        open={!!approvalModalData}
+        onOpenChange={(open) => {
+          if (!open) setApprovalModalData(null);
+        }}
+        data={approvalModalData || undefined}
+      />
     </>
   );
 }

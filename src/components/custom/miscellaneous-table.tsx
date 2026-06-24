@@ -99,6 +99,7 @@ export function MiscellaneousTable({
     return {
       ...(!skipFranchiseFilter && franchiseId ? { franchise_id: franchiseId } : {}),
       ...(userType ? { user_type: userType } : {}),
+      ...(userId ? { user_id: userId } : {}),
       page: pagination.pageIndex + 1,
       limit: pagination.pageSize,
       global_search: globalFilter || "",
