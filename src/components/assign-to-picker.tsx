@@ -44,6 +44,7 @@ interface Props {
   placeholder?: string;
   emptyLabel?: string;
   disabled?: boolean;
+  className?: string; // ✅ ADDED
 }
 
 export default function AssignToPicker({
@@ -54,6 +55,7 @@ export default function AssignToPicker({
   placeholder = "Search user...",
   emptyLabel = "Select an option",
   disabled = false,
+  className, // ✅ ADDED
 }: Props) {
   const id = useId();
   const [open, setOpen] = useState<boolean>(false);
@@ -115,8 +117,8 @@ export default function AssignToPicker({
             className={cn(
               "bg-background hover:bg-background border-input w-full min-w-0 justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]",
               disabled &&
-                "opacity-60 cursor-not-allowed relative after:content-[''] after:absolute after:inset-0 after:border-2 after:border-transparent after:rounded-md"
-              // ✅ Adds red border on hover when disabled
+                "opacity-60 cursor-not-allowed relative after:content-[''] after:absolute after:inset-0 after:border-2 after:border-transparent after:rounded-md",
+              className // ✅ Apply className here
             )}
           >
             <span
