@@ -888,7 +888,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                   <p className="text-xs font-semibold tracking-tight text-heading dark:text-neutral-100">
                     {currentSupervisor.userName}
                   </p>
-                ) : (
+                ) : canAssignSiteSupervisor ? (
                   <div className="w-fit">
                     <CustomeTooltip
                       value={shouldDisableBlockedActions ? blockedTooltip : ""}
@@ -905,6 +905,10 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                       }
                     />
                   </div>
+                ) : (
+                  <p className="text-xs font-medium text-muted-foreground italic">
+                    Not Assigned Yet
+                  </p>
                 )}
               </div>
 
