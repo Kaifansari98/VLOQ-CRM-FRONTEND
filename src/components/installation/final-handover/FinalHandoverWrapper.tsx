@@ -75,7 +75,7 @@ export default function FinalHandoverWrapper({
       title: (
         <div className="flex items-center gap-1">
           <FileText className="w-3 h-3" />
-          Small Order Request
+          Partial Order Request
         </div>
       ),
       color: "bg-zinc-900 hover:bg-zinc-900",

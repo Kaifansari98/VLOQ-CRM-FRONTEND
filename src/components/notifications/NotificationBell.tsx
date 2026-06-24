@@ -23,6 +23,7 @@ import {
 } from "@/api/notifications";
 import { NotificationItem } from "@/types/notifications";
 import { NotificationDropdownList } from "@/components/notifications/NotificationDropdownList";
+import ApprovalRequestActionModal from "@/components/tasks/ApprovalRequestActionModal";
 
 interface NotificationBellProps {
   linkTo?: string;
@@ -34,6 +35,10 @@ export const NotificationBell = ({ linkTo }: NotificationBellProps) => {
   const user = useAppSelector((state) => state.auth.user);
   const { notifications, unreadCount, isLoading, refresh } = useNotifications();
   const [open, setOpen] = useState(false);
+  const [approvalModalData, setApprovalModalData] = useState<{
+    leadId: number;
+    taskId: number;
+  } | null>(null);
   const latestNotifications = notifications.slice(0, 5);
 
   const userType = user?.user_type?.user_type as string | undefined;
@@ -78,6 +83,17 @@ export const NotificationBell = ({ linkTo }: NotificationBellProps) => {
       }
     }
 
+    // For APPROVAL notifications: open the modal directly instead of navigating to My Tasks
+    if (notification.type === "APPROVAL" && notification.redirect_url) {
+      const url = new URL(notification.redirect_url, window.location.origin);
+      const taskId = Number(url.searchParams.get("taskId"));
+      const leadId = Number(url.searchParams.get("leadId"));
+      if (taskId && leadId) {
+        setApprovalModalData({ leadId, taskId });
+        return;
+      }
+    }
+
     if (notification.redirect_url) {
       handleNavigate(notification.redirect_url);
     }
@@ -100,53 +116,63 @@ export const NotificationBell = ({ linkTo }: NotificationBellProps) => {
   }, [dispatch, latestNotifications, refresh, user?.id]);
 
   return (
-    <DropdownMenu
-      open={open}
-      onOpenChange={(nextOpen) => {
-        setOpen(nextOpen);
-        if (nextOpen) {
-          refresh({ silent: true });
-          markVisibleAsRead();
-        }
-      }}
-    >
-      <DropdownMenuTrigger asChild>
-        <Button
-          size={"icon"}
-          variant="ghost"
-          className="relative bg-accent rounded-sm"
-        >
-          <Bell />
-          <CountBadge
-            count={unreadCount}
-            className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground"
-          />
-          <span className="sr-only">Notifications</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="end"
-        className="w-90 rounded-lg p-0"
-        sideOffset={8}
+    <>
+      <DropdownMenu
+        open={open}
+        onOpenChange={(nextOpen) => {
+          setOpen(nextOpen);
+          if (nextOpen) {
+            refresh({ silent: true });
+            markVisibleAsRead();
+          }
+        }}
       >
-        <div className="flex items-center justify-between px-3 py-2">
-          <DropdownMenuLabel className="p-0 text-sm font-semibold">
-            Notifications
-          </DropdownMenuLabel>
-          <Link
-            href="/dashboard/notifications"
-            className="text-xs font-medium text-primary hover:underline"
+        <DropdownMenuTrigger asChild>
+          <Button
+            size={"icon"}
+            variant="ghost"
+            className="relative bg-accent rounded-sm"
           >
-            View all
-          </Link>
-        </div>
-        <DropdownMenuSeparator />
-        <NotificationDropdownList
-          notifications={latestNotifications}
-          isLoading={isLoading}
-          onNotificationClick={handleNotificationClick}
-        />
-      </DropdownMenuContent>
-    </DropdownMenu>
+            <Bell />
+            <CountBadge
+              count={unreadCount}
+              className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground"
+            />
+            <span className="sr-only">Notifications</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="end"
+          className="w-90 rounded-lg p-0"
+          sideOffset={8}
+        >
+          <div className="flex items-center justify-between px-3 py-2">
+            <DropdownMenuLabel className="p-0 text-sm font-semibold">
+              Notifications
+            </DropdownMenuLabel>
+            <Link
+              href="/dashboard/notifications"
+              className="text-xs font-medium text-primary hover:underline"
+            >
+              View all
+            </Link>
+          </div>
+          <DropdownMenuSeparator />
+          <NotificationDropdownList
+            notifications={latestNotifications}
+            isLoading={isLoading}
+            onNotificationClick={handleNotificationClick}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <ApprovalRequestActionModal
+        open={!!approvalModalData}
+        onOpenChange={(open) => {
+          if (!open) setApprovalModalData(null);
+        }}
+        data={approvalModalData || undefined}
+      />
+    </>
   );
 };

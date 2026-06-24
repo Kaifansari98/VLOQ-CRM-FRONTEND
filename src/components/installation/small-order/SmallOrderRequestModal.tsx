@@ -198,7 +198,7 @@ export default function SmallOrderRequestModal({
       ]);
 
       toastManager.add({
-        title: "Small Order Request created successfully.",
+        title: "Partial Order Request created successfully.",
         type: "success",
       });
       handleClose();
@@ -207,7 +207,7 @@ export default function SmallOrderRequestModal({
         title:
           error?.response?.data?.message ||
           error?.response?.data?.error ||
-          "Failed to create Small Order Request.",
+          "Failed to create Partial Order Request.",
         type: "error",
       });
     }
@@ -218,7 +218,7 @@ export default function SmallOrderRequestModal({
       <DialogContent className="flex max-h-[90vh] w-[95vw] max-w-4xl flex-col overflow-hidden p-0">
         <DialogHeader className="shrink-0 border-b bg-muted/30 px-6 py-4">
           <DialogTitle className="text-left text-2xl font-semibold">
-            Small Order Request
+            Partial Order Request
           </DialogTitle>
           <DialogDescription className="text-left text-base text-muted-foreground">
             {`Raised from ${sourceLabel}.`}

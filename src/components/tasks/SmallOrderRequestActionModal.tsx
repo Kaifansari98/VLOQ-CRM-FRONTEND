@@ -100,8 +100,8 @@ export default function SmallOrderRequestActionModal({
           toastManager.add({
             title:
               mode === "approve"
-                ? "Small order request approved successfully"
-                : "Small order request rejected successfully",
+                ? "Partial order request approved successfully"
+                : "Partial order request rejected successfully",
             type: "success",
           });
 
@@ -128,7 +128,7 @@ export default function SmallOrderRequestActionModal({
             title:
               error?.response?.data?.message ||
               error?.response?.data?.error ||
-              "Failed to update small order request",
+              "Failed to update partial order request",
             type: "error",
           });
         },
@@ -148,10 +148,10 @@ export default function SmallOrderRequestActionModal({
         <DialogContent className="w-[95vw] max-w-2xl overflow-hidden p-0">
           <DialogHeader className="border-b bg-muted/30 px-6 py-4">
             <DialogTitle className="text-left text-2xl font-semibold">
-              Small Order Request
+              Partial Order Request
             </DialogTitle>
             <DialogDescription className="text-left text-base text-muted-foreground">
-              Review this small order request and choose whether to approve or
+              Review this partial order request and choose whether to approve or
               reject it.
             </DialogDescription>
           </DialogHeader>
@@ -231,12 +231,12 @@ export default function SmallOrderRequestActionModal({
           <AlertDialogHeader>
             <AlertDialogTitle>
               {mode === "reject"
-                ? "Reject Small Order Request?"
-                : "Approve Small Order Request?"}
+                ? "Reject Partial Order Request?"
+                : "Approve Partial Order Request?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {mode === "reject"
-                ? "This will reject the small order request and complete all pending approval tasks linked to it."
+                ? "This will reject the partial order request and complete all pending approval tasks linked to it."
                 : "This will record your approval and complete your task."}
             </AlertDialogDescription>
           </AlertDialogHeader>

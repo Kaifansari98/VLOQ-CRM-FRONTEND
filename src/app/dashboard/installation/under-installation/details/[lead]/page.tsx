@@ -283,9 +283,9 @@ export default function UnderInstallationLeadDetails() {
       return new Date() > expiryDate;
     })();
   const smallOrderCreationTooltip = hasReachedSmallOrderLimit
-    ? "Maximum Small Order limit reached for this project."
+    ? "Maximum Partial Order limit reached for this project."
     : isSmallOrderCreationExpired
-      ? "Small Order creation period has expired."
+      ? "Partial Order creation period has expired."
       : "";
   const shouldDisableSmallOrderCreation =
     shouldDisableBlockedActions ||
@@ -398,7 +398,7 @@ export default function UnderInstallationLeadDetails() {
     if (isSmallOrderLead) {
       if (!smallOrderRequestId) {
         toastManager.add({
-          title: "Small order request record not found for this lead.",
+          title: "Partial order request record not found for this lead.",
           type: "error",
         });
         return;
@@ -413,7 +413,7 @@ export default function UnderInstallationLeadDetails() {
         {
           onSuccess: () => {
             toastManager.add({
-              title: "Small order request marked as resolved successfully!",
+              title: "Partial order request marked as resolved successfully!",
               type: "success",
             });
             setShowMoveModal(false);
@@ -429,7 +429,7 @@ export default function UnderInstallationLeadDetails() {
             toastManager.add({
               title:
                 error?.response?.data?.message ||
-                "Failed to mark small order request as resolved",
+                "Failed to mark partial order request as resolved",
               type: "error",
             });
           },
@@ -633,7 +633,7 @@ export default function UnderInstallationLeadDetails() {
                     </Button>
                   </div>
                 }
-                value="Small order request record not found for this lead."
+                value="Partial order request record not found for this lead."
               />
             ) : !finalReady?.isReady ? (
               // 2️⃣ Installation started but NOT eligible → show WHY
@@ -771,7 +771,7 @@ export default function UnderInstallationLeadDetails() {
                           {primaryActionLabel}
                         </DropdownMenuItem>
                       }
-                      value="Small order request record not found for this lead."
+                      value="Partial order request record not found for this lead."
                     />
                   ) : !finalReady?.isReady ? (
                     // 2️⃣ Installation started but NOT eligible → show WHY
@@ -832,7 +832,7 @@ export default function UnderInstallationLeadDetails() {
                     truncateValue={
                       <DropdownMenuItem disabled>
                         <BoxIcon size={20} />
-                        Create Small Order
+                        Create Partial Order
                       </DropdownMenuItem>
                     }
                   />
@@ -843,7 +843,7 @@ export default function UnderInstallationLeadDetails() {
                     }}
                   >
                     <BoxIcon size={20} />
-                    Create Small Order
+                    Create Partial Order
                   </DropdownMenuItem>
                 ))}
               {canEdit && (
@@ -1211,7 +1211,7 @@ export default function UnderInstallationLeadDetails() {
           <AlertDialogHeader>
             <AlertDialogTitle className="text-lg font-semibold">
               {isSmallOrderLead
-                ? "Mark Small Order as Resolved?"
+                ? "Mark Partial Order as Resolved?"
                 : "Move Lead to Final Handover?"}
             </AlertDialogTitle>
           </AlertDialogHeader>
@@ -1219,7 +1219,7 @@ export default function UnderInstallationLeadDetails() {
           <p className="text-sm text-muted-foreground">
             {isSmallOrderLead ? (
               <>
-                Are you sure you want to mark this small order request as{" "}
+                Are you sure you want to mark this partial order request as{" "}
                 <b>resolved</b>? This action will update the linked request.
               </>
             ) : (
