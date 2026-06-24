@@ -1287,7 +1287,13 @@ export default function InstallationMiscellaneous({
 
                 )}
 
-
+                {/* ✅ Info message for users who cannot approve */}
+                {!canApproveReject && miscApproved == null && (
+                  <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg border border-blue-200 dark:border-blue-800 flex-1">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span className="text-sm font-medium">Waiting for approval</span>
+                  </div>
+                )}
                 {/* Scheduling */}
                 {isApproved ? (
                   <div className="flex-1 space-y-4">
