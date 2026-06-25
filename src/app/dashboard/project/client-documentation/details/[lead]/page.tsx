@@ -10,7 +10,8 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { useParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
-import { useBlockLead, useLeadById, useUnblockLead } from "@/hooks/useLeadsQueries";
+import { useBlockLead, useLeadById, useUnblockLead, useRevokeFastProductionRequest } from "@/hooks/useLeadsQueries";
+import CancelFastProductionModal from "@/components/generics/CancelFastProductionModal";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
@@ -114,6 +115,44 @@ export default function ClientDocumentationLeadDetails() {
   const [openClientDocModal, setOpenClientDocModal] = useState(false);
 
   const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
+  const [openCancelFastProduction, setOpenCancelFastProduction] = useState(false);
+  const revokeFastProductionMutation = useRevokeFastProductionRequest();
+
+  const handleCancelFastProduction = (remark: string) => {
+    if (!vendorId || !userId || !leadIdNum) {
+      toastManager.add({
+        title: "Missing vendor, user, or lead info",
+        type: "error",
+      });
+      return;
+    }
+    revokeFastProductionMutation.mutate(
+      {
+        leadId: leadIdNum,
+        vendorId,
+        userId,
+        remark,
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: "Fast production status cancelled successfully!",
+            type: "success",
+          });
+          setOpenCancelFastProduction(false);
+          queryClient.invalidateQueries({
+            queryKey: ["lead", leadIdNum, vendorId, userId],
+          });
+        },
+        onError: (err: any) => {
+          toastManager.add({
+            title: err?.response?.data?.message || err?.message || "Failed to cancel fast production",
+            type: "error",
+          });
+        },
+      }
+    );
+  };
 
   const blockLeadMutation = useBlockLead();
   const unblockLeadMutation = useUnblockLead();
@@ -432,6 +471,16 @@ export default function ClientDocumentationLeadDetails() {
                   </DropdownMenuItem>
                 )}
 
+                {userType?.toLowerCase() === "super-admin" && lead?.is_fast_production === true && (
+                  <DropdownMenuItem
+                    onSelect={() => setOpenCancelFastProduction(true)}
+                    disabled={revokeFastProductionMutation.isPending || isLeadBlocked}
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Cancel Fast Production
+                  </DropdownMenuItem>
+                )}
+
                 {/* REASSIGN */}
                 {canReassign && (
                   // Lead block handling added for DropdownMenu action
@@ -727,6 +776,13 @@ export default function ClientDocumentationLeadDetails() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <CancelFastProductionModal
+        open={openCancelFastProduction}
+        onOpenChange={setOpenCancelFastProduction}
+        onSubmit={handleCancelFastProduction}
+        loading={revokeFastProductionMutation.isPending}
+      />
     </>
   );
 }

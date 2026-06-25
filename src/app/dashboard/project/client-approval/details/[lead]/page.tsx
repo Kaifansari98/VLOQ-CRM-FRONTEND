@@ -83,7 +83,8 @@ import { NotificationBell } from "@/components/notifications/NotificationBell";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
-import { useBlockLead, useUnblockLead } from "@/hooks/useLeadsQueries";
+import { useBlockLead, useUnblockLead, useRevokeFastProductionRequest } from "@/hooks/useLeadsQueries";
+import CancelFastProductionModal from "@/components/generics/CancelFastProductionModal";
 import { Lock, LockOpen } from "lucide-react";
 import {
   useChatTabFromUrl,
@@ -127,6 +128,44 @@ export default function ClientApprovalLeadDetails() {
   // ⭐ Activity Status — ONLY ON HOLD
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
+  const [openCancelFastProduction, setOpenCancelFastProduction] = useState(false);
+  const revokeFastProductionMutation = useRevokeFastProductionRequest();
+
+  const handleCancelFastProduction = (remark: string) => {
+    if (!vendorId || !userId || !leadIdNum) {
+      toastManager.add({
+        title: "Missing vendor, user, or lead info",
+        type: "error",
+      });
+      return;
+    }
+    revokeFastProductionMutation.mutate(
+      {
+        leadId: leadIdNum,
+        vendorId,
+        userId,
+        remark,
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: "Fast production status cancelled successfully!",
+            type: "success",
+          });
+          setOpenCancelFastProduction(false);
+          queryClient.invalidateQueries({
+            queryKey: ["lead", leadIdNum, vendorId, userId],
+          });
+        },
+        onError: (err: any) => {
+          toastManager.add({
+            title: err?.response?.data?.message || err?.message || "Failed to cancel fast production",
+            type: "error",
+          });
+        },
+      }
+    );
+  };
 
   const updateStatusMutation = useUpdateActivityStatus();
 
@@ -453,6 +492,16 @@ export default function ClientApprovalLeadDetails() {
                   {isLeadBlocked
                     ? "Unblock Lead"
                     : "Block Lead"}
+                </DropdownMenuItem>
+              )}
+
+              {userType?.toLowerCase() === "super-admin" && lead?.is_fast_production === true && (
+                <DropdownMenuItem
+                  onSelect={() => setOpenCancelFastProduction(true)}
+                  disabled={revokeFastProductionMutation.isPending || isLeadBlocked}
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Cancel Fast Production
                 </DropdownMenuItem>
               )}
 
@@ -904,6 +953,13 @@ export default function ClientApprovalLeadDetails() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <CancelFastProductionModal
+        open={openCancelFastProduction}
+        onOpenChange={setOpenCancelFastProduction}
+        onSubmit={handleCancelFastProduction}
+        loading={revokeFastProductionMutation.isPending}
+      />
     </>
   );
 }

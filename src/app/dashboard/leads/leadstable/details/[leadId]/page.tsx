@@ -66,7 +66,9 @@ import {
   useLeadBlockStatus,
   useLeadById,
   useUnblockLead,
+  useRevokeFastProductionRequest,
 } from "@/hooks/useLeadsQueries";
+import CancelFastProductionModal from "@/components/generics/CancelFastProductionModal";
 import {
   canAssignISM,
   canReassignLeadButton,
@@ -156,6 +158,44 @@ export default function LeadDetails() {
   const [activityType, setActivityType] = useState<"onHold" | "lostApproval" | "lost">(
     "onHold",
   );
+  const [openCancelFastProduction, setOpenCancelFastProduction] = useState(false);
+  const revokeFastProductionMutation = useRevokeFastProductionRequest();
+
+  const handleCancelFastProduction = (remark: string) => {
+    if (!vendorId || !userId || !leadIdNum) {
+      toastManager.add({
+        title: "Missing vendor, user, or lead info",
+        type: "error",
+      });
+      return;
+    }
+    revokeFastProductionMutation.mutate(
+      {
+        leadId: leadIdNum,
+        vendorId,
+        userId,
+        remark,
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: "Fast production status cancelled successfully!",
+            type: "success",
+          });
+          setOpenCancelFastProduction(false);
+          queryClient.invalidateQueries({
+            queryKey: ["lead", leadIdNum, vendorId, userId],
+          });
+        },
+        onError: (err: any) => {
+          toastManager.add({
+            title: err?.response?.data?.message || err?.message || "Failed to cancel fast production",
+            type: "error",
+          });
+        },
+      }
+    );
+  };
 
   const normalizedUserType = userType?.trim().toLowerCase();
   const isAuditor = normalizedUserType === "auditor";
@@ -502,6 +542,16 @@ export default function LeadDetails() {
                 />
               )}
 
+              {isSuperAdmin && lead?.is_fast_production === true && (
+                <DropdownMenuItem
+                  onSelect={() => setOpenCancelFastProduction(true)}
+                  disabled={uiDisabled || isLeadBlocked}
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Cancel Fast Production
+                </DropdownMenuItem>
+              )}
+
               {isLeadBlocked ? (
                 <CustomeTooltip
                   value={blockedAtTooltip}
@@ -808,6 +858,13 @@ export default function LeadDetails() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <CancelFastProductionModal
+        open={openCancelFastProduction}
+        onOpenChange={setOpenCancelFastProduction}
+        onSubmit={handleCancelFastProduction}
+        loading={revokeFastProductionMutation.isPending}
+      />
     </>
   );
 }

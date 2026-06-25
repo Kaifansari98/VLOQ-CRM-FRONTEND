@@ -33,6 +33,8 @@ import {
   CreateFastProductionRequestPayload,
   finalizeFastProductionRequest,
   FinalizeFastProductionRequestPayload,
+  revokeFastProductionRequest,
+  RevokeFastProductionPayload,
   createSmallOrderRequest,
   CreateSmallOrderRequestPayload,
   getSmallOrderRequestsByLead,
@@ -508,6 +510,13 @@ export const useFinalizeFastProductionRequest = () => {
   return useMutation({
     mutationFn: (payload: FinalizeFastProductionRequestPayload) =>
       finalizeFastProductionRequest(payload),
+  });
+};
+
+export const useRevokeFastProductionRequest = () => {
+  return useMutation({
+    mutationFn: (payload: RevokeFastProductionPayload) =>
+      revokeFastProductionRequest(payload),
   });
 };
 
