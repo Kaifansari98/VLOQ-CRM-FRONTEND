@@ -10,7 +10,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { useParams, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
-import { useLeadById } from "@/hooks/useLeadsQueries";
+import { useLeadById, useCheckFastProductionStatus } from "@/hooks/useLeadsQueries";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
 import { Button } from "@/components/ui/button";
 import { Fragment, useEffect, useState } from "react";
@@ -291,6 +291,18 @@ export default function ClientApprovalLeadDetails() {
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
+  const franchiseId = useAppSelector((state) => state.auth.franchise_id);
+
+  const isFastProductionLead = lead?.is_fast_production === true || lead?.fast_production_request === true;
+
+  const { data: fastProductionStatusData } = useCheckFastProductionStatus(
+    vendorId,
+    leadIdNum,
+    franchiseId,
+    isFastProductionLead
+  );
+
+  const isFastProductionApproved = fastProductionStatusData?.data === true;
 
   const no_of_client_documents_initially_submitted =
     lead?.no_of_client_documents_initially_submitted;
@@ -503,6 +515,7 @@ export default function ClientApprovalLeadDetails() {
     : (no_of_client_documents_initially_submitted ?? moveScope.docs.length);
   const isMoveToOrderLoginDisabled =
     hasPendingFastProductionRequest ||
+    (isFastProductionLead && !isFastProductionApproved) ||
     (requiredApprovalCount > 0
       ? approvedCount < requiredApprovalCount ||
       pendingCount > 0 ||
@@ -568,16 +581,6 @@ export default function ClientApprovalLeadDetails() {
           </Breadcrumb>
         </div>
         <div className="flex w-full flex-wrap items-center justify-end gap-2 md:w-auto">
-          {!isAuditor && (
-            <Button
-              size="sm"
-              className="hidden md:block"
-              onClick={() => setAssignOpen(true)}
-            >
-              Assign Task
-            </Button>
-          )}
-
           {/* ✅ Move To Order Login Button (Role & Status Based) */}
           <div className="hidden lg:flex">
             {canAccessMoveToOrderLogin &&
@@ -609,6 +612,8 @@ export default function ClientApprovalLeadDetails() {
 
                   if (hasPendingFastProductionRequest) {
                     tooltipMsg = "Fast Production approval is pending.";
+                  } else if (isFastProductionLead && !isFastProductionApproved) {
+                    tooltipMsg = "Please wait for the Fast Production Request to be approved or rejected before moving to Order Login.";
                   } else if (
                     requiredApprovalCount &&
                     approvedCount < requiredApprovalCount
@@ -658,6 +663,16 @@ export default function ClientApprovalLeadDetails() {
                 );
               })()}
           </div>
+
+          {!isAuditor && (
+            <Button
+              size="sm"
+              className="hidden md:block"
+              onClick={() => setAssignOpen(true)}
+            >
+              Assign Task
+            </Button>
+          )}
           {!isAuditor && <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />}
           {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
@@ -725,6 +740,8 @@ export default function ClientApprovalLeadDetails() {
 
                     if (hasPendingFastProductionRequest) {
                       tooltipMsg = "Fast Production approval is pending.";
+                    } else if (isFastProductionLead && !isFastProductionApproved) {
+                      tooltipMsg = "Please wait for the Fast Production Request to be approved or rejected before moving to Order Login.";
                     } else if (
                       requiredApprovalCount &&
                       approvedCount < requiredApprovalCount

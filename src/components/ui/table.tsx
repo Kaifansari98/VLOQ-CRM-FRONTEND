@@ -5,10 +5,66 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const isDragging = React.useRef(false);
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    const ele = containerRef.current;
+    if (!ele) return;
+
+    const target = e.target as HTMLElement;
+    // Don't interfere if clicking on interactive elements
+    if (target.closest('button, a, input, select, textarea, [role="button"], [role="checkbox"]')) {
+      return;
+    }
+
+    isDragging.current = false;
+    ele.style.cursor = "grabbing";
+    ele.style.userSelect = "none";
+
+    const startX = e.clientX;
+    const scrollLeft = ele.scrollLeft;
+
+    const handleMouseMove = (mouseMoveEvent: MouseEvent) => {
+      const dx = mouseMoveEvent.clientX - startX;
+      // Mark as dragging if moved more than 5px
+      if (Math.abs(dx) > 5) {
+        isDragging.current = true;
+      }
+      ele.scrollLeft = scrollLeft - dx;
+    };
+
+    const handleMouseUp = () => {
+      ele.style.cursor = "";
+      ele.style.userSelect = "";
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      
+      // Delay resetting isDragging so the click event can be intercepted
+      setTimeout(() => {
+        isDragging.current = false;
+      }, 0);
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  };
+
+  const handleClickCapture = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isDragging.current) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+  };
+
   return (
     <div
+      ref={containerRef}
+      onMouseDown={handleMouseDown}
+      onClickCapture={handleClickCapture}
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      className="relative w-full overflow-x-auto focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      tabIndex={0}
     >
       <table
         data-slot="table"

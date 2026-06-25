@@ -520,6 +520,32 @@ export const checkFastProductionLimit = async ({
   return response.data;
 };
 
+export const checkFastProductionStatus = async ({
+  vendorId,
+  leadId,
+  franchiseId,
+}: {
+  vendorId: number;
+  leadId: number;
+  franchiseId?: number;
+}) => {
+  const params: Record<string, any> = {};
+  if (franchiseId) {
+    params.franchise_id = franchiseId;
+  }
+
+  const response = await apiClient.get(
+    `/leads/fast-production-requests/vendor/${vendorId}/lead/${leadId}/status`,
+    { params },
+  );
+
+  return response.data as {
+    data: boolean;
+    message: string;
+    success?: boolean;
+  };
+};
+
 export const getSmallOrderRequestsByLead = async (
   vendorId: number,
   leadId: number,
