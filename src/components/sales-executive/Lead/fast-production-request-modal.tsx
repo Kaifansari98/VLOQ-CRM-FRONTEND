@@ -24,6 +24,7 @@ import {
   useCreateFastProductionRequest,
   useFinalizeFastProductionRequest,
   useLeadProductStructureInstances,
+  useFastProductionRequestDraft,
 } from "@/hooks/useLeadsQueries";
 import { LeadProductStructureInstance } from "@/api/leads";
 import {
@@ -156,6 +157,12 @@ const getEmptyFormValues = (): FormValues => ({
   files: [],
 });
 
+const splitFinishValues = (value?: string | null) =>
+  String(value ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
 const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
   open,
   onOpenChange,
@@ -210,6 +217,9 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
     defaultValues: getEmptyFormValues(),
   });
 
+  const { data: draftResponse, isLoading: isDraftLoading } =
+    useFastProductionRequestDraft(vendorId, leadId);
+
   const [activeInstanceId, setActiveInstanceId] = React.useState<number | null>(
     null,
   );
@@ -218,6 +228,7 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
   >({});
   const [savedInstanceIds, setSavedInstanceIds] = React.useState<number[]>([]);
   const [draftBatchId, setDraftBatchId] = React.useState<number | undefined>();
+  const [isInitialized, setIsInitialized] = React.useState(false);
 
   const selectedCarcassValues = form.watch("carcass_finish_category") ?? [];
   const selectedShutterValues = form.watch("shutter_finish_category") ?? [];
@@ -353,6 +364,7 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
     setInstanceDrafts({});
     setSavedInstanceIds([]);
     setDraftBatchId(undefined);
+    setIsInitialized(false);
   }, [form]);
 
   const handleModalChange = (nextOpen: boolean) => {
@@ -363,18 +375,116 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
   };
 
   React.useEffect(() => {
-    if (!open) return;
-    if (instances.length === 0) return;
-    if (activeInstanceId != null) return;
+    if (!open) {
+      setIsInitialized(false);
+      return;
+    }
 
-    setActiveInstanceId(instances[0].id);
-    form.reset(instanceDrafts[instances[0].id] ?? getEmptyFormValues());
-  }, [open, instances, activeInstanceId, form, instanceDrafts]);
+    if (
+      isInitialized ||
+      isInstancesLoading ||
+      isSelectionMastersLoading ||
+      isDraftLoading
+    ) {
+      return;
+    }
+
+    const draftData = draftResponse?.data;
+    if (!draftData) {
+      setIsInitialized(true);
+      if (instances.length > 0 && activeInstanceId == null) {
+        setActiveInstanceId(instances[0].id);
+      }
+      return;
+    }
+
+    const drafts: Record<number, FormValues> = {};
+    const savedIds: number[] = [];
+
+    if (draftData.requests) {
+      for (const req of draftData.requests) {
+        const carcassFinish = req.finishes?.find((f: any) => f.component === "CARCASS");
+        const shutterFinish = req.finishes?.find((f: any) => f.component === "SHUTTER");
+        const handleFinish = req.finishes?.find((f: any) => f.component === "HANDLE");
+
+        const carcassLabels = splitFinishValues(carcassFinish?.finish_category);
+        const shutterLabels = splitFinishValues(shutterFinish?.finish_category);
+        const handleLabels = splitFinishValues(handleFinish?.finish_category);
+
+        const carcassValues = carcassLabels.map((lbl: string) => {
+          const match = carcassOptions.find(
+            (opt) => opt.label.toLowerCase() === lbl.toLowerCase(),
+          );
+          return match ? match.value : lbl;
+        });
+
+        const shutterValues = shutterLabels.map((lbl: string) => {
+          const match = shutterOptions.find(
+            (opt) => opt.label.toLowerCase() === lbl.toLowerCase(),
+          );
+          return match ? match.value : lbl;
+        });
+
+        const handleValues = handleLabels.map((lbl: string) => {
+          const match = handleOptions.find(
+            (opt) => opt.label.toLowerCase() === lbl.toLowerCase(),
+          );
+          return match ? match.value : lbl;
+        });
+
+        let deliveryDate = "";
+        if (req.client_required_delivery_date) {
+          deliveryDate = formatDateInputValue(new Date(req.client_required_delivery_date));
+        }
+
+        drafts[req.instance_id] = {
+          carcass_finish_category: carcassValues,
+          carcass_finish_description: carcassFinish?.finish_description ?? "",
+          shutter_finish_category: shutterValues,
+          shutter_finish_description: shutterFinish?.finish_description ?? "",
+          handles_finish_category: handleValues,
+          handles_finish_description: handleFinish?.finish_description ?? "",
+          hardware_selection: req.hardware_selection ?? "",
+          accessory_selection: req.accessory_selection ?? "",
+          special_requirements: req.special_requirements ?? "",
+          client_required_delivery_date: deliveryDate,
+          remarks: req.remarks ?? "",
+          files: [],
+        };
+
+        savedIds.push(req.instance_id);
+      }
+    }
+
+    setInstanceDrafts(drafts);
+    setSavedInstanceIds(savedIds);
+    setDraftBatchId(draftData.id);
+    setIsInitialized(true);
+
+    if (instances.length > 0) {
+      const firstInstanceId = instances[0].id;
+      setActiveInstanceId(firstInstanceId);
+      form.reset(drafts[firstInstanceId] ?? getEmptyFormValues());
+    }
+  }, [
+    open,
+    draftResponse,
+    isInitialized,
+    isInstancesLoading,
+    isSelectionMastersLoading,
+    isDraftLoading,
+    carcassOptions,
+    shutterOptions,
+    handleOptions,
+    instances,
+    form,
+    activeInstanceId,
+  ]);
 
   React.useEffect(() => {
-    if (!open || activeInstanceId == null) return;
+    if (!open || activeInstanceId == null || !isInitialized) return;
     form.reset(instanceDrafts[activeInstanceId] ?? getEmptyFormValues());
-  }, [activeInstanceId, instanceDrafts, form, open]);
+  }, [activeInstanceId, instanceDrafts, form, open, isInitialized]);
 
   const applicableFastProductionRules = React.useMemo(() => {
     if (selectedCarcassIds.length === 0) return [];
@@ -535,6 +645,10 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
             [currentInstance.id]: values,
           }));
 
+          queryClient.invalidateQueries({
+            queryKey: ["fastProductionRequestDraft", vendorId, leadId],
+          });
+
           if (shouldFinalize) {
             finalizeMutation.mutate(
               {
@@ -685,9 +799,9 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
       size="xl"
     >
       <div className="space-y-6 px-6 py-6">
-        {isInstancesLoading ? (
+        {isInstancesLoading || isDraftLoading || !isInitialized ? (
           <div className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-            Loading instances...
+            Loading...
           </div>
         ) : instances.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">

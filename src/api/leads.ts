@@ -470,6 +470,16 @@ export const finalizeFastProductionRequest = async (
   return response.data;
 };
 
+export const getFastProductionRequestDraft = async (
+  vendorId: number,
+  leadId: number,
+) => {
+  const response = await apiClient.get(
+    `/leads/fast-production-requests/draft/vendor/${vendorId}/lead/${leadId}`,
+  );
+  return response.data;
+};
+
 export interface RevokeFastProductionPayload {
   leadId: number;
   vendorId: number;
