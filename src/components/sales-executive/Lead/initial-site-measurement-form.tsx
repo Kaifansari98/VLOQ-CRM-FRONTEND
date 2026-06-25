@@ -1099,7 +1099,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                 Reset
               </Button>
               <Button type="submit" disabled={mutation.isPending}>
-                {mutation.isPending ? "Submitting..." : "Submit"}
+                {mutation.isPending ? "Moving to Designing stage..." : "Move to Designing stage"}
               </Button>
             </div>
           </form>
