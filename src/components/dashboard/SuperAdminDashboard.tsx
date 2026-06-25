@@ -66,6 +66,7 @@ import {
   useFranchisesByVendorId,
   type FranchiseSummary,
 } from "@/api/franchise";
+import BaseModal from "@/components/utils/baseModal";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -378,14 +379,16 @@ function RevenueChart({ vendorId, franchises }: RevenueChartProps) {
 // ─── Franchise Pie Chart ──────────────────────────────────────────────────────
 
 const COLORS = [
-  "#a29c95", // Lightest warm gray
-  "#8f8880",
-  "#6d6561",
-  "#5b5551",
-  "#4b4643",
-  "#272423", // Darkest warm gray
+  "var(--franchise-1)",
+  "var(--franchise-2)",
+  "var(--franchise-3)",
+  "var(--franchise-4)",
+  "var(--franchise-5)",
+  "var(--franchise-6)",
+  "var(--franchise-7)",
+  "var(--franchise-8)",
+  "var(--franchise-9)",
 ];
-
 
 interface FranchiseChartProps {
   data?: FranchiseLeadCount[];
@@ -408,7 +411,7 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
       fill="#ffffff"
       textAnchor="middle"
       dominantBaseline="central"
-      className="text-[10px] font-bold"
+      className="text-xs font-bold"
     >
       {`${(percent * 100).toFixed(0)}%`}
     </text>
@@ -420,8 +423,8 @@ function FranchiseChart({
   isLoading,
   onBarDoubleClick,
 }: FranchiseChartProps) {
-  const chartData = data.slice(0, 6);
-
+  const chartData = data;
+  console.log("Chart data: ", chartData)
   return (
     <Card className="w-full h-full border flex flex-col bg-[#fff] dark:bg-[#0a0a0a]">
       <CardHeader className="pb-2">
@@ -433,7 +436,7 @@ function FranchiseChart({
         </p>
       </CardHeader>
 
-      <CardContent className="h-[220px]">
+      <CardContent className="h-[260px]">
         {isLoading ? (
           <div className="h-full flex items-center justify-center">
             <div className="h-10 w-10 border-4 border-muted border-t-primary rounded-full animate-spin" />
@@ -447,8 +450,8 @@ function FranchiseChart({
                 nameKey="code"
                 cx="50%"
                 cy="50%"
-                outerRadius={65}
-                innerRadius={35}
+                outerRadius={85}
+                innerRadius={45}
                 paddingAngle={2}
                 label={renderCustomizedLabel}
                 labelLine={false}
@@ -537,19 +540,15 @@ function FranchiseLeadsModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-3xl w-full">
-        <DialogHeader className="pb-2 space-y-0.5">
-          <DialogTitle className="text-base font-semibold">
-            {franchise?.name ?? "Franchise"} — Leads
-          </DialogTitle>
-          <p className="text-xs text-muted-foreground">
-            Double-click a row to open lead details
-          </p>
-        </DialogHeader>
-
-        <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
-          <table className="w-full text-sm">
+    <BaseModal
+      open={open}
+      onOpenChange={(o) => !o && onClose()}
+      title={`${franchise?.name ?? "Franchise"} — Leads`}
+      description="Double-click a row to open lead details"
+      size="lg"
+    >
+      <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
+        <table className="w-full text-sm">
             <thead className="sticky top-0 bg-background z-10">
               <tr className="border-b border-border/60">
                 <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
@@ -590,12 +589,12 @@ function FranchiseLeadsModal({
                     className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer select-none"
                     onDoubleClick={() => handleRowDoubleClick(row)}
                   >
-                    <td className="px-4 py-3 font-mono text-xs font-medium">
+                    <td className="px-4 py-3 font-bold text-xs font-medium">
                       {row.lead_code ?? "—"}
                     </td>
                     <td className="px-4 py-3 font-medium">{row.name}</td>
                     <td className="px-4 py-3 text-right">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted">
                         {row.stage_tag
                           ? (STAGE_LABEL_FULL[row.stage_tag] ?? row.stage_tag)
                           : "—"}
@@ -607,8 +606,7 @@ function FranchiseLeadsModal({
             </tbody>
           </table>
         </div>
-      </DialogContent>
-    </Dialog>
+    </BaseModal>
   );
 }
 
@@ -670,19 +668,15 @@ function StageLeadsModal({
   const stageLabel = tag ? (STAGE_LABEL_FULL[tag] ?? tag) : "Stage";
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="min-w-4xl w-full">
-        <DialogHeader className="pb-2 gap-0">
-          <DialogTitle className="text-base font-semibold">
-            {stageLabel} — Leads
-          </DialogTitle>
-          <p className="text-xs text-muted-foreground">
-            Double-click a row to open lead details
-          </p>
-        </DialogHeader>
-
-        <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
-          <table className="w-full text-sm">
+    <BaseModal
+      open={open}
+      onOpenChange={(o) => !o && onClose()}
+      title={`${stageLabel} — Leads`}
+      description="Double-click a row to open lead details"
+      size="xl"
+    >
+      <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
+        <table className="w-full text-sm">
             <thead className="sticky top-0 bg-background z-10">
               <tr className="border-b border-border/60">
                 <th className="text-left text-xs font-medium text-muted-foreground px-4 py-2.5">
@@ -750,8 +744,7 @@ function StageLeadsModal({
             </tbody>
           </table>
         </div>
-      </DialogContent>
-    </Dialog>
+    </BaseModal>
   );
 }
 

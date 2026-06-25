@@ -88,6 +88,16 @@
   --stage-rtd: #1f2022;
   --stage-dispatch: #16161d;
 
+  --franchise-1: #16161d;
+  --franchise-2: #a29c95;
+  --franchise-3: #8f8880;
+  --franchise-4: #6d6561;
+  --franchise-5: #5b5551;
+  --franchise-6: #4b4643;
+  --franchise-7: #272423;
+  --franchise-8: #1f2022;
+  --franchise-9: #16161d;
+
   --chart-stroke: hsl(var(--primary));
   --chart-dot: hsl(var(--foreground));
   --chart-active-dot: hsl(var(--primary));
