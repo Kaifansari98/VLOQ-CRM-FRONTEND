@@ -683,12 +683,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
 
       <SidebarContent>
-        <NavMain
-          items={navItems}
-          trackTraceItems={trackTraceItems}
-          inventoryItems={inventoryItems}
-          mastersItems={mastersItems}
-        />
+          <NavMain
+            items={navItems}
+            trackTraceItems={trackTraceItems}
+            inventoryItems={inventoryItems}
+            mastersItems={mastersItems}
+          />
       </SidebarContent>
 
       <SidebarFooter>
