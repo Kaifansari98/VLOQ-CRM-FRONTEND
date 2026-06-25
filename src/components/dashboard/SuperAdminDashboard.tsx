@@ -13,6 +13,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -40,6 +45,7 @@ import {
   ClipboardList,
   AlertTriangle,
   Loader2,
+  Info,
 } from "lucide-react";
 import { useAppSelector } from "@/redux/store";
 import {
@@ -424,13 +430,50 @@ function FranchiseChart({
   onBarDoubleClick,
 }: FranchiseChartProps) {
   const chartData = data;
-  console.log("Chart data: ", chartData)
+  const [isOpen, setIsOpen] = useState(false);
+  
   return (
     <Card className="w-full h-full border flex flex-col bg-[#fff] dark:bg-[#0a0a0a]">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">
-          Leads by Franchise
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-medium">
+            Leads by Franchise
+          </CardTitle>
+          <Popover open={isOpen} onOpenChange={setIsOpen}>
+            <PopoverTrigger asChild>
+              <button 
+                className="text-muted-foreground hover:text-foreground transition-colors outline-hidden"
+                onMouseEnter={() => setIsOpen(true)}
+                onMouseLeave={() => setIsOpen(false)}
+                onClick={() => setIsOpen(!isOpen)}
+              >
+                <Info className="h-4 w-4" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent 
+              align="end" 
+              className="w-64 p-3"
+              onMouseEnter={() => setIsOpen(true)}
+              onMouseLeave={() => setIsOpen(false)}
+            >
+              <h4 className="font-semibold text-sm mb-2">All Franchises</h4>
+              <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                {chartData.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No data available</p>
+                ) : (
+                  chartData.map((entry: any, index: number) => (
+                    <div key={index} className="flex justify-between items-center text-xs">
+                      <span className="truncate pr-2 font-medium">{entry.name || entry.code}</span>
+                      <span className="bg-muted px-1.5 py-0.5 rounded font-semibold whitespace-nowrap">
+                        {entry.leads} Leads
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
         <p className="text-xs text-muted-foreground">
           Top {chartData.length} franchises · Double-click a slice to view leads
         </p>
