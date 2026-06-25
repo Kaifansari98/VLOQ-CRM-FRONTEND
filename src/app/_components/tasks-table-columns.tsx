@@ -48,6 +48,7 @@ export type ProcessedTask = {
   instance_id: number;
   is_blocked?: boolean;
   lead_blocked_at?: string | null;
+  isFastProductionRequestTask?: boolean;
 };
 
 export function getVendorLeadsTableColumns({

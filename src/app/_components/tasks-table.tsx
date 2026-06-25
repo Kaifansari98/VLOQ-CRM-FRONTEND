@@ -149,6 +149,19 @@ function FranchiseFilter({
   );
 }
 
+function prioritizeFastProductionTasks<
+  T extends { isFastProductionRequestTask?: boolean },
+>(
+  rows: T[],
+) {
+  return [...rows].sort((a, b) => {
+    if (a.isFastProductionRequestTask === b.isFastProductionRequestTask) {
+      return 0;
+    }
+    return a.isFastProductionRequestTask ? -1 : 1;
+  });
+}
+
 const MyTaskTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const franchiseId = useAppSelector((state) => state.auth.user?.franchise_id);
@@ -696,12 +709,12 @@ const MyTaskTable = () => {
 
     if (!sourceData) return [];
 
-    return sourceData.map((task, index) => ({
+    const rows = sourceData.map((task) => ({
       id: task.userLeadTask.id,
       lead_code: task.leadMaster.lead_code,
       leadId: task.leadMaster.id,
       accountId: task.leadMaster.account_id,
-      srNo: index + 1,
+      srNo: 0,
       name: task.leadMaster.name,
       phoneNumber: task.leadMaster.phone_number,
       leadStatus: task.userLeadTask.status,
@@ -720,6 +733,13 @@ const MyTaskTable = () => {
       instance_id: task.userLeadTask?.instance_id,
       is_blocked: (task.leadMaster as any).is_blocked ?? false,
       lead_blocked_at: (task.leadMaster as any).lead_blocked_at ?? null,
+      isFastProductionRequestTask:
+        task.userLeadTask.task_type === "Request Fast Production",
+    }));
+
+    return prioritizeFastProductionTasks(rows).map((row, index) => ({
+      ...row,
+      srNo: index + 1,
     }));
   }, [vendorAllData?.data, vendorUserData?.data, viewScope]);
 
@@ -915,6 +935,11 @@ const MyTaskTable = () => {
         <DataTable
           table={table}
           onRowDoubleClick={isCompletedTabActive ? undefined : handleRowDoubleClick}
+          rowClassName={(row) =>
+            row.isFastProductionRequestTask
+              ? "relative border-l-4 border-l-orange-500 bg-[linear-gradient(90deg,rgba(255,237,213,0.96)_0%,rgba(255,244,230,0.92)_38%,rgba(255,255,255,1)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_14px_34px_-24px_rgba(234,88,12,0.58)] hover:bg-[linear-gradient(90deg,rgba(255,224,178,0.72)_0%,rgba(255,237,213,0.78)_42%,rgba(255,255,255,1)_100%)] dark:border-l-orange-400 dark:bg-[linear-gradient(90deg,rgba(124,45,18,0.5)_0%,rgba(67,20,7,0.28)_36%,rgba(15,23,42,0.96)_100%)] dark:shadow-[inset_0_1px_0_rgba(251,146,60,0.08),0_18px_38px_-24px_rgba(249,115,22,0.45)] dark:hover:bg-[linear-gradient(90deg,rgba(154,52,18,0.62)_0%,rgba(88,28,12,0.34)_38%,rgba(15,23,42,0.98)_100%)]"
+              : undefined
+          }
           className="pt-3 px-4"
         >
           {/* ================= MOBILE LAYOUT ================= */}
