@@ -33,6 +33,9 @@ import {
   CreateFastProductionRequestPayload,
   finalizeFastProductionRequest,
   FinalizeFastProductionRequestPayload,
+  checkFastProductionLimit,
+  CheckFastProductionLimitPayload,
+  CheckFastProductionLimitResponse,
   createSmallOrderRequest,
   CreateSmallOrderRequestPayload,
   getSmallOrderRequestsByLead,
@@ -102,7 +105,7 @@ export const useVendorUserLeads = (
     queryKey: ["vendorUserLeads", vendorId, userId],
     queryFn: () => getVendorUserLeads(vendorId, userId),
     enabled: enabled && !!vendorId && !!userId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 };
@@ -508,6 +511,25 @@ export const useFinalizeFastProductionRequest = () => {
   return useMutation({
     mutationFn: (payload: FinalizeFastProductionRequestPayload) =>
       finalizeFastProductionRequest(payload),
+  });
+};
+
+export const useCheckFastProductionLimit = (
+  vendorId?: number,
+  userId?: number,
+  franchiseId?: number | null,
+  enabled: boolean = true,
+) => {
+  return useQuery({
+    queryKey: ["checkFastProductionLimit", vendorId, userId, franchiseId],
+    queryFn: () => checkFastProductionLimit({ 
+      vendorId: vendorId!, 
+      userId: userId!, 
+      franchiseId: franchiseId ?? undefined 
+    }),
+    enabled: enabled && !!vendorId && !!userId,
+    staleTime: 1000 * 60 * 5, // 5 mins
+    retry: false, // Don't retry since a 400 error means the limit is reached
   });
 };
 

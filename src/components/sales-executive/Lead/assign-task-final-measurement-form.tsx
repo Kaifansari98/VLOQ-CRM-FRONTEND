@@ -28,6 +28,7 @@ import {
   useCheckSiteSupervisorAssigned,
   useLeadSuperAdminApprovalLockIns,
   useRestrictedTaskConflicts,
+  useCheckFastProductionLimit,
 } from "@/hooks/useLeadsQueries";
 import { AssignToFinalMeasurementPayload } from "@/api/final-measurement";
 import { toastManager } from "@/components/ui/toast";
@@ -221,6 +222,14 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   const franchiseId = useAppSelector(
     (state) => state.auth.franchise_id ?? state.auth.user?.franchise_id
   );
+  
+  const { 
+    isLoading: limitLoading, 
+    isError: isLimitReached 
+  } = useCheckFastProductionLimit(vendorId, userId, franchiseId ?? undefined, open);
+
+
+  console.log("isLimitReached", isLimitReached)
 
   const assignedSiteSupervisorFromMapping =
     leadData?.data?.lead?.assigned_site_supervisor_from_mapping ?? null;
@@ -378,7 +387,8 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     )
     : true;
   const canShowApprovalRequestOption = isApprovalTaskEnabled !== false;
-  const canShowFastProductionOption = isFastProductionEnabled;
+  const allowedFastProductionRoles = ["super-admin", "admin", "sales-executive"];
+  const canShowFastProductionOption = isFastProductionEnabled && allowedFastProductionRoles.includes(normalizedUserRole);
 
   const availableTaskTypes = React.useMemo(() => {
     if (shouldDisableBlockedActions) {
@@ -773,7 +783,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   React.useEffect(() => {
     if (
       form.getValues("task_type") === "Request Fast Production" &&
-      !canShowFastProductionOption
+      (!canShowFastProductionOption || isLimitReached)
     ) {
       if (hasFollowUpPrivilege) {
         form.setValue("task_type", "Follow Up");
@@ -785,6 +795,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     }
   }, [
     canShowFastProductionOption,
+    isLimitReached,
     form,
     hasBookingDoneIsmPrivilege,
     hasFinalMeasurementPrivilege,
@@ -1151,6 +1162,26 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                               <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
                                 <span>Request Fast Production</span>
                                 <span className="text-xs italic">(blocked)</span>
+                              </div>
+                            }
+                          />
+                        ) : limitLoading ? (
+                          <CustomeTooltip
+                            value="Checking fast production limit..."
+                            truncateValue={
+                              <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                <span>Request Fast Production</span>
+                                <span className="text-xs italic">(loading)</span>
+                              </div>
+                            }
+                          />
+                        ) : isLimitReached ? (
+                          <CustomeTooltip
+                            value="Fast production creation limit reached for the current month (Max 2)"
+                            truncateValue={
+                              <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                <span>Request Fast Production</span>
+                                <span className="text-xs italic">(locked)</span>
                               </div>
                             }
                           />

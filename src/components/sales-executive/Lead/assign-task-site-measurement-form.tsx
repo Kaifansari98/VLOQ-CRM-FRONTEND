@@ -27,6 +27,7 @@ import z from "zod";
 import {
   useAssignToSiteMeasurement,
   useInitialSiteMeasurementTaskConflicts,
+  useCheckFastProductionLimit,
 } from "@/hooks/useLeadsQueries";
 import { AssignToSiteMeasurementPayload } from "@/api/leads";
 import { toastManager } from "@/components/ui/toast";
@@ -133,6 +134,12 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   const leadId = data?.id!;
   const userId = useAppSelector((state) => state.auth.user?.id);
   const mutation = useAssignToSiteMeasurement(leadId);
+  
+  const { 
+    isLoading: limitLoading, 
+    isError: isLimitReached 
+  } = useCheckFastProductionLimit(vendorId, userId, franchiseId ?? undefined, open);
+
   const approvalRequestMutation = useCreateApprovalRequest(leadId);
   const queryClient = useQueryClient();
   const {
@@ -165,7 +172,8 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   const canShowFollowUpOption =
     normalizedUserType === "custom" ? canAssignFollowUpForCustomUser : true;
   const canShowApprovalRequestOption = isApprovalTaskEnabled !== false;
-  const canShowFastProductionOption = isFastProductionEnabled;
+  const allowedFastProductionRoles = ["super-admin", "admin", "sales-executive"];
+  const canShowFastProductionOption = isFastProductionEnabled && allowedFastProductionRoles.includes(normalizedUserType);
   const shouldShowInitialSiteMeasurementOption = !onlyFollowUp;
 
   // ✅ useLeadAccessControl replaces useLeadBlockStatus + formatBlockedAt
@@ -449,7 +457,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
 
     if (
       currentTaskType === "Request Fast Production" &&
-      !canShowFastProductionOption
+      (!canShowFastProductionOption || isLimitReached)
     ) {
       form.setValue("task_type", "Follow Up");
       return;
@@ -468,6 +476,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     canShowInitialSiteMeasurementOption,
     canShowApprovalRequestOption,
     canShowFastProductionOption,
+    isLimitReached,
   ]);
 
   React.useEffect(() => {
@@ -794,6 +803,30 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
                                     <span>Request Fast Production</span>
                                     <span className="text-xs italic">
                                       (blocked)
+                                    </span>
+                                  </div>
+                                }
+                              />
+                            ) : limitLoading ? (
+                              <CustomeTooltip
+                                value="Checking fast production limit..."
+                                truncateValue={
+                                  <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                    <span>Request Fast Production</span>
+                                    <span className="text-xs italic">
+                                      (loading)
+                                    </span>
+                                  </div>
+                                }
+                              />
+                            ) : isLimitReached ? (
+                              <CustomeTooltip
+                                value="Fast production creation limit reached for the current month (Max 2)"
+                                truncateValue={
+                                  <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                    <span>Request Fast Production</span>
+                                    <span className="text-xs italic">
+                                      (locked)
                                     </span>
                                   </div>
                                 }

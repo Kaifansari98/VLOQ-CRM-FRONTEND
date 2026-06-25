@@ -264,6 +264,34 @@ export interface FinalizeFastProductionRequestPayload {
   batchId?: number;
 }
 
+export interface CheckFastProductionLimitPayload {
+  vendorId: number;
+  userId: number;
+  franchiseId?: number;
+}
+
+export interface CheckFastProductionLimitResponse {
+  success: boolean;
+  message: string;
+  data: {
+    canCreate: boolean;
+  };
+}
+
+export interface CheckFastProductionLimitPayload {
+  vendorId: number;
+  userId: number;
+  franchiseId?: number;
+}
+
+export interface CheckFastProductionLimitResponse {
+  success: boolean;
+  message: string;
+  data: {
+    canCreate: boolean;
+  };
+}
+
 export interface SmallOrderRequestListItem {
   id: number;
   parent_lead_code: string;
@@ -465,6 +493,28 @@ export const finalizeFastProductionRequest = async (
       created_by: payload.createdBy,
       ...(payload.batchId ? { batch_id: payload.batchId } : {}),
     },
+  );
+
+  return response.data;
+};
+
+export const checkFastProductionLimit = async ({
+  vendorId,
+  userId,
+  franchiseId,
+}: CheckFastProductionLimitPayload): Promise<CheckFastProductionLimitResponse> => {
+  const params: Record<string, string | number> = {
+    vendor_id: vendorId,
+    user_id: userId,
+  };
+  
+  if (franchiseId) {
+    params.franchise_id = franchiseId;
+  }
+
+  const response = await apiClient.get(
+    "/leads/fast-production-requests/check-limit",
+    { params },
   );
 
   return response.data;
