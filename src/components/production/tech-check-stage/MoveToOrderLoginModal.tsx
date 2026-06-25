@@ -46,15 +46,21 @@ import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 
 const DEFAULT_MIN_DAYS = 20;
 
-const buildSchema = (minDate: string, minDays: number) =>
+const buildSchema = (
+  minDate: string,
+  minDays: number,
+  isFastProductionLead: boolean,
+) =>
   z.object({
     assign_to_user_id: z.number().min(1, "Please select a Backend user"),
-    client_required_order_login_complition_date: z
-      .string()
-      .min(1, "Please select a date")
-      .refine((value) => value >= minDate, {
-        message: `Client required date must be at least ${minDays} days from today`,
-      }),
+    client_required_order_login_complition_date: isFastProductionLead
+      ? z.string()
+      : z
+          .string()
+          .min(1, "Please select a date")
+          .refine((value) => value >= minDate, {
+            message: `Client required date must be at least ${minDays} days from today`,
+          }),
   });
 
 type FormValues = {
@@ -116,13 +122,16 @@ export default function MoveToOrderLoginModal({
   const minDays =
     (leadStatusData as any)?.total_required_chs_manufacturing_days ??
     DEFAULT_MIN_DAYS;
+  const isFastProductionLead =
+    (leadStatusData as any)?.is_fast_production === true;
   const minClientRequiredDate = useMemo(
     () => format(addDays(new Date(), minDays), "yyyy-MM-dd"),
     [minDays],
   );
   const schema = useMemo(
-    () => buildSchema(minClientRequiredDate, minDays),
-    [minClientRequiredDate, minDays],
+    () =>
+      buildSchema(minClientRequiredDate, minDays, isFastProductionLead),
+    [isFastProductionLead, minClientRequiredDate, minDays],
   );
 
   const mappedUsers =
@@ -170,7 +179,12 @@ export default function MoveToOrderLoginModal({
       selectedRequiredDate ||
       form.getValues("client_required_order_login_complition_date");
 
-    if (!vendorId || !userId || !assignUserId || !requiredDate) {
+    if (
+      !vendorId ||
+      !userId ||
+      !assignUserId ||
+      (!isFastProductionLead && !requiredDate)
+    ) {
       toastManager.add({ title: "Missing required details!", type: "error" });
       return;
     }
@@ -182,7 +196,9 @@ export default function MoveToOrderLoginModal({
         userId,
         assignToUserId: assignUserId,
         accountId: data.accountId,
-        clientRequiredOrderLoginComplitionDate: requiredDate,
+        clientRequiredOrderLoginComplitionDate: isFastProductionLead
+          ? undefined
+          : requiredDate,
         productStructureInstanceId: data.instanceId ?? undefined,
       },
       {
@@ -217,7 +233,11 @@ export default function MoveToOrderLoginModal({
     const selected = mappedUsers.find((u: any) => u.id === values.assign_to_user_id);
     setSelectedUserName(selected?.label || null);
     setSelectedUserId(values.assign_to_user_id);
-    setSelectedRequiredDate(values.client_required_order_login_complition_date);
+    setSelectedRequiredDate(
+      isFastProductionLead
+        ? ""
+        : values.client_required_order_login_complition_date,
+    );
     setConfirmOpen(true);
   };
 
@@ -268,38 +288,40 @@ export default function MoveToOrderLoginModal({
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="client_required_order_login_complition_date"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm">
-                          Client Required Completion Date
-                        </FormLabel>
-                        <FormControl>
-                          <CustomeDatePicker
-                            value={field.value}
-                            onChange={field.onChange}
-                            restriction="futureOnly"
-                            minDate={minClientRequiredDate}
-                          />
-                        </FormControl>
-                        <p className="text-xs text-muted-foreground">
-                          Select a date from{" "}
-                          {new Date(minClientRequiredDate).toLocaleDateString(
-                            "en-GB",
-                            {
-                              day: "2-digit",
-                              month: "long",
-                              year: "numeric",
-                            },
-                          )}{" "}
-                          onwards.
-                        </p>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {!isFastProductionLead ? (
+                    <FormField
+                      control={form.control}
+                      name="client_required_order_login_complition_date"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm">
+                            Client Required Completion Date
+                          </FormLabel>
+                          <FormControl>
+                            <CustomeDatePicker
+                              value={field.value}
+                              onChange={field.onChange}
+                              restriction="futureOnly"
+                              minDate={minClientRequiredDate}
+                            />
+                          </FormControl>
+                          <p className="text-xs text-muted-foreground">
+                            Select a date from{" "}
+                            {new Date(minClientRequiredDate).toLocaleDateString(
+                              "en-GB",
+                              {
+                                day: "2-digit",
+                                month: "long",
+                                year: "numeric",
+                              },
+                            )}{" "}
+                            onwards.
+                          </p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  ) : null}
 
                   <div className="flex justify-end gap-2 pt-2">
                     <Button
