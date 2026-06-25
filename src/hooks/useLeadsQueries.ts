@@ -36,6 +36,8 @@ import {
   checkFastProductionLimit,
   CheckFastProductionLimitPayload,
   CheckFastProductionLimitResponse,
+  checkFastProductionStatus,
+
   createSmallOrderRequest,
   CreateSmallOrderRequestPayload,
   getSmallOrderRequestsByLead,
@@ -530,6 +532,25 @@ export const useCheckFastProductionLimit = (
     enabled: enabled && !!vendorId && !!userId,
     staleTime: 1000 * 60 * 5, // 5 mins
     retry: false, // Don't retry since a 400 error means the limit is reached
+  });
+};
+
+export const useCheckFastProductionStatus = (
+  vendorId?: number,
+  leadId?: number,
+  franchiseId?: number | null,
+  enabled: boolean = true,
+) => {
+  return useQuery({
+    queryKey: ["checkFastProductionStatus", vendorId, leadId, franchiseId],
+    queryFn: () => checkFastProductionStatus({
+      vendorId: vendorId!,
+      leadId: leadId!,
+      franchiseId: franchiseId ?? undefined
+    }),
+    enabled: enabled && !!vendorId && !!leadId,
+    staleTime: 1000 * 60 * 2,
+    refetchOnWindowFocus: false,
   });
 };
 
