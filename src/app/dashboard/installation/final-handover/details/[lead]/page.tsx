@@ -228,9 +228,9 @@ export default function FinalHandoverLeadDetails() {
       return new Date() > expiryDate;
     })();
   const smallOrderCreationTooltip = hasReachedSmallOrderLimit
-    ? "Maximum Small Order limit reached for this project."
+    ? "Maximum Partial Order limit reached for this project."
     : isSmallOrderCreationExpired
-      ? "Small Order creation period has expired."
+      ? "Partial Order creation period has expired."
       : "";
   const allowServicingTabFromDeliveredProjects = !isSmallOrderLead;
   const hasAnyUploadPrivilege =
@@ -550,7 +550,7 @@ export default function FinalHandoverLeadDetails() {
                       truncateValue={
                         <DropdownMenuItem disabled>
                           <BoxIcon size={20} />
-                          Create Small Order
+                           Create Partial Order
                         </DropdownMenuItem>
                       }
                     />
@@ -561,7 +561,7 @@ export default function FinalHandoverLeadDetails() {
                       }}
                     >
                       <BoxIcon size={20} />
-                      Create Small Order
+                      Create Partial Order
                     </DropdownMenuItem>
                   ))}
 

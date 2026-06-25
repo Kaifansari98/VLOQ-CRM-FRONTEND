@@ -330,3 +330,26 @@ export const useActOnFastProductionRequestTask = () => {
     }) => actOnFastProductionRequestTask(leadId, taskId, payload),
   });
 };
+
+export const getFastProductionRequestDetails = async (
+  leadId: number,
+  taskId: number,
+) => {
+  const { data } = await apiClient.get(
+    `/leads/tasks/leadId/${leadId}/taskId/${taskId}/fast-production-request`,
+  );
+  return data;
+};
+
+export const useFastProductionRequestDetails = (
+  leadId: number,
+  taskId: number,
+  enabled: boolean,
+) => {
+  return useQuery({
+    queryKey: ["fastProductionRequestDetails", leadId, taskId],
+    queryFn: () => getFastProductionRequestDetails(leadId, taskId),
+    enabled: enabled && !!leadId && !!taskId,
+  });
+};
+

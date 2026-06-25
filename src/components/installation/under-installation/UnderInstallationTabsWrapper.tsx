@@ -181,7 +181,7 @@ export default function UnderInstallationTabsWrapper({
     },
     {
       id: "smallOrderRequest",
-      title: "Small Order Request",
+      title: "Partial Order Request",
       color: "bg-zinc-900 hover:bg-zinc-900",
       disabled: false,
       disabledReason: "",

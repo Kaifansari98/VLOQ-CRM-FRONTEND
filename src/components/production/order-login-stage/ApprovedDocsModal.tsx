@@ -144,7 +144,7 @@ export default function ApprovedDocsSection({
 
           <p className="text-xs text-muted-foreground text-center max-w-sm leading-relaxed">
             {isSmallOrderRequestLead
-              ? "No documents were found for this small order request."
+              ? "No documents were found for this partial order request."
               : "Once documents are approved, you can preview or download them here."}
           </p>
         </div>

@@ -172,7 +172,7 @@ const columns: ColumnDef<SmallOrderRequestRow>[] = [
   {
     accessorKey: "so_code",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Small Order Lead" />
+      <DataTableColumnHeader column={column} title="Partial Order Lead" />
     ),
     cell: ({ row }) => (
       <span className="font-mono text-xs">
@@ -324,9 +324,9 @@ function SmallOrderRequestPreviewModal({
         : false;
 
   const markResolvedTooltip = request.is_request_resolved
-    ? "This small order request is already resolved."
+    ? "This partial order request is already resolved."
     : !request.linked_lead_id
-      ? "Linked small order lead is not available yet."
+      ? "Linked partial order lead is not available yet."
       : !linkedLead
         ? "Loading linked lead status..."
         : isFinalHandoverRequest && !isType15
@@ -351,7 +351,7 @@ function SmallOrderRequestPreviewModal({
       {
         onSuccess: () => {
           toastManager.add({
-            title: "Small order request marked as resolved successfully.",
+            title: "Partial order request marked as resolved successfully.",
             type: "success",
           });
           queryClient.invalidateQueries({
@@ -380,10 +380,10 @@ function SmallOrderRequestPreviewModal({
       <DialogContent className="flex max-h-[90vh] w-[95vw] max-w-4xl flex-col overflow-hidden p-0">
         <DialogHeader className="shrink-0 border-b bg-muted/30 px-6 py-4">
           <DialogTitle className="text-left text-2xl font-semibold">
-            Small Order Request
+            Partial Order Request
           </DialogTitle>
           <DialogDescription className="text-left text-sm text-muted-foreground">
-            Review the details submitted when this small order request was created.
+            Review the details submitted when this partial order request was created.
           </DialogDescription>
         </DialogHeader>
 
@@ -484,7 +484,7 @@ function SmallOrderRequestPreviewModal({
 
           {!canOpenDetailsPage ? (
             <div className="rounded-2xl border bg-muted/30 p-4 text-sm text-muted-foreground">
-              Details page becomes available after the small order request is approved and its linked lead is created.
+              Details page becomes available after the partial order request is approved and its linked lead is created.
             </div>
           ) : null}
         </div>
@@ -606,17 +606,17 @@ export default function SmallOrderRequestsTable({
       <CardContent className="p-0">
         {isLoading ? (
           <div className="rounded-lg border bg-background p-6 text-sm text-muted-foreground">
-            Loading small order requests...
+            Loading partial order requests...
           </div>
         ) : isError ? (
           <div className="rounded-lg border bg-background p-6 text-sm text-destructive">
             {(error as any)?.response?.data?.message ??
               error?.message ??
-              "Failed to load small order requests."}
+              "Failed to load partial order requests."}
           </div>
         ) : tableData.length === 0 ? (
           <div className="rounded-lg border bg-background p-6 text-sm text-muted-foreground">
-            No small order requests found for this lead.
+            No partial order requests found for this lead.
           </div>
         ) : (
           <>
