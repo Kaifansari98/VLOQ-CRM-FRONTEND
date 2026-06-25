@@ -71,6 +71,12 @@ export interface ActOnSmallOrderRequestTaskPayload {
   remark?: string | null;
 }
 
+export interface ActOnFastProductionRequestTaskPayload {
+  action: "approve" | "reject";
+  acted_by: number;
+  remark?: string | null;
+}
+
 // ===============================
 // FILTER PAYLOAD TYPE
 // ===============================
@@ -296,5 +302,31 @@ export const useActOnSmallOrderRequestTask = () => {
       taskId: number;
       payload: ActOnSmallOrderRequestTaskPayload;
     }) => actOnSmallOrderRequestTask(leadId, taskId, payload),
+  });
+};
+
+export const actOnFastProductionRequestTask = async (
+  leadId: number,
+  taskId: number,
+  payload: ActOnFastProductionRequestTaskPayload,
+) => {
+  const { data } = await apiClient.patch(
+    `/leads/tasks/leadId/${leadId}/taskId/${taskId}/fast-production-request/action`,
+    payload,
+  );
+  return data;
+};
+
+export const useActOnFastProductionRequestTask = () => {
+  return useMutation({
+    mutationFn: ({
+      leadId,
+      taskId,
+      payload,
+    }: {
+      leadId: number;
+      taskId: number;
+      payload: ActOnFastProductionRequestTaskPayload;
+    }) => actOnFastProductionRequestTask(leadId, taskId, payload),
   });
 };

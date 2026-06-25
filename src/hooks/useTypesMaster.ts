@@ -9,6 +9,7 @@ import {
   fetchPrivilegeMasters,
   fetchCompanyVendorsForMaster,
   fetchCarcassTypes,
+  fetchFastProductionTimelineRules,
   fetchShutterTypes,
   fetchHandleTypes,
   createMiscellaneousTeam,
@@ -70,6 +71,7 @@ const getPrivilegeMastersQueryKey = (
 const getCarcassTypesQueryKey = (vendorId?: number) => ["carcassTypes", vendorId];
 const getShutterTypesQueryKey = (vendorId?: number) => ["shutterTypes", vendorId];
 const getHandleTypesQueryKey = (vendorId?: number) => ["handleTypes", vendorId];
+const getFastProductionTimelineRulesQueryKey = (vendorId?: number) => ["fastProductionTimelineRules", vendorId];
 const getSmallOrderRequestTypesQueryKey = (vendorId?: number) => ["smallOrderRequestTypes", vendorId];
 
 const useResolvedVendorId = (vendorIdOverride?: number) => {
@@ -351,6 +353,17 @@ export const useHandleTypes = () => {
   return useQuery({
     queryKey: getHandleTypesQueryKey(vendorId),
     queryFn: () => fetchHandleTypes(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useFastProductionTimelineRules = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: getFastProductionTimelineRulesQueryKey(vendorId),
+    queryFn: () => fetchFastProductionTimelineRules(vendorId!),
     enabled: !!vendorId,
     retry: false,
     refetchOnWindowFocus: false,

@@ -29,6 +29,10 @@ import {
   checkSimilarLeadExists,
   SimilarLeadCheckPayload,
   SimilarLeadCheckResult,
+  createFastProductionRequest,
+  CreateFastProductionRequestPayload,
+  finalizeFastProductionRequest,
+  FinalizeFastProductionRequestPayload,
   createSmallOrderRequest,
   CreateSmallOrderRequestPayload,
   getSmallOrderRequestsByLead,
@@ -490,6 +494,20 @@ export const useCreateSmallOrderRequest = () => {
   return useMutation({
     mutationFn: (payload: CreateSmallOrderRequestPayload) =>
       createSmallOrderRequest(payload),
+  });
+};
+
+export const useCreateFastProductionRequest = () => {
+  return useMutation({
+    mutationFn: (payload: CreateFastProductionRequestPayload) =>
+      createFastProductionRequest(payload),
+  });
+};
+
+export const useFinalizeFastProductionRequest = () => {
+  return useMutation({
+    mutationFn: (payload: FinalizeFastProductionRequestPayload) =>
+      finalizeFastProductionRequest(payload),
   });
 };
 

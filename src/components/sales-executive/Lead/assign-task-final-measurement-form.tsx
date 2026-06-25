@@ -46,6 +46,8 @@ import {
 import { useSelfAssignTaskTypes } from "@/hooks/useSelfAssignTaskTypes";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 import CustomeTooltip from "@/components/custom-tooltip";
+import FastProductionRequestModal from "@/components/sales-executive/Lead/fast-production-request-modal";
+import FastProductionTermsModal from "@/components/sales-executive/Lead/fast-production-terms-modal";
 
 function formatLocalDate(date: Date) {
   const year = date.getFullYear();
@@ -62,6 +64,7 @@ interface Props {
     name: string;
     accountId: number;
   };
+  isFastProductionEnabled?: boolean;
 }
 
 const formSchema = z
@@ -112,6 +115,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   open,
   onOpenChange,
   data,
+  isFastProductionEnabled = false,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const isAccountLocInEnabled = useAppSelector(
@@ -239,9 +243,32 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
 
   const hasUserChangedTaskTypeRef = React.useRef(false);
   const [approvalFiles, setApprovalFiles] = React.useState<File[]>([]);
+  const [fastProductionModalOpen, setFastProductionModalOpen] =
+    React.useState(false);
+  const [fastProductionTermsOpen, setFastProductionTermsOpen] =
+    React.useState(false);
 
   const taskType = form.watch("task_type");
   const isApprovalRequestTask = taskType === "Approval Request";
+  const isFastProductionTask = taskType === "Request Fast Production";
+
+  const resetForm = React.useCallback(() => {
+    setApprovalFiles([]);
+    hasUserChangedTaskTypeRef.current = false;
+    form.reset({
+      assign_lead_to: undefined,
+      task_type: canAccessRestrictedTasks ? "Final Measurements" : "Follow Up",
+      due_date: "",
+      remark: "N/A",
+      current_site_photos: [],
+    });
+  }, [canAccessRestrictedTasks, form]);
+
+  const openFastProductionModal = React.useCallback(() => {
+    resetForm();
+    onOpenChange(false);
+    setFastProductionTermsOpen(true);
+  }, [onOpenChange, resetForm]);
 
   const {
     data: selfAssignTaskTypes = [],
@@ -351,6 +378,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     )
     : true;
   const canShowApprovalRequestOption = isApprovalTaskEnabled !== false;
+  const canShowFastProductionOption = isFastProductionEnabled;
 
   const availableTaskTypes = React.useMemo(() => {
     if (shouldDisableBlockedActions) {
@@ -362,6 +390,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       hasFollowUpPrivilege ? "Follow Up" : null,
       hasBookingDoneIsmPrivilege ? "BookingDone - ISM" : null,
       canShowApprovalRequestOption ? "Approval Request" : null,
+      canShowFastProductionOption ? "Request Fast Production" : null,
       ...selfAssignTaskTypeNames,
     ].filter(Boolean) as string[];
   }, [
@@ -370,6 +399,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     hasFollowUpPrivilege,
     hasBookingDoneIsmPrivilege,
     canShowApprovalRequestOption,
+    canShowFastProductionOption,
     selfAssignTaskTypeNames,
   ]);
 
@@ -741,6 +771,29 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   ]);
 
   React.useEffect(() => {
+    if (
+      form.getValues("task_type") === "Request Fast Production" &&
+      !canShowFastProductionOption
+    ) {
+      if (hasFollowUpPrivilege) {
+        form.setValue("task_type", "Follow Up");
+      } else if (hasFinalMeasurementPrivilege && !isFinalMeasurementsDisabled) {
+        form.setValue("task_type", "Final Measurements");
+      } else if (hasBookingDoneIsmPrivilege && !isBookingDoneDisabled) {
+        form.setValue("task_type", "BookingDone - ISM");
+      }
+    }
+  }, [
+    canShowFastProductionOption,
+    form,
+    hasBookingDoneIsmPrivilege,
+    hasFinalMeasurementPrivilege,
+    hasFollowUpPrivilege,
+    isBookingDoneDisabled,
+    isFinalMeasurementsDisabled,
+  ]);
+
+  React.useEffect(() => {
     if (taskType !== "Follow Up") return;
 
     const selectedUserId = form.getValues("assign_lead_to");
@@ -981,52 +1034,62 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   }
 
   return (
-    <BaseModal
-      open={open}
-      onOpenChange={onOpenChange}
-      title={
-        form.watch("task_type") === "Approval Request"
-          ? "Assign Approval Request"
-          : isSelfAssignTask
-            ? `Assign Task for ${form.watch("task_type")}`
-            : form.watch("task_type") === "Follow Up"
+    <>
+      <BaseModal
+        open={open}
+        onOpenChange={onOpenChange}
+        title={
+          form.watch("task_type") === "Approval Request"
+            ? "Assign Approval Request"
+            : isFastProductionTask
+            ? "Assign Task for Request Fast Production"
+            : isSelfAssignTask
+              ? `Assign Task for ${form.watch("task_type")}`
+              : form.watch("task_type") === "Follow Up"
               ? "Assign Task for Follow Up"
               : "Assign Task for Final Site Measurements"
-      }
-      description={
-        form.watch("task_type") === "Approval Request"
-          ? "Use this form to assign an approval request."
-          : isSelfAssignTask
-            ? `Use this form to assign a ${form.watch("task_type").toLowerCase()} task to yourself.`
-            : form.watch("task_type") === "Follow Up"
+        }
+        description={
+          form.watch("task_type") === "Approval Request"
+            ? "Use this form to assign an approval request."
+            : isFastProductionTask
+            ? "Use this form to assign a fast production request task."
+            : isSelfAssignTask
+              ? `Use this form to assign a ${form.watch("task_type").toLowerCase()} task to yourself.`
+              : form.watch("task_type") === "Follow Up"
               ? "Use this form to assign a follow up task."
               : "Use this form to assign a final measurement task."
-      }
-      size="lg"
-    >
-      <div className="px-6 py-6 space-y-8">
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-            {/* Task Type */}
-            <Controller
-              control={form.control}
-              name="task_type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm">Task Type</FormLabel>
-                  <Select
-                    value={field.value}
-                    onValueChange={(value) => {
-                      hasUserChangedTaskTypeRef.current = true;
-                      field.onChange(value);
-                    }}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="text-sm w-full">
-                        <SelectValue placeholder="Select task type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
+        }
+        size="lg"
+      >
+        <div className="px-6 py-6 space-y-8">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+              {/* Task Type */}
+              <Controller
+                control={form.control}
+                name="task_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm">Task Type</FormLabel>
+                    <Select
+                      value={field.value}
+                      onValueChange={(value) => {
+                        if (value === "Request Fast Production") {
+                          openFastProductionModal();
+                          return;
+                        }
+
+                        hasUserChangedTaskTypeRef.current = true;
+                        field.onChange(value);
+                      }}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="text-sm w-full">
+                          <SelectValue placeholder="Select task type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
                       {/* ── Final Measurements ── */}
                       {hasFinalMeasurementPrivilege && (
                         shouldDisableBlockedActions ? (
@@ -1080,6 +1143,24 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                         )
                       )}
 
+                      {canShowFastProductionOption && (
+                        shouldDisableBlockedActions ? (
+                          <CustomeTooltip
+                            value={blockedTooltip}
+                            truncateValue={
+                              <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                <span>Request Fast Production</span>
+                                <span className="text-xs italic">(blocked)</span>
+                              </div>
+                            }
+                          />
+                        ) : (
+                          <SelectItem value="Request Fast Production">
+                            Request Fast Production
+                          </SelectItem>
+                        )
+                      )}
+
                       {/* ── BookingDone - ISM ── */}
                       {hasBookingDoneIsmPrivilege && (
                         shouldDisableBlockedActions ? (
@@ -1128,12 +1209,12 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                           </SelectItem>
                         )
                       )}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
             {/* Assign Lead To + Due Date */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1245,7 +1326,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                 type="button"
                 variant="outline"
                 className="text-sm"
-                onClick={() => form.reset()}
+                onClick={resetForm}
               >
                 Reset
               </Button>
@@ -1264,10 +1345,25 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                   : "Submit"}
               </Button>
             </div>
-          </form>
-        </Form>
-      </div>
-    </BaseModal>
+            </form>
+          </Form>
+        </div>
+      </BaseModal>
+
+      <FastProductionRequestModal
+        open={fastProductionModalOpen}
+        onOpenChange={setFastProductionModalOpen}
+        leadId={data?.id}
+      />
+      <FastProductionTermsModal
+        open={fastProductionTermsOpen}
+        onOpenChange={setFastProductionTermsOpen}
+        onAgree={() => {
+          setFastProductionTermsOpen(false);
+          setFastProductionModalOpen(true);
+        }}
+      />
+    </>
   );
 };
 

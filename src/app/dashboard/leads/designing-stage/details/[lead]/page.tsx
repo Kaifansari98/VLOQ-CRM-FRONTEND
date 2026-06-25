@@ -895,6 +895,7 @@ export default function DesigningStageLead() {
         open={assignOpen}
         onOpenChange={setAssignOpen}
         onlyFollowUp={true}
+        isFastProductionEnabled={true}
         data={{ id: leadIdNum, name: "" }}
       />
 

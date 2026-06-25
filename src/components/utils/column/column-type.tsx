@@ -29,6 +29,7 @@ export type LeadColumn = {
   orderLoginCompletedAt?: string | null;
   designerRemark: string;
   isDraft?: boolean;
+  isFastProduction?: boolean;
   accountId: number; // n
   updatedAt: string; //n
   site_map_link?: string;

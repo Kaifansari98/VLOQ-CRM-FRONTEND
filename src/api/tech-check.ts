@@ -64,6 +64,7 @@ export const approveTechCheck = async ({
   userId,
   assignToUserId,
   accountId,
+  clientRequiredOrderLoginComplitionDate,
   productStructureInstanceId,
 }: {
   vendorId: number;
@@ -71,6 +72,7 @@ export const approveTechCheck = async ({
   userId: number;
   assignToUserId: number;
   accountId: number;
+  clientRequiredOrderLoginComplitionDate: string;
   productStructureInstanceId?: number | null;
 }) => {
   const { data } = await apiClient.post(
@@ -78,6 +80,8 @@ export const approveTechCheck = async ({
     {
       assign_to_user_id: assignToUserId,
       account_id: accountId,
+      client_required_order_login_complition_date:
+        clientRequiredOrderLoginComplitionDate,
       ...(productStructureInstanceId
         ? { product_structure_instance_id: productStructureInstanceId }
         : {}),
