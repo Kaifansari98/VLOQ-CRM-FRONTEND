@@ -29,6 +29,7 @@ import {
 } from "@/hooks/useTasksQueries";
 import { FileText, Download, Calendar, User, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
+import DocumentCard from "@/components/utils/documentCard";
 
 interface Props {
   open: boolean;
@@ -222,7 +223,7 @@ export default function FastProductionRequestActionModal({
           if (!nextOpen) resetState();
         }}
       >
-        <DialogContent className="w-[95vw] max-w-4xl flex flex-col max-h-[90vh] overflow-hidden p-0 rounded-2xl">
+        <DialogContent className="w-[95vw] sm:max-w-xl md:max-w-3xl lg:max-w-5xl xl:max-w-7xl flex flex-col max-h-[90vh] overflow-hidden p-0 rounded-2xl">
           <div className="shrink-0 border-b bg-muted/30 px-6 py-5">
             <DialogTitle className="text-left text-xl font-semibold">
               Fast Production Request
@@ -232,7 +233,7 @@ export default function FastProductionRequestActionModal({
             </DialogDescription>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-6 space-y-6">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-orange-500 border-t-transparent" />
@@ -410,26 +411,21 @@ export default function FastProductionRequestActionModal({
                         </p>
                         <div>
                           {activeRequest.documents && activeRequest.documents.length > 0 ? (
-                            <div className="flex flex-col gap-3 w-full">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
                               {activeRequest.documents.map((docMapping: any) => {
                                 const doc = docMapping.document;
                                 if (!doc) return null;
+                                const docData = {
+                                  id: doc.id || docMapping.id,
+                                  originalName: doc.doc_og_name || "Unnamed Document",
+                                  signedUrl: doc.signedUrl,
+                                  created_at: doc.created_at,
+                                };
                                 return (
-                                  <a
+                                  <DocumentCard
                                     key={docMapping.id || doc.id}
-                                    href={doc.signedUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex w-full items-start justify-between gap-4 rounded-xl border border-border px-4 py-3 bg-muted/20 hover:bg-muted/50 transition-colors group"
-                                  >
-                                    <div className="flex items-start gap-3 min-w-0 flex-1">
-                                      <FileText className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
-                                      <span className="text-sm font-medium text-foreground break-words whitespace-pre-wrap">
-                                        {doc.doc_og_name}
-                                      </span>
-                                    </div>
-                                    <Download className="h-4 w-4 text-muted-foreground group-hover:text-foreground shrink-0 mt-0.5 transition-colors" />
-                                  </a>
+                                    doc={docData}
+                                  />
                                 );
                               })}
                             </div>
