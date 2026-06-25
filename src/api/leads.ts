@@ -546,6 +546,41 @@ export const checkFastProductionStatus = async ({
   };
 };
 
+export const getFastProductionDetailsForLead = async ({
+  vendorId,
+  leadId,
+  franchiseId,
+}: {
+  vendorId: number;
+  leadId: number;
+  franchiseId?: number;
+}) => {
+  const params: Record<string, any> = {};
+  if (franchiseId) {
+    params.franchise_id = franchiseId;
+  }
+
+  const response = await apiClient.get(
+    `/leads/fast-production-requests/vendor/${vendorId}/lead/${leadId}/details`,
+    { params },
+  );
+
+  return response.data as {
+    data: Array<{
+      id: number;
+      lead_id: number;
+      instance_id: number;
+      client_required_delivery_date: string;
+      status: string;
+      instance?: {
+        title: string;
+      };
+    }>;
+    message: string;
+    success?: boolean;
+  };
+};
+
 export interface RevokeFastProductionPayload {
   leadId: number;
   vendorId: number;

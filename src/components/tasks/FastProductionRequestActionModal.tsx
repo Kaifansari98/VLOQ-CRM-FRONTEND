@@ -7,12 +7,10 @@ import TextAreaInput from "@/components/origin-text-area";
 import { Button } from "@/components/ui/button";
 import { toastManager } from "@/components/ui/toast";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
+import BaseModal from "@/components/utils/baseModal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,9 +25,11 @@ import {
   useActOnFastProductionRequestTask,
   useFastProductionRequestDetails,
 } from "@/hooks/useTasksQueries";
+import { useGetFastProductionDetailsForLead } from "@/hooks/useLeadsQueries";
 import { FileText, Download, Calendar, User, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import DocumentCard from "@/components/utils/documentCard";
+import CustomeDatePicker from "@/components/date-picker";
 
 interface Props {
   open: boolean;
@@ -104,9 +104,13 @@ export default function FastProductionRequestActionModal({
   const [remark, setRemark] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [activeRequestIdx, setActiveRequestIdx] = useState(0);
+  const [productionTargetDate, setProductionTargetDate] = useState<string | undefined>();
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const userType = useAppSelector((state: any) => state.auth.user?.user_type?.user_type?.toLowerCase() || "");
+  const isFactoryUser = userType.includes("factory");
+
   const queryClient = useQueryClient();
   const actionMutation = useActOnFastProductionRequestTask();
 
@@ -120,17 +124,27 @@ export default function FastProductionRequestActionModal({
   const requests = requestDetails?.requests || [];
   const activeRequest = requests[activeRequestIdx];
 
+  const { data: fastProductionDetailsResponse } = useGetFastProductionDetailsForLead(
+    vendorId,
+    data?.leadId,
+    undefined,
+    open && isFactoryUser
+  );
+  const fastProductionDetails = fastProductionDetailsResponse?.data || [];
+
   useEffect(() => {
     if (open) {
       setActiveRequestIdx(0);
       setShowRejectForm(false);
       setRemark("");
+      setProductionTargetDate(undefined);
     }
   }, [open]);
 
   const resetState = () => {
     setShowRejectForm(false);
     setRemark("");
+    setProductionTargetDate(undefined);
     setConfirmOpen(false);
   };
 
@@ -159,6 +173,7 @@ export default function FastProductionRequestActionModal({
           action,
           acted_by: userId,
           remark: remark.trim() || null,
+          production_target_date: productionTargetDate || null,
         },
       },
       {
@@ -216,24 +231,18 @@ export default function FastProductionRequestActionModal({
 
   return (
     <>
-      <Dialog
+      <BaseModal
         open={open}
         onOpenChange={(nextOpen) => {
           onOpenChange(nextOpen);
           if (!nextOpen) resetState();
         }}
+        title="Fast Production Request"
+        description="Confirm approval, or reject this fast production request with a reason."
+        size="xl"
       >
-        <DialogContent className="w-[95vw] sm:max-w-xl md:max-w-3xl lg:max-w-5xl xl:max-w-7xl flex flex-col max-h-[90vh] overflow-hidden p-0 rounded-2xl">
-          <div className="shrink-0 border-b bg-muted/30 px-6 py-5">
-            <DialogTitle className="text-left text-xl font-semibold">
-              Fast Production Request
-            </DialogTitle>
-            <DialogDescription className="text-left text-muted-foreground mt-1.5 text-sm">
-              Confirm approval, or reject this fast production request with a reason.
-            </DialogDescription>
-          </div>
-
-          <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-6 space-y-6">
+        <div className="flex flex-col h-full">
+          <div className="flex-1 px-6 py-6 space-y-6">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-orange-500 border-t-transparent" />
@@ -502,30 +511,70 @@ export default function FastProductionRequestActionModal({
               )}
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      </BaseModal>
 
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Approve Fast Production Request?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will record your approval and complete your task. The lead
-              will be marked as fast production only when the last required
-              approver approves.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
+      <BaseModal 
+        open={confirmOpen} 
+        onOpenChange={setConfirmOpen}
+        title="Approve Fast Production Request?"
+        description="This will record your approval and complete your task. The lead will be marked as fast production only when the last required approver approves."
+        size="lg"
+      >
+        <div className="flex flex-col p-6 pt-2 h-full">
+          {isFactoryUser && fastProductionDetails.length > 0 && (
+            <div className="mb-6 text-left">
+              <div className="flex items-center gap-2 mb-3">
+                <Info className="h-4 w-4 text-blue-500" />
+                <h4 className="font-semibold text-foreground">Fast Production Details</h4>
+              </div>
+              <div className={cn("grid gap-3 max-h-[60vh] overflow-y-auto", fastProductionDetails.length > 1 ? "grid-cols-2" : "grid-cols-1")}>
+                {fastProductionDetails.map((detail: any, idx: number) => (
+                  <div key={idx} className="flex flex-col gap-2 p-3 border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">Instance</span>
+                      <span className="text-sm font-semibold text-foreground truncate" title={detail.instance?.title || "Single Lead"}>
+                        {detail.instance?.title || "Single Lead"}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-0.5 mt-1 border-t pt-2">
+                      <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">Target Delivery</span>
+                      <div className="flex items-center gap-1.5 text-sm font-semibold text-orange-600">
+                        <Calendar className="h-3.5 w-3.5" />
+                        {formatDateStr(detail.client_required_delivery_date)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="mt-4">
+                <label className="text-sm font-medium">Production Target Date (Optional)</label>
+                <div className="mt-1">
+                  <CustomeDatePicker
+                    value={productionTargetDate}
+                    onChange={setProductionTargetDate}
+                    restriction="futureOnly"
+                    minDate={new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString()}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 mt-auto pt-4 border-t">
+            <Button variant="outline" onClick={() => setConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button
               onClick={handleApprove}
               disabled={actionMutation.isPending}
             >
               {actionMutation.isPending ? "Processing..." : "Confirm"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </div>
+        </div>
+      </BaseModal>
     </>
   );
 }

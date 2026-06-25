@@ -75,6 +75,7 @@ export interface ActOnFastProductionRequestTaskPayload {
   action: "approve" | "reject";
   acted_by: number;
   remark?: string | null;
+  production_target_date?: string | null;
 }
 
 // ===============================
