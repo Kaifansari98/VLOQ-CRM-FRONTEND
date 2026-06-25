@@ -123,7 +123,11 @@ export default function LeadsGenerationPage() {
   };
   const [openPopover, setOpenPopover] = useState(false);
 
-  const { data: counts } = useActivityStatusCounts(vendorId, franchiseId);
+  const { data: counts } = useActivityStatusCounts(
+    vendorId,
+    franchiseId,
+    normalizedUserType === "sales-executive" ? userId : undefined,
+  );
   const customOpenTabPayload = useMemo(
     () => ({
       userId: userId ?? 0,

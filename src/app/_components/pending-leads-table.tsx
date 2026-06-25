@@ -109,7 +109,7 @@ export default function PendingLeadsTable({
     { id: "createdAt", desc: true },
   ]);
   const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({});
+    React.useState<VisibilityState>({}); 
   const [rowSelection, setRowSelection] = React.useState({});
 
   const [rowAction, setRowAction] = React.useState<{

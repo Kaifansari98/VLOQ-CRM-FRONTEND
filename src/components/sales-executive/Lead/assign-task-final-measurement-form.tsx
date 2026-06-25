@@ -225,8 +225,10 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   
   const { 
     isLoading: limitLoading, 
-    isError: isLimitReached 
+    isError: isLimitReachedRaw 
   } = useCheckFastProductionLimit(vendorId, userId, franchiseId ?? undefined, open);
+
+  const isLimitReached = (userRole ?? "").toLowerCase() === "super-admin" ? false : isLimitReachedRaw;
 
 
   console.log("isLimitReached", isLimitReached)
