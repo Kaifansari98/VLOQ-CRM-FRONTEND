@@ -329,6 +329,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     userType === "backend";
   const vendorId = user?.vendor_id;
   const franchiseId = selectedFranchiseId ?? user?.franchise_id ?? null;
+  const userId = user?.id;
   const dispatch = useAppDispatch();
 
   const { data: miscCountData, isLoading: isMiscLeadLoading } =
@@ -336,6 +337,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       vendorId ?? 0,
       skipFranchiseFilter ? undefined : (franchiseId ?? undefined),
       userType,
+      userId,
     );
   const { data: franchises = [] } = useFranchisesByVendorId(
     vendorId ?? 0,

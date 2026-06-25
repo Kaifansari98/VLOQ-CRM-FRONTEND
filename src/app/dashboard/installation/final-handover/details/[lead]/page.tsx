@@ -93,6 +93,7 @@ import {
   useMoveProjectCompleted,
   useIsTotalProjectAmountPaid,
 } from "@/api/installation/useFinalHandoverStageLeads";
+import { useMiscellaneousResolutionStatus } from "@/api/installation/useUnderInstallationStageLeads";
 import { toastError } from "@/lib/utils";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 import { useChatTabFromUrl } from "@/hooks/useChatTabFromUrl";
@@ -277,12 +278,15 @@ export default function FinalHandoverLeadDetails() {
     refetch: refetchPaymentStatus,
   } = useIsTotalProjectAmountPaid(vendorId!, leadIdNum);
 
+  const { data: miscStatus, isLoading: isLoadingMisc } = useMiscellaneousResolutionStatus(vendorId, leadIdNum);
+  const isMiscPending = miscStatus?.all_resolved === false;
+
   const [openProjectCompleteConfirm, setOpenProjectCompleteConfirm] =
     useState(false);
   const [validatingPayment, setValidatingPayment] = useState(false);
 
   const isReady = readiness?.can_move_to_final_handover;
-  const canMarkCompleted = isReady && paymentStatus?.is_paid;
+  const canMarkCompleted = isReady && paymentStatus?.is_paid && !isMiscPending;
 
   const tooltipMessage = (() => {
     if (readinessLoading) return "Checking project readiness...";
@@ -300,8 +304,9 @@ export default function FinalHandoverLeadDetails() {
   })();
 
   const completionBlockMessage = (() => {
-    if (readinessLoading || paymentStatusLoading)
-      return "Checking readiness and payment status...";
+    if (readinessLoading || paymentStatusLoading || isLoadingMisc)
+      return "Checking readiness, payment, and miscellaneous status...";
+    if (isMiscPending) return "Miscellaneous items are pending, cannot complete project.";
     if (!isReady) return tooltipMessage;
     if (!paymentStatus) return "Unable to verify payment status.";
     if (!paymentStatus.is_paid) {

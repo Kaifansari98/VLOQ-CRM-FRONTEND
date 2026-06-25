@@ -138,6 +138,7 @@ interface InstallationMiscellaneousProps {
   leadId: number;
   accountId: number;
   initialTaskId?: number;
+  hideAddButton?: boolean;
 }
 
 interface UploadCardProps {
@@ -172,6 +173,7 @@ export default function InstallationMiscellaneous({
   leadId,
   accountId,
   initialTaskId,
+  hideAddButton,
 }: InstallationMiscellaneousProps) {
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
@@ -580,7 +582,7 @@ export default function InstallationMiscellaneous({
         </div>
 
         <div className="w-full sm:w-auto flex justify-end">
-          {canWork && canAddMiscellaneous && (
+          {canWork && canAddMiscellaneous && !hideAddButton && (
             // ✅ Add Miscellaneous button — blocked tooltip
             <CustomeTooltip
               value={shouldDisableBlockedActions ? blockedTooltip : ""}
@@ -1279,13 +1281,17 @@ export default function InstallationMiscellaneous({
                         </span>
                       }
                     />
-
-
                   </div>
 
                 )}
 
-
+                {/* ✅ Info message for users who cannot approve */}
+                {!canApproveReject && miscApproved == null && (
+                  <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg border border-blue-200 dark:border-blue-800 flex-1">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span className="text-sm font-medium">Waiting for approval</span>
+                  </div>
+                )}
                 {/* Scheduling */}
                 {isApproved ? (
                   <div className="flex-1 space-y-4">

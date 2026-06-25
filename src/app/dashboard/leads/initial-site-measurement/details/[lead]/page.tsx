@@ -330,6 +330,34 @@ export default function SiteMeasurementLead() {
           </Breadcrumb>
         </div>
         <div className="flex items-center space-x-2">
+          {!isAuditor && canUploadISM(userType) && !lead?.is_draft && canAccessTodoTask && (
+            shouldDisableBlockedActions ? (
+              <CustomeTooltip
+                value={blockedTooltip}
+                truncateValue={
+                  <Button
+                    size="sm"
+                    className="hidden md:flex gap-1"
+                    variant="outline"
+                    disabled
+                  >
+                    <ClipboardCheck size={16} />
+                    Upload ISM
+                  </Button>
+                }
+              />
+            ) : (
+              <Button
+                size="sm"
+                className="hidden md:flex gap-1"
+                
+                onClick={() => setOpenMeasurement(true)}
+              >
+                <ClipboardCheck size={16} />
+                Upload ISM
+              </Button>
+            )
+          )}
           {!isAuditor && (
             <Button
               size="sm"

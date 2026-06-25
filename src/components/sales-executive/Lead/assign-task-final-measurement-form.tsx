@@ -200,6 +200,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
 
   const userId = useAppSelector((state) => state.auth.user?.id);
   const { data: siteSupervisorCheck } = useCheckSiteSupervisorAssigned(vendorId, leadId);
+  console.log("Assigned site supervisor: ", siteSupervisorCheck)
   const isSiteSupervisorAssigned = siteSupervisorCheck?.isSiteSupervisorAssigned ?? false;
   const {
     data: taskConflicts,
@@ -303,16 +304,13 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     : null;
   const canUseRestrictedTaskAssignments =
     canAccessRestrictedTasks || isCustomUser;
-  const shouldRequireAssignedSiteSupervisorForFinalMeasurements =
-    vendorCustomUserTypeMode !== true;
   const isFinalMeasurementsDisabled =
     restrictedTaskConflictsLoading ||
     !!finalMeasurementsConflict ||
     (requiresBookingDoneApproval &&
       (bookingDoneLockInsLoading || hasPendingBookingDoneApproval)) ||
     !canUseRestrictedTaskAssignments ||
-    (shouldRequireAssignedSiteSupervisorForFinalMeasurements &&
-      !isSiteSupervisorAssigned);
+    !isSiteSupervisorAssigned;
   const finalMeasurementsTooltip =
     restrictedTaskConflictsLoading
       ? "Checking existing tasks"
@@ -324,8 +322,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
             ? "Accounts approval for Booking Done is pending"
             : !canUseRestrictedTaskAssignments
               ? "You don't have permission to select this"
-              : shouldRequireAssignedSiteSupervisorForFinalMeasurements &&
-                !isSiteSupervisorAssigned
+              : !isSiteSupervisorAssigned
                 ? "Site supervisor is not assigned yet"
                 : null;
   const isBookingDoneDisabled =
@@ -771,23 +768,23 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
 
 
   React.useEffect(() => {
-  if (!open) return;
+    if (!open) return;
 
-  if (
-    shouldDisableBlockedActions &&
-    hasFollowUpPrivilege &&
-    form.getValues("task_type") !== "Follow Up"
-  ) {
-    form.setValue("task_type", "Follow Up", {
-      shouldValidate: true,
-    });
-  }
-}, [
-  open,
-  shouldDisableBlockedActions,
-  hasFollowUpPrivilege,
-  form,
-]);
+    if (
+      shouldDisableBlockedActions &&
+      hasFollowUpPrivilege &&
+      form.getValues("task_type") !== "Follow Up"
+    ) {
+      form.setValue("task_type", "Follow Up", {
+        shouldValidate: true,
+      });
+    }
+  }, [
+    open,
+    shouldDisableBlockedActions,
+    hasFollowUpPrivilege,
+    form,
+  ]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
