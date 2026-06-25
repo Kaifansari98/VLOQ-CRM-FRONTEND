@@ -546,6 +546,23 @@ export const checkFastProductionStatus = async ({
   };
 };
 
+export interface RevokeFastProductionPayload {
+  leadId: number;
+  vendorId: number;
+  userId: number;
+  remark: string;
+}
+
+export const revokeFastProductionRequest = async (
+  payload: RevokeFastProductionPayload,
+) => {
+  const response = await apiClient.post(
+    "/leads/fast-production-requests/revoke",
+    payload,
+  );
+  return response.data;
+};
+
 export const getSmallOrderRequestsByLead = async (
   vendorId: number,
   leadId: number,
@@ -1400,3 +1417,4 @@ export const unshortenUrl = async (url: string): Promise<string> => {
   );
   return data.resolvedUrl;
 };
+
