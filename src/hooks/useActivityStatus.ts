@@ -84,10 +84,11 @@ export const useRevertActivityStatus = () => {
 export const useActivityStatusCounts = (
   vendorId?: number,
   franchiseId?: number | null,
+  assignTo?: number | null,
 ) => {
   return useQuery({
-    queryKey: ["activityStatusCounts", vendorId, franchiseId ?? null],
-    queryFn: () => getActivityStatusCounts(vendorId!, franchiseId),
+    queryKey: ["activityStatusCounts", vendorId, franchiseId ?? null, assignTo ?? null],
+    queryFn: () => getActivityStatusCounts(vendorId!, franchiseId, assignTo),
     enabled: !!vendorId,
   });
 };

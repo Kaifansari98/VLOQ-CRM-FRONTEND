@@ -137,8 +137,10 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   
   const { 
     isLoading: limitLoading, 
-    isError: isLimitReached 
+    isError: isLimitReachedRaw 
   } = useCheckFastProductionLimit(vendorId, userId, franchiseId ?? undefined, open);
+
+  const isLimitReached = (userType || "").toLowerCase() === "super-admin" ? false : isLimitReachedRaw;
 
   const approvalRequestMutation = useCreateApprovalRequest(leadId);
   const queryClient = useQueryClient();

@@ -37,7 +37,7 @@ import {
   CheckFastProductionLimitPayload,
   CheckFastProductionLimitResponse,
   checkFastProductionStatus,
-
+  getFastProductionDetailsForLead,
   revokeFastProductionRequest,
   RevokeFastProductionPayload,
   createSmallOrderRequest,
@@ -547,6 +547,25 @@ export const useCheckFastProductionStatus = (
   return useQuery({
     queryKey: ["checkFastProductionStatus", vendorId, leadId, franchiseId],
     queryFn: () => checkFastProductionStatus({
+      vendorId: vendorId!,
+      leadId: leadId!,
+      franchiseId: franchiseId ?? undefined
+    }),
+    enabled: enabled && !!vendorId && !!leadId,
+    staleTime: 1000 * 60 * 2,
+    refetchOnWindowFocus: false,
+  });
+};
+
+export const useGetFastProductionDetailsForLead = (
+  vendorId?: number,
+  leadId?: number,
+  franchiseId?: number | null,
+  enabled: boolean = true,
+) => {
+  return useQuery({
+    queryKey: ["getFastProductionDetailsForLead", vendorId, leadId, franchiseId],
+    queryFn: () => getFastProductionDetailsForLead({
       vendorId: vendorId!,
       leadId: leadId!,
       franchiseId: franchiseId ?? undefined
