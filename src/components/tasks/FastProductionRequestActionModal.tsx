@@ -552,19 +552,24 @@ export default function FastProductionRequestActionModal({
                 </>
               ) : null}
 
-              <div className="mt-4">
-                <label className="text-sm font-medium">Production Target Date (Optional)</label>
-                <div className="mt-1">
-                  <CustomeDatePicker
-                    value={productionTargetDate}
-                    onChange={setProductionTargetDate}
-                    restriction="futureOnly"
-                    minDate={new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString()}
-                  />
-                </div>
-              </div>
             </div>
           )}
+
+          <div className="mb-6 text-left">
+            <label className="text-sm font-medium">
+              Production Target Date (Optional)
+            </label>
+            <div className="mt-1">
+              <CustomeDatePicker
+                value={productionTargetDate}
+                onChange={setProductionTargetDate}
+                restriction="futureOnly"
+                minDate={new Date(
+                  Date.now() + 10 * 24 * 60 * 60 * 1000,
+                ).toISOString()}
+              />
+            </div>
+          </div>
 
           <div className="flex justify-end gap-3 mt-auto pt-4 border-t">
             <Button variant="outline" onClick={() => setConfirmOpen(false)}>
