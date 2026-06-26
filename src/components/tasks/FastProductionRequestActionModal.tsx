@@ -6,27 +6,13 @@ import { useAppSelector } from "@/redux/store";
 import TextAreaInput from "@/components/origin-text-area";
 import { Button } from "@/components/ui/button";
 import { toastManager } from "@/components/ui/toast";
-import {
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import BaseModal from "@/components/utils/baseModal";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import {
   useActOnFastProductionRequestTask,
   useFastProductionRequestDetails,
 } from "@/hooks/useTasksQueries";
 import { useGetFastProductionDetailsForLead } from "@/hooks/useLeadsQueries";
-import { FileText, Download, Calendar, User, Info } from "lucide-react";
+import { Calendar, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import DocumentCard from "@/components/utils/documentCard";
 import CustomeDatePicker from "@/components/date-picker";
