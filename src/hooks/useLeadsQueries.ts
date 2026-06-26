@@ -50,6 +50,7 @@ import {
   uploadMoreSitePhotos,
   unblockLead,
   ClientVisit,
+  getFastProductionRequestDraft,
 } from "@/api/leads";
 import {
   assignToFinalMeasurement,
@@ -587,5 +588,18 @@ export const useMarkSmallOrderRequestResolved = () => {
       requestId: number;
       updatedBy: number;
     }) => markSmallOrderRequestResolved({ vendorId, requestId, updatedBy }),
+  });
+};
+
+export const useFastProductionRequestDraft = (
+  vendorId?: number,
+  leadId?: number,
+) => {
+  return useQuery({
+    queryKey: ["fastProductionRequestDraft", vendorId, leadId],
+    queryFn: () => getFastProductionRequestDraft(vendorId!, leadId!),
+    enabled: !!vendorId && !!leadId,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
   });
 };
