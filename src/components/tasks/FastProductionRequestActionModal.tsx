@@ -165,6 +165,14 @@ export default function FastProductionRequestActionModal({
       return;
     }
 
+    if (action === "approve" && !productionTargetDate) {
+      toastManager.add({
+        title: "Production target date is required for approval",
+        type: "error",
+      });
+      return;
+    }
+
     actionMutation.mutate(
       {
         leadId: data.leadId,
@@ -551,13 +559,12 @@ export default function FastProductionRequestActionModal({
                   </div>
                 </>
               ) : null}
-
             </div>
           )}
 
           <div className="mb-6 text-left">
             <label className="text-sm font-medium">
-              Production Target Date (Optional)
+              Production Target Date <span className="text-destructive">*</span>
             </label>
             <div className="mt-1">
               <CustomeDatePicker
@@ -577,7 +584,7 @@ export default function FastProductionRequestActionModal({
             </Button>
             <Button
               onClick={handleApprove}
-              disabled={actionMutation.isPending}
+              disabled={actionMutation.isPending || !productionTargetDate}
             >
               {actionMutation.isPending ? "Processing..." : "Confirm"}
             </Button>
