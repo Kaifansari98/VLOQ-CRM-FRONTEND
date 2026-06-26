@@ -522,32 +522,36 @@ export default function FastProductionRequestActionModal({
         size="lg"
       >
         <div className="flex flex-col p-6 pt-2 h-full">
-          {isFactoryUser && fastProductionDetails.length > 0 && (
+          {isFactoryUser && (
             <div className="mb-6 text-left">
-              <div className="flex items-center gap-2 mb-3">
-                <Info className="h-4 w-4 text-blue-500" />
-                <h4 className="font-semibold text-foreground">Fast Production Details</h4>
-              </div>
-              <div className={cn("grid gap-3 max-h-[60vh] overflow-y-auto", fastProductionDetails.length > 1 ? "grid-cols-2" : "grid-cols-1")}>
-                {fastProductionDetails.map((detail: any, idx: number) => (
-                  <div key={idx} className="flex flex-col gap-2 p-3 border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow">
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">Instance</span>
-                      <span className="text-sm font-semibold text-foreground truncate" title={detail.instance?.title || "Single Lead"}>
-                        {detail.instance?.title || "Single Lead"}
-                      </span>
-                    </div>
-                    <div className="flex flex-col gap-0.5 mt-1 border-t pt-2">
-                      <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">Target Delivery</span>
-                      <div className="flex items-center gap-1.5 text-sm font-semibold text-orange-600">
-                        <Calendar className="h-3.5 w-3.5" />
-                        {formatDateStr(detail.client_required_delivery_date)}
-                      </div>
-                    </div>
+              {fastProductionDetails.length > 0 ? (
+                <>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Info className="h-4 w-4 text-blue-500" />
+                    <h4 className="font-semibold text-foreground">Fast Production Details</h4>
                   </div>
-                ))}
-              </div>
-              
+                  <div className={cn("grid gap-3 max-h-[60vh] overflow-y-auto", fastProductionDetails.length > 1 ? "grid-cols-2" : "grid-cols-1")}>
+                    {fastProductionDetails.map((detail: any, idx: number) => (
+                      <div key={idx} className="flex flex-col gap-2 p-3 border rounded-lg bg-card shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">Instance</span>
+                          <span className="text-sm font-semibold text-foreground truncate" title={detail.instance?.title || "Single Lead"}>
+                            {detail.instance?.title || "Single Lead"}
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-0.5 mt-1 border-t pt-2">
+                          <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">Target Delivery</span>
+                          <div className="flex items-center gap-1.5 text-sm font-semibold text-orange-600">
+                            <Calendar className="h-3.5 w-3.5" />
+                            {formatDateStr(detail.client_required_delivery_date)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : null}
+
               <div className="mt-4">
                 <label className="text-sm font-medium">Production Target Date (Optional)</label>
                 <div className="mt-1">
