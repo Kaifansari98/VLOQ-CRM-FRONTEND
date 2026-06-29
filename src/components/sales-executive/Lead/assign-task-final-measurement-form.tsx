@@ -29,6 +29,7 @@ import {
   useLeadSuperAdminApprovalLockIns,
   useRestrictedTaskConflicts,
   useCheckFastProductionLimit,
+  useFastProductionRequestDraft,
 } from "@/hooks/useLeadsQueries";
 import { AssignToFinalMeasurementPayload } from "@/api/final-measurement";
 import { toastManager } from "@/components/ui/toast";
@@ -228,6 +229,9 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     isError: isLimitReachedRaw 
   } = useCheckFastProductionLimit(vendorId, userId, franchiseId ?? undefined, open);
 
+  const { data: draftResponse } = useFastProductionRequestDraft(vendorId, leadId);
+  const hasDraft = !!draftResponse?.data?.requests?.length;
+
   const isLimitReached = (userRole ?? "").toLowerCase() === "super-admin" ? false : isLimitReachedRaw;
 
 
@@ -278,8 +282,12 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   const openFastProductionModal = React.useCallback(() => {
     resetForm();
     onOpenChange(false);
-    setFastProductionTermsOpen(true);
-  }, [onOpenChange, resetForm]);
+    if (hasDraft) {
+      setFastProductionModalOpen(true);
+    } else {
+      setFastProductionTermsOpen(true);
+    }
+  }, [onOpenChange, resetForm, hasDraft]);
 
   const {
     data: selfAssignTaskTypes = [],
