@@ -31,7 +31,10 @@ import { DesignSelection } from "@/types/designing-stage-types";
 import { useQueryClient } from "@tanstack/react-query";
 import { canUpdateDessingStageSelectionInputs } from "@/components/utils/privileges";
 import TextAreaInput from "@/components/origin-text-area";
-import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
+import {
+  useLeadProductStructureInstances,
+  useGetFastProductionDetailsForLead,
+} from "@/hooks/useLeadsQueries";
 import { LeadProductStructureInstance } from "@/api/leads";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -158,6 +161,13 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const { data: handleTypesData, isLoading: isHandleTypesLoading } =
     useHandleTypes();
   const { data: leadData } = useLeadStatus(leadId, vendorId);
+  const { data: fastProductionDetailsResponse } = useGetFastProductionDetailsForLead(
+    vendorId,
+    leadId,
+    undefined,
+    true,
+  );
+  const fastProductionDetails: any = fastProductionDetailsResponse?.data;
   const { data: structureInstancesData } = useLeadProductStructureInstances(
     leadId,
     vendorId,
@@ -428,6 +438,142 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [structureInstances, activeInstance]);
 
+  const labelToValues = (
+    labelsStr: string | null | undefined,
+    options: ClientDocsSelectionOption[],
+  ): string[] => {
+    if (!labelsStr) return [];
+    const labels = labelsStr
+      .split(",")
+      .map((l) => l.trim())
+      .filter(Boolean);
+    return labels
+      .map((lbl) => {
+        const match = options.find(
+          (opt) => (opt.label || "").toLowerCase() === lbl.toLowerCase(),
+        );
+        return match ? match.value : "";
+      })
+      .filter(Boolean);
+  };
+
+  const getCarcasValuesForInstance = (
+    existingCarcas: DesignSelection | undefined,
+    currentInstanceId: number | null,
+  ) => {
+    const existingCarcassValues = chsMappingToOptionValues(
+      existingCarcas?.id,
+      "Carcas",
+    );
+    const existingCarcassRemark = existingCarcas?.desc || DEFAULT_REMARK;
+
+    const fastProdReq = fastProductionDetails?.requests?.find(
+      (r: any) => r.instance_id === currentInstanceId,
+    );
+    const fastProdCarcass = fastProdReq?.finishes?.find(
+      (f: any) => f.component === "CARCASS",
+    );
+
+    const hasNoCarcasSelectionSaved =
+      existingCarcassValues.length === 0 &&
+      (!existingCarcas?.desc || existingCarcas.desc === DEFAULT_REMARK);
+
+    if (hasNoCarcasSelectionSaved && fastProdCarcass) {
+      const carcassValues = labelToValues(
+        fastProdCarcass.finish_category,
+        carcassOptions,
+      );
+      const carcassRemark = fastProdCarcass.finish_description || DEFAULT_REMARK;
+      return {
+        value: carcassValues,
+        remark: carcassRemark,
+      };
+    }
+
+    return {
+      value: existingCarcassValues,
+      remark: existingCarcassRemark,
+    };
+  };
+
+  const getShutterValuesForInstance = (
+    existingShutter: DesignSelection | undefined,
+    currentInstanceId: number | null,
+  ) => {
+    const existingShutterValues = chsMappingToOptionValues(
+      existingShutter?.id,
+      "Shutter",
+    );
+    const existingShutterRemark = existingShutter?.desc || DEFAULT_REMARK;
+
+    const fastProdReq = fastProductionDetails?.requests?.find(
+      (r: any) => r.instance_id === currentInstanceId,
+    );
+    const fastProdShutter = fastProdReq?.finishes?.find(
+      (f: any) => f.component === "SHUTTER",
+    );
+
+    const hasNoShutterSelectionSaved =
+      existingShutterValues.length === 0 &&
+      (!existingShutter?.desc || existingShutter.desc === DEFAULT_REMARK);
+
+    if (hasNoShutterSelectionSaved && fastProdShutter) {
+      const shutterValues = labelToValues(
+        fastProdShutter.finish_category,
+        shutterOptions,
+      );
+      const shutterRemark = fastProdShutter.finish_description || DEFAULT_REMARK;
+      return {
+        value: shutterValues,
+        remark: shutterRemark,
+      };
+    }
+
+    return {
+      value: existingShutterValues,
+      remark: existingShutterRemark,
+    };
+  };
+
+  const getHandlesValuesForInstance = (
+    existingHandles: DesignSelection | undefined,
+    currentInstanceId: number | null,
+  ) => {
+    const existingHandlesValues = chsMappingToOptionValues(
+      existingHandles?.id,
+      "Handles",
+    );
+    const existingHandlesRemark = existingHandles?.desc || DEFAULT_REMARK;
+
+    const fastProdReq = fastProductionDetails?.requests?.find(
+      (r: any) => r.instance_id === currentInstanceId,
+    );
+    const fastProdHandle = fastProdReq?.finishes?.find(
+      (f: any) => f.component === "HANDLE",
+    );
+
+    const hasNoHandlesSelectionSaved =
+      existingHandlesValues.length === 0 &&
+      (!existingHandles?.desc || existingHandles.desc === DEFAULT_REMARK);
+
+    if (hasNoHandlesSelectionSaved && fastProdHandle) {
+      const handleValues = labelToValues(
+        fastProdHandle.finish_category,
+        handleOptions,
+      );
+      const handleRemark = fastProdHandle.finish_description || DEFAULT_REMARK;
+      return {
+        value: handleValues,
+        remark: handleRemark,
+      };
+    }
+
+    return {
+      value: existingHandlesValues,
+      remark: existingHandlesRemark,
+    };
+  };
+
   useEffect(() => {
     const rows = Array.isArray(selectionsData?.data) ? selectionsData.data : [];
     const activeInstanceId = activeInstance?.id ?? null;
@@ -470,39 +616,40 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     });
 
     setExistingSelections({ carcas, shutter, handles });
+
+    const cVal = getCarcasValuesForInstance(carcas, activeInstanceId);
+    const sVal = getShutterValuesForInstance(shutter, activeInstanceId);
+    const hVal = getHandlesValuesForInstance(handles, activeInstanceId);
+
     selectionForm.reset({
-      carcas: chsMappingToOptionValues(carcas?.id, "Carcas"),
-      carcas_remark: carcas?.desc || DEFAULT_REMARK,
-      shutter: chsMappingToOptionValues(shutter?.id, "Shutter"),
-      shutter_remark: shutter?.desc || DEFAULT_REMARK,
-      handles: chsMappingToOptionValues(handles?.id, "Handles"),
-      handles_remark: handles?.desc || DEFAULT_REMARK,
+      carcas: cVal.value,
+      carcas_remark: cVal.remark,
+      shutter: sVal.value,
+      shutter_remark: sVal.remark,
+      handles: hVal.value,
+      handles_remark: hVal.remark,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeInstance?.id, selectionsData?.data, chsMappings]);
+  }, [activeInstance?.id, selectionsData?.data, chsMappings, fastProductionDetails]);
 
   useEffect(() => {
     if (!uploadModalOpen) {
+      const activeInstanceId = activeInstance?.id ?? null;
+      const cVal = getCarcasValuesForInstance(existingSelections.carcas, activeInstanceId);
+      const sVal = getShutterValuesForInstance(existingSelections.shutter, activeInstanceId);
+      const hVal = getHandlesValuesForInstance(existingSelections.handles, activeInstanceId);
+
       selectionForm.reset({
-        carcas: chsMappingToOptionValues(
-          existingSelections.carcas?.id,
-          "Carcas",
-        ),
-        carcas_remark: existingSelections.carcas?.desc || DEFAULT_REMARK,
-        shutter: chsMappingToOptionValues(
-          existingSelections.shutter?.id,
-          "Shutter",
-        ),
-        shutter_remark: existingSelections.shutter?.desc || DEFAULT_REMARK,
-        handles: chsMappingToOptionValues(
-          existingSelections.handles?.id,
-          "Handles",
-        ),
-        handles_remark: existingSelections.handles?.desc || DEFAULT_REMARK,
+        carcas: cVal.value,
+        carcas_remark: cVal.remark,
+        shutter: sVal.value,
+        shutter_remark: sVal.remark,
+        handles: hVal.value,
+        handles_remark: hVal.remark,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uploadModalOpen]);
+  }, [uploadModalOpen, fastProductionDetails, existingSelections]);
 
   const chsMappingToOptionValues = (
     selectionId: number | undefined,
