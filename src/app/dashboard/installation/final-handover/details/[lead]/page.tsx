@@ -286,7 +286,7 @@ export default function FinalHandoverLeadDetails() {
   const [validatingPayment, setValidatingPayment] = useState(false);
 
   const isReady = readiness?.can_move_to_final_handover;
-  const canMarkCompleted = isReady && paymentStatus?.is_paid && !isMiscPending;
+  const canMarkCompleted = isReady && !isMiscPending;
 
   const tooltipMessage = (() => {
     if (readinessLoading) return "Checking project readiness...";
