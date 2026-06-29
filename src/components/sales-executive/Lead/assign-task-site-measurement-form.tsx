@@ -28,6 +28,7 @@ import {
   useAssignToSiteMeasurement,
   useInitialSiteMeasurementTaskConflicts,
   useCheckFastProductionLimit,
+  useFastProductionRequestDraft,
 } from "@/hooks/useLeadsQueries";
 import { AssignToSiteMeasurementPayload } from "@/api/leads";
 import { toastManager } from "@/components/ui/toast";
@@ -139,6 +140,9 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     isLoading: limitLoading, 
     isError: isLimitReachedRaw 
   } = useCheckFastProductionLimit(vendorId, userId, franchiseId ?? undefined, open);
+
+  const { data: draftResponse } = useFastProductionRequestDraft(vendorId, leadId);
+  const hasDraft = !!draftResponse?.data?.requests?.length;
 
   const isLimitReached = (userType || "").toLowerCase() === "super-admin" ? false : isLimitReachedRaw;
 
@@ -539,8 +543,12 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   const openFastProductionModal = React.useCallback(() => {
     resetForm();
     onOpenChange(false);
-    setFastProductionTermsOpen(true);
-  }, [onOpenChange, resetForm]);
+    if (hasDraft) {
+      setFastProductionModalOpen(true);
+    } else {
+      setFastProductionTermsOpen(true);
+    }
+  }, [onOpenChange, resetForm, hasDraft]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     if (values.task_type === "Approval Request") {
