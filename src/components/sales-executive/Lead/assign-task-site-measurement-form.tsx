@@ -29,6 +29,7 @@ import {
   useInitialSiteMeasurementTaskConflicts,
   useCheckFastProductionLimit,
   useFastProductionRequestDraft,
+  useLeadById,
 } from "@/hooks/useLeadsQueries";
 import { AssignToSiteMeasurementPayload } from "@/api/leads";
 import { toastManager } from "@/components/ui/toast";
@@ -143,6 +144,11 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
 
   const { data: draftResponse } = useFastProductionRequestDraft(vendorId, leadId);
   const hasDraft = !!draftResponse?.data?.requests?.length;
+
+  const { data: leadData } = useLeadById(leadId, vendorId, userId);
+  const lead = leadData?.data?.lead;
+  const isLeadFastProductionAlready = lead?.is_fast_production === true;
+  const isFastProductionPending = lead?.has_pending_fast_production_request === true;
 
   const isLimitReached = (userType || "").toLowerCase() === "super-admin" ? false : isLimitReachedRaw;
 
@@ -805,7 +811,31 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
                             ))}
 
                           {canShowFastProductionOption &&
-                            (shouldDisableBlockedActions ? (
+                            (isLeadFastProductionAlready ? (
+                              <CustomeTooltip
+                                value="lead is already in fast production"
+                                truncateValue={
+                                  <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                    <span>Request Fast Production</span>
+                                    <span className="text-xs italic">
+                                      (locked)
+                                    </span>
+                                  </div>
+                                }
+                              />
+                            ) : isFastProductionPending ? (
+                              <CustomeTooltip
+                                value="Request has been already send for approval"
+                                truncateValue={
+                                  <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                    <span>Request Fast Production</span>
+                                    <span className="text-xs italic">
+                                      (locked)
+                                    </span>
+                                  </div>
+                                }
+                              />
+                            ) : shouldDisableBlockedActions ? (
                               <CustomeTooltip
                                 value={blockedTooltip}
                                 truncateValue={
