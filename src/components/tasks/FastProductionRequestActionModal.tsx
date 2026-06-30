@@ -137,7 +137,11 @@ export default function FastProductionRequestActionModal({
     undefined,
     open && isFactoryUser
   );
-  const fastProductionDetails = fastProductionDetailsResponse?.data || [];
+  
+  const fastProductionDetails = Array.isArray(fastProductionDetailsResponse?.data) 
+    ? fastProductionDetailsResponse.data 
+    : ((fastProductionDetailsResponse?.data as any)?.requests || []);
+
 
   const minProductionTargetDate = React.useMemo(() => {
     const baseDate = getTodayAtMidnight();
