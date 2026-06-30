@@ -97,7 +97,7 @@ export function getPendingLeadsColumns({}: {
         <DataTableColumnHeader column={column} title="Status" />
       ),
       cell: ({ row }) => {
-        const status = row.getValue("status") as string;
+        const status = row.original.isDraft ? "Draft" : (row.getValue("status") as string);
         return <CustomeStatusBadge title={status} />;
       },
       meta: {

@@ -38,6 +38,7 @@ const STAGE_PATH_BY_TAG: Record<string, string> = {
 };
 
 const STAGE_PATH_BY_NAME: Record<string, string> = {
+  Draft: "/dashboard/leads/draft-lead/details",
   Open: "/dashboard/leads/leadstable/details",
   "Initial Site Measurement":
     "/dashboard/leads/initial-site-measurement/details",

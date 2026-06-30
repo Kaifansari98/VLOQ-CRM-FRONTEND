@@ -32,6 +32,7 @@ export type ProcessedLead = {
   initial_site_measurement_date: string;
   accountId: number;
   site_map_link: string;
+  isDraft?: boolean;
 };
 
 interface GetVendorLeadsTableColumnsProps {
@@ -135,7 +136,7 @@ export function getViewOpenLeadsTableColumns({
       enableHiding: true,
       enableColumnFilter: true,
       cell: ({ row }) => {
-        const status = row.getValue("status") as string;
+        const status = row.original.isDraft ? "Draft" : (row.getValue("status") as string);
 
         return (
           <div className="flex items-center">
