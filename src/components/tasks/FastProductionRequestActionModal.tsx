@@ -146,7 +146,7 @@ export default function FastProductionRequestActionModal({
   const minProductionTargetDate = React.useMemo(() => {
     const baseDate = getTodayAtMidnight();
 
-    const tentativeDates = fastProductionDetails
+    const tentativeDates: Date[] = (fastProductionDetails || [])
       .map((detail: any) => {
         if (!detail?.tentative_order_login_date) return null;
         const parsed = new Date(detail.tentative_order_login_date);
@@ -158,7 +158,7 @@ export default function FastProductionRequestActionModal({
 
     if (tentativeDates.length > 0) {
       const latestTentativeDate = new Date(
-        Math.max(...tentativeDates.map((date) => date.getTime())),
+        Math.max(...tentativeDates.map((date: Date) => date.getTime())),
       );
 
       if (latestTentativeDate > baseDate) {
