@@ -981,9 +981,7 @@ export function UniversalTable({
       designer: designerName,
       assignedToId: lead.assignedTo?.id ?? "",
       isDraft: lead.is_draft === true,
-      isFastProduction:
-        lead.is_fast_production === true ||
-        lead.fast_production_request === true,
+      isFastProduction: lead.is_fast_production === true,
       accountId: lead.account?.id ?? lead.account_id ?? 0,
       priority: lead.priority ?? "",
       servicing: getPendingServicingLabel(lead),
