@@ -25,6 +25,7 @@ import {
   useFinalizeFastProductionRequest,
   useLeadProductStructureInstances,
   useFastProductionRequestDraft,
+  useLeadById,
 } from "@/hooks/useLeadsQueries";
 import { LeadProductStructureInstance } from "@/api/leads";
 import {
@@ -55,25 +56,25 @@ const optionalTrimmedText = (label: string, maxLength = MAX_TEXT_LENGTH) =>
     .max(maxLength, `${label} must be at most ${maxLength} characters`)
     .optional();
 
-const formSchema = z.object({
+const getFormSchema = (isSmallOrder: boolean) => z.object({
   carcass_finish_category: z
     .array(z.string())
     .min(1, "Carcass finish category is required"),
   carcass_finish_description: requiredTrimmedText(
     "Carcass finish description",
   ),
-  shutter_finish_category: z
-    .array(z.string())
-    .min(1, "Shutter finish category is required"),
-  shutter_finish_description: requiredTrimmedText(
-    "Shutter finish description",
-  ),
-  handles_finish_category: z
-    .array(z.string())
-    .min(1, "Handles finish category is required"),
-  handles_finish_description: requiredTrimmedText(
-    "Handles finish description",
-  ),
+  shutter_finish_category: isSmallOrder 
+    ? z.array(z.string()).optional() 
+    : z.array(z.string()).min(1, "Shutter finish category is required"),
+  shutter_finish_description: isSmallOrder 
+    ? optionalTrimmedText("Shutter finish description") 
+    : requiredTrimmedText("Shutter finish description"),
+  handles_finish_category: isSmallOrder 
+    ? z.array(z.string()).optional() 
+    : z.array(z.string()).min(1, "Handles finish category is required"),
+  handles_finish_description: isSmallOrder 
+    ? optionalTrimmedText("Handles finish description") 
+    : requiredTrimmedText("Handles finish description"),
   hardware_selection: requiredTrimmedText("Hardware selection"),
   accessory_selection: requiredTrimmedText("Accessory selection"),
   special_requirements: requiredTrimmedText(
@@ -98,7 +99,20 @@ const formSchema = z.object({
     .optional(),
 });
 
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = {
+  carcass_finish_category: string[];
+  carcass_finish_description: string;
+  shutter_finish_category?: string[];
+  shutter_finish_description?: string;
+  handles_finish_category?: string[];
+  handles_finish_description?: string;
+  hardware_selection: string;
+  accessory_selection: string;
+  special_requirements: string;
+  client_required_delivery_date: string;
+  remarks?: string;
+  files?: File[];
+};
 
 interface FastProductionRequestModalProps {
   open: boolean;
@@ -211,8 +225,15 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
     [instancesResponse?.data],
   );
 
+  const { data: leadData } = useLeadById(leadId, vendorId, userId);
+  const lead = leadData?.data?.lead;
+  const furniture_type = lead?.productMappings?.map((pm: any) => pm.productType?.type).filter(Boolean).join(", ") || "N/A";
+  const isSmallOrder = furniture_type.toLowerCase().includes("small order");
+
+  const dynamicFormSchema = React.useMemo(() => getFormSchema(isSmallOrder), [isSmallOrder]);
+
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(dynamicFormSchema) as any,
     mode: "onBlur",
     defaultValues: getEmptyFormValues(),
   });
@@ -616,15 +637,15 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
         ),
         carcassFinishDescription: values.carcass_finish_description,
         shutterFinishCategory: toLabels(
-          values.shutter_finish_category,
+          values.shutter_finish_category || [],
           shutterOptionLabelMap,
         ),
-        shutterFinishDescription: values.shutter_finish_description,
+        shutterFinishDescription: values.shutter_finish_description || "",
         handlesFinishCategory: toLabels(
-          values.handles_finish_category,
+          values.handles_finish_category || [],
           handleOptionLabelMap,
         ),
-        handlesFinishDescription: values.handles_finish_description,
+        handlesFinishDescription: values.handles_finish_description || "",
         hardwareSelection: values.hardware_selection,
         accessorySelection: values.accessory_selection,
         specialRequirements: values.special_requirements,
@@ -738,12 +759,15 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
     placeholder: string,
     descriptionPlaceholder: string,
     className?: string,
-  ) => (
-    <div className={className}>
-      <div className="space-y-2">
-        <h3 className="text-sm font-medium">
-          {title} {requiredMark}
-        </h3>
+  ) => {
+    const isOptional = isSmallOrder && (categoryName === "shutter_finish_category" || categoryName === "handles_finish_category");
+    
+    return (
+      <div className={className}>
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium">
+            {title} {!isOptional && requiredMark}
+          </h3>
         <FormField
           control={form.control}
           name={categoryName}
@@ -784,6 +808,7 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
       </div>
     </div>
   );
+};
 
   const hasMultipleInstances = instances.length > 1;
   const pendingInstanceCount = instances.filter(
