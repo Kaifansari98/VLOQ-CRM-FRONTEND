@@ -203,6 +203,7 @@ interface EditLeadFormProps {
 export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
   const [isLoadingLead, setIsLoadingLead] = useState(false);
   const [isDraftLead, setIsDraftLead] = useState(false);
+  const [leadStage, setLeadStage] = useState("");
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const createdBy = useAppSelector((state) => state.auth.user?.id);
   const isCustomVendorFlow = useAppSelector(
@@ -417,6 +418,8 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
   } = form;
   const watchedValues = form.watch();
 
+  const shouldShowFurnitureFields = isDraftLead || leadStage === "open" || leadStage === "";
+
   // Product type & structure hooks
   const { data: productStructures, isLoading: isStructuresLoading } =
     useProductStructureTypes();
@@ -589,6 +592,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
         const structureInstances: LeadProductStructureInstance[] =
           instancesResponse.data || [];
         setIsDraftLead(Boolean(lead.is_draft));
+        setLeadStage(lead.statusType?.type?.toLowerCase() || lead.status_type?.toLowerCase() || "");
 
         // ✅ Normalize phone numbers to E.164 format
         const formattedContactNo = toE164(lead.contact_no, lead.country_code);
@@ -1188,7 +1192,9 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
         />
 
         {/* Product Type & Structure */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+        {shouldShowFurnitureFields && (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
           <FormField
             control={form.control}
             name="product_types"
@@ -1338,6 +1344,8 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
             });
           }}
         />
+          </>
+        )}
 
         <div
           className={`grid grid-cols-1 gap-3 items-start ${
