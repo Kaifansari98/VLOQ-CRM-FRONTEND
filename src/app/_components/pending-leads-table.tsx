@@ -279,6 +279,7 @@ export default function PendingLeadsTable({
       updatedAt: lead.updated_at || "",
       altContact: lead.alt_contact_no || "",
       status: lead.statusType?.type || "",
+      isDraft: lead.is_draft === true,
       sales_executive: lead.assignedTo?.user_name || "",
       assignedToId: lead.assignedTo?.id ?? undefined,
       initial_site_measurement_date: lead.initial_site_measurement_date || "",
