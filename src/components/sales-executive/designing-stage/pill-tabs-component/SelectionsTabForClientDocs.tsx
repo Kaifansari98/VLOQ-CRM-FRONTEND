@@ -34,6 +34,7 @@ import TextAreaInput from "@/components/origin-text-area";
 import {
   useLeadProductStructureInstances,
   useGetFastProductionDetailsForLead,
+  useLeadById,
 } from "@/hooks/useLeadsQueries";
 import { LeadProductStructureInstance } from "@/api/leads";
 import { Card, CardContent } from "@/components/ui/card";
@@ -89,12 +90,16 @@ interface Props {
   onInstanceChange?: (instance: LeadProductStructureInstance | null) => void;
 }
 
-const formSchema = z.object({
+const getFormSchema = (isSmallOrder: boolean) => z.object({
   carcas: z.array(z.string()).min(1, "Select at least one carcass type"),
   carcas_remark: z.string().optional(),
-  shutter: z.array(z.string()).min(1, "Select at least one shutter type"),
+  shutter: isSmallOrder
+    ? z.array(z.string()).optional()
+    : z.array(z.string()).min(1, "Select at least one shutter type"),
   shutter_remark: z.string().optional(),
-  handles: z.array(z.string()).min(1, "Select at least one handle type"),
+  handles: isSmallOrder
+    ? z.array(z.string()).optional()
+    : z.array(z.string()).min(1, "Select at least one handle type"),
   handles_remark: z.string().optional(),
 });
 
@@ -107,7 +112,14 @@ const instanceUploadSchema = z.object({
     .min(1, "Please upload at least one Pytha file"),
 });
 
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = {
+  carcas: string[];
+  carcas_remark?: string;
+  shutter: string[] | undefined;
+  shutter_remark?: string;
+  handles: string[] | undefined;
+  handles_remark?: string;
+};
 type InstanceUploadValues = z.infer<typeof instanceUploadSchema>;
 
 const DEFAULT_REMARK = "N/A";
@@ -161,6 +173,13 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const { data: handleTypesData, isLoading: isHandleTypesLoading } =
     useHandleTypes();
   const { data: leadData } = useLeadStatus(leadId, vendorId);
+  
+  const { data: leadDataById } = useLeadById(leadId, vendorId, userId);
+  const lead = leadDataById?.data?.lead;
+  const furniture_type = lead?.productMappings?.map((pm: any) => pm.productType?.type).filter(Boolean).join(", ") || "N/A";
+  const isSmallOrder = furniture_type.toLowerCase().includes("small order");
+  const dynamicFormSchema = React.useMemo(() => getFormSchema(isSmallOrder), [isSmallOrder]);
+
   const { data: fastProductionDetailsResponse } = useGetFastProductionDetailsForLead(
     vendorId,
     leadId,
@@ -371,7 +390,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     isCarcassTypesLoading || isShutterTypesLoading || isHandleTypesLoading;
 
   const selectionForm = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(dynamicFormSchema),
     defaultValues: {
       carcas: [],
       carcas_remark: DEFAULT_REMARK,
