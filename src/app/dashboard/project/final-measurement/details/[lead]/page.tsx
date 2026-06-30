@@ -39,7 +39,10 @@ import {
   FolderOpen,
   LockOpen,
   Lock,
+  Zap,
 } from "lucide-react";
+
+import FastProductionDetailsModal from "@/components/sales-executive/Lead/fast-production-details-modal";
 
 import {
   useBlockLead,
@@ -130,6 +133,7 @@ export default function FinalMeasurementLeadDetails() {
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
   const [openCancelFastProduction, setOpenCancelFastProduction] = useState(false);
+  const [fastProductionDetailsOpen, setFastProductionDetailsOpen] = useState(false);
   const revokeFastProductionMutation = useRevokeFastProductionRequest();
 
   const handleCancelFastProduction = (remark: string) => {
@@ -437,6 +441,15 @@ export default function FinalMeasurementLeadDetails() {
                 >
                   <XCircle className="h-4 w-4 mr-2" />
                   Cancel Fast Production
+                </DropdownMenuItem>
+              )}
+
+              {lead?.is_fast_production === true && (
+                <DropdownMenuItem
+                  onSelect={() => setFastProductionDetailsOpen(true)}
+                >
+                  <Zap className="h-4 w-4 mr-2 text-orange-500 fill-orange-500" />
+                  Fast Production Details
                 </DropdownMenuItem>
               )}
 
@@ -782,6 +795,12 @@ export default function FinalMeasurementLeadDetails() {
         onOpenChange={setOpenCancelFastProduction}
         onSubmit={handleCancelFastProduction}
         loading={revokeFastProductionMutation.isPending}
+      />
+
+      <FastProductionDetailsModal
+        open={fastProductionDetailsOpen}
+        onOpenChange={setFastProductionDetailsOpen}
+        leadId={leadIdNum}
       />
     </>
   );
