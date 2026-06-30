@@ -136,6 +136,7 @@ export default function DraftLeadsTable({
       statusTag: lead.statusType?.tag ?? "",
       sales_executive: lead.assignedTo?.user_name ?? "",
       assignedToId: lead.assignedTo?.id ?? "",
+      isDraft: lead.is_draft === true,
       accountId: lead.account?.id ?? lead.account_id ?? 0,
       priority: lead.priority ?? "",
       servicing: "",

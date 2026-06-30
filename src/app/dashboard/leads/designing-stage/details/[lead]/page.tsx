@@ -45,7 +45,10 @@ import {
   FolderOpen,
   LockOpen,
   Lock,
+  Zap,
 } from "lucide-react";
+
+import FastProductionDetailsModal from "@/components/sales-executive/Lead/fast-production-details-modal";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import {
   AlertDialog,
@@ -173,6 +176,7 @@ export default function DesigningStageLead() {
   const accountId = searchParams.get("accountId");
   const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
   const [openCancelFastProduction, setOpenCancelFastProduction] = useState(false);
+  const [fastProductionDetailsOpen, setFastProductionDetailsOpen] = useState(false);
   const revokeFastProductionMutation = useRevokeFastProductionRequest();
 
   const handleCancelFastProduction = (remark: string) => {
@@ -724,6 +728,15 @@ export default function DesigningStageLead() {
                   Cancel Fast Production
                 </DropdownMenuItem>
               )}
+
+              {(lead?.is_fast_production === true || lead?.has_pending_fast_production_request === true) && (
+                <DropdownMenuItem
+                  onSelect={() => setFastProductionDetailsOpen(true)}
+                >
+                  <Zap className="h-4 w-4 mr-2 text-orange-500 fill-orange-500" />
+                  Fast Production Details
+                </DropdownMenuItem>
+              )}
               {canReassign && (
                 // Lead block handling added for DropdownMenu action
                 shouldDisableBlockedActions ? (
@@ -1079,6 +1092,12 @@ export default function DesigningStageLead() {
         onOpenChange={setOpenCancelFastProduction}
         onSubmit={handleCancelFastProduction}
         loading={revokeFastProductionMutation.isPending}
+      />
+
+      <FastProductionDetailsModal
+        open={fastProductionDetailsOpen}
+        onOpenChange={setFastProductionDetailsOpen}
+        leadId={leadIdNum}
       />
     </>
   );

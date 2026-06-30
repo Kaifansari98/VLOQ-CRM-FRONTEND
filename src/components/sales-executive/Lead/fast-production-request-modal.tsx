@@ -56,6 +56,21 @@ const optionalTrimmedText = (label: string, maxLength = MAX_TEXT_LENGTH) =>
     .max(maxLength, `${label} must be at most ${maxLength} characters`)
     .optional();
 
+const getTodayAtMidnight = () => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+};
+
+const parseInputDate = (value: string) => {
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return null;
+
+  const date = new Date(year, month - 1, day);
+  date.setHours(0, 0, 0, 0);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
 const getFormSchema = (isSmallOrder: boolean) => z.object({
   carcass_finish_category: z
     .array(z.string())
@@ -80,6 +95,20 @@ const getFormSchema = (isSmallOrder: boolean) => z.object({
   special_requirements: requiredTrimmedText(
     "Special / non-standard requirements",
   ),
+  tentative_order_login_date: z
+    .string()
+    .trim()
+    .min(1, "Tentative order login date is required")
+    .refine((val) => !isNaN(Date.parse(val)), {
+      message: "Invalid date format",
+    })
+    .refine((val) => {
+      const selectedDate = parseInputDate(val);
+      if (!selectedDate) return false;
+      return selectedDate >= getTodayAtMidnight();
+    }, {
+      message: "Tentative order login date cannot be a past date",
+    }),
   client_required_delivery_date: z
     .string()
     .trim()
@@ -156,6 +185,13 @@ const formatDateInputValue = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
+const getTomorrowDateInputValue = () => {
+  const tomorrow = new Date();
+  tomorrow.setHours(0, 0, 0, 0);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return formatDateInputValue(tomorrow);
+};
+
 const getEmptyFormValues = (): FormValues => ({
   carcass_finish_category: [],
   carcass_finish_description: "",
@@ -166,6 +202,7 @@ const getEmptyFormValues = (): FormValues => ({
   hardware_selection: "",
   accessory_selection: "",
   special_requirements: "",
+  tentative_order_login_date: "",
   client_required_delivery_date: "",
   remarks: "",
   files: [],
@@ -458,6 +495,13 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
           deliveryDate = formatDateInputValue(new Date(req.client_required_delivery_date));
         }
 
+        let tentativeOrderLoginDate = "";
+        if (req.tentative_order_login_date) {
+          tentativeOrderLoginDate = formatDateInputValue(
+            new Date(req.tentative_order_login_date),
+          );
+        }
+
         drafts[req.instance_id] = {
           carcass_finish_category: carcassValues,
           carcass_finish_description: carcassFinish?.finish_description ?? "",
@@ -468,6 +512,7 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
           hardware_selection: req.hardware_selection ?? "",
           accessory_selection: req.accessory_selection ?? "",
           special_requirements: req.special_requirements ?? "",
+          tentative_order_login_date: tentativeOrderLoginDate,
           client_required_delivery_date: deliveryDate,
           remarks: req.remarks ?? "",
           files: [],
@@ -542,19 +587,41 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
     return maxDays > 0 ? maxDays : null;
   }, [applicableFastProductionRules, currentInstance]);
 
+  const tentativeOrderLoginDateValue = form.watch("tentative_order_login_date");
+  const tentativeOrderLoginMinDate = React.useMemo(
+    () => formatDateInputValue(getTodayAtMidnight()),
+    [],
+  );
+
   const clientRequiredDeliveryMinDate = React.useMemo(() => {
     if (minFastProductionDays == null) return undefined;
-    const date = new Date();
-    date.setHours(0, 0, 0, 0);
-    date.setDate(date.getDate() + minFastProductionDays + 1);
+
+    const date = getTodayAtMidnight();
+    let additionalDaysFromTentative = 0;
+
+    if (tentativeOrderLoginDateValue) {
+      const tentativeDate = parseInputDate(tentativeOrderLoginDateValue);
+      if (tentativeDate) {
+        const diffInMs = tentativeDate.getTime() - date.getTime();
+        const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+        additionalDaysFromTentative = Math.max(diffInDays + 1, 0);
+      }
+    }
+
+    date.setDate(
+      date.getDate() + minFastProductionDays + 1 + additionalDaysFromTentative,
+    );
+
     return formatDateInputValue(date);
-  }, [minFastProductionDays]);
+  }, [minFastProductionDays, tentativeOrderLoginDateValue]);
 
   const clientRequiredDeliveryDisabledReason =
     selectedCarcassIds.length === 0
       ? "Select carcass first to enable delivery date."
       : !currentInstance
         ? "Select an instance first to enable delivery date."
+      : !tentativeOrderLoginDateValue
+        ? "Select tentative order login date first to enable delivery date."
       : minFastProductionDays == null
         ? "No fast production timeline is available for the selected carcass / shutter combination."
         : undefined;
@@ -577,12 +644,21 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
 
   React.useEffect(() => {
     if (
-      (selectedCarcassIds.length === 0 || minFastProductionDays == null) &&
+      (
+        selectedCarcassIds.length === 0 ||
+        minFastProductionDays == null ||
+        !tentativeOrderLoginDateValue
+      ) &&
       form.getValues("client_required_delivery_date")
     ) {
       form.setValue("client_required_delivery_date", "", { shouldValidate: true });
     }
-  }, [form, minFastProductionDays, selectedCarcassIds.length]);
+  }, [
+    form,
+    minFastProductionDays,
+    selectedCarcassIds.length,
+    tentativeOrderLoginDateValue,
+  ]);
 
   React.useEffect(() => {
     const currentDate = form.getValues("client_required_delivery_date");
@@ -649,6 +725,7 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
         hardwareSelection: values.hardware_selection,
         accessorySelection: values.accessory_selection,
         specialRequirements: values.special_requirements,
+        tentativeOrderLoginDate: values.tentative_order_login_date,
         clientRequiredDeliveryDate: values.client_required_delivery_date,
         remarks: values.remarks,
         termsVersion: "v1",
@@ -1006,27 +1083,50 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="client_required_delivery_date"
-                  render={({ field }) => (
-                    <FormItem className="w-full">
-                      <FormLabel className="text-sm">
-                        Client Required Delivery Date {requiredMark}
-                      </FormLabel>
-                      <FormControl>
-                        <CustomeDatePicker
-                          value={field.value}
-                          onChange={field.onChange}
-                          restriction="futureOnly"
-                          minDate={clientRequiredDeliveryMinDate}
-                          disabledReason={clientRequiredDeliveryDisabledReason}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="tentative_order_login_date"
+                    render={({ field }) => (
+                      <FormItem className="w-full">
+                        <FormLabel className="text-sm">
+                          Tentative Order Login Date {requiredMark}
+                        </FormLabel>
+                        <FormControl>
+                          <CustomeDatePicker
+                            value={field.value}
+                            onChange={field.onChange}
+                            restriction="futureOnly"
+                            minDate={tentativeOrderLoginMinDate}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="client_required_delivery_date"
+                    render={({ field }) => (
+                      <FormItem className="w-full">
+                        <FormLabel className="text-sm">
+                          Client Required Delivery Date {requiredMark}
+                        </FormLabel>
+                        <FormControl>
+                          <CustomeDatePicker
+                            value={field.value}
+                            onChange={field.onChange}
+                            restriction="futureOnly"
+                            minDate={clientRequiredDeliveryMinDate}
+                            disabledReason={clientRequiredDeliveryDisabledReason}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                 <FormField
                   control={form.control}

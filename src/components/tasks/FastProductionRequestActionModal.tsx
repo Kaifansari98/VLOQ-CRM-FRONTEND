@@ -51,6 +51,19 @@ const formatDateStr = (dateStr?: string) => {
   }
 };
 
+const getTodayAtMidnight = () => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+};
+
+const toDateInputValue = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 const getFinish = (finishes: any[], component: "CARCASS" | "SHUTTER" | "HANDLE") => {
   const item = finishes?.find((f) => f.component === component);
   return {
@@ -125,7 +138,33 @@ export default function FastProductionRequestActionModal({
     open && isFactoryUser
   );
   const fastProductionDetails = fastProductionDetailsResponse?.data || [];
-  console.log("fastproductiondetails==>", fastProductionDetails)
+
+  const minProductionTargetDate = React.useMemo(() => {
+    const baseDate = getTodayAtMidnight();
+
+    const tentativeDates = fastProductionDetails
+      .map((detail: any) => {
+        if (!detail?.tentative_order_login_date) return null;
+        const parsed = new Date(detail.tentative_order_login_date);
+        if (Number.isNaN(parsed.getTime())) return null;
+        parsed.setHours(0, 0, 0, 0);
+        return parsed;
+      })
+      .filter((date: Date | null): date is Date => date !== null);
+
+    if (tentativeDates.length > 0) {
+      const latestTentativeDate = new Date(
+        Math.max(...tentativeDates.map((date) => date.getTime())),
+      );
+
+      if (latestTentativeDate > baseDate) {
+        baseDate.setTime(latestTentativeDate.getTime());
+      }
+    }
+
+    baseDate.setDate(baseDate.getDate() + 10);
+    return toDateInputValue(baseDate);
+  }, [fastProductionDetails]);
 
   useEffect(() => {
     if (open) {
@@ -622,9 +661,7 @@ export default function FastProductionRequestActionModal({
                       value={productionTargetDate}
                       onChange={setProductionTargetDate}
                       restriction="futureOnly"
-                      minDate={new Date(
-                        Date.now() + 10 * 24 * 60 * 60 * 1000,
-                      ).toISOString()}
+                      minDate={minProductionTargetDate}
                     />
                   </div>
                 </>
