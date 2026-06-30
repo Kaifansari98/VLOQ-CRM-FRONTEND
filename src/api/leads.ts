@@ -251,6 +251,7 @@ export interface CreateFastProductionRequestPayload {
   hardwareSelection: string;
   accessorySelection: string;
   specialRequirements: string;
+  tentativeOrderLoginDate: string;
   clientRequiredDeliveryDate: string;
   remarks?: string;
   termsVersion?: string;
@@ -457,6 +458,10 @@ export const createFastProductionRequest = async (
   formData.append("accessory_selection", payload.accessorySelection);
   formData.append("special_requirements", payload.specialRequirements);
   formData.append(
+    "tentative_order_login_date",
+    payload.tentativeOrderLoginDate,
+  );
+  formData.append(
     "client_required_delivery_date",
     payload.clientRequiredDeliveryDate,
   );
@@ -580,6 +585,7 @@ export const getFastProductionDetailsForLead = async ({
       id: number;
       lead_id: number;
       instance_id: number;
+      tentative_order_login_date: string;
       client_required_delivery_date: string;
       status: string;
       instance?: {
@@ -1462,4 +1468,3 @@ export const unshortenUrl = async (url: string): Promise<string> => {
   );
   return data.resolvedUrl;
 };
-

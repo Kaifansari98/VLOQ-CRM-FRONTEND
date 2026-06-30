@@ -16,6 +16,17 @@ import { Calendar, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import DocumentCard from "@/components/utils/documentCard";
 import CustomeDatePicker from "@/components/date-picker";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Props {
   open: boolean;
@@ -48,36 +59,32 @@ const getFinish = (finishes: any[], component: "CARCASS" | "SHUTTER" | "HANDLE")
   };
 };
 
-const renderListWithBlackDots = (text: string | null | undefined, isCategory: boolean = false) => {
-  if (!text || text === "-") return "-";
+const renderSimpleList = (text: string | null | undefined, isCategory: boolean = false) => {
+  if (!text || text === "-") return <span className="text-sm text-muted-foreground">-</span>;
   
   if (isCategory) {
-    // For materials/categories, render them side-by-side joined by commas
-    const joinedText = text.split(/[,\n]+/).map(l => l.trim()).filter(l => l.length > 0).join(', ');
-    if (!joinedText) return "-";
+    const items = text.split(/[,\n]+/).map(l => l.trim()).filter(l => l.length > 0);
+    if (items.length === 0) return <span className="text-sm text-muted-foreground">-</span>;
     return (
-      <ul className="space-y-1.5 mt-1.5">
-        <li className="flex items-start gap-2.5">
-          <div className="h-1.5 w-1.5 rounded-full bg-foreground/80 shrink-0 mt-1.5" />
-          <span className="text-sm font-bold text-foreground leading-relaxed">{joinedText}</span>
-        </li>
-      </ul>
+      <div className="flex flex-wrap gap-2">
+        {items.map((item, idx) => (
+          <span key={idx} className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-muted/50 border border-border/50 text-foreground">
+            {item}
+          </span>
+        ))}
+      </div>
     );
   }
 
-  // For regular text (e.g. descriptions), split by newline
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   
-  if (lines.length === 0) return "-";
+  if (lines.length === 0) return <span className="text-sm text-muted-foreground">-</span>;
   return (
-    <ul className="space-y-1.5">
+    <div className="space-y-1 mt-1">
       {lines.map((line, idx) => (
-        <li key={idx} className="flex items-start gap-2.5">
-          <div className="h-1.5 w-1.5 rounded-full bg-foreground/80 shrink-0 mt-1.5" />
-          <span className="text-sm text-muted-foreground leading-relaxed">{line}</span>
-        </li>
+        <p key={idx} className="text-sm text-muted-foreground leading-relaxed">{line}</p>
       ))}
-    </ul>
+    </div>
   );
 };
 
@@ -91,6 +98,7 @@ export default function FastProductionRequestActionModal({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [activeRequestIdx, setActiveRequestIdx] = useState(0);
   const [productionTargetDate, setProductionTargetDate] = useState<string | undefined>();
+  const [acceptRequestedDates, setAcceptRequestedDates] = useState(false);
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -117,6 +125,7 @@ export default function FastProductionRequestActionModal({
     open && isFactoryUser
   );
   const fastProductionDetails = fastProductionDetailsResponse?.data || [];
+  console.log("fastproductiondetails==>", fastProductionDetails)
 
   useEffect(() => {
     if (open) {
@@ -124,6 +133,7 @@ export default function FastProductionRequestActionModal({
       setShowRejectForm(false);
       setRemark("");
       setProductionTargetDate(undefined);
+      setAcceptRequestedDates(false);
     }
   }, [open]);
 
@@ -131,6 +141,7 @@ export default function FastProductionRequestActionModal({
     setShowRejectForm(false);
     setRemark("");
     setProductionTargetDate(undefined);
+    setAcceptRequestedDates(false);
     setConfirmOpen(false);
   };
 
@@ -151,12 +162,35 @@ export default function FastProductionRequestActionModal({
       return;
     }
 
-    if (action === "approve" && !productionTargetDate) {
+    if (action === "approve" && isFactoryUser && !acceptRequestedDates && !productionTargetDate) {
       toastManager.add({
-        title: "Production target date is required for approval",
+        title: "Production target date is required if you do not accept requested dates.",
         type: "error",
       });
       return;
+    }
+
+    // Modal can be closed now since validation passed
+    if (action === "approve") {
+      setConfirmOpen(false);
+    }
+
+    let finalTargetDate = productionTargetDate;
+    if (action === "approve" && isFactoryUser && acceptRequestedDates) {
+      if (fastProductionDetails.length > 0) {
+        const dates = fastProductionDetails
+          .map((d: any) => new Date(d.client_required_delivery_date).getTime())
+          .filter((t: number) => !isNaN(t));
+        
+        if (dates.length > 0) {
+          const maxDate = new Date(Math.max(...dates));
+          // Adjust for local timezone by creating YYYY-MM-DD from local parts
+          const year = maxDate.getFullYear();
+          const month = String(maxDate.getMonth() + 1).padStart(2, '0');
+          const day = String(maxDate.getDate()).padStart(2, '0');
+          finalTargetDate = `${year}-${month}-${day}`;
+        }
+      }
     }
 
     actionMutation.mutate(
@@ -167,7 +201,7 @@ export default function FastProductionRequestActionModal({
           action,
           acted_by: userId,
           remark: remark.trim() || null,
-          production_target_date: productionTargetDate || null,
+          production_target_date: finalTargetDate || null,
         },
       },
       {
@@ -215,7 +249,6 @@ export default function FastProductionRequestActionModal({
   };
 
   const handleApprove = () => {
-    setConfirmOpen(false);
     submitAction("approve");
   };
 
@@ -232,14 +265,14 @@ export default function FastProductionRequestActionModal({
           if (!nextOpen) resetState();
         }}
         title="Fast Production Request"
-        description="Confirm approval, or reject this fast production request with a reason."
+        description="Review the request details below to approve or reject."
         size="xl"
       >
         <div className="flex flex-col h-full">
           <div className="flex-1 px-6 py-6 space-y-6">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-orange-500 border-t-transparent" />
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-foreground border-t-transparent" />
                 <p className="mt-4 text-sm font-medium">Fetching request details...</p>
               </div>
             ) : requests.length === 0 ? (
@@ -264,7 +297,7 @@ export default function FastProductionRequestActionModal({
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap gap-2">
                       {requests.map((req: any, idx: number) => {
                         const isActive = idx === activeRequestIdx;
                         return (
@@ -273,18 +306,18 @@ export default function FastProductionRequestActionModal({
                             type="button"
                             onClick={() => setActiveRequestIdx(idx)}
                             className={cn(
-                              "rounded-2xl border px-4 py-3 text-left transition-all",
+                              "rounded-md border px-4 py-2 text-left transition-all",
                               isActive
-                                ? "border-orange-500 bg-orange-50 shadow-sm dark:border-orange-400 dark:bg-orange-950/30"
-                                : "border-border bg-background hover:border-orange-300 hover:bg-orange-50/60 dark:hover:border-orange-500/50 dark:hover:bg-orange-950/20",
+                                ? "border-foreground bg-foreground/5 shadow-sm"
+                                : "border-border bg-background hover:border-foreground/30 hover:bg-muted/50",
                             )}
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div>
-                                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                                   Instance {idx + 1}
                                 </p>
-                                <p className="mt-1 text-sm font-semibold text-foreground">
+                                <p className="text-sm font-semibold text-foreground">
                                   {req.instance?.title || `Instance ${idx + 1}`}
                                 </p>
                               </div>
@@ -294,15 +327,6 @@ export default function FastProductionRequestActionModal({
                       })}
                     </div>
                   </div>
-                ) : requests.length === 1 ? (
-                  <div className="rounded-2xl border border-orange-200 bg-orange-50/70 px-4 py-3 dark:border-orange-900/50 dark:bg-orange-950/20">
-                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                      Instance
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-foreground">
-                      {requests[0].instance?.title || "Instance 1"}
-                    </p>
-                  </div>
                 ) : null}
 
                 {/* Active Request Details Panel */}
@@ -311,108 +335,129 @@ export default function FastProductionRequestActionModal({
 
                     {/* Detailed Info List */}
                     <div className="space-y-4">
-                      {/* Carcass Finish */}
-                      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5">
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-2">
+                      
+                      {/* Date */}
+                      <div className="flex flex-col gap-2">
+                        <p className="text-sm font-semibold capitalize text-foreground">
+                          Required Delivery Date
+                        </p>
+                        <div className="flex items-center gap-4 rounded-xl border border-border/60 bg-card p-4">
+                          <div className="rounded-md bg-muted p-2.5 text-foreground shrink-0">
+                            <Calendar className="h-5 w-5" />
+                          </div>
+                          <div className="flex flex-col justify-center">
+                            <p className="text-sm font-bold text-foreground mt-0.5">
+                              {formatDateStr(activeRequest.client_required_delivery_date)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Finishes List (1 per row) */}
+                      <div className="flex flex-col gap-5">
+                        {/* Carcass Finish */}
+                        <div className="flex flex-col gap-2">
+                          <p className="text-sm font-semibold capitalize text-foreground">
                             Carcass Finish
                           </p>
-                          {renderListWithBlackDots(getFinish(activeRequest.finishes, "CARCASS").category, true)}
+                          <div className="flex flex-col gap-3 rounded-xl border border-border/60 bg-card p-4">
+                            <div>
+                              {renderSimpleList(getFinish(activeRequest.finishes, "CARCASS").category, true)}
+                            </div>
+                            {getFinish(activeRequest.finishes, "CARCASS").description && getFinish(activeRequest.finishes, "CARCASS").description !== "-" && (
+                              <div className="border-t border-border/40 pt-3">
+                                {renderSimpleList(getFinish(activeRequest.finishes, "CARCASS").description)}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div className="border-t border-border pt-3 mt-1">
-                          {renderListWithBlackDots(getFinish(activeRequest.finishes, "CARCASS").description)}
-                        </div>
-                      </div>
 
-                      {/* Shutter Finish */}
-                      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5">
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-2">
+                        {/* Shutter Finish */}
+                        <div className="flex flex-col gap-2">
+                          <p className="text-sm font-semibold capitalize text-foreground">
                             Shutter Finish
                           </p>
-                          {renderListWithBlackDots(getFinish(activeRequest.finishes, "SHUTTER").category, true)}
+                          <div className="flex flex-col gap-3 rounded-xl border border-border/60 bg-card p-4">
+                            <div>
+                              {renderSimpleList(getFinish(activeRequest.finishes, "SHUTTER").category, true)}
+                            </div>
+                            {getFinish(activeRequest.finishes, "SHUTTER").description && getFinish(activeRequest.finishes, "SHUTTER").description !== "-" && (
+                              <div className="border-t border-border/40 pt-3">
+                                {renderSimpleList(getFinish(activeRequest.finishes, "SHUTTER").description)}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div className="border-t border-border pt-3 mt-1">
-                          {renderListWithBlackDots(getFinish(activeRequest.finishes, "SHUTTER").description)}
-                        </div>
-                      </div>
 
-                      {/* Handles Finish */}
-                      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5">
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-2">
+                        {/* Handles Finish */}
+                        <div className="flex flex-col gap-2">
+                          <p className="text-sm font-semibold capitalize text-foreground">
                             Handles Finish
                           </p>
-                          {renderListWithBlackDots(getFinish(activeRequest.finishes, "HANDLE").category, true)}
-                        </div>
-                        <div className="border-t border-border pt-3 mt-1">
-                          {renderListWithBlackDots(getFinish(activeRequest.finishes, "HANDLE").description)}
-                        </div>
-                      </div>
-
-                      {/* Hardware Selection */}
-                      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                          Hardware Selection
-                        </p>
-                        <div>
-                          {renderListWithBlackDots(activeRequest.hardware_selection)}
+                          <div className="flex flex-col gap-3 rounded-xl border border-border/60 bg-card p-4">
+                            <div>
+                              {renderSimpleList(getFinish(activeRequest.finishes, "HANDLE").category, true)}
+                            </div>
+                            {getFinish(activeRequest.finishes, "HANDLE").description && getFinish(activeRequest.finishes, "HANDLE").description !== "-" && (
+                              <div className="border-t border-border/40 pt-3">
+                                {renderSimpleList(getFinish(activeRequest.finishes, "HANDLE").description)}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
 
-                      {/* Accessory Selection */}
-                      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                          Accessory Selection
-                        </p>
-                        <div>
-                          {renderListWithBlackDots(activeRequest.accessory_selection)}
+                      {/* Selections List (1 per row) */}
+                      <div className="flex flex-col gap-5">
+                        {/* Hardware Selection */}
+                        <div className="flex flex-col gap-2">
+                          <p className="text-sm font-semibold capitalize text-foreground">
+                            Hardware Selection
+                          </p>
+                          <div className="rounded-xl border border-border/60 bg-card p-4">
+                            {renderSimpleList(activeRequest.hardware_selection)}
+                          </div>
+                        </div>
+
+                        {/* Accessory Selection */}
+                        <div className="flex flex-col gap-2">
+                          <p className="text-sm font-semibold capitalize text-foreground">
+                            Accessory Selection
+                          </p>
+                          <div className="rounded-xl border border-border/60 bg-card p-4">
+                            {renderSimpleList(activeRequest.accessory_selection)}
+                          </div>
                         </div>
                       </div>
 
                       {/* Special Requirements */}
-                      <div className="flex flex-col gap-3 rounded-2xl border border-orange-100 bg-orange-50/20 p-5 dark:border-orange-950/30">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-600 dark:text-orange-400">
+                      <div className="flex flex-col gap-2">
+                        <p className="text-sm font-semibold capitalize text-foreground">
                           Special Requirements
                         </p>
-                        <div>
-                          {renderListWithBlackDots(activeRequest.special_requirements)}
+                        <div className="rounded-xl border border-dashed border-foreground/20 bg-muted/20 p-4">
+                          {renderSimpleList(activeRequest.special_requirements)}
                         </div>
                       </div>
 
                       {/* Remarks */}
                       {activeRequest.remarks ? (
-                        <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5">
-                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                        <div className="flex flex-col gap-2">
+                          <p className="text-sm font-semibold capitalize text-foreground">
                             Remarks
                           </p>
-                          <div>
-                            {renderListWithBlackDots(activeRequest.remarks)}
+                          <div className="rounded-xl border border-border/60 bg-card p-4">
+                            {renderSimpleList(activeRequest.remarks)}
                           </div>
                         </div>
                       ) : null}
 
-                      {/* Date */}
-                      <div className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5">
-                        <div className="rounded-xl bg-orange-100 dark:bg-orange-950/50 p-2.5 text-orange-600 dark:text-orange-400 shrink-0">
-                          <Calendar className="h-5 w-5" />
-                        </div>
-                        <div className="flex flex-col justify-center">
-                          <p className="text-xs font-medium text-muted-foreground">
-                            Required Delivery Date
-                          </p>
-                          <p className="text-sm font-bold text-foreground mt-0.5">
-                            {formatDateStr(activeRequest.client_required_delivery_date)}
-                          </p>
-                        </div>
-                      </div>
-
                       {/* Attachments */}
-                      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                      <div className="flex flex-col gap-2">
+                        <p className="text-sm font-semibold capitalize text-foreground">
                           Attachments
                         </p>
-                        <div>
+                        <div className="rounded-xl border border-border/60 bg-card p-4">
                           {activeRequest.documents && activeRequest.documents.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
                               {activeRequest.documents.map((docMapping: any) => {
@@ -508,15 +553,15 @@ export default function FastProductionRequestActionModal({
         </div>
       </BaseModal>
 
-      <BaseModal 
-        open={confirmOpen} 
-        onOpenChange={setConfirmOpen}
-        title="Approve Fast Production Request?"
-        description="This will record your approval and complete your task. The lead will be marked as fast production only when the last required approver approves."
-        size="lg"
-      >
-        <div className="flex flex-col p-6 pt-2 h-full">
-          {isFactoryUser && (
+      {isFactoryUser ? (
+        <BaseModal 
+          open={confirmOpen} 
+          onOpenChange={setConfirmOpen}
+          title="Approve Fast Production Request?"
+          description="Approving will complete your task. The lead will be marked as fast production once all approvers have approved."
+          size="lg"
+        >
+          <div className="flex flex-col p-6 pt-2 h-full">
             <div className="mb-6 text-left">
               {fastProductionDetails.length > 0 ? (
                 <>
@@ -535,7 +580,7 @@ export default function FastProductionRequestActionModal({
                         </div>
                         <div className="flex flex-col gap-0.5 mt-1 border-t pt-2">
                           <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">Target Delivery</span>
-                          <div className="flex items-center gap-1.5 text-sm font-semibold text-orange-600">
+                          <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
                             <Calendar className="h-3.5 w-3.5" />
                             {formatDateStr(detail.client_required_delivery_date)}
                           </div>
@@ -546,37 +591,80 @@ export default function FastProductionRequestActionModal({
                 </>
               ) : null}
             </div>
-          )}
 
-          <div className="mb-6 text-left">
-            <label className="text-sm font-medium">
-              Production Target Date <span className="text-destructive">*</span>
-            </label>
-            <div className="mt-1">
-              <CustomeDatePicker
-                value={productionTargetDate}
-                onChange={setProductionTargetDate}
-                restriction="futureOnly"
-                minDate={new Date(
-                  Date.now() + 10 * 24 * 60 * 60 * 1000,
-                ).toISOString()}
-              />
+            <div className="mb-6 text-left">
+              <div className="flex items-center space-x-2 mb-4">
+                <Checkbox 
+                  id="accept-dates" 
+                  checked={acceptRequestedDates}
+                  onCheckedChange={(checked) => {
+                    setAcceptRequestedDates(checked as boolean);
+                    if (checked) {
+                      setProductionTargetDate(undefined);
+                    }
+                  }}
+                />
+                <label
+                  htmlFor="accept-dates"
+                  className="text-sm font-medium leading-none cursor-pointer"
+                >
+                  Ready to approve with requested target dates
+                </label>
+              </div>
+
+              {!acceptRequestedDates && (
+                <>
+                  <label className="text-sm font-medium">
+                    Production Target Date <span className="text-destructive">*</span>
+                  </label>
+                  <div className="mt-1">
+                    <CustomeDatePicker
+                      value={productionTargetDate}
+                      onChange={setProductionTargetDate}
+                      restriction="futureOnly"
+                      minDate={new Date(
+                        Date.now() + 10 * 24 * 60 * 60 * 1000,
+                      ).toISOString()}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 mt-auto pt-4 border-t">
+              <Button variant="outline" onClick={() => setConfirmOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleApprove}
+                disabled={actionMutation.isPending || (!acceptRequestedDates && !productionTargetDate)}
+              >
+                {actionMutation.isPending ? "Processing..." : "Confirm"}
+              </Button>
             </div>
           </div>
-
-          <div className="flex justify-end gap-3 mt-auto pt-4 border-t">
-            <Button variant="outline" onClick={() => setConfirmOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleApprove}
-              disabled={actionMutation.isPending || !productionTargetDate}
-            >
-              {actionMutation.isPending ? "Processing..." : "Confirm"}
-            </Button>
-          </div>
-        </div>
-      </BaseModal>
+        </BaseModal>
+      ) : (
+        <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Approve Fast Production Request?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Approving will complete your task. The lead will be marked as fast production once all approvers have approved.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={actionMutation.isPending}>Cancel</AlertDialogCancel>
+              <Button
+                onClick={handleApprove}
+                disabled={actionMutation.isPending}
+              >
+                {actionMutation.isPending ? "Processing..." : "Confirm"}
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </>
   );
 }

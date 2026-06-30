@@ -78,6 +78,17 @@ interface MoveToOrderLoginModalProps {
   };
 }
 
+const formatDisplayDate = (value?: string | Date | null) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+};
+
 export default function MoveToOrderLoginModal({
   open,
   onOpenChange,
@@ -124,10 +135,37 @@ export default function MoveToOrderLoginModal({
     DEFAULT_MIN_DAYS;
   const isFastProductionLead =
     (leadStatusData as any)?.is_fast_production === true;
+  const fastProductionLeadRequiredDate = (leadStatusData as any)
+    ?.client_required_order_login_complition_date as string | undefined;
   const minClientRequiredDate = useMemo(
     () => format(addDays(new Date(), minDays), "yyyy-MM-dd"),
     [minDays],
   );
+  const todayDateLabel = useMemo(
+    () =>
+      new Date().toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      }),
+    [],
+  );
+  const fastProductionRequiredDateLabel = useMemo(
+    () => formatDisplayDate(fastProductionLeadRequiredDate),
+    [fastProductionLeadRequiredDate],
+  );
+  const shouldUpdateFastProductionDateToToday = useMemo(() => {
+    if (!fastProductionLeadRequiredDate) return false;
+
+    const requiredDate = new Date(fastProductionLeadRequiredDate);
+    if (Number.isNaN(requiredDate.getTime())) return false;
+
+    requiredDate.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return requiredDate < today;
+  }, [fastProductionLeadRequiredDate]);
   const schema = useMemo(
     () =>
       buildSchema(minClientRequiredDate, minDays, isFastProductionLead),
@@ -321,6 +359,29 @@ export default function MoveToOrderLoginModal({
                         </FormItem>
                       )}
                     />
+                  ) : null}
+
+                  {isFastProductionLead ? (
+                    <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm text-orange-900">
+                      {shouldUpdateFastProductionDateToToday &&
+                      fastProductionRequiredDateLabel ? (
+                        <p>
+                          Your LeadMaster client required delivery date was set
+                          to {` ${fastProductionRequiredDateLabel} `}and now
+                          it&apos;s going to get updated as {todayDateLabel}.
+                        </p>
+                      ) : fastProductionRequiredDateLabel ? (
+                        <p>
+                          LeadMaster client required delivery date:{" "}
+                          {fastProductionRequiredDateLabel}
+                        </p>
+                      ) : (
+                        <p>
+                          No LeadMaster client required delivery date is
+                          currently set for this fast production lead.
+                        </p>
+                      )}
+                    </div>
                   ) : null}
 
                   <div className="flex justify-end gap-2 pt-2">
