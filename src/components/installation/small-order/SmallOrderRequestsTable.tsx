@@ -35,6 +35,7 @@ import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 import CustomeTooltip from "@/components/custom-tooltip";
 import { toastManager } from "@/components/ui/toast";
+import BaseModal from "@/components/utils/baseModal";
 import { getErrorMessage } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -376,17 +377,14 @@ function SmallOrderRequestPreviewModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] w-[95vw] max-w-4xl flex-col overflow-hidden p-0">
-        <DialogHeader className="shrink-0 border-b bg-muted/30 px-6 py-4">
-          <DialogTitle className="text-left text-2xl font-semibold">
-            Partial Order Request
-          </DialogTitle>
-          <DialogDescription className="text-left text-sm text-muted-foreground">
-            Review the details submitted when this partial order request was created.
-          </DialogDescription>
-        </DialogHeader>
-
+    <BaseModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Partial Order Request"
+      description="Review the details submitted when this partial order request was created."
+      size="lg"
+    >
+      <div className="flex flex-col h-[calc(90vh-100px)]">
         <div className="flex-1 space-y-6 overflow-y-auto p-6">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="rounded-2xl border bg-background p-4">
@@ -489,7 +487,7 @@ function SmallOrderRequestPreviewModal({
           ) : null}
         </div>
 
-        <DialogFooter className="shrink-0 border-t px-6 py-4">
+        <div className="shrink-0 flex items-center justify-end gap-2 border-t px-6 py-4">
           {canMarkResolved ? (
             <Button
               variant="outline"
@@ -515,9 +513,9 @@ function SmallOrderRequestPreviewModal({
             <ExternalLink className="mr-2 h-4 w-4" />
             Details Page
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </div>
+    </BaseModal>
   );
 }
 

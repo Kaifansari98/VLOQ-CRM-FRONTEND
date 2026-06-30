@@ -175,6 +175,24 @@ export default function FastProductionRequestActionModal({
       setConfirmOpen(false);
     }
 
+    let finalTargetDate = productionTargetDate;
+    if (action === "approve" && isFactoryUser && acceptRequestedDates) {
+      if (fastProductionDetails.length > 0) {
+        const dates = fastProductionDetails
+          .map((d: any) => new Date(d.client_required_delivery_date).getTime())
+          .filter((t: number) => !isNaN(t));
+        
+        if (dates.length > 0) {
+          const maxDate = new Date(Math.max(...dates));
+          // Adjust for local timezone by creating YYYY-MM-DD from local parts
+          const year = maxDate.getFullYear();
+          const month = String(maxDate.getMonth() + 1).padStart(2, '0');
+          const day = String(maxDate.getDate()).padStart(2, '0');
+          finalTargetDate = `${year}-${month}-${day}`;
+        }
+      }
+    }
+
     actionMutation.mutate(
       {
         leadId: data.leadId,
@@ -183,7 +201,7 @@ export default function FastProductionRequestActionModal({
           action,
           acted_by: userId,
           remark: remark.trim() || null,
-          production_target_date: productionTargetDate || null,
+          production_target_date: finalTargetDate || null,
         },
       },
       {
