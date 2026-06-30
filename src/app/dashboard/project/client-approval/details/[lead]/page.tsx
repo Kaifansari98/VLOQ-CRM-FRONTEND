@@ -509,7 +509,7 @@ export default function ClientApprovalLeadDetails() {
                 </DropdownMenuItem>
               )}
 
-              {lead?.is_fast_production === true && (
+              {(lead?.is_fast_production === true || lead?.has_pending_fast_production_request === true) && (
                 <DropdownMenuItem
                   onSelect={() => setFastProductionDetailsOpen(true)}
                 >
