@@ -128,6 +128,9 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   // ✅ 1. REDUX STATE
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
   );
@@ -705,51 +708,52 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 
         <div className="py-4 space-y-4">
           {/* PRODUCT INFORMATION */}
-          <SectionCard
-            title="Product Information"
-            action={
-              canEditStructures && !isKitchenType && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="w-auto">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="w-auto">
-                            <Button
-                              onClick={() => {
-                                if (shouldDisableBlockedActions) return;
-                                handleAddOpen();
-                              }}
-                              className={
-                                shouldDisableBlockedActions
-                                  ? "opacity-50 cursor-not-allowed"
-                                  : ""
-                              }
-                            >
-                              <Plus className="h-5 w-5 sm:h-4 sm:w-4 sm:mr-2" />
-                              <span className="hidden sm:inline">Add Furniture Structure</span>
-                            </Button>
-                          </div>
-                        </TooltipTrigger>
+          {!handlesLargeScaleProjects && (
+            <SectionCard
+              title="Product Information"
+              action={
+                canEditStructures && !isKitchenType && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="w-auto">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="w-auto">
+                              <Button
+                                onClick={() => {
+                                  if (shouldDisableBlockedActions) return;
+                                  handleAddOpen();
+                                }}
+                                className={
+                                  shouldDisableBlockedActions
+                                    ? "opacity-50 cursor-not-allowed"
+                                    : ""
+                                }
+                              >
+                                <Plus className="h-5 w-5 sm:h-4 sm:w-4 sm:mr-2" />
+                                <span className="hidden sm:inline">Add Furniture Structure</span>
+                              </Button>
+                            </div>
+                          </TooltipTrigger>
 
-                        {shouldDisableBlockedActions && (
-                          <TooltipContent>
-                            <p>{blockedTooltip}</p>
-                          </TooltipContent>
-                        )}
-                      </Tooltip>
-                    </div>
-                  </TooltipTrigger>
+                          {shouldDisableBlockedActions && (
+                            <TooltipContent>
+                              <p>{blockedTooltip}</p>
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      </div>
+                    </TooltipTrigger>
 
-                  {shouldDisableBlockedActions && (
-                    <TooltipContent>
-                      {blockedTooltip}
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-              )
-            }
-          >
+                    {shouldDisableBlockedActions && (
+                      <TooltipContent>
+                        {blockedTooltip}
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                )
+              }
+            >
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center w-full justify-between gap-3 items-start">
                 <InfoRow
@@ -921,7 +925,8 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                 </div>
               )}
             </div>
-          </SectionCard>
+            </SectionCard>
+          )}
 
           {/* CONTACT INFORMATION */}
           <SectionCard title="Contact Information">
