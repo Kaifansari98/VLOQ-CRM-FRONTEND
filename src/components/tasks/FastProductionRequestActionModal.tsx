@@ -18,6 +18,13 @@ import DocumentCard from "@/components/utils/documentCard";
 import CustomeDatePicker from "@/components/date-picker";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -301,18 +308,21 @@ export default function FastProductionRequestActionModal({
 
   return (
     <>
-      <BaseModal
+      <Dialog
         open={open}
         onOpenChange={(nextOpen) => {
           onOpenChange(nextOpen);
           if (!nextOpen) resetState();
         }}
-        title="Fast Production Request"
-        description="Review the request details below to approve or reject."
-        size="xl"
       >
-        <div className="flex flex-col h-full">
-          <div className="flex-1 px-6 py-6 space-y-6">
+        <DialogContent className="max-w-lg w-[95vw] md:max-w-2xl lg:max-w-4xl max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
+          <DialogHeader className="flex flex-row items-center gap-4 px-6 py-4 border-b bg-muted/30 shrink-0">
+            <div className="space-y-1 min-w-0 flex-1">
+              <DialogTitle className="text-base text-left font-semibold leading-normal">Fast Production Request</DialogTitle>
+              <DialogDescription className="text-left text-xs md:text-sm text-muted-foreground leading-snug">Review the request details below to approve or reject.</DialogDescription>
+            </div>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto min-h-0 px-6 py-6 space-y-6">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <div className="h-8 w-8 animate-spin rounded-full border-4 border-foreground border-t-transparent" />
@@ -532,7 +542,7 @@ export default function FastProductionRequestActionModal({
             )}
           </div>
 
-          <div className="shrink-0 border-t bg-muted/10 px-6 py-5 space-y-4">
+          <div className="shrink-0 border-t bg-background px-6 py-5 space-y-4 sticky bottom-0 z-10">
             {showRejectForm ? (
               <div className="space-y-2 animate-in slide-in-from-bottom-2 fade-in duration-200">
                 <p className="text-sm font-semibold text-foreground">Rejection Reason <span className="text-destructive">*</span></p>
@@ -593,19 +603,23 @@ export default function FastProductionRequestActionModal({
               )}
             </div>
           </div>
-        </div>
-      </BaseModal>
+        </DialogContent>
+      </Dialog>
 
       {isFactoryUser ? (
-        <BaseModal 
+        <Dialog 
           open={confirmOpen} 
           onOpenChange={setConfirmOpen}
-          title="Approve Fast Production Request?"
-          description="Approving will complete your task. The lead will be marked as fast production once all approvers have approved."
-          size="lg"
         >
-          <div className="flex flex-col p-6 pt-2 h-full">
-            <div className="mb-6 text-left">
+          <DialogContent className="max-w-lg w-[95vw] md:max-w-2xl lg:max-w-3xl max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
+            <DialogHeader className="flex flex-row items-center gap-4 px-6 py-4 border-b bg-muted/30 shrink-0">
+              <div className="space-y-1 min-w-0 flex-1">
+                <DialogTitle className="text-base text-left font-semibold leading-normal">Approve Fast Production Request?</DialogTitle>
+                <DialogDescription className="text-left text-xs md:text-sm text-muted-foreground leading-snug">Approving will complete your task. The lead will be marked as fast production once all approvers have approved.</DialogDescription>
+              </div>
+            </DialogHeader>
+            <div className="flex-1 overflow-y-auto min-h-0 px-6 py-4">
+              <div className="mb-6 text-left">
               {fastProductionDetails.length > 0 ? (
                 <>
                   <div className="flex items-center gap-2 mb-3">
@@ -672,7 +686,8 @@ export default function FastProductionRequestActionModal({
               )}
             </div>
 
-            <div className="flex justify-end gap-3 mt-auto pt-4 border-t">
+            </div>
+            <div className="shrink-0 border-t bg-background px-6 py-4 flex justify-end gap-3 sticky bottom-0 z-10">
               <Button variant="outline" onClick={() => setConfirmOpen(false)}>
                 Cancel
               </Button>
@@ -683,8 +698,8 @@ export default function FastProductionRequestActionModal({
                 {actionMutation.isPending ? "Processing..." : "Confirm"}
               </Button>
             </div>
-          </div>
-        </BaseModal>
+          </DialogContent>
+        </Dialog>
       ) : (
         <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
           <AlertDialogContent>
