@@ -928,6 +928,22 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
             </SectionCard>
           )}
 
+          {handlesLargeScaleProjects && (
+            <SectionCard
+              title="Bill of Quantity"
+              action={
+                <Button type="button" className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add BOQ Items
+                </Button>
+              }
+            >
+              <div className="text-sm text-muted-foreground">
+                No BOQ items added yet.
+              </div>
+            </SectionCard>
+          )}
+
           {/* CONTACT INFORMATION */}
           <SectionCard title="Contact Information">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

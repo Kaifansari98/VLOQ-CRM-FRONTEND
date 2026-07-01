@@ -134,6 +134,9 @@ export function NavMain({
 }) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
   const isCrmEnabled = useAppSelector(
     (state) => state.auth.user?.vendor?.is_crm_enabled !== false,
   );
@@ -195,9 +198,42 @@ export function NavMain({
     vendorFranchises,
   ]);
   const { isMobile, setOpenMobile } = useSidebar();
+  const enhancedMastersItems = React.useMemo(() => {
+    if (!mastersItems?.length) return mastersItems ?? [];
+    if (!handlesLargeScaleProjects) return mastersItems;
+
+    return mastersItems.map((section) => {
+      if (!section.items?.length) return section;
+
+      const userMasterIndex = section.items.findIndex(
+        (item) => item.title === "User Master",
+      );
+
+      if (userMasterIndex === -1) return section;
+      if (section.items.some((item) => item.title === "BOQ Items Master")) {
+        return section;
+      }
+
+      const nextItems = [...section.items];
+      nextItems.splice(userMasterIndex + 1, 0, {
+        title: "BOQ Items Master",
+        url: "/dashboard/masters-management/boq-items-master",
+      });
+
+      return {
+        ...section,
+        items: nextItems,
+      };
+    });
+  }, [handlesLargeScaleProjects, mastersItems]);
 
   const pathname = usePathname();
-  const allItems = [...items, ...(trackTraceItems ?? []),...(inventoryItems ?? []), ...(mastersItems ?? [])];
+  const allItems = [
+    ...items,
+    ...(trackTraceItems ?? []),
+    ...(inventoryItems ?? []),
+    ...(enhancedMastersItems ?? []),
+  ];
 
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
     const initial = new Set<string>();
@@ -219,7 +255,7 @@ export function NavMain({
       next.add(activeGroup);
       return next;
     });
-  }, [items, trackTraceItems, pathname]);
+  }, [allItems, pathname]);
 
   const getCountForItem = (showCount?: string) => {
     if (!leadStats?.data || !showCount) return undefined;
@@ -444,11 +480,11 @@ export function NavMain({
         </SidebarGroup>
       )}
 
-      {mastersItems && mastersItems.length > 0 && (
+      {enhancedMastersItems && enhancedMastersItems.length > 0 && (
         <SidebarGroup>
           <SidebarGroupLabel>Masters Management</SidebarGroupLabel>
           <SidebarMenu>
-            {mastersItems.map((item) => renderItem(item))}
+            {enhancedMastersItems.map((item) => renderItem(item))}
           </SidebarMenu>
         </SidebarGroup>
       )}
