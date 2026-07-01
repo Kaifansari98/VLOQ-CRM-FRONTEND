@@ -584,7 +584,7 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
                   {/* Image Files */}
                   {filteredPptImages?.map((doc: any, index: number) => (
                     <div key={doc.id} className="space-y-2 min-w-0">
@@ -674,7 +674,7 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
                   {filteredPythaDocuments.map((doc: any) => (
                     <div key={doc.id} className="space-y-2 min-w-0">
                       {hasMultipleInstances && (
@@ -808,7 +808,7 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
                   {ismDocs.map((doc: any) => (
                     <div key={doc.id} className="min-w-0">
                       <DocumentCard
@@ -883,7 +883,7 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
                   {finalDocs.map((doc: any) => (
                     <DocumentCard
                       key={doc.id}
