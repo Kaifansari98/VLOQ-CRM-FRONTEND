@@ -224,9 +224,9 @@ export function getDraftLeadsColumns(): ColumnDef<DraftLeadRow>[] {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Badge variant="secondary" className="text-xs px-2 cursor-default flex flex-col items-start gap-0">
-                        <span>{instanceTitle ?? name}</span>
+                        <span className="capitalize">{instanceTitle ?? name}</span>
                         {instanceTitle && instanceTitle !== name && (
-                          <span className="opacity-60 text-[10px] leading-tight">{name}</span>
+                          <span className="opacity-60 text-[10px] leading-tight capitalize">{name}</span>
                         )}
                       </Badge>
                     </TooltipTrigger>
@@ -248,7 +248,7 @@ export function getDraftLeadsColumns(): ColumnDef<DraftLeadRow>[] {
                   </Tooltip>
                 </TooltipProvider>
               ) : (
-                <Badge key={index} variant="secondary" className="text-xs px-2">
+                <Badge key={index} variant="secondary" className="text-xs px-2 capitalize">
                   {name}
                 </Badge>
               ),
