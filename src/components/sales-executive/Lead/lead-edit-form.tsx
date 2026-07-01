@@ -29,6 +29,7 @@ import {
   getLeadById,
   EditLeadPayload,
   updateLeadProductType,
+  clearLeadProductStructures,
   deleteLeadProductStructureInstance,
   createLeadProductStructureInstance,
   getLeadProductStructureInstances,
@@ -222,7 +223,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
 
   const handleAddressChange = async (value: string, onChangeField: (v: string) => void) => {
     onChangeField(value);
-    
+
     const isUrl = /^(https?:\/\/[^\s]+)/i.test(value.trim());
     if (!isUrl) {
       form.clearErrors("site_address");
@@ -419,6 +420,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
   const watchedValues = form.watch();
 
   const shouldShowFurnitureFields = isDraftLead || leadStage === "open" || leadStage === "";
+  const shouldShowSiteTypeField = isDraftLead || leadStage === "open" || leadStage === "";
 
   // Product type & structure hooks
   const { data: productStructures, isLoading: isStructuresLoading } =
@@ -605,8 +607,8 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
         // Format date for input (YYYY-MM-DD)
         const formattedDate = lead.initial_site_measurement_date
           ? new Date(lead.initial_site_measurement_date)
-              .toISOString()
-              .split("T")[0]
+            .toISOString()
+            .split("T")[0]
           : "";
 
         // Pre-fill product type
@@ -838,14 +840,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
 
       // 2. Structure instances full replace
       if (structuresChanged) {
-        for (const instanceId of existingStructureInstanceIds) {
-          await deleteLeadProductStructureInstance(
-            vendorId!,
-            leadData.id,
-            instanceId,
-            createdBy!,
-          );
-        }
+        await clearLeadProductStructures(vendorId!, leadData.id, createdBy!);
 
         const newInstances = buildStructureInstancesPayload();
         for (const instance of newInstances) {
@@ -899,7 +894,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
         type: "success",
       });
       onClose();
-      
+
       if (shouldConvertDraft) {
         router.push("/dashboard/leads/leadstable");
       }
@@ -1025,11 +1020,12 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
         </div>
 
         {/* Site Type & Source */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
-          <FormField
-            control={form.control}
-            name="site_type_id"
-            render={({ field }) => {
+        <div className={`grid grid-cols-1 ${shouldShowSiteTypeField ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-3 items-center`}>
+          {shouldShowSiteTypeField && (
+            <FormField
+              control={form.control}
+              name="site_type_id"
+              render={({ field }) => {
               const { data: siteTypes, isLoading } = useSiteTypes();
 
               const pickerData =
@@ -1062,6 +1058,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
               );
             }}
           />
+          )}
 
           <FormField
             control={form.control}
@@ -1195,162 +1192,161 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
         {shouldShowFurnitureFields && (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
-          <FormField
-            control={form.control}
-            name="product_types"
-            render={({ field }) => {
-              const pickerData =
-                productTypes?.data?.map((p: any) => ({
-                  id: p.id,
-                  label: p.type,
-                })) || [];
+              <FormField
+                control={form.control}
+                name="product_types"
+                render={({ field }) => {
+                  const pickerData =
+                    productTypes?.data?.map((p: any) => ({
+                      id: p.id,
+                      label: p.type,
+                    })) || [];
 
-              return (
-                <FormItem>
-                  <FormLabel className="text-sm">Furniture Type</FormLabel>
-                  {isProductTypesLoading ? (
-                    <p className="text-xs text-muted-foreground">Loading...</p>
-                  ) : (
-                    <AssignToPicker
-                      data={pickerData}
-                      value={
-                        field.value?.length ? Number(field.value[0]) : undefined
-                      }
-                      onChange={(selectedId) => {
-                        field.onChange(selectedId ? [String(selectedId)] : []);
-                        // Clear structures when type changes
-                        form.setValue("product_structures", [], {
-                          shouldValidate: true,
-                        });
-                      }}
-                      placeholder="Search furniture type..."
-                    />
-                  )}
-                  <FormMessage />
-                </FormItem>
-              );
-            }}
-          />
-
-          <FormField
-            control={form.control}
-            name="product_structures"
-            render={({ field }) => {
-              const selectedOptions = (field.value || [])
-                .filter((id) =>
-                  structureOptions.some((opt) => opt.value === id),
-                )
-                .map((id) => {
-                  const option = structureOptions.find(
-                    (opt) => opt.value === id,
-                  );
-                  return option || { value: id, label: id };
-                });
-              const shouldShowMaxTooltip =
-                showMaxStructureTooltip && hasSelectedFurnitureType;
-              const tooltipMessage = !hasSelectedFurnitureType
-                ? "Select a furniture type first."
-                : isKitchenStructureSingleSelect && shouldShowMaxTooltip
-                  ? "Kitchen allows only 1 furniture structure."
-                : shouldShowMaxTooltip
-                  ? "Maximum limit is 10 per item."
-                  : "";
-
-              return (
-                <FormItem>
-                  <FormLabel className="text-sm">Furniture Structure</FormLabel>
-                  <FormControl>
-                    <Tooltip {...(shouldShowMaxTooltip ? { open: true } : {})}>
-                      <TooltipTrigger asChild>
-                        <div className="w-full">
-                          <MultipleSelector
-                            value={selectedOptions}
-                            onChange={(opts) => {
-                              field.onChange(
-                                opts.map((opt) => opt.value),
-                              );
-                            }}
-                            options={structureOptions}
-                            placeholder="Select furniture structures"
-                            disabled={
-                              isStructuresLoading || !hasSelectedFurnitureType
-                            }
-                            maxSelected={
-                              isKitchenStructureSingleSelect ? 1 : undefined
-                            }
-                            hidePlaceholderWhenSelected
-                            showSelectedOptionsInDropdown
-                            allowDuplicateSelections={
-                              allowDuplicatesForWardrobe
-                            }
-                            onMaxSelected={() => {
-                              if (!isKitchenStructureSingleSelect) return;
-                              setShowMaxStructureTooltip(true);
-                              if (maxStructureTooltipTimerRef.current) {
-                                window.clearTimeout(
-                                  maxStructureTooltipTimerRef.current,
-                                );
-                              }
-                              maxStructureTooltipTimerRef.current =
-                                window.setTimeout(() => {
-                                  setShowMaxStructureTooltip(false);
-                                }, 1500);
-                            }}
-                            maxSelectedPerOption={10}
-                            onMaxSelectedPerOption={() => {
-                              setShowMaxStructureTooltip(true);
-                              if (maxStructureTooltipTimerRef.current) {
-                                window.clearTimeout(
-                                  maxStructureTooltipTimerRef.current,
-                                );
-                              }
-                              maxStructureTooltipTimerRef.current =
-                                window.setTimeout(() => {
-                                  setShowMaxStructureTooltip(false);
-                                }, 1500);
-                            }}
-                          />
-                        </div>
-                      </TooltipTrigger>
-                      {tooltipMessage && (
-                        <TooltipContent side="top" sideOffset={6}>
-                          {tooltipMessage}
-                        </TooltipContent>
+                  return (
+                    <FormItem>
+                      <FormLabel className="text-sm">Furniture Type</FormLabel>
+                      {isProductTypesLoading ? (
+                        <p className="text-xs text-muted-foreground">Loading...</p>
+                      ) : (
+                        <AssignToPicker
+                          data={pickerData}
+                          value={
+                            field.value?.length ? Number(field.value[0]) : undefined
+                          }
+                          onChange={(selectedId) => {
+                            field.onChange(selectedId ? [String(selectedId)] : []);
+                            // Clear structures when type changes
+                            form.setValue("product_structures", [], {
+                              shouldValidate: true,
+                            });
+                          }}
+                          placeholder="Search furniture type..."
+                        />
                       )}
-                    </Tooltip>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              );
-            }}
-          />
-        </div>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
 
-        <StructureQuantityCards
-          items={structureQuantityItems}
-          className="mt-2"
-          onRemove={(removeIndex) => {
-            const current = form.getValues("product_structures") || [];
-            const next = current.filter((_, i) => i !== removeIndex);
-            form.setValue("product_structures", next, {
-              shouldValidate: true,
-            });
-          }}
-          onSave={(index, details) => {
-            setStructureInstanceDetails((prev) => {
-              const next = [...prev];
-              next[index] = details;
-              return next;
-            });
-          }}
-        />
+              <FormField
+                control={form.control}
+                name="product_structures"
+                render={({ field }) => {
+                  const selectedOptions = (field.value || [])
+                    .filter((id) =>
+                      structureOptions.some((opt) => opt.value === id),
+                    )
+                    .map((id) => {
+                      const option = structureOptions.find(
+                        (opt) => opt.value === id,
+                      );
+                      return option || { value: id, label: id };
+                    });
+                  const shouldShowMaxTooltip =
+                    showMaxStructureTooltip && hasSelectedFurnitureType;
+                  const tooltipMessage = !hasSelectedFurnitureType
+                    ? "Select a furniture type first."
+                    : isKitchenStructureSingleSelect && shouldShowMaxTooltip
+                      ? "Kitchen allows only 1 furniture structure."
+                      : shouldShowMaxTooltip
+                        ? "Maximum limit is 10 per item."
+                        : "";
+
+                  return (
+                    <FormItem>
+                      <FormLabel className="text-sm">Furniture Structure</FormLabel>
+                      <FormControl>
+                        <Tooltip {...(shouldShowMaxTooltip ? { open: true } : {})}>
+                          <TooltipTrigger asChild>
+                            <div className="w-full">
+                              <MultipleSelector
+                                value={selectedOptions}
+                                onChange={(opts) => {
+                                  field.onChange(
+                                    opts.map((opt) => opt.value),
+                                  );
+                                }}
+                                options={structureOptions}
+                                placeholder="Select furniture structures"
+                                disabled={
+                                  isStructuresLoading || !hasSelectedFurnitureType
+                                }
+                                maxSelected={
+                                  isKitchenStructureSingleSelect ? 1 : undefined
+                                }
+                                hidePlaceholderWhenSelected
+                                showSelectedOptionsInDropdown
+                                allowDuplicateSelections={
+                                  allowDuplicatesForWardrobe
+                                }
+                                onMaxSelected={() => {
+                                  if (!isKitchenStructureSingleSelect) return;
+                                  setShowMaxStructureTooltip(true);
+                                  if (maxStructureTooltipTimerRef.current) {
+                                    window.clearTimeout(
+                                      maxStructureTooltipTimerRef.current,
+                                    );
+                                  }
+                                  maxStructureTooltipTimerRef.current =
+                                    window.setTimeout(() => {
+                                      setShowMaxStructureTooltip(false);
+                                    }, 1500);
+                                }}
+                                maxSelectedPerOption={10}
+                                onMaxSelectedPerOption={() => {
+                                  setShowMaxStructureTooltip(true);
+                                  if (maxStructureTooltipTimerRef.current) {
+                                    window.clearTimeout(
+                                      maxStructureTooltipTimerRef.current,
+                                    );
+                                  }
+                                  maxStructureTooltipTimerRef.current =
+                                    window.setTimeout(() => {
+                                      setShowMaxStructureTooltip(false);
+                                    }, 1500);
+                                }}
+                              />
+                            </div>
+                          </TooltipTrigger>
+                          {tooltipMessage && (
+                            <TooltipContent side="top" sideOffset={6}>
+                              {tooltipMessage}
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+            </div>
+
+            <StructureQuantityCards
+              items={structureQuantityItems}
+              className="mt-2"
+              onRemove={(removeIndex) => {
+                const current = form.getValues("product_structures") || [];
+                const next = current.filter((_, i) => i !== removeIndex);
+                form.setValue("product_structures", next, {
+                  shouldValidate: true,
+                });
+              }}
+              onSave={(index, details) => {
+                setStructureInstanceDetails((prev) => {
+                  const next = [...prev];
+                  next[index] = details;
+                  return next;
+                });
+              }}
+            />
           </>
         )}
 
         <div
-          className={`grid grid-cols-1 gap-3 items-start ${
-            isCustomVendorFlow ? "sm:grid-cols-3" : "sm:grid-cols-2"
-          }`}
+          className={`grid grid-cols-1 gap-3 items-start ${isCustomVendorFlow ? "sm:grid-cols-3" : "sm:grid-cols-2"
+            }`}
         >
           {/* Architect Name */}
           <FormField
