@@ -117,15 +117,7 @@ const optionalArchitectPhoneField = z
 
 const optionalDateField = z
   .string()
-  .optional()
-  .refine(
-    (val) => {
-      if (!val) return true;
-      const today = new Date().toISOString().split("T")[0];
-      return val >= today;
-    },
-    { message: "Initial site measurement date cannot be in the past" },
-  );
+  .optional();
 
 const completeFormSchema = z.object({
   firstname: z.string().trim().min(1, "First name is required").max(300),
@@ -373,6 +365,8 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
   >([]);
   const previousStructuresRef = useRef<string[]>([]);
   const [showMaxStructureTooltip, setShowMaxStructureTooltip] = useState(false);
+
+  const [originalInitialDate, setOriginalInitialDate] = useState<string>("");
   const maxStructureTooltipTimerRef = useRef<number | null>(null);
   const [initialProductTypeId, setInitialProductTypeId] = useState<
     number | null
@@ -610,6 +604,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
             .toISOString()
             .split("T")[0]
           : "";
+        setOriginalInitialDate(formattedDate);
 
         // Pre-fill product type
         const productTypeId =
@@ -1405,6 +1400,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                     value={field.value}
                     onChange={field.onChange}
                     restriction="futureOnly"
+                    minDate={originalInitialDate || undefined}
                   />
                 </FormControl>
                 <FormMessage />

@@ -339,6 +339,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   );
   const leadStage = lead?.statusType?.type;
   const isBookingStage = leadStage?.toLowerCase() === "booking-stage";
+  const isDesignStage = leadStage?.toLowerCase().includes("design");
   const leadStatusTag = lead?.statusType?.tag;
   const {
     isLeadBlocked,
@@ -712,7 +713,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
           <SectionCard
             title="Product Information"
             action={
-              canEditStructures && (
+              canEditStructures && isDesignStage && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="w-auto">
@@ -761,7 +762,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   label={
                     <span className="inline-flex items-center gap-2">
                       <span>Product Types</span>
-                      {canEditProductType && (
+                      {canEditProductType && isDesignStage && (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button
