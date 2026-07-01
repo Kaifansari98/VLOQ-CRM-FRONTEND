@@ -102,6 +102,7 @@ interface Props {
   data?: {
     id: number;
     name: string;
+    furniture_type?: string;
   };
   onlyFollowUp?: boolean;
   userType?: string;
@@ -692,6 +693,13 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
       <div className="px-6 py-6 space-y-8">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+            {data?.furniture_type && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-md">
+                <span className="text-sm font-medium text-muted-foreground">Furniture Type:</span>
+                <span className="text-sm font-semibold">{data.furniture_type}</span>
+              </div>
+            )}
+            
             {/* Task Type */}
             <Controller
               control={form.control}

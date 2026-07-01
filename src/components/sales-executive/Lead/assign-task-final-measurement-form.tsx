@@ -355,22 +355,23 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   const isFinalMeasurementsDisabled =
     restrictedTaskConflictsLoading ||
     !!finalMeasurementsConflict ||
-    (requiresBookingDoneApproval &&
+    (!vendorCustomUserTypeMode &&
+      requiresBookingDoneApproval &&
       (bookingDoneLockInsLoading || hasPendingBookingDoneApproval)) ||
     !canUseRestrictedTaskAssignments ||
-    !isSiteSupervisorAssigned;
+    (!vendorCustomUserTypeMode && !isSiteSupervisorAssigned);
   const finalMeasurementsTooltip =
     restrictedTaskConflictsLoading
       ? "Checking existing tasks"
       : finalMeasurementsConflictTooltip
         ? finalMeasurementsConflictTooltip
-        : requiresBookingDoneApproval && bookingDoneLockInsLoading
+        : !vendorCustomUserTypeMode && requiresBookingDoneApproval && bookingDoneLockInsLoading
           ? "Checking accounts approval status"
-          : requiresBookingDoneApproval && hasPendingBookingDoneApproval
+          : !vendorCustomUserTypeMode && requiresBookingDoneApproval && hasPendingBookingDoneApproval
             ? "Accounts approval for Booking Done is pending"
             : !canUseRestrictedTaskAssignments
               ? "You don't have permission to select this"
-              : !isSiteSupervisorAssigned
+              : !vendorCustomUserTypeMode && !isSiteSupervisorAssigned
                 ? "Site supervisor is not assigned yet"
                 : null;
   const isBookingDoneDisabled =
@@ -683,10 +684,10 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   }, [taskType, assignedSiteSupervisorId, form, isCustomUser, vendorCustomUserTypeMode]);
 
   React.useEffect(() => {
-    if (siteSupervisorCheck !== undefined && !isSiteSupervisorAssigned) {
+    if (siteSupervisorCheck !== undefined && !isSiteSupervisorAssigned && !vendorCustomUserTypeMode) {
       form.setValue("task_type", "Follow Up");
     }
-  }, [siteSupervisorCheck, isSiteSupervisorAssigned, form, hasFollowUpPrivilege]);
+  }, [siteSupervisorCheck, isSiteSupervisorAssigned, form, hasFollowUpPrivilege, vendorCustomUserTypeMode]);
 
   React.useEffect(() => {
     if (!open) {

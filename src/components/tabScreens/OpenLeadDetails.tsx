@@ -60,7 +60,7 @@ import {
   useProductStructureTypes,
   useProductTypes,
 } from "@/hooks/useTypesMaster";
-import { updateLeadProductType } from "@/api/leads";
+import { updateLeadProductType, clearLeadProductStructures } from "@/api/leads";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 
 type OpenLeadDetailsProps = {
@@ -284,10 +284,21 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     });
   const { mutate: updateLeadProductTypeMutation, isPending: updatingLeadType } =
     useMutation({
-      mutationFn: (nextProductTypeId: number) => {
+      mutationFn: async (nextProductTypeId: number) => {
         const nextTypeLabel = productTypes?.data?.find(
           (t: any) => t.id === nextProductTypeId,
         )?.type;
+        
+        const _currentProductTypeId =
+          lead?.productMappings?.[0]?.product_type_id ||
+          lead?.productMappings?.[0]?.productType?.id ||
+          lead?.productMappings?.[0]?.product_type?.id ||
+          null;
+
+        if (_currentProductTypeId && _currentProductTypeId !== nextProductTypeId) {
+           await clearLeadProductStructures(vendorId!, leadId, userId || 0);
+        }
+
         return updateLeadProductType(leadId, userId || 0, {
           productType: nextTypeLabel,
         });
@@ -300,6 +311,9 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         setEditProductTypeOpen(false);
         await queryClient.invalidateQueries({
           queryKey: ["lead", leadId, vendorId, userId],
+        });
+        await queryClient.invalidateQueries({
+          queryKey: ["lead-product-structure-instances", leadId, vendorId],
         });
       },
       onError: (error: any) => {
@@ -325,6 +339,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   );
   const leadStage = lead?.statusType?.type;
   const isBookingStage = leadStage?.toLowerCase() === "booking-stage";
+  const isDesignStage = leadStage?.toLowerCase().includes("design");
   const leadStatusTag = lead?.statusType?.tag;
   const {
     isLeadBlocked,
@@ -396,14 +411,6 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     ).size;
     return { total, uniqueStructures };
   }, [structureInstances]);
-
-  const isKitchenType = useMemo(() => {
-    const typeLabel =
-      lead?.productMappings?.[0]?.productType?.type ||
-      lead?.productMappings?.[0]?.product_type?.type ||
-      "";
-    return String(typeLabel).toLowerCase().includes("kitchen");
-  }, [lead?.productMappings]);
 
   const currentProductTypeLabel = useMemo(() => {
     return (
@@ -576,8 +583,6 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   };
 
   const handleAddOpen = () => {
-    if (isKitchenType) return;
-
     const productTypeId = lead?.productMappings?.[0]?.product_type_id || 0;
     setEditTitleError("");
     setEditStructureError("");
@@ -708,7 +713,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
           <SectionCard
             title="Product Information"
             action={
-              canEditStructures && !isKitchenType && (
+              canEditStructures && isDesignStage && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="w-auto">
@@ -757,7 +762,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   label={
                     <span className="inline-flex items-center gap-2">
                       <span>Product Types</span>
-                      {canEditProductType && (
+                      {canEditProductType && isDesignStage && (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button

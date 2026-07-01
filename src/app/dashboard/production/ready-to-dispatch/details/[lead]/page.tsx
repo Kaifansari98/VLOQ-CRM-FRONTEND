@@ -629,7 +629,11 @@ export default function ReadyToDispatchLeadDetails() {
           setAssignOpen(open);
           if (!open) setActiveTab(previousTab);
         }}
-        data={{ id: leadIdNum, name: "" }}
+        data={{ 
+          id: leadIdNum, 
+          name: "",
+          furniture_type: lead?.productMappings?.map((pm: any) => pm.productType?.type).filter(Boolean).join(", ") || "N/A"
+        }}
         userType={userType}
       />
 

@@ -139,14 +139,13 @@ export default function LeadDetails() {
   const isLeadBlocked = leadBlockStatus?.is_blocked ?? !!lead?.is_blocked;
 
 
-  const blockedAtTooltip =
-    isLeadBlocked &&
-      (leadBlockStatus?.lead_blocked_at || lead?.lead_blocked_at)
+  const blockedAtTooltip = isLeadBlocked
+    ? (leadBlockStatus?.lead_blocked_at || lead?.lead_blocked_at)
       ? `This lead has been blocked at ${formatBlockedAt(
-        leadBlockStatus?.lead_blocked_at ??
-        lead?.lead_blocked_at,
-      )}`
-      : "Lead is blocked";
+          leadBlockStatus?.lead_blocked_at ?? lead?.lead_blocked_at
+        )}`
+      : "Lead is blocked"
+    : "";
   const isBlockActionPending =
     blockLeadMutation.isPending || unblockLeadMutation.isPending;
 

@@ -512,7 +512,7 @@ export const checkFastProductionLimit = async ({
     vendor_id: vendorId,
     user_id: userId,
   };
-  
+
   if (franchiseId) {
     params.franchise_id = franchiseId;
   }
@@ -733,18 +733,18 @@ export const createLead = async (
       },
       onUploadProgress: onUploadProgress
         ? (progressEvent) => {
-            const serverTotal = progressEvent.total ?? totalBytes;
-            const loaded = progressEvent.loaded ?? 0;
-            const percent =
-              serverTotal > 0
-                ? Math.min(99, Math.round((loaded / serverTotal) * 100))
-                : 0;
-            onUploadProgress({
-              percent,
-              uploadedBytes: Math.min(loaded, totalBytes),
-              totalBytes,
-            });
-          }
+          const serverTotal = progressEvent.total ?? totalBytes;
+          const loaded = progressEvent.loaded ?? 0;
+          const percent =
+            serverTotal > 0
+              ? Math.min(99, Math.round((loaded / serverTotal) * 100))
+              : 0;
+          onUploadProgress({
+            percent,
+            uploadedBytes: Math.min(loaded, totalBytes),
+            totalBytes,
+          });
+        }
         : undefined,
     });
 
@@ -803,6 +803,18 @@ export const deleteLeadProductStructureInstance = async (
 ) => {
   const response = await apiClient.delete(
     `/leads/lead/${leadId}/vendor/${vendorId}/product-structure-instances/${instanceId}`,
+    updatedBy ? { data: { updated_by: updatedBy } } : undefined,
+  );
+  return response.data;
+};
+
+export const clearLeadProductStructures = async (
+  vendorId: number,
+  leadId: number,
+  updatedBy?: number,
+) => {
+  const response = await apiClient.delete(
+    `/leads/lead/${leadId}/vendor/${vendorId}/clear-structures`,
     updatedBy ? { data: { updated_by: updatedBy } } : undefined,
   );
   return response.data;
@@ -1415,7 +1427,7 @@ export interface LeadDocument {
   tech_check_status: string | null;
   product_structure_instance_id: number | null;
   instance_title: string | null;
-  instance_type: string | null;  
+  instance_type: string | null;
   created_at: string;
   signed_url: string;
 }
@@ -1428,15 +1440,15 @@ export interface DocGroup {
 
 export interface InstanceGroup {
   instanceId: number | null;
-  instanceTitle: string | null;  
-  instanceType: string | null;    
+  instanceTitle: string | null;
+  instanceType: string | null;
   docGroups: DocGroup[];
 }
 
 export interface StageDocResult {
   stageId: string;
   totalFiles: number;
-  instanceGroups: InstanceGroup[];   
+  instanceGroups: InstanceGroup[];
 }
 
 
