@@ -147,7 +147,18 @@ const completeFormSchema = z.object({
   product_types: z.array(z.string()).optional(),
   product_structures: z.array(z.string()).optional(),
   initial_site_measurement_date: optionalDateField,
-});
+}).refine(
+  (data) => {
+    if (data.product_types && data.product_types.length > 0) {
+      return data.product_structures && data.product_structures.length > 0;
+    }
+    return true;
+  },
+  {
+    message: "Please select at least one Furniture Structure",
+    path: ["product_structures"],
+  }
+);
 
 const draftFormSchema = z.object({
   firstname: z.string().max(300).optional(),
@@ -184,7 +195,18 @@ const draftFormSchema = z.object({
   product_types: z.array(z.string()).optional(),
   product_structures: z.array(z.string()).optional(),
   initial_site_measurement_date: optionalDateField,
-});
+}).refine(
+  (data) => {
+    if (data.product_types && data.product_types.length > 0) {
+      return data.product_structures && data.product_structures.length > 0;
+    }
+    return true;
+  },
+  {
+    message: "Please select at least one Furniture Structure",
+    path: ["product_structures"],
+  }
+);
 
 type FormValues = z.infer<typeof draftFormSchema>;
 

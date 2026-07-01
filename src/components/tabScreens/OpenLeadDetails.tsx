@@ -338,6 +338,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     (doc: any) => !isImageDocument(doc.doc_og_name || doc.originalName),
   );
   const leadStage = lead?.statusType?.type;
+  const isOpenStage = leadStage?.toLowerCase() === "open";
   const isBookingStage = leadStage?.toLowerCase() === "booking-stage";
   const isDesignStage = leadStage?.toLowerCase().includes("design");
   const leadStatusTag = lead?.statusType?.tag;
@@ -361,14 +362,14 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     !isAuditor &&
     (normalizedUserType === "custom"
       ? canEditLeadDetailsForCustomUser
-      : isBookingStage || ["admin", "super-admin"].includes(userType || ""));
+      : isOpenStage || ["admin", "super-admin"].includes(userType || ""));
   const canEditProductType =
     !isAuditor &&
     (normalizedUserType === "custom"
       ? canEditLeadDetailsForCustomUser
       : normalizedUserType === "admin" ||
       normalizedUserType === "super-admin" ||
-      (normalizedUserType === "sales-executive" && isBookingStage));
+      (normalizedUserType === "sales-executive" && isOpenStage));
   const currentProductTypeId =
     lead?.productMappings?.[0]?.product_type_id ||
     lead?.productMappings?.[0]?.productType?.id ||
@@ -713,7 +714,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
           <SectionCard
             title="Product Information"
             action={
-              canEditStructures && isDesignStage && (
+              canEditStructures && isOpenStage && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="w-auto">
@@ -762,7 +763,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   label={
                     <span className="inline-flex items-center gap-2">
                       <span>Product Types</span>
-                      {canEditProductType && isDesignStage && (
+                      {canEditProductType && isOpenStage && (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button
@@ -848,7 +849,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                               {item.title || item.productStructure?.type || "—"}
                             </p>
                             <div className="flex items-center gap-1 shrink-0">
-                              {canEditStructures && (
+                              {canEditStructures && isOpenStage && (
                                 <>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
