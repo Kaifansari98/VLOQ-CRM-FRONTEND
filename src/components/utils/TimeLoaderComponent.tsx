@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Lottie from "lottie-react";
 import CatAnimation from "../../../public/Loader-Cat-Animation.json";
 
@@ -13,10 +14,16 @@ const TimeLoaderComponent: React.FC<TimeLoaderComponentProps> = ({
   open,
   message = "Switching franchise...",
 }) => {
-  if (!open) return null;
+  const [mounted, setMounted] = useState(false);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md">
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!open || !mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-md">
       <div className="flex flex-col items-center gap-3">
         <Lottie
           animationData={CatAnimation}
@@ -27,7 +34,8 @@ const TimeLoaderComponent: React.FC<TimeLoaderComponentProps> = ({
           <p className="text-sm md:text-base text-white/90">{message}</p>
         )} */}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
