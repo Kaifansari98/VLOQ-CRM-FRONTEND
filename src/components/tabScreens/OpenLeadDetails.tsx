@@ -15,6 +15,7 @@ import {
   Trash2,
   Plus,
   Magnet,
+  Search,
 } from "lucide-react";
 import { formatDateTime } from "../utils/privileges";
 import {
@@ -40,7 +41,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ImageComponent } from "../utils/ImageCard";
 import DocumentCard from "../utils/documentCard";
 import { Button } from "@/components/ui/button";
@@ -54,9 +55,19 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toastManager } from "@/components/ui/toast";
 import {
+  useProductItemCodes,
   useProductStructureTypes,
   useProductTypes,
 } from "@/hooks/useTypesMaster";
@@ -146,6 +157,8 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   );
   const { data: structureInstancesData, isLoading: isStructuresLoading } =
     useLeadProductStructureInstances(leadId, vendorId);
+  const { data: productItemCodesData, isLoading: isProductItemCodesLoading } =
+    useProductItemCodes();
   const { data: productStructureTypes } = useProductStructureTypes();
   const { data: productTypes } = useProductTypes();
 
@@ -177,6 +190,13 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const [confirmProductTypeSave, setConfirmProductTypeSave] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+  const [boqModalOpen, setBoqModalOpen] = useState(false);
+  const [boqSearch, setBoqSearch] = useState("");
+  const [isAddingBoqItems, setIsAddingBoqItems] = useState(false);
+  const [selectedBoqItems, setSelectedBoqItems] = useState<
+    Record<number, { quantity: string; order: number }>
+  >({});
+  const boqSelectionOrderRef = useRef(0);
 
   // ✅ 4. useQueryClient
   const queryClient = useQueryClient();
@@ -319,6 +339,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   // ✅ 6. DERIVED VALUES (non-hook)
   const lead = data?.data?.lead;
   const structureInstances = structureInstancesData?.data || [];
+  const productItemCodes = productItemCodesData?.data || [];
   const leadDocuments = lead?.documents || [];
   const imageDocuments = leadDocuments.filter((doc: any) =>
     isImageDocument(doc.doc_og_name || doc.originalName),
@@ -362,6 +383,34 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     lead?.productMappings?.[0]?.productType?.id ||
     lead?.productMappings?.[0]?.product_type?.id ||
     null;
+
+  const boqInstances = useMemo(
+    () =>
+      structureInstances.filter(
+        (item: any) =>
+          item?.isLargeScaleProjectInstance === true || item?.product_item_code_id,
+      ),
+    [structureInstances],
+  );
+
+  const filteredBoqItemCodes = useMemo(() => {
+    const search = boqSearch.trim().toLowerCase();
+    if (!search) return productItemCodes;
+    return productItemCodes.filter((item: any) => {
+      const haystack = [
+        item.item_code,
+        item.description,
+        item.specification,
+        item.subProductStructure?.type,
+        item.productStructure?.type,
+        item.productStructure?.productType?.type,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(search);
+    });
+  }, [boqSearch, productItemCodes]);
 
   // ✅ 7. HELPER FUNCTIONS (useMemo se pehle kyunki memos inhe use karte hain)
   const getParentFilter = (productTypeId?: number) => {
@@ -525,6 +574,111 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       leadId,
       instanceId: confirmStructureDelete.id,
     });
+  };
+
+  const handleToggleBoqItem = (itemId: number, nextChecked: boolean) => {
+    setSelectedBoqItems((prev) => {
+      if (!nextChecked) {
+        const next = { ...prev };
+        delete next[itemId];
+        return next;
+      }
+
+      return {
+        ...prev,
+        [itemId]: prev[itemId] || {
+          quantity: "1",
+          order: ++boqSelectionOrderRef.current,
+        },
+      };
+    });
+  };
+
+  const handleBoqQuantityChange = (itemId: number, value: string) => {
+    const sanitized = value.replace(/[^\d]/g, "");
+    setSelectedBoqItems((prev) => {
+      const existing = prev[itemId];
+      if (!existing) {
+        return {
+          ...prev,
+          [itemId]: {
+            quantity: sanitized,
+            order: ++boqSelectionOrderRef.current,
+          },
+        };
+      }
+
+      return {
+        ...prev,
+        [itemId]: {
+          ...existing,
+          quantity: sanitized,
+        },
+      };
+    });
+  };
+
+  const handleDeselectAllBoqItems = () => {
+    setSelectedBoqItems({});
+  };
+
+  const handleAddBoqItems = async () => {
+    if (!vendorId || !userId) return;
+
+    const selectedEntries = Object.entries(selectedBoqItems)
+      .map(([itemId, meta]) => ({
+        itemId: Number(itemId),
+        quantity: Number(meta.quantity),
+        order: meta.order,
+      }))
+      .filter((item) => item.quantity > 0)
+      .sort((a, b) => a.order - b.order);
+
+    if (selectedEntries.length === 0) {
+      toastManager.add({
+        title: "Select at least one BOQ item with quantity.",
+        type: "error",
+      });
+      return;
+    }
+
+    try {
+      setIsAddingBoqItems(true);
+
+      for (const entry of selectedEntries) {
+        const item = productItemCodes.find((row: any) => row.id === entry.itemId);
+        if (!item) continue;
+
+        await createLeadProductStructureInstance(vendorId, leadId, {
+          product_structure_id: item.product_structure_id,
+          title: item.item_code,
+          description: item.description || undefined,
+          created_by: userId,
+          sub_product_structure_id: item.sub_product_structure_id || undefined,
+          product_item_code_id: item.id,
+          quantity: entry.quantity,
+          isLargeScaleProjectInstance: true,
+        });
+      }
+
+      toastManager.add({
+        title: "BOQ items added successfully.",
+        type: "success",
+      });
+      setBoqModalOpen(false);
+      setBoqSearch("");
+      setSelectedBoqItems({});
+      await queryClient.invalidateQueries({
+        queryKey: ["lead-product-structure-instances", leadId, vendorId],
+      });
+    } catch (error: any) {
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to add BOQ items.",
+        type: "error",
+      });
+    } finally {
+      setIsAddingBoqItems(false);
+    }
   };
 
   const handleEditOpen = (item: any) => {
@@ -932,15 +1086,154 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
             <SectionCard
               title="Bill of Quantity"
               action={
-                <Button type="button" className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add BOQ Items
-                </Button>
+                canEditStructures && boqInstances.length > 0 ? (
+                  <Button
+                    type="button"
+                    className="gap-2"
+                    onClick={() => {
+                      if (shouldDisableBlockedActions) return;
+                      setBoqModalOpen(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add BOQ Items
+                  </Button>
+                ) : null
               }
             >
-              <div className="text-sm text-muted-foreground">
-                No BOQ items added yet.
-              </div>
+              {boqInstances.length === 0 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!canEditStructures || shouldDisableBlockedActions) return;
+                    setBoqModalOpen(true);
+                  }}
+                  className={`group flex w-full flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-border/70 bg-muted/20 px-6 py-14 text-center transition hover:border-primary/50 hover:bg-muted/30 ${
+                    !canEditStructures ? "cursor-default" : ""
+                  }`}
+                >
+                  <span className="flex h-16 w-16 items-center justify-center rounded-full border border-dashed border-border/80 bg-background shadow-sm transition group-hover:scale-105">
+                    <Plus className="h-8 w-8 text-muted-foreground" />
+                  </span>
+                  <div className="space-y-1">
+                    <p className="text-base font-semibold text-foreground">
+                      Create BOQ Items
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      No BOQ items added yet. Start by selecting item codes and quantities.
+                    </p>
+                  </div>
+                </button>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                      {boqInstances.length} BOQ item
+                      {boqInstances.length === 1 ? "" : "s"}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                      {boqInstances.reduce(
+                        (sum: number, item: any) => sum + Number(item.quantity || 0),
+                        0,
+                      )}{" "}
+                      total quantity
+                    </span>
+                  </div>
+
+                  <div className="grid gap-4">
+                    {boqInstances.map((item: any) => (
+                      <div
+                        key={item.id}
+                        className="rounded-2xl border bg-gradient-to-br from-white to-muted/20 p-5 shadow-sm transition hover:border-border/80 dark:from-[#0a0a0a] dark:to-[#111111]"
+                      >
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                          <div className="min-w-0 flex-1 space-y-3">
+                            <div className="flex flex-wrap items-start gap-3">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-lg font-semibold leading-tight text-foreground break-words">
+                                  {item.productItemCode?.item_code || item.title || "—"}
+                                </p>
+                                <p className="mt-1 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                                  BOQ Item
+                                </p>
+                              </div>
+                              <span className="inline-flex items-center rounded-full border bg-background px-3 py-1 text-xs font-semibold text-foreground">
+                                Qty: {item.quantity ?? "—"}
+                              </span>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 text-xs">
+                              <span className="rounded-full border bg-muted/40 px-3 py-1 font-medium text-muted-foreground">
+                                {item.productType?.type ||
+                                  item.productItemCode?.productStructure?.productType?.type ||
+                                  "—"}
+                              </span>
+                              <span className="rounded-full border bg-muted/40 px-3 py-1 font-medium text-muted-foreground">
+                                {item.productStructure?.type ||
+                                  item.productItemCode?.productStructure?.type ||
+                                  "—"}
+                              </span>
+                              <span className="rounded-full border bg-muted/40 px-3 py-1 font-medium text-muted-foreground">
+                                {item.subProductStructure?.type ||
+                                  item.productItemCode?.subProductStructure?.type ||
+                                  "—"}
+                              </span>
+                            </div>
+
+                            <div className="grid gap-3 md:grid-cols-2">
+                              <div className="rounded-xl border border-dashed bg-muted/20 p-3">
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                                  Description
+                                </p>
+                                <p className="mt-2 text-sm leading-6 text-foreground/90">
+                                  {item.productItemCode?.description || item.description || "—"}
+                                </p>
+                              </div>
+                              <div className="rounded-xl border border-dashed bg-muted/20 p-3">
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                                  Specification
+                                </p>
+                                <p className="mt-2 text-sm leading-6 text-foreground/90">
+                                  {item.productItemCode?.specification || "—"}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {canEditStructures && (
+                            <div className="flex shrink-0 items-center gap-1">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (shouldDisableBlockedActions) return;
+
+                                      setConfirmStructureDelete({
+                                        id: item.id,
+                                        title:
+                                          item.productItemCode?.item_code ||
+                                          item.title ||
+                                          "this BOQ item",
+                                      });
+                                    }}
+                                    className="inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition hover:text-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </TooltipTrigger>
+                                {shouldDisableBlockedActions && (
+                                  <TooltipContent>{blockedTooltip}</TooltipContent>
+                                )}
+                              </Tooltip>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </SectionCard>
           )}
 
@@ -1237,6 +1530,151 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
               )}
             </motion.div>
           </motion.section>
+
+          <Dialog
+            open={boqModalOpen}
+            onOpenChange={(open) => {
+              setBoqModalOpen(open);
+              if (!open) {
+                setBoqSearch("");
+                setSelectedBoqItems({});
+              }
+            }}
+          >
+            <DialogContent className="min-w-6xl p-0">
+              <DialogHeader className="border-b px-6 py-5">
+                <DialogTitle className="text-xl">Add BOQ Items</DialogTitle>
+                <DialogDescription>
+                  Search item codes, select multiple rows, set quantities, and add
+                  them to this lead.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 px-6 py-5">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={boqSearch}
+                    onChange={(event) => setBoqSearch(event.target.value)}
+                    placeholder="Search by item code, description, specification, or category..."
+                    className="pl-10"
+                  />
+                </div>
+
+                <div className="max-h-[55vh] space-y-3 overflow-y-auto pr-1">
+                  {isProductItemCodesLoading ? (
+                    <div className="rounded-2xl border border-dashed px-6 py-12 text-center text-sm text-muted-foreground">
+                      Loading BOQ items...
+                    </div>
+                  ) : filteredBoqItemCodes.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed px-6 py-12 text-center text-sm text-muted-foreground">
+                      No BOQ item codes found.
+                    </div>
+                  ) : (
+                    filteredBoqItemCodes.map((item: any) => {
+                      const selected = selectedBoqItems[item.id];
+
+                      return (
+                        <div
+                          key={item.id}
+                          className={`rounded-2xl border p-4 transition ${
+                            selected
+                              ? "border-primary bg-primary/5"
+                              : "bg-background hover:border-border/80"
+                          }`}
+                        >
+                          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                            <div className="min-w-0 flex-1 space-y-3">
+                              <div className="flex items-start gap-3">
+                                <Checkbox
+                                  checked={!!selected}
+                                  onCheckedChange={(checked) =>
+                                    handleToggleBoqItem(item.id, checked === true)
+                                  }
+                                  className="mt-1"
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-start gap-2">
+                                    <p className="text-base font-semibold text-foreground break-words">
+                                      {item.item_code}
+                                    </p>
+                                  </div>
+                                  <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                                    <span className="rounded-full border bg-muted/40 px-3 py-1 font-medium text-muted-foreground">
+                                      {item.productStructure?.productType?.type || "—"}
+                                    </span>
+                                    <span className="rounded-full border bg-muted/40 px-3 py-1 font-medium text-muted-foreground">
+                                      {item.productStructure?.type || "—"}
+                                    </span>
+                                    <span className="rounded-full border bg-muted/40 px-3 py-1 font-medium text-muted-foreground">
+                                      {item.subProductStructure?.type || "—"}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="grid gap-3 md:grid-cols-2">
+                                <div className="rounded-xl border border-dashed bg-muted/20 p-3">
+                                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                                    Description
+                                  </p>
+                                  <p className="mt-2 text-sm leading-6 text-foreground/90">
+                                    {item.description || "—"}
+                                  </p>
+                                </div>
+                                <div className="rounded-xl border border-dashed bg-muted/20 p-3">
+                                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                                    Specification
+                                  </p>
+                                  <p className="mt-2 text-sm leading-6 text-foreground/90">
+                                    {item.specification || "—"}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="w-full lg:w-32">
+                              <label className="text-xs font-medium text-muted-foreground">
+                                Quantity
+                              </label>
+                              <Input
+                                value={selected?.quantity || ""}
+                                onChange={(event) =>
+                                  handleBoqQuantityChange(item.id, event.target.value)
+                                }
+                                placeholder="0"
+                                inputMode="numeric"
+                                disabled={!selected}
+                                className="mt-2"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              <DialogFooter className="border-t px-6 py-4 sm:justify-between">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleDeselectAllBoqItems}
+                  disabled={isAddingBoqItems || Object.keys(selectedBoqItems).length === 0}
+                >
+                  Deselect All
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleAddBoqItems}
+                  disabled={isAddingBoqItems || Object.keys(selectedBoqItems).length === 0}
+                >
+                  {isAddingBoqItems ? "Adding..." : "Add Items"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           <AlertDialog
             open={!!confirmDelete}
