@@ -479,7 +479,7 @@ export default function LeadsGenerationForm({
         })
         ?.map((p: any) => ({
           value: String(p.id),
-          label: p.type,
+          label: p.type ? p.type.charAt(0).toUpperCase() + p.type.slice(1) : "",
         })) ?? [],
     [parentFilter, productStructures?.data]
   );

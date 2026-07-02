@@ -349,7 +349,7 @@ export function getVendorLeadsTableColumns({
         return (
           <div className="space-x-1">
             {visible.map((name: string, index: number) => (
-              <Badge key={index} variant="secondary" className="text-xs px-2">
+              <Badge key={index} variant="secondary" className="text-xs px-2 capitalize">
                 {name}
               </Badge>
             ))}
@@ -371,7 +371,7 @@ export function getVendorLeadsTableColumns({
                     className="max-w-[220px] p-2 space-y-1"
                   >
                     {remaining.map((name: string, index: number) => (
-                      <p key={index} className="text-xs ">
+                      <p key={index} className="text-xs capitalize">
                         • {name}
                       </p>
                     ))}

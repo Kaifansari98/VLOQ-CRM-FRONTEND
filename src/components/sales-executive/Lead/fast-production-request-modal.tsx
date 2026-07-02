@@ -27,6 +27,10 @@ import {
   useFastProductionRequestDraft,
   useLeadById,
 } from "@/hooks/useLeadsQueries";
+import {
+  useGetCHSSelectionTypeMappings,
+  useSelectionData,
+} from "@/hooks/designing-stage/designing-leads-hooks";
 import { LeadProductStructureInstance } from "@/api/leads";
 import {
   useHandleTypes,
@@ -279,6 +283,72 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
   const { data: draftResponse, isLoading: isDraftLoading } =
     useFastProductionRequestDraft(vendorId, leadId);
 
+  const { data: selectionsData, isLoading: isSelectionsLoading } = useSelectionData(vendorId!, leadId!);
+  const { data: chsMappingsData } = useGetCHSSelectionTypeMappings(
+    vendorId,
+    leadId,
+  );
+
+  const chsMappings = React.useMemo(() => (Array.isArray(chsMappingsData?.data) ? chsMappingsData.data : []), [chsMappingsData?.data]);
+  
+  const chsMappingToOptionValues = React.useCallback((
+    selectionId: number | undefined,
+    type: "Carcas" | "Shutter" | "Handles",
+  ): string[] => {
+    if (!selectionId) return [];
+    return chsMappings
+      .filter((m: any) => m.selection_id === selectionId)
+      .flatMap((item: any) => {
+        if (type === "Carcas" && item.carcass_type_id)
+          return [`carcass-${item.carcass_type_id}`];
+        if (type === "Shutter" && item.shutter_type_id) {
+          if (item.shutter_sub_type_id)
+            return [`shutter-${item.shutter_type_id}-sub-${item.shutter_sub_type_id}`];
+          return [`shutter-${item.shutter_type_id}`];
+        }
+        if (type === "Handles" && item.handle_type_id)
+          return [`handle-${item.handle_type_id}`];
+        return [];
+      });
+  }, [chsMappings]);
+
+  const getDefaultFormValues = React.useCallback((instanceId: number | null): FormValues => {
+    const defaultValues = getEmptyFormValues();
+    const rows = Array.isArray(selectionsData?.data) ? selectionsData.data : [];
+    if (rows.length === 0) return defaultValues;
+
+    let scoped = rows.filter((row: any) => (row.product_structure_instance_id ?? null) === instanceId);
+    if (scoped.length === 0 && instanceId !== null) {
+      scoped = rows.filter((row: any) => (row.product_structure_instance_id ?? null) === null);
+    }
+    
+    const byType = (type: string) =>
+      scoped.find((item: any) => {
+        if (item.type !== type) return false;
+        const value = (item.desc || "").trim().toUpperCase();
+        return value !== "NULL" && value !== "N/A";
+      }) || scoped.find((item: any) => item.type === type);
+
+    const carcas = byType("Carcas");
+    const shutter = byType("Shutter");
+    const handles = byType("Handles");
+
+    if (carcas) {
+      defaultValues.carcass_finish_category = chsMappingToOptionValues(carcas.id, "Carcas");
+      defaultValues.carcass_finish_description = carcas.desc || "";
+    }
+    if (shutter) {
+      defaultValues.shutter_finish_category = chsMappingToOptionValues(shutter.id, "Shutter");
+      defaultValues.shutter_finish_description = shutter.desc || "";
+    }
+    if (handles) {
+      defaultValues.handles_finish_category = chsMappingToOptionValues(handles.id, "Handles");
+      defaultValues.handles_finish_description = handles.desc || "";
+    }
+
+    return defaultValues;
+  }, [selectionsData?.data, chsMappingToOptionValues]);
+
   const [activeInstanceId, setActiveInstanceId] = React.useState<number | null>(
     null,
   );
@@ -418,7 +488,7 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
   }, [activeInstanceId, form]);
 
   const resetModalState = React.useCallback(() => {
-    form.reset(getEmptyFormValues());
+    form.reset(getDefaultFormValues(activeInstanceId));
     setActiveInstanceId(null);
     setInstanceDrafts({});
     setSavedInstanceIds([]);
@@ -531,13 +601,14 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
     if (instances.length > 0) {
       const firstInstanceId = instances[0].id;
       setActiveInstanceId(firstInstanceId);
-      form.reset(drafts[firstInstanceId] ?? getEmptyFormValues());
+      form.reset(drafts[firstInstanceId] ?? getDefaultFormValues(firstInstanceId));
     }
   }, [
     open,
     draftResponse,
     isInitialized,
     isInstancesLoading,
+    isSelectionsLoading,
     isSelectionMastersLoading,
     isDraftLoading,
     carcassOptions,
@@ -550,8 +621,8 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
 
   React.useEffect(() => {
     if (!open || activeInstanceId == null || !isInitialized) return;
-    form.reset(instanceDrafts[activeInstanceId] ?? getEmptyFormValues());
-  }, [activeInstanceId, instanceDrafts, form, open, isInitialized]);
+    form.reset(instanceDrafts[activeInstanceId] ?? getDefaultFormValues(activeInstanceId));
+  }, [activeInstanceId, instanceDrafts, form, open, isInitialized, getDefaultFormValues]);
 
   const applicableFastProductionRules = React.useMemo(() => {
     if (selectedCarcassIds.length === 0) return [];

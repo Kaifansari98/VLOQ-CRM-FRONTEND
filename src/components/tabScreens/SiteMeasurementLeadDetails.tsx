@@ -495,7 +495,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
           variants={itemVariants}
           className="p-6 bg-[#fff] dark:bg-[#0a0a0a]"
         >
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
             {currentSitePhotos.map((doc, index) => {
               return renderFileCard(
                 {
@@ -706,7 +706,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                     {bookingDoneIsmCurrentSitePhotos.length})
                   </h2>
                 </div>
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
                   {bookingDoneIsmCurrentSitePhotos.map((doc: any, index: any) => {
                     return renderFileCard(
                       {
@@ -730,7 +730,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                     Payment Images ({bookingDoneIsmPaymentImages.length})
                   </h2>
                 </div>
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
                   {bookingDoneIsmPaymentImages.map((doc: any, index: any) => {
                     return renderFileCard(
                       {

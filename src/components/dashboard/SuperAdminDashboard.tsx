@@ -382,8 +382,6 @@ function RevenueChart({ vendorId, franchises }: RevenueChartProps) {
 
 // ─── Franchise Bar Chart ──────────────────────────────────────────────────────
 
-// ─── Franchise Pie Chart ──────────────────────────────────────────────────────
-
 const COLORS = [
   "var(--franchise-1)",
   "var(--franchise-2)",
@@ -402,27 +400,6 @@ interface FranchiseChartProps {
   onBarDoubleClick?: (franchise: FranchiseLeadCount) => void;
 }
 
-const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
-  const RADIAN = Math.PI / 180;
-  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-  const x = cx + radius * Math.cos(-midAngle * RADIAN);
-  const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
-  if (percent < 0.05) return null;
-
-  return (
-    <text
-      x={x}
-      y={y}
-      fill="#ffffff"
-      textAnchor="middle"
-      dominantBaseline="central"
-      className="text-xs font-bold"
-    >
-      {`${(percent * 100).toFixed(0)}%`}
-    </text>
-  );
-};
 
 function FranchiseChart({
   data = [],
@@ -430,6 +407,7 @@ function FranchiseChart({
   onBarDoubleClick,
 }: FranchiseChartProps) {
   const chartData = data;
+  const totalLeads = useMemo(() => chartData.reduce((acc, entry) => acc + (entry.leads || 0), 0), [chartData]);
   const [isOpen, setIsOpen] = useState(false);
   
   return (
@@ -496,8 +474,6 @@ function FranchiseChart({
                 outerRadius={85}
                 innerRadius={45}
                 paddingAngle={2}
-                label={renderCustomizedLabel}
-                labelLine={false}
               >
                 {chartData.map((entry, index) => (
                   <Cell
@@ -509,10 +485,13 @@ function FranchiseChart({
                 ))}
               </Pie>
               <Tooltip
-                formatter={(value: any, name: any, props: any) => [
-                  `${value} Leads`,
-                  props.payload?.name ?? name,
-                ]}
+                formatter={(value: any, name: any, props: any) => {
+                  const percentage = totalLeads > 0 ? ((value / totalLeads) * 100).toFixed(1) : 0;
+                  return [
+                    `${value} Leads (${percentage}%)`,
+                    props.payload?.name ?? name,
+                  ];
+                }}
                 contentStyle={{
                   border: "1px solid hsl(var(--border))",
                   borderRadius: "10px",

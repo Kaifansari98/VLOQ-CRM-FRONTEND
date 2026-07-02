@@ -40,12 +40,7 @@ const getPostLoginPath = (
   if (user?.vendor?.is_crm_enabled === false) {
     return "/dashboard/track-trace";
   }
-
-  if (vendorLoginToken) {
-    return "/dashboard";
-  }
-
-  return "/dashboard/leads/leadstable";
+  return "/dashboard";
 };
 
 const getOrCreateAuthDeviceId = () => {

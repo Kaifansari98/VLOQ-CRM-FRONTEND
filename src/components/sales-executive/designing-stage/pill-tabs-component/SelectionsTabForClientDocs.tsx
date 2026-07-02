@@ -948,12 +948,28 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       })();
 
       if (hasCHSMappings || hasLegacyDesc) {
-        tracker[row.type] = true;
+        tracker[row.type as "Carcas" | "Shutter" | "Handles"] = true;
       }
     }
 
+    const fastProdRequests = Array.isArray(fastProductionDetails?.requests) ? fastProductionDetails.requests : [];
+    for (const req of fastProdRequests) {
+      const key = req.instance_id ?? null;
+      if (!grouped.has(key)) {
+        grouped.set(key, { Carcas: false, Shutter: false, Handles: false });
+      }
+      const tracker = grouped.get(key)!;
+      const hasCarcass = req.finishes?.some((f: any) => f.component === "CARCASS" && f.finish_category);
+      const hasShutter = req.finishes?.some((f: any) => f.component === "SHUTTER" && f.finish_category);
+      const hasHandle = req.finishes?.some((f: any) => f.component === "HANDLE" && f.finish_category);
+
+      if (hasCarcass) tracker.Carcas = true;
+      if (hasShutter) tracker.Shutter = true;
+      if (hasHandle) tracker.Handles = true;
+    }
+
     return grouped;
-  }, [selectionsData?.data, chsMappings]);
+  }, [selectionsData?.data, chsMappings, fastProductionDetails]);
 
   const allInstancesSelectionsReady =
     structureInstances.length > 1

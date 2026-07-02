@@ -806,14 +806,14 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                       {structureSummary.total > 0 && (
                         <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60">
                           <span className="flex h-1.5 w-1.5 rounded-full bg-current opacity-60"></span>
-                          {structureSummary.total} instance
+                          {structureSummary.total} Instance
                           {structureSummary.total === 1 ? "" : "s"}
                         </span>
                       )}
                       {structureSummary.uniqueStructures > 0 && (
                         <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60">
                           <span className="flex h-1.5 w-1.5 rounded-full bg-current opacity-60"></span>
-                          {structureSummary.uniqueStructures} structure
+                          {structureSummary.uniqueStructures} Structure
                           {structureSummary.uniqueStructures === 1 ? "" : "s"}
                         </span>
                       )}
@@ -935,7 +935,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
               <InfoRow
                 icon={User}
                 label="Full Name"
-                value={`${lead.firstname || ""} ${lead.lastname || ""}`.trim()}
+                value={<span className="capitalize">{`${lead.firstname || ""} ${lead.lastname || ""}`.trim()}</span>}
               />
               <InfoRow icon={Mail} label="Email Address" value={lead.email} />
               {/* Phone */}
@@ -990,7 +990,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
               <InfoRow
                 icon={User}
                 label="Architect Name"
-                value={lead.archetech_name}
+                value={<span className="capitalize">{lead.archetech_name}</span>}
               />
               {lead.archetech_number && (
                 <InfoRow

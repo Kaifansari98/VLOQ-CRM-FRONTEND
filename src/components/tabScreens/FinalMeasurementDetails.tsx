@@ -315,7 +315,7 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
           variants={itemVariants}
           className="p-6 bg-[#fff] dark:bg-[#0a0a0a]"
         >
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
             {sitePhotos.length > 0 ? (
               <>
                 {sitePhotos.map((photo, index) => {
@@ -419,7 +419,7 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
             variants={itemVariants}
             className="p-6 bg-[#fff] dark:bg-[#0a0a0a]"
           >
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
               {measurementDocs.map((doc) => (
                 <DocumentCard
                   key={doc.id}
