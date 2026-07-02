@@ -64,6 +64,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toastManager } from "@/components/ui/toast";
 import {
@@ -1541,13 +1542,30 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
               }
             }}
           >
-            <DialogContent className="min-w-6xl p-0">
-              <DialogHeader className="border-b px-6 py-5">
-                <DialogTitle className="text-xl">Add BOQ Items</DialogTitle>
-                <DialogDescription>
-                  Search item codes, select multiple rows, set quantities, and add
-                  them to this lead.
-                </DialogDescription>
+            <DialogContent className="min-w-6xl gap-0 overflow-hidden p-0">
+              <DialogHeader className="border-b bg-linear-to-b from-muted/50 to-transparent px-6 py-5">
+                <div className="flex items-start justify-between gap-4 pr-6">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <Package className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <DialogTitle className="text-xl">Add BOQ Items</DialogTitle>
+                      <DialogDescription className="mt-1">
+                        Search item codes, select multiple rows, set quantities,
+                        and add them to this lead.
+                      </DialogDescription>
+                    </div>
+                  </div>
+                  {Object.keys(selectedBoqItems).length > 0 && (
+                    <Badge
+                      variant="secondary"
+                      className="shrink-0 rounded-full px-3 py-1 text-xs font-medium"
+                    >
+                      {Object.keys(selectedBoqItems).length} selected
+                    </Badge>
+                  )}
+                </div>
               </DialogHeader>
 
               <div className="space-y-4 px-6 py-5">
@@ -1557,17 +1575,19 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                     value={boqSearch}
                     onChange={(event) => setBoqSearch(event.target.value)}
                     placeholder="Search by item code, description, specification, or category..."
-                    className="pl-10"
+                    className="rounded-xl pl-10"
                   />
                 </div>
 
                 <div className="max-h-[55vh] space-y-3 overflow-y-auto pr-1">
                   {isProductItemCodesLoading ? (
-                    <div className="rounded-2xl border border-dashed px-6 py-12 text-center text-sm text-muted-foreground">
+                    <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed px-6 py-12 text-center text-sm text-muted-foreground">
+                      <Package className="h-6 w-6 animate-pulse text-muted-foreground/60" />
                       Loading BOQ items...
                     </div>
                   ) : filteredBoqItemCodes.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed px-6 py-12 text-center text-sm text-muted-foreground">
+                    <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed px-6 py-12 text-center text-sm text-muted-foreground">
+                      <Search className="h-6 w-6 text-muted-foreground/60" />
                       No BOQ item codes found.
                     </div>
                   ) : (
@@ -1577,9 +1597,9 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                       return (
                         <div
                           key={item.id}
-                          className={`rounded-2xl border p-4 transition ${
+                          className={`rounded-2xl border p-4 transition-all ${
                             selected
-                              ? "border-primary bg-primary/5"
+                              ? "border-primary/60 bg-primary/5 ring-1 ring-primary/20"
                               : "bg-background hover:border-border/80"
                           }`}
                         >
@@ -1594,7 +1614,8 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                                   className="mt-1"
                                 />
                                 <div className="min-w-0 flex-1">
-                                  <div className="flex flex-wrap items-start gap-2">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <Package className="h-4 w-4 shrink-0 text-primary" />
                                     <p className="text-base font-semibold text-foreground break-words">
                                       {item.item_code}
                                     </p>
@@ -1645,7 +1666,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                                 placeholder="0"
                                 inputMode="numeric"
                                 disabled={!selected}
-                                className="mt-2"
+                                className="mt-2 disabled:opacity-50"
                               />
                             </div>
                           </div>
@@ -1656,22 +1677,31 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                 </div>
               </div>
 
-              <DialogFooter className="border-t px-6 py-4 sm:justify-between">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleDeselectAllBoqItems}
-                  disabled={isAddingBoqItems || Object.keys(selectedBoqItems).length === 0}
-                >
-                  Deselect All
-                </Button>
-                <Button
-                  type="button"
-                  onClick={handleAddBoqItems}
-                  disabled={isAddingBoqItems || Object.keys(selectedBoqItems).length === 0}
-                >
-                  {isAddingBoqItems ? "Adding..." : "Add Items"}
-                </Button>
+              <DialogFooter className="border-t bg-muted/20 px-6 py-4 sm:justify-between">
+                <p className="text-xs text-muted-foreground">
+                  {Object.keys(selectedBoqItems).length > 0
+                    ? `${Object.keys(selectedBoqItems).length} item${
+                        Object.keys(selectedBoqItems).length > 1 ? "s" : ""
+                      } selected`
+                    : "No items selected"}
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleDeselectAllBoqItems}
+                    disabled={isAddingBoqItems || Object.keys(selectedBoqItems).length === 0}
+                  >
+                    Deselect All
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleAddBoqItems}
+                    disabled={isAddingBoqItems || Object.keys(selectedBoqItems).length === 0}
+                  >
+                    {isAddingBoqItems ? "Adding..." : "Add Items"}
+                  </Button>
+                </div>
               </DialogFooter>
             </DialogContent>
           </Dialog>
