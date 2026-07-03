@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/select";
 
 const designsSchema = z.object({
-  design_type: z.enum(["2D", "3D"]),
+  design_type: z.enum(["2D", "3D"]).optional(),
   upload_pdf: z
     .any()
     .refine((files) => files && files.length > 0, {
@@ -65,6 +65,7 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
   const userId = useAppSelector((s) => s.auth.user?.id)!;
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
   const isAuditor = userType?.trim().toLowerCase() === "auditor";
+  const isCustomVendor = useAppSelector((s) => s.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only);
 
   const queryClient = useQueryClient();
   const form = useForm<DesignsFormValues>({
@@ -135,27 +136,29 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
        
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-5">
-              <FormField
-                control={form.control}
-                name="design_type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Design Type *</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select 2D or 3D" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="2D">2D Design</SelectItem>
-                        <SelectItem value="3D">3D Design</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {isCustomVendor && (
+                <FormField
+                  control={form.control}
+                  name="design_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Design Type *</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select 2D or 3D" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="2D">2D Design</SelectItem>
+                          <SelectItem value="3D">3D Design</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <FormField
                 control={form.control}

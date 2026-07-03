@@ -174,7 +174,7 @@ export interface SubmitDesignPayload {
   vendorId: number;
   leadId: number;
   userId: number;
-  designType: "2D" | "3D";
+  designType?: "2D" | "3D";
   productStructureInstanceIds?: number[] | string[];
 }
 
@@ -184,7 +184,9 @@ export const submitDesigns = async (payload: SubmitDesignPayload) => {
   formData.append("vendorId", payload.vendorId.toString());
   formData.append("leadId", payload.leadId.toString());
   formData.append("userId", payload.userId.toString());
-  formData.append("design_type", payload.designType);
+  if (payload.designType) {
+    formData.append("design_type", payload.designType);
+  }
 
   payload.files.forEach((file) => {
     formData.append("files", file);

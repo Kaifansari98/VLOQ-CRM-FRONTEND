@@ -255,6 +255,9 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type,
   );
+  const isCustomVendor = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only,
+  );
   const { shouldDisableBlockedActions: shouldDisableRouteBlockedActions } =
     useLeadAccessControl({
       leadId: routeLeadId || undefined,
@@ -718,9 +721,9 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
 
             {/* Status & Design Type */}
             <div className="flex items-center gap-3">
-              {designTypeTag && (
-                <span className="shrink-0 px-2 py-0.5 rounded-md bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 text-xs font-semibold">
-                  {designTypeTag.toUpperCase()}
+              {isCustomVendor && designTypeTag && (
+                <span className="text-zinc-700 font-semibold">
+                  {designTypeTag.toUpperCase()} File
                 </span>
               )}
               {hasStatus && (

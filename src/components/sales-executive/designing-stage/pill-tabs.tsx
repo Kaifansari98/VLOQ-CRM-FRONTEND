@@ -90,6 +90,10 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
     const leadCurrentStatus = leadStatus?.status_tag;
     const lead = leadDetailsData?.data?.lead;
     const assignedDesigner = lead?.assigned_designer_from_mapping;
+    const isDesignerAssignedIfRequired =
+      !vendorCustomUserTypeOnly ||
+      !leadDetailsData ||
+      !!assignedDesigner;
 
     const isAdmin =
       userType?.toLowerCase() === "admin" ||
@@ -274,10 +278,10 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
                         <span className="inline-flex">
                           <Button
                             size="sm"
-                            disabled={shouldDisableBlockedActions}
+                            disabled={shouldDisableBlockedActions || !isDesignerAssignedIfRequired}
                             className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
                             onClick={() => {
-                              if (shouldDisableBlockedActions) return;
+                              if (shouldDisableBlockedActions || !isDesignerAssignedIfRequired) return;
                               setOpenDesignsModal(true);
                             }}
                           >
@@ -286,9 +290,11 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
                           </Button>
                         </span>
                       </TooltipTrigger>
-                      {shouldDisableBlockedActions && (
+                      {(shouldDisableBlockedActions || !isDesignerAssignedIfRequired) && (
                         <TooltipContent side="top" className="max-w-64 text-center">
-                          {blockedTooltip}
+                          {shouldDisableBlockedActions
+                            ? blockedTooltip
+                            : "Please assign a designer before uploading designs."}
                         </TooltipContent>
                       )}
                     </Tooltip>
