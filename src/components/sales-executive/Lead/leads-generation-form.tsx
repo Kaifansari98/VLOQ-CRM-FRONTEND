@@ -1589,7 +1589,9 @@ export default function LeadsGenerationForm({
                 const pickerData =
                   vendorUserss?.map((user: any) => ({
                     id: user.id,
-                    label: user.user_name,
+                    label: user.user_type?.user_type === 'super-admin' 
+                      ? `${user.user_name} - super admin`
+                      : user.user_name,
                   })) || [];
 
                 return (

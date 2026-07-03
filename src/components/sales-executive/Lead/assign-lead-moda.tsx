@@ -176,7 +176,7 @@ const AssignLeadModal = ({
           <Command className="rounded-lg border shadow-md">
             <CommandInput placeholder="Search user to assign..." />
             <CommandList>
-              <CommandGroup heading="Sales-executive">
+              <CommandGroup heading="Eligible Users">
                 {isLoading && (
                   <div className="p-4 text-sm text-gray-500">Loading...</div>
                 )}
@@ -207,8 +207,10 @@ const AssignLeadModal = ({
                             {getInitials(user.user_name)}
                           </div>
                           <div className="flex flex-col flex-1">
-                            <span className="text-sm font-medium">{user.user_name}</span>
-                            <span className="text-xs text-gray-500">{user.user_email}</span>
+                            <span className="text-sm font-medium">
+                              {user.user_name} - {user.user_type?.user_type || "sales-executive"}
+                            </span>
+                            <span className="text-xs text-muted-foreground">{user.user_email || "No email available"}</span>
                           </div>
                   
                           {isAssigned && (

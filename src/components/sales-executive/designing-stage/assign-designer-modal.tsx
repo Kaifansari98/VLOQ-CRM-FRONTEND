@@ -220,7 +220,7 @@ export default function AssignDesignerModal({
           <CommandEmpty>No eligible designers found.</CommandEmpty>
         )}
         {!isLoading && users.length > 0 && (
-          <CommandGroup heading="Sales-executive">
+          <CommandGroup heading="Eligible Designers">
             {users.map((user: any) => (
               <CommandItem
                 key={user.id}
@@ -235,10 +235,10 @@ export default function AssignDesignerModal({
                 </Avatar>
                 <div className="flex flex-col">
                   <span className="font-semibold text-sm">
-                    {user.user_name} - sales-executive
+                    {user.user_name} - {user.user_type?.user_type || "sales-executive"}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {user.user_email || user.email || "farhanghori6@gmail.com"}
+                    {user.user_email || user.email || "No email available"}
                   </span>
                 </div>
               </CommandItem>

@@ -62,6 +62,13 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useQueryClient } from "@tanstack/react-query";
 import { toastManager } from "@/components/ui/toast";
 import { useForm } from "react-hook-form";
@@ -144,6 +151,7 @@ const bookingAmountSchema = z.object({
 type BookingAmountFormValues = z.infer<typeof bookingAmountSchema>;
 
 const designsSchema = z.object({
+  design_type: z.enum(["2D", "3D"]).optional(),
   upload_pdf: z
     .any()
     .refine((files) => files && files.length > 0, {
@@ -185,6 +193,9 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   );
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
+  );
+  const isCustomVendor = useAppSelector(
+    (s) => s.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only,
   );
 
   // 🧩 States
@@ -316,6 +327,11 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
     siteSupervisorCheck?.isSiteSupervisorAssigned ?? false;
 
   const lead = data?.data?.lead;
+  const isDesignerAssignedIfRequired =
+    !isCustomVendor ||
+    loading ||
+    !data ||
+    !!lead?.assigned_designer_from_mapping;
   const assignedIsmUserFromMapping =
     lead?.assigned_ism_user_from_mapping ?? null;
   const accountId = Number(lead?.account_id);
@@ -732,6 +748,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
         vendorId,
         leadId,
         userId,
+        designType: values.design_type,
       });
 
       toastManager.add({
@@ -1650,11 +1667,24 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                             ))}
                             {canUploadConsolidatedDesignDocuments && (
                               <CustomeTooltip
-                                value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                                value={
+                                  shouldDisableBlockedActions
+                                    ? blockedTooltip
+                                    : !isDesignerAssignedIfRequired
+                                    ? "Please assign a designer before uploading designs."
+                                    : ""
+                                }
                                 truncateValue={
                                   <div
                                     onClick={() => {
                                       if (shouldDisableBlockedActions) return;
+                                      if (!isDesignerAssignedIfRequired) {
+                                        toastManager.add({
+                                          title: "Please assign a designer before uploading designs.",
+                                          type: "error",
+                                        });
+                                        return;
+                                      }
                                       setDesignsModalOpen(true);
                                     }}
                                     className={`
@@ -1662,7 +1692,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                                       border border-dashed border-border/70
                                       rounded-xl p-6 text-center
                                       transition
-                                      ${shouldDisableBlockedActions
+                                      ${(shouldDisableBlockedActions || !isDesignerAssignedIfRequired)
                                         ? "opacity-50 cursor-not-allowed bg-mutedBg/20 dark:bg-neutral-800/20"
                                         : "cursor-pointer bg-mutedBg/40 dark:bg-neutral-800/40 hover:bg-mutedBg/60"
                                       }
@@ -1672,7 +1702,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                                     <p className="text-sm font-medium text-muted-foreground">
                                       Upload Designs
                                     </p>
-                                    {shouldDisableBlockedActions && (
+                                    {(shouldDisableBlockedActions || !isDesignerAssignedIfRequired) && (
                                       <span className="text-[10px] italic text-red-500 mt-1">
                                         (blocked)
                                       </span>
@@ -1898,12 +1928,35 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
               onSubmit={designsForm.handleSubmit(handleUploadDesigns)}
               className="space-y-6 p-5"
             >
+              {isCustomVendor && (
+                <FormField
+                  control={designsForm.control}
+                  name="design_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Design Type *</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select 2D or 3D" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="2D">2D Design</SelectItem>
+                          <SelectItem value="3D">3D Design</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
               <FormField
                 control={designsForm.control}
                 name="upload_pdf"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Upload Design Files</FormLabel>
+                    <FormLabel>Upload Design Files *</FormLabel>
                     <FormControl>
                       <DocumentsUploader
                         value={field.value}

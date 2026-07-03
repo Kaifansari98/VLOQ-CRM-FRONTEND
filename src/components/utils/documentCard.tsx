@@ -255,6 +255,9 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type,
   );
+  const isCustomVendor = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only,
+  );
   const { shouldDisableBlockedActions: shouldDisableRouteBlockedActions } =
     useLeadAccessControl({
       leadId: routeLeadId || undefined,
@@ -272,6 +275,17 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
   const [progress, setProgress] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
+
+  // Extract design type from originalName if present (e.g., "[3D] fileName.pdf")
+  let displayOriginalName = doc.originalName;
+  let designTypeTag: string | null = null;
+  if (doc.originalName) {
+    const match = doc.originalName.match(/^\[(2D|3D)\]\s*(.*)$/i);
+    if (match) {
+      designTypeTag = match[1];
+      displayOriginalName = match[2];
+    }
+  }
 
   const getStatusLabel = () => {
     switch (status?.toUpperCase()) {
@@ -543,7 +557,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
             {isImage ? (
               <img
                 src={doc.signedUrl}
-                alt={doc.originalName}
+                alt={displayOriginalName}
                 className="w-full h-full object-cover"
               />
             ) : isVideo ? (
@@ -596,9 +610,11 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
         {/* File Info */}
         <div className="flex flex-col justify-between flex-1 min-w-0">
           <div>
-            <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-200 truncate pr-6">
-              {doc.originalName}
-            </h3>
+            <div className="flex items-start justify-between gap-2">
+              <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-200 truncate pr-6" title={displayOriginalName}>
+                {displayOriginalName}
+              </h3>
+            </div>
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
               {doc.created_at
                 ? `Uploaded on ${formatDate(doc.created_at, {
@@ -703,15 +719,22 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
               </button>
             </div>
 
-            {/* Status */}
-            {hasStatus && (
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${getDotColor()}`} />
-                <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
-                  {getStatusLabel()}
+            {/* Status & Design Type */}
+            <div className="flex items-center gap-3">
+              {isCustomVendor && designTypeTag && (
+                <span className="text-zinc-700 font-semibold">
+                  {designTypeTag.toUpperCase()} File
                 </span>
-              </div>
-            )}
+              )}
+              {hasStatus && (
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${getDotColor()}`} />
+                  <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
+                    {getStatusLabel()}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </motion.div>

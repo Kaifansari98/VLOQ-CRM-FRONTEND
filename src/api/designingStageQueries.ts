@@ -112,13 +112,7 @@ export interface SubmitMeetingPayload {
   meeting_end_time?: string;
 }
 
-export interface SubmitDesignPayload {
-  files: File[];
-  vendorId: number;
-  leadId: number;
-  userId: number;
-  productStructureInstanceIds?: number[];
-}
+
 
 export const submitMeeting = async (payload: SubmitMeetingPayload) => {
   const formData = new FormData();
@@ -175,12 +169,24 @@ export const getMeetingTypes = async (
   return data.data ?? [];
 };
 
+export interface SubmitDesignPayload {
+  files: File[];
+  vendorId: number;
+  leadId: number;
+  userId: number;
+  designType?: "2D" | "3D";
+  productStructureInstanceIds?: number[] | string[];
+}
+
 export const submitDesigns = async (payload: SubmitDesignPayload) => {
   const formData = new FormData();
 
   formData.append("vendorId", payload.vendorId.toString());
   formData.append("leadId", payload.leadId.toString());
   formData.append("userId", payload.userId.toString());
+  if (payload.designType) {
+    formData.append("design_type", payload.designType);
+  }
 
   payload.files.forEach((file) => {
     formData.append("files", file);
