@@ -286,7 +286,9 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       onOpenChange(false);
 
       // ✅ Redirect to Designing Stage
-      router.push("/dashboard/leads/designing-stage");
+      if (!isCustomVendorFlowFromAuth) {
+        router.push("/dashboard/leads/designing-stage");
+      }
     },
     onError: (error: unknown) => {
       toastError(error);
@@ -1099,7 +1101,13 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                 Reset
               </Button>
               <Button type="submit" disabled={mutation.isPending}>
-                {mutation.isPending ? "Moving to Designing stage..." : "Move to Designing stage"}
+                {mutation.isPending
+                  ? isCustomVendorFlowFromAuth
+                    ? "Submitting ISM..."
+                    : "Moving to Designing stage..."
+                  : isCustomVendorFlowFromAuth
+                    ? "Submit ISM"
+                    : "Move to Designing stage"}
               </Button>
             </div>
           </form>

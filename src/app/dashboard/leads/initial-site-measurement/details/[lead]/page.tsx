@@ -86,9 +86,11 @@ import {
   useLeadBlockStatus,
   useBlockLead,
   useUnblockLead,
+  useUpdateLeadStage,
 } from "@/hooks/useLeadsQueries";
 import { formatBlockedAt } from "@/lib/utils";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useCheckIsmUploaded } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
 
 export default function SiteMeasurementLead() {
   const router = useRouter();
@@ -111,7 +113,13 @@ export default function SiteMeasurementLead() {
     (state) => state.customPrivileges.codes,
   );
 
+  const isCustomVendorFlowFromAuth = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
+  );
+
   const [openDelete, setOpenDelete] = useState(false);
+  const [openMoveToDesigning, setOpenMoveToDesigning] = useState(false);
   // Modals
   const [openMeasurement, setOpenMeasurement] = useState(false);
   const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
@@ -129,6 +137,10 @@ export default function SiteMeasurementLead() {
   const blockLeadMutation = useBlockLead();
   const unblockLeadMutation = useUnblockLead();
   const isAuditor = userType?.trim().toLowerCase() === "auditor";
+  
+  const { data: ismUploadData } = useCheckIsmUploaded(leadIdNum);
+  const isIsmUploaded = ismUploadData?.isUploaded;
+
   const {
     isLeadBlocked,
     blockedTooltip,
@@ -140,6 +152,33 @@ export default function SiteMeasurementLead() {
     userType,
     lead,
   });
+
+  const { mutate: updateStage, isPending: isUpdateStagePending } = useUpdateLeadStage();
+
+  const handleMoveToDesigning = () => {
+    updateStage(
+      { 
+        leadId: leadIdNum, 
+        payload: { 
+          stageTag: "Type 3", 
+          actionMessage: "Lead moved to Designing stage",
+          vendor_id: vendorId,
+          updated_by: userId,
+        } 
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({ title: "Lead moved to Designing stage successfully!", type: "success" });
+          queryClient.invalidateQueries({ queryKey: ["leadById", leadIdNum] });
+          setOpenMoveToDesigning(false);
+          router.push("/dashboard/leads/designing-stage");
+        },
+        onError: (err) => {
+          toastManager.add({ title: err.message || "Failed to move lead to Designing stage", type: "error" });
+        },
+      }
+    );
+  };
 
   const [activeTab, setActiveTab] = useState("details");
   useChatTabFromUrl(setActiveTab);
@@ -331,32 +370,67 @@ export default function SiteMeasurementLead() {
         </div>
         <div className="flex items-center space-x-2">
           {!isAuditor && canUploadISM(userType) && !lead?.is_draft && canAccessTodoTask && (
-            shouldDisableBlockedActions ? (
-              <CustomeTooltip
-                value={blockedTooltip}
-                truncateValue={
-                  <Button
-                    size="sm"
-                    className="hidden md:flex gap-1"
-                    variant="outline"
-                    disabled
-                  >
-                    <ClipboardCheck size={16} />
-                    Upload ISM
-                  </Button>
-                }
-              />
-            ) : (
-              <Button
-                size="sm"
-                className="hidden md:flex gap-1"
-                
-                onClick={() => setOpenMeasurement(true)}
-              >
-                <ClipboardCheck size={16} />
-                Upload ISM
-              </Button>
-            )
+            <>
+              {shouldDisableBlockedActions ? (
+                <>
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <Button
+                        size="sm"
+                        className="hidden md:flex gap-1"
+                        variant="outline"
+                        disabled
+                      >
+                        <ClipboardCheck size={16} />
+                        Upload ISM
+                      </Button>
+                    }
+                  />
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <Button
+                        size="sm"
+                        className="hidden md:flex gap-1"
+                        variant="outline"
+                        disabled
+                      >
+                        Move to Designing
+                      </Button>
+                    }
+                  />
+                </>
+              ) : (
+                <>
+                  {isIsmUploaded ? (
+                    <>
+                      <span className="text-sm font-medium text-green-600 hidden md:flex items-center gap-1 bg-green-50 px-2 py-1 rounded-md border border-green-200">
+                        <ClipboardCheck size={16} />
+                        Uploaded
+                      </span>
+                      <Button
+                        size="sm"
+                        className="hidden md:flex gap-1"
+                        onClick={() => setOpenMoveToDesigning(true)}
+                        disabled={isUpdateStagePending}
+                      >
+                        {isUpdateStagePending ? "Moving..." : "Move to Designing"}
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      size="sm"
+                      className="hidden md:flex gap-1"
+                      onClick={() => setOpenMeasurement(true)}
+                    >
+                      <ClipboardCheck size={16} />
+                      Upload ISM
+                    </Button>
+                  )}
+                </>
+              )}
+            </>
           )}
           {!isAuditor && (
             <Button
@@ -402,10 +476,17 @@ export default function SiteMeasurementLead() {
                     }
                   />
                 ) : (
-                  <DropdownMenuItem onSelect={() => setOpenMeasurement(true)}>
-                    <ClipboardCheck size={20} />
-                    Upload Measurement
-                  </DropdownMenuItem>
+                  isIsmUploaded ? (
+                    <DropdownMenuItem onSelect={() => setOpenMoveToDesigning(true)} disabled={isUpdateStagePending}>
+                      <ClipboardCheck size={20} />
+                      {isUpdateStagePending ? "Moving..." : "Move to Designing"}
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem onSelect={() => setOpenMeasurement(true)}>
+                      <ClipboardCheck size={20} />
+                      Upload Measurement
+                    </DropdownMenuItem>
+                  )
                 )
               ) : (
                 <CustomeTooltip
@@ -617,7 +698,11 @@ export default function SiteMeasurementLead() {
         {/* Tab contents */}
         <TabsContent value="details">
           <main className="flex-1 h-fit">
-            <LeadDetailsUtil status="details" leadId={leadIdNum} />
+<LeadDetailsUtil 
+  status={isIsmUploaded ? "measurement" : "details"} 
+  defaultTab={isIsmUploaded ? "measurement" : "details"} 
+  leadId={leadIdNum} 
+/>
           </main>
         </TabsContent>
 
@@ -751,6 +836,31 @@ export default function SiteMeasurementLead() {
                 : isLeadBlocked
                   ? "Unblock"
                   : "Block"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={openMoveToDesigning}
+        onOpenChange={setOpenMoveToDesigning}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Move to Designing?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to move this lead to the Designing stage?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isUpdateStagePending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleMoveToDesigning}
+              disabled={isUpdateStagePending}
+            >
+              {isUpdateStagePending ? "Moving..." : "Confirm"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

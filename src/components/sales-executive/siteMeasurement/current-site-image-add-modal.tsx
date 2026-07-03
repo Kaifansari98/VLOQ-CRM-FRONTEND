@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/form";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { useAppSelector } from "@/redux/store";
-import { useUpdateSiteMeasurementMutation } from "@/hooks/Site-measruement/useUpdateSiteMeasurement";
+import { useUploadAdditionalSitePhotosMutation } from "@/hooks/Site-measruement/useUploadAdditionalSitePhotos";
 import BaseModal from "@/components/utils/baseModal";
 import { toastManager } from "@/components/ui/toast";
 
@@ -49,7 +49,7 @@ const AddCurrentSitePhotos: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const updatedBy = useAppSelector((state) => state.auth.user?.id);
 
-  const { mutateAsync, isPending } = useUpdateSiteMeasurementMutation();
+  const { mutateAsync, isPending } = useUploadAdditionalSitePhotosMutation();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -76,10 +76,7 @@ const AddCurrentSitePhotos: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
         formData.append("current_site_photos", file);
       });
 
-      await mutateAsync({
-        paymentId: data.paymentId || 0,
-        formData,
-      });
+      await mutateAsync(formData);
       
       
 

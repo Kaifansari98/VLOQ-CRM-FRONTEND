@@ -10,6 +10,7 @@ import {
   ReschedulePayload,
   rescheduleInitialSiteMeasurementTask,
   RescheduleTaskFollowUp,
+  checkIsmUploadedAPI,
 } from "@/api/measurment-leads";
 import { getBookingDoneIsmDetails, uploadBookingDoneIsm } from "@/api/leads";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -113,6 +114,15 @@ export function useSiteMeasurementLeadById(leadId: number) {
     enabled: Boolean(leadId),
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
+  });
+}
+
+export function useCheckIsmUploaded(leadId: number) {
+  return useQuery({
+    queryKey: ["checkIsmUploaded", leadId],
+    queryFn: () => checkIsmUploadedAPI(leadId),
+    enabled: Boolean(leadId),
+    staleTime: 5 * 60 * 1000,
   });
 }
 

@@ -51,6 +51,8 @@ import {
   unblockLead,
   ClientVisit,
   getFastProductionRequestDraft,
+  updateLeadStageAPI,
+  UpdateLeadStagePayload,
 } from "@/api/leads";
 import {
   assignToFinalMeasurement,
@@ -620,5 +622,17 @@ export const useFastProductionRequestDraft = (
     enabled: !!vendorId && !!leadId,
     staleTime: 0,
     refetchOnWindowFocus: false,
+  });
+};
+
+export const useUpdateLeadStage = () => {
+  return useMutation({
+    mutationFn: ({
+      leadId,
+      payload,
+    }: {
+      leadId: number;
+      payload: UpdateLeadStagePayload;
+    }) => updateLeadStageAPI(leadId, payload),
   });
 };

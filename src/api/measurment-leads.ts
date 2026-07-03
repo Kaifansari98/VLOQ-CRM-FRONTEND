@@ -135,3 +135,29 @@ export const getSiteMeasurmentLeadById = async (leadId: number) => {
   );
   return data.data;
 };
+
+export interface CheckIsmUploadedResponse {
+  isUploaded: boolean;
+}
+
+export const checkIsmUploadedAPI = async (
+  leadId: number
+): Promise<CheckIsmUploadedResponse> => {
+  const { data } = await apiClient.get<{ success: boolean; data: CheckIsmUploadedResponse }>(
+    `/leads/initial-site-measurement/leadId/${leadId}/check-ism-uploaded`
+  );
+  return data.data;
+};
+
+export const uploadAdditionalSitePhotosAPI = async (formData: FormData) => {
+  const { data } = await apiClient.post(
+    `/leads/initial-site-measurement/site-photos/upload`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+  return data;
+};

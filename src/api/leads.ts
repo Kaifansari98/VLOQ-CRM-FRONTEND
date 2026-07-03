@@ -1480,3 +1480,25 @@ export const unshortenUrl = async (url: string): Promise<string> => {
   );
   return data.resolvedUrl;
 };
+
+export interface UpdateLeadStagePayload {
+  stageTag: string;
+  actionMessage?: string;
+  vendor_id?: number;
+  updated_by?: number;
+}
+
+export const updateLeadStageAPI = async (
+  leadId: number,
+  payload: UpdateLeadStagePayload
+): Promise<any> => {
+  try {
+    const { data } = await apiClient.patch(`/leads/${leadId}/stage`, payload);
+    return data;
+  } catch (error) {
+    if (error instanceof AxiosError && error.response) {
+      throw new Error(getErrorMessage(error.response.data));
+    }
+    throw error;
+  }
+};
