@@ -62,6 +62,13 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useQueryClient } from "@tanstack/react-query";
 import { toastManager } from "@/components/ui/toast";
 import { useForm } from "react-hook-form";
@@ -144,6 +151,7 @@ const bookingAmountSchema = z.object({
 type BookingAmountFormValues = z.infer<typeof bookingAmountSchema>;
 
 const designsSchema = z.object({
+  design_type: z.enum(["2D", "3D"]),
   upload_pdf: z
     .any()
     .refine((files) => files && files.length > 0, {
@@ -732,6 +740,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
         vendorId,
         leadId,
         userId,
+        designType: values.design_type,
       });
 
       toastManager.add({
@@ -1900,10 +1909,31 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
             >
               <FormField
                 control={designsForm.control}
+                name="design_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Design Type *</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select 2D or 3D" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="2D">2D Design</SelectItem>
+                        <SelectItem value="3D">3D Design</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={designsForm.control}
                 name="upload_pdf"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Upload Design Files</FormLabel>
+                    <FormLabel>Upload Design Files *</FormLabel>
                     <FormControl>
                       <DocumentsUploader
                         value={field.value}
