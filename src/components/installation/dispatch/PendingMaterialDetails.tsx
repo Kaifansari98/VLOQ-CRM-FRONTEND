@@ -106,7 +106,7 @@ export default function PendingMaterialDetails({
     const formattedTitle = selectedInstanceLabel
       ? `${selectedInstanceLabel} - ${title.trim()}`
       : title.trim();
-    const combinedRemark = `${formattedTitle} — ${remark.trim()}`;
+    const combinedRemark = remark.trim() ? `${formattedTitle} — ${remark.trim()}` : formattedTitle;
 
     try {
       await createPendingTask({
