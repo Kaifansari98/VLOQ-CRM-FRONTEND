@@ -221,6 +221,9 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
   const [leadStage, setLeadStage] = useState("");
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const createdBy = useAppSelector((state) => state.auth.user?.id);
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
   const isCustomVendorFlow = useAppSelector(
     (state) =>
       state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
@@ -437,6 +440,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
 
   const shouldShowFurnitureFields = isDraftLead || leadStage === "open" || leadStage === "";
   const shouldShowSiteTypeField = isDraftLead || leadStage === "open" || leadStage === "";
+  const requiresFurnitureSelection = !handlesLargeScaleProjects;
 
   // Product type & structure hooks
   const { data: productStructures, isLoading: isStructuresLoading } =
@@ -560,6 +564,24 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
   );
 
   useEffect(() => {
+    if (requiresFurnitureSelection) return;
+
+    form.setValue("product_types", [], {
+      shouldDirty: false,
+      shouldValidate: false,
+    });
+    form.setValue("product_structures", [], {
+      shouldDirty: false,
+      shouldValidate: false,
+    });
+    setStructureInstanceDetails([]);
+    previousStructuresRef.current = [];
+    setInitialProductTypeId(null);
+    setInitialStructureIds([]);
+    setExistingStructureInstanceIds([]);
+  }, [form, requiresFurnitureSelection]);
+
+  useEffect(() => {
     if (!isKitchenStructureSingleSelect) return;
 
     const currentStructures = form.getValues("product_structures") || [];
@@ -664,18 +686,28 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           archetech_number: lead.archetech_number || "",
           designer_remark: lead.designer_remark || "",
           initial_site_measurement_date: formattedDate,
-          product_types: productTypeIds,
-          product_structures: structureIds,
+          product_types: requiresFurnitureSelection ? productTypeIds : [],
+          product_structures: requiresFurnitureSelection ? structureIds : [],
         });
 
         // Store initial values for change detection
-        setInitialProductTypeId(productTypeId ? Number(productTypeId) : null);
-        setInitialStructureIds(structureIds);
-        setExistingStructureInstanceIds(instanceIds);
+        setInitialProductTypeId(
+          requiresFurnitureSelection && productTypeId
+            ? Number(productTypeId)
+            : null,
+        );
+        setInitialStructureIds(requiresFurnitureSelection ? structureIds : []);
+        setExistingStructureInstanceIds(
+          requiresFurnitureSelection ? instanceIds : [],
+        );
 
         // Set structure instance details and sync ref
-        setStructureInstanceDetails(instanceDetails);
-        previousStructuresRef.current = structureIds;
+        setStructureInstanceDetails(
+          requiresFurnitureSelection ? instanceDetails : [],
+        );
+        previousStructuresRef.current = requiresFurnitureSelection
+          ? structureIds
+          : [];
 
         // Handle map location
         if (lead.site_map_link && lead.site_map_link.includes("maps?q=")) {
@@ -699,7 +731,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
     };
 
     fetchLeadData();
-  }, [leadData?.id, vendorId, createdBy, form]);
+  }, [leadData?.id, vendorId, createdBy, form, requiresFurnitureSelection]);
 
   const isDraftReadyToConvert = useMemo(() => {
     if (!isDraftLead) return false;
@@ -715,10 +747,11 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
     return Boolean(
       hasRequiredTextFields &&
       isPhoneValueValid(watchedValues.contact_no) &&
-      watchedValues.product_types?.length &&
-      watchedValues.product_structures?.length,
+      (!requiresFurnitureSelection ||
+        (watchedValues.product_types?.length &&
+          watchedValues.product_structures?.length)),
     );
-  }, [isDraftLead, watchedValues]);
+  }, [isDraftLead, requiresFurnitureSelection, watchedValues]);
 
   if (isLoadingLead) {
     return (
@@ -825,10 +858,12 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
       ? Number(values.product_types[0])
       : null;
     const currentStructureIds = values.product_structures || [];
-    const productTypeChanged = currentProductTypeId !== initialProductTypeId;
-    const structuresChanged =
-      JSON.stringify(currentStructureIds) !==
-      JSON.stringify(initialStructureIds);
+    const productTypeChanged = requiresFurnitureSelection
+      ? currentProductTypeId !== initialProductTypeId
+      : false;
+    const structuresChanged = requiresFurnitureSelection
+      ? JSON.stringify(currentStructureIds) !== JSON.stringify(initialStructureIds)
+      : false;
 
     const hasMainChanges = Object.keys(payload).length > 1;
     const hasAnyChanges =
@@ -841,7 +876,9 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
 
     try {
       const shouldConvertDraft =
-        isDraftLead && Boolean(currentProductTypeId) && isDraftReadyToConvert;
+        isDraftLead &&
+        (!requiresFurnitureSelection || Boolean(currentProductTypeId)) &&
+        isDraftReadyToConvert;
 
       // 1. Product type update
       if (productTypeChanged && currentProductTypeId) {
@@ -1205,70 +1242,70 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           )}
         />
 
-        {/* Product Type & Structure */}
+        {requiresFurnitureSelection && (
+          <>
         {shouldShowFurnitureFields && (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
-              <FormField
-                control={form.control}
-                name="product_types"
-                render={({ field }) => {
-                  const pickerData =
-                    productTypes?.data?.map((p: any) => ({
-                      id: p.id,
-                      label: p.type,
-                    })) || [];
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+                  <FormField
+                    control={form.control}
+                    name="product_types"
+                    render={({ field }) => {
+                      const pickerData =
+                        productTypes?.data?.map((p: any) => ({
+                          id: p.id,
+                          label: p.type,
+                        })) || [];
 
-                  return (
-                    <FormItem>
-                      <FormLabel className="text-sm">Furniture Type</FormLabel>
-                      {isProductTypesLoading ? (
-                        <p className="text-xs text-muted-foreground">Loading...</p>
-                      ) : (
-                        <AssignToPicker
-                          data={pickerData}
-                          value={
-                            field.value?.length ? Number(field.value[0]) : undefined
-                          }
-                          onChange={(selectedId) => {
-                            field.onChange(selectedId ? [String(selectedId)] : []);
-                            // Clear structures when type changes
-                            form.setValue("product_structures", [], {
-                              shouldValidate: true,
-                            });
-                          }}
-                          placeholder="Search furniture type..."
-                        />
-                      )}
-                      <FormMessage />
-                    </FormItem>
-                  );
-                }}
-              />
-
-              <FormField
-                control={form.control}
-                name="product_structures"
-                render={({ field }) => {
-                  const selectedOptions = (field.value || [])
-                    .filter((id) =>
-                      structureOptions.some((opt) => opt.value === id),
-                    )
-                    .map((id) => {
-                      const option = structureOptions.find(
-                        (opt) => opt.value === id,
+                      return (
+                        <FormItem>
+                          <FormLabel className="text-sm">Furniture Type</FormLabel>
+                          {isProductTypesLoading ? (
+                            <p className="text-xs text-muted-foreground">Loading...</p>
+                          ) : (
+                            <AssignToPicker
+                              data={pickerData}
+                              value={
+                                field.value?.length ? Number(field.value[0]) : undefined
+                              }
+                              onChange={(selectedId) => {
+                                field.onChange(selectedId ? [String(selectedId)] : []);
+                                    form.setValue("product_structures", [], {
+                                  shouldValidate: true,
+                                });
+                              }}
+                              placeholder="Search furniture type..."
+                            />
+                          )}
+                          <FormMessage />
+                        </FormItem>
                       );
-                      return option || { value: id, label: id };
-                    });
-                  const shouldShowMaxTooltip =
-                    showMaxStructureTooltip && hasSelectedFurnitureType;
-                  const tooltipMessage = !hasSelectedFurnitureType
-                    ? "Select a furniture type first."
-                    : isKitchenStructureSingleSelect && shouldShowMaxTooltip
-                      ? "Kitchen allows only 1 furniture structure."
-                      : shouldShowMaxTooltip
-                        ? "Maximum limit is 10 per item."
-                        : "";
+                    }}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="product_structures"
+                    render={({ field }) => {
+                      const selectedOptions = (field.value || [])
+                        .filter((id) =>
+                          structureOptions.some((opt) => opt.value === id),
+                        )
+                        .map((id) => {
+                          const option = structureOptions.find(
+                            (opt) => opt.value === id,
+                          );
+                          return option || { value: id, label: id };
+                        });
+                      const shouldShowMaxTooltip =
+                        showMaxStructureTooltip && hasSelectedFurnitureType;
+                      const tooltipMessage = !hasSelectedFurnitureType
+                        ? "Select a furniture type first."
+                        : isKitchenStructureSingleSelect && shouldShowMaxTooltip
+                          ? "Kitchen allows only 1 furniture structure."
+                          : shouldShowMaxTooltip
+                            ? "Maximum limit is 10 per item."
+                            : "";
 
                   return (
                     <FormItem>

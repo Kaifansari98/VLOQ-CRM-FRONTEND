@@ -132,10 +132,14 @@ export interface LeadProductStructureInstance {
   account_id: number;
   product_type_id: number;
   product_structure_id: number;
+  sub_product_structure_id?: number | null;
+  product_item_code_id?: number | null;
   quantity_index: number;
+  quantity?: number | null;
   title: string;
   status: string;
   description?: string | null;
+  isLargeScaleProjectInstance?: boolean;
   is_order_login_filled?: boolean | null;
   is_order_login_completed?: boolean | null;
   is_pre_prod_done?: boolean | null;
@@ -155,6 +159,28 @@ export interface LeadProductStructureInstance {
   productType?: {
     id: number;
     type: string;
+  };
+  subProductStructure?: {
+    id: number;
+    type: string;
+  };
+  productItemCode?: {
+    id: number;
+    item_code: string;
+    description?: string | null;
+    specification?: string | null;
+    productStructure?: {
+      id: number;
+      type: string;
+      productType?: {
+        id: number;
+        type: string;
+      } | null;
+    } | null;
+    subProductStructure?: {
+      id: number;
+      type: string;
+    } | null;
   };
 }
 
@@ -847,6 +873,10 @@ export const createLeadProductStructureInstance = async (
     title: string;
     description?: string;
     created_by: number;
+    sub_product_structure_id?: number;
+    product_item_code_id?: number;
+    quantity?: number;
+    isLargeScaleProjectInstance?: boolean;
   },
 ) => {
   const response = await apiClient.post(

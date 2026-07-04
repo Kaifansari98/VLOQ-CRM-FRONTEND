@@ -14,6 +14,7 @@ export interface User {
     id?: number
     vendor_name?: string
     vendor_code?: string
+    handlesLargeScaleProjects?: boolean | null
     is_crm_enabled?: boolean | null
     is_custom_doc_nomenclature_enabled?: boolean | null
     is_this_vendor_is_custom_usertype_only?: boolean | null

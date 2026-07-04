@@ -2,6 +2,10 @@
 import { useQuery } from "@tanstack/react-query"
 import {
   createCompanyVendor,
+  createProductItemCode,
+  createProductSubStructure,
+  createProductStructure,
+  createProductType,
   createInstallerUser,
   createIssueLogType,
   fetchInstallerUsersForMaster,
@@ -21,6 +25,8 @@ import {
   fetchMiscellaneousTypes,
   fetchSourceTypes,
   fetchProductStructureTypes,
+  fetchProductSubStructures,
+  fetchProductItemCodes,
   fetchSiteTypes,
   fetchSiteTypesForMaster,
   fetchProductTypes,
@@ -317,11 +323,120 @@ export const useCreateSourceType = (vendorIdOverride?: number) => {
   });
 }
 
+export const useCreateProductType = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: createProductType,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["productTypes", vendorId] });
+      toastManager.add({
+        title: "Product type created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to create product type.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useCreateProductStructure = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: createProductStructure,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["productStructureTypes", vendorId] });
+      toastManager.add({
+        title: "Product structure created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to create product structure.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useCreateProductSubStructure = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: createProductSubStructure,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["productSubStructures", vendorId] });
+      toastManager.add({
+        title: "Product sub structure created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          "Failed to create product sub structure.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useCreateProductItemCode = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: createProductItemCode,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["productItemCodes", vendorId] });
+      toastManager.add({
+        title: "Product item code created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error || "Failed to create product item code.",
+        type: "error",
+      });
+    },
+  });
+}
+
 export const useProductStructureTypes = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id)
   return useQuery({
     queryKey: ["productStructureTypes", vendorId],
     queryFn: () => fetchProductStructureTypes(vendorId!),
+    enabled: !!vendorId,
+  })
+}
+
+export const useProductSubStructures = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id)
+  return useQuery({
+    queryKey: ["productSubStructures", vendorId],
+    queryFn: () => fetchProductSubStructures(vendorId!),
+    enabled: !!vendorId,
+  })
+}
+
+export const useProductItemCodes = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id)
+  return useQuery({
+    queryKey: ["productItemCodes", vendorId],
+    queryFn: () => fetchProductItemCodes(vendorId!),
     enabled: !!vendorId,
   })
 }

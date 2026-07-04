@@ -198,6 +198,32 @@ export interface CreateSourceTypeMasterPayload {
   type: string;
 }
 
+export interface CreateProductTypeMasterPayload {
+  vendor_id: number;
+  type: string;
+}
+
+export interface CreateProductStructureMasterPayload {
+  vendor_id: number;
+  type: string;
+  product_type_id: number;
+}
+
+export interface CreateProductSubStructureMasterPayload {
+  vendor_id: number;
+  type: string;
+  product_structure_id: number;
+}
+
+export interface CreateProductItemCodeMasterPayload {
+  vendor_id: number;
+  item_code: string;
+  product_structure_id: number;
+  sub_product_structure_id: number;
+  description: string;
+  specification: string;
+}
+
 export interface UpdateSourceTypeMasterPayload {
   type: string;
 }
@@ -304,6 +330,20 @@ export const fetchSourceTypes = async (vendorId: number) => {
 export const fetchProductStructureTypes = async (vendorId: number) => {
   const res = await apiClient.get(`/leads/get-all-productStructure-types/${vendorId}`)
   return res.data
+}
+
+export const fetchProductSubStructures = async (vendorId: number) => {
+  const res = await apiClient.get(
+    `/leads/get-all-product-sub-structures/${vendorId}`,
+  );
+  return res.data;
+}
+
+export const fetchProductItemCodes = async (vendorId: number) => {
+  const res = await apiClient.get(
+    `/leads/get-all-product-item-codes/${vendorId}`,
+  );
+  return res.data;
 }
 
 export const fetchCarcassTypes = async (vendorId: number) => {
@@ -619,6 +659,37 @@ export const updateCompanyVendorStatus = async (
 export const fetchProductTypes = async (vendorId: number) => {
   const res = await apiClient.get(`/leads/get-all-product-types/${vendorId}`)
   return res.data
+}
+
+export const createProductType = async (
+  payload: CreateProductTypeMasterPayload,
+) => {
+  const res = await apiClient.post("/leads/create-product-type", payload);
+  return res.data;
+}
+
+export const createProductStructure = async (
+  payload: CreateProductStructureMasterPayload,
+) => {
+  const res = await apiClient.post("/leads/create-product-structure", payload);
+  return res.data;
+}
+
+export const createProductSubStructure = async (
+  payload: CreateProductSubStructureMasterPayload,
+) => {
+  const res = await apiClient.post(
+    "/leads/create-product-sub-structure",
+    payload,
+  );
+  return res.data;
+}
+
+export const createProductItemCode = async (
+  payload: CreateProductItemCodeMasterPayload,
+) => {
+  const res = await apiClient.post("/leads/create-product-item-code", payload);
+  return res.data;
 }
 
 export const fetchSmallOrderRequestTypes = async (vendorId: number) => {
