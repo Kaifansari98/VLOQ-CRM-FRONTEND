@@ -1242,9 +1242,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           )}
         />
 
-        {requiresFurnitureSelection && (
-          <>
-        {shouldShowFurnitureFields && (
+        {requiresFurnitureSelection && shouldShowFurnitureFields && (
           <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
                   <FormField
