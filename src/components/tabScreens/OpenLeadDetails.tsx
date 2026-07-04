@@ -193,7 +193,12 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [boqModalOpen, setBoqModalOpen] = useState(false);
   const [boqSearch, setBoqSearch] = useState("");
+  const [boqDisplaySearch, setBoqDisplaySearch] = useState("");
   const [isAddingBoqItems, setIsAddingBoqItems] = useState(false);
+  const [boqPreview, setBoqPreview] = useState<{
+    title: string;
+    content: string;
+  } | null>(null);
   const [selectedBoqItems, setSelectedBoqItems] = useState<
     Record<number, { quantity: string; order: number }>
   >({});
@@ -393,6 +398,30 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       ),
     [structureInstances],
   );
+
+  const filteredBoqInstances = useMemo(() => {
+    const search = boqDisplaySearch.trim().toLowerCase();
+    if (!search) return boqInstances;
+    return boqInstances.filter((item: any) => {
+      const haystack = [
+        item.productItemCode?.item_code,
+        item.title,
+        item.productType?.type,
+        item.productItemCode?.productStructure?.productType?.type,
+        item.productStructure?.type,
+        item.productItemCode?.productStructure?.type,
+        item.subProductStructure?.type,
+        item.productItemCode?.subProductStructure?.type,
+        item.productItemCode?.description,
+        item.description,
+        item.productItemCode?.specification,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(search);
+    });
+  }, [boqDisplaySearch, boqInstances]);
 
   const filteredBoqItemCodes = useMemo(() => {
     const search = boqSearch.trim().toLowerCase();
@@ -1127,112 +1156,177 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                 </button>
               ) : (
                 <div className="space-y-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">
-                      {boqInstances.length} BOQ item
-                      {boqInstances.length === 1 ? "" : "s"}
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">
-                      {boqInstances.reduce(
-                        (sum: number, item: any) => sum + Number(item.quantity || 0),
-                        0,
-                      )}{" "}
-                      total quantity
-                    </span>
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="relative w-full lg:max-w-sm">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        value={boqDisplaySearch}
+                        onChange={(event) => setBoqDisplaySearch(event.target.value)}
+                        placeholder="Search BOQ items..."
+                        className="pl-10"
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <span className="inline-flex items-center gap-1.5 rounded-md border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                        {boqInstances.length} BOQ item
+                        {boqInstances.length === 1 ? "" : "s"}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 rounded-md border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                        {boqInstances.reduce(
+                          (sum: number, item: any) => sum + Number(item.quantity || 0),
+                          0,
+                        )}{" "}
+                        total quantity
+                      </span>
+                    </div>
                   </div>
-
-                  <div className="grid gap-4">
-                    {boqInstances.map((item: any) => (
-                      <div
-                        key={item.id}
-                        className="rounded-2xl border bg-gradient-to-br from-white to-muted/20 p-5 shadow-sm transition hover:border-border/80 dark:from-[#0a0a0a] dark:to-[#111111]"
-                      >
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                          <div className="min-w-0 flex-1 space-y-3">
-                            <div className="flex flex-wrap items-start gap-3">
-                              <div className="min-w-0 flex-1">
-                                <p className="text-lg font-semibold leading-tight text-foreground break-words">
-                                  {item.productItemCode?.item_code || item.title || "—"}
-                                </p>
-                                <p className="mt-1 text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                                  BOQ Item
-                                </p>
-                              </div>
-                              <span className="inline-flex items-center rounded-full border bg-background px-3 py-1 text-xs font-semibold text-foreground">
-                                Qty: {item.quantity ?? "—"}
-                              </span>
-                            </div>
-
-                            <div className="flex flex-wrap gap-2 text-xs">
-                              <span className="rounded-full border bg-muted/40 px-3 py-1 font-medium text-muted-foreground">
-                                {item.productType?.type ||
-                                  item.productItemCode?.productStructure?.productType?.type ||
-                                  "—"}
-                              </span>
-                              <span className="rounded-full border bg-muted/40 px-3 py-1 font-medium text-muted-foreground">
-                                {item.productStructure?.type ||
-                                  item.productItemCode?.productStructure?.type ||
-                                  "—"}
-                              </span>
-                              <span className="rounded-full border bg-muted/40 px-3 py-1 font-medium text-muted-foreground">
-                                {item.subProductStructure?.type ||
-                                  item.productItemCode?.subProductStructure?.type ||
-                                  "—"}
-                              </span>
-                            </div>
-
-                            <div className="grid gap-3 md:grid-cols-2">
-                              <div className="rounded-xl border border-dashed bg-muted/20 p-3">
-                                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                                  Description
-                                </p>
-                                <p className="mt-2 text-sm leading-6 text-foreground/90">
-                                  {item.productItemCode?.description || item.description || "—"}
-                                </p>
-                              </div>
-                              <div className="rounded-xl border border-dashed bg-muted/20 p-3">
-                                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                                  Specification
-                                </p>
-                                <p className="mt-2 text-sm leading-6 text-foreground/90">
-                                  {item.productItemCode?.specification || "—"}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-
-                          {canEditStructures && (
-                            <div className="flex shrink-0 items-center gap-1">
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      if (shouldDisableBlockedActions) return;
-
-                                      setConfirmStructureDelete({
-                                        id: item.id,
-                                        title:
-                                          item.productItemCode?.item_code ||
-                                          item.title ||
-                                          "this BOQ item",
-                                      });
-                                    }}
-                                    className="inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground transition hover:text-destructive"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </button>
-                                </TooltipTrigger>
-                                {shouldDisableBlockedActions && (
-                                  <TooltipContent>{blockedTooltip}</TooltipContent>
-                                )}
-                              </Tooltip>
-                            </div>
-                          )}
+                  {filteredBoqInstances.length === 0 ? (
+                    <div className="flex min-h-[220px] items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/15 px-6 py-12 text-center">
+                      <div className="max-w-sm space-y-2">
+                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-dashed border-border/70 bg-background">
+                          <Search className="h-5 w-5 text-muted-foreground" />
                         </div>
+                        <p className="text-sm font-semibold text-foreground">
+                          No items found
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Try a different item code, category, description, or
+                          specification keyword.
+                        </p>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="grid gap-4">
+	                    {filteredBoqInstances.map((item: any) => (
+	                      <div
+	                        key={item.id}
+	                        className="w-fit min-w-[360px] max-w-full rounded-xl border bg-background p-4 transition hover:border-border/80"
+	                      >
+	                        <div className="flex flex-col gap-3">
+	                          <div className="min-w-0 flex-1 space-y-2">
+	                            <div className="flex items-start justify-between gap-3">
+	                              <div className="min-w-0 flex-1">
+	                                <p className="text-base font-semibold leading-tight text-foreground break-words">
+	                                  {item.productItemCode?.item_code || item.title || "—"}
+	                                </p>
+	                              </div>
+	                              {canEditStructures && (
+	                                <div className="flex shrink-0 items-center gap-1">
+	                                  <Tooltip>
+	                                    <TooltipTrigger asChild>
+	                                      <button
+	                                        type="button"
+	                                        onClick={() => {
+	                                          if (shouldDisableBlockedActions) return;
+
+	                                          setConfirmStructureDelete({
+	                                            id: item.id,
+	                                            title:
+	                                              item.productItemCode?.item_code ||
+	                                              item.title ||
+	                                              "this BOQ item",
+	                                          });
+	                                        }}
+	                                        className="inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground transition hover:text-destructive"
+	                                      >
+	                                        <Trash2 className="h-4 w-4" />
+	                                      </button>
+	                                    </TooltipTrigger>
+	                                    {shouldDisableBlockedActions && (
+	                                      <TooltipContent>{blockedTooltip}</TooltipContent>
+	                                    )}
+	                                  </Tooltip>
+	                                </div>
+	                              )}
+	                            </div>
+
+	                            <div className="flex flex-wrap items-center gap-2 text-[11px]">
+	                              <span className="font-medium text-muted-foreground">
+	                                {item.productType?.type ||
+	                                  item.productItemCode?.productStructure?.productType?.type ||
+	                                  "—"}
+	                              </span>
+	                              <span className="text-muted-foreground/50">|</span>
+	                              <span className="font-medium text-muted-foreground">
+	                                {item.productStructure?.type ||
+	                                  item.productItemCode?.productStructure?.type ||
+	                                  "—"}
+	                              </span>
+	                              <span className="text-muted-foreground/50">|</span>
+	                              <span className="font-medium text-muted-foreground">
+	                                {item.subProductStructure?.type ||
+	                                  item.productItemCode?.subProductStructure?.type ||
+	                                  "—"}
+	                              </span>
+	                            </div>
+
+	                            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+	                              <div className="flex flex-wrap items-center gap-2">
+	                                <Tooltip>
+	                                  <TooltipTrigger asChild>
+	                                    <Button
+	                                      type="button"
+	                                      variant="outline"
+	                                      className="h-8 rounded-lg px-3 text-xs shadow-none"
+	                                      onClick={() =>
+	                                        setBoqPreview({
+	                                          title: "Description",
+	                                          content:
+	                                            item.productItemCode?.description ||
+	                                            item.description ||
+	                                            "No description available.",
+	                                        })
+	                                      }
+	                                    >
+	                                      View Desc
+	                                    </Button>
+	                                  </TooltipTrigger>
+	                                  <TooltipContent className="max-w-sm whitespace-pre-wrap text-left">
+	                                    {item.productItemCode?.description ||
+	                                      item.description ||
+	                                      "No description available."}
+	                                  </TooltipContent>
+	                                </Tooltip>
+	                                <Tooltip>
+	                                  <TooltipTrigger asChild>
+	                                    <Button
+	                                      type="button"
+	                                      variant="outline"
+	                                      className="h-8 rounded-lg px-3 text-xs shadow-none"
+	                                      onClick={() =>
+	                                        setBoqPreview({
+	                                          title: "Specification",
+	                                          content:
+	                                            item.productItemCode?.specification ||
+	                                            "No specification available.",
+	                                        })
+	                                      }
+	                                    >
+	                                      View Specs
+	                                    </Button>
+	                                  </TooltipTrigger>
+	                                  <TooltipContent className="max-w-sm whitespace-pre-wrap text-left">
+	                                    {item.productItemCode?.specification ||
+	                                      "No specification available."}
+	                                  </TooltipContent>
+	                                </Tooltip>
+	                              </div>
+
+	                              <div className="inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5">
+	                                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary/80">
+	                                  Qty
+	                                </span>
+	                                <span className="text-sm font-semibold text-foreground">
+	                                  {item.quantity ?? "—"}
+	                                </span>
+	                              </div>
+	                            </div>
+	                          </div>
+	                        </div>
+	                      </div>
+	                    ))}
+	                  </div>
+                  )}
                 </div>
               )}
             </SectionCard>
@@ -1539,10 +1633,11 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
               if (!open) {
                 setBoqSearch("");
                 setSelectedBoqItems({});
+                setBoqPreview(null);
               }
             }}
           >
-            <DialogContent className="min-w-6xl gap-0 overflow-hidden p-0">
+            <DialogContent className="min-w-6xl gap-0 overflow-hidden p-0 shadow-none">
               <DialogHeader className="border-b bg-linear-to-b from-muted/50 to-transparent px-6 py-5">
                 <div className="flex items-start justify-between gap-4 pr-6">
                   <div className="flex items-start gap-3">
@@ -1597,14 +1692,14 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                       return (
                         <div
                           key={item.id}
-                          className={`rounded-2xl border p-4 transition-all ${
+                          className={`w-full rounded-xl border bg-background p-4 transition-all ${
                             selected
                               ? "border-primary/60 bg-primary/5 ring-1 ring-primary/20"
-                              : "bg-background hover:border-border/80"
+                              : "hover:border-border/80"
                           }`}
                         >
-                          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                            <div className="min-w-0 flex-1 space-y-3">
+                          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                            <div className="min-w-0 flex-1 space-y-2">
                               <div className="flex items-start gap-3">
                                 <Checkbox
                                   checked={!!selected}
@@ -1614,60 +1709,89 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                                   className="mt-1"
                                 />
                                 <div className="min-w-0 flex-1">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <Package className="h-4 w-4 shrink-0 text-primary" />
-                                    <p className="text-base font-semibold text-foreground break-words">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <p className="text-base font-semibold leading-tight text-foreground break-words">
                                       {item.item_code}
                                     </p>
                                   </div>
-                                  <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                                    <span className="rounded-full border bg-muted/40 px-3 py-1 font-medium text-muted-foreground">
-                                      {item.productStructure?.productType?.type || "—"}
+                                  <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+                                    <span className="font-medium text-muted-foreground">
+                                      {item.productStructure?.productType?.type || "None"}
                                     </span>
-                                    <span className="rounded-full border bg-muted/40 px-3 py-1 font-medium text-muted-foreground">
-                                      {item.productStructure?.type || "—"}
+                                    <span className="text-muted-foreground/50">|</span>
+                                    <span className="font-medium text-muted-foreground">
+                                      {item.productStructure?.type || "None"}
                                     </span>
-                                    <span className="rounded-full border bg-muted/40 px-3 py-1 font-medium text-muted-foreground">
-                                      {item.subProductStructure?.type || "—"}
+                                    <span className="text-muted-foreground/50">|</span>
+                                    <span className="font-medium text-muted-foreground">
+                                      {item.subProductStructure?.type || "None"}
                                     </span>
                                   </div>
-                                </div>
-                              </div>
-
-                              <div className="grid gap-3 md:grid-cols-2">
-                                <div className="rounded-xl border border-dashed bg-muted/20 p-3">
-                                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                                    Description
-                                  </p>
-                                  <p className="mt-2 text-sm leading-6 text-foreground/90">
-                                    {item.description || "—"}
-                                  </p>
-                                </div>
-                                <div className="rounded-xl border border-dashed bg-muted/20 p-3">
-                                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                                    Specification
-                                  </p>
-                                  <p className="mt-2 text-sm leading-6 text-foreground/90">
-                                    {item.specification || "—"}
-                                  </p>
                                 </div>
                               </div>
                             </div>
 
-                            <div className="w-full lg:w-32">
-                              <label className="text-xs font-medium text-muted-foreground">
-                                Quantity
-                              </label>
-                              <Input
-                                value={selected?.quantity || ""}
-                                onChange={(event) =>
-                                  handleBoqQuantityChange(item.id, event.target.value)
-                                }
-                                placeholder="0"
-                                inputMode="numeric"
-                                disabled={!selected}
-                                className="mt-2 disabled:opacity-50"
-                              />
+                            <div className="flex shrink-0 flex-wrap items-center gap-3 lg:justify-end">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      className="h-8 rounded-lg px-3 text-xs shadow-none"
+                                      onClick={() =>
+                                        setBoqPreview({
+                                          title: "Description",
+                                          content: item.description || "No description available.",
+                                        })
+                                      }
+                                    >
+                                      View Desc
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-sm whitespace-pre-wrap text-left">
+                                    {item.description || "No description available."}
+                                  </TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      className="h-8 rounded-lg px-3 text-xs shadow-none"
+                                      onClick={() =>
+                                        setBoqPreview({
+                                          title: "Specification",
+                                          content:
+                                            item.specification || "No specification available.",
+                                        })
+                                      }
+                                    >
+                                      View Specs
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-sm whitespace-pre-wrap text-left">
+                                    {item.specification || "No specification available."}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                                  Qty
+                                </span>
+                                <div className="w-[68px]">
+                                  <Input
+                                    value={selected?.quantity || ""}
+                                    onChange={(event) =>
+                                      handleBoqQuantityChange(item.id, event.target.value)
+                                    }
+                                    placeholder="0"
+                                    inputMode="numeric"
+                                    disabled={!selected}
+                                    className="h-8 rounded-lg text-xs disabled:opacity-50 shadow-none"
+                                  />
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1703,6 +1827,27 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   </Button>
                 </div>
               </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog
+            open={!!boqPreview}
+            onOpenChange={(open) => {
+              if (!open) setBoqPreview(null);
+            }}
+          >
+            <DialogContent className="max-w-2xl p-0 shadow-none">
+              <DialogHeader className="border-b px-6 py-5">
+                <DialogTitle>{boqPreview?.title}</DialogTitle>
+                <DialogDescription>
+                  Full BOQ item content preview.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="px-6 py-5">
+                <div className="rounded-xl border border-dashed bg-muted/20 p-4 text-sm leading-7 whitespace-pre-wrap text-foreground/90">
+                  {boqPreview?.content}
+                </div>
+              </div>
             </DialogContent>
           </Dialog>
 
