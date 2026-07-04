@@ -1728,11 +1728,7 @@ export default function LeadsGenerationForm({
           </div>
         )}
         {!vendorCustomUserTypeMode && (
-          <div
-            className={`grid grid-cols-1 gap-3 items-start ${
-              isCustomVendorFlow ? "sm:grid-cols-2" : "sm:grid-cols-1"
-            }`}
-          >
+          <div className="grid grid-cols-1 gap-3 items-start sm:grid-cols-2">
             {/* Architect Name */}
             <FormField
               control={form.control}
@@ -1752,28 +1748,26 @@ export default function LeadsGenerationForm({
                 </FormItem>
               )}
             />
-            {isCustomVendorFlow && (
-              <FormField
-                control={form.control}
-                name="archetech_number"
-                render={({ field }) => (
-                  <FormItem data-name={field?.name || ""} >
-                    <FormLabel className="text-sm">Architect Number</FormLabel>
-                    <FormControl>
-                      <PhoneInput
-                        defaultCountry="IN"
-                        placeholder="Enter architect number"
-                        className="text-sm"
-                        value={field.value}
-                        onChange={(val) => field.onChange(val)}
-                        validateIndianNumber={true}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+            <FormField
+              control={form.control}
+              name="archetech_number"
+              render={({ field }) => (
+                <FormItem data-name={field?.name || ""} >
+                  <FormLabel className="text-sm">Architect Number</FormLabel>
+                  <FormControl>
+                    <PhoneInput
+                      defaultCountry="IN"
+                      placeholder="Enter architect number"
+                      className="text-sm"
+                      value={field.value}
+                      onChange={(val) => field.onChange(val)}
+                      validateIndianNumber={true}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </div>
         )}
 
