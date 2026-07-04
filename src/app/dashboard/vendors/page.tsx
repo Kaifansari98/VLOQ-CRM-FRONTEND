@@ -62,6 +62,7 @@ const createVendorSchema = z.object({
     .trim()
     .regex(/^\d{10}$/, "Primary contact number must be 10 digits"),
   primary_contact_email: z.email("Enter a valid primary contact email"),
+  handlesLargeScaleProjects: z.boolean(),
   is_crm_enabled: z.boolean(),
   is_inventory_enabled: z.boolean(),
   is_tracktrace_enabled: z.boolean(),
@@ -80,6 +81,7 @@ export default function VendorsPage() {
     primary_contact_name: "",
     primary_contact_number: "",
     primary_contact_email: "",
+    handlesLargeScaleProjects: false,
     is_crm_enabled: true,
     is_inventory_enabled: false,
     is_tracktrace_enabled: false,
@@ -133,6 +135,7 @@ export default function VendorsPage() {
   const handleBooleanFieldChange =
     (
       field:
+        | "handlesLargeScaleProjects"
         | "is_crm_enabled"
         | "is_inventory_enabled"
         | "is_tracktrace_enabled",
@@ -153,6 +156,7 @@ export default function VendorsPage() {
       primary_contact_name: "",
       primary_contact_number: "",
       primary_contact_email: "",
+      handlesLargeScaleProjects: false,
       is_crm_enabled: true,
       is_inventory_enabled: false,
       is_tracktrace_enabled: false,
@@ -175,6 +179,7 @@ export default function VendorsPage() {
       primary_contact_name: string;
       primary_contact_number: string;
       primary_contact_email: string;
+      handlesLargeScaleProjects?: boolean | null;
       is_crm_enabled: boolean;
       is_inventory_enabled: boolean;
       is_tracktrace_enabled: boolean;
@@ -187,6 +192,7 @@ export default function VendorsPage() {
         primary_contact_name: row.primary_contact_name,
         primary_contact_number: row.primary_contact_number,
         primary_contact_email: row.primary_contact_email,
+        handlesLargeScaleProjects: row.handlesLargeScaleProjects === true,
         is_crm_enabled: row.is_crm_enabled,
         is_inventory_enabled: row.is_inventory_enabled,
         is_tracktrace_enabled: row.is_tracktrace_enabled,
@@ -231,6 +237,8 @@ export default function VendorsPage() {
             primary_contact_email: validatedForm.data.primary_contact_email,
             status: "active",
             time_zone: "Asia/Kolkata",
+            handlesLargeScaleProjects:
+              validatedForm.data.handlesLargeScaleProjects,
             is_crm_enabled: validatedForm.data.is_crm_enabled,
             is_inventory_enabled: validatedForm.data.is_inventory_enabled,
             is_tracktrace_enabled: validatedForm.data.is_tracktrace_enabled,
@@ -249,6 +257,7 @@ export default function VendorsPage() {
           status: "active",
           logo: "https://example.com/logo.png",
           time_zone: "Asia/Kolkata",
+          handlesLargeScaleProjects: validatedForm.data.handlesLargeScaleProjects,
           is_crm_enabled: validatedForm.data.is_crm_enabled,
           is_inventory_enabled: validatedForm.data.is_inventory_enabled,
           is_tracktrace_enabled: validatedForm.data.is_tracktrace_enabled,
@@ -435,6 +444,32 @@ export default function VendorsPage() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label>Handles Large Scale Projects</Label>
+                <div className="flex items-center gap-6 pt-1">
+                  {[
+                    { label: "Yes", value: true },
+                    { label: "No", value: false },
+                  ].map((option) => (
+                    <label
+                      key={`large-scale-${String(option.value)}`}
+                      className="flex cursor-pointer items-center gap-2"
+                      htmlFor={`large-scale-${String(option.value)}`}
+                    >
+                      <Checkbox
+                        id={`large-scale-${String(option.value)}`}
+                        checked={form.handlesLargeScaleProjects === option.value}
+                        onCheckedChange={handleBooleanFieldChange(
+                          "handlesLargeScaleProjects",
+                          option.value,
+                        )}
+                      />
+                      <span className="text-sm font-medium">{option.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
               <div className="grid gap-2">
                 <Label>CRM Enabled</Label>
                 <div className="flex items-center gap-6 pt-1">
