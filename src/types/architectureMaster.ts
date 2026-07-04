@@ -42,3 +42,15 @@ export interface ArchitectureMasterResponse {
   message: string;
   data: ArchitectureMaster;
 }
+
+export interface ArchitectureMasterDropdownItem {
+  id: number;
+  name: string;
+  mobile: string;
+}
+
+export interface ArchitectureMasterDropdownResponse {
+  success: boolean;
+  message: string;
+  data: ArchitectureMasterDropdownItem[];
+}

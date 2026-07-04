@@ -59,6 +59,7 @@ import {
   useCheckContactOrEmailExists,
   useCheckSimilarLeadExists,
 } from "@/hooks/useLeadsQueries";
+import { useArchitectureMastersDropdownList } from "@/hooks/useArchitectureMaster";
 import {
   Tooltip,
   TooltipContent,
@@ -163,6 +164,7 @@ const createFormSchema = (
     assigned_by: isAdminOrSuperAdmin ? z.string() : z.string().optional(),
     documents: z.string().optional(),
     archetech_name: z.string().max(300).optional(),
+    architect_id: z.string().optional(),
     archetech_number: z
       .string()
       .regex(/^\+?\d{7,20}$/, "Please enter a valid architect number")
@@ -207,6 +209,7 @@ const draftFormSchema = (userType: string | undefined) => {
     assigned_by: z.string().optional(),
     documents: z.string().optional(),
     archetech_name: z.string().optional(),
+    architect_id: z.string().optional(),
     archetech_number: z
       .string()
       .regex(/^\+?\d{7,20}$/, "Please enter a valid architect number")
@@ -435,6 +438,7 @@ export default function LeadsGenerationForm({
       product_structures: [],
       documents: "",
       archetech_name: "",
+      architect_id: "",
       archetech_number: "",
       designer_remark: "N/A",
       priority: "Medium",
@@ -671,6 +675,9 @@ export default function LeadsGenerationForm({
   const router = useRouter();
 
   const vendorUserss = vendorUsers?.data?.sales_executives ?? [];
+
+  const { data: architectData, isLoading: isArchitectsLoading } = useArchitectureMastersDropdownList(vendorId);
+  const architectsList = architectData?.data || [];
 
   const createLeadMutation = useMutation({
     mutationFn: ({
@@ -946,6 +953,7 @@ export default function LeadsGenerationForm({
       site_type_id: Number(values.site_type_id),
       source_id: Number(values.source_id),
       archetech_name: values.archetech_name || undefined,
+      architect_id: values.architect_id ? Number(values.architect_id) : undefined,
       archetech_number: values.archetech_number || undefined,
       designer_remark: values.designer_remark || undefined,
       vendor_id: vendorId,
@@ -1062,6 +1070,7 @@ export default function LeadsGenerationForm({
         : undefined,
       source_id: values.source_id ? Number(values.source_id) : undefined,
       archetech_name: values.archetech_name || undefined,
+      architect_id: values.architect_id ? Number(values.architect_id) : undefined,
       archetech_number: values.archetech_number || undefined,
       designer_remark: values.designer_remark || undefined,
       vendor_id: vendorId,
@@ -1621,9 +1630,8 @@ export default function LeadsGenerationForm({
           </>
         )}
 
-        {canReassingLead(userType) && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Assign To */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start mb-3">
+          {canReassingLead(userType) && (
             <FormField
               control={form.control}
               name="assign_to"
@@ -1655,54 +1663,8 @@ export default function LeadsGenerationForm({
                 );
               }}
             />
-          </div>
-        )}
-        <div
-          className={`grid grid-cols-1 gap-3 items-start ${
-            isCustomVendorFlow ? "sm:grid-cols-3" : "sm:grid-cols-2"
-          }`}
-        >
-          {/* Architect Name */}
-          <FormField
-            control={form.control}
-            name="archetech_name"
-            render={({ field }) => (
-              <FormItem data-name={field?.name || ""} >
-                <FormLabel className="text-sm">Architect Name</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter architect name"
-                    type="text"
-                    className="text-sm"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          {isCustomVendorFlow && (
-            <FormField
-              control={form.control}
-              name="archetech_number"
-              render={({ field }) => (
-                <FormItem data-name={field?.name || ""} >
-                  <FormLabel className="text-sm">Architect Number</FormLabel>
-                  <FormControl>
-                    <PhoneInput
-                      defaultCountry="IN"
-                      placeholder="Enter architect number"
-                      className="text-sm"
-                      value={field.value}
-                      onChange={(val) => field.onChange(val)}
-                      validateIndianNumber={true}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
           )}
+
           <FormField
             control={form.control}
             name="initial_site_measurement_date"
@@ -1721,8 +1683,99 @@ export default function LeadsGenerationForm({
                 <FormMessage />
               </FormItem>
             )}
-          />{" "}
+          />
         </div>
+        {vendorCustomUserTypeMode && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start mb-3">
+            <FormField
+              control={form.control}
+              name="architect_id"
+              render={({ field }) => {
+                const pickerData = architectsList.map((a: any) => ({
+                  id: a.id,
+                  label: a.name || "",
+                  subLabel: a.mobile || "",
+                }));
+                return (
+                  <FormItem data-name={field?.name || ""} >
+                    <FormLabel className="text-sm">Architect</FormLabel>
+                    <AssignToPicker
+                      data={pickerData}
+                      textClassName="text-sm font-medium"
+                      value={field.value ? Number(field.value) : undefined}
+                      onChange={(selectedId) => {
+                        field.onChange(selectedId ? String(selectedId) : "");
+                        if (selectedId) {
+                          const selectedArchitect = architectsList.find((a: any) => a.id === selectedId);
+                          if (selectedArchitect) {
+                            form.setValue("archetech_name", selectedArchitect.name);
+                            form.setValue("archetech_number", selectedArchitect.mobile);
+                          }
+                        } else {
+                          form.setValue("archetech_name", "");
+                          form.setValue("archetech_number", "");
+                        }
+                      }}
+                      placeholder="Select Architect..."
+                      disabled={isArchitectsLoading}
+                    
+                    />
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+          </div>
+        )}
+        {!vendorCustomUserTypeMode && (
+          <div
+            className={`grid grid-cols-1 gap-3 items-start ${
+              isCustomVendorFlow ? "sm:grid-cols-2" : "sm:grid-cols-1"
+            }`}
+          >
+            {/* Architect Name */}
+            <FormField
+              control={form.control}
+              name="archetech_name"
+              render={({ field }) => (
+                <FormItem data-name={field?.name || ""} >
+                  <FormLabel className="text-sm">Architect Name</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter architect name"
+                      type="text"
+                      className="text-sm"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {isCustomVendorFlow && (
+              <FormField
+                control={form.control}
+                name="archetech_number"
+                render={({ field }) => (
+                  <FormItem data-name={field?.name || ""} >
+                    <FormLabel className="text-sm">Architect Number</FormLabel>
+                    <FormControl>
+                      <PhoneInput
+                        defaultCountry="IN"
+                        placeholder="Enter architect number"
+                        className="text-sm"
+                        value={field.value}
+                        onChange={(val) => field.onChange(val)}
+                        validateIndianNumber={true}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+          </div>
+        )}
 
         {/* Designer Remark */}
         <FormField

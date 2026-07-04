@@ -27,6 +27,7 @@ import {
 interface SelectData {
   id: number;
   label: string;
+  subLabel?: string;
   disabled?: boolean;
   tooltip?: string;
 }
@@ -45,6 +46,7 @@ interface Props {
   emptyLabel?: string;
   disabled?: boolean;
   className?: string; // ✅ ADDED
+  textClassName?: string;
 }
 
 export default function AssignToPicker({
@@ -56,6 +58,7 @@ export default function AssignToPicker({
   emptyLabel = "Select an option",
   disabled = false,
   className, // ✅ ADDED
+  textClassName,
 }: Props) {
   const id = useId();
   const [open, setOpen] = useState<boolean>(false);
@@ -76,7 +79,10 @@ export default function AssignToPicker({
     const itemNode = (
       <CommandItem
         key={item.id}
-        value={item.label.toLowerCase()}
+        value={
+          item.label.toLowerCase() +
+          (item.subLabel ? ` ${item.subLabel.toLowerCase()}` : "")
+        }
         disabled={item.disabled}
         className="min-w-0"
         onSelect={() => {
@@ -85,8 +91,15 @@ export default function AssignToPicker({
           onChange?.(value === item.id ? null : item.id);
         }}
       >
-        <span className="min-w-0 flex-1 truncate">{item.label}</span>
-        {value === item.id && <CheckIcon size={16} className="ml-auto" />}
+        <div className="flex flex-col min-w-0 flex-1">
+          <span className={cn("truncate", textClassName)}>{item.label}</span>
+          {item.subLabel && (
+            <span className="truncate text-xs text-muted-foreground mt-0.5">
+              {item.subLabel}
+            </span>
+          )}
+        </div>
+        {value === item.id && <CheckIcon size={16} className="ml-auto shrink-0" />}
       </CommandItem>
     );
 
@@ -123,8 +136,9 @@ export default function AssignToPicker({
           >
             <span
               className={cn(
-                "truncate",
-                !stringValue && "text-muted-foreground"
+                "truncate text-left flex-1",
+                !stringValue && "text-muted-foreground",
+                textClassName
               )}
             >
               {selectedItem ? selectedItem.label : emptyLabel}
