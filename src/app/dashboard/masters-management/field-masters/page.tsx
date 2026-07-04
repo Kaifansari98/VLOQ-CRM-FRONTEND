@@ -19,6 +19,7 @@ import IssueLogTypeMastersTable from "@/components/custom/IssueLogTypeMastersTab
 import MiscellaneousTeamMastersTable from "@/components/custom/MiscellaneousTeamMastersTable";
 import InstallerUserMastersTable from "@/components/custom/InstallerUserMastersTable";
 import CompanyVendorMastersTable from "@/components/custom/CompanyVendorMastersTable";
+import ArchitectureMastersTable from "@/components/custom/ArchitectureMastersTable";
 import { useSearchParams } from "next/navigation";
 
 export default function FieldMastersPage() {
@@ -108,6 +109,12 @@ export default function FieldMastersPage() {
               title: "Company Vendor Master",
               color: "bg-black hover:bg-black",
               cardContent: <CompanyVendorMastersTable vendorIdOverride={vendorIdOverride} />,
+            },
+            {
+              id: "architecture-master",
+              title: "Architect Master",
+              color: "bg-black hover:bg-black",
+              cardContent: <ArchitectureMastersTable vendorIdOverride={vendorIdOverride} />,
             },
           ]}
           contentHeightClass="min-h-[240px]"
