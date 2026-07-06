@@ -228,12 +228,13 @@ export function useUnblockLead() {
 
 export function useLeadProductStructureInstances(
   leadId?: number,
-  vendorId?: number
+  vendorId?: number,
+  enabled: boolean = true
 ) {
   return useQuery({
     queryKey: ["lead-product-structure-instances", leadId, vendorId],
     queryFn: () => getLeadProductStructureInstances(vendorId!, leadId!),
-    enabled: !!leadId && !!vendorId,
+    enabled: !!leadId && !!vendorId && enabled,
   });
 }
 
