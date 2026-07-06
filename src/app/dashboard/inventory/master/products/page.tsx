@@ -38,7 +38,7 @@ const emptyForm: ProductPayload = {
   shelf_life_days: null,
   costing_method: "FIFO",
 
-  mrp: null,
+  level1_price: null,
 
   min_stock_qty: null,
   min_stock_unit_id: null,
@@ -99,7 +99,12 @@ function ProductFormModal({
         shelf_life_days: initial.shelf_life_days || null,
         costing_method: initial.costing_method || "FIFO",
 
-        mrp: initial.mrp ? Number(initial.mrp) : null,
+        level1_price:
+          initial.level1_price != null
+            ? Number(initial.level1_price)
+            : initial.mrp != null
+              ? Number(initial.mrp)
+              : null,
 
         min_stock_qty: initial.min_stock_qty ? Number(initial.min_stock_qty) : null,
         min_stock_unit_id: initial.min_stock_unit_id || initial.stock_unit_id || null,
@@ -181,7 +186,7 @@ function ProductFormModal({
 
       shelf_life_days: toNumOrNull(form.shelf_life_days),
 
-      mrp: toNumOrNull(form.mrp),
+      level1_price: toNumOrNull(form.level1_price),
 
       min_stock_qty: toNumOrNull(form.min_stock_qty),
       min_stock_unit_id: toNumOrNull(form.min_stock_unit_id),
@@ -346,8 +351,8 @@ function ProductFormModal({
             <Field label="MRP">
               <input
                 type="number"
-                value={form.mrp ?? ""}
-                onChange={(e) => set("mrp", e.target.value)}
+                value={form.level1_price ?? ""}
+                onChange={(e) => set("level1_price", e.target.value)}
                 className="input"
                 placeholder="0.00"
               />
@@ -740,8 +745,8 @@ export default function InventoryProductsPage() {
                     </Td>
 
                     <Td>
-                      {p.mrp
-                        ? `₹${Number(p.mrp).toLocaleString("en-IN")}`
+                      {(p.level1_price ?? p.mrp)
+                        ? `₹${Number(p.level1_price ?? p.mrp).toLocaleString("en-IN")}`
                         : "—"}
                     </Td>
 
