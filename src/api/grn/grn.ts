@@ -216,7 +216,7 @@ export const getPOForGRN = async (vendorId: number, poId: number) => {
 };
 
 export const createGRN = async (vendorId: number, payload: CreateGRNPayload) => {
-  const { data } = await apiClient.post(`/grn/${vendorId}`, payload);
+  const { data } = await apiClient.post(`/grn/${vendorId}/grn`, payload);
   return data.data as { id: number; grn_no: string };
 };
 

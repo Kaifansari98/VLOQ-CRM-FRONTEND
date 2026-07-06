@@ -17,9 +17,9 @@ export interface ProductPayload {
   consumption_unit_id?: number | null;
 
   shelf_life_days?: number | null;
-  costing_method: CostingMethod;
+  costing_method: "FIFO" | "MANUAL";
 
-  mrp?: number | null;
+  level1_price?: number | null;
 
   min_stock_qty?: number | null;
   min_stock_unit_id?: number | null;
@@ -34,7 +34,15 @@ export interface ProductPayload {
   reorder_batch_unit_id?: number | null;
 
   hsn_id?: number | null;
-  item_type: ProductItemType;
+  item_type: "CapitalGoods" | "Goods" | "Services";
+
+  suppliers?: ProductSupplierPayload[];
+}
+
+export interface ProductSupplierPayload {
+  company_vendor_id: number;
+  supplier_item_code?: string | null;
+  amount?: number | null;
 }
 
 export interface ProductMastersResponse {
@@ -49,8 +57,13 @@ export interface ProductMastersResponse {
     sgst_rate?: string | null;
     igst_rate?: string | null;
   }[];
-  costingMethods: CostingMethod[];
-  itemTypes: ProductItemType[];
+  suppliers: {
+    id: number;
+    company_name: string;
+    vendor_code: string;
+  }[];
+  costingMethods: ("FIFO" | "MANUAL")[];
+  itemTypes: ("CapitalGoods" | "Goods" | "Services")[];
 }
 
 export const fetchProductMasters = async (vendorId: number) => {

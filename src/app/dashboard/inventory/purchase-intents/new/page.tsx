@@ -1,6 +1,7 @@
 "use client";
+
 import {
-  fetchPICategories,
+
   fetchPIProducts,
   fetchPICompanyVendors,
   fetchCompanyStateId,
@@ -9,19 +10,17 @@ import {
   PIPriority,
   PaymentTermOption,
 } from "@/api/inventory/purchaseIntent";
+
 import {
-  PICategory,
+
   PIProduct,
   PICompanyVendor,
-  SelectedItem,
   VendorEntry,
-  VendorEntryErrors,
-  ItemErrors,
   recalcVendorEntry,
   emptyVendorEntry,
   toNum,
 } from "@/types/inventory/inventory.types";
-import { PricingRow, fmtMoney } from "@/components/inventory/PricingRow";
+
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -30,1022 +29,539 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toastManager } from "@/components/ui/toast";
-import { cn } from "@/lib/utils";
-import { useAppSelector } from "@/redux/store";
-import {
-  Search,
-  X,
-  Plus,
-  Building2,
-  ShoppingCart,
-  Package,
-  AlertCircle,
-  CheckCircle2,
-  Loader2,
-  Send,
-  ChevronDown,
-  ChevronUp,
-  Sparkles,
-  CalendarDays,
-  IndianRupee,
-  Layers3,
-  Trash2,
-  ClipboardList,
-  ShieldCheck,
-} from "lucide-react";
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { useAppSelector } from "@/redux/store";
+
+import {
+  Plus,
+  Trash2,
+  Loader2,
+  Send,
+  Search,
+  Package,
+} from "lucide-react";
+
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+
+type ProductRow = {
+  row_id: string;
+  product: PIProduct | null;
+  product_id: number | "";
+  uom: string;
+  remarks: string;
+  vendor_entries: VendorEntry[];
+};
 
 const PRIORITIES: PIPriority[] = ["Low", "Medium", "High", "Urgent"];
 
-const PRIORITY_META: Record<
-  PIPriority,
-  { label: string; icon: string; active: string; idle: string }
-> = {
-  Low: {
-    label: "Low",
-    icon: "○",
-    active: "bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900",
-    idle: "text-slate-500 border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900",
-  },
-  Medium: {
-    label: "Medium",
-    icon: "◐",
-    active: "bg-indigo-600 text-white border-indigo-600",
-    idle: "text-indigo-600 border-indigo-200 hover:bg-indigo-50 dark:border-indigo-900/70 dark:hover:bg-indigo-950",
-  },
-  High: {
-    label: "High",
-    icon: "▲",
-    active: "bg-amber-500 text-white border-amber-500",
-    idle: "text-amber-600 border-amber-200 hover:bg-amber-50 dark:border-amber-900/70 dark:hover:bg-amber-950",
-  },
-  Urgent: {
-    label: "Urgent",
-    icon: "⚡",
-    active: "bg-red-600 text-white border-red-600",
-    idle: "text-red-600 border-red-200 hover:bg-red-50 dark:border-red-900/70 dark:hover:bg-red-950",
-  },
+const inputClass =
+  "h-9 w-full rounded-lg border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-indigo-300";
+
+const tableInputClass =
+  "h-8 w-full rounded-md border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-indigo-300";
+
+const toMoney = (value: any) => {
+  const n = Number(value || 0);
+  if (!n) return "₹0.00";
+
+  return `₹${n.toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 };
 
-function ProductPickerModal({
-  open,
-  onClose,
-  categories,
-  selectedCategory,
-  setSelectedCategory,
-  productSearch,
-  setProductSearch,
-  products,
-  prodLoading,
-  selectedIds,
-  onToggleProduct,
-}: {
-  open: boolean;
-  onClose: () => void;
-  categories: PICategory[];
-  selectedCategory: number | null;
-  setSelectedCategory: (id: number | null) => void;
-  productSearch: string;
-  setProductSearch: (v: string) => void;
-  products: PIProduct[];
-  prodLoading: boolean;
-  selectedIds: Set<number>;
-  onToggleProduct: (p: PIProduct) => void;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 80);
-  }, [open]);
-
-  if (!open) return null;
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 backdrop-blur-sm p-4 pt-[8vh]"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-3xl overflow-hidden rounded-3xl border bg-background shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="border-b px-5 py-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-base font-semibold">Add Products</p>
-              <p className="text-xs text-muted-foreground">
-                Search and select products for this purchase intent.
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              <X size={17} />
-            </button>
-          </div>
-
-          <div className="mt-4 grid gap-2 md:grid-cols-[220px_1fr]">
-            <select
-              value={selectedCategory ?? ""}
-              onChange={(e) => {
-                setSelectedCategory(Number(e.target.value));
-                setProductSearch("");
-              }}
-              className="h-11 rounded-xl border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-300"
-            >
-              <option value="" disabled>
-                Select Category *
-              </option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.category_name}
-                </option>
-              ))}
-            </select>
-
-            <div className="relative">
-              <Search
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-              />
-              <input
-                ref={inputRef}
-                value={productSearch}
-                onChange={(e) => setProductSearch(e.target.value)}
-                placeholder="Search product name, article code, HSN..."
-                className="h-11 w-full rounded-xl border bg-muted/40 pl-10 pr-10 text-sm outline-none focus:bg-background focus:ring-2 focus:ring-indigo-300"
-              />
-              {productSearch && (
-                <button
-                  onClick={() => setProductSearch("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                >
-                  <X size={15} />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="max-h-[56vh] overflow-y-auto p-3">
-          {!selectedCategory ? (
-            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-              <Package size={36} className="mb-3 opacity-20" />
-              <p className="text-sm font-medium">Select a category first</p>
-              <p className="text-xs">Products will appear here.</p>
-            </div>
-          ) : prodLoading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-16 rounded-2xl" />
-              ))}
-            </div>
-          ) : products.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-              <AlertCircle size={32} className="mb-3 opacity-20" />
-              <p className="text-sm font-medium">No products found</p>
-            </div>
-          ) : (
-            <div className="grid gap-2">
-              {products.map((prod) => {
-                const isSelected = selectedIds.has(prod.id);
-
-                return (
-                  <button
-                    key={prod.id}
-                    onClick={() => onToggleProduct(prod)}
-                    className={cn(
-                      "group flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition-all",
-                      isSelected
-                        ? "border-indigo-300 bg-indigo-50 shadow-sm dark:bg-indigo-950/40"
-                        : "border-transparent bg-muted/30 hover:border-border hover:bg-background hover:shadow-sm"
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border",
-                        isSelected
-                          ? "border-indigo-600 bg-indigo-600 text-white"
-                          : "border-border bg-background text-muted-foreground"
-                      )}
-                    >
-                      {isSelected ? <CheckCircle2 size={17} /> : <Package size={16} />}
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold">{prod.product_name}</p>
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                        {[prod.article_code, prod.unit_of_measure, prod.procurement]
-                          .filter(Boolean)
-                          .join(" · ")}
-                        {prod.hsn_code && ` · HSN ${prod.hsn_code}`}
-                        {prod.tax_pct && ` · GST ${prod.tax_pct}%`}
-                      </p>
-                    </div>
-
-                    {/* {prod.level1_price && (
-                      <div className="text-right">
-                        <p className="text-[10px] font-black uppercase text-muted-foreground">
-                          MRP
-                        </p>
-                        <p className="text-sm font-bold">
-                          ₹{parseFloat(prod.level1_price).toLocaleString("en-IN")}
-                        </p>
-                      </div>
-                    )} */}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between border-t bg-muted/20 px-5 py-3">
-          <p className="text-xs text-muted-foreground">
-            {selectedIds.size} product{selectedIds.size !== 1 ? "s" : ""} selected
-          </p>
-          <Button onClick={onClose} className="rounded-xl bg-indigo-600 hover:bg-indigo-700">
-            Done
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function VendorPickerModal({
-  allVendors,
-  alreadyAdded,
-  onAdd,
-  onClose,
-  loading,
-}: {
-  allVendors: PICompanyVendor[];
-  alreadyAdded: number[];
-  onAdd: (v: PICompanyVendor) => void;
-  onClose: () => void;
-  loading: boolean;
-}) {
-  const [q, setQ] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  const filtered = allVendors.filter(
-    (v) =>
-      (v.company_name.toLowerCase().includes(q.toLowerCase()) ||
-        v.vendor_code.toLowerCase().includes(q.toLowerCase())) &&
-      !alreadyAdded.includes(v.id)
-  );
-
-
-
-  return (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="flex max-h-[78vh] w-full max-w-md flex-col overflow-hidden rounded-3xl border bg-background shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b px-5 py-4">
-          <div>
-            <p className="text-sm font-semibold">Add Supplier</p>
-            <p className="text-xs text-muted-foreground">Select supplier for this product.</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <X size={16} />
-          </button>
-        </div>
-
-        <div className="border-b p-3">
-          <div className="relative">
-            <Search
-              size={15}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-            />
-            <input
-              ref={inputRef}
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search supplier..."
-              className="h-10 w-full rounded-xl border bg-muted/40 pl-9 pr-3 text-sm outline-none focus:bg-background focus:ring-2 focus:ring-indigo-300"
-            />
-          </div>
-        </div>
-
-        <div className="overflow-y-auto p-2">
-          {loading ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="m-1 h-14 rounded-2xl" />
-            ))
-          ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center py-12 text-muted-foreground">
-              <Building2 size={28} className="mb-2 opacity-20" />
-              <p className="text-sm">{q ? "No supplier found" : "All suppliers already added"}</p>
-            </div>
-          ) : (
-            filtered.map((v) => (
-              <button
-                key={v.id}
-                onClick={() => {
-                  onAdd(v);
-                  onClose();
-                }}
-                className="group flex w-full items-center gap-3 rounded-2xl p-3 text-left hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
-              >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 dark:bg-indigo-950">
-                  <Building2 size={17} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">{v.company_name}</p>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                    <span>{v.vendor_code}</span>
-
-                    {v.defaultPaymentTerm?.term_name && (
-                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                        {v.defaultPaymentTerm.term_name}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <Plus
-                  size={16}
-                  className="text-indigo-500 opacity-0 transition-opacity group-hover:opacity-100"
-                />
-              </button>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ProductIntentCard({
-  item,
-  idx,
-  allVendors,
-  vendorsLoading,
-  paymentTerms,
-  onItemChange,
-  onRemoveItem,
-  onAddVendor,
-  onUpdateVendor,
-  onRemoveVendor,
-  onToggleExpand,
-}: {
-  item: SelectedItem;
-  idx: number;
-  allVendors: PICompanyVendor[];
-  vendorsLoading: boolean;
-  paymentTerms: PaymentTermOption[];
-  onItemChange: (i: number, f: keyof SelectedItem, v: any) => void;
-  onRemoveItem: (i: number) => void;
-  onAddVendor: (i: number, v: PICompanyVendor) => void;
-  onUpdateVendor: (i: number, vi: number, f: keyof VendorEntry, v: string) => void;
-  onRemoveVendor: (i: number, vi: number) => void;
-  onToggleExpand: (i: number) => void;
-}) {
-  const [modal, setModal] = useState(false);
-  const alreadyAdded = item.vendor_entries.map((e) => e.vendor.id);
-  const hasErrors = !!item.errors && Object.keys(item.errors).length > 0;
-
-  const productTotal = item.vendor_entries.reduce((s, e) => s + toNum(e.total_amount), 0);
-  const totalQty = item.vendor_entries.reduce((s, e) => s + toNum(e.required_qty), 0);
-
-  return (
-    <>
-      <div
-        className={cn(
-          "overflow-hidden rounded-3xl border bg-background shadow-sm transition-all",
-          hasErrors
-            ? "border-red-300 shadow-red-100 dark:shadow-none"
-            : "border-border/70 hover:shadow-md"
-        )}
-      >
-        <div className="p-4 md:p-5">
-          <div className="flex items-start gap-4">
-            <div
-              className={cn(
-                "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl",
-                hasErrors
-                  ? "bg-red-50 text-red-600 dark:bg-red-950/40"
-                  : "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50"
-              )}
-            >
-              <Package size={20} />
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-base font-semibold">{item.product.product_name}</p>
-                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                    {item.product.article_code && <span>{item.product.article_code}</span>}
-                    {item.product.hsn_code && (
-                      <span className="rounded-full bg-blue-50 px-2 py-0.5 font-medium text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
-                        HSN {item.product.hsn_code}
-                      </span>
-                    )}
-                    {item.product.tax_pct && (
-                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
-                        GST {item.product.tax_pct}%
-                      </span>
-                    )}
-                    {item.product.unit_of_measure && <span>{item.product.unit_of_measure}</span>}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {hasErrors && (
-                    <span className="rounded-full bg-red-50 px-2 py-1 text-xs font-bold text-red-600 dark:bg-red-950/50">
-                      Needs fixing
-                    </span>
-                  )}
-                  <button
-                    onClick={() => onToggleExpand(idx)}
-                    className="rounded-full border p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
-                  >
-                    {item.expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                  </button>
-                  <button
-                    onClick={() => onRemoveItem(idx)}
-                    className="rounded-full border p-2 text-muted-foreground hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                <div className="rounded-2xl bg-muted/40 p-3">
-                  <p className="text-[10px] font-black uppercase text-muted-foreground">
-                    Suppliers
-                  </p>
-                  <p className="mt-1 text-sm font-bold">{item.vendor_entries.length}</p>
-                </div>
-                <div className="rounded-2xl bg-muted/40 p-3">
-                  <p className="text-[10px] font-black uppercase text-muted-foreground">
-                    Total Qty
-                  </p>
-                  <p className="mt-1 text-sm font-bold">{totalQty || "—"}</p>
-                </div>
-                <div className="rounded-2xl bg-muted/40 p-3">
-                  <p className="text-[10px] font-black uppercase text-muted-foreground">
-                    Product Total
-                  </p>
-                  <p className="mt-1 text-sm font-bold text-indigo-600">
-                    {productTotal > 0 ? fmtMoney(productTotal) : "—"}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {item.expanded && (
-          <div className="border-t bg-muted/20 p-4 md:p-5">
-            <div className="grid gap-3 md:grid-cols-[180px_1fr]">
-              <div>
-                <label className="text-[10px] font-black uppercase tracking-wide text-muted-foreground">
-                  UOM *
-                </label>
-                <input
-                  value={item.uom}
-                  onChange={(e) => onItemChange(idx, "uom", e.target.value)}
-                  placeholder="Nos, Kg, Box"
-                  className={cn(
-                    "mt-1 h-10 w-full rounded-xl border bg-background px-3 text-sm outline-none focus:ring-2",
-                    item.errors?.uom
-                      ? "border-red-400 bg-red-50 focus:ring-red-300 dark:bg-red-950/30"
-                      : "focus:ring-indigo-300"
-                  )}
-                />
-                {item.errors?.uom && (
-                  <p className="mt-1 text-xs font-medium text-red-500">{item.errors.uom}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="text-[10px] font-black uppercase tracking-wide text-muted-foreground">
-                  Product Remarks
-                </label>
-                <input
-                  value={item.remarks}
-                  onChange={(e) => onItemChange(idx, "remarks", e.target.value)}
-                  placeholder="Optional product-specific remarks"
-                  className="mt-1 h-10 w-full rounded-xl border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-300"
-                />
-              </div>
-            </div>
-
-            {item.product.hsn_code && (
-              <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50/60 px-3 py-2 text-xs text-blue-700 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300">
-                <ShieldCheck size={14} />
-                <span className="font-semibold">HSN detected</span>
-                <span>HSN {item.product.hsn_code}</span>
-                {item.product.cgst_rate && <span>CGST {item.product.cgst_rate}%</span>}
-                {item.product.sgst_rate && <span>SGST {item.product.sgst_rate}%</span>}
-                {item.product.tax_pct && <span>Total GST {item.product.tax_pct}%</span>}
-                {/* {item.product.level1_price && (
-                  <span className="ml-auto font-bold">
-                    MRP ₹{parseFloat(item.product.level1_price).toLocaleString("en-IN")}
-                  </span>
-                )} */}
-              </div>
-            )}
-
-            <div className="mt-5">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div>
-                  <p
-                    className={cn(
-                      "text-xs font-black uppercase tracking-wider",
-                      item.errors?.no_vendors ? "text-red-500" : "text-muted-foreground"
-                    )}
-                  >
-                    Suppliers *
-                  </p>
-                  {item.errors?.no_vendors && (
-                    <p className="text-xs font-medium text-red-500">{item.errors.no_vendors}</p>
-                  )}
-                </div>
-
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setModal(true)}
-                  className="rounded-xl"
-                >
-                  <Plus size={14} className="mr-1.5" />
-                  Add Supplier
-                </Button>
-              </div>
-
-              {item.vendor_entries.length === 0 ? (
-                <button
-                  onClick={() => setModal(true)}
-                  className={cn(
-                    "flex w-full flex-col items-center justify-center rounded-3xl border-2 border-dashed py-10 text-center transition-colors",
-                    item.errors?.no_vendors
-                      ? "border-red-300 bg-red-50/40 text-red-500 dark:bg-red-950/20"
-                      : "border-border bg-background text-muted-foreground hover:border-indigo-300 hover:bg-indigo-50/50 hover:text-indigo-600 dark:hover:bg-indigo-950/20"
-                  )}
-                >
-                  <Building2 size={26} className="mb-2 opacity-50" />
-                  <p className="text-sm font-semibold">Add supplier quotation</p>
-                  <p className="text-xs">Quantity, rate, GST and delivery date will be added here.</p>
-                </button>
-              ) : (
-                <div className="overflow-hidden rounded-2xl border bg-background">
-                  {/* <div className="grid grid-cols-[1fr_80px_104px_1fr_24px] gap-1.5 border-b bg-muted/40 px-3 py-2 text-[9px] font-black uppercase text-muted-foreground">
-                    <span>Supplier</span>
-                    <span>Qty *</span>
-                    <span>Req. By *</span>
-                    <span>Remarks</span>
-                    <span />
-                  </div>
-                  <div className="grid grid-cols-[80px_70px_82px_70px_70px_70px_90px_100px] gap-1.5 border-b bg-muted/20 px-3 py-2 text-[9px] font-black uppercase text-muted-foreground">
-                    <span>MRP</span>
-                    <span>Disc%</span>
-                    <span>Rate *</span>
-                    <span>GST%</span>
-                    <span>CGST%</span>
-                    <span>SGST%</span>
-                    <span>Amt/Tax</span>
-                    <span className="text-right">Total</span>
-                  </div> */}
-
-                  {item.vendor_entries.map((entry, vi) => (
-                    <PricingRow
-                      key={entry.vendor.id}
-                      entry={entry}
-                      itemIdx={idx}
-                      vi={vi}
-                      errors={item.errors?.vendors?.[vi]}
-                      canEdit={true}
-                      paymentTerms={paymentTerms}
-                      onUpdate={onUpdateVendor}
-                      onRemove={onRemoveVendor}
-                    />
-                  ))}
-
-                  <div className="flex items-center justify-between border-t bg-indigo-50/60 px-4 py-3 dark:bg-indigo-950/30">
-                    <p className="text-xs font-black uppercase text-indigo-700 dark:text-indigo-300">
-                      Combined total
-                    </p>
-                    <p className="text-base font-black text-indigo-700 dark:text-indigo-300">
-                      {fmtMoney(productTotal)}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {modal && (
-        <VendorPickerModal
-          allVendors={allVendors}
-          alreadyAdded={alreadyAdded}
-          onAdd={(v) => onAddVendor(idx, v)}
-          onClose={() => setModal(false)}
-          loading={vendorsLoading}
-        />
-      )}
-    </>
-  );
-}
+const makeRowId = () => `${Date.now()}-${Math.random()}`;
 
 export default function RaisePurchaseIntentPage() {
+  const [supplierPicker, setSupplierPicker] = useState<{
+    rowIndex: number;
+    vendorIndex: number;
+  } | null>(null);
   const vendorId = Number(useAppSelector((s) => s.auth.user?.vendor_id));
   const userId = Number(useAppSelector((s) => s.auth.user?.id));
   const router = useRouter();
 
-  const [categories, setCategories] = useState<PICategory[]>([]);
+
+  
   const [allVendors, setAllVendors] = useState<PICompanyVendor[]>([]);
-  const [products, setProducts] = useState<PIProduct[]>([]);
+  const [paymentTerms, setPaymentTerms] = useState<PaymentTermOption[]>([]);
 
-  const [vendorLoading, setVendorLoading] = useState(false);
-  const [prodLoading, setProdLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
 
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
-  const [productSearch, setProductSearch] = useState("");
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
+  const [productSearchMap, setProductSearchMap] = useState<Record<string, string>>({});
+  const [productOptionsMap, setProductOptionsMap] = useState<Record<string, PIProduct[]>>({});
+  const [openProductBox, setOpenProductBox] = useState<string | null>(null);
+
+
   const [priority, setPriority] = useState<PIPriority>("Medium");
   const [remarks, setRemarks] = useState("");
-  const [state_id, setStateId] = useState<number>(0);
-  const [productPickerOpen, setProductPickerOpen] = useState(false);
-  const [paymentTerms, setPaymentTerms] = useState<PaymentTermOption[]>([]);
+  const [stateId, setStateId] = useState<number>(0);
+
+  const [rows, setRows] = useState<ProductRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [productLoading, setProductLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!vendorId) return;
 
-    setVendorLoading(true);
+    setLoading(true);
 
     Promise.all([
-      fetchPICategories(vendorId),
       fetchCompanyStateId(vendorId),
       fetchPICompanyVendors(vendorId, ""),
       fetchPIPaymentTerms(vendorId),
     ])
-      .then(([categories, stateId, vendors, terms]) => {
-        setCategories(categories);
-        setStateId(stateId);
+      .then(([companyStateId, vendors, terms]) => {
+        setStateId(companyStateId);
         setAllVendors(vendors);
-        setPaymentTerms(terms);
+        setPaymentTerms(terms ?? []);
       })
-      .catch(console.error)
-      .finally(() => setVendorLoading(false));
+      .catch(() => {
+        toastManager.add({
+          title: "Failed to load form data",
+          type: "error",
+        });
+      })
+      .finally(() => setLoading(false));
   }, [vendorId]);
 
-  useEffect(() => {
-    if (!selectedCategory || !vendorId) {
-      setProducts([]);
+  const searchProductsForRow = async (rowId: string, search: string) => {
+    if (!vendorId) return;
+
+    setProductSearchMap((prev) => ({
+      ...prev,
+      [rowId]: search,
+    }));
+
+    if (!search.trim()) {
+      setProductOptionsMap((prev) => ({
+        ...prev,
+        [rowId]: [],
+      }));
       return;
     }
 
-    setProdLoading(true);
-    const timer = setTimeout(() => {
-      fetchPIProducts(vendorId, selectedCategory, productSearch)
-        .then(setProducts)
-        .catch(console.error)
-        .finally(() => setProdLoading(false));
-    }, 300);
+    setProductLoading(true);
 
-    return () => clearTimeout(timer);
-  }, [vendorId, selectedCategory, productSearch]);
+    try {
+      const result = await fetchPIProducts(
+        vendorId,
+        undefined,
+        search
+      );
 
-  const toggleProduct = useCallback((product: PIProduct) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.has(product.id) ? next.delete(product.id) : next.add(product.id);
-      return next;
-    });
-
-    setSelectedItems((prev) => {
-      const exists = prev.some((i) => i.product.id === product.id);
-      if (exists) return prev.filter((i) => i.product.id !== product.id);
-
-      return [
+      setProductOptionsMap((prev) => ({
         ...prev,
-        {
-          product,
-          uom: product.unit_of_measure ?? "",
-          remarks: "",
-          vendor_entries: [],
-          expanded: true,
-        },
-      ];
-    });
-  }, []);
-
-  const updateItem = useCallback((i: number, f: keyof SelectedItem, v: any) => {
-    setSelectedItems((prev) => {
-      const next = [...prev];
-      const item = { ...next[i], [f]: v };
-
-      if (item.errors && f === "uom") {
-        const errors = { ...item.errors };
-        delete errors.uom;
-        item.errors = Object.keys(errors).length ? errors : undefined;
-      }
-
-      next[i] = item;
-      return next;
-    });
-  }, []);
-
-  const removeItem = useCallback((i: number) => {
-    setSelectedItems((prev) => {
-      const removed = prev[i];
-
-      if (removed) {
-        setSelectedIds((ids) => {
-          const next = new Set(ids);
-          next.delete(removed.product.id);
-          return next;
-        });
-      }
-
-      return prev.filter((_, index) => index !== i);
-    });
-  }, []);
-
-  const toggleExpand = useCallback((i: number) => {
-    setSelectedItems((prev) => {
-      const next = [...prev];
-      next[i] = { ...next[i], expanded: !next[i].expanded };
-      return next;
-    });
-  }, []);
-
-  const addVendorToItem = useCallback(
-    (itemIdx: number, vendor: PICompanyVendor) => {
-      setSelectedItems((prev) => {
-        const next = [...prev];
-        const item = { ...next[itemIdx] };
-
-        const entry = emptyVendorEntry(vendor, item.product);
-        entry.payment_term_id = vendor.default_payment_term_id
-  ? String(vendor.default_payment_term_id)
-  : "";
-
-        // compare state ids
-        const isSameState = Number(vendor.state_id) === Number(state_id);
-
-        if (isSameState) {
-          // Intra-state → CGST + SGST
-          entry.cgst_pct = String(item.product.cgst_rate || 0);
-          entry.sgst_pct = String(item.product.sgst_rate || 0);
-          entry.igst_pct = "0";
-          entry.tax_pct = String(
-            Number(item.product.cgst_rate || 0) +
-            Number(item.product.sgst_rate || 0)
-          );
-        } else {
-          // Inter-state → IGST only
-          entry.cgst_pct = "0";
-          entry.sgst_pct = "0";
-          entry.igst_pct = String(item.product.tax_pct || 0);
-          entry.tax_pct = String(item.product.tax_pct || 0);
-        }
-
-        const calculatedEntry = recalcVendorEntry(entry);
-
-        item.vendor_entries = [...item.vendor_entries, calculatedEntry];
-
-        if (item.errors?.no_vendors) {
-          const errors = { ...item.errors };
-          delete errors.no_vendors;
-          item.errors = Object.keys(errors).length ? errors : undefined;
-        }
-
-        next[itemIdx] = item;
-        return next;
+        [rowId]: result,
+      }));
+    } catch {
+      toastManager.add({
+        title: "Failed to search products",
+        type: "error",
       });
-    },
-    [state_id]
-  );
+    } finally {
+      setProductLoading(false);
+    }
+  };
 
-  const updateVendorEntry = useCallback(
-    (itemIdx: number, vi: number, f: keyof VendorEntry, v: string) => {
-      setSelectedItems((prev) => {
-        const next = [...prev];
-        const entries = [...next[itemIdx].vendor_entries];
+  const addProductRow = () => {
+    setRows((prev) => [
+      ...prev,
+      {
+        row_id: makeRowId(),
+        product: null,
+        product_id: "",
+        uom: "",
+        remarks: "",
+        vendor_entries: [],
+      },
+    ]);
+  };
 
-        entries[vi] = recalcVendorEntry({
-          ...entries[vi],
-          [f]: v,
+  const removeProductRow = (rowIndex: number) => {
+    setRows((prev) => prev.filter((_, i) => i !== rowIndex));
+  };
+
+
+const selectProductForRow = (
+  rowIndex: number,
+  rowId: string,
+  product: PIProduct
+) => {
+  setRows((prev) => {
+    const next = [...prev];
+    const row = { ...next[rowIndex] };
+
+    row.product_id = product.id;
+    row.product = product;
+    row.uom = product.unit_of_measure ?? "";
+    row.vendor_entries = [];
+
+    next[rowIndex] = row;
+    return next;
+  });
+
+  setProductSearchMap((prev) => ({
+    ...prev,
+    [rowId]: `${product.product_name}${
+      product.article_code ? ` - ${product.article_code}` : ""
+    }`,
+  }));
+
+  setProductOptionsMap((prev) => ({
+    ...prev,
+    [rowId]: [],
+  }));
+
+  setOpenProductBox(null);
+};
+
+const updateProductRow = (
+  rowIndex: number,
+  field: keyof ProductRow,
+  value: any
+) => {
+  setRows((prev) => {
+    const next = [...prev];
+    const row = { ...next[rowIndex] };
+
+    (row as any)[field] = value;
+
+    next[rowIndex] = row;
+    return next;
+  });
+};
+
+
+
+  const addSupplierRow = (rowIndex: number) => {
+    setRows((prev) => {
+      const next = [...prev];
+      const row = { ...next[rowIndex] };
+
+      if (!row.product) {
+        toastManager.add({
+          title: "Please select product first",
+          type: "error",
         });
+        return prev;
+      }
 
-        const item = {
-          ...next[itemIdx],
-          vendor_entries: entries,
-        };
+      const firstVendor = allVendors.find(
+        (v) => !row.vendor_entries.some((e) => e.vendor.id === v.id)
+      );
 
-        if (item.errors?.vendors?.[vi]) {
-          const vendorErrors = [...(item.errors.vendors ?? [])];
-          vendorErrors[vi] = { ...vendorErrors[vi] };
+      if (!firstVendor) {
+        toastManager.add({
+          title: "No supplier available",
+          type: "error",
+        });
+        return prev;
+      }
 
-          delete (vendorErrors[vi] as any)[f];
+      const entry = emptyVendorEntry(firstVendor, row.product);
 
-          item.errors = {
-            ...item.errors,
-            vendors: vendorErrors,
-          };
+      entry.payment_term_id = firstVendor.default_payment_term_id
+        ? String(firstVendor.default_payment_term_id)
+        : "";
 
-          const hasAnyError = Object.values(item.errors).some((errorValue) => {
-            if (!errorValue) return false;
-            if (typeof errorValue !== "object") return true;
-            return Object.keys(errorValue).length > 0;
+      entry.required_qty = "";
+      entry.rate = "";
+
+      row.vendor_entries = [...row.vendor_entries, recalcVendorEntry(entry)];
+      next[rowIndex] = row;
+
+      const newVendorIndex = row.vendor_entries.length - 1;
+
+      setTimeout(() => {
+        setSupplierPicker({
+          rowIndex,
+          vendorIndex: newVendorIndex,
+        });
+      }, 0);
+
+      return next;
+    });
+  };
+
+  const updateSupplierRow = (
+    rowIndex: number,
+    vendorIndex: number,
+    field: keyof VendorEntry,
+    value: string
+  ) => {
+    setRows((prev) => {
+      const next = [...prev];
+      const row = { ...next[rowIndex] };
+      const entries = [...row.vendor_entries];
+
+      if (field === "vendor" as any) {
+        return prev;
+      }
+
+      entries[vendorIndex] = recalcVendorEntry({
+        ...entries[vendorIndex],
+        [field]: value,
+      });
+
+      row.vendor_entries = entries;
+      next[rowIndex] = row;
+
+      return next;
+    });
+  };
+
+  const updateSupplierVendor = (
+    rowIndex: number,
+    vendorIndex: number,
+    vendorIdValue: number
+  ) => {
+    setRows((prev) => {
+      const next = [...prev];
+      const row = { ...next[rowIndex] };
+
+      if (!row.product) return prev;
+
+      const vendor = allVendors.find((v) => v.id === vendorIdValue);
+      if (!vendor) return prev;
+
+      const duplicate = row.vendor_entries.some(
+        (entry, index) =>
+          index !== vendorIndex && Number(entry.vendor.id) === Number(vendor.id)
+      );
+
+      if (duplicate) {
+        toastManager.add({
+          title: "This supplier is already added for this product",
+          type: "error",
+        });
+        return prev;
+      }
+
+      let entry = emptyVendorEntry(vendor, row.product);
+
+      entry.payment_term_id = vendor.default_payment_term_id
+        ? String(vendor.default_payment_term_id)
+        : "";
+
+      const oldEntry = row.vendor_entries[vendorIndex];
+
+      entry = {
+        ...entry,
+        required_qty: oldEntry.required_qty,
+        required_by_date: oldEntry.required_by_date,
+        remarks: oldEntry.remarks,
+        mrp: oldEntry.mrp,
+        discount_pct: oldEntry.discount_pct,
+        rate: oldEntry.rate,
+      };
+
+      const isSameState = Number(vendor.state_id) === Number(stateId);
+
+      if (isSameState) {
+        entry.cgst_pct = String(row.product.cgst_rate || 0);
+        entry.sgst_pct = String(row.product.sgst_rate || 0);
+        entry.igst_pct = "0";
+        entry.tax_pct = String(
+          Number(row.product.cgst_rate || 0) +
+          Number(row.product.sgst_rate || 0)
+        );
+      } else {
+        entry.cgst_pct = "0";
+        entry.sgst_pct = "0";
+        entry.igst_pct = String(row.product.tax_pct || 0);
+        entry.tax_pct = String(row.product.tax_pct || 0);
+      }
+
+      row.vendor_entries[vendorIndex] = recalcVendorEntry(entry);
+      next[rowIndex] = row;
+
+      return next;
+    });
+  };
+
+  const removeSupplierRow = (rowIndex: number, vendorIndex: number) => {
+    setRows((prev) => {
+      const next = [...prev];
+      const row = { ...next[rowIndex] };
+
+      row.vendor_entries = row.vendor_entries.filter(
+        (_, index) => index !== vendorIndex
+      );
+
+      next[rowIndex] = row;
+      return next;
+    });
+  };
+
+  const grandTotal = useMemo(() => {
+    return rows.reduce((sum, row) => {
+      return (
+        sum +
+        row.vendor_entries.reduce(
+          (innerSum, entry) => innerSum + toNum(entry.total_amount),
+          0
+        )
+      );
+    }, 0);
+  }, [rows]);
+
+  const validate = () => {
+
+
+    if (!rows.length) {
+      toastManager.add({
+        title: "Please add at least one product",
+        type: "error",
+      });
+      return false;
+    }
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+
+      if (!row.product_id || !row.product) {
+        toastManager.add({
+          title: `Please select product in row ${i + 1}`,
+          type: "error",
+        });
+        return false;
+      }
+
+      if (!row.uom.trim()) {
+        toastManager.add({
+          title: `Please enter UOM in row ${i + 1}`,
+          type: "error",
+        });
+        return false;
+      }
+
+      if (!row.vendor_entries.length) {
+        toastManager.add({
+          title: `Please add supplier in row ${i + 1}`,
+          type: "error",
+        });
+        return false;
+      }
+
+      for (let j = 0; j < row.vendor_entries.length; j++) {
+        const vendor = row.vendor_entries[j];
+
+        if (!vendor.vendor?.id) {
+          toastManager.add({
+            title: `Please select supplier in row ${i + 1}`,
+            type: "error",
           });
-
-          if (!hasAnyError) item.errors = undefined;
+          return false;
         }
 
-        next[itemIdx] = item;
-        return next;
-      });
-    },
-    []
-  );
-
-  const removeVendorFromItem = useCallback((itemIdx: number, vi: number) => {
-    setSelectedItems((prev) => {
-      const next = [...prev];
-
-      next[itemIdx] = {
-        ...next[itemIdx],
-        vendor_entries: next[itemIdx].vendor_entries.filter((_, index) => index !== vi),
-      };
-
-      return next;
-    });
-  }, []);
-
-  const validate = (): boolean => {
-    let valid = true;
-
-    const itemsWithErrors = selectedItems.map((item) => {
-      const err: ItemErrors = {};
-
-      if (!item.uom.trim()) {
-        err.uom = "UOM is required";
-        valid = false;
-      }
-
-      if (item.vendor_entries.length === 0) {
-        err.no_vendors = "Add at least one supplier";
-        valid = false;
-      }
-
-      const vendorErrors: VendorEntryErrors[] = item.vendor_entries.map((entry) => {
-        const ve: VendorEntryErrors = {};
-
-        if (!entry.required_qty || toNum(entry.required_qty) <= 0) {
-          ve.required_qty = "Required";
-          valid = false;
+        if (!vendor.required_qty || toNum(vendor.required_qty) <= 0) {
+          toastManager.add({
+            title: `Please enter qty in row ${i + 1}, supplier ${j + 1}`,
+            type: "error",
+          });
+          return false;
         }
 
-        if (!entry.rate || toNum(entry.rate) <= 0) {
-          ve.rate = "Required";
-          valid = false;
+        if (!vendor.rate || toNum(vendor.rate) <= 0) {
+          toastManager.add({
+            title: `Please enter rate in row ${i + 1}, supplier ${j + 1}`,
+            type: "error",
+          });
+          return false;
         }
-
-        // if (!entry.required_by_date) {
-        //   ve.required_by_date = "Required";
-        //   valid = false;
-        // }
-
-        return ve;
-      });
-
-      if (vendorErrors.some((ve) => Object.keys(ve).length > 0)) {
-        err.vendors = vendorErrors;
       }
+    }
 
-      return {
-        ...item,
-        errors: Object.keys(err).length ? err : undefined,
-        expanded: Object.keys(err).length > 0 ? true : item.expanded,
-      };
-    });
-
-    setSelectedItems(itemsWithErrors);
-    return valid;
+    return true;
   };
 
   const handleSubmit = async () => {
-    if (!selectedCategory) {
-      toastManager.add({ title: "Select a category", type: "error" });
-      setProductPickerOpen(true);
-      return;
-    }
-
-    if (!selectedItems.length) {
-      toastManager.add({ title: "Add at least one product", type: "error" });
-      setProductPickerOpen(true);
-      return;
-    }
-
-    if (!validate()) {
-      toastManager.add({ title: "Fix errors before submitting", type: "error" });
-      return;
-    }
+    if (!validate()) return;
 
     setSubmitting(true);
 
-    
     try {
       await createPurchaseIntent(vendorId, {
-        category_id: selectedCategory,
+        category_id: rows[0]?.product?.category_id
+          ? Number(rows[0].product.category_id)
+          : undefined,
         user_id: userId,
         priority,
         remarks: remarks || undefined,
-        items: selectedItems.map((item) => ({
-          product_id: item.product.id,
-          uom: item.uom || undefined,
-          remarks: item.remarks || undefined,
-          vendors: item.vendor_entries.map((entry) => ({
-  company_vendor_id: entry.vendor.id,
+        items: rows.map((row) => ({
+          product_id: Number(row.product_id),
+          uom: row.uom || undefined,
+          remarks: row.remarks || undefined,
+          vendors: row.vendor_entries.map((entry) => ({
+            company_vendor_id: entry.vendor.id,
 
-payment_term_id: entry.payment_term_id
-  ? Number(entry.payment_term_id)
-  : null,
+            payment_term_id: entry.payment_term_id
+              ? Number(entry.payment_term_id)
+              : null,
 
-  required_qty: toNum(entry.required_qty),
-  required_by_date: entry.required_by_date || undefined,
-  remarks: entry.remarks || undefined,
+            required_qty: toNum(entry.required_qty),
+            required_by_date: entry.required_by_date || undefined,
+            remarks: entry.remarks || undefined,
 
-  estimated_price: toNum(entry.rate) || undefined,
+            estimated_price: toNum(entry.rate) || undefined,
 
-  mrp: toNum(entry.mrp) || null,
-  discount_pct: toNum(entry.discount_pct) || null,
-  rate: toNum(entry.rate) || null,
-  tax_pct: toNum(entry.tax_pct) || null,
-  cgst_pct: toNum(entry.cgst_pct) || null,
-  sgst_pct: toNum(entry.sgst_pct) || null,
-  igst_pct: toNum(entry.igst_pct) || null,
-  tax_amount: toNum(entry.tax_amount) || null,
-  amount: toNum(entry.amount) || null,
-  total_amount: toNum(entry.total_amount) || null,
-})),
+            mrp: toNum(entry.mrp) || null,
+            discount_pct: toNum(entry.discount_pct) || null,
+            rate: toNum(entry.rate) || null,
+            tax_pct: toNum(entry.tax_pct) || null,
+            cgst_pct: toNum(entry.cgst_pct) || null,
+            sgst_pct: toNum(entry.sgst_pct) || null,
+            igst_pct: toNum(entry.igst_pct) || null,
+            tax_amount: toNum(entry.tax_amount) || null,
+            amount: toNum(entry.amount) || null,
+            total_amount: toNum(entry.total_amount) || null,
+          })),
         })),
       });
 
-      toastManager.add({ title: "Purchase Intent raised!", type: "success" });
+      toastManager.add({
+        title: "Purchase Intent created successfully",
+        type: "success",
+      });
+
       router.push("/dashboard/inventory/purchase-intents");
-    } catch {
-      toastManager.add({ title: "Failed to raise PI", type: "error" });
+    } catch (error) {
+      toastManager.add({
+        title: "Failed to create purchase intent",
+        type: "error",
+      });
     } finally {
       setSubmitting(false);
     }
   };
 
-  const stats = useMemo(() => {
-    const productCount = selectedItems.length;
-    const supplierCount = selectedItems.reduce((s, item) => s + item.vendor_entries.length, 0);
-    const grandTotal = selectedItems.reduce(
-      (s, item) => s + item.vendor_entries.reduce((ss, entry) => ss + toNum(entry.total_amount), 0),
-      0
-    );
-    const errorCount = selectedItems.filter((item) => item.errors).length;
-
-    return {
-      productCount,
-      supplierCount,
-      grandTotal,
-      errorCount,
-    };
-  }, [selectedItems]);
+  const openSupplierPicker = (rowIndex: number, vendorIndex: number) => {
+    setSupplierPicker({
+      rowIndex,
+      vendorIndex,
+    });
+  };
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-zinc-50 dark:bg-zinc-950">
-      <header className="z-10 flex h-14 shrink-0 items-center justify-between gap-2 border-b bg-background px-4">
+    <div className="flex min-h-screen flex-col bg-background">
+      <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b px-4">
         <div className="flex items-center gap-2">
           <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
+
+          <Separator
+            orientation="vertical"
+            className="mr-2 data-[orientation=vertical]:h-4"
+          />
+
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
@@ -1053,7 +569,9 @@ payment_term_id: entry.payment_term_id
                   Purchase Intents
                 </BreadcrumbLink>
               </BreadcrumbItem>
+
               <BreadcrumbSeparator className="hidden md:block" />
+
               <BreadcrumbItem>
                 <BreadcrumbPage>Raise Intent</BreadcrumbPage>
               </BreadcrumbItem>
@@ -1067,264 +585,695 @@ payment_term_id: entry.payment_term_id
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
-          <div className="mb-6 overflow-hidden rounded-[28px] border bg-background shadow-sm">
-            <div className="relative p-5 md:p-6">
-              <div className="absolute right-0 top-0 h-28 w-28 rounded-bl-full bg-indigo-500/10" />
-
-              <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <div className="mb-3 inline-flex items-center gap-2 rounded-full border bg-muted/40 px-3 py-1 text-xs font-medium text-muted-foreground">
-                    <Sparkles size={13} className="text-indigo-500" />
-                    Purchase Intent Studio
-                  </div>
-
-                  <h1 className="text-2xl font-semibold tracking-tight">
-                    Raise Purchase Intent
-                  </h1>
-                  <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                    Select products, compare suppliers, calculate landed cost and submit the
-                    purchase intent in one clean workflow.
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  {PRIORITIES.map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => setPriority(p)}
-                      className={cn(
-                        "rounded-full border px-3 py-1.5 text-xs font-bold transition-all",
-                        priority === p ? PRIORITY_META[p].active : PRIORITY_META[p].idle
-                      )}
-                    >
-                      <span className="mr-1">{PRIORITY_META[p].icon}</span>
-                      {PRIORITY_META[p].label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="relative mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-2xl border bg-muted/30 p-4">
-                  <Package size={17} className="mb-3 text-indigo-500" />
-                  <p className="text-[10px] font-black uppercase text-muted-foreground">
-                    Products
-                  </p>
-                  <p className="mt-1 text-xl font-black">{stats.productCount}</p>
-                </div>
-
-                <div className="rounded-2xl border bg-muted/30 p-4">
-                  <Building2 size={17} className="mb-3 text-indigo-500" />
-                  <p className="text-[10px] font-black uppercase text-muted-foreground">
-                    Suppliers
-                  </p>
-                  <p className="mt-1 text-xl font-black">{stats.supplierCount}</p>
-                </div>
-
-                <div className="rounded-2xl border bg-muted/30 p-4">
-                  <IndianRupee size={17} className="mb-3 text-indigo-500" />
-                  <p className="text-[10px] font-black uppercase text-muted-foreground">
-                    Grand Total
-                  </p>
-                  <p className="mt-1 text-xl font-black text-indigo-600">
-                    {stats.grandTotal > 0 ? fmtMoney(stats.grandTotal) : "—"}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border bg-muted/30 p-4">
-                  <ClipboardList size={17} className="mb-3 text-indigo-500" />
-                  <p className="text-[10px] font-black uppercase text-muted-foreground">
-                    Status
-                  </p>
-                  <p
-                    className={cn(
-                      "mt-1 text-sm font-black",
-                      stats.errorCount > 0 ? "text-red-600" : "text-emerald-600"
-                    )}
-                  >
-                    {stats.errorCount > 0
-                      ? `${stats.errorCount} item${stats.errorCount > 1 ? "s" : ""} need fixing`
-                      : selectedItems.length
-                        ? "Ready for review"
-                        : "Start adding products"}
-                  </p>
-                </div>
-              </div>
-            </div>
+      <main className="p-4 md:p-6">
+        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h1 className="text-xl font-bold">Raise Purchase Intent</h1>
+            <p className="text-sm text-muted-foreground">
+              Add products and supplier quotation in a simple table.
+            </p>
           </div>
 
-          <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
-            <section className="space-y-4">
-              <div className="flex flex-col gap-3 rounded-3xl border bg-background p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm font-semibold">Selected Products</p>
-                  <p className="text-xs text-muted-foreground">
-                    Add products and configure supplier-wise requirement.
-                  </p>
-                </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.push("/dashboard/inventory/purchase-intents")}
+            >
+              Cancel
+            </Button>
 
-                <Button
-                  onClick={() => setProductPickerOpen(true)}
-                  className="rounded-xl bg-indigo-600 hover:bg-indigo-700"
-                >
-                  <Plus size={16} className="mr-1.5" />
-                  Add Product
-                </Button>
-              </div>
-
-              {selectedItems.length === 0 ? (
-                <div className="flex min-h-[420px] flex-col items-center justify-center rounded-[28px] border border-dashed bg-background p-8 text-center shadow-sm">
-                  <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950">
-                    <ShoppingCart size={28} />
-                  </div>
-                  <h2 className="text-lg font-semibold">Build your purchase intent</h2>
-                  <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                    Start by selecting a category and adding products. Supplier pricing and taxes
-                    can be configured after selection.
-                  </p>
-                  <Button
-                    onClick={() => setProductPickerOpen(true)}
-                    className="mt-5 rounded-xl bg-indigo-600 hover:bg-indigo-700"
-                  >
-                    <Plus size={16} className="mr-1.5" />
-                    Add First Product
-                  </Button>
-                </div>
+            <Button
+              type="button"
+              disabled={submitting}
+              onClick={handleSubmit}
+              className="gap-2"
+            >
+              {submitting ? (
+                <Loader2 size={15} className="animate-spin" />
               ) : (
-                <div className="space-y-4">
-                  {selectedItems.map((item, idx) => (
-                    <ProductIntentCard
-  key={item.product.id}
-  item={item}
-  idx={idx}
-  allVendors={allVendors}
-  vendorsLoading={vendorLoading}
-  paymentTerms={paymentTerms}
-  onItemChange={updateItem}
-  onRemoveItem={removeItem}
-  onAddVendor={addVendorToItem}
-  onUpdateVendor={updateVendorEntry}
-  onRemoveVendor={removeVendorFromItem}
-  onToggleExpand={toggleExpand}
-/>
-                  ))}
-                </div>
+                <Send size={15} />
               )}
-            </section>
+              Submit Intent
+            </Button>
+          </div>
+        </div>
 
-            <aside className="lg:sticky lg:top-6 lg:h-fit">
-              <div className="overflow-hidden rounded-[28px] border bg-background shadow-sm">
-                <div className="border-b p-5">
-                  <p className="text-base font-semibold">Intent Summary</p>
-                  <p className="text-xs text-muted-foreground">
-                    Review before submitting purchase intent.
-                  </p>
-                </div>
-
-                <div className="space-y-3 p-5">
-                  <div className="flex items-center justify-between rounded-2xl bg-muted/40 p-3">
-                    <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Package size={15} />
-                      Products
-                    </span>
-                    <span className="font-bold">{stats.productCount}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between rounded-2xl bg-muted/40 p-3">
-                    <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Building2 size={15} />
-                      Suppliers
-                    </span>
-                    <span className="font-bold">{stats.supplierCount}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between rounded-2xl bg-muted/40 p-3">
-                    <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Layers3 size={15} />
+        {loading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-12 rounded-xl" />
+            <Skeleton className="h-80 rounded-xl" />
+          </div>
+        ) : (
+          <>
+            <div className="mb-4 rounded-xl border bg-card p-4">
+              <div className="mb-4 rounded-xl border bg-card p-4">
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold">
                       Priority
-                    </span>
-                    <span className="font-bold">{priority}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between rounded-2xl bg-muted/40 p-3">
-                    <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <CalendarDays size={15} />
-                      Validation
-                    </span>
-                    <span
-                      className={cn(
-                        "font-bold",
-                        stats.errorCount > 0 ? "text-red-600" : "text-emerald-600"
-                      )}
+                    </label>
+                    <select
+                      value={priority}
+                      onChange={(e) => setPriority(e.target.value as PIPriority)}
+                      className={inputClass}
                     >
-                      {stats.errorCount > 0 ? `${stats.errorCount} issues` : "Clear"}
-                    </span>
-                  </div>
-
-                  <div className="rounded-3xl border bg-indigo-50/60 p-4 dark:bg-indigo-950/30">
-                    <p className="text-[10px] font-black uppercase text-indigo-700 dark:text-indigo-300">
-                      Grand Total
-                    </p>
-                    <p className="mt-1 text-2xl font-black text-indigo-700 dark:text-indigo-300">
-                      {stats.grandTotal > 0 ? fmtMoney(stats.grandTotal) : "—"}
-                    </p>
+                      {PRIORITIES.map((p) => (
+                        <option key={p} value={p}>
+                          {p}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-black uppercase tracking-wide text-muted-foreground">
+                    <label className="mb-1 block text-xs font-semibold">
+                      Total
+                    </label>
+                    <div className="flex h-9 items-center rounded-lg border bg-muted/30 px-3 text-sm font-bold text-indigo-600">
+                      {toMoney(grandTotal)}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold">
                       Overall Remarks
                     </label>
-                    <textarea
+                    <input
                       value={remarks}
                       onChange={(e) => setRemarks(e.target.value)}
-                      placeholder="Optional remarks for this purchase intent..."
-                      rows={4}
-                      className="mt-1 w-full resize-none rounded-2xl border bg-muted/30 p-3 text-sm outline-none focus:bg-background focus:ring-2 focus:ring-indigo-300"
+                      placeholder="Optional remarks"
+                      className={inputClass}
                     />
                   </div>
                 </div>
-
-                <div className="border-t p-5">
-                  {stats.errorCount > 0 && (
-                    <div className="mb-3 rounded-2xl border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-600 dark:border-red-900 dark:bg-red-950/30">
-                      Please fix highlighted items before submitting.
-                    </div>
-                  )}
-
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={submitting || !selectedItems.length}
-                    className="h-11 w-full rounded-2xl bg-indigo-600 font-bold hover:bg-indigo-700"
-                  >
-                    {submitting ? (
-                      <Loader2 size={16} className="mr-2 animate-spin" />
-                    ) : (
-                      <Send size={16} className="mr-2" />
-                    )}
-                    {submitting ? "Raising Intent..." : "Raise Purchase Intent"}
-                  </Button>
-                </div>
               </div>
-            </aside>
+            </div>
+
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold">Products & Suppliers</p>
+                <p className="text-xs text-muted-foreground">
+                  Use one product row and add supplier rows below it.
+                </p>
+              </div>
+
+              <Button type="button" size="sm" onClick={addProductRow}>
+                <Plus size={14} className="mr-1" />
+                Add Product Row
+              </Button>
+            </div>
+
+            {rows.length === 0 ? (
+              <div className="flex min-h-[280px] flex-col items-center justify-center rounded-xl border border-dashed bg-card text-center">
+                <Package size={32} className="mb-2 text-muted-foreground/40" />
+                <p className="text-sm font-semibold">No product added</p>
+                <p className="mb-4 text-xs text-muted-foreground">
+                  Click Add Product Row to start.
+                </p>
+                <Button type="button" size="sm" onClick={addProductRow}>
+                  <Plus size={14} className="mr-1" />
+                  Add Product Row
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {rows.map((row, rowIndex) => (
+                  <div
+                    key={row.row_id}
+                    className="overflow-hidden rounded-xl border bg-card"
+                  >
+                    <div className="border-b bg-muted/30 p-3">
+                      <div className="grid gap-2 md:grid-cols-[2fr_120px_1fr_40px]">
+                        <div>
+                          <label className="mb-1 block text-[11px] font-semibold">
+                            Product *
+                          </label>
+                          <ProductAutocomplete
+                            rowId={row.row_id}
+                            value={productSearchMap[row.row_id] || ""}
+                            open={openProductBox === row.row_id}
+                            loading={productLoading}
+                            options={productOptionsMap[row.row_id] || []}
+                            onFocus={() => setOpenProductBox(row.row_id)}
+                            onChange={(value) => {
+                              setOpenProductBox(row.row_id);
+                              searchProductsForRow(row.row_id, value);
+                            }}
+                            onSelect={(product) =>
+  selectProductForRow(rowIndex, row.row_id, product)
+}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="mb-1 block text-[11px] font-semibold">
+                            UOM *
+                          </label>
+                          <input
+                            value={row.uom}
+                            onChange={(e) =>
+                              updateProductRow(rowIndex, "uom", e.target.value)
+                            }
+                            className={inputClass}
+                            placeholder="UOM"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="mb-1 block text-[11px] font-semibold">
+                            Product Remark
+                          </label>
+                          <input
+                            value={row.remarks}
+                            onChange={(e) =>
+                              updateProductRow(
+                                rowIndex,
+                                "remarks",
+                                e.target.value
+                              )
+                            }
+                            className={inputClass}
+                            placeholder="Optional"
+                          />
+                        </div>
+
+                        <div className="flex items-end">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-9 w-9 p-0 text-red-600"
+                            onClick={() => removeProductRow(rowIndex)}
+                          >
+                            <Trash2 size={14} />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[1100px] text-xs">
+                        <thead className="bg-muted/40">
+                          <tr>
+                            <th className="px-2 py-2 text-left">Supplier *</th>
+                            <th className="px-2 py-2 text-left">Payment Term</th>
+                            <th className="px-2 py-2 text-left">Qty *</th>
+                            <th className="px-2 py-2 text-left">Req. Date</th>
+                            <th className="px-2 py-2 text-left">MRP</th>
+                            <th className="px-2 py-2 text-left">Disc %</th>
+                            <th className="px-2 py-2 text-left">Rate *</th>
+                            <th className="px-2 py-2 text-left">GST %</th>
+                            <th className="px-2 py-2 text-left">Tax Amt</th>
+                            <th className="px-2 py-2 text-left">Total</th>
+                            <th className="px-2 py-2 text-left">Remark</th>
+                            <th className="px-2 py-2 text-center">Action</th>
+                          </tr>
+                        </thead>
+
+                        <tbody>
+                          {row.vendor_entries.length === 0 ? (
+                            <tr>
+                              <td
+                                colSpan={12}
+                                className="px-3 py-8 text-center text-muted-foreground"
+                              >
+                                No supplier added.
+                              </td>
+                            </tr>
+                          ) : (
+                            row.vendor_entries.map((entry, vendorIndex) => {
+                              const usedVendorIds = row.vendor_entries
+                                .map((e, index) =>
+                                  index === vendorIndex ? null : e.vendor.id
+                                )
+                                .filter(Boolean);
+
+                              const availableVendors = allVendors.filter(
+                                (vendor) => !usedVendorIds.includes(vendor.id)
+                              );
+
+                              const availablePaymentTerms = paymentTerms.filter(
+                                (term) =>
+                                  term.company_vendor_id === null ||
+                                  Number(term.company_vendor_id) ===
+                                  Number(entry.vendor.id)
+                              );
+
+                              return (
+                                <tr
+                                  key={`${entry.vendor.id}-${vendorIndex}`}
+                                  className="border-t"
+                                >
+                                  <td className="px-2 py-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => openSupplierPicker(rowIndex, vendorIndex)}
+                                      className="flex h-8 w-[240px] items-center justify-between rounded-md border bg-background px-2 text-left text-xs outline-none hover:bg-muted/50"
+                                    >
+                                      <span className="truncate">
+                                        {entry.vendor?.company_name
+                                          ? `${entry.vendor.company_name} - ${entry.vendor.vendor_code}`
+                                          : "Select supplier"}
+                                      </span>
+
+                                      <Search size={13} className="ml-2 shrink-0 text-muted-foreground" />
+                                    </button>
+                                  </td>
+
+                                  <td className="px-2 py-2">
+                                    <select
+                                      value={entry.payment_term_id || ""}
+                                      onChange={(e) =>
+                                        updateSupplierRow(
+                                          rowIndex,
+                                          vendorIndex,
+                                          "payment_term_id" as keyof VendorEntry,
+                                          e.target.value
+                                        )
+                                      }
+                                      className={tableInputClass}
+                                    >
+                                      <option value="">Select</option>
+                                      {availablePaymentTerms.map((term) => (
+                                        <option key={term.id} value={term.id}>
+                                          {term.term_name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </td>
+
+                                  <td className="px-2 py-2">
+                                    <input
+                                      type="number"
+                                      value={entry.required_qty}
+                                      onChange={(e) =>
+                                        updateSupplierRow(
+                                          rowIndex,
+                                          vendorIndex,
+                                          "required_qty",
+                                          e.target.value
+                                        )
+                                      }
+                                      className={tableInputClass}
+                                    />
+                                  </td>
+
+                                  <td className="px-2 py-2">
+                                    <input
+                                      type="date"
+                                      value={entry.required_by_date}
+                                      onChange={(e) =>
+                                        updateSupplierRow(
+                                          rowIndex,
+                                          vendorIndex,
+                                          "required_by_date",
+                                          e.target.value
+                                        )
+                                      }
+                                      className={tableInputClass}
+                                    />
+                                  </td>
+
+                                  <td className="px-2 py-2">
+                                    <input
+                                      type="number"
+                                      value={entry.mrp}
+                                      onChange={(e) =>
+                                        updateSupplierRow(
+                                          rowIndex,
+                                          vendorIndex,
+                                          "mrp",
+                                          e.target.value
+                                        )
+                                      }
+                                      className={tableInputClass}
+                                    />
+                                  </td>
+
+                                  <td className="px-2 py-2">
+                                    <input
+                                      type="number"
+                                      value={entry.discount_pct}
+                                      onChange={(e) =>
+                                        updateSupplierRow(
+                                          rowIndex,
+                                          vendorIndex,
+                                          "discount_pct",
+                                          e.target.value
+                                        )
+                                      }
+                                      className={tableInputClass}
+                                    />
+                                  </td>
+
+                                  <td className="px-2 py-2">
+                                    <input
+                                      type="number"
+                                      value={entry.rate}
+                                      onChange={(e) =>
+                                        updateSupplierRow(
+                                          rowIndex,
+                                          vendorIndex,
+                                          "rate",
+                                          e.target.value
+                                        )
+                                      }
+                                      className={tableInputClass}
+                                    />
+                                  </td>
+
+                                  <td className="px-2 py-2">
+                                    <input
+                                      type="number"
+                                      value={entry.tax_pct}
+                                      onChange={(e) =>
+                                        updateSupplierRow(
+                                          rowIndex,
+                                          vendorIndex,
+                                          "tax_pct",
+                                          e.target.value
+                                        )
+                                      }
+                                      className={tableInputClass}
+                                    />
+                                  </td>
+
+                                  <td className="px-2 py-2 font-semibold">
+                                    {toMoney(entry.tax_amount)}
+                                  </td>
+
+                                  <td className="px-2 py-2 font-bold text-indigo-600">
+                                    {toMoney(entry.total_amount)}
+                                  </td>
+
+                                  <td className="px-2 py-2">
+                                    <input
+                                      value={entry.remarks}
+                                      onChange={(e) =>
+                                        updateSupplierRow(
+                                          rowIndex,
+                                          vendorIndex,
+                                          "remarks",
+                                          e.target.value
+                                        )
+                                      }
+                                      className={tableInputClass}
+                                      placeholder="Remark"
+                                    />
+                                  </td>
+
+                                  <td className="px-2 py-2 text-center">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 w-8 p-0 text-red-600"
+                                      onClick={() =>
+                                        removeSupplierRow(rowIndex, vendorIndex)
+                                      }
+                                    >
+                                      <Trash2 size={13} />
+                                    </Button>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="flex items-center justify-between border-t bg-muted/20 px-3 py-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => addSupplierRow(rowIndex)}
+                      >
+                        <Plus size={13} className="mr-1" />
+                        Add Supplier
+                      </Button>
+
+                      <p className="text-sm font-bold">
+                        Product Total:{" "}
+                        <span className="text-indigo-600">
+                          {toMoney(
+                            row.vendor_entries.reduce(
+                              (sum, entry) => sum + toNum(entry.total_amount),
+                              0
+                            )
+                          )}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-5 flex items-center justify-between rounded-xl border bg-card px-4 py-3">
+              <p className="text-sm font-semibold">
+                Grand Total:{" "}
+                <span className="text-lg font-bold text-indigo-600">
+                  {toMoney(grandTotal)}
+                </span>
+              </p>
+
+              <Button
+                type="button"
+                disabled={submitting || rows.length === 0}
+                onClick={handleSubmit}
+                className="gap-2"
+              >
+                {submitting ? (
+                  <Loader2 size={15} className="animate-spin" />
+                ) : (
+                  <Send size={15} />
+                )}
+                Submit Intent
+              </Button>
+            </div>
+          </>
+        )}
+      </main>
+      {supplierPicker && rows[supplierPicker.rowIndex] && (
+        <SupplierPickerModal
+          open={!!supplierPicker}
+          allVendors={allVendors}
+          row={rows[supplierPicker.rowIndex]}
+          rowIndex={supplierPicker.rowIndex}
+          vendorIndex={supplierPicker.vendorIndex}
+          onClose={() => setSupplierPicker(null)}
+          onSelect={(vendor) => {
+            updateSupplierVendor(
+              supplierPicker.rowIndex,
+              supplierPicker.vendorIndex,
+              vendor.id
+            );
+
+            setSupplierPicker(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function ProductAutocomplete({
+  rowId,
+  value,
+  open,
+  loading,
+  options,
+  onFocus,
+  onChange,
+  onSelect,
+}: {
+  rowId: string;
+  value: string;
+  open: boolean;
+  loading: boolean;
+  options: PIProduct[];
+  onFocus: () => void;
+  onChange: (value: string) => void;
+  onSelect: (product: PIProduct) => void;
+}) {
+  return (
+    <div className="relative">
+      <div className="relative">
+        <Search
+          size={13}
+          className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+        />
+
+        <input
+          value={value}
+          onFocus={onFocus}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Search product by name/code..."
+          className="h-9 w-full rounded-lg border bg-background pl-7 pr-2 text-xs outline-none focus:ring-2 focus:ring-indigo-300"
+        />
+      </div>
+
+      {open && (
+        <div className="absolute z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border bg-background shadow-xl">
+          {loading ? (
+            <div className="px-3 py-3 text-xs text-muted-foreground">
+              Searching...
+            </div>
+          ) : options.length === 0 ? (
+            <div className="px-3 py-3 text-xs text-muted-foreground">
+              Type to search products
+            </div>
+          ) : (
+            options.map((product) => (
+              <button
+  key={product.id}
+  type="button"
+  onMouseDown={(e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onSelect(product);
+  }}
+  className="w-full border-b px-3 py-2 text-left hover:bg-muted"
+>
+                <p className="text-xs font-semibold">
+                  {product.product_name}
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  {[product.article_code, product.unit_of_measure, product.hsn_code]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SupplierPickerModal({
+  open,
+  allVendors,
+  row,
+  rowIndex,
+  vendorIndex,
+  onClose,
+  onSelect,
+}: {
+  open: boolean;
+  allVendors: PICompanyVendor[];
+  row: ProductRow;
+  rowIndex: number;
+  vendorIndex: number;
+  onClose: () => void;
+  onSelect: (vendor: PICompanyVendor) => void;
+}) {
+  const [search, setSearch] = useState("");
+
+  if (!open) return null;
+
+  const usedVendorIds = row.vendor_entries
+    .map((entry, index) => (index === vendorIndex ? null : entry.vendor.id))
+    .filter(Boolean);
+
+  const q = search.trim().toLowerCase();
+
+  const filteredVendors = allVendors
+    .filter((vendor) => {
+      const notAlreadyUsed = !usedVendorIds.includes(vendor.id);
+
+      if (!q) return notAlreadyUsed;
+
+      return (
+        String(vendor.company_name || "").toLowerCase().includes(q) ||
+        String(vendor.vendor_code || "").toLowerCase().includes(q)
+      );
+    })
+    .slice(0, 50);
+
+  return (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+      onMouseDown={onClose}
+    >
+      <div
+        className="flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl"
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b px-5 py-4">
+          <div>
+            <p className="text-sm font-bold">Select Supplier</p>
+            <p className="text-xs text-muted-foreground">
+              Search by supplier name or supplier code.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full px-2 py-1 text-sm text-muted-foreground hover:bg-muted"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="border-b p-4">
+          <div className="relative">
+            <Search
+              size={15}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            />
+
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search supplier..."
+              className="h-10 w-full rounded-xl border bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-indigo-300"
+            />
           </div>
         </div>
-      </main>
 
-      <ProductPickerModal
-        open={productPickerOpen}
-        onClose={() => setProductPickerOpen(false)}
-        categories={categories}
-        selectedCategory={selectedCategory}
-        setSelectedCategory={setSelectedCategory}
-        productSearch={productSearch}
-        setProductSearch={setProductSearch}
-        products={products}
-        prodLoading={prodLoading}
-        selectedIds={selectedIds}
-        onToggleProduct={toggleProduct}
-      />
+        <div className="overflow-y-auto p-2">
+          {filteredVendors.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <p className="text-sm font-semibold">No supplier found</p>
+              <p className="text-xs">Try searching with another name/code.</p>
+            </div>
+          ) : (
+            filteredVendors.map((vendor) => (
+              <button
+                key={vendor.id}
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onSelect(vendor);
+                }}
+                className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-3 text-left hover:bg-muted"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">
+                    {vendor.company_name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {vendor.vendor_code}
+                  </p>
+                </div>
+
+                <span className="rounded-full border px-2 py-1 text-[10px] font-semibold text-muted-foreground">
+                  Select
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
     </div>
   );
 }

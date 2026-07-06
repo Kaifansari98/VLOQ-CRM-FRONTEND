@@ -18,6 +18,7 @@ export interface PIProduct {
   sgst_rate:       string | null;
   igst_rate:       string | null;
   tax_pct:         string | null;   // cgst + sgst for intra-state
+  category_id: number;
 }
 
 export interface PICompanyVendor {
