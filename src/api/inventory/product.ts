@@ -84,7 +84,7 @@ export interface ProductPayload {
   shelf_life_days?: number | null;
   costing_method: CostingMethod;
 
-  mrp?: number | null;
+  level1_price?: number | null;
 
   min_stock_qty?: number | null;
   min_stock_unit_id?: number | null;

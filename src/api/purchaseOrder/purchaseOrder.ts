@@ -101,6 +101,7 @@ export const convertPIToPO = async (vendorId: number, payload: {
   purchase_intent_id: number; user_id: number; expected_delivery_date?: string; remarks?: string;
   selections: ConversionSelection[];
 }) => {
+  // alert(vendorId)
   const { data } = await apiClient.post(`/purchase-orders/${vendorId}/convert`, payload);
   return data.data as { purchase_orders: { id: number; po_no: string }[]; count: number };
 };

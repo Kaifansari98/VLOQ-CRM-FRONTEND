@@ -57,7 +57,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useEffect, useState, useCallback, useMemo } from "react";
-import ConvertToPOModal from "@/components/purchase-order/ConvertToPOModal";
+
 import { useRouter } from "next/navigation";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
@@ -127,9 +127,9 @@ const fmtMoney = (v: any) => {
 
   return num > 0
     ? `₹${num.toLocaleString("en-IN", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })}`
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`
     : "—";
 };
 
@@ -1003,10 +1003,14 @@ export default function PurchaseIntentListPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<PIStatus | "">("");
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+
   const [deleteTarget, setDeleteTarget] = useState<PISummary | null>(null);
-  const [convertTarget, setConvertTarget] = useState<PISummary | null>(null);
+
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const openDetailsPage = (intentId: number) => {
+    router.push(`/dashboard/inventory/purchase-intents/${intentId}`);
+  };
 
   const fetchData = useCallback(() => {
     if (!vendorId) return;
@@ -1041,9 +1045,9 @@ export default function PurchaseIntentListPage() {
     setData((prev) =>
       prev
         ? {
-            ...prev,
-            intents: prev.intents.map((i) => (i.id === id ? { ...i, status } : i)),
-          }
+          ...prev,
+          intents: prev.intents.map((i) => (i.id === id ? { ...i, status } : i)),
+        }
         : prev
     );
   };
@@ -1240,9 +1244,6 @@ export default function PurchaseIntentListPage() {
                     <th className="px-5 py-4 text-left text-[10px] font-black uppercase text-muted-foreground">
                       Intent
                     </th>
-                    <th className="px-5 py-4 text-left text-[10px] font-black uppercase text-muted-foreground">
-                      Category
-                    </th>
                     <th className="px-5 py-4 text-right text-[10px] font-black uppercase text-muted-foreground">
                       Amount
                     </th>
@@ -1299,7 +1300,7 @@ export default function PurchaseIntentListPage() {
                         <tr
                           key={intent.id}
                           className="group cursor-pointer border-b transition-colors hover:bg-indigo-50/40 dark:hover:bg-indigo-950/20"
-                          onClick={() => setSelectedId(intent.id)}
+                          onClick={() => openDetailsPage(intent.id)}
                         >
                           <td className="px-5 py-4">
                             <div className="flex items-center gap-3">
@@ -1316,11 +1317,7 @@ export default function PurchaseIntentListPage() {
                             </div>
                           </td>
 
-                          <td className="px-5 py-4">
-                            <p className="text-sm font-semibold">
-                              {intent.category?.category_name ?? "—"}
-                            </p>
-                          </td>
+
 
                           <td className="px-5 py-4 text-right">
                             <p className="text-base font-black text-indigo-600">
@@ -1374,7 +1371,7 @@ export default function PurchaseIntentListPage() {
                             >
                               <button
                                 title="View details"
-                                onClick={() => setSelectedId(intent.id)}
+                                onClick={() => openDetailsPage(intent.id)}
                                 className="rounded-xl p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-indigo-600"
                               >
                                 <Eye size={15} />
@@ -1398,8 +1395,9 @@ export default function PurchaseIntentListPage() {
                                 <button
                                   title="Convert to Purchase Order"
                                   onClick={() => {
-                                    setSelectedId(null);
-                                    setConvertTarget(intent);
+                                    router.push(
+                                      `/dashboard/inventory/purchase-intents/${intent.id}/convert-to-po`
+                                    );
                                   }}
                                   className="rounded-xl p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-indigo-600"
                                 >
@@ -1417,13 +1415,13 @@ export default function PurchaseIntentListPage() {
                                 </button>
                               )}
 
-                              <button
+                              {/* <button
                                 title="Open"
                                 onClick={() => setSelectedId(intent.id)}
                                 className="rounded-xl p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                               >
                                 <ArrowRight size={15} />
-                              </button>
+                              </button> */}
                             </div>
                           </td>
                         </tr>
@@ -1450,37 +1448,7 @@ export default function PurchaseIntentListPage() {
         </div>
       </main>
 
-      {selectedId && (
-        <IntentDetailPanel
-          vendorId={vendorId}
-          intentId={selectedId}
-          onClose={() => setSelectedId(null)}
-          onStatusChange={handleStatusChange}
-          onConvert={(intent) => {
-            setSelectedId(null);
-            setConvertTarget(intent);
-          }}
-        />
-      )}
 
-      {convertTarget && (
-        <ConvertToPOModal
-          piId={convertTarget.id}
-          intentNo={convertTarget.intent_no}
-          onClose={() => setConvertTarget(null)}
-          onSuccess={(pos) => {
-            setConvertTarget(null);
-            handleStatusChange(convertTarget.id, "ConvertedToPO" as PIStatus);
-
-            toastManager.add({
-              title: `${pos.length} PO${pos.length > 1 ? "s" : ""} created: ${pos
-                .map((p) => p.po_no)
-                .join(", ")}`,
-              type: "success",
-            });
-          }}
-        />
-      )}
 
       {deleteTarget && (
         <div
