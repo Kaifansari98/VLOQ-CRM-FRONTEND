@@ -246,6 +246,13 @@ export default function CreateGRNPage() {
 
     const handleSubmit = async () => {
         if (!validate()) return;
+        if (!po?.companyVendor?.id) {
+            toastManager.add({
+                title: "Supplier is missing for this purchase order",
+                type: "error",
+            });
+            return;
+        }
 
         setSaving(true);
 
@@ -253,7 +260,7 @@ export default function CreateGRNPage() {
             const payload = {
                 user_id: userId,
                 purchase_order_id: poId,
-                company_vendor_id: po?.companyVendor?.id,
+                company_vendor_id: po.companyVendor.id,
 
                 received_date: receivedDate,
                 invoice_no: invoiceNo || undefined,

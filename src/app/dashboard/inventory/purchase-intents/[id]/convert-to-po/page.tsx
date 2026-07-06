@@ -61,6 +61,11 @@ type SelectionState = {
 };
 
 type SelectionsMap = Record<number, SelectionState>;
+type SelectedRow = {
+  item: any;
+  vm: any;
+  selection: SelectionState;
+};
 
 const inputClass =
   "h-8 w-full rounded-md border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-indigo-300";
@@ -205,7 +210,7 @@ export default function ConvertPIToPOPage() {
       .finally(() => setLoading(false));
   }, [vendorId, piId]);
 
-  const selectedRows = useMemo(() => {
+  const selectedRows = useMemo<SelectedRow[]>(() => {
     if (!pi) return [];
 
     return (pi.items ?? []).flatMap((item: any) =>
@@ -221,7 +226,10 @@ export default function ConvertPIToPOPage() {
 
   const totals = useMemo(() => {
     return selectedRows.reduce(
-      (sum, row) => {
+      (
+        sum: { amount: number; tax_amount: number; total_amount: number },
+        row: any,
+      ) => {
         sum.amount += n(row.selection.amount);
         sum.tax_amount += n(row.selection.tax_amount);
         sum.total_amount += n(row.selection.total_amount);
@@ -349,6 +357,14 @@ export default function ConvertPIToPOPage() {
           payment_term_id: selection.payment_term_id
             ? Number(selection.payment_term_id)
             : null,
+          paymentTerm: vm.paymentTerm
+            ? {
+                id: vm.paymentTerm.id,
+                term_name: vm.paymentTerm.term_name,
+                description: vm.paymentTerm.description ?? null,
+                company_vendor_id: vm.company_vendor_id ?? null,
+              }
+            : null,
 
           ordered_qty: n(selection.ordered_qty),
           unit_price: n(selection.unit_price),
@@ -374,7 +390,7 @@ export default function ConvertPIToPOPage() {
       const result = await convertPIToPO(vendorId, payload);
 
       toastManager.add({
-        title: `${result.length} PO${result.length > 1 ? "s" : ""} created successfully`,
+        title: `${result.count} PO${result.count > 1 ? "s" : ""} created successfully`,
         type: "success",
       });
 
