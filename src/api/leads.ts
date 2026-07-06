@@ -970,6 +970,7 @@ export const assignDesignerToLead = async (
     account_id: number;
     assign_to_user_id: number;
     created_by: number;
+    user_type_or_role?: string;
   },
 ) => {
   const response = await apiClient.post(

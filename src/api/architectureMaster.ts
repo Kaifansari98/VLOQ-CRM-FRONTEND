@@ -5,6 +5,7 @@ import {
   CreateArchitectureMasterDTO,
   UpdateArchitectureMasterDTO,
   UpdateArchitectureMasterStatusDTO,
+  ArchitectureMasterDropdownResponse,
 } from "../types/architectureMaster";
 
 const BASE_URL = "/architecture-masters";
@@ -36,5 +37,10 @@ export const updateArchitectureMasterStatus = async (id: number, data: UpdateArc
 
 export const deleteArchitectureMaster = async (id: number) => {
   const response = await apiClient.delete(`${BASE_URL}/delete-architecture/${id}`);
+  return response.data;
+};
+
+export const getArchitectureMastersDropdownList = async (vendorId: number) => {
+  const response = await apiClient.get<ArchitectureMasterDropdownResponse>(`${BASE_URL}/dropdown-list/${vendorId}`);
   return response.data;
 };

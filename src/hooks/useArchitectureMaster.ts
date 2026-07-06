@@ -7,8 +7,9 @@ import {
   updateArchitectureMaster,
   updateArchitectureMasterStatus,
   deleteArchitectureMaster,
+  getArchitectureMastersDropdownList,
 } from "../api/architectureMaster";
-import { CreateArchitectureMasterDTO, UpdateArchitectureMasterDTO, UpdateArchitectureMasterStatusDTO } from "../types/architectureMaster";
+import { CreateArchitectureMasterDTO, UpdateArchitectureMasterDTO, UpdateArchitectureMasterStatusDTO, ArchitectureMasterDropdownResponse } from "../types/architectureMaster";
 
 export const architectureMasterKeys = {
   all: ["architecture-masters"] as const,
@@ -16,6 +17,7 @@ export const architectureMasterKeys = {
   list: (params: any) => [...architectureMasterKeys.lists(), params] as const,
   details: () => [...architectureMasterKeys.all, "detail"] as const,
   detail: (id: number) => [...architectureMasterKeys.details(), id] as const,
+  dropdownList: (vendorId: number) => [...architectureMasterKeys.all, "dropdownList", vendorId] as const,
 };
 
 export const useArchitectureMasters = (params?: { page?: number; limit?: number; search?: string }) => {
@@ -92,5 +94,13 @@ export const useDeleteArchitectureMaster = () => {
     onError: (error: any) => {
       toastManager.add({ title: error.response?.data?.message || "Failed to delete architecture master.", type: "error" });
     },
+  });
+};
+
+export const useArchitectureMastersDropdownList = (vendorId: number) => {
+  return useQuery({
+    queryKey: architectureMasterKeys.dropdownList(vendorId),
+    queryFn: () => getArchitectureMastersDropdownList(vendorId),
+    enabled: !!vendorId,
   });
 };

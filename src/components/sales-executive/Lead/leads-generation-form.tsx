@@ -31,7 +31,7 @@ import {
 import { PhoneInput } from "@/components/ui/phone-input";
 import { toastManager } from "@/components/ui/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createLead, unshortenUrl } from "@/api/leads";
+import { createLead, unshortenUrl, assignDesignerToLead } from "@/api/leads";
 import { useAppSelector } from "@/redux/store";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 
@@ -59,6 +59,7 @@ import {
   useCheckContactOrEmailExists,
   useCheckSimilarLeadExists,
 } from "@/hooks/useLeadsQueries";
+import { useArchitectureMastersDropdownList } from "@/hooks/useArchitectureMaster";
 import {
   Tooltip,
   TooltipContent,
@@ -163,11 +164,13 @@ const createFormSchema = (
     assigned_by: isAdminOrSuperAdmin ? z.string() : z.string().optional(),
     documents: z.string().optional(),
     archetech_name: z.string().max(300).optional(),
+    architect_id: z.string().optional(),
     archetech_number: z
       .string()
       .regex(/^\+?\d{7,20}$/, "Please enter a valid architect number")
       .optional()
       .or(z.literal("")),
+    designer_id: z.string().optional(),
     designer_remark: z.string().max(2000).optional(),
     initial_site_measurement_date: z.string().optional(),
     priority: z.enum(["High", "Medium", "Low"], {
@@ -207,11 +210,13 @@ const draftFormSchema = (userType: string | undefined) => {
     assigned_by: z.string().optional(),
     documents: z.string().optional(),
     archetech_name: z.string().optional(),
+    architect_id: z.string().optional(),
     archetech_number: z
       .string()
       .regex(/^\+?\d{7,20}$/, "Please enter a valid architect number")
       .optional()
       .or(z.literal("")),
+    designer_id: z.string().optional(),
     designer_remark: z.string().optional(),
     initial_site_measurement_date: z.string().optional(),
     priority: z.enum(["High", "Medium", "Low"]).optional(),
@@ -435,7 +440,9 @@ export default function LeadsGenerationForm({
       product_structures: [],
       documents: "",
       archetech_name: "",
+      architect_id: "",
       archetech_number: "",
+      designer_id: "",
       designer_remark: "N/A",
       priority: "Medium",
       assign_to: "",
@@ -672,6 +679,24 @@ export default function LeadsGenerationForm({
 
   const vendorUserss = vendorUsers?.data?.sales_executives ?? [];
 
+  const { data: architectData, isLoading: isArchitectsLoading } = useArchitectureMastersDropdownList(vendorId);
+  const architectsList = architectData?.data || [];
+
+  const { data: designerUsers, isLoading: isDesignersLoading } =
+    useVendorSalesExecutiveUsers(
+      vendorId,
+      franchiseId,
+      vendorCustomUserTypeMode === true
+        ? {
+            assigneeUserType: "custom",
+            requiredPrivilegeCode: "leads.designing_stage.designs.upload",
+          }
+        : undefined,
+    );
+  const designersList = Array.isArray(designerUsers?.data) 
+    ? designerUsers.data 
+    : (designerUsers?.data?.sales_executives || []);
+
   const createLeadMutation = useMutation({
     mutationFn: ({
       payload,
@@ -680,7 +705,25 @@ export default function LeadsGenerationForm({
       payload: any;
       files: File[];
     }) => createLead(payload, files),
-    onSuccess: () => {
+    onSuccess: async (data: any) => {
+      const selectedDesignerId = form.getValues("designer_id");
+      const createdLead = data?.data?.lead || data?.data || data;
+      const leadId = createdLead?.id || createdLead?.lead_id;
+
+      if (selectedDesignerId && leadId) {
+        try {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          await assignDesignerToLead(vendorId, leadId, {
+            account_id: Number(createdLead?.account_id || 0),
+            assign_to_user_id: Number(selectedDesignerId),
+            created_by: Number(createdBy || userId),
+            user_type_or_role: "designer",
+          });
+        } catch (e) {
+          console.error("Failed to assign designer", e);
+        }
+      }
+
       toastManager.add({ title: "Lead created successfully!", type: "success" });
       queryClient.invalidateQueries({ queryKey: ["leadStats", vendorId, userId] });
       queryClient.invalidateQueries({ queryKey: ["universal-stage-leads"] });
@@ -699,7 +742,26 @@ export default function LeadsGenerationForm({
   const saveDraftMutation = useMutation({
     mutationFn: ({ payload, files }: { payload: any; files: File[] }) =>
       createLead(payload, files),
-    onSuccess: () => {
+    onSuccess: async (data: any) => {
+      const selectedDesignerId = form.getValues("designer_id");
+      const createdLead = data?.data?.lead || data?.data || data;
+      const leadId = createdLead?.id || createdLead?.lead_id;
+
+      if (selectedDesignerId && leadId) {
+        try {
+          // Delay execution to prevent backend race conditions where concurrent mapping creation causes the backend to assign the wrong role (ISM instead of designer)
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          await assignDesignerToLead(vendorId, leadId, {
+            account_id: Number(createdLead?.account_id || 0),
+            assign_to_user_id: Number(selectedDesignerId),
+            created_by: Number(createdBy || userId),
+            user_type_or_role: "designer",
+          });
+        } catch (e) {
+          console.error("Failed to assign designer", e);
+        }
+      }
+
       toastManager.add({ title: "Lead saved as draft!", type: "success" });
       queryClient.invalidateQueries({
         queryKey: ["leadStats", vendorId, userId],
@@ -946,6 +1008,7 @@ export default function LeadsGenerationForm({
       site_type_id: Number(values.site_type_id),
       source_id: Number(values.source_id),
       archetech_name: values.archetech_name || undefined,
+      architect_id: values.architect_id ? Number(values.architect_id) : undefined,
       archetech_number: values.archetech_number || undefined,
       designer_remark: values.designer_remark || undefined,
       vendor_id: vendorId,
@@ -1008,7 +1071,7 @@ export default function LeadsGenerationForm({
     createLeadMutation.mutate(
       { payload, files: buildRenamedSitePhotoFiles() },
       {
-        onSuccess: () => {
+        onSuccess: async () => {
           queryClient.invalidateQueries({
             queryKey: ["leadStats", vendorId, userId],
           });
@@ -1062,6 +1125,7 @@ export default function LeadsGenerationForm({
         : undefined,
       source_id: values.source_id ? Number(values.source_id) : undefined,
       archetech_name: values.archetech_name || undefined,
+      architect_id: values.architect_id ? Number(values.architect_id) : undefined,
       archetech_number: values.archetech_number || undefined,
       designer_remark: values.designer_remark || undefined,
       vendor_id: vendorId,
@@ -1621,9 +1685,8 @@ export default function LeadsGenerationForm({
           </>
         )}
 
-        {canReassingLead(userType) && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Assign To */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start mb-3">
+          {canReassingLead(userType) && (
             <FormField
               control={form.control}
               name="assign_to"
@@ -1655,33 +1718,118 @@ export default function LeadsGenerationForm({
                 );
               }}
             />
-          </div>
-        )}
-        <div
-          className={`grid grid-cols-1 gap-3 items-start ${
-            isCustomVendorFlow ? "sm:grid-cols-3" : "sm:grid-cols-2"
-          }`}
-        >
-          {/* Architect Name */}
+          )}
+
           <FormField
             control={form.control}
-            name="archetech_name"
+            name="initial_site_measurement_date"
             render={({ field }) => (
               <FormItem data-name={field?.name || ""} >
-                <FormLabel className="text-sm">Architect Name</FormLabel>
+                <FormLabel className="text-sm">
+                  Initial Site Measurement Date
+                </FormLabel>
                 <FormControl>
-                  <Input
-                    placeholder="Enter architect name"
-                    type="text"
-                    className="text-sm"
-                    {...field}
+                  <CustomeDatePicker
+                    value={field.value}
+                    onChange={field.onChange}
+                    restriction="futureOnly"
                   />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-          {isCustomVendorFlow && (
+        </div>
+        {vendorCustomUserTypeMode && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start mb-3">
+            <FormField
+              control={form.control}
+              name="architect_id"
+              render={({ field }) => {
+                const pickerData = architectsList.map((a: any) => ({
+                  id: a.id,
+                  label: a.name || "",
+                  subLabel: a.mobile || "",
+                }));
+                return (
+                  <FormItem data-name={field?.name || ""} >
+                    <FormLabel className="text-sm">Architect</FormLabel>
+                    <AssignToPicker
+                      data={pickerData}
+                      textClassName="text-sm font-medium"
+                      value={field.value ? Number(field.value) : undefined}
+                      onChange={(selectedId) => {
+                        field.onChange(selectedId ? String(selectedId) : "");
+                        if (selectedId) {
+                          const selectedArchitect = architectsList.find((a: any) => a.id === selectedId);
+                          if (selectedArchitect) {
+                            form.setValue("archetech_name", selectedArchitect.name);
+                            form.setValue("archetech_number", selectedArchitect.mobile);
+                          }
+                        } else {
+                          form.setValue("archetech_name", "");
+                          form.setValue("archetech_number", "");
+                        }
+                      }}
+                      placeholder="Select Architect..."
+                      disabled={isArchitectsLoading}
+                    
+                    />
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+            <FormField
+              control={form.control}
+              name="designer_id"
+              render={({ field }) => {
+                const pickerData = designersList.map((d: any) => ({
+                  id: d.id,
+                  label: d.user_name || "",
+                  subLabel: d.user_email || d.email || "",
+                }));
+                return (
+                  <FormItem data-name={field?.name || ""} >
+                    <FormLabel className="text-sm">Designer</FormLabel>
+                    <AssignToPicker
+                      data={pickerData}
+                      textClassName="text-sm font-medium"
+                      value={field.value ? Number(field.value) : undefined}
+                      onChange={(selectedId) => {
+                        field.onChange(selectedId ? String(selectedId) : "");
+                      }}
+                      placeholder="Select Designer..."
+                      disabled={isDesignersLoading}
+                    />
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+          </div>
+        )}
+        {!vendorCustomUserTypeMode && (
+          <div className="grid grid-cols-1 gap-3 items-start sm:grid-cols-2">
+            {/* Architect Name */}
+            <FormField
+              control={form.control}
+              name="archetech_name"
+              render={({ field }) => (
+                <FormItem data-name={field?.name || ""} >
+                  <FormLabel className="text-sm">Architect Name</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter architect name"
+                      type="text"
+                      className="text-sm"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="archetech_number"
@@ -1702,27 +1850,8 @@ export default function LeadsGenerationForm({
                 </FormItem>
               )}
             />
-          )}
-          <FormField
-            control={form.control}
-            name="initial_site_measurement_date"
-            render={({ field }) => (
-              <FormItem data-name={field?.name || ""} >
-                <FormLabel className="text-sm">
-                  Initial Site Measurement Date
-                </FormLabel>
-                <FormControl>
-                  <CustomeDatePicker
-                    value={field.value}
-                    onChange={field.onChange}
-                    restriction="futureOnly"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />{" "}
-        </div>
+          </div>
+        )}
 
         {/* Designer Remark */}
         <FormField
