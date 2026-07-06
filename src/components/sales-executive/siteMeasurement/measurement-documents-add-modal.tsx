@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/form";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { useAppSelector } from "@/redux/store";
-import { useUploadAdditionalSitePhotosMutation } from "@/hooks/Site-measruement/useUploadAdditionalSitePhotos";
+import { useUploadMeasurementDocumentsMutation } from "@/hooks/Site-measruement/useUploadMeasurementDocuments";
 import BaseModal from "@/components/utils/baseModal";
 import { toastManager } from "@/components/ui/toast";
 
@@ -34,14 +34,14 @@ interface ViewInitialSiteMeasurmentLeadProps {
 
 // --------- Validation ---------
 const formSchema = z.object({
-  current_site_photos: z
+  upload_pdf: z
     .array(z.any())
-    .min(1, "At least one photo is required"),
+    .min(1, "At least one document is required"),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
-const AddCurrentSitePhotos: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
+const AddMeasurementDocuments: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
   open,
   onOpenChange,
   data,
@@ -49,12 +49,12 @@ const AddCurrentSitePhotos: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const updatedBy = useAppSelector((state) => state.auth.user?.id);
 
-  const { mutateAsync, isPending } = useUploadAdditionalSitePhotosMutation();
+  const { mutateAsync, isPending } = useUploadMeasurementDocumentsMutation();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      current_site_photos: [],
+      upload_pdf: [],
     },
   });
 
@@ -72,14 +72,12 @@ const AddCurrentSitePhotos: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
       formData.append("payment_id", (data.paymentId || 0).toString());
 
       // Append each file (no [])
-      values.current_site_photos.forEach((file) => {
-        formData.append("current_site_photos", file);
+      values.upload_pdf.forEach((file) => {
+        formData.append("upload_pdf", file);
       });
 
       await mutateAsync(formData);
       
-      
-
       form.reset();
       onOpenChange(false);
     } catch (error: any) {
@@ -93,7 +91,7 @@ const AddCurrentSitePhotos: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
         title: errorMessage,
         type: "error",
       });
-      console.error("Error uploading current site photos:", error);
+      console.error("Error uploading measurement documents:", error);
     }
   };
 
@@ -101,24 +99,24 @@ const AddCurrentSitePhotos: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
     <BaseModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Add Site Photos"
-      description="Upload current site photos."
+      title="Add Measurement Documents"
+      description="Upload initial site measurement documents."
       size="smd"
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-5">
-          {/* Current Site Photos */}
+          {/* Measurement Documents */}
           <FormField
             control={form.control}
-            name="current_site_photos"
+            name="upload_pdf"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-sm">Current Site Photos</FormLabel>
+                <FormLabel className="text-sm">Measurement Documents</FormLabel>
                 <FormControl>
                   <FileUploadField
                     value={field.value}
                     onChange={field.onChange}
-                    accept="image/*,.heic,.heif,.avif,.webp,.bmp,.tif,.tiff,.svg,.jfif"
+                    accept="application/pdf,image/*"
                   />
                 </FormControl>
                 <FormMessage />
@@ -136,7 +134,7 @@ const AddCurrentSitePhotos: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
               Cancel
             </Button>
             <Button type="submit" disabled={isPending}>
-              {isPending ? "uploading..." : "Upload"}
+              {isPending ? "Uploading..." : "Upload"}
             </Button>
           </div>
         </form>
@@ -145,4 +143,4 @@ const AddCurrentSitePhotos: React.FC<ViewInitialSiteMeasurmentLeadProps> = ({
   );
 };
 
-export default AddCurrentSitePhotos;
+export default AddMeasurementDocuments;

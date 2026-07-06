@@ -161,3 +161,16 @@ export const uploadAdditionalSitePhotosAPI = async (formData: FormData) => {
   );
   return data;
 };
+
+export const uploadMeasurementDocumentsAPI = async (formData: FormData) => {
+  const { data } = await apiClient.post(
+    `/leads/initial-site-measurement/measurement-documents/upload`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+  return data;
+};

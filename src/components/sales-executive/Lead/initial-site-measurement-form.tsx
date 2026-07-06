@@ -30,11 +30,13 @@ import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import { LeadProductStructureInstance } from "@/api/leads";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { CheckCircle2, Loader2, UploadCloud } from "lucide-react";
 import { useSiteMeasurementLeadById } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
 import DocumentCard from "@/components/utils/documentCard";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import { SiteMeasurementFile } from "@/types/site-measrument-types";
+import { useUploadAdditionalSitePhotosMutation } from "@/hooks/Site-measruement/useUploadAdditionalSitePhotos";
+import { useUploadMeasurementDocumentsMutation } from "@/hooks/Site-measruement/useUploadMeasurementDocuments";
 
 interface LeadViewModalProps {
   open: boolean;
@@ -142,7 +144,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
   const {
     data: structureInstancesData,
     isLoading: isStructureInstancesLoading,
-  } = useLeadProductStructureInstances(leadId ?? 0, vendorId);
+  } = useLeadProductStructureInstances(leadId ?? 0, vendorId, isCustomVendorFlow);
   const structureInstances: LeadProductStructureInstance[] = React.useMemo(
     () =>
       Array.isArray(structureInstancesData?.data)
@@ -153,6 +155,12 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
   const isMultiInstanceUploadFlow =
     structureInstances.length > 1 &&
     (isCustomVendorFlow || isCustomDocNomenclatureEnabled);
+
+  const isCustomVendorFlowActive =
+    isCustomVendorFlow && structureInstances.length > 1;
+
+  const isCustomVendorFlowFromAuthActive =
+    isCustomVendorFlowFromAuth && structureInstances.length > 1;
 
   const dynamicFormSchema = React.useMemo(() => {
     return z
@@ -233,6 +241,13 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
     number | null
   >(null);
   const [multiInstanceErrors, setMultiInstanceErrors] = React.useState<number[]>([]);
+  const [uploadModalInstanceId, setUploadModalInstanceId] = React.useState<number | null>(null);
+  const [openAllInstancesModal, setOpenAllInstancesModal] = React.useState<boolean>(false);
+  
+  const selectedInstanceForUpload = React.useMemo(
+    () => structureInstances.find((inst) => inst.id === uploadModalInstanceId),
+    [structureInstances, uploadModalInstanceId]
+  );
 
   React.useEffect(() => {
     if (!isMultiInstanceUploadFlow) {
@@ -258,6 +273,9 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
   }, [isMultiInstanceUploadFlow, structureInstances]);
 
   const queryClient = useQueryClient();
+
+  const uploadSitePhotosMutation = useUploadAdditionalSitePhotosMutation();
+  const uploadDocumentsMutation = useUploadMeasurementDocumentsMutation();
 
   const mutation = useMutation({
     mutationFn: uploadInitialSiteMeasurement,
@@ -286,7 +304,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       onOpenChange(false);
 
       // ✅ Redirect to Designing Stage
-      if (!isCustomVendorFlowFromAuth) {
+      if (!isCustomVendorFlowFromAuthActive) {
         router.push("/dashboard/leads/designing-stage");
       }
     },
@@ -294,37 +312,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       toastError(error);
     },
   });
-  const partialInstanceMutation = useMutation({
-    mutationFn: uploadInitialSiteMeasurement,
-    onSuccess: () => {
-      toastManager.add({
-        title: "Instance documents uploaded successfully!",
-        type: "success",
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["leadStats", vendorId, userId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["universal-stage-leads"],
-        exact: false,
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["vendorUserTasks"],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["vendorAllTasks"],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["allLeadDocuments"],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["siteMeasurementLeadDetails", leadId],
-      });
-    },
-    onError: (error: unknown) => {
-      toastError(error);
-    },
-  });
+
 
   const clientId = 1;
 
@@ -486,7 +474,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
     savedInstanceIds,
   ]);
 
-  const handleInstanceUpload = async (instance: LeadProductStructureInstance) => {
+  const handleInstanceUpload = async (instance: LeadProductStructureInstance, type: 'photos' | 'documents') => {
     if (!leadId || !accountId) {
       toastManager.add({
         title: "Lead or account data is missing!",
@@ -500,35 +488,64 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       upload_pdf: [],
     };
 
-    if (uploads.upload_pdf.length === 0) {
+    if (type === 'photos' && uploads.current_site_photos.length === 0) {
       toastManager.add({
-        title: `Please upload Initial Site Measurement Document for ${instance.title}.`,
+        title: `Please select Site Photos to upload for ${instance.title}.`,
         type: "error",
       });
       return;
     }
 
-    const formData = buildInitialSiteMeasurementPayload({
-      sitePhotos: uploads.current_site_photos.map((file) => ({
-        file,
-        instanceId: instance.id,
-      })),
-      documents: uploads.upload_pdf.map((file) => ({
-        file,
-        instanceId: instance.id,
-      })),
-    });
-    formData.append("skip_status_update", "true");
+    if (type === 'documents' && uploads.upload_pdf.length === 0) {
+      toastManager.add({
+        title: `Please select Initial Site Measurement Document for ${instance.title}.`,
+        type: "error",
+      });
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("lead_id", leadId.toString());
+    formData.append("account_id", accountId.toString());
+    formData.append("vendor_id", vendorId!.toString());
+    formData.append("updated_by", userId!.toString());
+
+    if (type === 'photos') {
+      uploads.current_site_photos.forEach((file) => {
+        formData.append("current_site_photos", file);
+      });
+      formData.append(
+        "site_photo_instance_ids",
+        JSON.stringify(uploads.current_site_photos.map(() => instance.id)),
+      );
+    } else if (type === 'documents') {
+      uploads.upload_pdf.forEach((file) => {
+        formData.append("upload_pdf", file);
+      });
+      formData.append(
+        "upload_pdf_instance_ids",
+        JSON.stringify(uploads.upload_pdf.map(() => instance.id)),
+      );
+    }
 
     try {
       setUploadingInstanceId(instance.id);
-      await partialInstanceMutation.mutateAsync(formData);
+      
+      if (type === 'photos') {
+        await uploadSitePhotosMutation.mutateAsync(formData);
+      } else {
+        await uploadDocumentsMutation.mutateAsync(formData);
+      }
+      
       setSavedInstanceIds((prev) =>
         prev.includes(instance.id) ? prev : [...prev, instance.id],
       );
       setInstanceUploads((prev) => ({
         ...prev,
-        [instance.id]: { current_site_photos: [], upload_pdf: [] },
+        [instance.id]: {
+          ...prev[instance.id],
+          ...(type === 'photos' ? { current_site_photos: [] } : { upload_pdf: [] }),
+        },
       }));
     } finally {
       setUploadingInstanceId(null);
@@ -564,58 +581,6 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
         });
       }
 
-      const missingRequiredUploads = structureInstances.filter((instance) => {
-        const uploads = instanceUploads[instance.id] ?? {
-          current_site_photos: [],
-          upload_pdf: [],
-        };
-        const hasSavedThisSession = savedInstanceIds.includes(instance.id);
-        const hasExistingSitePhotos =
-          getExistingSitePhotosByInstance(instance.id).length > 0;
-        const hasExistingDocuments =
-          getExistingMeasurementDocsByInstance(instance.id).length > 0;
-        const hasLocalSitePhotos = uploads.current_site_photos.length > 0;
-        const hasLocalDocuments = uploads.upload_pdf.length > 0;
-
-        const hasRequiredDocuments =
-          hasSavedThisSession || hasExistingDocuments || hasLocalDocuments;
-
-        return !hasRequiredDocuments;
-      });
-
-      if (missingRequiredUploads.length > 0) {
-        const missingIds = missingRequiredUploads.map((i) => i.id);
-        setMultiInstanceErrors(missingIds);
-
-        const firstMissing = missingRequiredUploads[0];
-        toastManager.add({
-          title: `Please upload all required ISM files for ${firstMissing.title}.`,
-          type: "error",
-        });
-
-        setTimeout(() => {
-          const el = document.getElementById(`instance-${firstMissing.id}`);
-          if (el) {
-            const isHidden = el.getBoundingClientRect().height === 0;
-            const targetScrollEl = isHidden ? (el.parentElement || el) : el;
-
-            const scrollContainer = targetScrollEl.closest("[data-radix-scroll-area-viewport]") || targetScrollEl.closest("form");
-            if (scrollContainer instanceof HTMLElement) {
-              const containerRect = scrollContainer.getBoundingClientRect();
-              const elRect = targetScrollEl.getBoundingClientRect();
-              const scrollOffset = elRect.top - containerRect.top + scrollContainer.scrollTop - (containerRect.height / 2) + (elRect.height / 2);
-              scrollContainer.scrollTo({
-                top: scrollOffset,
-                behavior: "smooth",
-              });
-            } else {
-              targetScrollEl.scrollIntoView({ behavior: "smooth", block: "center" });
-            }
-          }
-        }, 100);
-
-        return;
-      }
       setMultiInstanceErrors([]);
     } else {
       values.current_site_photos?.forEach((file: File) => {
@@ -640,16 +605,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       flattenedDocuments.length === 0 &&
       flattenedSitePhotos.length === 0
     ) {
-      if (
-        isCustomVendorFlowFromAuth &&
-        !allInstancesAlreadyHaveRequiredUploads
-      ) {
-        toastManager.add({
-          title: "Please upload all required ISM files for every instance.",
-          type: "error",
-        });
-        return;
-      }
+
 
       mutation.mutate(
         buildInitialSiteMeasurementPayload({
@@ -716,6 +672,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
   };
 
   return (
+    <>
     <BaseModal
       open={open}
       onOpenChange={onOpenChange}
@@ -724,6 +681,53 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       size="lg"
     >
       <div className="px-5 py-4">
+        {isCustomVendorFlowActive && structureInstances.length > 0 && (
+          <div className="mb-6 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-semibold">Lead Instances ({structureInstances.length})</label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setOpenAllInstancesModal(true)}
+              >
+                View All Instances
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 max-h-[280px] overflow-y-auto p-2 border border-border rounded-xl bg-muted/5">
+              {structureInstances.map((instance) => {
+                const existingPhotosCount = getExistingSitePhotosByInstance(instance.id).length;
+                const existingDocsCount = getExistingMeasurementDocsByInstance(instance.id).length;
+                const totalUploaded = existingPhotosCount + existingDocsCount;
+
+                return (
+                  <div key={instance.id} className="border border-border rounded-xl p-3 flex flex-col justify-between bg-card hover:bg-muted/40 transition-colors">
+                    <div>
+                      <h4 className="font-medium text-sm text-card-foreground">{instance.title}</h4>
+                      {instance.description && (
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">{instance.description}</p>
+                      )}
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                      {totalUploaded > 0 ? (
+                        <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2 h-7 rounded-md inline-flex items-center justify-center whitespace-nowrap">
+                          {totalUploaded} doc{totalUploaded > 1 ? 's' : ''} uploaded
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-medium text-muted-foreground bg-muted/60 px-2 h-7 rounded-md inline-flex items-center justify-center whitespace-nowrap">
+                          0 docs uploaded
+                        </span>
+                      )}
+                      <Button type="button" variant="outline" onClick={() => setUploadModalInstanceId(instance.id)} className="h-7 px-3 flex shrink-0 items-center text-[11px] font-medium rounded-md">
+                        Upload
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit, (errors) => {
@@ -757,19 +761,31 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
             })}
             className="space-y-5"
           >
-            {(isCustomVendorFlow || isCustomDocNomenclatureEnabled) &&
+            {(isCustomVendorFlowActive || isCustomDocNomenclatureEnabled) &&
             isStructureInstancesLoading ? (
               <div className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">
                 Loading product instances...
               </div>
-            ) : isMultiInstanceUploadFlow ? (
+            ) : (!isCustomVendorFlowActive && isMultiInstanceUploadFlow) ? (
               <div className="space-y-4">
-                <div>
-                  <h3 className="text-sm font-semibold">Instance Documents</h3>
-                  <p className="text-xs text-muted-foreground">
-                    Upload current site photos and Initial Site Measurement
-                    documents for the relevant instance before submitting.
-                  </p>
+                <div className="mb-6">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-muted/20 border border-border rounded-xl">
+                    <div className="space-y-1">
+                      <FormLabel className="text-sm font-semibold">Instance Documents</FormLabel>
+                      <p className="text-xs text-muted-foreground">
+                        {structureInstances.length} instance{structureInstances.length !== 1 ? 's' : ''} available
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-3 sm:mt-0"
+                      onClick={() => setOpenAllInstancesModal(true)}
+                    >
+                      View All Instances
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="grid gap-2">
@@ -924,24 +940,43 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                             </div>
                           )}
 
-                          <div className="flex justify-end">
+                          <div className="flex justify-end gap-2">
                             <Button
                               type="button"
                               variant="outline"
-                              onClick={() => handleInstanceUpload(instance)}
+                              onClick={() => handleInstanceUpload(instance, 'photos')}
                               disabled={
-                                partialInstanceMutation.isPending &&
+                                (uploadSitePhotosMutation.isPending || uploadDocumentsMutation.isPending) &&
                                 uploadingInstanceId === instance.id
                               }
                             >
-                              {partialInstanceMutation.isPending &&
+                              {uploadSitePhotosMutation.isPending &&
                               uploadingInstanceId === instance.id ? (
                                 <>
                                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                   Uploading...
                                 </>
                               ) : (
-                                "Upload This Instance"
+                                "Upload Photos"
+                              )}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => handleInstanceUpload(instance, 'documents')}
+                              disabled={
+                                (uploadSitePhotosMutation.isPending || uploadDocumentsMutation.isPending) &&
+                                uploadingInstanceId === instance.id
+                              }
+                            >
+                              {uploadDocumentsMutation.isPending &&
+                              uploadingInstanceId === instance.id ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Uploading...
+                                </>
+                              ) : (
+                                "Upload Documents"
                               )}
                             </Button>
                           </div>
@@ -951,7 +986,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                   })}
                 </div>
               </div>
-            ) : (
+            ) : (!isCustomVendorFlowActive) ? (
               <>
                 <FormField
                   control={form.control}
@@ -1002,7 +1037,7 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                   )}
                 />
               </>
-            )}
+            ) : null}
 
             <div className="flex flex-col sm:flex-row gap-4">
               {/* Amount */}
@@ -1102,10 +1137,10 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
               </Button>
               <Button type="submit" disabled={mutation.isPending}>
                 {mutation.isPending
-                  ? isCustomVendorFlowFromAuth
+                  ? isCustomVendorFlowFromAuthActive
                     ? "Submitting ISM..."
                     : "Moving to Designing stage..."
-                  : isCustomVendorFlowFromAuth
+                  : isCustomVendorFlowFromAuthActive
                     ? "Submit ISM"
                     : "Move to Designing stage"}
               </Button>
@@ -1114,6 +1149,340 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
         </Form>
       </div>
     </BaseModal>
+
+      {/* Instance Upload Modal */}
+      <BaseModal
+        open={!!uploadModalInstanceId}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setUploadModalInstanceId(null);
+            setMultiInstanceErrors([]);
+          }
+        }}
+        title={selectedInstanceForUpload?.title || "Upload Instance Documents"}
+        description="Upload current site photos and Initial Site Measurement documents for this instance."
+        size="xl"
+      >
+        <div className="px-5 py-4 space-y-4">
+          {selectedInstanceForUpload && (() => {
+            const instance = selectedInstanceForUpload;
+            const uploads = instanceUploads[instance.id] ?? {
+              current_site_photos: [],
+              upload_pdf: [],
+            };
+            const existingInstanceSitePhotos = getExistingSitePhotosByInstance(instance.id);
+            const existingInstanceMeasurementDocs = getExistingMeasurementDocsByInstance(instance.id);
+
+            return (
+              <div className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium leading-none">Current Site Photos</label>
+                    <FileUploadField
+                      value={uploads.current_site_photos}
+                      onChange={(files) => setInstanceFiles(instance.id, "current_site_photos", files)}
+                      accept=".png, .jpg, .jpeg, .gif"
+                    />
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-muted-foreground">Upload photos for this instance.</p>
+                      <Button
+                        type="button"
+                        variant="default"
+                        size="sm"
+                        onClick={() => handleInstanceUpload(instance, 'photos')}
+                        disabled={(uploadSitePhotosMutation.isPending || uploadDocumentsMutation.isPending) && uploadingInstanceId === instance.id}
+                      >
+                        {uploadSitePhotosMutation.isPending && uploadingInstanceId === instance.id ? (
+                          <>
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          "Upload Photos"
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className={cn("text-sm font-medium leading-none", multiInstanceErrors.includes(instance.id) ? "text-destructive" : "")}>
+                      Initial Site Measurement Document *
+                    </label>
+                    <SinglePdfUploadField
+                      value={uploads.upload_pdf}
+                      invalid={multiInstanceErrors.includes(instance.id)}
+                      onChange={(files) => {
+                        setMultiInstanceErrors((prev) => prev.filter(id => id !== instance.id));
+                        setInstanceFiles(
+                          instance.id,
+                          "upload_pdf",
+                          Array.isArray(files) ? files : files ? [files] : []
+                        );
+                      }}
+                      allowedMimeTypes={[]}
+                      accept="*/*"
+                      title="Upload Measurement Document"
+                      description="Any file type allowed. Upload one or more files."
+                      buttonLabel="Select File"
+                      multiple
+                      maxFiles={10}
+                    />
+                    <div className="flex items-center justify-end">
+                      <Button
+                        type="button"
+                        variant="default"
+                        size="sm"
+                        onClick={() => handleInstanceUpload(instance, 'documents')}
+                        disabled={(uploadSitePhotosMutation.isPending || uploadDocumentsMutation.isPending) && uploadingInstanceId === instance.id}
+                      >
+                        {uploadDocumentsMutation.isPending && uploadingInstanceId === instance.id ? (
+                          <>
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          "Upload Documents"
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {(existingInstanceSitePhotos.length > 0 || existingInstanceMeasurementDocs.length > 0) && (
+                  <div className="space-y-4 rounded-xl border border-dashed p-4">
+                    <div>
+                      <h5 className="text-sm font-semibold">Uploaded Files</h5>
+                      <p className="text-xs text-muted-foreground">These files are already saved for this instance.</p>
+                    </div>
+
+                    {existingInstanceSitePhotos.length > 0 && (
+                      <div className="space-y-3">
+                        <p className="text-xs font-medium text-muted-foreground">Current Site Photos</p>
+                        <div className="flex flex-wrap gap-4">
+                          {existingInstanceSitePhotos.map((doc: SiteMeasurementFile, index: number) => (
+                            <div key={doc.id} className="w-full sm:w-[300px] md:w-[350px] max-w-full min-w-0">
+                              <ImageComponent
+                                doc={{
+                                  id: doc.id,
+                                  doc_og_name: doc.originalName,
+                                  signedUrl: doc.signedUrl,
+                                  created_at: doc.uploadedAt,
+                                }}
+                                index={index}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {existingInstanceMeasurementDocs.length > 0 && (
+                      <div className="space-y-3">
+                        <p className="text-xs font-medium text-muted-foreground">Initial Site Measurement Documents</p>
+                        <div className="flex flex-wrap gap-4">
+                          {existingInstanceMeasurementDocs.map((doc: SiteMeasurementFile) => (
+                            <div key={doc.id} className="w-full sm:w-[300px] md:w-[350px] max-w-full">
+                              <DocumentCard
+                                doc={{
+                                  id: doc.id,
+                                  originalName: doc.originalName,
+                                  signedUrl: doc.signedUrl,
+                                  created_at: doc.uploadedAt,
+                                }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+              </div>
+            );
+          })()}
+        </div>
+      </BaseModal>
+
+      {/* View All Instances Modal */}
+      <BaseModal
+        open={openAllInstancesModal}
+        onOpenChange={setOpenAllInstancesModal}
+        title="All Lead Instances"
+        description="View and upload documents for all lead instances."
+        size="xl"
+      >
+        <div className="px-5 py-4 max-h-[70vh] overflow-y-auto">
+          {isCustomVendorFlowActive ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pb-2">
+              {structureInstances.map((instance) => {
+                const existingPhotosCount = getExistingSitePhotosByInstance(instance.id).length;
+                const existingDocsCount = getExistingMeasurementDocsByInstance(instance.id).length;
+                const totalUploaded = existingPhotosCount + existingDocsCount;
+
+                return (
+                  <div key={instance.id} className="border border-border rounded-xl p-3 flex flex-col justify-between bg-card hover:bg-muted/40 transition-colors">
+                    <div>
+                      <h4 className="font-medium text-card-foreground">{instance.title}</h4>
+                      {instance.description && (
+                        <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 leading-relaxed">{instance.description}</p>
+                      )}
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                      {totalUploaded > 0 ? (
+                        <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2 h-7 rounded-md inline-flex items-center justify-center whitespace-nowrap">
+                          {totalUploaded} doc{totalUploaded > 1 ? 's' : ''} uploaded
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-medium text-muted-foreground bg-muted/60 px-2 h-7 rounded-md inline-flex items-center justify-center whitespace-nowrap">
+                          0 docs uploaded
+                        </span>
+                      )}
+                      <Button type="button" variant="outline" onClick={() => setUploadModalInstanceId(instance.id)} className="h-7 px-3 flex shrink-0 items-center text-[11px] font-medium rounded-md">
+                        Upload
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="grid gap-2">
+              {structureInstances.map((instance) => {
+                const uploads = instanceUploads[instance.id] ?? {
+                  current_site_photos: [],
+                  upload_pdf: [],
+                };
+                const existingInstanceSitePhotos = getExistingSitePhotosByInstance(instance.id);
+                const existingInstanceMeasurementDocs = getExistingMeasurementDocsByInstance(instance.id);
+
+                return (
+                  <Card key={instance.id} id={`instance-${instance.id}`} className="min-w-0 overflow-hidden">
+                    <CardContent className="space-y-4 p-6">
+                      <div>
+                        <h4 className="text-sm font-semibold">
+                          {instance.title}
+                        </h4>
+                        {instance.productType?.type && (
+                          <p className="text-xs text-muted-foreground">
+                            {instance.productType.type}
+                          </p>
+                        )}
+                        {savedInstanceIds.includes(instance.id) && (
+                          <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700">
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            Saved
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium leading-none">
+                            Current Site Photos
+                          </label>
+                          <FileUploadField
+                            value={uploads.current_site_photos}
+                            onChange={(files) =>
+                              setInstanceFiles(
+                                instance.id,
+                                "current_site_photos",
+                                files,
+                              )
+                            }
+                            accept=".png, .jpg, .jpeg, .gif"
+                          />
+                          <div className="flex justify-between items-center mt-1">
+                            <p className="text-[11px] text-muted-foreground leading-tight max-w-[60%]">
+                              Upload photos for this instance.
+                            </p>
+                            {existingInstanceSitePhotos.length > 0 && (
+                              <div className="text-[10px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                <CheckCircle2 className="h-3 w-3" />
+                                {existingInstanceSitePhotos.length} Saved
+                              </div>
+                            )}
+                          </div>
+                          <Button
+                            type="button"
+                            variant="default"
+                            size="sm"
+                            className="mt-2"
+                            onClick={() => handleInstanceUpload(instance, 'photos')}
+                            disabled={(uploadSitePhotosMutation.isPending || uploadDocumentsMutation.isPending) && uploadingInstanceId === instance.id}
+                          >
+                            {uploadSitePhotosMutation.isPending && uploadingInstanceId === instance.id ? (
+                              <>
+                                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                Uploading...
+                              </>
+                            ) : (
+                              "Upload Photos"
+                            )}
+                          </Button>
+                        </div>
+                        <div className="space-y-2">
+                          <label className={cn("text-sm font-medium leading-none", multiInstanceErrors.includes(instance.id) ? "text-destructive" : "")}>
+                            Initial Site Measurement Document *
+                          </label>
+                          <SinglePdfUploadField
+                            value={uploads.upload_pdf}
+                            invalid={multiInstanceErrors.includes(instance.id)}
+                            onChange={(files) => {
+                              setMultiInstanceErrors((prev) => prev.filter(id => id !== instance.id));
+                              setInstanceFiles(
+                                instance.id,
+                                "upload_pdf",
+                                Array.isArray(files) ? files : files ? [files] : [],
+                              );
+                            }}
+                            allowedMimeTypes={[]}
+                            accept="*/*"
+                            title="Upload Measurement Document"
+                            description="Any file type allowed. Upload one or more files."
+                            buttonLabel="Select File"
+                            multiple
+                            maxFiles={10}
+                          />
+                          <div className="flex justify-between items-center mt-1">
+                            <p className="text-[11px] text-muted-foreground leading-tight max-w-[60%]">
+                              Upload measurement docs for this instance.
+                            </p>
+                            {existingInstanceMeasurementDocs.length > 0 && (
+                              <div className="text-[10px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                <CheckCircle2 className="h-3 w-3" />
+                                {existingInstanceMeasurementDocs.length} Saved
+                              </div>
+                            )}
+                          </div>
+                          <Button
+                            type="button"
+                            variant="default"
+                            size="sm"
+                            className="mt-2"
+                            onClick={() => handleInstanceUpload(instance, 'documents')}
+                            disabled={(uploadSitePhotosMutation.isPending || uploadDocumentsMutation.isPending) && uploadingInstanceId === instance.id}
+                          >
+                            {uploadDocumentsMutation.isPending && uploadingInstanceId === instance.id ? (
+                              <>
+                                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                Uploading...
+                              </>
+                            ) : (
+                              "Upload Documents"
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </BaseModal>
+    </>
   );
 };
 
