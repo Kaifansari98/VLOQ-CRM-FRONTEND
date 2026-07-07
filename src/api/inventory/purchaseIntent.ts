@@ -69,7 +69,7 @@ export interface CreatePIItem {
 }
 
 export interface CreatePIPayload {
-  category_id: number;
+  category_id?: number;
   user_id: number;
   priority: PIPriority;
   remarks?: string;
@@ -109,7 +109,7 @@ export const fetchPICategories = async (vendorId: number) => {
 
 export const fetchPIProducts = async (
   vendorId: number,
-  category_id: number,
+  category_id?: number,
   search = ""
 ) => {
   const { data } = await apiClient.get(

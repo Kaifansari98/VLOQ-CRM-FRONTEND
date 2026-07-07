@@ -233,10 +233,11 @@ const data = {
       title: "Inventory",
       url: "#",
       icon: Warehouse,
-      items: [{ title: "Products", url: "/dashboard/inventory/master/products" },
-        { title: "Purchase Intent", url: "/dashboard/inventory/purchase-intents" },
+      items: [{ title: "Products", url: "/dashboard/inventory/master/products/list" },
+        { title: "Purchase Enquiry", url: "/dashboard/inventory/purchase-intents" },
         { title: "Purchase Order", url: "/dashboard/inventory/purchase-orders" },
         { title: "GRN", url: "/dashboard/inventory/grn" },
+         { title: "Payment Requisition", url: "/dashboard/inventory/payment-requisitions" },
         
         // { title: "Category", url: "/dashboard/track-trace/master/category" }
       ],

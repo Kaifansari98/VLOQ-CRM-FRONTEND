@@ -27,6 +27,9 @@ import {
   Loader2,
   PackagePlus,
   Save,
+  Plus,
+  Trash2,
+  Building2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -47,7 +50,7 @@ const emptyForm: ProductPayload = {
   shelf_life_days: null,
   costing_method: "FIFO",
 
-  mrp: null,
+  level1_price: null,
 
   min_stock_qty: null,
   min_stock_unit_id: null,
@@ -63,6 +66,14 @@ const emptyForm: ProductPayload = {
 
   hsn_id: null,
   item_type: "Goods",
+};
+
+
+type ProductSupplierRow = {
+  company_vendor_id: number | "";
+  supplier_item_code: string;
+  amount: string;
+  same_as_product_code: boolean;
 };
 
 const toNumOrNull = (value: any) => {
@@ -81,6 +92,7 @@ export function ProductMasterFormPage({
 
   const vendorId = Number(useAppSelector((s) => s.auth.user?.vendor_id));
   const userId = Number(useAppSelector((s) => s.auth.user?.id));
+  const [supplierRows, setSupplierRows] = useState<ProductSupplierRow[]>([]);
 
   const [masters, setMasters] = useState<ProductMastersResponse | null>(null);
   const [form, setForm] = useState<ProductPayload>(emptyForm);
@@ -119,7 +131,7 @@ export function ProductMasterFormPage({
             shelf_life_days: product.shelf_life_days || null,
             costing_method: product.costing_method || "FIFO",
 
-            mrp: product.mrp ? Number(product.mrp) : null,
+            level1_price: product.level1_price ? Number(product.level1_price) : null,
 
             min_stock_qty: product.min_stock_qty
               ? Number(product.min_stock_qty)
@@ -147,12 +159,25 @@ export function ProductMasterFormPage({
 
             hsn_id: product.hsn_id || null,
             item_type: product.item_type || "Goods",
+
           });
+          setSupplierRows(
+            (product.supplierMappings ?? []).map((row: any) => ({
+              company_vendor_id: row.company_vendor_id,
+              supplier_item_code: row.supplier_item_code || "",
+              amount: row.amount ? String(row.amount) : "",
+              same_as_product_code:
+                row.supplier_item_code &&
+                product.article_code &&
+                String(row.supplier_item_code) === String(product.article_code),
+            }))
+          );
         } else {
           setForm({
             ...emptyForm,
             user_id: userId,
           });
+          setSupplierRows([]);
         }
       } catch (error) {
         toastManager.add({
@@ -188,6 +213,46 @@ export function ProductMasterFormPage({
     });
   };
 
+
+  const addSupplierRow = () => {
+    setSupplierRows((prev) => [
+      ...prev,
+      {
+        company_vendor_id: "",
+        supplier_item_code: "",
+        amount: "",
+        same_as_product_code: false,
+      },
+    ]);
+  };
+
+  const removeSupplierRow = (index: number) => {
+    setSupplierRows((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updateSupplierRow = (
+    index: number,
+    field: keyof ProductSupplierRow,
+    value: any
+  ) => {
+    setSupplierRows((prev) => {
+      const next = [...prev];
+      const row = {
+        ...next[index],
+        [field]: value,
+      };
+
+      if (field === "same_as_product_code") {
+        row.same_as_product_code = Boolean(value);
+        row.supplier_item_code = value ? form.article_code : "";
+      }
+
+      next[index] = row;
+      return next;
+    });
+  };
+
+
   const buildPayload = (): ProductPayload => ({
     ...form,
     user_id: userId,
@@ -204,7 +269,7 @@ export function ProductMasterFormPage({
 
     shelf_life_days: toNumOrNull(form.shelf_life_days),
 
-    mrp: toNumOrNull(form.mrp),
+    level1_price: toNumOrNull(form.level1_price),
 
     min_stock_qty: toNumOrNull(form.min_stock_qty),
     min_stock_unit_id: toNumOrNull(form.min_stock_unit_id),
@@ -219,6 +284,13 @@ export function ProductMasterFormPage({
     reorder_batch_unit_id: toNumOrNull(form.reorder_batch_unit_id),
 
     hsn_id: toNumOrNull(form.hsn_id),
+    suppliers: supplierRows
+      .filter((row) => row.company_vendor_id)
+      .map((row) => ({
+        company_vendor_id: Number(row.company_vendor_id),
+        supplier_item_code: row.supplier_item_code?.trim() || null,
+        amount: toNumOrNull(row.amount),
+      })),
   });
 
   const submit = async () => {
@@ -249,6 +321,22 @@ export function ProductMasterFormPage({
     if (!form.article_code.trim()) {
       toastManager.add({
         title: "Item code is required",
+        type: "error",
+      });
+      return;
+    }
+
+    const selectedSupplierIds = supplierRows
+      .filter((row) => row.company_vendor_id)
+      .map((row) => Number(row.company_vendor_id));
+
+    const duplicateSupplier = selectedSupplierIds.find(
+      (id, index) => selectedSupplierIds.indexOf(id) !== index
+    );
+
+    if (duplicateSupplier) {
+      toastManager.add({
+        title: "Same supplier cannot be selected multiple times",
         type: "error",
       });
       return;
@@ -400,7 +488,21 @@ export function ProductMasterFormPage({
                 <Field label="Item Code *">
                   <input
                     value={form.article_code}
-                    onChange={(e) => set("article_code", e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      set("article_code", value);
+
+                      setSupplierRows((prev) =>
+                        prev.map((row) =>
+                          row.same_as_product_code
+                            ? {
+                              ...row,
+                              supplier_item_code: value,
+                            }
+                            : row
+                        )
+                      );
+                    }}
                     className="input"
                     placeholder="Unique item code"
                   />
@@ -476,7 +578,6 @@ export function ProductMasterFormPage({
                     placeholder="Number in days"
                   />
                 </Field>
-
                 <Field label="Costing Method">
                   <select
                     value={form.costing_method}
@@ -487,13 +588,12 @@ export function ProductMasterFormPage({
                     <option value="MANUAL">Manual Value Entry</option>
                   </select>
                 </Field>
-
-                <Field label="MRP">
+                <Field label="Process Cost(Men+Material+Machine)">
                   <input
                     type="number"
                     min="0"
-                    value={form.mrp ?? ""}
-                    onChange={(e) => set("mrp", e.target.value)}
+                    value={form.level1_price ?? ""}
+                    onChange={(e) => set("level1_price", e.target.value)}
                     className="input"
                     placeholder="0.00"
                   />
@@ -564,6 +664,147 @@ export function ProductMasterFormPage({
                   onQty={(v) => set("reorder_batch_qty", v)}
                   onUnit={(v) => set("reorder_batch_unit_id", v)}
                 />
+              </div>
+              <div className="mt-6 rounded-3xl border bg-background">
+                <div className="flex items-center justify-between gap-3 border-b px-5 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-xl bg-indigo-50 p-2 text-indigo-600">
+                      <Building2 size={18} />
+                    </div>
+
+                    <div>
+                      <p className="font-black">Suppliers</p>
+                      <p className="text-xs text-muted-foreground">
+                        Map multiple suppliers with their supplier item code and amount.
+                      </p>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={addSupplierRow}
+                    className="gap-2"
+                  >
+                    <Plus size={14} />
+                    Add Supplier
+                  </Button>
+                </div>
+
+                <div className="p-5">
+                  {supplierRows.length === 0 ? (
+                    <button
+                      type="button"
+                      onClick={addSupplierRow}
+                      className="flex w-full flex-col items-center justify-center rounded-2xl border border-dashed bg-muted/20 py-10 text-muted-foreground transition-colors hover:border-indigo-300 hover:bg-indigo-50/40 hover:text-indigo-600"
+                    >
+                      <Building2 size={28} className="mb-2 opacity-50" />
+                      <p className="text-sm font-semibold">Add supplier mapping</p>
+                      <p className="text-xs">
+                        One product can have multiple supplier item codes.
+                      </p>
+                    </button>
+                  ) : (
+                    <div className="space-y-3">
+                      {supplierRows.map((row, index) => {
+                        const selectedIds = supplierRows
+                          .map((r, i) => (i === index ? null : Number(r.company_vendor_id)))
+                          .filter(Boolean);
+
+                        const availableSuppliers = masters.suppliers.filter(
+                          (s) => !selectedIds.includes(s.id)
+                        );
+
+                        return (
+                          <div
+                            key={index}
+                            className="grid gap-3 rounded-2xl border bg-muted/20 p-4 md:grid-cols-[1.2fr_1fr_160px_42px]"
+                          >
+                            <Field label="Supplier">
+                              <select
+                                value={row.company_vendor_id}
+                                onChange={(e) =>
+                                  updateSupplierRow(
+                                    index,
+                                    "company_vendor_id",
+                                    e.target.value ? Number(e.target.value) : ""
+                                  )
+                                }
+                                className="input"
+                              >
+                                <option value="">Select supplier</option>
+
+                                {availableSuppliers.map((supplier) => (
+                                  <option key={supplier.id} value={supplier.id}>
+                                    {supplier.company_name} · {supplier.vendor_code}
+                                  </option>
+                                ))}
+                              </select>
+                            </Field>
+
+                            <div>
+                              <Field label="Supplier Item Code">
+                                <input
+                                  value={row.supplier_item_code}
+                                  disabled={row.same_as_product_code}
+                                  onChange={(e) =>
+                                    updateSupplierRow(
+                                      index,
+                                      "supplier_item_code",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="input"
+                                  placeholder="Supplier item code"
+                                />
+                              </Field>
+
+                              <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                                <input
+                                  type="checkbox"
+                                  checked={row.same_as_product_code}
+                                  onChange={(e) =>
+                                    updateSupplierRow(
+                                      index,
+                                      "same_as_product_code",
+                                      e.target.checked
+                                    )
+                                  }
+                                />
+                                Seller code same as main product code
+                              </label>
+                            </div>
+
+                            <Field label="Amount">
+                              <input
+                                type="number"
+                                min="0"
+                                value={row.amount}
+                                onChange={(e) =>
+                                  updateSupplierRow(index, "amount", e.target.value)
+                                }
+                                className="input"
+                                placeholder="0.00"
+                              />
+                            </Field>
+
+                            <div className="flex items-end">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="h-[42px] w-[42px] p-0 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                onClick={() => removeSupplierRow(index)}
+                              >
+                                <Trash2 size={15} />
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

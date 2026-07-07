@@ -75,6 +75,9 @@ interface SalesExecutiveData {
   id: number;
   user_name: string;
   user_email: string;
+  user_type?: {
+    user_type: string;
+  } | null;
 }
 
 interface ApiResponse {

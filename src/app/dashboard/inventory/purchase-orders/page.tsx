@@ -11,7 +11,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { PurchaseOrderHeader } from "@/components/purchase-order/list/PurchaseOrderHeader";
 import { PurchaseOrderFilters } from "@/components/purchase-order/list/PurchaseOrderFilters";
 import { PurchaseOrderTable } from "@/components/purchase-order/list/PurchaseOrderTable";
-import { PODetailDrawer } from "@/components/purchase-order/detail/PODetailDrawer";
+import { useRouter } from "next/navigation";
 import {
   fmtMoney,
   getPOFinancials,
@@ -25,7 +25,7 @@ import {
 
 export default function PurchaseOrdersPage() {
   const vendorId = Number(useAppSelector((s) => s.auth.user?.vendor_id));
-
+const router = useRouter();
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [total, setTotal] = useState(0);
   const [pageSize, setPageSize] = useState(20);
@@ -34,8 +34,7 @@ export default function PurchaseOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<POStatus | "">("");
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [statusFilter, setStatusFilter] = useState<POStatus | "">("");  
 
   const fetchData = useCallback(() => {
     if (!vendorId) return;
@@ -149,19 +148,11 @@ export default function PurchaseOrdersPage() {
                 behavior: "smooth",
               });
             }}
-            onOpen={setSelectedId}
+            onOpen={(id) => router.push(`/dashboard/inventory/purchase-orders/${id}`)}
           />
         </div>
       </main>
-
-      {selectedId && (
-        <PODetailDrawer
-          vendorId={vendorId}
-          poId={selectedId}
-          onClose={() => setSelectedId(null)}
-          onRefresh={fetchData}
-        />
-      )}
+    
     </>
   );
 }

@@ -2,16 +2,19 @@
 
 import { listGRNs } from "@/api/grn/grn";
 import { CreateGRNSheet } from "@/components/grn/create/CreateGRNSheet";
-import { GRNDetailSheet } from "@/components/grn/detail/GRNDetailSheet";
+// import { GRNDetailSheet } from "@/components/grn/detail/GRNDetailSheet";
+
 import { GRNFilters } from "@/components/grn/list/GRNFilters";
 import { GRNPageHeader } from "@/components/grn/list/GRNPageHeader";
 import { GRNTable } from "@/components/grn/list/GRNTable";
 import { useAppSelector } from "@/redux/store";
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function GRNListPage() {
   const vendorId = Number(useAppSelector((s) => s.auth.user?.vendor_id));
   const userId = Number(useAppSelector((s) => s.auth.user?.id));
+  const router = useRouter();
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -20,9 +23,10 @@ export default function GRNListPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
 
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+
   const [showCreate, setShowCreate] = useState(false);
   const [initialPoId, setInitialPoId] = useState<number | undefined>(undefined);
+  
 
   const fetchData = useCallback(() => {
     if (!vendorId) return;
@@ -69,12 +73,14 @@ export default function GRNListPage() {
         />
 
         <GRNTable
-          data={data}
-          loading={loading}
-          page={page}
-          onPageChange={setPage}
-          onOpen={setSelectedId}
-        />
+  data={data}
+  loading={loading}
+  page={page}
+  onPageChange={setPage}
+  onOpen={(grnId) => {
+    router.push(`/dashboard/inventory/grn/${grnId}`);
+  }}
+/>
       </main>
 
       {showCreate && (
@@ -94,15 +100,6 @@ export default function GRNListPage() {
         />
       )}
 
-      {selectedId && (
-        <GRNDetailSheet
-          vendorId={vendorId}
-          userId={userId}
-          grnId={selectedId}
-          onClose={() => setSelectedId(null)}
-          onRefresh={fetchData}
-        />
-      )}
     </>
   );
 }
