@@ -210,13 +210,13 @@ export function NavMain({
       );
 
       if (userMasterIndex === -1) return section;
-      if (section.items.some((item) => item.title === "BOQ Items Master")) {
+      if (section.items.some((item) => item.title === "BOQ Master")) {
         return section;
       }
 
       const nextItems = [...section.items];
       nextItems.splice(userMasterIndex + 1, 0, {
-        title: "BOQ Items Master",
+        title: "BOQ Master",
         url: "/dashboard/masters-management/boq-items-master",
       });
 
