@@ -43,6 +43,7 @@ import FollowUpModal from "@/components/follow-up-modal";
 import MiscTaskModal from "@/components/misc-task-modal";
 import BookingDoneIsmForm from "@/components/sales-executive/Lead/booking-done-ism-form";
 import BookingDoneApprovalModal from "@/components/tasks/BookingDoneApprovalModal";
+import { TaskDetailsModal } from "./task-details-modal";
 import ClearInput from "@/components/origin-input";
 import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
 import { DataTableFilterList } from "@/components/data-table/data-table-filter-list";
@@ -134,9 +135,8 @@ function FranchiseFilter({
           <button
             key={option.id}
             onClick={() => onChange(option.id)}
-            className={`w-full flex items-center justify-between gap-3 px-3 py-1.5 text-sm rounded-sm transition-colors hover:bg-accent hover:text-accent-foreground ${
-              value === option.id ? "bg-accent text-accent-foreground font-medium" : ""
-            }`}
+            className={`w-full flex items-center justify-between gap-3 px-3 py-1.5 text-sm rounded-sm transition-colors hover:bg-accent hover:text-accent-foreground ${value === option.id ? "bg-accent text-accent-foreground font-medium" : ""
+              }`}
           >
             <span className="truncate">{option.label}</span>
             <span className="shrink-0 text-muted-foreground">
@@ -279,6 +279,7 @@ const MyTaskTable = () => {
     useState(false);
   const [openPreProdCompleted, setOpenPreProdCompleted] = useState(false);
   const [openMiscTaskModal, setOpenMiscTaskModal] = useState(false);
+  const [openDetailModal, setOpenDetailModal] = useState(false);
 
   const showScopeToggle = isAdminUser && !isAuditor;
   const {
@@ -480,6 +481,15 @@ const MyTaskTable = () => {
 
   const handleRowDoubleClick = useCallback(
     (row: ProcessedTask) => {
+      if (row.leadStatus?.toLowerCase() === "completed" || isCompletedTabActive) {
+        setRowAction({
+          row: { original: row } as any,
+          variant: "taskdetails" as any,
+        });
+        setOpenDetailModal(true);
+        return;
+      }
+
       if (isAuditor) {
         const opensModal = [
           "Initial Site Measurement",
@@ -497,8 +507,8 @@ const MyTaskTable = () => {
           "Order Login Completed",
           "Pre Prod Completed",
         ].includes(row.taskType) ||
-        selfAssignTaskTypeNames.has(row.taskType) ||
-        (row.taskType === "Miscellaneous" && (row.remark || "").toLowerCase().includes("required delivery date"));
+          selfAssignTaskTypeNames.has(row.taskType) ||
+          (row.taskType === "Miscellaneous" && (row.remark || "").toLowerCase().includes("required delivery date"));
 
         if (opensModal) {
           toastManager.add({
@@ -818,8 +828,8 @@ const MyTaskTable = () => {
 
   const overallTaskTotal = vendorAllData?.summary
     ? (vendorAllData?.summary?.overdue ?? 0) +
-      (vendorAllData?.summary?.today ?? 0) +
-      (vendorAllData?.summary?.upcoming ?? 0)
+    (vendorAllData?.summary?.today ?? 0) +
+    (vendorAllData?.summary?.upcoming ?? 0)
     : 0;
 
   const DueDateTabs = () => {
@@ -886,7 +896,8 @@ const MyTaskTable = () => {
         : "Follow Up";
 
   const dueDateFilterLabel =
-    (table.getColumn("dueDate")?.getFilterValue() as string) || "today";
+    (activeColumnFilters.find((f) => f.id === "dueDate")?.value as string) ||
+    "today";
   const isOverallView = viewScope === "overall";
   const isCompletedTabActive = dueDateFilterLabel === "completed";
   const headerDescription = (() => {
@@ -934,7 +945,7 @@ const MyTaskTable = () => {
         {/* ================= TABLE ================= */}
         <DataTable
           table={table}
-          onRowDoubleClick={isCompletedTabActive ? undefined : handleRowDoubleClick}
+          onRowDoubleClick={handleRowDoubleClick}
           rowClassName={(row) =>
             row.isFastProductionRequestTask
               ? "relative border-l-4 border-l-orange-500 bg-[linear-gradient(90deg,rgba(255,237,213,0.96)_0%,rgba(255,244,230,0.92)_38%,rgba(255,255,255,1)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_14px_34px_-24px_rgba(234,88,12,0.58)] hover:bg-[linear-gradient(90deg,rgba(255,224,178,0.72)_0%,rgba(255,237,213,0.78)_42%,rgba(255,255,255,1)_100%)] dark:border-l-orange-400 dark:bg-[linear-gradient(90deg,rgba(124,45,18,0.5)_0%,rgba(67,20,7,0.28)_36%,rgba(15,23,42,0.96)_100%)] dark:shadow-[inset_0_1px_0_rgba(251,146,60,0.08),0_18px_38px_-24px_rgba(249,115,22,0.45)] dark:hover:bg-[linear-gradient(90deg,rgba(154,52,18,0.62)_0%,rgba(88,28,12,0.34)_38%,rgba(15,23,42,0.98)_100%)]"
@@ -1101,12 +1112,12 @@ const MyTaskTable = () => {
         data={
           rowAction?.row?.original && rowAction?.variant === "miscellaneous"
             ? {
-                leadId: rowAction.row.original.leadId,
-                accountId: rowAction.row.original.accountId,
-                taskId: rowAction.row.original.id,
-                dueDate: rowAction.row.original.dueDate,
-                remark: rowAction.row.original.remark,
-              }
+              leadId: rowAction.row.original.leadId,
+              accountId: rowAction.row.original.accountId,
+              taskId: rowAction.row.original.id,
+              dueDate: rowAction.row.original.dueDate,
+              remark: rowAction.row.original.remark,
+            }
             : undefined
         }
       />
@@ -1247,6 +1258,11 @@ const MyTaskTable = () => {
           taskId: rowAction?.row.original.id || 0,
           instanceId: rowAction?.row.original.instance_id || undefined,
         }}
+      />
+      <TaskDetailsModal
+        taskId={rowAction?.row.original.id || null}
+        open={openDetailModal}
+        onOpenChange={setOpenDetailModal}
       />
     </>
   );

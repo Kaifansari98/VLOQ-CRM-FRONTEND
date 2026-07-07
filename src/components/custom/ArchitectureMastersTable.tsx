@@ -24,6 +24,7 @@ import {
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Button } from "@/components/ui/button";
+import { PhoneInput } from "@/components/ui/phone-input";
 import ClearInput from "@/components/origin-input";
 import {
   Dialog,
@@ -161,6 +162,7 @@ export default function ArchitectureMastersTable({ vendorIdOverride }: Architect
   const [deletingRow, setDeletingRow] = React.useState<ArchitectureMasterRow | null>(null);
   const [statusTargetRow, setStatusTargetRow] = React.useState<ArchitectureMasterRow | null>(null);
   const [form, setForm] = React.useState(defaultForm);
+  const [errors, setErrors] = React.useState<{ name?: string; email?: string; mobile?: string }>({});
 
   const { data, isLoading, isError, error, refetch } = useArchitectureMasters({ page, limit: 50, search });
   const createMutation = useCreateArchitectureMaster();
@@ -216,14 +218,44 @@ export default function ArchitectureMastersTable({ vendorIdOverride }: Architect
     initialState: { pagination: { pageIndex: 0, pageSize: 20 } },
   });
 
-  const resetForm = () => setForm(defaultForm);
+  const resetForm = () => {
+    setForm(defaultForm);
+    setErrors({});
+  };
 
-  const canSubmit = !!form.name.trim() && !!form.email.trim() && !!form.mobile.trim();
+  const validateForm = (): boolean => {
+    const newErrors: typeof errors = {};
+    if (!form.name.trim()) {
+      newErrors.name = "Name is required";
+    }
+    if (!form.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      newErrors.email = "Enter a valid email address";
+    }
+
+    const digitsOnly = form.mobile.replace(/\D/g, "");
+    const nationalNumber = digitsOnly.replace(/^91/, "");
+    if (!form.mobile.trim()) {
+      newErrors.mobile = "Mobile number is required";
+    } else if (nationalNumber.length !== 10) {
+      newErrors.mobile = "Enter a valid 10-digit mobile number";
+    } else if (!/^[6-9]\d{9}$/.test(nationalNumber)) {
+      newErrors.mobile = "Mobile number must start with 6, 7, 8 or 9";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const canSubmit = true; // Handled by validateForm() onSubmit now
 
   const handleCreate = () => {
-    if (!canSubmit || !vendorId) return;
+    if (!validateForm() || !vendorId) return;
+    const rawMobile = form.mobile.trim();
+    const cleanMobile = rawMobile.startsWith("+91") ? rawMobile.slice(3) : rawMobile;
     createMutation.mutate(
-      { vendorId: Number(vendorId), name: form.name.trim(), email: form.email.trim(), mobile: form.mobile.trim() },
+      { vendorId: Number(vendorId), name: form.name.trim(), email: form.email.trim(), mobile: cleanMobile },
       {
         onSuccess: () => {
           refetch();
@@ -235,9 +267,11 @@ export default function ArchitectureMastersTable({ vendorIdOverride }: Architect
   };
 
   const handleEdit = () => {
-    if (!editingRow || !canSubmit) return;
+    if (!editingRow || !validateForm()) return;
+    const rawMobile = form.mobile.trim();
+    const cleanMobile = rawMobile.startsWith("+91") ? rawMobile.slice(3) : rawMobile;
     updateMutation.mutate(
-      { id: editingRow.id, data: { name: form.name.trim(), email: form.email.trim(), mobile: form.mobile.trim() } },
+      { id: editingRow.id, data: { name: form.name.trim(), email: form.email.trim(), mobile: cleanMobile } },
       {
         onSuccess: () => {
           refetch();
@@ -287,9 +321,13 @@ export default function ArchitectureMastersTable({ vendorIdOverride }: Architect
         <Input
           id="arch-name"
           value={form.name}
-          onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+          onChange={(e) => {
+            setForm((prev) => ({ ...prev, name: e.target.value }));
+            if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
+          }}
           placeholder="Enter name"
         />
+        {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
       </div>
       <div className="space-y-2">
         <Label htmlFor="arch-email">Email</Label>
@@ -297,18 +335,27 @@ export default function ArchitectureMastersTable({ vendorIdOverride }: Architect
           id="arch-email"
           type="email"
           value={form.email}
-          onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
+          onChange={(e) => {
+            setForm((prev) => ({ ...prev, email: e.target.value }));
+            if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+          }}
           placeholder="Enter email"
         />
+        {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
       </div>
       <div className="space-y-2">
         <Label htmlFor="arch-mobile">Mobile</Label>
-        <Input
+        <PhoneInput
           id="arch-mobile"
           value={form.mobile}
-          onChange={(e) => setForm((prev) => ({ ...prev, mobile: e.target.value }))}
+          onChange={(val) => {
+            setForm((prev) => ({ ...prev, mobile: val || "" }));
+            if (errors.mobile) setErrors((prev) => ({ ...prev, mobile: undefined }));
+          }}
+          defaultCountry="IN"
           placeholder="Enter mobile number"
         />
+        {errors.mobile && <p className="text-xs text-destructive">{errors.mobile}</p>}
       </div>
     </>
   );
@@ -318,23 +365,23 @@ export default function ArchitectureMastersTable({ vendorIdOverride }: Architect
       <Card>
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <CardTitle>Architecture Masters</CardTitle>
+            <CardTitle>Architects</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Manage all architecture master entries from one place.
+              Manage all architect entries from one place.
             </p>
           </div>
           <Button onClick={() => setOpenCreateModal(true)} className="sm:self-start">
             <Plus className="mr-2 h-4 w-4" />
-            Create Architecture Master
+            Create Architect
           </Button>
         </CardHeader>
 
         <CardContent>
           {isLoading ? (
-            <div className="py-10 text-sm text-muted-foreground">Loading architecture masters...</div>
+            <div className="py-10 text-sm text-muted-foreground">Loading architects...</div>
           ) : isError ? (
             <div className="py-10 text-sm text-red-500">
-              {(error as any)?.response?.data?.message || "Failed to load architecture masters."}
+              {(error as any)?.response?.data?.message || "Failed to load architects."}
             </div>
           ) : (
             <DataTable table={table} className="px-0 pt-0">
@@ -342,7 +389,7 @@ export default function ArchitectureMastersTable({ vendorIdOverride }: Architect
                 <ClearInput
                   value={globalFilter}
                   onChange={(e) => setGlobalFilter(e.target.value)}
-                  placeholder="Search architecture master..."
+                  placeholder="Search architect..."
                   className="h-9 w-full md:w-72"
                 />
               </div>
@@ -361,8 +408,8 @@ export default function ArchitectureMastersTable({ vendorIdOverride }: Architect
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create Architecture Master</DialogTitle>
-            <DialogDescription>Add a new architecture master entry.</DialogDescription>
+            <DialogTitle>Create Architect</DialogTitle>
+            <DialogDescription>Add a new architect entry.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">{formFields}</div>
           <DialogFooter>
@@ -389,8 +436,8 @@ export default function ArchitectureMastersTable({ vendorIdOverride }: Architect
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Architecture Master</DialogTitle>
-            <DialogDescription>Update the selected architecture master entry.</DialogDescription>
+            <DialogTitle>Edit Architect</DialogTitle>
+            <DialogDescription>Update the selected architect entry.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">{formFields}</div>
           <DialogFooter>
@@ -421,7 +468,7 @@ export default function ArchitectureMastersTable({ vendorIdOverride }: Architect
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Architecture Master</DialogTitle>
+            <DialogTitle>Delete Architect</DialogTitle>
             <DialogDescription>
               Are you sure you want to delete this entry? This action cannot be undone.
             </DialogDescription>
@@ -463,17 +510,17 @@ export default function ArchitectureMastersTable({ vendorIdOverride }: Architect
           <DialogHeader>
             <DialogTitle>
               {statusTargetRow?.status === "active"
-                ? "Mark Architecture Master Inactive"
-                : "Mark Architecture Master Active"}
+                ? "Mark Architect Inactive"
+                : "Mark Architect Active"}
             </DialogTitle>
             <DialogDescription>
               {statusTargetRow?.status === "active"
-                ? "This architecture master will be marked inactive."
-                : "This architecture master will be marked active again."}
+                ? "This architect will be marked inactive."
+                : "This architect will be marked active again."}
             </DialogDescription>
           </DialogHeader>
           <div className="rounded-md border p-3 text-sm">
-            <span className="text-muted-foreground">Architecture Master:</span>{" "}
+            <span className="text-muted-foreground">Architect:</span>{" "}
             <span className="font-medium">{statusTargetRow?.name}</span>
           </div>
           <DialogFooter>

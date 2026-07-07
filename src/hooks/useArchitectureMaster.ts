@@ -42,10 +42,10 @@ export const useCreateArchitectureMaster = () => {
     mutationFn: (data: CreateArchitectureMasterDTO) => createArchitectureMaster(data),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: architectureMasterKeys.lists() });
-      toastManager.add({ title: res.message || "Architecture master created successfully.", type: "success" });
+      toastManager.add({ title: res.message || "Architect created successfully.", type: "success" });
     },
     onError: (error: any) => {
-      toastManager.add({ title: error.response?.data?.message || "Failed to create architecture master.", type: "error" });
+      toastManager.add({ title: error.response?.data?.message || "Failed to create architect.", type: "error" });
     },
   });
 };
@@ -58,10 +58,10 @@ export const useUpdateArchitectureMaster = () => {
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: architectureMasterKeys.lists() });
       queryClient.invalidateQueries({ queryKey: architectureMasterKeys.details() });
-      toastManager.add({ title: res.message || "Architecture master updated successfully.", type: "success" });
+      toastManager.add({ title: res.message || "Architect updated successfully.", type: "success" });
     },
     onError: (error: any) => {
-      toastManager.add({ title: error.response?.data?.message || "Failed to update architecture master.", type: "error" });
+      toastManager.add({ title: error.response?.data?.message || "Failed to update architect.", type: "error" });
     },
   });
 };
@@ -74,10 +74,10 @@ export const useUpdateArchitectureMasterStatus = () => {
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: architectureMasterKeys.lists() });
       queryClient.invalidateQueries({ queryKey: architectureMasterKeys.details() });
-      toastManager.add({ title: res.message || "Architecture master status updated successfully.", type: "success" });
+      toastManager.add({ title: res.message || "Architect status updated successfully.", type: "success" });
     },
     onError: (error: any) => {
-      toastManager.add({ title: error.response?.data?.message || "Failed to update architecture master status.", type: "error" });
+      toastManager.add({ title: error.response?.data?.message || "Failed to update architect status.", type: "error" });
     },
   });
 };
@@ -89,10 +89,10 @@ export const useDeleteArchitectureMaster = () => {
     mutationFn: (id: number) => deleteArchitectureMaster(id),
     onSuccess: (res: any) => {
       queryClient.invalidateQueries({ queryKey: architectureMasterKeys.lists() });
-      toastManager.add({ title: res.message || "Architecture master deleted successfully.", type: "success" });
+      toastManager.add({ title: res.message || "Architect deleted successfully.", type: "success" });
     },
     onError: (error: any) => {
-      toastManager.add({ title: error.response?.data?.message || "Failed to delete architecture master.", type: "error" });
+      toastManager.add({ title: error.response?.data?.message || "Failed to delete architect.", type: "error" });
     },
   });
 };

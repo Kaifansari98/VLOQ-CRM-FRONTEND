@@ -258,8 +258,7 @@ export const getActiveLeadTasks = async (
   franchiseId?: number,
 ): Promise<ActiveLeadTasksResponse> => {
   const response = await apiClient.get(
-    `/leads/tasks/vendorId/${vendorId}/leadId/${leadId}/active-tasks${
-      franchiseId ? `?franchise_id=${franchiseId}` : ""
+    `/leads/tasks/vendorId/${vendorId}/leadId/${leadId}/active-tasks${franchiseId ? `?franchise_id=${franchiseId}` : ""
     }`,
   );
   return response.data.data;
@@ -351,6 +350,21 @@ export const useFastProductionRequestDetails = (
     queryKey: ["fastProductionRequestDetails", leadId, taskId],
     queryFn: () => getFastProductionRequestDetails(leadId, taskId),
     enabled: enabled && !!leadId && !!taskId,
+  });
+};
+
+export const getTaskDetails = async (taskId: number) => {
+  const { data } = await apiClient.get(
+    `/leads/tasks/${taskId}/details`,
+  );
+  return data;
+};
+
+export const useTaskDetails = (taskId: number, enabled: boolean) => {
+  return useQuery({
+    queryKey: ["taskDetails", taskId],
+    queryFn: () => getTaskDetails(taskId),
+    enabled: enabled && !!taskId,
   });
 };
 

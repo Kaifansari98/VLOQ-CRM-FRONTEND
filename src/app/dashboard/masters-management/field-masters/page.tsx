@@ -112,7 +112,7 @@ export default function FieldMastersPage() {
             },
             {
               id: "architecture-master",
-              title: "Architect Master",
+              title: "Architect",
               color: "bg-black hover:bg-black",
               cardContent: <ArchitectureMastersTable vendorIdOverride={vendorIdOverride} />,
             },
