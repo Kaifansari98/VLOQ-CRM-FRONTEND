@@ -4,6 +4,7 @@ export interface ArchitectureMaster {
   name: string;
   email: string;
   mobile: string;
+  alt_mobile?: string;
   is_active: boolean;
   created_at: string;
   created_by: number;
@@ -16,6 +17,7 @@ export interface CreateArchitectureMasterDTO {
   name: string;
   email: string;
   mobile: string;
+  alt_mobile?: string;
   is_active?: boolean;
 }
 
@@ -47,10 +49,24 @@ export interface ArchitectureMasterDropdownItem {
   id: number;
   name: string;
   mobile: string;
+  alt_mobile?: string;
 }
 
 export interface ArchitectureMasterDropdownResponse {
   success: boolean;
   message: string;
   data: ArchitectureMasterDropdownItem[];
+}
+
+export interface BulkUploadArchitectsResponse {
+  success: boolean;
+  message: string;
+  data: {
+    successCount: number;
+    skippedCount: number;
+    skippedRows: Array<{
+      row: Record<string, string>;
+      reason: string;
+    }>;
+  };
 }

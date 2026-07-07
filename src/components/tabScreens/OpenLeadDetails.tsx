@@ -16,6 +16,8 @@ import {
   Plus,
   Magnet,
   Search,
+  Check,
+  X,
 } from "lucide-react";
 import { formatDateTime } from "../utils/privileges";
 import {
@@ -41,7 +43,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import { ImageComponent } from "../utils/ImageCard";
 import DocumentCard from "../utils/documentCard";
 import { Button } from "@/components/ui/button";
@@ -195,6 +197,10 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const [boqSearch, setBoqSearch] = useState("");
   const [boqDisplaySearch, setBoqDisplaySearch] = useState("");
   const [isAddingBoqItems, setIsAddingBoqItems] = useState(false);
+  const [editingBoqItemId, setEditingBoqItemId] = useState<number | null>(null);
+  const [editingBoqQty, setEditingBoqQty] = useState<string>("");
+  const [boqPage, setBoqPage] = useState(1);
+  const boqPageSize = 9;
   const [boqPreview, setBoqPreview] = useState<{
     title: string;
     content: string;
@@ -284,6 +290,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         payload: {
           product_structure_id: number;
           title: string;
+          quantity?: number;
           description?: string;
           updated_by?: number;
         };
@@ -438,6 +445,15 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       return haystack.includes(search);
     });
   }, [boqDisplaySearch, boqInstances]);
+
+  const paginatedBoqInstances = useMemo(() => {
+    const startIndex = (boqPage - 1) * boqPageSize;
+    return filteredBoqInstances.slice(startIndex, startIndex + boqPageSize);
+  }, [filteredBoqInstances, boqPage]);
+
+  useEffect(() => {
+    setBoqPage(1);
+  }, [boqDisplaySearch]);
 
   const filteredBoqItemCodes = useMemo(() => {
     const search = boqSearch.trim().toLowerCase();
@@ -717,6 +733,28 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     } finally {
       setIsAddingBoqItems(false);
     }
+  };
+
+  const handleSaveBoqQuantity = (item: any) => {
+    if (!vendorId || Number.isNaN(Number(editingBoqQty)) || Number(editingBoqQty) <= 0) return;
+    updateStructureInstance(
+      {
+        vendorId,
+        leadId,
+        instanceId: item.id,
+        payload: {
+          product_structure_id: item.product_structure_id,
+          title: item.title,
+          quantity: Number(editingBoqQty),
+          updated_by: userId,
+        },
+      },
+      {
+        onSuccess: () => {
+          setEditingBoqItemId(null);
+        },
+      },
+    );
   };
 
   const handleEditOpen = (item: any) => {
@@ -1202,11 +1240,12 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                       </div>
                     </div>
                   ) : (
-                    <div className="grid gap-4">
-	                    {filteredBoqInstances.map((item: any) => (
-	                      <div
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {paginatedBoqInstances.map((item: any) => (
+                          <div
 	                        key={item.id}
-	                        className="w-fit min-w-[360px] max-w-full rounded-xl border bg-background p-4 transition hover:border-border/80"
+	                        className="w-full rounded-xl border bg-background p-4 transition hover:border-border/80 flex flex-col justify-between"
 	                      >
 	                        <div className="flex flex-col gap-3">
 	                          <div className="min-w-0 flex-1 space-y-2">
@@ -1224,7 +1263,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 	                                        type="button"
 	                                        onClick={() => {
 	                                          if (shouldDisableBlockedActions) return;
-
+	 
 	                                          setConfirmStructureDelete({
 	                                            id: item.id,
 	                                            title:
@@ -1245,7 +1284,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 	                                </div>
 	                              )}
 	                            </div>
-
+	 
 	                            <div className="flex flex-wrap items-center gap-2 text-[11px]">
 	                              <span className="font-medium text-muted-foreground">
 	                                {item.productType?.type ||
@@ -1265,7 +1304,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 	                                  "—"}
 	                              </span>
 	                            </div>
-
+	 
 	                            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
 	                              <div className="flex flex-wrap items-center gap-2">
 	                                <Tooltip>
@@ -1317,24 +1356,109 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 	                                  </TooltipContent>
 	                                </Tooltip>
 	                              </div>
-
-	                              <div className="inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5">
-	                                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary/80">
-	                                  Qty
-	                                </span>
-	                                <span className="text-sm font-semibold text-foreground">
-	                                  {item.quantity ?? "—"}
-	                                </span>
-	                              </div>
+	 
+	                              {editingBoqItemId === item.id ? (
+	                                <div className="flex items-center gap-1 bg-primary/5 border border-primary/20 rounded-lg p-1">
+	                                  <Input
+	                                    type="number"
+	                                    min="1"
+	                                    value={editingBoqQty}
+	                                    onChange={(e) => setEditingBoqQty(e.target.value)}
+	                                    className="w-16 h-7 text-xs font-semibold px-2 py-1 text-center bg-background border-primary/30"
+	                                  />
+	                                  <Button
+	                                    size="icon"
+	                                    variant="ghost"
+	                                    className="size-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+	                                    onClick={() => handleSaveBoqQuantity(item)}
+	                                    disabled={updatingStructure}
+	                                  >
+	                                    <Check className="size-4" />
+	                                  </Button>
+	                                  <Button
+	                                    size="icon"
+	                                    variant="ghost"
+	                                    className="size-7 text-red-500 hover:text-red-600 hover:bg-red-50"
+	                                    onClick={() => setEditingBoqItemId(null)}
+	                                  >
+	                                    <X className="size-4" />
+	                                  </Button>
+	                                </div>
+	                              ) : (
+	                                <div className="flex items-center gap-1.5">
+	                                  <div className="inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5">
+	                                    <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary/80">
+	                                      Qty
+	                                    </span>
+	                                    <span className="text-sm font-semibold text-foreground">
+	                                      {item.quantity ?? "—"}
+	                                    </span>
+	                                  </div>
+	                                  {canEditStructures && (
+	                                    <Button
+	                                      type="button"
+	                                      variant="ghost"
+	                                      size="icon"
+	                                      className="size-8 rounded-lg text-muted-foreground hover:text-foreground"
+	                                      onClick={() => {
+	                                        if (shouldDisableBlockedActions) return;
+	                                        setEditingBoqItemId(item.id);
+	                                        setEditingBoqQty(String(item.quantity || "1"));
+	                                      }}
+	                                    >
+	                                      <Pencil className="h-3.5 w-3.5" />
+	                                    </Button>
+	                                  )}
+	                                </div>
+	                              )}
 	                            </div>
 	                          </div>
 	                        </div>
 	                      </div>
 	                    ))}
 	                  </div>
-                  )}
-                </div>
-              )}
+                    {filteredBoqInstances.length > boqPageSize && (
+                      <div className="flex items-center justify-between border-t pt-4 mt-2">
+                        <div className="text-xs text-muted-foreground">
+                          Showing {Math.min(filteredBoqInstances.length, (boqPage - 1) * boqPageSize + 1)} to{" "}
+                          {Math.min(filteredBoqInstances.length, boqPage * boqPageSize)} of{" "}
+                          {filteredBoqInstances.length} items
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setBoqPage((p) => Math.max(1, p - 1))}
+                            disabled={boqPage === 1}
+                            className="h-8 text-xs px-3"
+                          >
+                            Previous
+                          </Button>
+                          <span className="text-xs font-medium text-muted-foreground px-2">
+                            Page {boqPage} of {Math.ceil(filteredBoqInstances.length / boqPageSize)}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setBoqPage((p) =>
+                                Math.min(Math.ceil(filteredBoqInstances.length / boqPageSize), p + 1)
+                              )
+                            }
+                            disabled={boqPage >= Math.ceil(filteredBoqInstances.length / boqPageSize)}
+                            className="h-8 text-xs px-3"
+                          >
+                            Next
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
             </SectionCard>
           )}
 

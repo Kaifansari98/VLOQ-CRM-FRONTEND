@@ -8,6 +8,7 @@ import {
   updateArchitectureMasterStatus,
   deleteArchitectureMaster,
   getArchitectureMastersDropdownList,
+  uploadArchitectureMasters,
 } from "../api/architectureMaster";
 import { CreateArchitectureMasterDTO, UpdateArchitectureMasterDTO, UpdateArchitectureMasterStatusDTO, ArchitectureMasterDropdownResponse } from "../types/architectureMaster";
 
@@ -42,10 +43,10 @@ export const useCreateArchitectureMaster = () => {
     mutationFn: (data: CreateArchitectureMasterDTO) => createArchitectureMaster(data),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: architectureMasterKeys.lists() });
-      toastManager.add({ title: res.message || "Architecture master created successfully.", type: "success" });
+      toastManager.add({ title: res.message || "Architect created successfully.", type: "success" });
     },
     onError: (error: any) => {
-      toastManager.add({ title: error.response?.data?.message || "Failed to create architecture master.", type: "error" });
+      toastManager.add({ title: error.response?.data?.message || "Failed to create architect.", type: "error" });
     },
   });
 };
@@ -58,10 +59,10 @@ export const useUpdateArchitectureMaster = () => {
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: architectureMasterKeys.lists() });
       queryClient.invalidateQueries({ queryKey: architectureMasterKeys.details() });
-      toastManager.add({ title: res.message || "Architecture master updated successfully.", type: "success" });
+      toastManager.add({ title: res.message || "Architect updated successfully.", type: "success" });
     },
     onError: (error: any) => {
-      toastManager.add({ title: error.response?.data?.message || "Failed to update architecture master.", type: "error" });
+      toastManager.add({ title: error.response?.data?.message || "Failed to update architect.", type: "error" });
     },
   });
 };
@@ -74,10 +75,10 @@ export const useUpdateArchitectureMasterStatus = () => {
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: architectureMasterKeys.lists() });
       queryClient.invalidateQueries({ queryKey: architectureMasterKeys.details() });
-      toastManager.add({ title: res.message || "Architecture master status updated successfully.", type: "success" });
+      toastManager.add({ title: res.message || "Architect status updated successfully.", type: "success" });
     },
     onError: (error: any) => {
-      toastManager.add({ title: error.response?.data?.message || "Failed to update architecture master status.", type: "error" });
+      toastManager.add({ title: error.response?.data?.message || "Failed to update architect status.", type: "error" });
     },
   });
 };
@@ -89,10 +90,10 @@ export const useDeleteArchitectureMaster = () => {
     mutationFn: (id: number) => deleteArchitectureMaster(id),
     onSuccess: (res: any) => {
       queryClient.invalidateQueries({ queryKey: architectureMasterKeys.lists() });
-      toastManager.add({ title: res.message || "Architecture master deleted successfully.", type: "success" });
+      toastManager.add({ title: res.message || "Architect deleted successfully.", type: "success" });
     },
     onError: (error: any) => {
-      toastManager.add({ title: error.response?.data?.message || "Failed to delete architecture master.", type: "error" });
+      toastManager.add({ title: error.response?.data?.message || "Failed to delete architect.", type: "error" });
     },
   });
 };
@@ -102,5 +103,28 @@ export const useArchitectureMastersDropdownList = (vendorId: number) => {
     queryKey: architectureMasterKeys.dropdownList(vendorId),
     queryFn: () => getArchitectureMastersDropdownList(vendorId),
     enabled: !!vendorId,
+  });
+};
+
+export const useUploadArchitectureMasters = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (formData: FormData) => uploadArchitectureMasters(formData),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: architectureMasterKeys.lists() });
+      const summary = res.data ? `Uploaded: ${res.data.successCount}, Skipped: ${res.data.skippedCount}` : "";
+      toastManager.add({
+        title: `${res.message || "Architects uploaded successfully."} (${summary})`,
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      const errMsg = error.response?.data?.message || error.response?.data?.error || error.message || "Failed to upload architects.";
+      toastManager.add({
+        title: errMsg,
+        type: "error",
+      });
+    },
   });
 };

@@ -855,6 +855,7 @@ export const updateLeadProductStructureInstance = async (
     title: string;
     description?: string;
     pre_prod_remark?: string;
+    quantity?: number;
     updated_by?: number;
   },
 ) => {

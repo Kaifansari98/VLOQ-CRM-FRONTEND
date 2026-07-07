@@ -57,11 +57,11 @@ const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> =
           if (totalDigits === 0) {
             setError("");
             onValidationChange?.(false);
-          } else if (totalDigits < 10) {
-            setError("Enter a 10 digit mobile number");
-            onValidationChange?.(false);
-          } else if (!/^[6-9]\d{9}$/.test(nationalNumber)) {
+          } else if (!/^[6-9]/.test(nationalNumber)) {
             setError("Mobile number must start with 6, 7, 8 or 9");
+            onValidationChange?.(false);
+          } else if (totalDigits !== 10) {
+            setError("Enter a 10 digit mobile number");
             onValidationChange?.(false);
           } else {
             setError("");
