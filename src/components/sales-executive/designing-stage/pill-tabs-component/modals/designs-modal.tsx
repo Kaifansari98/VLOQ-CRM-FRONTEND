@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/select";
 
 const designsSchema = z.object({
-  design_type: z.enum(["2D", "3D"]).optional(),
+  design_type: z.enum(["2D", "3D", "2D + 3D"]).optional(),
   upload_pdf: z
     .any()
     .refine((files) => files && files.length > 0, {
@@ -145,13 +145,14 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
                       <FormLabel>Design Type *</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select 2D or 3D" />
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select design type" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="2D">2D Design</SelectItem>
                           <SelectItem value="3D">3D Design</SelectItem>
+                          <SelectItem value="2D + 3D">2D + 3D Design</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />

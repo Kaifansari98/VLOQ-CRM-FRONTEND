@@ -261,6 +261,82 @@ export const getDesignsDoc = async (
   return data;
 };
 
+export interface SubmitCostingFilePayload {
+  files: File[];
+  vendorId: number;
+  leadId: number;
+  userId: number;
+}
+
+export const submitCostingFile = async (payload: SubmitCostingFilePayload) => {
+  const formData = new FormData();
+
+  formData.append("vendorId", payload.vendorId.toString());
+  formData.append("leadId", payload.leadId.toString());
+  formData.append("userId", payload.userId.toString());
+
+  payload.files.forEach((file) => {
+    formData.append("files", file);
+  });
+
+  const { data } = await apiClient.post(
+    "/leads/designing-stage/upload-costing-file",
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } },
+  );
+
+  return data;
+};
+
+export const getCostingFileDoc = async (
+  vendorId: number,
+  leadId: number,
+): Promise<GetDesignsResponse> => {
+  const { data } = await apiClient.get<GetDesignsResponse>(
+    `/leads/designing-stage/${vendorId}/${leadId}/costing-file-documents`,
+  );
+  return data;
+};
+
+export interface SubmitElectricalPlumbingPayload {
+  files: File[];
+  vendorId: number;
+  leadId: number;
+  userId: number;
+}
+
+export const submitElectricalPlumbing = async (
+  payload: SubmitElectricalPlumbingPayload,
+) => {
+  const formData = new FormData();
+
+  formData.append("vendorId", payload.vendorId.toString());
+  formData.append("leadId", payload.leadId.toString());
+  formData.append("userId", payload.userId.toString());
+
+  payload.files.forEach((file) => {
+    formData.append("files", file);
+  });
+
+  const { data } = await apiClient.post(
+    "/leads/designing-stage/upload-electrical-plumbing",
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } },
+  );
+
+  return data;
+};
+
+export const getElectricalPlumbingDoc = async (
+  vendorId: number,
+  leadId: number,
+): Promise<GetDesignsResponse> => {
+  const { data } = await apiClient.get<GetDesignsResponse>(
+    `/leads/designing-stage/${vendorId}/${leadId}/electrical-plumbing-documents`,
+  );
+  return data;
+};
+
 export const getSelectionData = async (
   vendorId: number,
   leadId: number,

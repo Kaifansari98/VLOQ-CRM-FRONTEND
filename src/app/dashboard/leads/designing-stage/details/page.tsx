@@ -17,18 +17,35 @@ import QuotationTab from "@/components/sales-executive/designing-stage/pill-tabs
 import MettingsTab from "@/components/sales-executive/designing-stage/pill-tabs-component/meetings";
 import SelectionsTab from "@/components/sales-executive/designing-stage/pill-tabs-component/selection";
 import DesigningTab from "@/components/sales-executive/designing-stage/pill-tabs-component/designs";
+import SpecificationsTab from "@/components/sales-executive/designing-stage/pill-tabs-component/specifications";
+import CostingFileTab from "@/components/sales-executive/designing-stage/pill-tabs-component/costing-file";
+import ElectricalPlumbingTab from "@/components/sales-executive/designing-stage/pill-tabs-component/electrical-plumbing";
+import FinalIsmUploadTab from "@/components/sales-executive/designing-stage/pill-tabs-component/final-ism-upload";
 import { useSearchParams } from "next/navigation";
 import { DetailsProvider } from "@/components/sales-executive/designing-stage/pill-tabs-component/details-context";
 import { useAppSelector } from "@/redux/store";
 import { useDesigningStageCounts } from "@/hooks/designing-stage/designing-leads-hooks";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import {
+  FileText,
+  Calendar,
+  Palette as PaletteIcon,
+  ListChecks,
+  ClipboardList,
+  Receipt,
+  Zap,
+  Upload,
+} from "lucide-react";
 
 function DetailsContent() {
   const searchParams = useSearchParams();
   const leadId = Number(searchParams.get("leadId") ?? 0);
   const accountId = Number(searchParams.get("accountId") ?? 0);
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
 
   const { data } = useDesigningStageCounts(vendorId, leadId);
 
@@ -76,15 +93,55 @@ function DetailsContent() {
               {
                 id: "quotation",
                 label: "Quotation",
+                icon: FileText,
                 content: <QuotationTab />,
               },
-              { id: "meetings", label: "Meetings", content: <MettingsTab /> },
-              { id: "designs", label: "Designs", content: <DesigningTab /> },
+              {
+                id: "meetings",
+                label: "Meetings",
+                icon: Calendar,
+                content: <MettingsTab />,
+              },
+              {
+                id: "designs",
+                label: "Designs",
+                icon: PaletteIcon,
+                content: <DesigningTab />,
+              },
               {
                 id: "selections",
                 label: "Selections",
+                icon: ListChecks,
                 content: <SelectionsTab />,
               },
+              ...(handlesLargeScaleProjects
+                ? [
+                    {
+                      id: "specifications",
+                      label: "Specifications",
+                      icon: ClipboardList,
+                      content: <SpecificationsTab />,
+                    },
+                    {
+                      id: "costing-file",
+                      label: "Costing File",
+                      icon: Receipt,
+                      content: <CostingFileTab />,
+                    },
+                    {
+                      id: "electrical-plumbing",
+                      label: "Electrical & Plumbing",
+                      icon: Zap,
+                      content: <ElectricalPlumbingTab />,
+                    },
+                    {
+                      id: "final-ism-upload",
+                      label: "Final ISM Upload",
+                      icon: Upload,
+                      content: <FinalIsmUploadTab />,
+                    },
+                  ]
+                : []),
             ]}
           />
         </DetailsProvider>

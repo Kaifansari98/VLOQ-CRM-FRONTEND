@@ -4,8 +4,10 @@ import {
   editSelection,
   EditSelectionPayload,
   fetchDesigningStageLeads,
+  getCostingFileDoc,
   getDesigningStageCounts,
   getDesignsDoc,
+  getElectricalPlumbingDoc,
   getCHSSelectionTypeMappings,
   getCHSManufacturingDaysByInstance,
   getInstanceStage,
@@ -13,6 +15,10 @@ import {
   getLeadStatusNotification,
   getQuotationDoc,
   getSelectionData,
+  submitCostingFile,
+  SubmitCostingFilePayload,
+  submitElectricalPlumbing,
+  SubmitElectricalPlumbingPayload,
   submitQuotation,
   submitSelection,
   SubmitSelectionPayload,
@@ -74,6 +80,47 @@ export const useDesignsDoc = (vendorId: number, leadId: number) => {
     queryKey: ["getDesignsDoc", vendorId, leadId],
     queryFn: () => getDesignsDoc(vendorId, leadId),
     enabled: !!vendorId && !!leadId,
+  });
+};
+
+export const useCostingFileDoc = (vendorId: number, leadId: number) => {
+  return useQuery<GetDesignsResponse>({
+    queryKey: ["getCostingFileDoc", vendorId, leadId],
+    queryFn: () => getCostingFileDoc(vendorId, leadId),
+    enabled: !!vendorId && !!leadId,
+  });
+};
+
+export const useSubmitCostingFile = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: SubmitCostingFilePayload) => submitCostingFile(payload),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["getCostingFileDoc", variables.vendorId, variables.leadId],
+      });
+    },
+  });
+};
+
+export const useElectricalPlumbingDoc = (vendorId: number, leadId: number) => {
+  return useQuery<GetDesignsResponse>({
+    queryKey: ["getElectricalPlumbingDoc", vendorId, leadId],
+    queryFn: () => getElectricalPlumbingDoc(vendorId, leadId),
+    enabled: !!vendorId && !!leadId,
+  });
+};
+
+export const useSubmitElectricalPlumbing = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: SubmitElectricalPlumbingPayload) =>
+      submitElectricalPlumbing(payload),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["getElectricalPlumbingDoc", variables.vendorId, variables.leadId],
+      });
+    },
   });
 };
 
