@@ -8,6 +8,7 @@ import {
   updateArchitectureMasterStatus,
   deleteArchitectureMaster,
   getArchitectureMastersDropdownList,
+  uploadArchitectureMasters,
 } from "../api/architectureMaster";
 import { CreateArchitectureMasterDTO, UpdateArchitectureMasterDTO, UpdateArchitectureMasterStatusDTO, ArchitectureMasterDropdownResponse } from "../types/architectureMaster";
 
@@ -102,5 +103,28 @@ export const useArchitectureMastersDropdownList = (vendorId: number) => {
     queryKey: architectureMasterKeys.dropdownList(vendorId),
     queryFn: () => getArchitectureMastersDropdownList(vendorId),
     enabled: !!vendorId,
+  });
+};
+
+export const useUploadArchitectureMasters = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (formData: FormData) => uploadArchitectureMasters(formData),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: architectureMasterKeys.lists() });
+      const summary = res.data ? `Uploaded: ${res.data.successCount}, Skipped: ${res.data.skippedCount}` : "";
+      toastManager.add({
+        title: `${res.message || "Architects uploaded successfully."} (${summary})`,
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      const errMsg = error.response?.data?.message || error.response?.data?.error || error.message || "Failed to upload architects.";
+      toastManager.add({
+        title: errMsg,
+        type: "error",
+      });
+    },
   });
 };

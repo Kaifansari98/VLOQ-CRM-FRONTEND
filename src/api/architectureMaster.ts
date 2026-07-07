@@ -6,6 +6,7 @@ import {
   UpdateArchitectureMasterDTO,
   UpdateArchitectureMasterStatusDTO,
   ArchitectureMasterDropdownResponse,
+  BulkUploadArchitectsResponse,
 } from "../types/architectureMaster";
 
 const BASE_URL = "/architecture-masters";
@@ -42,5 +43,14 @@ export const deleteArchitectureMaster = async (id: number) => {
 
 export const getArchitectureMastersDropdownList = async (vendorId: number) => {
   const response = await apiClient.get<ArchitectureMasterDropdownResponse>(`${BASE_URL}/dropdown-list/${vendorId}`);
+  return response.data;
+};
+
+export const uploadArchitectureMasters = async (formData: FormData) => {
+  const response = await apiClient.post<BulkUploadArchitectsResponse>(`${BASE_URL}/upload-architecture`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
   return response.data;
 };

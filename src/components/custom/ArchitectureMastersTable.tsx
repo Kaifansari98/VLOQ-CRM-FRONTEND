@@ -11,7 +11,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { Plus } from "lucide-react";
+import { Plus, Upload, Download } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -20,6 +20,7 @@ import {
   useUpdateArchitectureMaster,
   useUpdateArchitectureMasterStatus,
   useDeleteArchitectureMaster,
+  useUploadArchitectureMasters,
 } from "@/hooks/useArchitectureMaster";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
@@ -38,6 +39,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAppSelector } from "@/redux/store";
+import { FileUploadField } from "@/components/custom/file-upload";
+import BaseModal from "@/components/utils/baseModal";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
 
 type ArchitectureMasterRow = {
   srNo: number;
@@ -46,6 +51,7 @@ type ArchitectureMasterRow = {
   name: string;
   email: string;
   mobile: string;
+  alt_mobile?: string;
   is_active: boolean;
   status: "active" | "inactive";
 };
@@ -83,6 +89,13 @@ const getArchitectureColumns = ({
     header: ({ column }) => <DataTableColumnHeader column={column} title="Mobile" />,
     enableSorting: true,
     enableHiding: false,
+  },
+  {
+    accessorKey: "alt_mobile",
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Alt. Mobile" />,
+    cell: ({ row }) => row.getValue("alt_mobile") || "—",
+    enableSorting: true,
+    enableHiding: true,
   },
   {
     accessorKey: "status",
@@ -143,7 +156,7 @@ interface ArchitectureMastersTableProps {
   vendorIdOverride?: number;
 }
 
-const defaultForm = { name: "", email: "", mobile: "" };
+const defaultForm = { name: "", email: "", mobile: "", alt_mobile: "" };
 
 export default function ArchitectureMastersTable({ vendorIdOverride }: ArchitectureMastersTableProps) {
   const vendorId = vendorIdOverride ?? useAppSelector((state) => state.auth.user?.vendor_id);
@@ -162,13 +175,69 @@ export default function ArchitectureMastersTable({ vendorIdOverride }: Architect
   const [deletingRow, setDeletingRow] = React.useState<ArchitectureMasterRow | null>(null);
   const [statusTargetRow, setStatusTargetRow] = React.useState<ArchitectureMasterRow | null>(null);
   const [form, setForm] = React.useState(defaultForm);
-  const [errors, setErrors] = React.useState<{ name?: string; email?: string; mobile?: string }>({});
+  const [errors, setErrors] = React.useState<{ name?: string; email?: string; mobile?: string; alt_mobile?: string }>({});
+  const [isMobileValid, setIsMobileValid] = React.useState(true);
+  const [isAltMobileValid, setIsAltMobileValid] = React.useState(true);
+
+  const [openUploadModal, setOpenUploadModal] = React.useState(false);
+  const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
 
   const { data, isLoading, isError, error, refetch } = useArchitectureMasters({ page, limit: 50, search });
   const createMutation = useCreateArchitectureMaster();
   const updateMutation = useUpdateArchitectureMaster();
   const updateStatusMutation = useUpdateArchitectureMasterStatus();
   const deleteMutation = useDeleteArchitectureMaster();
+  const uploadMutation = useUploadArchitectureMasters();
+
+  const handleUploadSubmit = () => {
+    const file = selectedFiles[0];
+    if (!file || !vendorId) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("vendorId", String(vendorId));
+
+    uploadMutation.mutate(formData, {
+      onSuccess: () => {
+        refetch();
+        setOpenUploadModal(false);
+        setSelectedFiles([]);
+      },
+      onError: () => {
+        setOpenUploadModal(false);
+        setSelectedFiles([]);
+      },
+    });
+  };
+
+  const handleImportClick = () => {
+    setSelectedFiles([]);
+    setOpenUploadModal(true);
+  };
+
+  const downloadTemplate = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Architects Template");
+
+    // Add headers and set columns with custom widths
+    worksheet.columns = [
+      { header: "name", key: "name", width: 30 },
+      { header: "email", key: "email", width: 40 },
+      { header: "contact", key: "contact", width: 25 },
+      { header: "alt contact", key: "alt_contact", width: 25 }
+    ];
+
+    // Format header row
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true };
+    headerRow.alignment = { vertical: 'middle', horizontal: 'left' };
+    worksheet.getRow(1).height = 20;
+
+    // Generate buffer and trigger download
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    saveAs(blob, "architects_template.xlsx");
+  };
 
   const tableData = React.useMemo<ArchitectureMasterRow[]>(
     () =>
@@ -179,6 +248,7 @@ export default function ArchitectureMastersTable({ vendorIdOverride }: Architect
         name: item.name,
         email: item.email,
         mobile: item.mobile,
+        alt_mobile: item.alt_mobile,
         is_active: item.is_active,
         status: item.is_active ? "active" : "inactive",
       })),
@@ -190,7 +260,9 @@ export default function ArchitectureMastersTable({ vendorIdOverride }: Architect
     columns: getArchitectureColumns({
       onEdit: (row) => {
         setEditingRow(row);
-        setForm({ name: row.name, email: row.email, mobile: row.mobile });
+        setForm({ name: row.name, email: row.email, mobile: row.mobile, alt_mobile: row.alt_mobile || "" });
+        setIsMobileValid(true);
+        setIsAltMobileValid(true);
         setOpenEditModal(true);
       },
       onDelete: (row) => {
@@ -221,6 +293,8 @@ export default function ArchitectureMastersTable({ vendorIdOverride }: Architect
   const resetForm = () => {
     setForm(defaultForm);
     setErrors({});
+    setIsMobileValid(true);
+    setIsAltMobileValid(true);
   };
 
   const validateForm = (): boolean => {
@@ -234,14 +308,14 @@ export default function ArchitectureMastersTable({ vendorIdOverride }: Architect
       newErrors.email = "Enter a valid email address";
     }
 
-    const digitsOnly = form.mobile.replace(/\D/g, "");
-    const nationalNumber = digitsOnly.replace(/^91/, "");
     if (!form.mobile.trim()) {
       newErrors.mobile = "Mobile number is required";
-    } else if (nationalNumber.length !== 10) {
-      newErrors.mobile = "Enter a valid 10-digit mobile number";
-    } else if (!/^[6-9]\d{9}$/.test(nationalNumber)) {
-      newErrors.mobile = "Mobile number must start with 6, 7, 8 or 9";
+    } else if (!isMobileValid) {
+      newErrors.mobile = " ";
+    }
+
+    if (form.alt_mobile && form.alt_mobile.trim() !== "" && !isAltMobileValid) {
+      newErrors.alt_mobile = " ";
     }
 
     setErrors(newErrors);
@@ -254,8 +328,10 @@ export default function ArchitectureMastersTable({ vendorIdOverride }: Architect
     if (!validateForm() || !vendorId) return;
     const rawMobile = form.mobile.trim();
     const cleanMobile = rawMobile.startsWith("+91") ? rawMobile.slice(3) : rawMobile;
+    const rawAltMobile = form.alt_mobile.trim();
+    const cleanAltMobile = rawAltMobile ? (rawAltMobile.startsWith("+91") ? rawAltMobile.slice(3) : rawAltMobile) : undefined;
     createMutation.mutate(
-      { vendorId: Number(vendorId), name: form.name.trim(), email: form.email.trim(), mobile: cleanMobile },
+      { vendorId: Number(vendorId), name: form.name.trim(), email: form.email.trim(), mobile: cleanMobile, alt_mobile: cleanAltMobile },
       {
         onSuccess: () => {
           refetch();
@@ -270,8 +346,10 @@ export default function ArchitectureMastersTable({ vendorIdOverride }: Architect
     if (!editingRow || !validateForm()) return;
     const rawMobile = form.mobile.trim();
     const cleanMobile = rawMobile.startsWith("+91") ? rawMobile.slice(3) : rawMobile;
+    const rawAltMobile = form.alt_mobile.trim();
+    const cleanAltMobile = rawAltMobile ? (rawAltMobile.startsWith("+91") ? rawAltMobile.slice(3) : rawAltMobile) : undefined;
     updateMutation.mutate(
-      { id: editingRow.id, data: { name: form.name.trim(), email: form.email.trim(), mobile: cleanMobile } },
+      { id: editingRow.id, data: { name: form.name.trim(), email: form.email.trim(), mobile: cleanMobile, alt_mobile: cleanAltMobile } },
       {
         onSuccess: () => {
           refetch();
@@ -354,8 +432,26 @@ export default function ArchitectureMastersTable({ vendorIdOverride }: Architect
           }}
           defaultCountry="IN"
           placeholder="Enter mobile number"
+          validateIndianNumber={true}
+          onValidationChange={(isValid) => setIsMobileValid(isValid)}
         />
-        {errors.mobile && <p className="text-xs text-destructive">{errors.mobile}</p>}
+        {errors.mobile && errors.mobile !== " " && <p className="text-xs text-destructive">{errors.mobile}</p>}
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="arch-alt-mobile">Alt. Mobile</Label>
+        <PhoneInput
+          id="arch-alt-mobile"
+          value={form.alt_mobile}
+          onChange={(val) => {
+            setForm((prev) => ({ ...prev, alt_mobile: val || "" }));
+            if (errors.alt_mobile) setErrors((prev) => ({ ...prev, alt_mobile: undefined }));
+          }}
+          defaultCountry="IN"
+          placeholder="Enter alternate mobile number"
+          validateIndianNumber={true}
+          onValidationChange={(isValid) => setIsAltMobileValid(isValid)}
+        />
+        {errors.alt_mobile && errors.alt_mobile !== " " && <p className="text-xs text-destructive">{errors.alt_mobile}</p>}
       </div>
     </>
   );
@@ -370,10 +466,27 @@ export default function ArchitectureMastersTable({ vendorIdOverride }: Architect
               Manage all architect entries from one place.
             </p>
           </div>
-          <Button onClick={() => setOpenCreateModal(true)} className="sm:self-start">
-            <Plus className="mr-2 h-4 w-4" />
-            Create Architect
-          </Button>
+          <div className="flex items-center gap-2 sm:self-start">
+            <Button
+              variant="outline"
+              onClick={downloadTemplate}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Template
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleImportClick}
+              disabled={uploadMutation.isPending}
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              Import
+            </Button>
+            <Button onClick={() => setOpenCreateModal(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Architect
+            </Button>
+          </div>
         </CardHeader>
 
         <CardContent>
@@ -546,6 +659,48 @@ export default function ArchitectureMastersTable({ vendorIdOverride }: Architect
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Upload Modal */}
+      <BaseModal
+        open={openUploadModal}
+        onOpenChange={(open) => {
+          setOpenUploadModal(open);
+          if (!open) {
+            setSelectedFiles([]);
+          }
+        }}
+        title="Import Architects"
+        description="Upload a CSV or XLSX file containing Name, Email, Mobile, and Alt Contact columns."
+        size="smd"
+      
+      >
+        <div className="p-6 space-y-4">
+          <div className="space-y-4">
+            <FileUploadField
+              value={selectedFiles}
+              onChange={setSelectedFiles}
+              accept=".csv,.xlsx"
+              multiple={false}
+              maxFiles={1}
+            />
+          </div>
+
+          <div className="flex gap-2 justify-end border-t pt-4 mt-6">
+            <Button
+              variant="outline"
+              onClick={() => setOpenUploadModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUploadSubmit}
+              disabled={selectedFiles.length === 0 || uploadMutation.isPending}
+            >
+              {uploadMutation.isPending ? "Uploading..." : "Upload & Import"}
+            </Button>
+          </div>
+        </div>
+      </BaseModal>
     </>
   );
 }

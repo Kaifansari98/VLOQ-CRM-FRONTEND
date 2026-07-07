@@ -98,6 +98,8 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
     isCustomVendor
   );
 
+  console.log("product structure instance data: ", structureInstancesData)
+
   const structureInstances: LeadProductStructureInstance[] = React.useMemo(
     () =>
       Array.isArray(structureInstancesData?.data)
@@ -1030,15 +1032,15 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
       >
         <div className="px-5 py-4 max-h-[85vh] overflow-y-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
+
             {/* Left Column: Photos */}
             <div className="space-y-2">
-              
-                <h4 className="font-semibold text-base flex items-center gap-2">
-                  <Image size={18} />
-                  Site Photos
-                </h4>
-           
+
+              <h4 className="font-semibold text-base flex items-center gap-2">
+                <Image size={18} />
+                Site Photos
+              </h4>
+
 
               {/* Photos Upload Area */}
               {canEditOrUpload && (
@@ -1125,12 +1127,12 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
 
             {/* Right Column: Documents */}
             <div className="space-y-2">
-              
-                <h4 className="font-semibold text-base flex items-center gap-2">
-                  <FileText size={18} />
-                  Measurement Documents
-                </h4>
-           
+
+              <h4 className="font-semibold text-base flex items-center gap-2">
+                <FileText size={18} />
+                Measurement Documents
+              </h4>
+
 
               {/* Docs Upload Area */}
               {canEditOrUpload && (
