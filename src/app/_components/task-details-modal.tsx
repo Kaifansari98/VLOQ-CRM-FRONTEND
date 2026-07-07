@@ -8,13 +8,9 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
-  ExternalLink,
   FileText,
-  MapPin,
-  Phone,
   User,
   AlertCircle,
-  Hash,
   Eye
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -108,7 +104,7 @@ export function TaskDetailsModal({
       open={open}
       onOpenChange={onOpenChange}
       title={task ? `Task Details - ${task.task_type}` : "Loading Task..."}
-      description="Detailed view of the lead task and client profile."
+      description="Detailed view of the lead task details."
       size="lg"
     >
       <div className="p-6 max-h-[80vh] overflow-y-auto space-y-6 text-sm">
@@ -144,6 +140,13 @@ export function TaskDetailsModal({
                   </Badge>
                 </div>
                 <div className="space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Created At:</span>
+                    <span className="font-medium flex items-center gap-1">
+                      <Clock size={12} />
+                      {task.created_at ? format(new Date(task.created_at), "dd MMM yyyy, hh:mm a") : "N/A"}
+                    </span>
+                  </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Due Date:</span>
                     <span className="font-medium flex items-center gap-1">
@@ -200,59 +203,6 @@ export function TaskDetailsModal({
               </div>
 
             </div>
-
-            {/* Client & Lead Details Card */}
-            {lead && (
-              <div className="border border-border rounded-xl p-5 space-y-4">
-                <div className="border-b pb-2 flex justify-between items-center">
-                  <h4 className="font-semibold text-base text-foreground flex items-center gap-2">
-                    <Hash size={18} className="text-muted-foreground" />
-                    Client & Lead Profile
-                  </h4>
-                  <Badge variant="outline" className="font-mono text-xs">
-                    {lead.lead_code}
-                  </Badge>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6">
-                  <div className="space-y-1">
-                    <span className="text-[11px] text-muted-foreground block uppercase font-medium tracking-wider">Client Name</span>
-                    <span className="font-semibold text-foreground text-sm">{lead.firstname} {lead.lastname}</span>
-                  </div>
-
-                  <div className="space-y-1">
-                    <span className="text-[11px] text-muted-foreground block uppercase font-medium tracking-wider">Contact Number</span>
-                    <span className="font-medium text-foreground text-sm flex items-center gap-1.5">
-                      <Phone size={14} className="text-muted-foreground" />
-                      {lead.contact_no}
-                    </span>
-                  </div>
-
-                  <div className="space-y-1 sm:col-span-2">
-                    <span className="text-[11px] text-muted-foreground block uppercase font-medium tracking-wider">Site Address</span>
-                    <span className="font-medium text-foreground text-sm flex items-start gap-1.5 leading-relaxed">
-                      <MapPin size={14} className="text-muted-foreground shrink-0 mt-0.5" />
-                      {lead.site_address || "No site address added."}
-                    </span>
-                  </div>
-
-                  {lead.site_map_link && (
-                    <div className="space-y-1 sm:col-span-2">
-                      <span className="text-[11px] text-muted-foreground block uppercase font-medium tracking-wider">Site Map Link</span>
-                      <a
-                        href={lead.site_map_link}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
-                      >
-                        Open Site Map
-                        <ExternalLink size={12} />
-                      </a>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
 
             {/* Remarks Section */}
             {task.remark && (
