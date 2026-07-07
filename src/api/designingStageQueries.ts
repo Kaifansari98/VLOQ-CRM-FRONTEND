@@ -174,7 +174,7 @@ export interface SubmitDesignPayload {
   vendorId: number;
   leadId: number;
   userId: number;
-  designType?: "2D" | "3D";
+  designType?: "2D" | "3D" | "2D + 3D";
   productStructureInstanceIds?: number[] | string[];
 }
 
