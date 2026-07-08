@@ -8,7 +8,6 @@ import { useEffect, useState } from "react";
 import { LoginForm } from "@/components/login-form";
 import Image from "next/image";
 import { fetchVendorBySubdomain } from "@/api/vendors";
-import { updateFavicon } from "@/utils/favicon";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -51,21 +50,18 @@ export default function LoginPage() {
           setUseFallbackLogo(false);
           setLogoSrc("/logos/frankvin.png");
           setHeroSrc("/image.png");
-          updateFavicon(null);
           return true;
         }
         if (sub.includes("shambhala")) {
           setUseFallbackLogo(false);
           setLogoSrc("/logos/shambhala.png");
           setHeroSrc("/Shambhala-Login-Page-Image.png");
-          updateFavicon("/logos/shambhala-short-logo.png");
           return true;
         }
         if (sub.includes("vloq")) {
           setUseFallbackLogo(true);
           setLogoSrc("/logos/furnix-logo-light.png");
           setHeroSrc("/image.png");
-          updateFavicon(null);
           return true;
         }
         return false;
@@ -79,7 +75,6 @@ export default function LoginPage() {
             setUseFallbackLogo(false);
             setLogoSrc(res.data.logoUrl);
             setHeroSrc("/image.png");
-            updateFavicon(res.data?.iconUrl);
             return;
           }
         } catch (error) {
@@ -94,7 +89,6 @@ export default function LoginPage() {
       setUseFallbackLogo(true);
       setLogoSrc("/logos/furnix-logo-light.png");
       setHeroSrc("/image.png");
-      updateFavicon(null);
     };
 
     fetchVendorLogo();
