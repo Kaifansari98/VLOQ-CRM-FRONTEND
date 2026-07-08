@@ -38,6 +38,8 @@ export default function LoginPage() {
           subdomain = hostParts[0];
         } else if (hostname.includes("localhost") && hostParts.length > 1) {
           subdomain = hostParts[0];
+        } else if (hostname.includes("vloq.com")) {
+          subdomain = "vloq";
         }
       }
 
