@@ -44,9 +44,9 @@ export default function SiteSupervisorDashboard() {
             miscItems={miscItems}
           />
         </div>
-        <div className="lg:w-[40%] flex flex-col">
+        <div className="lg:w-[40%] flex flex-col justify-between">
           <AssignedTaskCard />
-          <div className="flex flex-col w-full sm:flex-row sm:gap-4 mt-4 items-stretch">
+          <div className="flex flex-col w-full sm:flex-row sm:gap-4 items-stretch">
             <div className="w-full sm:w-1/2 flex">
               <SiteSupervisorServicesCard
                 count={serviceCounts?.count ?? 0}
