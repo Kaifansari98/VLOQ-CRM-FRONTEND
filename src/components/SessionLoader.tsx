@@ -84,7 +84,7 @@ export function SessionLoader() {
         }
       }
 
-      updateFavicon(null);
+      updateFavicon("/logos/furnix-logo-dark.png");
     };
 
     resolveAndSetFavicon();
