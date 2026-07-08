@@ -64,7 +64,7 @@ export function SessionLoader() {
         }
       }
 
-      updateFavicon("/logos/frankvin.png");
+      updateFavicon("/logos/furnix-logo-dark.png");
     };
 
     resolveAndSetFavicon();
