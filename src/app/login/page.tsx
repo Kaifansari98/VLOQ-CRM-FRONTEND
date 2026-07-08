@@ -12,7 +12,7 @@ import { fetchVendorBySubdomain } from "@/api/vendors";
 export default function LoginPage() {
   const router = useRouter();
   const { user, token } = useSelector((state: RootState) => state.auth);
-  const [logoSrc, setLogoSrc] = useState("/logos/furnix-logo-light.png");
+  const [logoSrc, setLogoSrc] = useState("/logos/frankvin.png");
   const [useFallbackLogo, setUseFallbackLogo] = useState(false);
   const [heroSrc, setHeroSrc] = useState("/image.png");
 
@@ -47,31 +47,9 @@ export default function LoginPage() {
         subdomain = null;
       }
 
-      const applyHardcodedFallback = (sub: string) => {
-        if (sub.includes("frankvin")) {
-          setUseFallbackLogo(false);
-          setLogoSrc("/logos/frankvin.png");
-          setHeroSrc("/image.png");
-          return true;
-        }
-        if (sub.includes("shambhala")) {
-          setUseFallbackLogo(false);
-          setLogoSrc("/logos/shambhala.png");
-          setHeroSrc("/Shambhala-Login-Page-Image.png");
-          return true;
-        }
-        if (sub.includes("vloq")) {
-          setUseFallbackLogo(true);
-          setLogoSrc("/logos/furnix-logo-light.png");
-          setHeroSrc("/image.png");
-          return true;
-        }
-        return false;
-      };
-
-      if (subdomain || hostname.includes("localhost")) {
+      if (subdomain) {
         try {
-          const res = await fetchVendorBySubdomain("https://vloq.com/");
+          const res = await fetchVendorBySubdomain(subdomain);
           console.log("Response: ", res.data);
           if (res.success && res.data?.logoUrl) {
             setUseFallbackLogo(false);
@@ -82,14 +60,11 @@ export default function LoginPage() {
         } catch (error) {
           console.error("Failed to fetch custom vendor branding:", error);
         }
-
-        if (applyHardcodedFallback(subdomain)) {
-          return;
-        }
       }
 
-      setUseFallbackLogo(true);
-      setLogoSrc("/logos/furnix-logo-light.png");
+      // Default Fallback
+      setUseFallbackLogo(false);
+      setLogoSrc("/logos/frankvin.png");
       setHeroSrc("/image.png");
     };
 

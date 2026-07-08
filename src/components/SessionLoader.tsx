@@ -51,25 +51,9 @@ export function SessionLoader() {
           subdomain = null;
         }
 
-        const applyHardcodedFallback = (sub: string) => {
-          if (sub.includes("frankvin")) {
-            updateFavicon(null);
-            return true;
-          }
-          if (sub.includes("shambhala")) {
-            updateFavicon("/logos/shambhala-short-logo.png");
-            return true;
-          }
-          if (sub.includes("vloq")) {
-            updateFavicon(null);
-            return true;
-          }
-          return false;
-        };
-
-        if (subdomain || hostname.includes("localhost")) {
+        if (subdomain) {
           try {
-            const res = await fetchVendorBySubdomain("https://vloq.com/");
+            const res = await fetchVendorBySubdomain(subdomain);
             if (res.success && res.data?.iconUrl) {
               updateFavicon(res.data.iconUrl);
               return;
@@ -77,14 +61,10 @@ export function SessionLoader() {
           } catch (error) {
             console.error("Failed to fetch custom vendor branding for favicon:", error);
           }
-
-          if (applyHardcodedFallback(subdomain)) {
-            return;
-          }
         }
       }
 
-      updateFavicon("/logos/furnix-logo-dark.png");
+      updateFavicon("/logos/frankvin.png");
     };
 
     resolveAndSetFavicon();
