@@ -40,9 +40,9 @@ export function SessionLoader() {
           subdomain = null;
         }
 
-        if (subdomain || hostname.includes("localhost")) {
+        if (subdomain) {
           try {
-            const res = await fetchVendorBySubdomain("vloq");
+            const res = await fetchVendorBySubdomain(subdomain);
             if (res.success && res.data?.iconUrl) {
               updateFavicon(res.data.iconUrl);
               return;

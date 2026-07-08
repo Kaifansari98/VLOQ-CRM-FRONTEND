@@ -47,9 +47,9 @@ export default function LoginPage() {
         subdomain = null;
       }
 
-      if (subdomain || hostname.includes("localhost")) {
+      if (subdomain) {
         try {
-          const res = await fetchVendorBySubdomain("vloq");
+          const res = await fetchVendorBySubdomain(subdomain);
           console.log("Response: ", res.data);
           if (res.success && res.data?.logoUrl) {
             setUseFallbackLogo(false);
