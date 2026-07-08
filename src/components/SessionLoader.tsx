@@ -6,16 +6,11 @@ import { loadSession } from "@/redux/slices/authSlice"
 import { loadCustomPrivileges } from "@/redux/slices/customPrivilegesSlice"
 import { loadThemeFromStorage } from "@/redux/slices/themeSlice"
 
-import { useSelector } from "react-redux"
-import { RootState } from "@/redux/store"
 import { updateFavicon } from "@/utils/favicon"
 import { fetchVendorBySubdomain } from "@/api/vendors"
 
 export function SessionLoader() {
   const dispatch = useDispatch()
-  const vendorIconUrl = useSelector(
-    (state: RootState) => state.auth.user?.vendor?.iconUrl || state.auth.user?.iconUrl
-  )
 
   useEffect(() => {
     dispatch(loadSession())
@@ -25,12 +20,6 @@ export function SessionLoader() {
 
   useEffect(() => {
     const resolveAndSetFavicon = async () => {
-      console.log("SessionLoader: Resolved vendorIconUrl from Redux = ", vendorIconUrl);
-      if (vendorIconUrl) {
-        updateFavicon(vendorIconUrl);
-        return;
-      }
-
       if (typeof window !== "undefined") {
         const hostname = window.location.hostname;
         const urlParams = new URLSearchParams(window.location.search);
@@ -68,7 +57,7 @@ export function SessionLoader() {
     };
 
     resolveAndSetFavicon();
-  }, [vendorIconUrl])
+  }, [])
 
   return null
 }
