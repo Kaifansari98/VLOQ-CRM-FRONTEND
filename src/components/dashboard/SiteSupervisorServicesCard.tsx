@@ -2,21 +2,27 @@
 
 import { useRouter } from "next/navigation";
 import { CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 interface SiteSupervisorServicesCardProps {
   count: number;
   isLoading?: boolean;
+  className?: string;
 }
 
 export default function SiteSupervisorServicesCard({
   count,
   isLoading = false,
+  className,
 }: SiteSupervisorServicesCardProps) {
   const router = useRouter();
 
   return (
     <div
-      className="w-full border py-4 rounded-2xl mt-4 flex flex-col justify-between cursor-pointer hover:bg-muted/30 transition-colors"
+      className={cn(
+        "w-full border py-4 rounded-2xl flex flex-col justify-between cursor-pointer hover:bg-muted/30 transition-colors",
+        className
+      )}
       onClick={() => router.push("/dashboard/installation/dispatch-stage")}
     >
       <div className="px-5">
