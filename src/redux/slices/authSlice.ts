@@ -23,11 +23,15 @@ export interface User {
     vendor_report_code?: string | null
     eligible_booking_days?: number | null
     is_self_assign_task_type_master_enabed?: boolean | null
+    logoUrl?: string
+    iconUrl?: string
     ["vendor-report-code"]?: string | null
     [key: string]: any
   }
   user_type: Record<string, any>
   is_ho_user: boolean
+  logoUrl?: string
+  iconUrl?: string
 }
 
 interface AuthState {

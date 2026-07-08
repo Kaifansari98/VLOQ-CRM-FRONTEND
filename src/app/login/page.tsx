@@ -7,6 +7,8 @@ import { useEffect, useState } from "react";
 
 import { LoginForm } from "@/components/login-form";
 import Image from "next/image";
+import { fetchVendorBySubdomain } from "@/api/vendors";
+import { updateFavicon } from "@/utils/favicon";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -26,33 +28,76 @@ export default function LoginPage() {
   }, [user, token, router]);
 
   useEffect(() => {
-    const hostname =
-      typeof window !== "undefined" ? window.location.hostname : "";
+    const fetchVendorLogo = async () => {
+      const hostname = typeof window !== "undefined" ? window.location.hostname : "";
+      const urlParams = new URLSearchParams(window.location.search);
+      let subdomain = urlParams.get("subdomain") || urlParams.get("vendor");
+      
+      if (!subdomain && hostname) {
+        const hostParts = hostname.split(".");
+        if (hostParts.length > 2) {
+          subdomain = hostParts[0];
+        } else if (hostname.includes("localhost") && hostParts.length > 1) {
+          subdomain = hostParts[0];
+        }
+      }
 
-    if (hostname.includes("frankvin")) {
-      setUseFallbackLogo(false);
-      setLogoSrc("/logos/frankvin.png");
-      setHeroSrc("/image.png");
-      return;
-    }
+      if (subdomain === "localhost") {
+        subdomain = null;
+      }
 
-    if (hostname.includes("shambhala")) {
-      setUseFallbackLogo(false);
-      setLogoSrc("/logos/shambhala.png");
-      setHeroSrc("/Shambhala-Login-Page-Image.png");
-      return;
-    }
+      const applyHardcodedFallback = (sub: string) => {
+        if (sub.includes("frankvin")) {
+          setUseFallbackLogo(false);
+          setLogoSrc("/logos/frankvin.png");
+          setHeroSrc("/image.png");
+          updateFavicon(null);
+          return true;
+        }
+        if (sub.includes("shambhala")) {
+          setUseFallbackLogo(false);
+          setLogoSrc("/logos/shambhala.png");
+          setHeroSrc("/Shambhala-Login-Page-Image.png");
+          updateFavicon("/logos/shambhala-short-logo.png");
+          return true;
+        }
+        if (sub.includes("vloq")) {
+          setUseFallbackLogo(true);
+          setLogoSrc("/logos/furnix-logo-light.png");
+          setHeroSrc("/image.png");
+          updateFavicon(null);
+          return true;
+        }
+        return false;
+      };
 
-    if (hostname.includes("vloq")) {
+      if (subdomain) {
+        try {
+          const res = await fetchVendorBySubdomain(subdomain);
+          console.log("Response: ", res.data);
+          if (res.success && res.data?.logoUrl) {
+            setUseFallbackLogo(false);
+            setLogoSrc(res.data.logoUrl);
+            setHeroSrc("/image.png");
+            updateFavicon(res.data?.iconUrl);
+            return;
+          }
+        } catch (error) {
+          console.error("Failed to fetch custom vendor branding:", error);
+        }
+
+        if (applyHardcodedFallback(subdomain)) {
+          return;
+        }
+      }
+
       setUseFallbackLogo(true);
       setLogoSrc("/logos/furnix-logo-light.png");
       setHeroSrc("/image.png");
-      return;
-    }
+      updateFavicon(null);
+    };
 
-    setUseFallbackLogo(true);
-    setLogoSrc("/logos/furnix-logo-light.png");
-    setHeroSrc("/image.png");
+    fetchVendorLogo();
   }, []);
 
   return (

@@ -16,6 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import BaseModal from "@/components/utils/baseModal";
+import { FileUploadField } from "@/components/custom/file-upload";
 import {
   Dialog,
   DialogContent,
@@ -87,6 +89,8 @@ export default function VendorsPage() {
     is_tracktrace_enabled: false,
   });
   const [fieldErrors, setFieldErrors] = React.useState<CreateVendorFieldErrors>({});
+  const [logoFile, setLogoFile] = React.useState<File[]>([]);
+  const [iconFile, setIconFile] = React.useState<File[]>([]);
 
   const onboardVendorMutation = useOnboardVendor();
   const updateVendorMutation = useUpdateVendor();
@@ -161,6 +165,8 @@ export default function VendorsPage() {
       is_inventory_enabled: false,
       is_tracktrace_enabled: false,
     });
+    setLogoFile([]);
+    setIconFile([]);
     setFieldErrors({});
     setEditingVendorId(null);
   };
@@ -197,6 +203,8 @@ export default function VendorsPage() {
         is_inventory_enabled: row.is_inventory_enabled,
         is_tracktrace_enabled: row.is_tracktrace_enabled,
       });
+      setLogoFile([]);
+      setIconFile([]);
       setFieldErrors({});
       setOpenCreateVendor(true);
     },
@@ -226,42 +234,58 @@ export default function VendorsPage() {
 
     try {
       if (editingVendorId) {
+        const formData = new FormData();
+        formData.append("vendor_name", validatedForm.data.vendor_name);
+        formData.append("vendor_code", validatedForm.data.vendor_code.toUpperCase());
+        formData.append("subdomain_url", validatedForm.data.subdomain_url);
+        formData.append("primary_contact_name", validatedForm.data.primary_contact_name);
+        formData.append("primary_contact_number", validatedForm.data.primary_contact_number);
+        formData.append("primary_contact_email", validatedForm.data.primary_contact_email);
+        formData.append("country_code", "+91");
+        formData.append("head_office_id", "");
+        formData.append("status", "active");
+        formData.append("time_zone", "Asia/Kolkata");
+        formData.append("handlesLargeScaleProjects", String(validatedForm.data.handlesLargeScaleProjects));
+        formData.append("is_crm_enabled", String(validatedForm.data.is_crm_enabled));
+        formData.append("is_inventory_enabled", String(validatedForm.data.is_inventory_enabled));
+        formData.append("is_tracktrace_enabled", String(validatedForm.data.is_tracktrace_enabled));
+
+        if (logoFile[0]) {
+          formData.append("logo", logoFile[0]);
+        }
+        if (iconFile[0]) {
+          formData.append("icon", iconFile[0]);
+        }
+
         await updateVendorMutation.mutateAsync({
           vendorId: editingVendorId,
-          payload: {
-            vendor_name: validatedForm.data.vendor_name,
-            vendor_code: validatedForm.data.vendor_code.toUpperCase(),
-            subdomain_url: validatedForm.data.subdomain_url,
-            primary_contact_name: validatedForm.data.primary_contact_name,
-            primary_contact_number: validatedForm.data.primary_contact_number,
-            primary_contact_email: validatedForm.data.primary_contact_email,
-            status: "active",
-            time_zone: "Asia/Kolkata",
-            handlesLargeScaleProjects:
-              validatedForm.data.handlesLargeScaleProjects,
-            is_crm_enabled: validatedForm.data.is_crm_enabled,
-            is_inventory_enabled: validatedForm.data.is_inventory_enabled,
-            is_tracktrace_enabled: validatedForm.data.is_tracktrace_enabled,
-          },
+          payload: formData,
         });
       } else {
-        await onboardVendorMutation.mutateAsync({
-          vendor_name: validatedForm.data.vendor_name,
-          vendor_code: validatedForm.data.vendor_code.toUpperCase(),
-          subdomain_url: validatedForm.data.subdomain_url,
-          primary_contact_name: validatedForm.data.primary_contact_name,
-          primary_contact_number: validatedForm.data.primary_contact_number,
-          primary_contact_email: validatedForm.data.primary_contact_email,
-          country_code: "+91",
-          head_office_id: null,
-          status: "active",
-          logo: "https://example.com/logo.png",
-          time_zone: "Asia/Kolkata",
-          handlesLargeScaleProjects: validatedForm.data.handlesLargeScaleProjects,
-          is_crm_enabled: validatedForm.data.is_crm_enabled,
-          is_inventory_enabled: validatedForm.data.is_inventory_enabled,
-          is_tracktrace_enabled: validatedForm.data.is_tracktrace_enabled,
-        });
+        const formData = new FormData();
+        formData.append("vendor_name", validatedForm.data.vendor_name);
+        formData.append("vendor_code", validatedForm.data.vendor_code.toUpperCase());
+        formData.append("subdomain_url", validatedForm.data.subdomain_url);
+        formData.append("primary_contact_name", validatedForm.data.primary_contact_name);
+        formData.append("primary_contact_number", validatedForm.data.primary_contact_number);
+        formData.append("primary_contact_email", validatedForm.data.primary_contact_email);
+        formData.append("country_code", "+91");
+        formData.append("head_office_id", "");
+        formData.append("status", "active");
+        formData.append("time_zone", "Asia/Kolkata");
+        formData.append("handlesLargeScaleProjects", String(validatedForm.data.handlesLargeScaleProjects));
+        formData.append("is_crm_enabled", String(validatedForm.data.is_crm_enabled));
+        formData.append("is_inventory_enabled", String(validatedForm.data.is_inventory_enabled));
+        formData.append("is_tracktrace_enabled", String(validatedForm.data.is_tracktrace_enabled));
+
+        if (logoFile[0]) {
+          formData.append("logo", logoFile[0]);
+        }
+        if (iconFile[0]) {
+          formData.append("icon", iconFile[0]);
+        }
+
+        await onboardVendorMutation.mutateAsync(formData);
       }
 
       toastManager.add({
@@ -319,28 +343,23 @@ export default function VendorsPage() {
         />
       </div>
 
-      <Dialog
+      <BaseModal
         open={openCreateVendor}
-        onOpenChange={(open) => {
+        onOpenChange={(open: boolean) => {
           setOpenCreateVendor(open);
           if (!open) {
             resetForm();
           }
         }}
+        title={editingVendorId ? "Configure Vendor" : "Create Vendor"}
+        description={
+          editingVendorId
+            ? "Update the basic vendor details."
+            : "Add the basic vendor details to onboard a new vendor."
+        }
+        size="lg"
       >
-        <DialogContent>
-          <DialogHeader className="border-b pb-4">
-            <DialogTitle className="text-base">
-              {editingVendorId ? "Configure Vendor" : "Create Vendor"}
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              {editingVendorId
-                ? "Update the basic vendor details."
-                : "Add the basic vendor details to onboard a new vendor."}
-            </DialogDescription>
-          </DialogHeader>
-
-          <form className="space-y-4 mt-2" onSubmit={handleSubmitVendor}>
+        <form className="space-y-4 p-6" onSubmit={handleSubmitVendor}>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
                 <Label htmlFor="vendor_name">Vendor Name</Label>
@@ -549,6 +568,29 @@ export default function VendorsPage() {
               </div>
             </div>
 
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label>Upload Logo</Label>
+                <FileUploadField
+                  value={logoFile}
+                  onChange={setLogoFile}
+                  accept="image/*"
+                  multiple={false}
+                  maxFiles={1}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Upload Icon</Label>
+                <FileUploadField
+                  value={iconFile}
+                  onChange={setIconFile}
+                  accept="image/*"
+                  multiple={false}
+                  maxFiles={1}
+                />
+              </div>
+            </div>
+
             <DialogFooter className="border-t pt-4">
               <Button
                 type="button"
@@ -574,8 +616,7 @@ export default function VendorsPage() {
               </Button>
             </DialogFooter>
           </form>
-        </DialogContent>
-      </Dialog>
+      </BaseModal>
     </>
   );
 }
