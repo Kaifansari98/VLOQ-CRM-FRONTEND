@@ -41,9 +41,8 @@ export function TeamSwitcher({
   const isShambhala =
     typeof window !== "undefined" &&
     window.location.hostname.includes("shambhala");
-  const userType = useAppSelector(
-    (state) => state.auth.user?.user_type?.user_type,
-  );
+  const user = useAppSelector((state) => state.auth.user);
+  const userType = user?.user_type?.user_type;
   const normalizedUserType = userType?.toLowerCase();
   const isSuperAdmin = normalizedUserType === "super-admin" || normalizedUserType === "auditor";
   const [activeTeam, setActiveTeam] = React.useState(teams[0]);
@@ -114,7 +113,14 @@ export function TeamSwitcher({
                 className="text-sidebar-foreground data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
                 <div className="bg-sidebar-primary text-sidebar-primary-foreground relative aspect-square size-8 overflow-hidden rounded-lg border-none">
-                  {isShambhala ? (
+                  {user?.vendor?.iconUrl ? (
+                    <Image
+                      src={user.vendor.iconUrl}
+                      alt="Vendor Icon"
+                      fill
+                      className="object-cover"
+                    />
+                  ) : isShambhala ? (
                     <Image
                       src="/logos/shambhala-short-logo.png"
                       alt="Shambhala"

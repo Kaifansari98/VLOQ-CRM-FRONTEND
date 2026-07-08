@@ -20,6 +20,8 @@ export interface VendorListItem {
   is_this_vendor_is_custom_usertype_only: boolean | null;
   createdAt: string | null;
   updatedAt: string | null;
+  logoUrl?: string;
+  iconUrl?: string;
 }
 
 export interface VendorListParams {
@@ -88,16 +90,21 @@ export const fetchVendors = async (
   return data;
 };
 
-export const onboardVendor = async (payload: OnboardVendorPayload) => {
-  const { data } = await apiClient.post("/vendors/onboard", payload);
+export const onboardVendor = async (payload: FormData) => {
+  const { data } = await apiClient.post("/vendors/onboard", payload, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
   return data;
 };
 
 export const updateVendor = async (
   vendorId: number,
-  payload: UpdateVendorPayload,
+  payload: UpdateVendorPayload | FormData,
 ) => {
-  const { data } = await apiClient.patch(`/vendors/${vendorId}`, payload);
+  const headers = payload instanceof FormData ? { "Content-Type": "multipart/form-data" } : undefined;
+  const { data } = await apiClient.patch(`/vendors/${vendorId}`, payload, { headers });
   return data;
 };
 
@@ -105,6 +112,15 @@ export const fetchVendorById = async (
   vendorId: number,
 ): Promise<VendorDetailResponse> => {
   const { data } = await apiClient.get(`/vendors/${vendorId}`);
+  return data;
+};
+
+export const fetchVendorBySubdomain = async (
+  subdomain: string,
+): Promise<{ success: boolean; data: { id: number; vendor_name: string; logoUrl: string; iconUrl: string } }> => {
+  const { data } = await apiClient.get(`/vendors/public/by-subdomain`, {
+    params: { subdomain }
+  });
   return data;
 };
 
@@ -140,7 +156,7 @@ export const useUpdateVendor = () => {
       payload,
     }: {
       vendorId: number;
-      payload: UpdateVendorPayload;
+      payload: UpdateVendorPayload | FormData;
     }) => updateVendor(vendorId, payload),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["vendors"] });

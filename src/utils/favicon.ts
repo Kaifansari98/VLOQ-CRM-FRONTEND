@@ -1,0 +1,17 @@
+export const updateFavicon = (url: string | null | undefined) => {
+  if (typeof document === "undefined") return;
+
+  const links = document.querySelectorAll("link[rel*='icon']");
+  const targetHref = url || "/favicon.ico";
+
+  if (links.length > 0) {
+    links.forEach((link: any) => {
+      link.href = targetHref;
+    });
+  } else {
+    const link = document.createElement("link");
+    link.rel = "icon";
+    link.href = targetHref;
+    document.getElementsByTagName("head")[0].appendChild(link);
+  }
+};
