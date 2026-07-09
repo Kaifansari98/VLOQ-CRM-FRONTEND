@@ -280,7 +280,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
   let displayOriginalName = doc.originalName;
   let designTypeTag: string | null = null;
   if (doc.originalName) {
-    const match = doc.originalName.match(/^\[(2D|3D)\]\s*(.*)$/i);
+    const match = doc.originalName.match(/^\[(2D \+ 3D|2D|3D)\]\s*(.*)$/i);
     if (match) {
       designTypeTag = match[1];
       displayOriginalName = match[2];
@@ -723,7 +723,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
             <div className="flex items-center gap-3">
               {isCustomVendor && designTypeTag && (
                 <span className="text-zinc-700 font-semibold">
-                  {designTypeTag.toUpperCase()} File
+                  {designTypeTag} File
                 </span>
               )}
               {hasStatus && (

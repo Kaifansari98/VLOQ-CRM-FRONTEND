@@ -25,6 +25,7 @@ type TabItemType = {
   id: string;
   leadId?: number | null;
   label: string;
+  icon?: React.ComponentType<{ className?: string }>;
   content?: React.ReactNode;
 };
 
@@ -138,38 +139,34 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
           {/* Tabs wrapper (scrollable on mobile) */}
           <div
             className={cn(
-              "flex items-center gap-1 p-1 bg-background rounded-full border",
+              "flex space-x-6 overflow-x-auto pb-px scrollbar-none border-b",
               "max-w-full sm:max-w-none",
               className,
             )}
           >
-            <div className="flex gap-1">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => handleClick(tab.id)}
-                  className={cn(
-                    "relative px-3 sm:px-4 py-1.5 sm:py-2 rounded-full transition touch-none flex-shrink-0",
-                    "text-xs sm:text-sm font-medium",
-                    activeTab === tab.id
-                      ? "text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {activeTab === tab.id && (
-                    <motion.div
-                      layoutId={`pill-tabs-active-pill-${uniqueId}`}
-                      className="absolute inset-0 bg-primary rounded-full"
-                      transition={{ type: "spring", duration: 0.5 }}
-                    />
-                  )}
-                  <span className="relative z-10 whitespace-nowrap">
-                    {tab.label}
-                  </span>
-                </button>
-              ))}
-            </div>
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => handleClick(tab.id)}
+                className={cn(
+                  "relative flex items-center gap-2 pb-3 text-sm font-medium transition-colors hover:text-foreground/80 focus-visible:outline-none whitespace-nowrap shrink-0",
+                  activeTab === tab.id
+                    ? "text-foreground"
+                    : "text-muted-foreground",
+                )}
+              >
+                {tab.icon && <tab.icon className="h-4 w-4" />}
+                <span>{tab.label}</span>
+                {activeTab === tab.id && (
+                  <motion.div
+                    layoutId={`pill-tabs-active-line-${uniqueId}`}
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+              </button>
+            ))}
           </div>
 
           {/* Add Button */}
