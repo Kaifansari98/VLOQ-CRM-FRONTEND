@@ -91,6 +91,7 @@ export default function VendorsPage() {
   const [fieldErrors, setFieldErrors] = React.useState<CreateVendorFieldErrors>({});
   const [logoFile, setLogoFile] = React.useState<File[]>([]);
   const [iconFile, setIconFile] = React.useState<File[]>([]);
+  const [loginImageFile, setLoginImageFile] = React.useState<File[]>([]);
 
   const onboardVendorMutation = useOnboardVendor();
   const updateVendorMutation = useUpdateVendor();
@@ -167,6 +168,7 @@ export default function VendorsPage() {
     });
     setLogoFile([]);
     setIconFile([]);
+    setLoginImageFile([]);
     setFieldErrors({});
     setEditingVendorId(null);
   };
@@ -256,6 +258,9 @@ export default function VendorsPage() {
         if (iconFile[0]) {
           formData.append("icon", iconFile[0]);
         }
+        if (loginImageFile[0]) {
+          formData.append("login_image", loginImageFile[0]);
+        }
 
         await updateVendorMutation.mutateAsync({
           vendorId: editingVendorId,
@@ -283,6 +288,9 @@ export default function VendorsPage() {
         }
         if (iconFile[0]) {
           formData.append("icon", iconFile[0]);
+        }
+        if (loginImageFile[0]) {
+          formData.append("login_image", loginImageFile[0]);
         }
 
         await onboardVendorMutation.mutateAsync(formData);
@@ -589,6 +597,17 @@ export default function VendorsPage() {
                   maxFiles={1}
                 />
               </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Upload Login Image</Label>
+              <FileUploadField
+                value={loginImageFile}
+                onChange={setLoginImageFile}
+                accept="image/*"
+                multiple={false}
+                maxFiles={1}
+              />
             </div>
 
             <DialogFooter className="border-t pt-4">

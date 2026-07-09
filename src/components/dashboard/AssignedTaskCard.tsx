@@ -33,7 +33,7 @@ export function AssignedTaskCard({ className }: AssignedTaskCardProps) {
   return (
     <div
       className={cn(
-        "w-full md:w-full border py-4 rounded-2xl",
+        "w-full md:w-full border py-6 rounded-2xl min-h-[190px]",
         className,
       )}
     >

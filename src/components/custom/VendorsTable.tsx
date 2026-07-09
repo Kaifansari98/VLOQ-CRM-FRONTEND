@@ -46,6 +46,7 @@ type VendorRow = {
   createdAt: string;
   logoUrl?: string;
   iconUrl?: string;
+  loginImageUrl?: string;
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -110,6 +111,7 @@ export default function VendorsTable({
         createdAt: item.createdAt ?? "",
         logoUrl: item.logoUrl ?? "",
         iconUrl: item.iconUrl ?? "",
+        loginImageUrl: item.loginImageUrl ?? "",
       })),
     [data, pagination.pageIndex, pagination.pageSize],
   );
@@ -311,6 +313,20 @@ export default function VendorsTable({
                 }}
               >
                 Icon
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!original.loginImageUrl}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (original.loginImageUrl) {
+                    setViewerUrl(original.loginImageUrl);
+                    setViewerOpen(true);
+                  }
+                }}
+              >
+                Login Image
               </Button>
             </div>
           );

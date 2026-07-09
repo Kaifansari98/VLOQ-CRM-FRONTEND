@@ -25,7 +25,7 @@ export default function AvgDaysToInstallationCard({
   return (
     <div
       className={cn(
-        "flex border py-4 rounded-2xl flex-col justify-between",
+        "flex border py-6 rounded-2xl flex-col justify-between min-h-[160px]",
         className,
       )}
     >

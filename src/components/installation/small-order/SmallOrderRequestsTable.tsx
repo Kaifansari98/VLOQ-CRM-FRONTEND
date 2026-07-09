@@ -333,7 +333,7 @@ function SmallOrderRequestPreviewModal({
         : isFinalHandoverRequest && !isType15
           ? "Mark as Resolved is enabled only when the request is fullfilled."
           : isFinalHandoverRequest && !hasCompletedInstallations
-              ? "Mark as Resolved is enabled only after both carcass and shutter installation are completed."
+            ? "Mark as Resolved is enabled only after both carcass and shutter installation are completed."
             : isPostDispatchRequest && !isType15
               ? "Mark as Resolved is enabled only when the request is fullfilled."
               : null;
@@ -544,24 +544,24 @@ export default function SmallOrderRequestsTable({
           requestSource ? request.request_source === requestSource : true,
         )
         .map((request, index) => ({
-        srNo: index + 1,
-        id: request.id,
-        so_code: request.so_code,
-        request_type: request.requestType?.type ?? "—",
-        request_source: request.request_source,
-        status: request.status,
-        is_request_resolved: request.is_request_resolved,
-        required_date: request.required_date,
-        requested_by: request.createdBy?.user_name?.trim() || "—",
-        created_at: request.created_at,
-        supervisor_approved: request.supervisor_approved,
-        admin_approved: request.admin_approved,
-        document_count: request.document_count ?? 0,
-        remarks: request.remarks,
-        documents: request.documents ?? [],
-        linked_lead_id: request.linked_lead?.id ?? null,
-        linked_lead_account_id: request.linked_lead?.account_id ?? null,
-      })),
+          srNo: index + 1,
+          id: request.id,
+          so_code: request.so_code,
+          request_type: request.requestType?.type ?? "—",
+          request_source: request.request_source,
+          status: request.status,
+          is_request_resolved: request.is_request_resolved,
+          required_date: request.required_date,
+          requested_by: request.createdBy?.user_name?.trim() || "—",
+          created_at: request.created_at,
+          supervisor_approved: request.supervisor_approved,
+          admin_approved: request.admin_approved,
+          document_count: request.document_count ?? 0,
+          remarks: request.remarks,
+          documents: request.documents ?? [],
+          linked_lead_id: request.linked_lead?.id ?? null,
+          linked_lead_account_id: request.linked_lead?.account_id ?? null,
+        })),
     [data, requestSource],
   );
 

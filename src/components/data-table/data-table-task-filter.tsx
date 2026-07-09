@@ -11,19 +11,29 @@ import { LeadColumn } from "../utils/column/column-type";
 =========================== */
 
 const TASK_TYPES = [
-  "Pending Work",
-  "Pending Materials",
-  "Production Items",
-  "Miscellaneous Items",
-  "Production Ready",
-  "Post Dispatch Photos",
-  "Follow Up",
+  "1st Servicing",
+  "2nd Servicing",
+  "3rd Servicing",
   "Approval Request",
+  "Assign a Site Supervisor",
+  "Booking Done Approval",
   "BookingDone - ISM",
+  "Dispatch",
+  "Dispatch Planning Approval",
+  "Final Measurements",
+  "Follow Up",
   "Initial Site Measurement",
+  "Miscellaneous",
   "Order Login",
+  "Order Login Approval",
+  "Order Login Completed",
+  "Pending Materials",
+  "Pending Work",
+  "Pre Prod Completed",
+  "Production Ready",
+  "Request Fast Production",
   "Site Readiness",
-  "Dispatch"
+  "Small order request"
 ];
 
 /* ===========================

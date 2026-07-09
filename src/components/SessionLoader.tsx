@@ -6,16 +6,11 @@ import { loadSession } from "@/redux/slices/authSlice"
 import { loadCustomPrivileges } from "@/redux/slices/customPrivilegesSlice"
 import { loadThemeFromStorage } from "@/redux/slices/themeSlice"
 
-import { useSelector } from "react-redux"
-import { RootState } from "@/redux/store"
 import { updateFavicon } from "@/utils/favicon"
 import { fetchVendorBySubdomain } from "@/api/vendors"
 
 export function SessionLoader() {
   const dispatch = useDispatch()
-  const vendorIconUrl = useSelector(
-    (state: RootState) => state.auth.user?.vendor?.iconUrl || state.auth.user?.iconUrl
-  )
 
   useEffect(() => {
     dispatch(loadSession())
@@ -25,12 +20,6 @@ export function SessionLoader() {
 
   useEffect(() => {
     const resolveAndSetFavicon = async () => {
-      console.log("SessionLoader: Resolved vendorIconUrl from Redux = ", vendorIconUrl);
-      if (vendorIconUrl) {
-        updateFavicon(vendorIconUrl);
-        return;
-      }
-
       if (typeof window !== "undefined") {
         const hostname = window.location.hostname;
         const urlParams = new URLSearchParams(window.location.search);
@@ -51,22 +40,6 @@ export function SessionLoader() {
           subdomain = null;
         }
 
-        const applyHardcodedFallback = (sub: string) => {
-          if (sub.includes("frankvin")) {
-            updateFavicon(null);
-            return true;
-          }
-          if (sub.includes("shambhala")) {
-            updateFavicon("/logos/shambhala-short-logo.png");
-            return true;
-          }
-          if (sub.includes("vloq")) {
-            updateFavicon(null);
-            return true;
-          }
-          return false;
-        };
-
         if (subdomain) {
           try {
             const res = await fetchVendorBySubdomain(subdomain);
@@ -77,10 +50,6 @@ export function SessionLoader() {
           } catch (error) {
             console.error("Failed to fetch custom vendor branding for favicon:", error);
           }
-
-          if (applyHardcodedFallback(subdomain)) {
-            return;
-          }
         }
       }
 
@@ -88,7 +57,7 @@ export function SessionLoader() {
     };
 
     resolveAndSetFavicon();
-  }, [vendorIconUrl])
+  }, [])
 
   return null
 }
