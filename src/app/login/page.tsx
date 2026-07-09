@@ -131,7 +131,7 @@ export default function LoginPage() {
                 style={{ maxWidth: "360px", maxHeight: "120px", minHeight: "60px" }}
               >
                 <Image
-                  src={logo}
+                  src={logoSrc}
                   alt="Brand Logo"
                   width={logoNaturalSize?.width ?? 360}
                   height={logoNaturalSize?.height ?? 120}
