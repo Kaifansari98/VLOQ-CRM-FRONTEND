@@ -61,7 +61,7 @@ import InitialSiteMeasurementTaskModal from "@/components/tasks/InitialSiteMeasu
 import FinalMeasurementTaskModal from "@/components/tasks/FinalMeasurementTaskModal";
 import OrderLoginCompletedTaskModal from "@/components/tasks/OrderLoginCompletedTaskModal";
 import PreProdCompletedTaskModal from "@/components/tasks/PreProdCompletedTaskModal";
-import { useFranchisesByVendorId } from "@/api/franchise";
+import { useFranchisesByVendorId, FranchiseSummary } from "@/api/franchise";
 import { useVendorSelfAssignTaskTypes } from "@/hooks/useSelfAssignTaskTypes";
 import {
   Popover,
@@ -181,7 +181,7 @@ const MyTaskTable = () => {
   );
   const franchiseOptions = useMemo(
     () =>
-      franchises.map((franchise) => ({
+      franchises.map((franchise: FranchiseSummary) => ({
         id: franchise.id,
         label: franchise.franchise_name,
         isHeadOffice: franchise.is_head_office === true,

@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [logoSrc, setLogoSrc] = useState("/logos/furnix-logo-dark.png");
   const [useFallbackLogo, setUseFallbackLogo] = useState(false);
   const [heroSrc, setHeroSrc] = useState("/image.png");
+  const [logoNaturalSize, setLogoNaturalSize] = useState<{ width: number; height: number } | null>(null);
 
   useEffect(() => {
     const user = localStorage.getItem("user");
@@ -31,7 +32,7 @@ export default function LoginPage() {
       const hostname = typeof window !== "undefined" ? window.location.hostname : "";
       const urlParams = new URLSearchParams(window.location.search);
       let subdomain = urlParams.get("subdomain") || urlParams.get("vendor");
-      
+
       if (!subdomain && hostname) {
         const hostParts = hostname.split(".");
         if (hostParts.length > 2) {
@@ -74,7 +75,7 @@ export default function LoginPage() {
   return (
     <div className="grid min-h-svh lg:grid-cols-2 w-full">
       {/* Left Section */}
-      <div className="flex flex-1 justify-center gap-6 flex-col p-6 md:p-10">
+      <div className="flex flex-1 justify-center gap-20 flex-col p-6 md:p-10">
         {/* Logo */}
         <div className="flex justify-center md:justify-center mb-6">
           <a href="#" className="flex items-center gap-2">
@@ -83,29 +84,46 @@ export default function LoginPage() {
                 <Image
                   src="/logos/furnix-logo-dark.png"
                   alt="Brand Logo"
-                  width={250}
+                  width={220}
                   height={48}
                   className="object-contain dark:hidden"
+                  style={{ maxHeight: "48px", width: "auto" }}
                   priority
                 />
                 <Image
                   src="/logos/furnix-logo-light.png"
                   alt="Brand Logo"
-                  width={250}
+                  width={220}
                   height={48}
                   className="object-contain hidden dark:block"
+                  style={{ maxHeight: "48px", width: "auto" }}
                   priority
                 />
               </>
             ) : (
-              <Image
-                src={logoSrc}
-                alt="Brand Logo"
-                width={250}
-                height={48}
-                className="object-contain"
-                priority
-              />
+              <div
+                className="flex items-center justify-center"
+                style={{ maxWidth: "360px", maxHeight: "120px", minHeight: "60px" }}
+              >
+                <Image
+                  src={logoSrc}
+                  alt="Brand Logo"
+                  width={logoNaturalSize?.width ?? 360}
+                  height={logoNaturalSize?.height ?? 120}
+                  onLoad={(e) => {
+                    const img = e.currentTarget as HTMLImageElement;
+                    setLogoNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                  }}
+                  className="object-contain"
+                  style={{
+                    maxWidth: "360px",
+                    maxHeight: "120px",
+                    width: "auto",
+                    height: "auto",
+                  }}
+                  priority
+                />
+              </div>
             )}
           </a>
         </div>

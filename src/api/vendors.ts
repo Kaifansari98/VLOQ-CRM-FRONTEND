@@ -22,6 +22,7 @@ export interface VendorListItem {
   updatedAt: string | null;
   logoUrl?: string;
   iconUrl?: string;
+  loginImageUrl?: string;
 }
 
 export interface VendorListParams {
