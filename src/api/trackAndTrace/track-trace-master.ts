@@ -128,6 +128,51 @@ export const postVendorLeads = async (
   return data;
 };
 
+export const updateTrackTraceProjectApi = async (
+  uniqueProjectId: string,
+  payload: CreateTrackTraceProjectRequest
+): Promise<CreateTrackTraceProjectResponse> => {
+  const formData = new FormData();
+
+  formData.append("vendorId", String(payload.vendorId));
+  formData.append("projectName", payload.projectName);
+
+  if (payload.file) {
+    formData.append("file", payload.file);
+  }
+
+  if (payload.lead_id) {
+    formData.append("lead_id", String(payload.lead_id));
+  }
+
+  if (payload.order_no) {
+    formData.append("order_no", payload.order_no);
+  }
+
+  if (payload.client_name) {
+    formData.append("client_name", payload.client_name);
+  }
+
+  if (payload.client_address) {
+    formData.append("client_address", payload.client_address);
+  }
+
+  if (payload.client_contact_no) {
+    formData.append("client_contact_no", payload.client_contact_no);
+  }
+
+  const response = await apiClient.put<CreateTrackTraceProjectResponse>(
+    `/track-trace-project/onboard/project/${uniqueProjectId}`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+
+  return response.data;
+};
 
 
 export const createTrackTraceProjectApi = async (
@@ -137,10 +182,29 @@ export const createTrackTraceProjectApi = async (
 
   formData.append("vendorId", String(payload.vendorId));
   formData.append("projectName", payload.projectName);
-  formData.append("file", payload.file);
+
+  if (payload.file) {
+    formData.append("file", payload.file);
+  }
 
   if (payload.lead_id) {
     formData.append("lead_id", String(payload.lead_id));
+  }
+
+  if (payload.order_no) {
+    formData.append("order_no", payload.order_no);
+  }
+
+  if (payload.client_name) {
+    formData.append("client_name", payload.client_name);
+  }
+
+  if (payload.client_address) {
+    formData.append("client_address", payload.client_address);
+  }
+
+  if (payload.client_contact_no) {
+    formData.append("client_contact_no", payload.client_contact_no);
   }
 
   const response = await apiClient.post<CreateTrackTraceProjectResponse>(
@@ -205,3 +269,12 @@ export const getAssignedUsersByMachineApi = async (machine_id: number) => {
   return response.data.data; 
 };
 
+
+
+export const getTrackTraceProjectApi = async (uniqueProjectId: string) => {
+  const response = await apiClient.get(
+    `/track-trace-project/onboard/project/${uniqueProjectId}`
+  );
+
+  return response.data.data;
+};

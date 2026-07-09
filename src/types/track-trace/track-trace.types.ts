@@ -41,6 +41,14 @@ export interface TrackTraceProject {
   details: any[];
   items: any[];
   lead: TrackTraceLead;
+  order_no?: string | null;
+
+  client_name?: string | null;
+
+  client_address?: string | null;
+
+  client_contact_no?: string | null;
+
 }
 
 export interface TrackTraceLead{
@@ -48,6 +56,7 @@ export interface TrackTraceLead{
   firstname:string;
   lastname:string;
   lead_code:string;
+  contact_no:string;
 }
 
 export interface ProjectFilterItem {

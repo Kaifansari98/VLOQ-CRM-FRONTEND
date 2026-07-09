@@ -8,7 +8,10 @@ import {
   getMachinesByVendor,
   postVendorLeads,
   updateMachine,
-  searchTrackTraceLeadsApi
+  searchTrackTraceLeadsApi,
+  getTrackTraceProjectApi,
+  updateTrackTraceProjectApi,
+
 } from "@/api/trackAndTrace/track-trace-master";
 import {
   ApplyConfigurationPayload,
@@ -182,6 +185,51 @@ export const useTrackTraceVendorConfig = (vendorId?: number) => {
     queryFn: () => getTrackTraceVendorConfigApi(vendorId!),
     enabled: !!vendorId,
     staleTime: 1000 * 60 * 5,
+    retry: 1,
+  });
+};
+
+export const useUpdateTrackTraceProject = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    CreateTrackTraceProjectResponse,
+    Error,
+    {
+      uniqueProjectId: string;
+      payload: CreateTrackTraceProjectRequest;
+    }
+  >({
+    mutationFn: ({ uniqueProjectId, payload }) =>
+      updateTrackTraceProjectApi(uniqueProjectId, payload),
+
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["track-trace-projects"],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["track-trace-project", variables.uniqueProjectId],
+      });
+    },
+
+    onError: (error: Error) => {
+      console.error("Update Project Failed:", error.message);
+    },
+  });
+};
+
+
+export const useTrackTraceProject = (uniqueProjectId?: string) => {
+  return useQuery({
+    queryKey: ["track-trace-project", uniqueProjectId],
+
+    queryFn: () => getTrackTraceProjectApi(uniqueProjectId!),
+
+    enabled: !!uniqueProjectId,
+
+    staleTime: 1000 * 60 * 2,
+
     retry: 1,
   });
 };
