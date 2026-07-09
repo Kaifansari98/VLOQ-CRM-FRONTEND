@@ -337,6 +337,45 @@ export const getElectricalPlumbingDoc = async (
   return data;
 };
 
+export interface SubmitFinalIsmUploadPayload {
+  files: File[];
+  vendorId: number;
+  leadId: number;
+  userId: number;
+}
+
+export const submitFinalIsmUpload = async (
+  payload: SubmitFinalIsmUploadPayload,
+) => {
+  const formData = new FormData();
+
+  formData.append("vendorId", payload.vendorId.toString());
+  formData.append("leadId", payload.leadId.toString());
+  formData.append("userId", payload.userId.toString());
+
+  payload.files.forEach((file) => {
+    formData.append("files", file);
+  });
+
+  const { data } = await apiClient.post(
+    "/leads/designing-stage/upload-final-ism",
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } },
+  );
+
+  return data;
+};
+
+export const getFinalIsmUploadDoc = async (
+  vendorId: number,
+  leadId: number,
+): Promise<GetDesignsResponse> => {
+  const { data } = await apiClient.get<GetDesignsResponse>(
+    `/leads/designing-stage/${vendorId}/${leadId}/final-ism-upload-documents`,
+  );
+  return data;
+};
+
 export const getSelectionData = async (
   vendorId: number,
   leadId: number,

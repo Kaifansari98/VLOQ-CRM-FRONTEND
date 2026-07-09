@@ -8,6 +8,7 @@ import {
   getDesigningStageCounts,
   getDesignsDoc,
   getElectricalPlumbingDoc,
+  getFinalIsmUploadDoc,
   getCHSSelectionTypeMappings,
   getCHSManufacturingDaysByInstance,
   getInstanceStage,
@@ -19,6 +20,8 @@ import {
   SubmitCostingFilePayload,
   submitElectricalPlumbing,
   SubmitElectricalPlumbingPayload,
+  submitFinalIsmUpload,
+  SubmitFinalIsmUploadPayload,
   submitQuotation,
   submitSelection,
   SubmitSelectionPayload,
@@ -119,6 +122,27 @@ export const useSubmitElectricalPlumbing = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ["getElectricalPlumbingDoc", variables.vendorId, variables.leadId],
+      });
+    },
+  });
+};
+
+export const useFinalIsmUploadDoc = (vendorId: number, leadId: number) => {
+  return useQuery<GetDesignsResponse>({
+    queryKey: ["getFinalIsmUploadDoc", vendorId, leadId],
+    queryFn: () => getFinalIsmUploadDoc(vendorId, leadId),
+    enabled: !!vendorId && !!leadId,
+  });
+};
+
+export const useSubmitFinalIsmUpload = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: SubmitFinalIsmUploadPayload) =>
+      submitFinalIsmUpload(payload),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["getFinalIsmUploadDoc", variables.vendorId, variables.leadId],
       });
     },
   });
