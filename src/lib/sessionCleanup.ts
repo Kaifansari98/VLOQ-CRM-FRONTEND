@@ -8,6 +8,7 @@ export const clearClientSessionStorage = () => {
   localStorage.removeItem("user");
   localStorage.removeItem("pushDeviceId");
   localStorage.removeItem("activeTheme");
+  localStorage.setItem("theme", "light");
 
   Object.keys(localStorage)
     .filter((key) => key.startsWith("pushToken:"))

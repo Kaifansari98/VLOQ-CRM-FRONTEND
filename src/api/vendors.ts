@@ -118,7 +118,7 @@ export const fetchVendorById = async (
 
 export const fetchVendorBySubdomain = async (
   subdomain: string,
-): Promise<{ success: boolean; data: { id: number; vendor_name: string; logoUrl: string; iconUrl: string } }> => {
+): Promise<{ success: boolean; data: { id: number; vendor_name: string; logoUrl: string; iconUrl: string; loginImageUrl?: string } }> => {
   const { data } = await apiClient.get(`/vendors/public/by-subdomain`, {
     params: { subdomain }
   });

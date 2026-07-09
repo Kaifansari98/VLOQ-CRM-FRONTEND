@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { RootState } from "@/redux/store";
 import { useSelector } from "react-redux";
 import { useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
+import logo from "../../../public/logos/shambhala.png"
 
 import { LoginForm } from "@/components/login-form";
 import Image from "next/image";
@@ -16,6 +18,7 @@ export default function LoginPage() {
   const [useFallbackLogo, setUseFallbackLogo] = useState(false);
   const [heroSrc, setHeroSrc] = useState("/image.png");
   const [logoNaturalSize, setLogoNaturalSize] = useState<{ width: number; height: number } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const user = localStorage.getItem("user");
@@ -32,6 +35,8 @@ export default function LoginPage() {
       const hostname = typeof window !== "undefined" ? window.location.hostname : "";
       const urlParams = new URLSearchParams(window.location.search);
       let subdomain = urlParams.get("subdomain") || urlParams.get("vendor");
+      
+  
 
       if (!subdomain && hostname) {
         const hostParts = hostname.split(".");
@@ -51,11 +56,22 @@ export default function LoginPage() {
       if (subdomain) {
         try {
           const res = await fetchVendorBySubdomain(subdomain);
+          console.log("res: ", res)
           console.log("Response: ", res.data);
-          if (res.success && res.data?.logoUrl) {
+          if (res.success && res.data) {
             setUseFallbackLogo(false);
-            setLogoSrc(res.data.logoUrl);
-            setHeroSrc("/image.png");
+            if (res.data.logoUrl) {
+              setLogoSrc(res.data.logoUrl);
+            } else {
+              setLogoSrc("/logos/furnix-logo-dark.png");
+            }
+
+            if (res.data.loginImageUrl) {
+              setHeroSrc(res.data.loginImageUrl);
+            } else {
+              setHeroSrc("/image.png");
+            }
+            setIsLoading(false);
             return;
           }
         } catch (error) {
@@ -67,10 +83,19 @@ export default function LoginPage() {
       setUseFallbackLogo(false);
       setLogoSrc("/logos/furnix-logo-dark.png");
       setHeroSrc("/image.png");
+      setIsLoading(false);
     };
 
     fetchVendorLogo();
   }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-svh w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="grid min-h-svh lg:grid-cols-2 w-full">
@@ -106,7 +131,7 @@ export default function LoginPage() {
                 style={{ maxWidth: "360px", maxHeight: "120px", minHeight: "60px" }}
               >
                 <Image
-                  src={logoSrc}
+                  src={logo}
                   alt="Brand Logo"
                   width={logoNaturalSize?.width ?? 360}
                   height={logoNaturalSize?.height ?? 120}
@@ -114,9 +139,12 @@ export default function LoginPage() {
                     const img = e.currentTarget as HTMLImageElement;
                     setLogoNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
                   }}
+                  onError={() => {
+                    setUseFallbackLogo(true);
+                  }}
                   className="object-contain"
                   style={{
-                    maxWidth: "360px",
+                    maxWidth: "300px",
                     maxHeight: "120px",
                     width: "auto",
                     height: "auto",
@@ -143,6 +171,7 @@ export default function LoginPage() {
           alt="Background Image"
           className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
           fill
+          onError={() => setHeroSrc("/image.png")}
         />
       </div>
     </div>
