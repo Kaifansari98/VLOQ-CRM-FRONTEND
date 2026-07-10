@@ -38,13 +38,13 @@ export type CutListRow = Record<string, any>;
 // In your page component
 export default function CutListPage() {
     const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-    const { project_id } = useParams();
+    const { uniqueProjectId } = useParams();
     const {
         data: response,
         isLoading,
         isError,
         refetch,
-    } = useProjectCutList(Number(vendorId), String(project_id));
+    } = useProjectCutList(Number(vendorId), String(uniqueProjectId));
 
     const data = response?.data ?? [];
     const machineColumns = response?.machineColumns ?? [];
@@ -58,7 +58,7 @@ export default function CutListPage() {
     ) => {
         try {
             const payload: CutListSavePayload = {
-                project_id: String(project_id),
+                project_id: String(uniqueProjectId),
                 vendor_id: Number(vendorId),
                 cutListIds: String(cutListIds),
                 machine_id: machineId,
@@ -82,7 +82,7 @@ export default function CutListPage() {
         try {
             const pdfUrl = await generateQRLabels(
                 Number(vendorId),
-                String(project_id),
+                String(uniqueProjectId),
                 cutListIds
             );
 
@@ -99,7 +99,7 @@ export default function CutListPage() {
         try {
             const fileUrl = await downloadCutListExcel(
                 Number(vendorId),
-                String(project_id),
+                String(uniqueProjectId),
             );
 
             return fileUrl;
@@ -115,7 +115,7 @@ export default function CutListPage() {
         try {
             const fileUrl = await downloadCutListBasicExcel(
                 Number(vendorId),
-                String(project_id),
+                String(uniqueProjectId),
             );
 
             return fileUrl;

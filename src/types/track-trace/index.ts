@@ -337,12 +337,17 @@ export interface VendorLeadsResponse {
   };
 }
 
-export interface CreateTrackTraceProjectRequest {
+export type CreateTrackTraceProjectRequest = {
   vendorId: number;
-  lead_id?: number | null;
   projectName: string;
-  file: File;
-}
+  file?: File;
+  lead_id?: number | null;
+
+  order_no?: string;
+  client_name?: string;
+  client_address?: string;
+  client_contact_no?: string;
+};
 
 export interface CreateTrackTraceProjectResponse {
   success: boolean;

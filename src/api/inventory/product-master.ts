@@ -43,6 +43,12 @@ export interface ProductSupplierPayload {
   company_vendor_id: number;
   supplier_item_code?: string | null;
   amount?: number | null;
+  procurement_expense_amount?: number | null;
+  procurement_expense_pct?: number | null;
+  procurement_expense_total?: number | null;
+
+  final_amount?: number | null;
+
 }
 
 export interface ProductMastersResponse {
@@ -108,4 +114,25 @@ export const updateProductMasterApi = async (
   );
 
   return data;
+};
+
+export type CreateHSNPayload = {
+  hsn_code: string;
+  description?: string;
+  igst_rate: number;
+};
+
+export const createHSNApi = async (
+  vendorId: number,
+  payload: CreateHSNPayload
+) => {
+  const res = await apiClient.post(`/inventory/hsn/${vendorId}`, payload);
+
+  const data = res.data;
+
+  if (data.status === 0) {
+    throw new Error(data.message || "Failed to create HSN");
+  }
+
+  return data.data;
 };

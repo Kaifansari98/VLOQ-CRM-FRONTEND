@@ -74,6 +74,15 @@ export interface CreatePIPayload {
   priority: PIPriority;
   remarks?: string;
   items: CreatePIItem[];
+  supplier_additional_costs?: {
+  company_vendor_id: number;
+  additional_cost_id: number;
+  calculation_type: "Fixed" | "Percentage";
+  amount?: number;
+  percentage?: number;
+  tax_pct?: number;
+  remarks?: string;
+}[];
 }
 
 export interface PISummary {
@@ -313,4 +322,62 @@ export const deletePurchaseIntent = async (
   );
 
   return data;
+};
+
+export type AdditionalCostOption = {
+  id: number;
+  cost_name: string;
+  cost_code?: string | null;
+  description?: string | null;
+  is_taxable: boolean;
+  tax_pct: string | number;
+};
+
+export type SupplierAdditionalCostPayload = {
+  company_vendor_id: number;
+  additional_cost_id: number;
+  calculation_type: "Fixed" | "Percentage";
+  amount: number;
+  percentage: number;
+  tax_pct: number;
+  remarks?: string;
+};
+
+
+export const fetchAdditionalCosts = async (vendorId: number) => {
+  const res = await apiClient.get(`/inventory/additional-costs/${vendorId}`);
+
+  const data = res.data;
+
+  if (data.status === 0) {
+    throw new Error(data.message || "Failed to fetch additional costs");
+  }
+
+  return data.data as AdditionalCostOption[];
+};
+
+
+export const createAdditionalCostApi = async (
+  vendorId: number,
+  payload: {
+    cost_name: string;
+    cost_code?: string;
+    description?: string;
+    is_taxable?: boolean;
+    tax_pct?: number;
+    created_by?: number;
+  }
+) => {
+  const res = await apiClient.post(
+    `/inventory/additional-costs/${vendorId}`,
+    payload
+  );
+
+  const data = res.data;
+
+  if (data.status === 0) {
+    throw new Error(data.message || "Failed to create additional cost");
+  }
+
+  return data.data as AdditionalCostOption;
 };

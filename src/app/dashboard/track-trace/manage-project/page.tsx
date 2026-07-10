@@ -2,7 +2,7 @@
 
 import { useAppSelector } from "@/redux/store";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+// import { useState } from "react";
 
 import {
   Breadcrumb,
@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import TrackTraceProjectTable from "@/components/custom/track-trace-project-table";
 import { useTrackTraceProjects } from "@/hooks/track-trace/useTrackTraceProjects";
 import { TrackTraceProject } from "@/types/track-trace/track-trace.types";
-import { CreateProjectModal } from "@/components/track-trace/CreateProjectModal";
+// import { CreateProjectModal } from "@/components/track-trace/CreateProjectModal";
 
 export default function TrackTraceProjectsPage() {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -31,7 +31,7 @@ export default function TrackTraceProjectsPage() {
     isError,
   } = useTrackTraceProjects(vendorId);
 
-  const [openModal, setOpenModal] = useState(false);
+  // const [openModal, setOpenModal] = useState(false);
 
   // Action 1 — Cut list & machine info (existing manage-project page)
   const handleCutList = (row: TrackTraceProject) =>
@@ -40,6 +40,9 @@ export default function TrackTraceProjectsPage() {
   // Action 2 — Full project detail with boxes
   const handleProjectDetail = (row: TrackTraceProject) =>
     router.push(`/dashboard/track-trace/manage-project/${row.unique_project_id}/details`);
+
+  const handleEditProject = (row: TrackTraceProject) =>
+    router.push(`/dashboard/track-trace/manage-project/${row.unique_project_id}/edit`);
 
   // Keep double-click behaviour on cut list (existing default)
   const navigateTrackTraceProject = (row: TrackTraceProject) =>
@@ -58,7 +61,7 @@ export default function TrackTraceProjectsPage() {
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
-                <BreadcrumbPage>Manage Projects</BreadcrumbPage>
+                <BreadcrumbPage>Create Projects</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
@@ -70,7 +73,10 @@ export default function TrackTraceProjectsPage() {
           <h1 className="text-lg font-semibold">
             Manage Track & Trace Projects
           </h1>
-          <Button size="sm" onClick={() => setOpenModal(true)}>
+          <Button
+            size="sm"
+            onClick={() => router.push("/dashboard/track-trace/manage-project/create")}
+          >
             Create New Project
           </Button>
         </div>
@@ -93,12 +99,13 @@ export default function TrackTraceProjectsPage() {
             onRowDoubleClick={navigateTrackTraceProject}
             onCutListClick={handleCutList}
             onProjectDetailClick={handleProjectDetail}
+            onEditClick={handleEditProject}
             className="pt-3 px-4"
           />
         )}
       </main>
 
-      <CreateProjectModal open={openModal} onOpenChange={setOpenModal} />
+
     </>
   );
 }

@@ -406,7 +406,7 @@ function CutListSection({ cutlist, machineIds }: {
 
 export default function ProjectDetailPage() {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-  const { project_id } = useParams<{ project_id: string }>();
+  const { uniqueProjectId } = useParams<{ uniqueProjectId: string }>();
 
   const [data, setData] = useState<ProjectDetailData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -417,27 +417,27 @@ export default function ProjectDetailPage() {
   const [downloadingAll, setDownloadingAll] = useState(false);
 
   useEffect(() => {
-    if (!vendorId || !project_id) return;
+    if (!vendorId || !uniqueProjectId) return;
     setLoading(true);
-    getProjectDetail(Number(vendorId), String(project_id))
+    getProjectDetail(Number(vendorId), String(uniqueProjectId))
       .then(setData)
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [vendorId, project_id]);
+  }, [vendorId, uniqueProjectId]);
 
   const machineIds = data
     ? data.machines.map(m => ({ id: m.machine_id, name: m.machine_name }))
     : [];
 
   const handleDownloadBoxPdf = async (box: ProjectDetailData["boxes"][0]) => {
-    if (!vendorId || !project_id) return;
+    if (!vendorId || !uniqueProjectId) return;
 
     try {
       setDownloadingBoxId(box.id);
 
       const response = await downloadBoxPdf(
         box.id,
-        String(project_id),
+        String(uniqueProjectId),
         Number(vendorId)
       );
 
@@ -478,13 +478,13 @@ export default function ProjectDetailPage() {
 
 
   const handleDownloadAllBoxes = async () => {
-    if (!vendorId || !project_id) return;
+    if (!vendorId || !uniqueProjectId) return;
 
     try {
       setDownloadingAll(true);
 
       const response = await downloadProjectFullReport(
-        String(project_id),
+        String(uniqueProjectId),
         Number(vendorId)
       );
 
@@ -669,7 +669,7 @@ export default function ProjectDetailPage() {
           open={!!selectedBox}
           onClose={() => setSelectedBox(null)}
           vendorId={Number(vendorId)}
-          projectId={String(project_id)}
+          projectId={String(uniqueProjectId)}
           boxId={selectedBox.id}
           boxName={selectedBox.name}
         />
