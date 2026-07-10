@@ -112,20 +112,20 @@ export function TeamSwitcher({
                 size="lg"
                 className="text-sidebar-foreground data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
-                <div className="bg-sidebar-primary text-sidebar-primary-foreground relative aspect-square size-8 overflow-hidden rounded-lg border-none">
+                <div className="bg-black text-sidebar-primary-foreground relative aspect-square size-8 overflow-hidden rounded-lg border-none">
                   {user?.vendor?.iconUrl ? (
                     <Image
                       src={user.vendor.iconUrl}
                       alt="Vendor Icon"
                       fill
-                      className="object-cover"
+                      className="object-contain p-1"
                     />
                   ) : isShambhala ? (
                     <Image
                       src="/logos/shambhala-short-logo.png"
                       alt="Shambhala"
                       fill
-                      className="object-cover"
+                      className="object-contain p-1"
                     />
                   ) : (
                     <>
@@ -133,13 +133,13 @@ export function TeamSwitcher({
                         src="/logos/furnix-logo-light.png"
                         alt="Logo"
                         fill
-                        className="object-cover dark:hidden"
+                        className="object-contain dark:hidden p-1"
                       />
                       <Image
                         src="/logos/furnix-logo-light.png"
                         alt="Logo"
                         fill
-                        className="object-cover hidden dark:block"
+                        className="object-contain hidden dark:block p-1"
                       />
                     </>
                   )}
