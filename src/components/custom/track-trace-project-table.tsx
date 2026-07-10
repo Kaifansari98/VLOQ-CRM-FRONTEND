@@ -99,7 +99,7 @@ export default function TrackTraceProjectTable({
                   )}
                 >
                   {row.track_trace_status ?? "Not Started"}
-                </Badge>
+              </Badge>
               </TableCell>
 
 

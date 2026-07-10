@@ -65,7 +65,7 @@ const projectFormSchema = z.object({
     .default([])
     .refine(
       (files) => {
-        if (!files || files.length === 0) return true;
+        if (files.length === 0) return true;
 
         const file = files[0];
 
@@ -73,8 +73,8 @@ const projectFormSchema = z.object({
           file.type ===
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
           file.type === "application/vnd.ms-excel" ||
-          file.name.endsWith(".xlsx") ||
-          file.name.endsWith(".xls")
+          file.name.toLowerCase().endsWith(".xlsx") ||
+          file.name.toLowerCase().endsWith(".xls")
         );
       },
       {
@@ -83,7 +83,9 @@ const projectFormSchema = z.object({
     ),
 });
 
-type ProjectFormData = z.infer<typeof projectFormSchema>;
+
+type ProjectFormInput = z.input<typeof projectFormSchema>;
+type ProjectFormData = z.output<typeof projectFormSchema>;
 
 type TrackTraceProjectFormProps = {
   mode: "create" | "edit";
@@ -307,18 +309,18 @@ export default function TrackTraceProjectForm({
   const [selectedLeadFromProject, setSelectedLeadFromProject] =
     useState<ExtendedLeadOption | null>(null);
 
-  const form = useForm<ProjectFormData>({
-    resolver: zodResolver(projectFormSchema),
-    defaultValues: {
-      projectName: "",
-      lead_id: null,
-      order_no: "",
-      client_name: "",
-      client_address: "",
-      client_contact_no: "",
-      file: [],
-    },
-  });
+const form = useForm<ProjectFormInput, unknown, ProjectFormData>({
+  resolver: zodResolver(projectFormSchema),
+  defaultValues: {
+    projectName: "",
+    lead_id: null,
+    order_no: "",
+    client_name: "",
+    client_address: "",
+    client_contact_no: "",
+    file: [],
+  },
+});
 
   const selectedLeadId = form.watch("lead_id");
   const isLeadSelected = !!selectedLeadId;
