@@ -192,109 +192,109 @@ const MeetingDetailsModal = ({
         description="View meeting records, attached assets, and submission history."
         size="lg"
       >
-        <div className="space-y-5 px-6 py-5">
-          <div className="overflow-hidden rounded-[28px] border border-border/70 bg-gradient-to-br from-stone-50 via-white to-zinc-50 shadow-sm">
-            <div className="border-b border-border/60 px-6 py-5">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="space-y-3">
+        <div className="space-y-6 px-6 py-6">
+          {/* Top Info Card */}
+          <div className="overflow-hidden rounded-2xl border border-neutral-100 bg-neutral-50/50 p-6">
+            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-neutral-900 text-white shadow-md">
+                  <Calendar className="h-6 w-6" />
+                </div>
+                <div className="space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge
-                      variant="secondary"
-                      className="rounded-full bg-black px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-white hover:bg-black"
-                    >
-                      {meeting.meetingType?.type ?? "Meeting"} - Meeting
+                    <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                      Meeting Date
+                    </span>
+                    <Badge variant="outline" className="rounded-full border-neutral-200 bg-white px-2 py-0.5 text-[10px] font-medium text-neutral-600 shadow-sm">
+                      {meeting.meetingType?.type ?? "Standard"}
                     </Badge>
                   </div>
-
-                  <div className="space-y-1">
-                    <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-                      {formatDateOnly(meeting.date)}
-                    </h2>
-                    {formattedMeetingTime && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Clock3 className="h-4 w-4" />
-                        <span>{formattedMeetingTime}</span>
-                      </div>
-                    )}
-                    <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                      Review meeting notes, uploaded documents, and visual references in one place.
-                    </p>
-                  </div>
+                  <h2 className="text-xl font-bold tracking-tight text-neutral-900">
+                    {formatDateOnly(meeting.date)}
+                  </h2>
                 </div>
               </div>
-            </div>
 
-            <div className=" bg-white p-6">
+              {formattedMeetingTime && (
+                <div className="flex items-center gap-3 rounded-xl border border-neutral-200/60 bg-white px-4 py-3 shadow-sm md:self-center">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">
+                    <Clock3 className="h-4 w-4" />
+                  </div>
+                  <div className="space-y-0.5 text-left">
+                    <span className="block text-[10px] font-medium uppercase tracking-wider text-neutral-400">
+                      Time Slot
+                    </span>
+                    <span className="text-sm font-semibold text-neutral-800">
+                      {formattedMeetingTime}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Meeting Description Section */}
+          <div className="rounded-2xl border border-neutral-200/60 bg-white p-6 shadow-sm">
             <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-stone-100">
-                <MessageSquareText className="h-5 w-5 text-foreground/75" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-100 text-neutral-800">
+                <MessageSquareText className="h-5 w-5" />
               </div>
-              <div>
-                <h3 className="text-base font-semibold text-foreground">
-                  Meeting Description
+              <div className="text-left">
+                <h3 className="text-sm font-bold text-neutral-900">
+                  Notes & Discussion Summary
                 </h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs text-neutral-400">
                   Summary and discussion context captured for this meeting.
                 </p>
               </div>
             </div>
 
-            <div className="rounded-3xl border border-dashed border-border/70 bg-stone-50/70 p-5">
-              <p className="text-sm leading-7 text-foreground/80">
+            <div className="rounded-xl border border-neutral-100 bg-neutral-50/30 p-4 text-left">
+              <p className="text-sm leading-7 text-neutral-700 whitespace-pre-line">
                 {meeting.desc || "No description available for this meeting."}
               </p>
             </div>
           </div>
-          </div>
 
-          <div className="rounded-[28px] border border-border/70 bg-white p-6 shadow-sm">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <div className="mb-2 flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100">
-                    <FileText className="h-5 w-5 text-foreground/75" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-semibold tracking-tight">
-                      Meeting Files & Images
-                    </h2>
-                    <p className="text-xs text-muted-foreground">
-                      Includes all files uploaded during this meeting.
-                    </p>
-                  </div>
+          {/* Attachments Section */}
+          <div className="rounded-2xl border border-neutral-200/60 bg-white p-6 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-neutral-100 pb-5">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-100 text-neutral-800">
+                  <Paperclip className="h-5 w-5" />
+                </div>
+                <div className="text-left">
+                  <h2 className="text-sm font-bold text-neutral-900">
+                    Meeting Attachments
+                  </h2>
+                  <p className="text-xs text-neutral-400">
+                    Access all documents and images uploaded for this meeting.
+                  </p>
                 </div>
               </div>
 
               {canEditMeetingFiles && (
                 <Button
                   onClick={() => setOpenAddFilesModal(true)}
-                  className="h-10 gap-2 rounded-xl"
+                  variant="outline"
+                  className="h-9 gap-1.5 rounded-lg border-neutral-200 text-xs font-semibold shadow-sm hover:bg-neutral-50"
                 >
-                  <Plus className="h-4 w-4" />
-                  Add More Files
+                  <Plus className="h-3.5 w-3.5" />
+                  Attach Files
                 </Button>
               )}
             </div>
 
             <div className="mt-6 space-y-6">
-              {meetingImages.length > 0 ? (
-                <div className="rounded-3xl border border-border/70 bg-stone-50/60 p-5">
-                  <div className="mb-4 flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white shadow-sm">
-                      <FileImage className="h-4 w-4 text-foreground/75" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-sm">Meeting Images</h3>
-                      <p className="text-xs text-muted-foreground">
-                        Visual references shared during the meeting.
-                      </p>
-                    </div>
-                    <Badge variant="secondary" className="ml-auto rounded-full">
-                      {meetingImages.length}
-                    </Badge>
+              {meetingImages.length > 0 && (
+                <div className="space-y-3 text-left">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">
+                      Images ({meetingImages.length})
+                    </span>
                   </div>
 
-                  <div className="flex flex-wrap gap-5">
+                  <div className="flex flex-wrap gap-4">
                     {meetingImages.map((img, index) => (
                       <div key={img.id} className="w-fit max-w-full">
                         <ImageComponent
@@ -312,26 +312,17 @@ const MeetingDetailsModal = ({
                     ))}
                   </div>
                 </div>
-              ) : null}
+              )}
 
-              {docsArray.length > 0 ? (
-                <div className="rounded-3xl border border-border/70 bg-stone-50/60 p-5">
-                  <div className="mb-4 flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white shadow-sm">
-                      <FileText className="h-4 w-4 text-foreground/75" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-sm">Documents</h3>
-                      <p className="text-xs text-muted-foreground">
-                        PDFs and supporting files attached to this meeting.
-                      </p>
-                    </div>
-                    <Badge variant="secondary" className="ml-auto rounded-full">
-                      {docsArray.length}
-                    </Badge>
+              {docsArray.length > 0 && (
+                <div className="space-y-3 text-left pt-4 border-t border-neutral-100">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">
+                      Documents ({docsArray.length})
+                    </span>
                   </div>
 
-                  <div className="flex flex-wrap gap-5">
+                  <div className="flex flex-wrap gap-4">
                     {docsArray.map((doc) => (
                       <div key={doc.id} className="w-fit max-w-full">
                         <DocumentCard
@@ -348,21 +339,12 @@ const MeetingDetailsModal = ({
                     ))}
                   </div>
                 </div>
-              ) : null}
+              )}
 
               {meetingImages.length === 0 && docsArray.length === 0 && (
-                <div className="rounded-3xl border border-dashed border-border/70 bg-stone-50/60 px-6 py-10 text-center">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-sm">
-                    <Paperclip className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <h3 className="mt-4 text-base font-semibold text-foreground">
-                    No files added yet
-                  </h3>
-                  <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-                    This meeting does not have any images or documents yet.
-                    {canEditMeetingFiles
-                      ? " Use the add files action to attach them."
-                      : ""}
+                <div className="py-8 text-center">
+                  <p className="text-sm text-neutral-400">
+                    No files or attachments have been uploaded for this meeting.
                   </p>
                 </div>
               )}
