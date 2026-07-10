@@ -115,7 +115,7 @@ export default function DashboardLayout({
     <SidebarProvider>
       <AppSidebar />
 
-      <SidebarInset className="w-full overflow-x-hidden flex flex-col">
+      <SidebarInset className="w-full flex flex-col">
         <main className="w-full">{children}</main>
       </SidebarInset>
     </SidebarProvider>
