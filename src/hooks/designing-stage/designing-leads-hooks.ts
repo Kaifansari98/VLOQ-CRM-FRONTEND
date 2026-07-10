@@ -9,6 +9,9 @@ import {
   getDesignsDoc,
   getElectricalPlumbingDoc,
   getFinalIsmUploadDoc,
+  getLeadSpecifications,
+  getLeadCarcassMaterialMappings,
+  getLeadShutterMaterialMappings,
   getCHSSelectionTypeMappings,
   getCHSManufacturingDaysByInstance,
   getInstanceStage,
@@ -25,6 +28,10 @@ import {
   submitQuotation,
   submitSelection,
   SubmitSelectionPayload,
+  upsertLeadCarcassMaterialMapping,
+  UpsertLeadCarcassMaterialMappingPayload,
+  upsertLeadShutterMaterialMapping,
+  UpsertLeadShutterMaterialMappingPayload,
   upsertCHSSelectionTypeMapping,
   UpsertCHSMappingPayload,
   updateCHSSelectionTypeMapping,
@@ -143,6 +150,72 @@ export const useSubmitFinalIsmUpload = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ["getFinalIsmUploadDoc", variables.vendorId, variables.leadId],
+      });
+    },
+  });
+};
+
+export const useLeadSpecifications = (vendorId?: number, leadId?: number) => {
+  return useQuery({
+    queryKey: ["leadSpecifications", vendorId, leadId],
+    queryFn: () => getLeadSpecifications(vendorId!, leadId!),
+    enabled: !!vendorId && !!leadId,
+  });
+};
+
+export const useLeadCarcassMaterialMappings = (
+  vendorId?: number,
+  leadId?: number,
+) => {
+  return useQuery({
+    queryKey: ["leadCarcassMaterialMappings", vendorId, leadId],
+    queryFn: () => getLeadCarcassMaterialMappings(vendorId!, leadId!),
+    enabled: !!vendorId && !!leadId,
+  });
+};
+
+export const useUpsertLeadCarcassMaterialMapping = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: UpsertLeadCarcassMaterialMappingPayload) =>
+      upsertLeadCarcassMaterialMapping(payload),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [
+          "leadCarcassMaterialMappings",
+          variables.vendor_id,
+          variables.lead_id,
+        ],
+      });
+    },
+  });
+};
+
+export const useLeadShutterMaterialMappings = (
+  vendorId?: number,
+  leadId?: number,
+) => {
+  return useQuery({
+    queryKey: ["leadShutterMaterialMappings", vendorId, leadId],
+    queryFn: () => getLeadShutterMaterialMappings(vendorId!, leadId!),
+    enabled: !!vendorId && !!leadId,
+  });
+};
+
+export const useUpsertLeadShutterMaterialMapping = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: UpsertLeadShutterMaterialMappingPayload) =>
+      upsertLeadShutterMaterialMapping(payload),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [
+          "leadShutterMaterialMappings",
+          variables.vendor_id,
+          variables.lead_id,
+        ],
       });
     },
   });

@@ -13,8 +13,12 @@ import {
   fetchPrivilegeMasters,
   fetchCompanyVendorsForMaster,
   fetchCarcassTypes,
+  fetchCarcasMaterials,
+  fetchCarcassMaterialFinishes,
   fetchFastProductionTimelineRules,
   fetchShutterTypes,
+  fetchShutterMaterials,
+  fetchShutterMaterialFinishes,
   fetchHandleTypes,
   createMiscellaneousTeam,
   createMiscellaneousType,
@@ -75,7 +79,11 @@ const getPrivilegeMastersQueryKey = (
   userId ?? null,
 ];
 const getCarcassTypesQueryKey = (vendorId?: number) => ["carcassTypes", vendorId];
+const getCarcasMaterialsQueryKey = (vendorId?: number) => ["carcasMaterials", vendorId];
+const getCarcassMaterialFinishesQueryKey = (carcasMaterialId?: number) => ["carcassMaterialFinishes", carcasMaterialId];
 const getShutterTypesQueryKey = (vendorId?: number) => ["shutterTypes", vendorId];
+const getShutterMaterialsQueryKey = (vendorId?: number) => ["shutterMaterials", vendorId];
+const getShutterMaterialFinishesQueryKey = (shutterMaterialId?: number) => ["shutterMaterialFinishes", shutterMaterialId];
 const getHandleTypesQueryKey = (vendorId?: number) => ["handleTypes", vendorId];
 const getFastProductionTimelineRulesQueryKey = (vendorId?: number) => ["fastProductionTimelineRules", vendorId];
 const getSmallOrderRequestTypesQueryKey = (vendorId?: number) => ["smallOrderRequestTypes", vendorId];
@@ -452,12 +460,54 @@ export const useCarcassTypes = () => {
   });
 }
 
+export const useCarcasMaterials = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: getCarcasMaterialsQueryKey(vendorId),
+    queryFn: () => fetchCarcasMaterials(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useCarcassMaterialFinishes = (carcasMaterialId?: number) => {
+  return useQuery({
+    queryKey: getCarcassMaterialFinishesQueryKey(carcasMaterialId),
+    queryFn: () => fetchCarcassMaterialFinishes(carcasMaterialId!),
+    enabled: !!carcasMaterialId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
 export const useShutterTypes = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   return useQuery({
     queryKey: getShutterTypesQueryKey(vendorId),
     queryFn: () => fetchShutterTypes(vendorId!),
     enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useShutterMaterials = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: getShutterMaterialsQueryKey(vendorId),
+    queryFn: () => fetchShutterMaterials(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useShutterMaterialFinishes = (shutterMaterialId?: number) => {
+  return useQuery({
+    queryKey: getShutterMaterialFinishesQueryKey(shutterMaterialId),
+    queryFn: () => fetchShutterMaterialFinishes(shutterMaterialId!),
+    enabled: !!shutterMaterialId,
     retry: false,
     refetchOnWindowFocus: false,
   });

@@ -169,6 +169,50 @@ export interface ShutterTypeMasterResponse {
   data: ShutterTypeMasterEntry[];
 }
 
+export interface CarcasMaterialFinishMasterEntry {
+  id: number;
+  name: string;
+  carcas_material_id: number;
+}
+
+export interface CarcasMaterialFinishMasterResponse {
+  success: boolean;
+  data: CarcasMaterialFinishMasterEntry[];
+}
+
+export interface CarcasMaterialMasterEntry {
+  id: number;
+  name: string;
+  vendor_id: number;
+}
+
+export interface CarcasMaterialMasterResponse {
+  success: boolean;
+  data: CarcasMaterialMasterEntry[];
+}
+
+export interface ShutterMaterialFinishMasterEntry {
+  id: number;
+  name: string;
+  shutter_material_id: number;
+}
+
+export interface ShutterMaterialFinishMasterResponse {
+  success: boolean;
+  data: ShutterMaterialFinishMasterEntry[];
+}
+
+export interface ShutterMaterialMasterEntry {
+  id: number;
+  name: string;
+  vendor_id: number;
+}
+
+export interface ShutterMaterialMasterResponse {
+  success: boolean;
+  data: ShutterMaterialMasterEntry[];
+}
+
 export interface HandleTypeMasterEntry {
   id: number;
   name: string;
@@ -368,6 +412,46 @@ export const fetchShutterTypes = async (vendorId: number) => {
           subTypes: Array.isArray(item.subTypes) ? item.subTypes : [],
         }))
       : [],
+  };
+}
+
+export const fetchCarcasMaterials = async (vendorId: number) => {
+  const res = await apiClient.get<CarcasMaterialMasterResponse>(
+    `/leads/get-all-carcas-materials/${vendorId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
+export const fetchCarcassMaterialFinishes = async (carcasMaterialId: number) => {
+  const res = await apiClient.get<CarcasMaterialFinishMasterResponse>(
+    `/leads/get-carcass-material-finishes/${carcasMaterialId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
+export const fetchShutterMaterials = async (vendorId: number) => {
+  const res = await apiClient.get<ShutterMaterialMasterResponse>(
+    `/leads/get-all-shutter-materials/${vendorId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
+export const fetchShutterMaterialFinishes = async (shutterMaterialId: number) => {
+  const res = await apiClient.get<ShutterMaterialFinishMasterResponse>(
+    `/leads/get-shutter-material-finishes/${shutterMaterialId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
   };
 }
 
