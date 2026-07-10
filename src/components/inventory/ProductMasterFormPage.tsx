@@ -7,6 +7,7 @@ import {
   ProductMastersResponse,
   ProductPayload,
   updateProductMasterApi,
+  createHSNApi
 } from "@/api/inventory/product-master";
 import {
   Breadcrumb,
@@ -30,6 +31,8 @@ import {
   Plus,
   Trash2,
   Building2,
+  PlusCircle,
+  X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -73,13 +76,50 @@ type ProductSupplierRow = {
   company_vendor_id: number | "";
   supplier_item_code: string;
   amount: string;
+
+  procurement_expense_amount: string;
+  procurement_expense_pct: string;
+  procurement_expense_total: string;
+  final_amount: string;
+
+
   same_as_product_code: boolean;
+
 };
 
 const toNumOrNull = (value: any) => {
   if (value === "" || value === undefined || value === null) return null;
   return Number(value);
 };
+
+const toNum = (value: any) => {
+  const n = Number(value || 0);
+  return Number.isFinite(n) ? n : 0;
+};
+const round2 = (value: number) => Number(value.toFixed(2));
+
+const recalcSupplierRow = (row: ProductSupplierRow): ProductSupplierRow => {
+  const amount = toNum(row.amount);
+  const procurementExpenseAmount = toNum(row.procurement_expense_amount);
+  const procurementExpensePct = toNum(row.procurement_expense_pct);
+
+  const procurementExpenseByPct = round2(
+    (amount * procurementExpensePct) / 100
+  );
+
+  const procurementExpenseTotal = round2(
+    procurementExpenseAmount + procurementExpenseByPct
+  );
+
+  const finalAmount = round2(amount + procurementExpenseTotal);
+
+  return {
+    ...row,
+    procurement_expense_total: String(procurementExpenseTotal),
+    final_amount: String(finalAmount),
+  };
+};
+
 
 export function ProductMasterFormPage({
   mode,
@@ -100,6 +140,101 @@ export function ProductMasterFormPage({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+
+  const [hsnModalOpen, setHsnModalOpen] = useState(false);
+  const [hsnSaving, setHsnSaving] = useState(false);
+
+  const [hsnForm, setHsnForm] = useState({
+    hsn_code: "",
+    description: "",
+    igst_rate: "",
+  });
+  const saveHSN = async () => {
+    if (!vendorId) {
+      toastManager.add({
+        title: "Vendor not found",
+        type: "error",
+      });
+      return;
+    }
+
+    if (!hsnForm.hsn_code.trim()) {
+      toastManager.add({
+        title: "HSN code is required",
+        type: "error",
+      });
+      return;
+    }
+
+    if (!hsnForm.igst_rate) {
+      toastManager.add({
+        title: "IGST rate is required",
+        type: "error",
+      });
+      return;
+    }
+
+    const igstRate = Number(hsnForm.igst_rate);
+
+    if (!Number.isFinite(igstRate)) {
+      toastManager.add({
+        title: "IGST rate must be a valid number",
+        type: "error",
+      });
+      return;
+    }
+
+    if (igstRate < 0 || igstRate > 100) {
+      toastManager.add({
+        title: "IGST rate must be greater than 0 and less than or equal to 100",
+        type: "error",
+      });
+      return;
+    }
+
+    setHsnSaving(true);
+
+    try {
+      const createdHSN = await createHSNApi(vendorId, {
+        hsn_code: hsnForm.hsn_code.trim(),
+        description: hsnForm.description.trim() || undefined,
+        igst_rate: igstRate,
+      });
+
+      setMasters((prev) => {
+        if (!prev) return prev;
+
+        return {
+          ...prev,
+          hsns: [...prev.hsns, createdHSN].sort((a: any, b: any) =>
+            String(a.hsn_code).localeCompare(String(b.hsn_code))
+          ),
+        };
+      });
+
+      set("hsn_id", createdHSN.id);
+
+      toastManager.add({
+        title: "HSN added successfully",
+        type: "success",
+      });
+
+      setHsnForm({
+        hsn_code: "",
+        description: "",
+        igst_rate: "",
+      });
+
+      setHsnModalOpen(false);
+    } catch (error: any) {
+      toastManager.add({
+        title: error?.message || "Failed to add HSN",
+        type: "error",
+      });
+    } finally {
+      setHsnSaving(false);
+    }
+  };
   const isEdit = mode === "edit";
 
   useEffect(() => {
@@ -162,15 +297,32 @@ export function ProductMasterFormPage({
 
           });
           setSupplierRows(
-            (product.supplierMappings ?? []).map((row: any) => ({
-              company_vendor_id: row.company_vendor_id,
-              supplier_item_code: row.supplier_item_code || "",
-              amount: row.amount ? String(row.amount) : "",
-              same_as_product_code:
-                row.supplier_item_code &&
-                product.article_code &&
-                String(row.supplier_item_code) === String(product.article_code),
-            }))
+            (product.supplierMappings ?? []).map((row: any) =>
+              recalcSupplierRow({
+                company_vendor_id: row.company_vendor_id,
+                supplier_item_code: row.supplier_item_code || "",
+                amount: row.amount ? String(row.amount) : "",
+
+                procurement_expense_amount: row.procurement_expense_amount
+                  ? String(row.procurement_expense_amount)
+                  : "",
+
+                procurement_expense_pct: row.procurement_expense_pct
+                  ? String(row.procurement_expense_pct)
+                  : "",
+
+                procurement_expense_total: row.procurement_expense_total
+                  ? String(row.procurement_expense_total)
+                  : "0",
+
+                final_amount: row.final_amount ? String(row.final_amount) : "0",
+
+                same_as_product_code:
+                  row.supplier_item_code &&
+                  product.article_code &&
+                  String(row.supplier_item_code) === String(product.article_code),
+              })
+            )
           );
         } else {
           setForm({
@@ -221,6 +373,12 @@ export function ProductMasterFormPage({
         company_vendor_id: "",
         supplier_item_code: "",
         amount: "",
+
+        procurement_expense_amount: "",
+        procurement_expense_pct: "",
+        procurement_expense_total: "0",
+        final_amount: "0",
+
         same_as_product_code: false,
       },
     ]);
@@ -237,7 +395,8 @@ export function ProductMasterFormPage({
   ) => {
     setSupplierRows((prev) => {
       const next = [...prev];
-      const row = {
+
+      let row = {
         ...next[index],
         [field]: value,
       };
@@ -246,6 +405,8 @@ export function ProductMasterFormPage({
         row.same_as_product_code = Boolean(value);
         row.supplier_item_code = value ? form.article_code : "";
       }
+
+      row = recalcSupplierRow(row);
 
       next[index] = row;
       return next;
@@ -289,7 +450,22 @@ export function ProductMasterFormPage({
       .map((row) => ({
         company_vendor_id: Number(row.company_vendor_id),
         supplier_item_code: row.supplier_item_code?.trim() || null,
+
         amount: toNumOrNull(row.amount),
+
+        procurement_expense_amount: toNumOrNull(
+          row.procurement_expense_amount
+        ),
+
+        procurement_expense_pct: toNumOrNull(
+          row.procurement_expense_pct
+        ),
+
+        procurement_expense_total: toNumOrNull(
+          row.procurement_expense_total
+        ),
+
+        final_amount: toNumOrNull(row.final_amount),
       })),
   });
 
@@ -588,7 +764,7 @@ export function ProductMasterFormPage({
                     <option value="MANUAL">Manual Value Entry</option>
                   </select>
                 </Field>
-                <Field label="Process Cost(Men+Material+Machine)">
+                <Field label="Purchase Rate">
                   <input
                     type="number"
                     min="0"
@@ -600,19 +776,31 @@ export function ProductMasterFormPage({
                 </Field>
 
                 <Field label="HSN">
-                  <select
-                    value={form.hsn_id || ""}
-                    onChange={(e) => set("hsn_id", e.target.value)}
-                    className="input"
-                  >
-                    <option value="">Select HSN</option>
-                    {masters.hsns.map((h) => (
-                      <option key={h.id} value={h.id}>
-                        {h.hsn_code}
-                        {h.description ? ` - ${h.description}` : ""}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex gap-2">
+                    <select
+                      value={form.hsn_id || ""}
+                      onChange={(e) => set("hsn_id", e.target.value)}
+                      className="input"
+                    >
+                      <option value="">Select HSN</option>
+                      {masters.hsns.map((h: any) => (
+                        <option key={h.id} value={h.id}>
+                          {h.hsn_code}
+                          {h.description ? ` - ${h.description}` : ""}
+                        </option>
+                      ))}
+                    </select>
+
+                    <button
+                      type="button"
+                      onClick={() => setHsnModalOpen(true)}
+                      className="add-hsn-btn"
+                      title="Add HSN"
+                    >
+                      <PlusCircle size={16} />
+                      Add
+                    </button>
+                  </div>
                 </Field>
 
                 <Field label="Item Type">
@@ -719,85 +907,157 @@ export function ProductMasterFormPage({
                         return (
                           <div
                             key={index}
-                            className="grid gap-3 rounded-2xl border bg-muted/20 p-4 md:grid-cols-[1.2fr_1fr_160px_42px]"
+                            className="rounded-3xl border bg-background p-5 shadow-sm transition-all hover:border-indigo-200 hover:shadow-md"
                           >
-                            <Field label="Supplier">
-                              <select
-                                value={row.company_vendor_id}
-                                onChange={(e) =>
-                                  updateSupplierRow(
-                                    index,
-                                    "company_vendor_id",
-                                    e.target.value ? Number(e.target.value) : ""
-                                  )
-                                }
-                                className="input"
-                              >
-                                <option value="">Select supplier</option>
+                            <div className="mb-4 flex items-start justify-between gap-3">
+                              <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                                  <Building2 size={18} />
+                                </div>
 
-                                {availableSuppliers.map((supplier) => (
-                                  <option key={supplier.id} value={supplier.id}>
-                                    {supplier.company_name} · {supplier.vendor_code}
-                                  </option>
-                                ))}
-                              </select>
-                            </Field>
+                                <div>
+                                  <p className="text-sm font-black">Supplier #{index + 1}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Supplier code, base amount and procurement expense.
+                                  </p>
+                                </div>
+                              </div>
 
-                            <div>
-                              <Field label="Supplier Item Code">
-                                <input
-                                  value={row.supplier_item_code}
-                                  disabled={row.same_as_product_code}
-                                  onChange={(e) =>
-                                    updateSupplierRow(
-                                      index,
-                                      "supplier_item_code",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="input"
-                                  placeholder="Supplier item code"
-                                />
-                              </Field>
-
-                              <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                                <input
-                                  type="checkbox"
-                                  checked={row.same_as_product_code}
-                                  onChange={(e) =>
-                                    updateSupplierRow(
-                                      index,
-                                      "same_as_product_code",
-                                      e.target.checked
-                                    )
-                                  }
-                                />
-                                Seller code same as main product code
-                              </label>
-                            </div>
-
-                            <Field label="Amount">
-                              <input
-                                type="number"
-                                min="0"
-                                value={row.amount}
-                                onChange={(e) =>
-                                  updateSupplierRow(index, "amount", e.target.value)
-                                }
-                                className="input"
-                                placeholder="0.00"
-                              />
-                            </Field>
-
-                            <div className="flex items-end">
                               <Button
                                 type="button"
                                 variant="outline"
-                                className="h-[42px] w-[42px] p-0 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                className="h-9 w-9 p-0 text-red-600 hover:bg-red-50 hover:text-red-700"
                                 onClick={() => removeSupplierRow(index)}
                               >
                                 <Trash2 size={15} />
                               </Button>
+                            </div>
+
+                            <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
+                              <Field label="Supplier">
+                                <select
+                                  value={row.company_vendor_id}
+                                  onChange={(e) =>
+                                    updateSupplierRow(
+                                      index,
+                                      "company_vendor_id",
+                                      e.target.value ? Number(e.target.value) : ""
+                                    )
+                                  }
+                                  className="input"
+                                >
+                                  <option value="">Select supplier</option>
+
+                                  {availableSuppliers.map((supplier) => (
+                                    <option key={supplier.id} value={supplier.id}>
+                                      {supplier.company_name} · {supplier.vendor_code}
+                                    </option>
+                                  ))}
+                                </select>
+                              </Field>
+
+                              <div>
+                                <Field label="Supplier Item Code">
+                                  <input
+                                    value={row.supplier_item_code}
+                                    disabled={row.same_as_product_code}
+                                    onChange={(e) =>
+                                      updateSupplierRow(index, "supplier_item_code", e.target.value)
+                                    }
+                                    className="input"
+                                    placeholder="Supplier item code"
+                                  />
+                                </Field>
+
+                                <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                                  <input
+                                    type="checkbox"
+                                    checked={row.same_as_product_code}
+                                    onChange={(e) =>
+                                      updateSupplierRow(index, "same_as_product_code", e.target.checked)
+                                    }
+                                  />
+                                  Seller code same as main product code
+                                </label>
+                              </div>
+                            </div>
+
+                            <div className="mt-5 rounded-2xl border bg-muted/20 p-4">
+                              <div className="mb-3 flex items-center justify-between gap-3">
+                                <div>
+                                  <p className="text-xs font-black uppercase tracking-wide text-muted-foreground">
+                                    Supplier Pricing
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Final amount is calculated from amount + procurement expense.
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                                <Field label="Amount">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={row.amount}
+                                    onChange={(e) =>
+                                      updateSupplierRow(index, "amount", e.target.value)
+                                    }
+                                    className="input"
+                                    placeholder="0.00"
+                                  />
+                                </Field>
+
+                                <Field label="Proc. Exp Amt">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={row.procurement_expense_amount}
+                                    onChange={(e) =>
+                                      updateSupplierRow(
+                                        index,
+                                        "procurement_expense_amount",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="input"
+                                    placeholder="0.00"
+                                  />
+                                </Field>
+
+                                <Field label="Proc. Exp %">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={row.procurement_expense_pct}
+                                    onChange={(e) =>
+                                      updateSupplierRow(
+                                        index,
+                                        "procurement_expense_pct",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="input"
+                                    placeholder="0"
+                                  />
+                                </Field>
+
+                                <Field label="Proc. Exp Total">
+                                  <input
+                                    value={row.procurement_expense_total}
+                                    disabled
+                                    className="input bg-indigo-50/70 font-bold text-indigo-700"
+                                  />
+                                </Field>
+
+                                <Field label="Final Amount">
+                                  <input
+                                    value={row.final_amount}
+                                    disabled
+                                    className="input bg-emerald-50/70 font-black text-emerald-700"
+                                  />
+                                </Field>
+                              </div>
                             </div>
                           </div>
                         );
@@ -835,23 +1095,471 @@ export function ProductMasterFormPage({
           </div>
         )}
 
-        <style jsx>{`
-          .input {
-            height: 42px;
-            width: 100%;
-            border-radius: 12px;
-            border: 1px solid hsl(var(--border));
-            background: hsl(var(--background));
-            padding: 0 12px;
-            font-size: 14px;
-            outline: none;
-          }
+        {hsnModalOpen && (
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+            onMouseDown={() => setHsnModalOpen(false)}
+          >
+            <div
+              className="w-full max-w-lg overflow-hidden rounded-3xl border bg-background shadow-2xl"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b px-6 py-4">
+                <div>
+                  <p className="text-base font-black">Add HSN</p>
+                  <p className="text-xs text-muted-foreground">
+                    Enter IGST percentage. CGST and SGST will be divided equally.
+                  </p>
+                </div>
 
-          .input:focus {
-            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35);
-          }
-        `}</style>
+                <button
+                  type="button"
+                  onClick={() => setHsnModalOpen(false)}
+                  className="rounded-full p-2 text-muted-foreground hover:bg-muted"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="space-y-4 p-6">
+                <Field label="HSN Code *">
+                  <input
+                    value={hsnForm.hsn_code}
+                    onChange={(e) =>
+                      setHsnForm((prev) => ({
+                        ...prev,
+                        hsn_code: e.target.value,
+                      }))
+                    }
+                    className="input"
+                    placeholder="Example: 94036000"
+                  />
+                </Field>
+
+                <Field label="Description">
+                  <input
+                    value={hsnForm.description}
+                    onChange={(e) =>
+                      setHsnForm((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
+                    className="input"
+                    placeholder="Example: Wooden furniture"
+                  />
+                </Field>
+
+              <Field label="IGST % *">
+  <input
+    type="number"
+    min="0.01"
+    max="100"
+    step="0.01"
+    required
+    value={hsnForm.igst_rate}
+    onChange={(e) =>
+      setHsnForm((prev) => ({
+        ...prev,
+        igst_rate: e.target.value,
+      }))
+    }
+    className="input"
+    placeholder="Example: 18"
+  />
+</Field>
+
+                <div className="grid gap-3 rounded-2xl border bg-muted/30 p-4 md:grid-cols-3">
+                  <div>
+                    <p className="text-[11px] font-black uppercase text-muted-foreground">
+                      IGST
+                    </p>
+                    <p className="mt-1 text-sm font-bold">
+                      {Number(hsnForm.igst_rate || 0).toFixed(2)}%
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-[11px] font-black uppercase text-muted-foreground">
+                      CGST
+                    </p>
+                    <p className="mt-1 text-sm font-bold text-indigo-600">
+                      {(Number(hsnForm.igst_rate || 0) / 2).toFixed(2)}%
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-[11px] font-black uppercase text-muted-foreground">
+                      SGST
+                    </p>
+                    <p className="mt-1 text-sm font-bold text-indigo-600">
+                      {(Number(hsnForm.igst_rate || 0) / 2).toFixed(2)}%
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 border-t bg-muted/20 px-6 py-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setHsnModalOpen(false)}
+                  disabled={hsnSaving}
+                >
+                  Cancel
+                </Button>
+
+                <Button
+                  type="button"
+                  onClick={saveHSN}
+                  disabled={hsnSaving}
+                  className="gap-2"
+                >
+                  {hsnSaving ? (
+                    <Loader2 size={15} className="animate-spin" />
+                  ) : (
+                    <Save size={15} />
+                  )}
+                  Save HSN
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <style jsx>{`
+        .add-hsn-btn {
+  display: inline-flex;
+  height: 46px;
+  min-width: 82px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 14px;
+  border: 1px solid #c7d2fe;
+  background: #eef2ff;
+  padding: 0 14px;
+  color: #4f46e5;
+  font-size: 13px;
+  font-weight: 800;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.12s ease;
+}
+
+.add-hsn-btn:hover {
+  border-color: #818cf8;
+  background: #e0e7ff;
+  color: #3730a3;
+  transform: translateY(-1px);
+}
+
+.add-hsn-btn:active {
+  transform: translateY(0);
+}
+  .input {
+    height: 46px;
+    width: 100%;
+    border-radius: 14px;
+    border: 1px solid #d9dee8;
+    background-color: #ffffff;
+    padding: 0 14px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #111827;
+    outline: none;
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.04),
+      inset 0 1px 0 rgba(255, 255, 255, 0.65);
+    transition:
+      border-color 0.18s ease,
+      box-shadow 0.18s ease,
+      background-color 0.18s ease,
+      transform 0.12s ease;
+  }
+
+  .input::placeholder {
+    color: #9ca3af;
+    font-weight: 400;
+  }
+
+  .input:hover:not(:disabled) {
+    border-color: #a5b4fc;
+    background-color: #ffffff;
+  }
+
+  .input:focus {
+    border-color: #6366f1;
+    background-color: #ffffff;
+    box-shadow:
+      0 0 0 3px rgba(99, 102, 241, 0.14),
+      0 1px 2px rgba(15, 23, 42, 0.06);
+  }
+
+  .input:disabled {
+    cursor: not-allowed;
+    border-color: #e5e7eb;
+    background-color: #f8fafc;
+    color: #6b7280;
+    opacity: 1;
+  }
+
+  select.input {
+    cursor: pointer;
+    appearance: none;
+    background-image:
+      linear-gradient(45deg, transparent 50%, #6b7280 50%),
+      linear-gradient(135deg, #6b7280 50%, transparent 50%);
+    background-position:
+      calc(100% - 18px) 19px,
+      calc(100% - 13px) 19px;
+    background-size:
+      5px 5px,
+      5px 5px;
+    background-repeat: no-repeat;
+    padding-right: 38px;
+  }
+
+  select.input:hover {
+    background-image:
+      linear-gradient(45deg, transparent 50%, #4f46e5 50%),
+      linear-gradient(135deg, #4f46e5 50%, transparent 50%);
+  }
+
+  input[type='number'].input {
+    text-align: left;
+  }
+
+  input[type='number'].input::-webkit-inner-spin-button,
+  input[type='number'].input::-webkit-outer-spin-button {
+    opacity: 0.35;
+  }
+
+  .stock-card {
+    border-radius: 20px;
+    border: 1px solid #e1e5ee;
+    background: #ffffff;
+    padding: 16px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    transition:
+      border-color 0.18s ease,
+      box-shadow 0.18s ease;
+  }
+
+  .stock-card:hover {
+    border-color: #c7d2fe;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+  }
+
+  .stock-title {
+    margin-bottom: 12px;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #6b7280;
+  }
+
+  .supplier-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    border-radius: 18px;
+    border: 1px solid #e1e5ee;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+
+  .supplier-table-wrap::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  .supplier-table-wrap::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 999px;
+  }
+
+  .supplier-table-wrap::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.38);
+    border-radius: 999px;
+  }
+
+  .supplier-table-wrap::-webkit-scrollbar-thumb:hover {
+    background: rgba(99, 102, 241, 0.6);
+  }
+
+  .supplier-table {
+    width: 100%;
+    min-width: 1260px;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 12px;
+  }
+
+  .supplier-table thead {
+    background: #f8fafc;
+  }
+
+  .supplier-table th {
+    height: 44px;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 10px 12px;
+    color: #6b7280;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .supplier-table td {
+    border-bottom: 1px solid #eef2f7;
+    padding: 12px;
+    vertical-align: top;
+    background: #ffffff;
+  }
+
+  .supplier-table tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .supplier-table tbody tr:hover td {
+    background: #fafbff;
+  }
+
+  .supplier-input {
+    height: 40px;
+    width: 100%;
+    border-radius: 12px;
+    border: 1px solid #d9dee8;
+    background: #ffffff;
+    padding: 0 11px;
+    color: #111827;
+    font-size: 12px;
+    font-weight: 500;
+    outline: none;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035);
+    transition:
+      border-color 0.16s ease,
+      box-shadow 0.16s ease,
+      background-color 0.16s ease;
+  }
+
+  .supplier-input::placeholder {
+    color: #9ca3af;
+    font-weight: 400;
+  }
+
+  .supplier-input:hover:not(:disabled) {
+    border-color: #a5b4fc;
+  }
+
+  .supplier-input:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.13);
+  }
+
+  select.supplier-input {
+    cursor: pointer;
+    appearance: none;
+    background-image:
+      linear-gradient(45deg, transparent 50%, #6b7280 50%),
+      linear-gradient(135deg, #6b7280 50%, transparent 50%);
+    background-position:
+      calc(100% - 17px) 17px,
+      calc(100% - 12px) 17px;
+    background-size:
+      5px 5px,
+      5px 5px;
+    background-repeat: no-repeat;
+    padding-right: 36px;
+  }
+
+  .readonly-input {
+    border-color: transparent;
+    font-weight: 800;
+    cursor: default;
+    opacity: 1;
+  }
+
+  .expense-total-input {
+    background: #eef2ff;
+    color: #4338ca;
+  }
+
+  .final-input {
+    background: #ecfdf5;
+    color: #047857;
+    font-weight: 900;
+  }
+
+  .same-code-check {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: #6b7280;
+    font-size: 11px;
+    line-height: 1;
+    user-select: none;
+  }
+
+  .same-code-check input {
+    height: 14px;
+    width: 14px;
+    cursor: pointer;
+    accent-color: #4f46e5;
+  }
+
+  .percent-symbol {
+    pointer-events: none;
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6b7280;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .delete-supplier-btn {
+    display: inline-flex;
+    height: 38px;
+    width: 38px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    color: #dc2626;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease,
+      color 0.15s ease,
+      transform 0.15s ease;
+  }
+
+  .delete-supplier-btn:hover {
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: #b91c1c;
+    transform: translateY(-1px);
+  }
+
+  @media (max-width: 768px) {
+    .input {
+      height: 44px;
+      border-radius: 12px;
+    }
+
+    .supplier-table {
+      min-width: 1180px;
+    }
+  }
+`}</style>
       </main>
+
     </>
   );
 }

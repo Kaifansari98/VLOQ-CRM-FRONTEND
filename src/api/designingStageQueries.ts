@@ -616,3 +616,113 @@ export const getInstanceStage = async (
 
   return data?.data;
 };
+
+export interface LeadSpecificationEntry {
+  id: number;
+  vendor_id: number;
+  lead_id: number;
+  name: string;
+  created_at: string;
+  created_by: number;
+}
+
+export const getLeadSpecifications = async (
+  vendorId: number,
+  leadId: number,
+): Promise<LeadSpecificationEntry[]> => {
+  const { data } = await apiClient.get(
+    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/specifications`,
+  );
+
+  return Array.isArray(data?.data) ? data.data : [];
+};
+
+export interface LeadCarcassMaterialMappingEntry {
+  id: number;
+  vendor_id: number;
+  lead_id: number;
+  carcass_type_id: number;
+  carcas_material_id: number;
+  carcass_material_finish_id: number;
+  created_at: string;
+  created_by: number;
+  carcassType?: { id: number; name: string };
+  carcasMaterial?: { id: number; name: string };
+  carcassMaterialFinish?: { id: number; name: string };
+}
+
+export interface UpsertLeadCarcassMaterialMappingPayload {
+  id?: number;
+  vendor_id: number;
+  lead_id: number;
+  carcass_type_id: number;
+  carcas_material_id: number;
+  carcass_material_finish_id: number;
+  created_by: number;
+}
+
+export const getLeadCarcassMaterialMappings = async (
+  vendorId: number,
+  leadId: number,
+): Promise<LeadCarcassMaterialMappingEntry[]> => {
+  const { data } = await apiClient.get(
+    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/carcass-material-mappings`,
+  );
+
+  return Array.isArray(data?.data) ? data.data : [];
+};
+
+export const upsertLeadCarcassMaterialMapping = async (
+  payload: UpsertLeadCarcassMaterialMappingPayload,
+) => {
+  const { data } = await apiClient.post(
+    "/leads/designing-stage/carcass-material-mappings",
+    payload,
+  );
+  return data?.data as LeadCarcassMaterialMappingEntry;
+};
+
+export interface LeadShutterMaterialMappingEntry {
+  id: number;
+  vendor_id: number;
+  lead_id: number;
+  shutter_type_id: number;
+  shutter_material_id: number;
+  shutter_material_finish_id: number;
+  created_at: string;
+  created_by: number;
+  shutterType?: { id: number; name: string };
+  shutterMaterial?: { id: number; name: string };
+  shutterMaterialFinish?: { id: number; name: string };
+}
+
+export interface UpsertLeadShutterMaterialMappingPayload {
+  id?: number;
+  vendor_id: number;
+  lead_id: number;
+  shutter_type_id: number;
+  shutter_material_id: number;
+  shutter_material_finish_id: number;
+  created_by: number;
+}
+
+export const getLeadShutterMaterialMappings = async (
+  vendorId: number,
+  leadId: number,
+): Promise<LeadShutterMaterialMappingEntry[]> => {
+  const { data } = await apiClient.get(
+    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/shutter-material-mappings`,
+  );
+
+  return Array.isArray(data?.data) ? data.data : [];
+};
+
+export const upsertLeadShutterMaterialMapping = async (
+  payload: UpsertLeadShutterMaterialMappingPayload,
+) => {
+  const { data } = await apiClient.post(
+    "/leads/designing-stage/shutter-material-mappings",
+    payload,
+  );
+  return data?.data as LeadShutterMaterialMappingEntry;
+};

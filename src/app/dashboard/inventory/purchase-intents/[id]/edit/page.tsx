@@ -241,15 +241,15 @@ export default function EditPurchaseIntentPage() {
             tax_pct:
               (item.product as any).tax_pct ??
               (firstEntry?.tax_pct ? Number(firstEntry.tax_pct) : null),
+              supplierMappings: (item.product as any).supplierMappings ?? [],
           } as PIProduct;
 
           const rowId = makeRowId();
 
           setProductSearchMap((prev) => ({
             ...prev,
-            [rowId]: `${product.product_name}${
-              product.article_code ? ` - ${product.article_code}` : ""
-            }`,
+            [rowId]: `${product.product_name}${product.article_code ? ` - ${product.article_code}` : ""
+              }`,
           }));
 
           return {
@@ -325,8 +325,80 @@ export default function EditPurchaseIntentPage() {
     setRows((prev) => prev.filter((_, i) => i !== rowIndex));
   };
 
+  const getProductSupplierMappings = (product: PIProduct | null) => {
+    return ((product as any)?.supplierMappings ?? []).filter(
+      (mapping: any) => mapping?.companyVendor?.id
+    );
+  };
+
+  const applyTaxForSupplier = (
+    entry: VendorEntry,
+    product: PIProduct,
+    supplier: PICompanyVendor
+  ) => {
+    const isSameState = Number(supplier.state_id) === Number(stateId);
+
+    if (isSameState) {
+      entry.cgst_pct = String(product.cgst_rate || 0);
+      entry.sgst_pct = String(product.sgst_rate || 0);
+      entry.igst_pct = "0";
+      entry.tax_pct = String(
+        Number(product.cgst_rate || 0) + Number(product.sgst_rate || 0)
+      );
+    } else {
+      entry.cgst_pct = "0";
+      entry.sgst_pct = "0";
+      entry.igst_pct = String(product.igst_rate || product.tax_pct || 0);
+      entry.tax_pct = String(product.igst_rate || product.tax_pct || 0);
+    }
+
+    return entry;
+  };
+
+  const buildVendorEntryFromProductMapping = (
+    product: PIProduct,
+    mapping: any
+  ): VendorEntry => {
+    const supplier = mapping.companyVendor as PICompanyVendor;
+
+    let entry = emptyVendorEntry(supplier, product);
+
+    entry.payment_term_id = supplier.default_payment_term_id
+      ? String(supplier.default_payment_term_id)
+      : "";
+
+    entry.required_qty = "";
+
+    /**
+     * ProductSupplierMapping.amount is supplier rate.
+     */
+    entry.rate =
+      mapping.amount !== undefined && mapping.amount !== null
+        ? String(mapping.amount)
+        : "";
+
+    entry.mrp =
+      mapping.amount !== undefined && mapping.amount !== null
+        ? String(mapping.amount)
+        : "";
+
+    entry.remarks = mapping.supplier_item_code
+      ? `Supplier item code: ${mapping.supplier_item_code}`
+      : "";
+
+    entry = applyTaxForSupplier(entry, product, supplier);
+
+    return recalcVendorEntry(entry);
+  };
+
   const selectProductForRow = (rowIndex: number, product: PIProduct) => {
     let rowId = "";
+
+    const supplierMappings = getProductSupplierMappings(product);
+
+    const mappedVendorEntries = supplierMappings.map((mapping: any) =>
+      buildVendorEntryFromProductMapping(product, mapping)
+    );
 
     setRows((prev) => {
       const next = [...prev];
@@ -337,7 +409,11 @@ export default function EditPurchaseIntentPage() {
       row.product_id = product.id;
       row.product = product;
       row.uom = product.unit_of_measure ?? "";
-      row.vendor_entries = [];
+
+      /**
+       * When product changes, suppliers should be reloaded from ProductSupplierMapping.
+       */
+      row.vendor_entries = mappedVendorEntries;
 
       next[rowIndex] = row;
       return next;
@@ -345,12 +421,23 @@ export default function EditPurchaseIntentPage() {
 
     setProductSearchMap((prev) => ({
       ...prev,
-      [rowId]: `${product.product_name}${
-        product.article_code ? ` - ${product.article_code}` : ""
-      }`,
+      [rowId]: `${product.product_name}${product.article_code ? ` - ${product.article_code}` : ""
+        }`,
+    }));
+
+    setProductOptionsMap((prev) => ({
+      ...prev,
+      [rowId]: [],
     }));
 
     setOpenProductBox(null);
+
+    if (!supplierMappings.length) {
+      toastManager.add({
+        title: "No supplier mapped for this product",
+        type: "error",
+      });
+    }
   };
 
   const updateProductRow = (
@@ -380,38 +467,39 @@ export default function EditPurchaseIntentPage() {
         return prev;
       }
 
-      const firstVendor = allVendors.find(
-        (v) => !row.vendor_entries.some((e) => e.vendor.id === v.id)
-      );
+      const supplierMappings = getProductSupplierMappings(row.product);
 
-      if (!firstVendor) {
+      if (!supplierMappings.length) {
         toastManager.add({
-          title: "No supplier available",
+          title: "No supplier mapped for this product",
           type: "error",
         });
         return prev;
       }
 
-      const entry = emptyVendorEntry(firstVendor, row.product);
+      const firstMapping = supplierMappings.find(
+        (mapping: any) =>
+          !row.vendor_entries.some(
+            (entry) =>
+              Number(entry.vendor.id) === Number(mapping.companyVendor.id)
+          )
+      );
 
-      entry.payment_term_id = firstVendor.default_payment_term_id
-        ? String(firstVendor.default_payment_term_id)
-        : "";
-
-      entry.required_qty = "";
-      entry.rate = "";
-
-      row.vendor_entries = [...row.vendor_entries, recalcVendorEntry(entry)];
-      next[rowIndex] = row;
-
-      const newVendorIndex = row.vendor_entries.length - 1;
-
-      setTimeout(() => {
-        setSupplierPicker({
-          rowIndex,
-          vendorIndex: newVendorIndex,
+      if (!firstMapping) {
+        toastManager.add({
+          title: "All mapped suppliers are already added",
+          type: "error",
         });
-      }, 0);
+        return prev;
+      }
+
+      const entry = buildVendorEntryFromProductMapping(
+        row.product,
+        firstMapping
+      );
+
+      row.vendor_entries = [...row.vendor_entries, entry];
+      next[rowIndex] = row;
 
       return next;
     });
@@ -451,12 +539,25 @@ export default function EditPurchaseIntentPage() {
 
       if (!row.product) return prev;
 
-      const vendor = allVendors.find((v) => v.id === vendorIdValue);
-      if (!vendor) return prev;
+      const supplierMappings = getProductSupplierMappings(row.product);
+
+      const selectedMapping = supplierMappings.find(
+        (mapping: any) =>
+          Number(mapping.companyVendor.id) === Number(vendorIdValue)
+      );
+
+      if (!selectedMapping) {
+        toastManager.add({
+          title: "This supplier is not mapped with selected product",
+          type: "error",
+        });
+        return prev;
+      }
 
       const duplicate = row.vendor_entries.some(
         (entry, index) =>
-          index !== vendorIndex && Number(entry.vendor.id) === Number(vendor.id)
+          index !== vendorIndex &&
+          Number(entry.vendor.id) === Number(vendorIdValue)
       );
 
       if (duplicate) {
@@ -469,37 +570,33 @@ export default function EditPurchaseIntentPage() {
 
       const oldEntry = row.vendor_entries[vendorIndex];
 
-      let entry = emptyVendorEntry(vendor, row.product);
+      let entry = buildVendorEntryFromProductMapping(
+        row.product,
+        selectedMapping
+      );
 
       entry = {
         ...entry,
+
         required_qty: oldEntry.required_qty,
         required_by_date: oldEntry.required_by_date,
-        remarks: oldEntry.remarks,
-        mrp: oldEntry.mrp,
+
+        /**
+         * Keep old remarks if user typed something.
+         * Otherwise use supplier item code remark from ProductSupplierMapping.
+         */
+        remarks: oldEntry.remarks || entry.remarks,
+
         discount_pct: oldEntry.discount_pct,
-        rate: oldEntry.rate,
-        payment_term_id: vendor.default_payment_term_id
-          ? String(vendor.default_payment_term_id)
-          : "",
+
+        /**
+         * Rate should come from ProductSupplierMapping.
+         */
+        rate: entry.rate,
+        mrp: entry.mrp,
+
+        payment_term_id: entry.payment_term_id,
       };
-
-      const isSameState = Number(vendor.state_id) === Number(stateId);
-
-      if (isSameState) {
-        entry.cgst_pct = String(row.product.cgst_rate || 0);
-        entry.sgst_pct = String(row.product.sgst_rate || 0);
-        entry.igst_pct = "0";
-        entry.tax_pct = String(
-          Number(row.product.cgst_rate || 0) +
-            Number(row.product.sgst_rate || 0)
-        );
-      } else {
-        entry.cgst_pct = "0";
-        entry.sgst_pct = "0";
-        entry.igst_pct = String(row.product.tax_pct || 0);
-        entry.tax_pct = String(row.product.tax_pct || 0);
-      }
 
       row.vendor_entries[vendorIndex] = recalcVendorEntry(entry);
       next[rowIndex] = row;
@@ -1000,7 +1097,9 @@ export default function EditPurchaseIntentPage() {
       {supplierPicker && rows[supplierPicker.rowIndex] && (
         <SupplierPickerModal
           open={!!supplierPicker}
-          allVendors={allVendors}
+          allVendors={getProductSupplierMappings(
+            rows[supplierPicker.rowIndex].product
+          ).map((mapping: any) => mapping.companyVendor)}
           row={rows[supplierPicker.rowIndex]}
           vendorIndex={supplierPicker.vendorIndex}
           onClose={() => setSupplierPicker(null)}
@@ -1022,7 +1121,7 @@ export default function EditPurchaseIntentPage() {
 }
 
 
-  function ProductSupplierTable({
+function ProductSupplierTable({
   row,
   rowIndex,
   paymentTerms,

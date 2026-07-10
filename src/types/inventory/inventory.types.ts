@@ -2,6 +2,18 @@
 // inventory.types.ts — shared types for Purchase Intent forms
 // ─────────────────────────────────────────────────────────────────────────────
 
+export type PIProductSupplierMapping = {
+  id: number;
+  company_vendor_id: number;
+  supplier_item_code?: string | null;
+  amount?: number | string | null;
+  procurement_expense_amount?: number | string | null;
+  procurement_expense_pct?: number | string | null;
+  procurement_expense_total?: number | string | null;
+
+  companyVendor: PICompanyVendor;
+};
+
 export interface PICategory      { id: number; category_name: string }
 export interface PIProduct {
   id:              number;
@@ -19,6 +31,8 @@ export interface PIProduct {
   igst_rate:       string | null;
   tax_pct:         string | null;   // cgst + sgst for intra-state
   category_id: number;
+  supplierMappings?: PIProductSupplierMapping[];
+
 }
 
 export interface PICompanyVendor {
