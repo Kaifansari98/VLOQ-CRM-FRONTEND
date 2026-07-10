@@ -55,7 +55,7 @@ const CostingFileModal: React.FC<CostingFileModalProps> = ({
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id)!;
   const userId = useAppSelector((s) => s.auth.user?.id)!;
   const isCustomVendor = useAppSelector((s) => s.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only);
-  
+
   const { data: uniqueProductTypes } = useLeadUniqueProductTypes(leadId, vendorId, open);
   const { data: structureInstancesData } = useLeadProductStructureInstances(leadId, vendorId, open);
 
