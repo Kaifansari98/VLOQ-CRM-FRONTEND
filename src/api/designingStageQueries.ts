@@ -308,6 +308,7 @@ export interface SubmitElectricalPlumbingPayload {
   vendorId: number;
   leadId: number;
   userId: number;
+  productStructureInstanceIds?: number[] | string[];
 }
 
 export const submitElectricalPlumbing = async (
@@ -321,6 +322,10 @@ export const submitElectricalPlumbing = async (
 
   payload.files.forEach((file) => {
     formData.append("files", file);
+  });
+
+  payload.productStructureInstanceIds?.forEach((instanceId) => {
+    formData.append("product_structure_instance_ids", String(instanceId));
   });
 
   const { data } = await apiClient.post(
