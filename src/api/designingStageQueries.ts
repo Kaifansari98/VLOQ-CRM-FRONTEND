@@ -266,6 +266,7 @@ export interface SubmitCostingFilePayload {
   vendorId: number;
   leadId: number;
   userId: number;
+  productStructureInstanceIds?: number[] | string[];
 }
 
 export const submitCostingFile = async (payload: SubmitCostingFilePayload) => {
@@ -277,6 +278,10 @@ export const submitCostingFile = async (payload: SubmitCostingFilePayload) => {
 
   payload.files.forEach((file) => {
     formData.append("files", file);
+  });
+
+  payload.productStructureInstanceIds?.forEach((instanceId) => {
+    formData.append("product_structure_instance_ids", String(instanceId));
   });
 
   const { data } = await apiClient.post(
@@ -303,6 +308,7 @@ export interface SubmitElectricalPlumbingPayload {
   vendorId: number;
   leadId: number;
   userId: number;
+  productStructureInstanceIds?: number[] | string[];
 }
 
 export const submitElectricalPlumbing = async (
@@ -316,6 +322,10 @@ export const submitElectricalPlumbing = async (
 
   payload.files.forEach((file) => {
     formData.append("files", file);
+  });
+
+  payload.productStructureInstanceIds?.forEach((instanceId) => {
+    formData.append("product_structure_instance_ids", String(instanceId));
   });
 
   const { data } = await apiClient.post(
@@ -342,6 +352,7 @@ export interface SubmitFinalIsmUploadPayload {
   vendorId: number;
   leadId: number;
   userId: number;
+  productStructureInstanceIds?: number[] | string[];
 }
 
 export const submitFinalIsmUpload = async (
@@ -355,6 +366,10 @@ export const submitFinalIsmUpload = async (
 
   payload.files.forEach((file) => {
     formData.append("files", file);
+  });
+
+  payload.productStructureInstanceIds?.forEach((instanceId) => {
+    formData.append("product_structure_instance_ids", String(instanceId));
   });
 
   const { data } = await apiClient.post(

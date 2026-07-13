@@ -821,6 +821,16 @@ export const getLeadProductStructureInstances = async (
   return response.data;
 };
 
+export const getLeadUniqueProductTypes = async (
+  vendorId: number,
+  leadId: number,
+) => {
+  const response = await apiClient.get(
+    `/leads/lead/${leadId}/vendor/${vendorId}/unique-product-types`,
+  );
+  return response.data;
+};
+
 export const deleteLeadProductStructureInstance = async (
   vendorId: number,
   leadId: number,

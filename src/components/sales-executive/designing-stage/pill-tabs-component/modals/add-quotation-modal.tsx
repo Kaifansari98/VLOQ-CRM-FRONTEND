@@ -51,7 +51,8 @@ interface LeadViewModalProps {
 }
 
 const getRevisionKey = (fileName: string, prefix: "Q" | "D" | "R") => {
-  const parsedName = fileName.replace(/\.[^/.]+$/, "");
+  let parsedName = fileName.replace(/\.[^/.]+$/, "");
+  parsedName = parsedName.replace(/^\[.*?\]\s*/, "");
   const match = parsedName.match(
     new RegExp(`^${prefix}(\\d+)-(.+)-\\d{4}-\\d{2}-\\d{2}$`, "i"),
   );

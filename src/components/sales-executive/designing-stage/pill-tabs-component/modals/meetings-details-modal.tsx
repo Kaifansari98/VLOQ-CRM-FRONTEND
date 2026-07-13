@@ -101,12 +101,12 @@ const MeetingDetailsModal = ({
   const detailCards = [
     formattedMeetingTime
       ? {
-          key: "time",
-          label: "Meeting Time",
-          value: formattedMeetingTime,
-          icon: Clock3,
-          accent: "from-rose-50 via-white to-white",
-        }
+        key: "time",
+        label: "Meeting Time",
+        value: formattedMeetingTime,
+        icon: Clock3,
+        accent: "from-rose-50 via-white to-white",
+      }
       : null,
   ].filter(Boolean) as Array<{
     key: string;
@@ -150,15 +150,15 @@ const MeetingDetailsModal = ({
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes("leads.designing_stage.meetings.delete")
       : userType === "admin" ||
-        userType === "super-admin" ||
-        (userType === "sales-executive" && leadStatus === "designing-stage");
+      userType === "super-admin" ||
+      (userType === "sales-executive" && leadStatus === "designing-stage");
   const canEditMeetingFiles =
     !isAuditor &&
     (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes("leads.designing_stage.meetings.edit")
       : userType === "admin" ||
-        userType === "super-admin" ||
-        (userType === "sales-executive" && leadStatus === "designing-stage"));
+      userType === "super-admin" ||
+      (userType === "sales-executive" && leadStatus === "designing-stage"));
 
   // 🧩 Delete confirmation
   const handleConfirmDelete = () => {
@@ -192,76 +192,89 @@ const MeetingDetailsModal = ({
         description="View meeting records, attached assets, and submission history."
         size="lg"
       >
-        <div className="space-y-5 px-6 py-5">
-          <div className="overflow-hidden rounded-[28px] border border-border/70 bg-gradient-to-br from-stone-50 via-white to-zinc-50 shadow-sm">
-            <div className="border-b border-border/60 px-6 py-5">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge
-                      variant="secondary"
-                      className="rounded-full bg-black px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-white hover:bg-black"
-                    >
-                      {meeting.meetingType?.type ?? "Meeting"} - Meeting
-                    </Badge>
-                  </div>
+        <div className="space-y-6 px-6 py-5">
+          {/* Top Info Header */}
+          <div className="border-b border-border/40 pb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Date Section */}
+              <div className="flex items-center gap-3.5 rounded-2xl  border border-stone-100 bg-stone-50/50 p-4">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white border border-stone-200/60 text-stone-600">
+                  <Calendar className="h-5 w-5" />
+                </div>
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                    Meeting Date
+                  </span>
+                  <p className="text-base font-semibold text-foreground leading-none">
+                    {formatDateOnly(meeting.date)}
+                  </p>
+                </div>
+              </div>
 
-                  <div className="space-y-1">
-                    <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-                      {formatDateOnly(meeting.date)}
-                    </h2>
-                    {formattedMeetingTime && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Clock3 className="h-4 w-4" />
-                        <span>{formattedMeetingTime}</span>
-                      </div>
-                    )}
-                    <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                      Review meeting notes, uploaded documents, and visual references in one place.
+              {/* Time Section */}
+              {formattedMeetingTime ? (
+                <div className="flex items-center gap-3.5 rounded-2xl border border-stone-100 bg-stone-50/50 p-4">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white border border-stone-200/60 text-stone-600">
+                    <Clock3 className="h-5 w-5" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                      Meeting Time
+                    </span>
+                    <p className="text-base font-semibold text-foreground leading-none">
+                      {formattedMeetingTime}
                     </p>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex items-center gap-3.5 rounded-2xl border border-dashed border-stone-200 bg-stone-50/30 p-4 justify-center text-muted-foreground text-sm">
+                  <Clock3 className="h-4 w-4" />
+                  <span>No time slot specified</span>
+                </div>
+              )}
             </div>
+          </div>
 
-            <div className=" bg-white p-6">
-            <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-stone-100">
-                <MessageSquareText className="h-5 w-5 text-foreground/75" />
+          {/* Meeting Description */}
+          <div className="rounded-2xl border border-stone-100 bg-stone-50/30 p-5 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-stone-200/60 text-stone-600">
+                <MessageSquareText className="h-5 w-5" />
               </div>
               <div>
                 <h3 className="text-base font-semibold text-foreground">
                   Meeting Description
                 </h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Summary and discussion context captured for this meeting.
                 </p>
               </div>
             </div>
 
-            <div className="rounded-3xl border border-dashed border-border/70 bg-stone-50/70 p-5">
-              <p className="text-sm leading-7 text-foreground/80">
+            <div className="rounded-xl border border-dashed border-stone-200 bg-white p-4">
+              <p className="text-sm leading-7 text-foreground/80 whitespace-pre-line">
                 {meeting.desc || "No description available for this meeting."}
               </p>
             </div>
           </div>
-          </div>
 
-          <div className="rounded-[28px] border border-border/70 bg-white p-6 shadow-sm">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <div className="mb-2 flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100">
-                    <FileText className="h-5 w-5 text-foreground/75" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-semibold tracking-tight">
-                      Meeting Files & Images
-                    </h2>
-                    <p className="text-xs text-muted-foreground">
-                      Includes all files uploaded during this meeting.
-                    </p>
-                  </div>
+          {/* Separator */}
+          <div className="h-px bg-stone-100/80 my-2" />
+
+          {/* Meeting Files Section */}
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border/40 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">
+                  <FileText className="h-5 w-5 text-foreground/75" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold tracking-tight">
+                    Meeting Files & Images
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Includes all files uploaded during this meeting.
+                  </p>
                 </div>
               </div>
 
@@ -269,6 +282,7 @@ const MeetingDetailsModal = ({
                 <Button
                   onClick={() => setOpenAddFilesModal(true)}
                   className="h-10 gap-2 rounded-xl"
+                  variant="outline"
                 >
                   <Plus className="h-4 w-4" />
                   Add More Files
@@ -276,11 +290,11 @@ const MeetingDetailsModal = ({
               )}
             </div>
 
-            <div className="mt-6 space-y-6">
-              {meetingImages.length > 0 ? (
-                <div className="rounded-3xl border border-border/70 bg-stone-50/60 p-5">
+            <div className="space-y-6 pt-2">
+              {meetingImages.length > 0 && (
+                <div className="rounded-2xl border border-border/60 bg-stone-50/40 p-5">
                   <div className="mb-4 flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white shadow-sm">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-border/60">
                       <FileImage className="h-4 w-4 text-foreground/75" />
                     </div>
                     <div>
@@ -289,7 +303,7 @@ const MeetingDetailsModal = ({
                         Visual references shared during the meeting.
                       </p>
                     </div>
-                    <Badge variant="secondary" className="ml-auto rounded-full">
+                    <Badge variant="secondary" className="ml-auto rounded-full bg-stone-100 hover:bg-stone-100 text-stone-700 border-none font-medium">
                       {meetingImages.length}
                     </Badge>
                   </div>
@@ -312,12 +326,12 @@ const MeetingDetailsModal = ({
                     ))}
                   </div>
                 </div>
-              ) : null}
+              )}
 
-              {docsArray.length > 0 ? (
-                <div className="rounded-3xl border border-border/70 bg-stone-50/60 p-5">
+              {docsArray.length > 0 && (
+                <div className="rounded-2xl border border-border/60 bg-stone-50/40 p-5">
                   <div className="mb-4 flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white shadow-sm">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-border/60">
                       <FileText className="h-4 w-4 text-foreground/75" />
                     </div>
                     <div>
@@ -326,7 +340,7 @@ const MeetingDetailsModal = ({
                         PDFs and supporting files attached to this meeting.
                       </p>
                     </div>
-                    <Badge variant="secondary" className="ml-auto rounded-full">
+                    <Badge variant="secondary" className="ml-auto rounded-full bg-stone-100 hover:bg-stone-100 text-stone-700 border-none font-medium">
                       {docsArray.length}
                     </Badge>
                   </div>
@@ -348,11 +362,11 @@ const MeetingDetailsModal = ({
                     ))}
                   </div>
                 </div>
-              ) : null}
+              )}
 
               {meetingImages.length === 0 && docsArray.length === 0 && (
-                <div className="rounded-3xl border border-dashed border-border/70 bg-stone-50/60 px-6 py-10 text-center">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-sm">
+                <div className="rounded-2xl border border-dashed border-border/70 bg-stone-50/40 px-6 py-10 text-center">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-border/50">
                     <Paperclip className="h-5 w-5 text-muted-foreground" />
                   </div>
                   <h3 className="mt-4 text-base font-semibold text-foreground">
