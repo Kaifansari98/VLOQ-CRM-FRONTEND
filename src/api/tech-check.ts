@@ -76,7 +76,7 @@ export const approveTechCheck = async ({
   productStructureInstanceId?: number | null;
 }) => {
   const { data } = await apiClient.post(
-    `/leads/production/tech-check/leadId/${leadId}/vendorId/${vendorId}/userId/${userId}/approve`,
+  `/leads/production/tech-check/leadId/${leadId}/vendorId/${vendorId}/userId/${userId}/approve`,
     {
       assign_to_user_id: assignToUserId,
       account_id: accountId,
