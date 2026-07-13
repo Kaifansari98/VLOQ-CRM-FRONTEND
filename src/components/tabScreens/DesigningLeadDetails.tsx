@@ -109,7 +109,7 @@ export default function DesigningLeadsDetails({ leadId }: props) {
       },
       {
         id: "final-ism-upload",
-        label: "Final ISM Upload",
+        label: "Revised ISM",
         icon: Upload,
         content: <FinalIsmUploadTab />,
       },

@@ -44,6 +44,7 @@ import {
   CreateSmallOrderRequestPayload,
   getSmallOrderRequestsByLead,
   getLeadProductStructureInstances,
+  getLeadUniqueProductTypes,
   getClientVisits,
   markSmallOrderRequestResolved,
   SmallOrderRequestListItem,
@@ -234,6 +235,18 @@ export function useLeadProductStructureInstances(
   return useQuery({
     queryKey: ["lead-product-structure-instances", leadId, vendorId],
     queryFn: () => getLeadProductStructureInstances(vendorId!, leadId!),
+    enabled: !!leadId && !!vendorId && enabled,
+  });
+}
+
+export function useLeadUniqueProductTypes(
+  leadId?: number,
+  vendorId?: number,
+  enabled: boolean = true
+) {
+  return useQuery({
+    queryKey: ["lead-unique-product-types", leadId, vendorId],
+    queryFn: () => getLeadUniqueProductTypes(vendorId!, leadId!),
     enabled: !!leadId && !!vendorId && enabled,
   });
 }

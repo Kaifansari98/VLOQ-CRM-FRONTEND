@@ -340,6 +340,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
 
   const approvalRequestUsers = React.useMemo(() => {
     const users = approvalRequestAssignableUsersData?.users ?? [];
+    const leadFranchiseId = approvalRequestAssignableUsersData?.leadFranchiseId;
 
     return users.filter((user) => {
       const normalizedAssignableUserType = String(
@@ -349,9 +350,22 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
       if (user.id === userId) return false;
       if (normalizedAssignableUserType === "master-admin") return false;
 
+      if (leadFranchiseId !== undefined && leadFranchiseId !== null) {
+        if (
+          user.franchise_id !== leadFranchiseId &&
+          ["sales-executive", "admin"].includes(normalizedAssignableUserType)
+        ) {
+          return false;
+        }
+      }
+
       return true;
     });
-  }, [approvalRequestAssignableUsersData?.users, userId]);
+  }, [
+    approvalRequestAssignableUsersData?.users,
+    approvalRequestAssignableUsersData?.leadFranchiseId,
+    userId,
+  ]);
   const approvalRequestMappedUsers = React.useMemo(
     () =>
       approvalRequestUsers.map((user) => ({

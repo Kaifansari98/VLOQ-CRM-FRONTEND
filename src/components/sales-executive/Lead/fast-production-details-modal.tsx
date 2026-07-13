@@ -104,7 +104,7 @@ export default function FastProductionDetailsModal({
       description="View the fast production request specifications and timelines."
       size="xl"
     >
-      <div className="flex flex-col h-full max-h-[80vh] overflow-y-auto px-6 py-4 space-y-6">
+      <div className="flex flex-col px-6 py-4 space-y-6">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-orange-500 border-t-transparent" />

@@ -266,6 +266,7 @@ export interface SubmitCostingFilePayload {
   vendorId: number;
   leadId: number;
   userId: number;
+  productStructureInstanceIds?: number[] | string[];
 }
 
 export const submitCostingFile = async (payload: SubmitCostingFilePayload) => {
@@ -277,6 +278,10 @@ export const submitCostingFile = async (payload: SubmitCostingFilePayload) => {
 
   payload.files.forEach((file) => {
     formData.append("files", file);
+  });
+
+  payload.productStructureInstanceIds?.forEach((instanceId) => {
+    formData.append("product_structure_instance_ids", String(instanceId));
   });
 
   const { data } = await apiClient.post(
@@ -303,6 +308,7 @@ export interface SubmitElectricalPlumbingPayload {
   vendorId: number;
   leadId: number;
   userId: number;
+  productStructureInstanceIds?: number[] | string[];
 }
 
 export const submitElectricalPlumbing = async (
@@ -316,6 +322,10 @@ export const submitElectricalPlumbing = async (
 
   payload.files.forEach((file) => {
     formData.append("files", file);
+  });
+
+  payload.productStructureInstanceIds?.forEach((instanceId) => {
+    formData.append("product_structure_instance_ids", String(instanceId));
   });
 
   const { data } = await apiClient.post(
@@ -342,6 +352,7 @@ export interface SubmitFinalIsmUploadPayload {
   vendorId: number;
   leadId: number;
   userId: number;
+  productStructureInstanceIds?: number[] | string[];
 }
 
 export const submitFinalIsmUpload = async (
@@ -355,6 +366,10 @@ export const submitFinalIsmUpload = async (
 
   payload.files.forEach((file) => {
     formData.append("files", file);
+  });
+
+  payload.productStructureInstanceIds?.forEach((instanceId) => {
+    formData.append("product_structure_instance_ids", String(instanceId));
   });
 
   const { data } = await apiClient.post(
@@ -600,4 +615,161 @@ export const getInstanceStage = async (
   );
 
   return data?.data;
+};
+
+export interface LeadSpecificationEntry {
+  id: number;
+  vendor_id: number;
+  lead_id: number;
+  name: string;
+  created_at: string;
+  created_by: number;
+}
+
+export const getLeadSpecifications = async (
+  vendorId: number,
+  leadId: number,
+): Promise<LeadSpecificationEntry[]> => {
+  const { data } = await apiClient.get(
+    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/specifications`,
+  );
+
+  return Array.isArray(data?.data) ? data.data : [];
+};
+
+export interface LeadCarcassMaterialMappingEntry {
+  id: number;
+  vendor_id: number;
+  lead_id: number;
+  carcass_type_id: number;
+  carcas_material_id: number;
+  carcass_material_finish_id: number;
+  created_at: string;
+  created_by: number;
+  carcassType?: { id: number; name: string };
+  carcasMaterial?: { id: number; name: string };
+  carcassMaterialFinish?: { id: number; name: string };
+}
+
+export interface UpsertLeadCarcassMaterialMappingPayload {
+  id?: number;
+  vendor_id: number;
+  lead_id: number;
+  carcass_type_id: number;
+  carcas_material_id: number;
+  carcass_material_finish_id: number;
+  created_by: number;
+}
+
+export const getLeadCarcassMaterialMappings = async (
+  vendorId: number,
+  leadId: number,
+): Promise<LeadCarcassMaterialMappingEntry[]> => {
+  const { data } = await apiClient.get(
+    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/carcass-material-mappings`,
+  );
+
+  return Array.isArray(data?.data) ? data.data : [];
+};
+
+export const upsertLeadCarcassMaterialMapping = async (
+  payload: UpsertLeadCarcassMaterialMappingPayload,
+) => {
+  const { data } = await apiClient.post(
+    "/leads/designing-stage/carcass-material-mappings",
+    payload,
+  );
+  return data?.data as LeadCarcassMaterialMappingEntry;
+};
+
+export interface LeadShutterMaterialMappingEntry {
+  id: number;
+  vendor_id: number;
+  lead_id: number;
+  shutter_type_id: number;
+  shutter_material_id: number;
+  shutter_material_finish_id: number;
+  created_at: string;
+  created_by: number;
+  shutterType?: { id: number; name: string };
+  shutterMaterial?: { id: number; name: string };
+  shutterMaterialFinish?: { id: number; name: string };
+}
+
+export interface UpsertLeadShutterMaterialMappingPayload {
+  id?: number;
+  vendor_id: number;
+  lead_id: number;
+  shutter_type_id: number;
+  shutter_material_id: number;
+  shutter_material_finish_id: number;
+  created_by: number;
+}
+
+export const getLeadShutterMaterialMappings = async (
+  vendorId: number,
+  leadId: number,
+): Promise<LeadShutterMaterialMappingEntry[]> => {
+  const { data } = await apiClient.get(
+    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/shutter-material-mappings`,
+  );
+
+  return Array.isArray(data?.data) ? data.data : [];
+};
+
+export const upsertLeadShutterMaterialMapping = async (
+  payload: UpsertLeadShutterMaterialMappingPayload,
+) => {
+  const { data } = await apiClient.post(
+    "/leads/designing-stage/shutter-material-mappings",
+    payload,
+  );
+  return data?.data as LeadShutterMaterialMappingEntry;
+};
+
+export interface LeadHardwareMappingEntry {
+  id: number;
+  vendor_id: number;
+  lead_id: number;
+  carcass_legs_id: number;
+  skirting_carcass_legs_id: number;
+  skirting_carcass_legs_color_id: number | null;
+  note: string | null;
+  created_at: string;
+  created_by: number;
+  carcassLegs?: { id: number; name: string };
+  skirtingCarcassLegs?: { id: number; name: string; inScope: boolean };
+  skirtingCarcassLegsColor?: { id: number; color: string } | null;
+}
+
+export interface UpsertLeadHardwareMappingPayload {
+  id?: number;
+  vendor_id: number;
+  lead_id: number;
+  carcass_legs_id: number;
+  skirting_carcass_legs_id: number;
+  skirting_carcass_legs_color_id?: number | null;
+  note?: string | null;
+  created_by: number;
+}
+
+export const getLeadHardwareMappings = async (
+  vendorId: number,
+  leadId: number,
+): Promise<LeadHardwareMappingEntry[]> => {
+  const { data } = await apiClient.get(
+    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/hardware-mappings`,
+  );
+
+  return Array.isArray(data?.data) ? data.data : [];
+};
+
+export const upsertLeadHardwareMapping = async (
+  payload: UpsertLeadHardwareMappingPayload,
+) => {
+  const { data } = await apiClient.post(
+    "/leads/designing-stage/hardware-mappings",
+    payload,
+  );
+  return data?.data as LeadHardwareMappingEntry;
 };

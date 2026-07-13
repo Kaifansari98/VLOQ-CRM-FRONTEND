@@ -169,6 +169,85 @@ export interface ShutterTypeMasterResponse {
   data: ShutterTypeMasterEntry[];
 }
 
+export interface CarcasMaterialFinishMasterEntry {
+  id: number;
+  name: string;
+  carcas_material_id: number;
+}
+
+export interface CarcasMaterialFinishMasterResponse {
+  success: boolean;
+  data: CarcasMaterialFinishMasterEntry[];
+}
+
+export interface CarcasMaterialMasterEntry {
+  id: number;
+  name: string;
+  vendor_id: number;
+}
+
+export interface CarcasMaterialMasterResponse {
+  success: boolean;
+  data: CarcasMaterialMasterEntry[];
+}
+
+export interface ShutterMaterialFinishMasterEntry {
+  id: number;
+  name: string;
+  shutter_material_id: number;
+}
+
+export interface ShutterMaterialFinishMasterResponse {
+  success: boolean;
+  data: ShutterMaterialFinishMasterEntry[];
+}
+
+export interface ShutterMaterialMasterEntry {
+  id: number;
+  name: string;
+  vendor_id: number;
+}
+
+export interface ShutterMaterialMasterResponse {
+  success: boolean;
+  data: ShutterMaterialMasterEntry[];
+}
+
+export interface SkirtingCarcassLegsColorMasterEntry {
+  id: number;
+  carcass_legs_id: number;
+  skirting_carcass_legs_id: number;
+  color: string;
+}
+
+export interface SkirtingCarcassLegsColorMasterResponse {
+  success: boolean;
+  data: SkirtingCarcassLegsColorMasterEntry[];
+}
+
+export interface SkirtingCarcassLegsMasterEntry {
+  id: number;
+  name: string;
+  carcass_legs_id: number;
+  inScope: boolean;
+}
+
+export interface SkirtingCarcassLegsMasterResponse {
+  success: boolean;
+  data: SkirtingCarcassLegsMasterEntry[];
+}
+
+export interface CarcassLegsMasterEntry {
+  id: number;
+  name: string;
+  vendor_id: number;
+}
+
+export interface CarcassLegsMasterResponse {
+  success: boolean;
+  data: CarcassLegsMasterEntry[];
+}
+
 export interface HandleTypeMasterEntry {
   id: number;
   name: string;
@@ -368,6 +447,78 @@ export const fetchShutterTypes = async (vendorId: number) => {
           subTypes: Array.isArray(item.subTypes) ? item.subTypes : [],
         }))
       : [],
+  };
+}
+
+export const fetchCarcasMaterials = async (vendorId: number) => {
+  const res = await apiClient.get<CarcasMaterialMasterResponse>(
+    `/leads/get-all-carcas-materials/${vendorId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
+export const fetchCarcassMaterialFinishes = async (carcasMaterialId: number) => {
+  const res = await apiClient.get<CarcasMaterialFinishMasterResponse>(
+    `/leads/get-carcass-material-finishes/${carcasMaterialId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
+export const fetchShutterMaterials = async (vendorId: number) => {
+  const res = await apiClient.get<ShutterMaterialMasterResponse>(
+    `/leads/get-all-shutter-materials/${vendorId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
+export const fetchShutterMaterialFinishes = async (shutterMaterialId: number) => {
+  const res = await apiClient.get<ShutterMaterialFinishMasterResponse>(
+    `/leads/get-shutter-material-finishes/${shutterMaterialId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
+export const fetchCarcassLegs = async (vendorId: number) => {
+  const res = await apiClient.get<CarcassLegsMasterResponse>(
+    `/leads/get-all-carcass-legs/${vendorId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
+export const fetchSkirtingCarcassLegs = async (carcassLegsId: number) => {
+  const res = await apiClient.get<SkirtingCarcassLegsMasterResponse>(
+    `/leads/get-skirting-carcass-legs/${carcassLegsId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
+export const fetchSkirtingCarcassLegsColors = async (
+  skirtingCarcassLegsId: number,
+) => {
+  const res = await apiClient.get<SkirtingCarcassLegsColorMasterResponse>(
+    `/leads/get-skirting-carcass-legs-colors/${skirtingCarcassLegsId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
   };
 }
 

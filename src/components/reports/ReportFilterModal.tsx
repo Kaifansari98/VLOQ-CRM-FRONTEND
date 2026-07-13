@@ -106,6 +106,7 @@ export function ReportFilterModal({
 
   const [selectedFranchiseOptions, setSelectedFranchiseOptions] = useState<Option[]>([]);
   const [filters, setFilters] = useState<ReportFilters>(initialFilters ?? defaultFilters);
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   const selectedFranchiseIds = useMemo(() => {
     return selectedFranchiseOptions
@@ -116,28 +117,38 @@ export function ReportFilterModal({
   const { data: franchises = [] } = useFranchisesByVendorId(vendorId, isSuperAdmin);
 
   useEffect(() => {
-    const nextFilters = initialFilters ?? defaultFilters;
-    setFilters(nextFilters);
-
-    if (nextFilters._franchiseId === "all" || !nextFilters._franchiseId) {
-      setSelectedFranchiseOptions([]);
-    } else if (Array.isArray(nextFilters._franchiseId)) {
-      const selected = nextFilters._franchiseId.map((id) => {
-        const found = franchises.find((f) => f.id === Number(id));
-        return {
-          value: String(id),
-          label: found ? found.franchise_name : `Franchise ${id}`,
-        };
-      });
-      setSelectedFranchiseOptions(selected);
-    } else {
-      const id = nextFilters._franchiseId;
-      const found = franchises.find((f) => f.id === Number(id));
-      setSelectedFranchiseOptions(
-        found ? [{ value: String(id), label: found.franchise_name }] : []
-      );
+    if (!open) {
+      setHasInitialized(false);
+      return;
     }
-  }, [defaultFilters, initialFilters, open, franchises]);
+
+    if (!hasInitialized && (franchises.length > 0 || !isSuperAdmin)) {
+      const nextFilters = initialFilters ?? defaultFilters;
+      setFilters(nextFilters);
+
+      if (nextFilters._franchiseId === "all") {
+        setSelectedFranchiseOptions([{ value: "all", label: "All Franchises" }]);
+      } else if (!nextFilters._franchiseId) {
+        setSelectedFranchiseOptions([]);
+      } else if (Array.isArray(nextFilters._franchiseId)) {
+        const selected = nextFilters._franchiseId.map((id) => {
+          const found = franchises.find((f) => f.id === Number(id));
+          return {
+            value: String(id),
+            label: found ? found.franchise_name : `Franchise ${id}`,
+          };
+        });
+        setSelectedFranchiseOptions(selected);
+      } else {
+        const id = nextFilters._franchiseId;
+        const found = franchises.find((f) => f.id === Number(id));
+        setSelectedFranchiseOptions(
+          found ? [{ value: String(id), label: found.franchise_name }] : []
+        );
+      }
+      setHasInitialized(true);
+    }
+  }, [defaultFilters, initialFilters, open, franchises, hasInitialized, isSuperAdmin]);
 
   const selectedDateRange = useMemo<DateRange | undefined>(() => {
     if (!filters.fromDate && !filters.toDate) return undefined;
@@ -394,7 +405,9 @@ export function ReportFilterModal({
 
   const handleReset = () => {
     setFilters(defaultFilters);
-    if (defaultFilters._franchiseId === "all" || !defaultFilters._franchiseId) {
+    if (defaultFilters._franchiseId === "all") {
+      setSelectedFranchiseOptions([{ value: "all", label: "All Franchises" }]);
+    } else if (!defaultFilters._franchiseId) {
       setSelectedFranchiseOptions([]);
     } else if (Array.isArray(defaultFilters._franchiseId)) {
       const selected = defaultFilters._franchiseId.map((id) => {
