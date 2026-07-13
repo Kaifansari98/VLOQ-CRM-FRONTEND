@@ -75,28 +75,20 @@ const parseInputDate = (value: string) => {
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
-const getFormSchema = (isSmallOrder: boolean) => z.object({
+const getFormSchema = () => z.object({
   carcass_finish_category: z
     .array(z.string())
     .min(1, "Carcass finish category is required"),
   carcass_finish_description: requiredTrimmedText(
     "Carcass finish description",
   ),
-  shutter_finish_category: isSmallOrder 
-    ? z.array(z.string()).optional() 
-    : z.array(z.string()).min(1, "Shutter finish category is required"),
-  shutter_finish_description: isSmallOrder 
-    ? optionalTrimmedText("Shutter finish description") 
-    : requiredTrimmedText("Shutter finish description"),
-  handles_finish_category: isSmallOrder 
-    ? z.array(z.string()).optional() 
-    : z.array(z.string()).min(1, "Handles finish category is required"),
-  handles_finish_description: isSmallOrder 
-    ? optionalTrimmedText("Handles finish description") 
-    : requiredTrimmedText("Handles finish description"),
-  hardware_selection: requiredTrimmedText("Hardware selection"),
-  accessory_selection: requiredTrimmedText("Accessory selection"),
-  special_requirements: requiredTrimmedText(
+  shutter_finish_category: z.array(z.string()).optional(),
+  shutter_finish_description: optionalTrimmedText("Shutter finish description"),
+  handles_finish_category: z.array(z.string()).optional(),
+  handles_finish_description: optionalTrimmedText("Handles finish description"),
+  hardware_selection: optionalTrimmedText("Hardware selection"),
+  accessory_selection: optionalTrimmedText("Accessory selection"),
+  special_requirements: optionalTrimmedText(
     "Special / non-standard requirements",
   ),
   tentative_order_login_date: z
@@ -139,9 +131,9 @@ type FormValues = {
   shutter_finish_description?: string;
   handles_finish_category?: string[];
   handles_finish_description?: string;
-  hardware_selection: string;
-  accessory_selection: string;
-  special_requirements: string;
+  hardware_selection?: string;
+  accessory_selection?: string;
+  special_requirements?: string;
   tentative_order_login_date: string;
   client_required_delivery_date: string;
   remarks?: string;
@@ -272,7 +264,7 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
   const furniture_type = lead?.productMappings?.map((pm: any) => pm.productType?.type).filter(Boolean).join(", ") || "N/A";
   const isSmallOrder = furniture_type.toLowerCase().includes("small order");
 
-  const dynamicFormSchema = React.useMemo(() => getFormSchema(isSmallOrder), [isSmallOrder]);
+  const dynamicFormSchema = React.useMemo(() => getFormSchema(), []);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(dynamicFormSchema) as any,
@@ -794,9 +786,9 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
           handleOptionLabelMap,
         ),
         handlesFinishDescription: values.handles_finish_description || "",
-        hardwareSelection: values.hardware_selection,
-        accessorySelection: values.accessory_selection,
-        specialRequirements: values.special_requirements,
+        hardwareSelection: values.hardware_selection || "",
+        accessorySelection: values.accessory_selection || "",
+        specialRequirements: values.special_requirements || "",
         tentativeOrderLoginDate: values.tentative_order_login_date,
         clientRequiredDeliveryDate: values.client_required_delivery_date,
         remarks: values.remarks,
@@ -909,7 +901,7 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
     descriptionPlaceholder: string,
     className?: string,
   ) => {
-    const isOptional = isSmallOrder && (categoryName === "shutter_finish_category" || categoryName === "handles_finish_category");
+    const isOptional = categoryName === "shutter_finish_category" || categoryName === "handles_finish_category";
     
     return (
       <div className={className}>
@@ -1101,7 +1093,7 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm">
-                        Hardware Selection {requiredMark}
+                        Hardware Selection
                       </FormLabel>
                       <FormControl>
                         <TextAreaInput
@@ -1121,7 +1113,7 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm">
-                        Accessory Selection {requiredMark}
+                        Accessory Selection
                       </FormLabel>
                       <FormControl>
                         <TextAreaInput
@@ -1141,7 +1133,7 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm">
-                        Any Special / Non-Standard Requirements {requiredMark}
+                        Any Special / Non-Standard Requirements
                       </FormLabel>
                       <FormControl>
                         <TextAreaInput
