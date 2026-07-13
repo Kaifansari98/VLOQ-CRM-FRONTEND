@@ -109,7 +109,7 @@ function FranchiseFilter({
             <ListFilter className="h-4 w-4 shrink-0" />
           )}
           <span className="flex items-center gap-1.5 truncate">
-            <span className="truncate">Filter by Franchaise</span>
+            <span className="truncate">Filter by Franchise</span>
             {selectedOption && (
               <>
                 <Separator
@@ -164,7 +164,7 @@ function prioritizeFastProductionTasks<
 
 const MyTaskTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-  const franchiseId = useAppSelector((state) => state.auth.user?.franchise_id);
+  const franchiseId = useAppSelector((state) => state.auth.franchise_id ?? state.auth.user?.franchise_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type as string | undefined,
@@ -189,14 +189,13 @@ const MyTaskTable = () => {
     [franchises],
   );
   const defaultFranchiseId = useMemo(() => {
-    if (!isSuperAdmin) return franchiseId ?? undefined;
     return (
-      franchiseOptions.find((franchise) => franchise.isHeadOffice)?.id ??
-      franchiseOptions[0]?.id ??
-      franchiseId ??
+      franchiseId ||
+      franchiseOptions.find((franchise) => franchise.isHeadOffice)?.id ||
+      franchiseOptions[0]?.id ||
       undefined
     );
-  }, [franchiseId, franchiseOptions, isSuperAdmin]);
+  }, [franchiseId, franchiseOptions]);
   const [selectedFranchiseId, setSelectedFranchiseId] = useState<
     number | undefined
   >(franchiseId ?? undefined);
