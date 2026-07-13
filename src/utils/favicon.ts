@@ -1,8 +1,9 @@
 export const updateFavicon = (url: string | null | undefined) => {
-  if (typeof document === "undefined") return;
+  if (typeof document === "undefined" || !url) return;
 
   const links = document.querySelectorAll("link[rel*='icon']");
-  const targetHref = url || "/globe.svg";
+  const targetHref = url;
+  console.log("target url : ", targetHref)
 
   if (links.length > 0) {
     links.forEach((link: any) => {
