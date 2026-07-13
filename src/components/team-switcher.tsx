@@ -118,14 +118,14 @@ export function TeamSwitcher({
                       src={user.vendor.iconUrl}
                       alt="Vendor Icon"
                       fill
-                      className="object-contain p-1"
+                      className="object-contain"
                     />
                   ) : isShambhala ? (
                     <Image
                       src="/logos/shambhala-short-logo.png"
                       alt="Shambhala"
                       fill
-                      className="object-contain p-1"
+                      className="object-contain"
                     />
                   ) : (
                     <>
@@ -133,13 +133,13 @@ export function TeamSwitcher({
                         src="/logos/furnix-logo-light.png"
                         alt="Logo"
                         fill
-                        className="object-contain dark:hidden p-1"
+                        className="object-contain dark:hidden"
                       />
                       <Image
                         src="/logos/furnix-logo-light.png"
                         alt="Logo"
                         fill
-                        className="object-contain hidden dark:block p-1"
+                        className="object-contain hidden dark:block"
                       />
                     </>
                   )}

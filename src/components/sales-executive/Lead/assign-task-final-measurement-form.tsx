@@ -502,7 +502,12 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       if (normalizedAssignableUserType === "master-admin") return false;
 
       if (leadFranchiseId !== undefined && leadFranchiseId !== null) {
-        if (user.franchise_id !== leadFranchiseId) return false;
+        if (
+          user.franchise_id !== leadFranchiseId &&
+          normalizedAssignableUserType === "sales-executive"
+        ) {
+          return false;
+        }
       }
 
       return true;
