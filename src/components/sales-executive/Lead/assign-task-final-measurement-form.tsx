@@ -504,7 +504,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       if (leadFranchiseId !== undefined && leadFranchiseId !== null) {
         if (
           user.franchise_id !== leadFranchiseId &&
-          normalizedAssignableUserType === "sales-executive"
+          ["sales-executive", "admin"].includes(normalizedAssignableUserType)
         ) {
           return false;
         }
