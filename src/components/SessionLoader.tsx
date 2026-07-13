@@ -53,7 +53,7 @@ export function SessionLoader() {
         }
       }
 
-      updateFavicon("/logos/furnix-logo-dark.png");
+      updateFavicon("/globe.svg");
     };
 
     resolveAndSetFavicon();
