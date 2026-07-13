@@ -90,16 +90,14 @@ interface Props {
   onInstanceChange?: (instance: LeadProductStructureInstance | null) => void;
 }
 
-const getFormSchema = (isSmallOrder: boolean) => z.object({
+const getFormSchema = (isSmallOrder: boolean, isFastProduction: boolean) => z.object({
   carcas: z.array(z.string()).min(1, "Select at least one carcass type"),
   carcas_remark: z.string().optional(),
-  shutter: isSmallOrder
+  shutter: (isFastProduction || isSmallOrder)
     ? z.array(z.string()).optional()
     : z.array(z.string()).min(1, "Select at least one shutter type"),
   shutter_remark: z.string().optional(),
-  handles: isSmallOrder
-    ? z.array(z.string()).optional()
-    : z.array(z.string()).min(1, "Select at least one handle type"),
+  handles: z.array(z.string()).optional(),
   handles_remark: z.string().optional(),
 });
 
@@ -178,7 +176,8 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const lead = leadDataById?.data?.lead;
   const furniture_type = lead?.productMappings?.map((pm: any) => pm.productType?.type).filter(Boolean).join(", ") || "N/A";
   const isSmallOrder = furniture_type.toLowerCase().includes("small order");
-  const dynamicFormSchema = React.useMemo(() => getFormSchema(isSmallOrder), [isSmallOrder]);
+  const isFastProduction = lead?.is_fast_production === true;
+  const dynamicFormSchema = React.useMemo(() => getFormSchema(isSmallOrder, isFastProduction), [isSmallOrder, isFastProduction]);
 
   const { data: fastProductionDetailsResponse } = useGetFastProductionDetailsForLead(
     vendorId,
@@ -390,7 +389,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     isCarcassTypesLoading || isShutterTypesLoading || isHandleTypesLoading;
 
   const selectionForm = useForm<FormValues>({
-    resolver: zodResolver(dynamicFormSchema),
+    resolver: zodResolver(dynamicFormSchema) as any,
     defaultValues: {
       carcas: [],
       carcas_remark: DEFAULT_REMARK,
@@ -493,9 +492,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       (f: any) => f.component === "CARCASS",
     );
 
-    const hasNoCarcasSelectionSaved =
-      existingCarcassValues.length === 0 &&
-      (!existingCarcas?.desc || existingCarcas.desc === DEFAULT_REMARK);
+    const hasNoCarcasSelectionSaved = !existingCarcas;
 
     if (hasNoCarcasSelectionSaved && fastProdCarcass) {
       const carcassValues = labelToValues(
@@ -532,9 +529,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       (f: any) => f.component === "SHUTTER",
     );
 
-    const hasNoShutterSelectionSaved =
-      existingShutterValues.length === 0 &&
-      (!existingShutter?.desc || existingShutter.desc === DEFAULT_REMARK);
+    const hasNoShutterSelectionSaved = !existingShutter;
 
     if (hasNoShutterSelectionSaved && fastProdShutter) {
       const shutterValues = labelToValues(
@@ -571,9 +566,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       (f: any) => f.component === "HANDLE",
     );
 
-    const hasNoHandlesSelectionSaved =
-      existingHandlesValues.length === 0 &&
-      (!existingHandles?.desc || existingHandles.desc === DEFAULT_REMARK);
+    const hasNoHandlesSelectionSaved = !existingHandles;
 
     if (hasNoHandlesSelectionSaved && fastProdHandle) {
       const handleValues = labelToValues(
@@ -971,32 +964,31 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     return grouped;
   }, [selectionsData?.data, chsMappings, fastProductionDetails]);
 
+  const checkTrackerReady = (tracker: { Carcas: boolean; Shutter: boolean; Handles: boolean } | undefined) => {
+    if (!tracker) return false;
+    if (isFastProduction) {
+      return Boolean(tracker.Carcas);
+    }
+    return Boolean(tracker.Carcas && tracker.Shutter);
+  };
+
   const allInstancesSelectionsReady =
     structureInstances.length > 1
       ? structureInstances.every((instance) => {
           const tracker = selectionsByInstance.get(instance.id);
-          return Boolean(
-            tracker?.Carcas && tracker?.Shutter && tracker?.Handles,
-          );
+          return checkTrackerReady(tracker);
         })
       : (() => {
           if (structureInstances.length === 0) {
             const nullBucket = selectionsByInstance.get(null);
-            return Boolean(
-              nullBucket?.Carcas && nullBucket?.Shutter && nullBucket?.Handles,
-            );
+            return checkTrackerReady(nullBucket);
           }
           const nullBucket = selectionsByInstance.get(null);
           const firstInstanceBucket = activeInstance
             ? selectionsByInstance.get(activeInstance.id)
             : undefined;
           return Boolean(
-            (firstInstanceBucket?.Carcas &&
-              firstInstanceBucket?.Shutter &&
-              firstInstanceBucket?.Handles) ||
-              (nullBucket?.Carcas &&
-                nullBucket?.Shutter &&
-                nullBucket?.Handles),
+            checkTrackerReady(firstInstanceBucket) || checkTrackerReady(nullBucket),
           );
         })();
 
@@ -1283,7 +1275,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                   name="carcas"
                   render={({ field }) => (
                     <FormItem className="space-y-2">
-                      <FormLabel className="font-medium">Carcas</FormLabel>
+                      <FormLabel className="font-medium">Carcas *</FormLabel>
                       <FormControl>
                         <ClientDocsSelectionMultiSelect
                           value={field.value || []}
@@ -1371,7 +1363,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                   name="shutter"
                   render={({ field }) => (
                     <FormItem className="space-y-2 md:col-span-2">
-                      <FormLabel className="font-medium">Shutter</FormLabel>
+                      <FormLabel className="font-medium">Shutter {!(isFastProduction || isSmallOrder) && " *"}</FormLabel>
                       <FormControl>
                         <ClientDocsSelectionMultiSelect
                           value={field.value || []}
@@ -1855,8 +1847,13 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
             const missing: string[] = [];
             if (shouldDisableBlockedActions)
               missing.push(blockedTooltip || "Lead is blocked");
-            if (!allInstancesSelectionsReady)
-              missing.push("Save Carcas, Shutter & Handles for all instances");
+            if (!allInstancesSelectionsReady) {
+              if (isFastProduction) {
+                missing.push("Save Carcas for all instances");
+              } else {
+                missing.push("Save Carcas & Shutter for all instances");
+              }
+            }
             if (!allInstancesDocsReady)
               missing.push(
                 "Upload Project Files & Pytha Files for all instances",
