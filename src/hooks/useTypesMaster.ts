@@ -19,6 +19,9 @@ import {
   fetchShutterTypes,
   fetchShutterMaterials,
   fetchShutterMaterialFinishes,
+  fetchCarcassLegs,
+  fetchSkirtingCarcassLegs,
+  fetchSkirtingCarcassLegsColors,
   fetchHandleTypes,
   createMiscellaneousTeam,
   createMiscellaneousType,
@@ -84,6 +87,9 @@ const getCarcassMaterialFinishesQueryKey = (carcasMaterialId?: number) => ["carc
 const getShutterTypesQueryKey = (vendorId?: number) => ["shutterTypes", vendorId];
 const getShutterMaterialsQueryKey = (vendorId?: number) => ["shutterMaterials", vendorId];
 const getShutterMaterialFinishesQueryKey = (shutterMaterialId?: number) => ["shutterMaterialFinishes", shutterMaterialId];
+const getCarcassLegsQueryKey = (vendorId?: number) => ["carcassLegs", vendorId];
+const getSkirtingCarcassLegsQueryKey = (carcassLegsId?: number) => ["skirtingCarcassLegs", carcassLegsId];
+const getSkirtingCarcassLegsColorsQueryKey = (skirtingCarcassLegsId?: number) => ["skirtingCarcassLegsColors", skirtingCarcassLegsId];
 const getHandleTypesQueryKey = (vendorId?: number) => ["handleTypes", vendorId];
 const getFastProductionTimelineRulesQueryKey = (vendorId?: number) => ["fastProductionTimelineRules", vendorId];
 const getSmallOrderRequestTypesQueryKey = (vendorId?: number) => ["smallOrderRequestTypes", vendorId];
@@ -508,6 +514,37 @@ export const useShutterMaterialFinishes = (shutterMaterialId?: number) => {
     queryKey: getShutterMaterialFinishesQueryKey(shutterMaterialId),
     queryFn: () => fetchShutterMaterialFinishes(shutterMaterialId!),
     enabled: !!shutterMaterialId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useCarcassLegs = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: getCarcassLegsQueryKey(vendorId),
+    queryFn: () => fetchCarcassLegs(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useSkirtingCarcassLegs = (carcassLegsId?: number) => {
+  return useQuery({
+    queryKey: getSkirtingCarcassLegsQueryKey(carcassLegsId),
+    queryFn: () => fetchSkirtingCarcassLegs(carcassLegsId!),
+    enabled: !!carcassLegsId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useSkirtingCarcassLegsColors = (skirtingCarcassLegsId?: number) => {
+  return useQuery({
+    queryKey: getSkirtingCarcassLegsColorsQueryKey(skirtingCarcassLegsId),
+    queryFn: () => fetchSkirtingCarcassLegsColors(skirtingCarcassLegsId!),
+    enabled: !!skirtingCarcassLegsId,
     retry: false,
     refetchOnWindowFocus: false,
   });

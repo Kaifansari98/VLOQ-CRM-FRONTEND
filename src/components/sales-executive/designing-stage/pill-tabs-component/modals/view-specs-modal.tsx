@@ -18,16 +18,21 @@ import {
   useCarcasMaterials,
   useShutterMaterials,
   useShutterTypes,
+  useCarcassLegs,
 } from "@/hooks/useTypesMaster";
 import {
   useLeadCarcassMaterialMappings,
   useLeadShutterMaterialMappings,
+  useLeadHardwareMappings,
   useUpsertLeadCarcassMaterialMapping,
   useUpsertLeadShutterMaterialMapping,
+  useUpsertLeadHardwareMapping,
 } from "@/hooks/designing-stage/designing-leads-hooks";
 import {
   fetchCarcassMaterialFinishes,
   fetchShutterMaterialFinishes,
+  fetchSkirtingCarcassLegs,
+  fetchSkirtingCarcassLegsColors,
 } from "@/api/typesMasterApi";
 import { useQueries } from "@tanstack/react-query";
 import { toastManager } from "@/components/ui/toast";
@@ -54,6 +59,15 @@ type ShutterRow = {
   shutter_material_finish_id: string;
 };
 
+type HardwareRow = {
+  localId: string;
+  id?: number;
+  carcass_legs_id: string;
+  skirting_carcass_legs_id: string;
+  skirting_carcass_legs_color_id: string;
+  note: string;
+};
+
 const makeBlankCarcassRow = (): CarcassRow => ({
   localId: `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
   carcass_type_id: "",
@@ -66,6 +80,14 @@ const makeBlankShutterRow = (): ShutterRow => ({
   shutter_type_id: "",
   shutter_material_id: "",
   shutter_material_finish_id: "",
+});
+
+const makeBlankHardwareRow = (): HardwareRow => ({
+  localId: `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  carcass_legs_id: "",
+  skirting_carcass_legs_id: "",
+  skirting_carcass_legs_color_id: "",
+  note: "",
 });
 
 const pickerClassName =
@@ -90,15 +112,23 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     vendorId,
     specification?.lead_id,
   );
+  const { data: carcassLegsData } = useCarcassLegs();
+  const { data: hardwareMappingsData } = useLeadHardwareMappings(
+    vendorId,
+    specification?.lead_id,
+  );
   const upsertCarcassMapping = useUpsertLeadCarcassMaterialMapping();
   const upsertShutterMapping = useUpsertLeadShutterMaterialMapping();
+  const upsertHardwareMapping = useUpsertLeadHardwareMapping();
   const [carcassRows, setCarcassRows] = React.useState<CarcassRow[]>([]);
   const [shutterRows, setShutterRows] = React.useState<ShutterRow[]>([]);
+  const [hardwareRows, setHardwareRows] = React.useState<HardwareRow[]>([]);
 
   const carcassTypes = carcassTypesData?.data ?? [];
   const carcasMaterials = carcasMaterialsData?.data ?? [];
   const shutterTypes = shutterTypesData?.data ?? [];
   const shutterMaterials = shutterMaterialsData?.data ?? [];
+  const carcassLegs = carcassLegsData?.data ?? [];
   const carcassMappings = React.useMemo(
     () => carcassMappingsData ?? [],
     [carcassMappingsData],
@@ -106,6 +136,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   const shutterMappings = React.useMemo(
     () => shutterMappingsData ?? [],
     [shutterMappingsData],
+  );
+  const hardwareMappings = React.useMemo(
+    () => hardwareMappingsData ?? [],
+    [hardwareMappingsData],
   );
 
   React.useEffect(() => {
@@ -151,6 +185,28 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     setShutterRows([...persistedRows, makeBlankShutterRow()]);
   }, [shutterMappings, specification?.id]);
 
+  React.useEffect(() => {
+    if (!specification) {
+      setHardwareRows([]);
+      return;
+    }
+
+    const persistedRows: HardwareRow[] = hardwareMappings.map((item) => ({
+      localId: `saved-${item.id}`,
+      id: item.id,
+      carcass_legs_id: item.carcass_legs_id ? String(item.carcass_legs_id) : "",
+      skirting_carcass_legs_id: item.skirting_carcass_legs_id
+        ? String(item.skirting_carcass_legs_id)
+        : "",
+      skirting_carcass_legs_color_id: item.skirting_carcass_legs_color_id
+        ? String(item.skirting_carcass_legs_color_id)
+        : "",
+      note: item.note ?? "",
+    }));
+
+    setHardwareRows([...persistedRows, makeBlankHardwareRow()]);
+  }, [hardwareMappings, specification?.id]);
+
   const finishQueries = useQueries({
     queries: carcassRows.map((row) => {
       const materialId = Number(row.carcas_material_id);
@@ -169,6 +225,28 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         queryKey: ["shutterMaterialFinishes", materialId],
         queryFn: () => fetchShutterMaterialFinishes(materialId),
         enabled: materialId > 0,
+      };
+    }),
+  });
+
+  const skirtingQueries = useQueries({
+    queries: hardwareRows.map((row) => {
+      const carcassLegsId = Number(row.carcass_legs_id);
+      return {
+        queryKey: ["skirtingCarcassLegs", carcassLegsId],
+        queryFn: () => fetchSkirtingCarcassLegs(carcassLegsId),
+        enabled: carcassLegsId > 0,
+      };
+    }),
+  });
+
+  const colorQueries = useQueries({
+    queries: hardwareRows.map((row) => {
+      const skirtingId = Number(row.skirting_carcass_legs_id);
+      return {
+        queryKey: ["skirtingCarcassLegsColors", skirtingId],
+        queryFn: () => fetchSkirtingCarcassLegsColors(skirtingId),
+        enabled: skirtingId > 0,
       };
     }),
   });
@@ -364,6 +442,192 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       }
     },
     [saveShutterRowIfComplete],
+  );
+
+  const saveHardwareRowIfComplete = React.useCallback(
+    async (row: HardwareRow, colorOptionsCount: number) => {
+      if (
+        !vendorId ||
+        !userId ||
+        !specification?.lead_id ||
+        !row.carcass_legs_id ||
+        !row.skirting_carcass_legs_id ||
+        (colorOptionsCount > 0 && !row.skirting_carcass_legs_color_id)
+      ) {
+        return;
+      }
+
+      try {
+        await upsertHardwareMapping.mutateAsync({
+          id: row.id,
+          vendor_id: vendorId,
+          lead_id: specification.lead_id,
+          carcass_legs_id: Number(row.carcass_legs_id),
+          skirting_carcass_legs_id: Number(row.skirting_carcass_legs_id),
+          skirting_carcass_legs_color_id: row.skirting_carcass_legs_color_id
+            ? Number(row.skirting_carcass_legs_color_id)
+            : null,
+          note: row.note || null,
+          created_by: userId,
+        });
+      } catch (error: any) {
+        toastManager.add({
+          title:
+            error?.response?.data?.message ||
+            error?.message ||
+            "Failed to save hardware mapping.",
+          type: "error",
+        });
+      }
+    },
+    [specification?.lead_id, upsertHardwareMapping, userId, vendorId],
+  );
+
+  const isHardwareRowDuplicate = (
+    prev: HardwareRow[],
+    localId: string,
+    updatedRow: HardwareRow,
+  ) =>
+    prev.some(
+      (otherRow) =>
+        otherRow.localId !== localId &&
+        otherRow.carcass_legs_id === updatedRow.carcass_legs_id &&
+        otherRow.skirting_carcass_legs_id ===
+          updatedRow.skirting_carcass_legs_id &&
+        otherRow.skirting_carcass_legs_color_id ===
+          updatedRow.skirting_carcass_legs_color_id,
+    );
+
+  const handleCarcassLegsChange = React.useCallback(
+    (localId: string, value: string) => {
+      setHardwareRows((prev) =>
+        prev.map((row) =>
+          row.localId === localId
+            ? {
+                ...row,
+                carcass_legs_id: value,
+                skirting_carcass_legs_id: "",
+                skirting_carcass_legs_color_id: "",
+                note: "",
+              }
+            : row,
+        ),
+      );
+    },
+    [],
+  );
+
+  const handleSkirtingChange = React.useCallback(
+    async (
+      localId: string,
+      value: string,
+      skirtingOptions: { id: number; name: string; inScope: boolean }[],
+    ) => {
+      const selectedSkirting = skirtingOptions.find(
+        (option) => String(option.id) === value,
+      );
+      const autoNote =
+        selectedSkirting && !selectedSkirting.inScope
+          ? "Not in our scope"
+          : "";
+
+      let nextRow: HardwareRow | null = null;
+      let duplicateMessage = "";
+
+      setHardwareRows((prev) =>
+        prev.map((row) => {
+          if (row.localId !== localId) return row;
+
+          const updatedRow: HardwareRow = {
+            ...row,
+            skirting_carcass_legs_id: value,
+            skirting_carcass_legs_color_id: "",
+            note: autoNote,
+          };
+
+          if (isHardwareRowDuplicate(prev, localId, updatedRow)) {
+            duplicateMessage =
+              "This carcass legs and skirting combination has already been added.";
+            return row;
+          }
+
+          nextRow = updatedRow;
+          return updatedRow;
+        }),
+      );
+
+      if (duplicateMessage) {
+        toastManager.add({ title: duplicateMessage, type: "error" });
+        return;
+      }
+
+      if (!nextRow) return;
+
+      if (selectedSkirting && !selectedSkirting.inScope) {
+        void saveHardwareRowIfComplete(nextRow, 0);
+        return;
+      }
+
+      if (value) {
+        const colorsResult = await fetchSkirtingCarcassLegsColors(
+          Number(value),
+        );
+        void saveHardwareRowIfComplete(nextRow, colorsResult.data.length);
+      }
+    },
+    [saveHardwareRowIfComplete],
+  );
+
+  const handleColorChange = React.useCallback(
+    (localId: string, value: string, colorOptionsCount: number) => {
+      let nextRow: HardwareRow | null = null;
+      let duplicateMessage = "";
+
+      setHardwareRows((prev) =>
+        prev.map((row) => {
+          if (row.localId !== localId) return row;
+
+          const updatedRow: HardwareRow = {
+            ...row,
+            skirting_carcass_legs_color_id: value,
+          };
+
+          if (isHardwareRowDuplicate(prev, localId, updatedRow)) {
+            duplicateMessage =
+              "This carcass legs, skirting, and color combination has already been added.";
+            return row;
+          }
+
+          nextRow = updatedRow;
+          return updatedRow;
+        }),
+      );
+
+      if (duplicateMessage) {
+        toastManager.add({ title: duplicateMessage, type: "error" });
+        return;
+      }
+
+      if (nextRow) {
+        void saveHardwareRowIfComplete(nextRow, colorOptionsCount);
+      }
+    },
+    [saveHardwareRowIfComplete],
+  );
+
+  const handleNoteChange = React.useCallback((localId: string, value: string) => {
+    setHardwareRows((prev) =>
+      prev.map((row) =>
+        row.localId === localId ? { ...row, note: value } : row,
+      ),
+    );
+  }, []);
+
+  const handleNoteBlur = React.useCallback(
+    (row: HardwareRow, colorOptionsCount: number) => {
+      void saveHardwareRowIfComplete(row, colorOptionsCount);
+    },
+    [saveHardwareRowIfComplete],
   );
 
   if (!specification) return null;
@@ -640,10 +904,160 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
             </div>
           </TabsContent>
           <TabsContent value="hardware" className="flex-1 overflow-y-auto">
-            <ComingSoon
-              heading="No Hardware Specifications"
-              description="Hardware specifications for this entry will show up here once added."
-            />
+            <div className="rounded-xl border border-border overflow-hidden mt-3">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-zinc-700">
+                    <tr className="border-b">
+                      <th className="px-4 py-3 text-left font-bold text-white">
+                        Carcass Legs
+                      </th>
+                      <th className="px-4 py-3 text-left font-bold text-white">
+                        Skirting
+                      </th>
+                      <th className="px-4 py-3 text-left font-bold text-white">
+                        Colors
+                      </th>
+                      <th className="px-4 py-3 text-left font-bold text-white">
+                        Note
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {hardwareRows.map((row, index) => {
+                      const skirtingOptions =
+                        skirtingQueries[index]?.data?.data ?? [];
+                      const colorOptions =
+                        colorQueries[index]?.data?.data ?? [];
+                      const selectedSkirting = skirtingOptions.find(
+                        (option) =>
+                          String(option.id) === row.skirting_carcass_legs_id,
+                      );
+                      const isOutOfScope =
+                        !!selectedSkirting && !selectedSkirting.inScope;
+
+                      return (
+                        <tr key={row.localId} className="border-b last:border-b-0">
+                          <td className="px-4 py-3 align-top">
+                            <AssignToPicker
+                              data={carcassLegs.map((legs) => ({
+                                id: legs.id,
+                                label: legs.name,
+                              }))}
+                              value={
+                                row.carcass_legs_id
+                                  ? Number(row.carcass_legs_id)
+                                  : undefined
+                              }
+                              onChange={(value) =>
+                                handleCarcassLegsChange(
+                                  row.localId,
+                                  value ? String(value) : "",
+                                )
+                              }
+                              placeholder="Search carcass legs..."
+                              emptyLabel="Select carcass legs"
+                              className={pickerClassName}
+                            />
+                          </td>
+                          <td className="px-4 py-3 align-top">
+                            <AssignToPicker
+                              data={skirtingOptions.map((option) => ({
+                                id: option.id,
+                                label: option.name,
+                              }))}
+                              value={
+                                row.skirting_carcass_legs_id
+                                  ? Number(row.skirting_carcass_legs_id)
+                                  : undefined
+                              }
+                              onChange={(value) =>
+                                void handleSkirtingChange(
+                                  row.localId,
+                                  value ? String(value) : "",
+                                  skirtingOptions,
+                                )
+                              }
+                              disabled={!row.carcass_legs_id}
+                              placeholder={
+                                row.carcass_legs_id
+                                  ? "Search skirting..."
+                                  : "Select carcass legs first"
+                              }
+                              emptyLabel={
+                                row.carcass_legs_id
+                                  ? "Select skirting"
+                                  : "Select carcass legs first"
+                              }
+                              className={pickerClassName}
+                            />
+                          </td>
+                          <td className="px-4 py-3 align-top">
+                            <AssignToPicker
+                              data={colorOptions.map((color) => ({
+                                id: color.id,
+                                label: color.color,
+                              }))}
+                              value={
+                                row.skirting_carcass_legs_color_id
+                                  ? Number(row.skirting_carcass_legs_color_id)
+                                  : undefined
+                              }
+                              onChange={(value) =>
+                                handleColorChange(
+                                  row.localId,
+                                  value ? String(value) : "",
+                                  colorOptions.length,
+                                )
+                              }
+                              disabled={
+                                !row.skirting_carcass_legs_id ||
+                                colorOptions.length === 0
+                              }
+                              placeholder={
+                                !row.skirting_carcass_legs_id
+                                  ? "Select skirting first"
+                                  : colorOptions.length === 0
+                                    ? "No colors available"
+                                    : "Search color..."
+                              }
+                              emptyLabel={
+                                !row.skirting_carcass_legs_id
+                                  ? "Select skirting first"
+                                  : colorOptions.length === 0
+                                    ? "No colors available"
+                                    : "Select color"
+                              }
+                              className={pickerClassName}
+                            />
+                          </td>
+                          <td className="px-4 py-3 align-top">
+                            <input
+                              type="text"
+                              value={isOutOfScope ? "Not in our scope" : row.note}
+                              onChange={(event) =>
+                                handleNoteChange(row.localId, event.target.value)
+                              }
+                              onBlur={() =>
+                                handleNoteBlur(row, colorOptions.length)
+                              }
+                              readOnly={isOutOfScope}
+                              disabled={isOutOfScope}
+                              placeholder={
+                                isOutOfScope ? "" : "Add a note (optional)"
+                              }
+                              className={`${pickerClassName} w-full ${
+                                isOutOfScope ? "text-muted-foreground" : ""
+                              }`}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </TabsContent>
           <TabsContent value="others" className="flex-1 overflow-y-auto">
             <ComingSoon

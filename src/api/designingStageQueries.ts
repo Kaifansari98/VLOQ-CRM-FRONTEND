@@ -711,3 +711,50 @@ export const upsertLeadShutterMaterialMapping = async (
   );
   return data?.data as LeadShutterMaterialMappingEntry;
 };
+
+export interface LeadHardwareMappingEntry {
+  id: number;
+  vendor_id: number;
+  lead_id: number;
+  carcass_legs_id: number;
+  skirting_carcass_legs_id: number;
+  skirting_carcass_legs_color_id: number | null;
+  note: string | null;
+  created_at: string;
+  created_by: number;
+  carcassLegs?: { id: number; name: string };
+  skirtingCarcassLegs?: { id: number; name: string; inScope: boolean };
+  skirtingCarcassLegsColor?: { id: number; color: string } | null;
+}
+
+export interface UpsertLeadHardwareMappingPayload {
+  id?: number;
+  vendor_id: number;
+  lead_id: number;
+  carcass_legs_id: number;
+  skirting_carcass_legs_id: number;
+  skirting_carcass_legs_color_id?: number | null;
+  note?: string | null;
+  created_by: number;
+}
+
+export const getLeadHardwareMappings = async (
+  vendorId: number,
+  leadId: number,
+): Promise<LeadHardwareMappingEntry[]> => {
+  const { data } = await apiClient.get(
+    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/hardware-mappings`,
+  );
+
+  return Array.isArray(data?.data) ? data.data : [];
+};
+
+export const upsertLeadHardwareMapping = async (
+  payload: UpsertLeadHardwareMappingPayload,
+) => {
+  const { data } = await apiClient.post(
+    "/leads/designing-stage/hardware-mappings",
+    payload,
+  );
+  return data?.data as LeadHardwareMappingEntry;
+};

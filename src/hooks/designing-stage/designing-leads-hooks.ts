@@ -12,6 +12,7 @@ import {
   getLeadSpecifications,
   getLeadCarcassMaterialMappings,
   getLeadShutterMaterialMappings,
+  getLeadHardwareMappings,
   getCHSSelectionTypeMappings,
   getCHSManufacturingDaysByInstance,
   getInstanceStage,
@@ -32,6 +33,8 @@ import {
   UpsertLeadCarcassMaterialMappingPayload,
   upsertLeadShutterMaterialMapping,
   UpsertLeadShutterMaterialMappingPayload,
+  upsertLeadHardwareMapping,
+  UpsertLeadHardwareMappingPayload,
   upsertCHSSelectionTypeMapping,
   UpsertCHSMappingPayload,
   updateCHSSelectionTypeMapping,
@@ -213,6 +216,35 @@ export const useUpsertLeadShutterMaterialMapping = () => {
       queryClient.invalidateQueries({
         queryKey: [
           "leadShutterMaterialMappings",
+          variables.vendor_id,
+          variables.lead_id,
+        ],
+      });
+    },
+  });
+};
+
+export const useLeadHardwareMappings = (
+  vendorId?: number,
+  leadId?: number,
+) => {
+  return useQuery({
+    queryKey: ["leadHardwareMappings", vendorId, leadId],
+    queryFn: () => getLeadHardwareMappings(vendorId!, leadId!),
+    enabled: !!vendorId && !!leadId,
+  });
+};
+
+export const useUpsertLeadHardwareMapping = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: UpsertLeadHardwareMappingPayload) =>
+      upsertLeadHardwareMapping(payload),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [
+          "leadHardwareMappings",
           variables.vendor_id,
           variables.lead_id,
         ],
