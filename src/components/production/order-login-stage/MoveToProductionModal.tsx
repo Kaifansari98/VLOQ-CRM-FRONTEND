@@ -41,6 +41,7 @@ import {
 import AssignToPicker from "@/components/assign-to-picker";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import { createLeadChatRoom } from "@/api/lead-chats";
+import { useClientRequiredCompletionDate } from "@/api/tech-check";
 
 const schema = z.object({
   assign_to_user_id: z.number().min(1, "Please select a Factory user"),
@@ -100,6 +101,7 @@ export default function MoveToProductionModal({
       : "Confirm Move To Production";
 
   const { data: leadDetails } = useLeadById(data?.id, vendorId, userId);
+  const { data: dateDetails } = useClientRequiredCompletionDate(vendorId, data?.id);
 
   const mappedUsers =
     factoryUsers?.map((user: any) => ({
@@ -135,6 +137,7 @@ export default function MoveToProductionModal({
 
     const requiredDate =
       client_required_order_login_complition_date ??
+      dateDetails?.client_required_order_login_complition_date ??
       leadDetails?.data?.lead?.client_required_order_login_complition_date;
 
     if (!requiredDate) {

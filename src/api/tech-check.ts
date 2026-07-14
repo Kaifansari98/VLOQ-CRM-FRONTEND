@@ -119,13 +119,18 @@ export const useApproveTechCheck = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: approveTechCheck,
-    onSuccess: async () => {
+    onSuccess: async (data, variables) => {
       toastManager.add({
         title: "Tech Check approved successfully!",
         type: "success",
       });
       await queryClient.invalidateQueries({ queryKey: ["techCheckLeads"] });
       await queryClient.invalidateQueries({ queryKey: ["leadStats"] });
+      if (variables?.leadId) {
+        await queryClient.invalidateQueries({
+          queryKey: ["lead", variables.leadId],
+        });
+      }
     },
     onError: (error: unknown) => {
       toastError(error);

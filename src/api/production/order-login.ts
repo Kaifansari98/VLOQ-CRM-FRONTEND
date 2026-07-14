@@ -624,6 +624,10 @@ export const useMarkOrderLoginFilled = (
 
       // 🔁 Refetch relevant data
       queryClient.invalidateQueries({
+        queryKey: ["lead", leadId],
+      });
+
+      queryClient.invalidateQueries({
         queryKey: ["vendorOverallLeads"],
       });
 
