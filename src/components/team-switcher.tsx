@@ -135,7 +135,7 @@ export function TeamSwitcher({
                         fill
                         className="object-contain dark:hidden"
                       />
-                      <Image
+                      <Image  
                         src="/logos/furnix-logo-light.png"
                         alt="Logo"
                         fill
