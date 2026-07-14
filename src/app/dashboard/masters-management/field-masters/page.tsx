@@ -22,7 +22,7 @@ import CompanyVendorMastersTable from "@/components/custom/CompanyVendorMastersT
 import ArchitectureMastersTable from "@/components/custom/ArchitectureMastersTable";
 import { useSearchParams } from "next/navigation";
 import { useVendorById } from "@/api/vendors";
-import { useAppSelector } from "@/redux/hooks";
+import { useAppSelector } from "@/redux/store";
 
 export default function FieldMastersPage() {
   const searchParams = useSearchParams();
