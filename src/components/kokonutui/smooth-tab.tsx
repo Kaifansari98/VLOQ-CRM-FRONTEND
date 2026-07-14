@@ -262,6 +262,7 @@ interface SmoothTabProps {
   activeColor?: string;
   onChange?: (tabId: string) => void;
   contentHeightClass?: string;
+  pinTabsToBottom?: boolean;
 }
 
 const slideVariants = {
@@ -300,6 +301,7 @@ export default function SmoothTab({
   activeColor = "bg-[#1F9CFE]",
   onChange,
   contentHeightClass,
+  pinTabsToBottom = true,
 }: SmoothTabProps) {
   const [selected, setSelected] = React.useState<string>(defaultTabId);
   const [direction, setDirection] = React.useState(0);
@@ -379,7 +381,8 @@ export default function SmoothTab({
         role="tablist"
         aria-label="Smooth tabs"
         className={cn(
-          "flex items-center justify-start sm:justify-between gap-1 py-1 mt-auto relative",
+          "flex items-center justify-start sm:justify-between gap-1 py-1 relative",
+          pinTabsToBottom && "mt-auto",
           "bg-background w-full sm:w-fit max-w-full",
           "border rounded-xl overflow-x-auto no-scrollbar",
           "transition-all duration-200",

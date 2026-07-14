@@ -21,10 +21,73 @@ import InstallerUserMastersTable from "@/components/custom/InstallerUserMastersT
 import CompanyVendorMastersTable from "@/components/custom/CompanyVendorMastersTable";
 import ArchitectureMastersTable from "@/components/custom/ArchitectureMastersTable";
 import { useSearchParams } from "next/navigation";
+import { useVendorById } from "@/api/vendors";
+import { useAppSelector } from "@/redux/hooks";
 
 export default function FieldMastersPage() {
   const searchParams = useSearchParams();
   const vendorIdOverride = Number(searchParams.get("vendor_id") || "") || undefined;
+  const sessionVendorAllowsLargeScale = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const { data: vendorResponse } = useVendorById(vendorIdOverride);
+  const showArchitectureMaster = vendorIdOverride
+    ? vendorResponse?.data?.handlesLargeScaleProjects === true
+    : sessionVendorAllowsLargeScale;
+  const tabItems = [
+    {
+      id: "site-master",
+      title: "Site Master",
+      color: "bg-black hover:bg-black",
+      cardContent: <SiteMastersTable vendorIdOverride={vendorIdOverride} />,
+    },
+    {
+      id: "source-master",
+      title: "Source Master",
+      color: "bg-black hover:bg-black",
+      cardContent: <SourceMastersTable vendorIdOverride={vendorIdOverride} />,
+    },
+    {
+      id: "miscellaneous-type-master",
+      title: "Miscellaneous Type Master",
+      color: "bg-black hover:bg-black",
+      cardContent: <MiscellaneousTypeMastersTable vendorIdOverride={vendorIdOverride} />,
+    },
+    {
+      id: "issue-log-type-master",
+      title: "Issue Log Type Master",
+      color: "bg-black hover:bg-black",
+      cardContent: <IssueLogTypeMastersTable vendorIdOverride={vendorIdOverride} />,
+    },
+    {
+      id: "miscellaneous-team-master",
+      title: "Miscellaneous Team Master",
+      color: "bg-black hover:bg-black",
+      cardContent: <MiscellaneousTeamMastersTable vendorIdOverride={vendorIdOverride} />,
+    },
+    {
+      id: "installer-master",
+      title: "Installer Master",
+      color: "bg-black hover:bg-black",
+      cardContent: <InstallerUserMastersTable vendorIdOverride={vendorIdOverride} />,
+    },
+    {
+      id: "company-vendor-master",
+      title: "Company Vendor Master",
+      color: "bg-black hover:bg-black",
+      cardContent: <CompanyVendorMastersTable vendorIdOverride={vendorIdOverride} />,
+    },
+    ...(showArchitectureMaster
+      ? [
+        {
+          id: "architecture-master",
+          title: "Architect",
+          color: "bg-black hover:bg-black",
+          cardContent: <ArchitectureMastersTable vendorIdOverride={vendorIdOverride} />,
+        },
+      ]
+      : []),
+  ];
 
   return (
     <>
@@ -67,57 +130,9 @@ export default function FieldMastersPage() {
 
         <SmoothTab
           defaultTabId="site-master"
-          items={[
-            {
-              id: "site-master",
-              title: "Site Master",
-              color: "bg-black hover:bg-black",
-              cardContent: <SiteMastersTable vendorIdOverride={vendorIdOverride} />,
-            },
-            {
-              id: "source-master",
-              title: "Source Master",
-              color: "bg-black hover:bg-black",
-              cardContent: <SourceMastersTable vendorIdOverride={vendorIdOverride} />,
-            },
-            {
-              id: "miscellaneous-type-master",
-              title: "Miscellaneous Type Master",
-              color: "bg-black hover:bg-black",
-              cardContent: <MiscellaneousTypeMastersTable vendorIdOverride={vendorIdOverride} />,
-            },
-            {
-              id: "issue-log-type-master",
-              title: "Issue Log Type Master",
-              color: "bg-black hover:bg-black",
-              cardContent: <IssueLogTypeMastersTable vendorIdOverride={vendorIdOverride} />,
-            },
-            {
-              id: "miscellaneous-team-master",
-              title: "Miscellaneous Team Master",
-              color: "bg-black hover:bg-black",
-              cardContent: <MiscellaneousTeamMastersTable vendorIdOverride={vendorIdOverride} />,
-            },
-            {
-              id: "installer-master",
-              title: "Installer Master",
-              color: "bg-black hover:bg-black",
-              cardContent: <InstallerUserMastersTable vendorIdOverride={vendorIdOverride} />,
-            },
-            {
-              id: "company-vendor-master",
-              title: "Company Vendor Master",
-              color: "bg-black hover:bg-black",
-              cardContent: <CompanyVendorMastersTable vendorIdOverride={vendorIdOverride} />,
-            },
-            {
-              id: "architecture-master",
-              title: "Architect",
-              color: "bg-black hover:bg-black",
-              cardContent: <ArchitectureMastersTable vendorIdOverride={vendorIdOverride} />,
-            },
-          ]}
+          items={tabItems}
           contentHeightClass="min-h-[240px]"
+          pinTabsToBottom={false}
         />
       </div>
     </>
