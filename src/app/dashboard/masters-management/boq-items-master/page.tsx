@@ -562,6 +562,7 @@ export default function BoqItemsMasterPage() {
             },
           ]}
           contentHeightClass="min-h-[240px]"
+          pinTabsToBottom={false}
         />
       </div>
 

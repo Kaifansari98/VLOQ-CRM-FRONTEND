@@ -4,32 +4,67 @@ import { useState } from "react";
 import { ClipboardList, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ComingSoon from "@/components/generics/ComingSoon";
-import AddSpecsModal, { SpecFormId } from "./modals/add-specs-modal";
-import CarcassFormModal from "./modals/carcass-form-modal";
-import ShutterFormModal from "./modals/shutter-form-modal";
 import ViewSpecsModal from "./modals/view-specs-modal";
 import { useDetails } from "./details-context";
 import { useAppSelector } from "@/redux/store";
-import { useLeadSpecifications } from "@/hooks/designing-stage/designing-leads-hooks";
+import {
+  useLeadSpecifications,
+  useCreateLeadSpecification,
+} from "@/hooks/designing-stage/designing-leads-hooks";
 import type { LeadSpecificationEntry } from "@/api/designingStageQueries";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toastManager } from "@/components/ui/toast";
 
 export default function SpecificationsTab() {
   const { leadId } = useDetails();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const userId = useAppSelector((state) => state.auth.user?.id);
 
-  const [openAddSpecs, setOpenAddSpecs] = useState(false);
-  const [openCarcassForm, setOpenCarcassForm] = useState(false);
-  const [openShutterForm, setOpenShutterForm] = useState(false);
+  const [openCreateConfirm, setOpenCreateConfirm] = useState(false);
   const [selectedSpec, setSelectedSpec] =
     useState<LeadSpecificationEntry | null>(null);
 
   const { data: specifications = [] } = useLeadSpecifications(vendorId, leadId);
   const hasSpecifications = specifications.length > 0;
 
-  const handleSelectForm = (form: SpecFormId) => {
-    setOpenAddSpecs(false);
-    if (form === "carcass") setOpenCarcassForm(true);
-    if (form === "shutter") setOpenShutterForm(true);
+  const createSpecification = useCreateLeadSpecification();
+
+  const handleCreateSpecification = () => {
+    if (!vendorId || !userId) {
+      toastManager.add({
+        title: "Vendor or user information is missing!",
+        type: "error",
+      });
+      return;
+    }
+
+    createSpecification.mutate(
+      { vendorId, leadId, createdBy: userId },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: "Specification created successfully!",
+            type: "success",
+          });
+          setOpenCreateConfirm(false);
+        },
+        onError: (err: any) => {
+          toastManager.add({
+            title: err?.message || "Failed to create specification",
+            type: "error",
+          });
+        },
+      },
+    );
   };
 
   return (
@@ -41,7 +76,7 @@ export default function SpecificationsTab() {
             Specifications
           </h1>
         </div>
-        <Button size="sm" onClick={() => setOpenAddSpecs(true)}>
+        <Button size="sm" onClick={() => setOpenCreateConfirm(true)}>
           <Plus size={16} className="mr-1" />
           <span>Add Specs</span>
         </Button>
@@ -77,13 +112,28 @@ export default function SpecificationsTab() {
         />
       )}
 
-      <AddSpecsModal
-        open={openAddSpecs}
-        onOpenChange={setOpenAddSpecs}
-        onSelectForm={handleSelectForm}
-      />
-      <CarcassFormModal open={openCarcassForm} onOpenChange={setOpenCarcassForm} />
-      <ShutterFormModal open={openShutterForm} onOpenChange={setOpenShutterForm} />
+      <AlertDialog open={openCreateConfirm} onOpenChange={setOpenCreateConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Create Specification?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will create a new specification card for this lead.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={createSpecification.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCreateSpecification}
+              disabled={createSpecification.isPending}
+            >
+              {createSpecification.isPending ? "Creating..." : "Confirm"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <ViewSpecsModal
         open={!!selectedSpec}
         onOpenChange={(open) => {

@@ -22,6 +22,9 @@ import {
   fetchCarcassLegs,
   fetchSkirtingCarcassLegs,
   fetchSkirtingCarcassLegsColors,
+  fetchLightCarcasTypes,
+  fetchLightCarcasUnits,
+  fetchOtherAppliances,
   fetchHandleTypes,
   createMiscellaneousTeam,
   createMiscellaneousType,
@@ -90,6 +93,9 @@ const getShutterMaterialFinishesQueryKey = (shutterMaterialId?: number) => ["shu
 const getCarcassLegsQueryKey = (vendorId?: number) => ["carcassLegs", vendorId];
 const getSkirtingCarcassLegsQueryKey = (carcassLegsId?: number) => ["skirtingCarcassLegs", carcassLegsId];
 const getSkirtingCarcassLegsColorsQueryKey = (skirtingCarcassLegsId?: number) => ["skirtingCarcassLegsColors", skirtingCarcassLegsId];
+const getLightCarcasTypesQueryKey = (vendorId?: number) => ["lightCarcasTypes", vendorId];
+const getLightCarcasUnitsQueryKey = (lightCarcasTypeId?: number) => ["lightCarcasUnits", lightCarcasTypeId];
+const getOtherAppliancesQueryKey = (vendorId?: number) => ["otherAppliances", vendorId];
 const getHandleTypesQueryKey = (vendorId?: number) => ["handleTypes", vendorId];
 const getFastProductionTimelineRulesQueryKey = (vendorId?: number) => ["fastProductionTimelineRules", vendorId];
 const getSmallOrderRequestTypesQueryKey = (vendorId?: number) => ["smallOrderRequestTypes", vendorId];
@@ -535,6 +541,38 @@ export const useSkirtingCarcassLegs = (carcassLegsId?: number) => {
     queryKey: getSkirtingCarcassLegsQueryKey(carcassLegsId),
     queryFn: () => fetchSkirtingCarcassLegs(carcassLegsId!),
     enabled: !!carcassLegsId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useLightCarcasTypes = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: getLightCarcasTypesQueryKey(vendorId),
+    queryFn: () => fetchLightCarcasTypes(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useLightCarcasUnits = (lightCarcasTypeId?: number) => {
+  return useQuery({
+    queryKey: getLightCarcasUnitsQueryKey(lightCarcasTypeId),
+    queryFn: () => fetchLightCarcasUnits(lightCarcasTypeId!),
+    enabled: !!lightCarcasTypeId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useOtherAppliances = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: getOtherAppliancesQueryKey(vendorId),
+    queryFn: () => fetchOtherAppliances(vendorId!),
+    enabled: !!vendorId,
     retry: false,
     refetchOnWindowFocus: false,
   });

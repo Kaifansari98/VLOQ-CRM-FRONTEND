@@ -259,6 +259,42 @@ export interface HandleTypeMasterResponse {
   data: HandleTypeMasterEntry[];
 }
 
+export interface LightCarcasTypeMasterEntry {
+  id: number;
+  type: string;
+  vendor_id: number;
+}
+
+export interface LightCarcasTypeMasterResponse {
+  success: boolean;
+  data: LightCarcasTypeMasterEntry[];
+}
+
+export interface LightCarcasUnitMasterEntry {
+  id: number;
+  type: string;
+  vendor_id: number;
+  light_carcas_type_id: number;
+}
+
+export interface LightCarcasUnitMasterResponse {
+  success: boolean;
+  data: LightCarcasUnitMasterEntry[];
+}
+
+export interface OtherAppliancesMasterEntry {
+  id: number;
+  vendor_id: number;
+  type: string;
+  article_number: string;
+  description: string;
+}
+
+export interface OtherAppliancesMasterResponse {
+  success: boolean;
+  data: OtherAppliancesMasterEntry[];
+}
+
 export interface CreateSiteTypeMasterPayload {
   vendor_id: number;
   type: string;
@@ -515,6 +551,36 @@ export const fetchSkirtingCarcassLegsColors = async (
 ) => {
   const res = await apiClient.get<SkirtingCarcassLegsColorMasterResponse>(
     `/leads/get-skirting-carcass-legs-colors/${skirtingCarcassLegsId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
+export const fetchLightCarcasTypes = async (vendorId: number) => {
+  const res = await apiClient.get<LightCarcasTypeMasterResponse>(
+    `/leads/get-all-light-carcas-types/${vendorId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
+export const fetchLightCarcasUnits = async (lightCarcasTypeId: number) => {
+  const res = await apiClient.get<LightCarcasUnitMasterResponse>(
+    `/leads/get-light-carcas-units/${lightCarcasTypeId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
+export const fetchOtherAppliances = async (vendorId: number) => {
+  const res = await apiClient.get<OtherAppliancesMasterResponse>(
+    `/leads/get-all-other-appliances/${vendorId}`,
   );
   return {
     success: Boolean(res.data?.success),

@@ -210,15 +210,32 @@ export function NavMain({
       );
 
       if (userMasterIndex === -1) return section;
-      if (section.items.some((item) => item.title === "BOQ Master")) {
-        return section;
+
+      let nextItems = section.items;
+      let changed = false;
+
+      if (!nextItems.some((item) => item.title === "BOQ Master")) {
+        nextItems = [...nextItems];
+        nextItems.splice(userMasterIndex + 1, 0, {
+          title: "BOQ Master",
+          url: "/dashboard/masters-management/boq-items-master",
+        });
+        changed = true;
       }
 
-      const nextItems = [...section.items];
-      nextItems.splice(userMasterIndex + 1, 0, {
-        title: "BOQ Master",
-        url: "/dashboard/masters-management/boq-items-master",
-      });
+      if (!nextItems.some((item) => item.title === "Specs Master")) {
+        const boqMasterIndex = nextItems.findIndex(
+          (item) => item.title === "BOQ Master",
+        );
+        nextItems = [...nextItems];
+        nextItems.splice(boqMasterIndex + 1, 0, {
+          title: "Specs Master",
+          url: "/dashboard/masters-management/specs-master",
+        });
+        changed = true;
+      }
+
+      if (!changed) return section;
 
       return {
         ...section,
