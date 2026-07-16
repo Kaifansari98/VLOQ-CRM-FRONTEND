@@ -173,6 +173,7 @@ export interface CarcasMaterialFinishMasterEntry {
   id: number;
   name: string;
   carcas_material_id: number;
+  material?: { id: number; name: string };
 }
 
 export interface CarcasMaterialFinishMasterResponse {
@@ -195,6 +196,7 @@ export interface ShutterMaterialFinishMasterEntry {
   id: number;
   name: string;
   shutter_material_id: number;
+  material?: { id: number; name: string };
 }
 
 export interface ShutterMaterialFinishMasterResponse {
@@ -218,6 +220,7 @@ export interface SkirtingCarcassLegsColorMasterEntry {
   carcass_legs_id: number;
   skirting_carcass_legs_id: number;
   color: string;
+  skirtingCarcassLegs?: { id: number; name: string };
 }
 
 export interface SkirtingCarcassLegsColorMasterResponse {
@@ -230,6 +233,7 @@ export interface SkirtingCarcassLegsMasterEntry {
   name: string;
   carcass_legs_id: number;
   inScope: boolean;
+  carcassLegs?: { id: number; name: string };
 }
 
 export interface SkirtingCarcassLegsMasterResponse {
@@ -259,6 +263,43 @@ export interface HandleTypeMasterResponse {
   data: HandleTypeMasterEntry[];
 }
 
+export interface LightCarcasTypeMasterEntry {
+  id: number;
+  type: string;
+  vendor_id: number;
+}
+
+export interface LightCarcasTypeMasterResponse {
+  success: boolean;
+  data: LightCarcasTypeMasterEntry[];
+}
+
+export interface LightCarcasUnitMasterEntry {
+  id: number;
+  type: string;
+  vendor_id: number;
+  light_carcas_type_id: number;
+  lightCarcasType?: { id: number; type: string };
+}
+
+export interface LightCarcasUnitMasterResponse {
+  success: boolean;
+  data: LightCarcasUnitMasterEntry[];
+}
+
+export interface OtherAppliancesMasterEntry {
+  id: number;
+  vendor_id: number;
+  type: string;
+  article_number: string;
+  description: string;
+}
+
+export interface OtherAppliancesMasterResponse {
+  success: boolean;
+  data: OtherAppliancesMasterEntry[];
+}
+
 export interface CreateSiteTypeMasterPayload {
   vendor_id: number;
   type: string;
@@ -280,6 +321,71 @@ export interface CreateSourceTypeMasterPayload {
 export interface CreateProductTypeMasterPayload {
   vendor_id: number;
   type: string;
+}
+
+export interface CreateCarcassTypePayload {
+  vendor_id: number;
+  name: string;
+}
+
+export interface CreateCarcasMaterialPayload {
+  vendor_id: number;
+  name: string;
+}
+
+export interface CreateCarcassMaterialFinishPayload {
+  carcas_material_id: number;
+  name: string;
+}
+
+export interface CreateShutterTypePayload {
+  vendor_id: number;
+  name: string;
+}
+
+export interface CreateShutterMaterialPayload {
+  vendor_id: number;
+  name: string;
+}
+
+export interface CreateShutterMaterialFinishPayload {
+  shutter_material_id: number;
+  name: string;
+}
+
+export interface CreateCarcassLegsPayload {
+  vendor_id: number;
+  name: string;
+}
+
+export interface CreateSkirtingCarcassLegsPayload {
+  carcass_legs_id: number;
+  name: string;
+  inScope: boolean;
+}
+
+export interface CreateSkirtingCarcassLegsColorPayload {
+  carcass_legs_id: number;
+  skirting_carcass_legs_id: number;
+  color: string;
+}
+
+export interface CreateLightCarcasTypePayload {
+  vendor_id: number;
+  type: string;
+}
+
+export interface CreateLightCarcasUnitPayload {
+  vendor_id: number;
+  type: string;
+  light_carcas_type_id: number;
+}
+
+export interface CreateOtherAppliancesPayload {
+  vendor_id: number;
+  type: string;
+  article_number: string;
+  description: string;
 }
 
 export interface CreateProductStructureMasterPayload {
@@ -450,6 +556,11 @@ export const fetchShutterTypes = async (vendorId: number) => {
   };
 }
 
+export const createCarcassType = async (payload: CreateCarcassTypePayload) => {
+  const res = await apiClient.post("/leads/create-carcass-type", payload);
+  return res.data;
+}
+
 export const fetchCarcasMaterials = async (vendorId: number) => {
   const res = await apiClient.get<CarcasMaterialMasterResponse>(
     `/leads/get-all-carcas-materials/${vendorId}`,
@@ -458,6 +569,13 @@ export const fetchCarcasMaterials = async (vendorId: number) => {
     success: Boolean(res.data?.success),
     data: Array.isArray(res.data?.data) ? res.data.data : [],
   };
+}
+
+export const createCarcasMaterial = async (
+  payload: CreateCarcasMaterialPayload,
+) => {
+  const res = await apiClient.post("/leads/create-carcas-material", payload);
+  return res.data;
 }
 
 export const fetchCarcassMaterialFinishes = async (carcasMaterialId: number) => {
@@ -470,6 +588,31 @@ export const fetchCarcassMaterialFinishes = async (carcasMaterialId: number) => 
   };
 }
 
+export const fetchAllCarcassMaterialFinishes = async (vendorId: number) => {
+  const res = await apiClient.get<CarcasMaterialFinishMasterResponse>(
+    `/leads/get-all-carcass-material-finishes/${vendorId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
+export const createCarcassMaterialFinish = async (
+  payload: CreateCarcassMaterialFinishPayload,
+) => {
+  const res = await apiClient.post(
+    "/leads/create-carcass-material-finish",
+    payload,
+  );
+  return res.data;
+}
+
+export const createShutterType = async (payload: CreateShutterTypePayload) => {
+  const res = await apiClient.post("/leads/create-shutter-type", payload);
+  return res.data;
+}
+
 export const fetchShutterMaterials = async (vendorId: number) => {
   const res = await apiClient.get<ShutterMaterialMasterResponse>(
     `/leads/get-all-shutter-materials/${vendorId}`,
@@ -478,6 +621,13 @@ export const fetchShutterMaterials = async (vendorId: number) => {
     success: Boolean(res.data?.success),
     data: Array.isArray(res.data?.data) ? res.data.data : [],
   };
+}
+
+export const createShutterMaterial = async (
+  payload: CreateShutterMaterialPayload,
+) => {
+  const res = await apiClient.post("/leads/create-shutter-material", payload);
+  return res.data;
 }
 
 export const fetchShutterMaterialFinishes = async (shutterMaterialId: number) => {
@@ -490,6 +640,26 @@ export const fetchShutterMaterialFinishes = async (shutterMaterialId: number) =>
   };
 }
 
+export const fetchAllShutterMaterialFinishes = async (vendorId: number) => {
+  const res = await apiClient.get<ShutterMaterialFinishMasterResponse>(
+    `/leads/get-all-shutter-material-finishes/${vendorId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
+export const createShutterMaterialFinish = async (
+  payload: CreateShutterMaterialFinishPayload,
+) => {
+  const res = await apiClient.post(
+    "/leads/create-shutter-material-finish",
+    payload,
+  );
+  return res.data;
+}
+
 export const fetchCarcassLegs = async (vendorId: number) => {
   const res = await apiClient.get<CarcassLegsMasterResponse>(
     `/leads/get-all-carcass-legs/${vendorId}`,
@@ -498,6 +668,11 @@ export const fetchCarcassLegs = async (vendorId: number) => {
     success: Boolean(res.data?.success),
     data: Array.isArray(res.data?.data) ? res.data.data : [],
   };
+}
+
+export const createCarcassLegs = async (payload: CreateCarcassLegsPayload) => {
+  const res = await apiClient.post("/leads/create-carcass-legs", payload);
+  return res.data;
 }
 
 export const fetchSkirtingCarcassLegs = async (carcassLegsId: number) => {
@@ -510,6 +685,26 @@ export const fetchSkirtingCarcassLegs = async (carcassLegsId: number) => {
   };
 }
 
+export const fetchAllSkirtingCarcassLegs = async (vendorId: number) => {
+  const res = await apiClient.get<SkirtingCarcassLegsMasterResponse>(
+    `/leads/get-all-skirting-carcass-legs/${vendorId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
+export const createSkirtingCarcassLegs = async (
+  payload: CreateSkirtingCarcassLegsPayload,
+) => {
+  const res = await apiClient.post(
+    "/leads/create-skirting-carcass-legs",
+    payload,
+  );
+  return res.data;
+}
+
 export const fetchSkirtingCarcassLegsColors = async (
   skirtingCarcassLegsId: number,
 ) => {
@@ -520,6 +715,87 @@ export const fetchSkirtingCarcassLegsColors = async (
     success: Boolean(res.data?.success),
     data: Array.isArray(res.data?.data) ? res.data.data : [],
   };
+}
+
+export const fetchAllSkirtingCarcassLegsColors = async (vendorId: number) => {
+  const res = await apiClient.get<SkirtingCarcassLegsColorMasterResponse>(
+    `/leads/get-all-skirting-carcass-legs-colors/${vendorId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
+export const createSkirtingCarcassLegsColor = async (
+  payload: CreateSkirtingCarcassLegsColorPayload,
+) => {
+  const res = await apiClient.post(
+    "/leads/create-skirting-carcass-legs-color",
+    payload,
+  );
+  return res.data;
+}
+
+export const fetchLightCarcasTypes = async (vendorId: number) => {
+  const res = await apiClient.get<LightCarcasTypeMasterResponse>(
+    `/leads/get-all-light-carcas-types/${vendorId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
+export const createLightCarcasType = async (
+  payload: CreateLightCarcasTypePayload,
+) => {
+  const res = await apiClient.post("/leads/create-light-carcas-type", payload);
+  return res.data;
+}
+
+export const fetchLightCarcasUnits = async (lightCarcasTypeId: number) => {
+  const res = await apiClient.get<LightCarcasUnitMasterResponse>(
+    `/leads/get-light-carcas-units/${lightCarcasTypeId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
+export const fetchAllLightCarcasUnits = async (vendorId: number) => {
+  const res = await apiClient.get<LightCarcasUnitMasterResponse>(
+    `/leads/get-all-light-carcas-units/${vendorId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
+export const createLightCarcasUnit = async (
+  payload: CreateLightCarcasUnitPayload,
+) => {
+  const res = await apiClient.post("/leads/create-light-carcas-unit", payload);
+  return res.data;
+}
+
+export const fetchOtherAppliances = async (vendorId: number) => {
+  const res = await apiClient.get<OtherAppliancesMasterResponse>(
+    `/leads/get-all-other-appliances/${vendorId}`,
+  );
+  return {
+    success: Boolean(res.data?.success),
+    data: Array.isArray(res.data?.data) ? res.data.data : [],
+  };
+}
+
+export const createOtherAppliances = async (
+  payload: CreateOtherAppliancesPayload,
+) => {
+  const res = await apiClient.post("/leads/create-other-appliances", payload);
+  return res.data;
 }
 
 export const fetchHandleTypes = async (vendorId: number) => {
@@ -957,3 +1233,155 @@ export const updateUserPrivileges = async (
   );
   return res.data;
 }
+
+// -------------------------------------------------------------
+// Detailed Company Vendor API Definitions & Clients
+// -------------------------------------------------------------
+
+export interface CompanyVendorAddressEntry {
+  id?: number;
+  address_line_1: string;
+  address_line_2?: string | null;
+  landmark?: string | null;
+  pincode: string;
+  state_id: number;
+  city_id: number;
+  is_primary: boolean;
+  state?: { id: number; name: string };
+  city?: { id: number; name: string };
+}
+
+export interface CompanyVendorContactEntry {
+  id?: number;
+  name: string;
+  department?: string | null;
+  phone: string;
+  designation?: string | null;
+  email?: string | null;
+  is_primary: boolean;
+}
+
+export interface CompanyVendorBankEntry {
+  id?: number;
+  holder_name: string;
+  account_no: string;
+  ifsc: string;
+  swift?: string | null;
+  branch: string;
+  cancelled_cheque_path?: string | null;
+  cancelled_cheque_url?: string | null;
+  is_default: boolean;
+}
+
+export interface CompanyVendorDocMappingEntry {
+  id?: number;
+  document_type_id: number;
+  file_path?: string;
+  document_url?: string;
+  documentType?: { id: number; document_name: string };
+}
+
+export interface DetailedCompanyVendorEntry {
+  id: number;
+  vendor_code: string;
+  company_name: string;
+  vendor_name: string;
+  point_of_contact: string;
+  contact_no: string;
+  email?: string | null;
+  address?: string | null;
+  alternate_mobile_no?: string | null;
+  alternate_email?: string | null;
+  gst_no?: string | null;
+  pan_no?: string | null;
+  status_id?: number | null;
+  default_payment_term_id?: number | null;
+  in_house: boolean;
+  is_deleted: boolean;
+  vendor_id: number;
+  addresses: CompanyVendorAddressEntry[];
+  contactPersons: CompanyVendorContactEntry[];
+  bankAccounts: CompanyVendorBankEntry[];
+  documents: CompanyVendorDocMappingEntry[];
+  vendorTypes: { id: number; vendor_type_id: number; vendorType?: { id: number; vendor_type_name: string } }[];
+  status?: { id: number; status_name: string };
+  defaultPaymentTerm?: { id: number; term_name: string };
+  paymentTerms?: { id?: number; term_name: string; description?: string | null; is_active?: boolean }[];
+}
+
+export interface DetailedCompanyVendorResponse {
+  success: boolean;
+  data: DetailedCompanyVendorEntry;
+}
+
+export interface CompanyVendorMetaData {
+  vendorTypes: { id: number; vendor_type_name: string }[];
+  statuses: { id: number; status_name: string }[];
+  documentTypes: { id: number; document_name: string }[];
+  states: { id: number; name: string }[];
+  cities: { id: number; name: string; state_id: number }[];
+  paymentTerms: { id: number; term_name: string }[];
+}
+
+export interface CompanyVendorMetaDataResponse {
+  success: boolean;
+  data: CompanyVendorMetaData;
+}
+
+export const fetchCompanyVendorMetaData = async (vendorId: number) => {
+  const res = await apiClient.get<CompanyVendorMetaDataResponse>(
+    `/vendor/company-vendors/meta?vendor_id=${vendorId}`
+  );
+  return res.data;
+};
+
+export const fetchDetailedCompanyVendor = async (id: number) => {
+  const res = await apiClient.get<DetailedCompanyVendorResponse>(
+    `/vendor/company-vendors/${id}`
+  );
+  return res.data;
+};
+
+export const createDetailedCompanyVendor = async (formData: FormData, vendorId: number, userId: number) => {
+  const res = await apiClient.post(
+    `/vendor/company-vendors`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+        "x-vendor-id": vendorId.toString(),
+        "x-user-id": userId.toString(),
+      },
+    }
+  );
+  return res.data;
+};
+
+export const updateDetailedCompanyVendor = async (id: number, formData: FormData, vendorId: number, userId: number) => {
+  const res = await apiClient.put(
+    `/vendor/company-vendors/${id}`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+        "x-vendor-id": vendorId.toString(),
+        "x-user-id": userId.toString(),
+      },
+    }
+  );
+  return res.data;
+};
+
+export const deleteDetailedCompanyVendor = async (id: number, vendorId: number, userId: number) => {
+  const res = await apiClient.delete(
+    `/vendor/company-vendors/${id}`,
+    {
+      headers: {
+        "x-vendor-id": vendorId.toString(),
+        "x-user-id": userId.toString(),
+      },
+    }
+  );
+  return res.data;
+};
+

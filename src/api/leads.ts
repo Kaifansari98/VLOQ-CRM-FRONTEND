@@ -100,11 +100,11 @@ export interface Lead {
   site_map_link: string;
   has_pending_fast_production_request?: boolean;
   productStructureInstances?: LeadProductStructureInstance[];
-  assigned_designer_from_mapping?: {
+  assigned_designers_from_mapping?: Array<{
     user_id: number;
     user_name: string | null;
     created_at: string;
-  } | null;
+  }>;
   smallOrderRequest?: {
     id: number;
     is_request_resolved?: boolean;
@@ -986,6 +986,21 @@ export const assignDesignerToLead = async (
 ) => {
   const response = await apiClient.post(
     `/leads/vendorId/${vendorId}/leadId/${leadId}/assign-designer`,
+    payload,
+  );
+  return response.data;
+};
+
+export const unassignDesignerFromLead = async (
+  vendorId: number,
+  leadId: number,
+  payload: {
+    user_id: number;
+    updated_by: number;
+  },
+) => {
+  const response = await apiClient.post(
+    `/leads/vendorId/${vendorId}/leadId/${leadId}/unassign-designer`,
     payload,
   );
   return response.data;

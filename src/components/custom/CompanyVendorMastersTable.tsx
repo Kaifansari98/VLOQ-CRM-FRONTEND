@@ -12,6 +12,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 import { useAppSelector } from "@/redux/store";
@@ -183,6 +184,7 @@ interface CompanyVendorMastersTableProps {
 export default function CompanyVendorMastersTable({
   vendorIdOverride,
 }: CompanyVendorMastersTableProps) {
+  const router = useRouter();
   const userId = useAppSelector((state) => state.auth.user?.id);
   const vendorId = vendorIdOverride ?? useAppSelector((state) => state.auth.user?.vendor_id);
   const { data, isLoading, isError, error, refetch } = useCompanyVendorsForMaster(vendorId);
@@ -229,17 +231,7 @@ export default function CompanyVendorMastersTable({
     data: tableData,
     columns: getCompanyVendorColumns({
       onEdit: (row) => {
-        setEditingRow(row);
-        setForm({
-          vendor_code: row.vendor_code,
-          company_name: row.company_name,
-          point_of_contact: row.point_of_contact,
-          contact_no: row.contact_no,
-          email: row.email ?? "",
-          address: row.address ?? "",
-          in_house: row.in_house ?? false,
-        });
-        setOpenEditModal(true);
+        router.push(`/dashboard/masters-management/field-masters/company-vendor/edit/${row.id}`);
       },
       onToggleStatus: (row) => {
         setStatusTargetRow(row);
@@ -470,7 +462,7 @@ export default function CompanyVendorMastersTable({
             </p>
           </div>
 
-          <Button onClick={() => setOpenCreateModal(true)} className="sm:self-start">
+          <Button onClick={() => router.push("/dashboard/masters-management/field-masters/company-vendor/create")} className="sm:self-start">
             <Plus className="mr-2 h-4 w-4" />
             Create Company Vendor
           </Button>
@@ -508,67 +500,7 @@ export default function CompanyVendorMastersTable({
         </CardContent>
       </Card>
 
-      <Dialog
-        open={openCreateModal}
-        onOpenChange={(open) => {
-          setOpenCreateModal(open);
-          if (!open) resetForm();
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create Company Vendor</DialogTitle>
-            <DialogDescription>
-              Add a new company vendor master entry for this vendor.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">{formFields}</div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpenCreateModal(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreate} disabled={!canSubmit || createCompanyVendorMutation.isPending}>
-              {createCompanyVendorMutation.isPending ? "Creating..." : "Create"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
-      <Dialog
-        open={openEditModal}
-        onOpenChange={(open) => {
-          setOpenEditModal(open);
-          if (!open) {
-            setEditingRow(null);
-            resetForm();
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Company Vendor</DialogTitle>
-            <DialogDescription>
-              Update the selected company vendor master entry.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">{formFields}</div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setOpenEditModal(false);
-                setEditingRow(null);
-                resetForm();
-              }}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleEdit} disabled={!canSubmit || updateCompanyVendorMutation.isPending}>
-              {updateCompanyVendorMutation.isPending ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog
         open={openConfirmStatusModal}
