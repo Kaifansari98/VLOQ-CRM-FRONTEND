@@ -331,7 +331,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
     !isCustomVendor ||
     loading ||
     !data ||
-    !!lead?.assigned_designer_from_mapping;
+    !!lead?.assigned_designers_from_mapping?.length;
   const assignedIsmUserFromMapping =
     lead?.assigned_ism_user_from_mapping ?? null;
   const accountId = Number(lead?.account_id);

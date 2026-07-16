@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { cn, getAvatarColor, getInitials } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { CloudUpload, Palette, Plus, Pencil } from "lucide-react";
 import React, { useState } from "react";
@@ -15,6 +15,7 @@ import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import AssignDesignerModal from "./assign-designer-modal";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Tooltip,
   TooltipContent,
@@ -90,11 +91,15 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
 
     const leadCurrentStatus = leadStatus?.status_tag;
     const lead = leadDetailsData?.data?.lead;
-    const assignedDesigner = lead?.assigned_designer_from_mapping;
+    const assignedDesigners: Array<{
+      user_id: number;
+      user_name: string | null;
+      created_at: string;
+    }> = lead?.assigned_designers_from_mapping ?? [];
     const isDesignerAssignedIfRequired =
       !vendorCustomUserTypeOnly ||
       !leadDetailsData ||
-      !!assignedDesigner;
+      assignedDesigners.length > 0;
 
     const isAdmin =
       userType?.toLowerCase() === "admin" ||
@@ -227,29 +232,62 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
                 )}
                 {activeTab === "designs" &&
                   vendorCustomUserTypeOnly &&
-                  (assignedDesigner || canAssignDesigner) && (
+                  (assignedDesigners.length > 0 || canAssignDesigner) && (
                     <>
-                      {assignedDesigner ? (
-                        <div className="h-9 rounded-md border bg-background pl-3 pr-1.5 flex items-center gap-2 whitespace-nowrap">
-                          <Palette
-                            size={16}
-                            className="text-muted-foreground"
-                          />
-                          <div className="flex flex-col leading-tight pr-1">
-                            <span className="text-xs font-medium">
-                              {assignedDesigner.user_name}
-                            </span>
-                            <span className="text-[8px] uppercase tracking-wide text-muted-foreground">
-                              Designer
-                            </span>
+                      {assignedDesigners.length > 0 ? (
+                        <div className="h-9 rounded-md border bg-background pl-2 pr-1.5 flex items-center gap-2 whitespace-nowrap">
+                          <div className="flex -space-x-2">
+                            {assignedDesigners.slice(0, 3).map((designer) => (
+                              <Tooltip key={designer.user_id}>
+                                <TooltipTrigger asChild>
+                                  <Avatar
+                                    className={cn(
+                                      "h-6 w-6 ring-2 ring-background text-white cursor-default",
+                                      getAvatarColor(
+                                        designer.user_name || "User",
+                                      ),
+                                    )}
+                                  >
+                                    <AvatarFallback className="bg-transparent text-[9px] font-semibold">
+                                      {getInitials(
+                                        designer.user_name || "User",
+                                      )}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom">
+                                  {designer.user_name || "Designer"}
+                                </TooltipContent>
+                              </Tooltip>
+                            ))}
+                            {assignedDesigners.length > 3 && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="h-6 w-6 rounded-full ring-2 ring-background bg-muted flex items-center justify-center text-[9px] font-semibold cursor-default">
+                                    +{assignedDesigners.length - 3}
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom" className="max-w-56">
+                                  {assignedDesigners
+                                    .slice(3)
+                                    .map((d) => d.user_name || "Designer")
+                                    .join(", ")}
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
                           </div>
+                          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                            {assignedDesigners.length > 1
+                              ? "Designers"
+                              : "Designer"}
+                          </span>
                           {canAssignDesigner && (
                             <Button
                               size="icon"
                               variant="ghost"
                               className="h-6 w-6 text-muted-foreground hover:text-foreground bg-muted/50"
                               onClick={() => setOpenAssignDesignerModal(true)}
-                              title="Change Designer"
+                              title="Manage Designers"
                             >
                               <Pencil size={12} />
                             </Button>
@@ -332,6 +370,7 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
             id: leadId,
             accountId: lead?.account_id ?? accountId,
             franchiseId: lead?.franchise_id ?? null,
+            assignedDesigners,
           }}
         />
         <AddMeetingsModal
