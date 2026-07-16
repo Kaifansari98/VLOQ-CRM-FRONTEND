@@ -29,6 +29,7 @@ import {
 import { fetchDetailedCompanyVendor } from "@/api/typesMasterApi";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAppSelector } from "@/redux/store";
+import { useCompanyVendorsForMaster } from "@/hooks/useTypesMaster";
 import { toastManager } from "@/components/ui/toast";
 import DocumentCard, { PreviewModal } from "@/components/utils/documentCard";
 import { z } from "zod";
@@ -107,6 +108,10 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
 
   // Fetch Metadata & Vendor details
   const { data: metaDataResponse, isLoading: isMetaLoading } = useCompanyVendorMetaData(sessionVendorId);
+  const { data: allVendorsData } = useCompanyVendorsForMaster(sessionVendorId);
+  const allVendors = allVendorsData?.data || [];
+
+  const [duplicateErrors, setDuplicateErrors] = React.useState<Record<string, string>>({});
   const { data: vendorResponse, isLoading: isVendorLoading } = useDetailedCompanyVendor(id || currentId || undefined);
 
   const createMutation = useCreateDetailedCompanyVendor(sessionVendorId, userId);
@@ -220,6 +225,33 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
     }
   }, [info]);
 
+  // Duplication check validation
+  React.useEffect(() => {
+    const errors: Record<string, string> = {};
+    if (allVendors && allVendors.length > 0) {
+      const activeRecordId = id || currentId;
+      
+      const checkDup = (field: string, val: string, label: string) => {
+        if (!val) return;
+        const exists = allVendors.some((v: any) => {
+          if (activeRecordId && v.id === activeRecordId) return false;
+          return String(v[field] || "").trim().toLowerCase() === val.trim().toLowerCase();
+        });
+        if (exists) {
+          errors[field] = `${label} already exists in database`;
+        }
+      };
+
+      checkDup("vendor_code", info.vendor_code, "Company Code");
+      checkDup("company_name", info.company_name, "Company Name");
+      checkDup("contact_no", info.contact_no, "Mobile No.");
+      checkDup("email", info.email, "Email");
+      checkDup("gst_no", info.gst_no, "GST No.");
+      checkDup("pan_no", info.pan_no, "PAN No.");
+    }
+    setDuplicateErrors(errors);
+  }, [info.vendor_code, info.company_name, info.contact_no, info.email, info.gst_no, info.pan_no, allVendors, id, currentId]);
+
   // Dropdown Open state for multi-select Vendor Type
   const [isVendorTypeDropdownOpen, setIsVendorTypeDropdownOpen] = React.useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
@@ -232,6 +264,10 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
   const [isStateDropdownOpen, setIsStateDropdownOpen] = React.useState(false);
   const stateDropdownRef = React.useRef<HTMLDivElement>(null);
 
+  // Dropdown Open state for Status
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = React.useState(false);
+  const statusDropdownRef = React.useRef<HTMLDivElement>(null);
+
   // Close dropdowns on click outside
   React.useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -243,6 +279,9 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
       }
       if (stateDropdownRef.current && !stateDropdownRef.current.contains(event.target as Node)) {
         setIsStateDropdownOpen(false);
+      }
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
+        setIsStatusDropdownOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -469,7 +508,7 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
 
   // Pre-fill Tab 3 Add Contact form with Tab 1 primary contact data when Tab 3 is active and fields are empty
   React.useEffect(() => {
-    if (activeTab === "contact-person") {
+    if (!isEditMode && activeTab === "contact-person") {
       if (!contactForm.name && !contactForm.phone && !contactForm.email) {
         setContactForm((p) => ({
           ...p,
@@ -480,7 +519,7 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
         }));
       }
     }
-  }, [activeTab, info.point_of_contact, info.contact_no, info.email]);
+  }, [activeTab, info.point_of_contact, info.contact_no, info.email, isEditMode]);
 
   // Filters city list based on selected state
   const getFilteredCities = (stateId: string) => {
@@ -612,6 +651,19 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
       return;
     }
 
+    // Local duplicate email/phone check
+    const isDuplicateContact = contacts.some((c, i) => {
+      if (editingContactIndex !== null && i === editingContactIndex) return false;
+      return (
+        (c.email && contactForm.email && c.email.toLowerCase() === contactForm.email.toLowerCase()) ||
+        (c.phone && contactForm.phone && c.phone === contactForm.phone)
+      );
+    });
+    if (isDuplicateContact) {
+      toast.error("A contact with this email or phone number has already been added.");
+      return;
+    }
+
     // Sync back to Tab 1 if primary contact is added or updated
     if (contactForm.is_primary) {
       setInfo((p) => ({
@@ -713,6 +765,19 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
     const result = bankSchema.safeParse(bankForm);
     if (!result.success) {
       toast.error(result.error.issues[0].message);
+      return;
+    }
+
+    // Local duplicate account number + IFSC check
+    const isDuplicateBank = banks.some((b, i) => {
+      if (editingBankIndex !== null && i === editingBankIndex) return false;
+      return (
+        b.account_no === bankForm.account_no &&
+        b.ifsc.toUpperCase() === bankForm.ifsc.toUpperCase()
+      );
+    });
+    if (isDuplicateBank) {
+      toast.error("A bank account with this Account Number and IFSC Code has already been added.");
       return;
     }
 
@@ -916,8 +981,25 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
     // 1. Tab 1 base validations (always mandatory) using Zod
     const parsedInfo = companyInfoSchema.safeParse(info);
     if (!parsedInfo.success) {
-      const firstError = parsedInfo.error.issues[0];
-      toast.error(`${firstError.message} (Tab 1)`);
+      const errorMessages = parsedInfo.error.issues.map((issue) => issue.message);
+      toast.error(`Please fill all mandatory fields: \n${errorMessages.join("\n")}`);
+
+      // Mark all failed fields as touched to display errors inline
+      const touchedFields: Record<string, boolean> = {};
+      parsedInfo.error.issues.forEach((issue) => {
+        if (issue.path && issue.path[0]) {
+          touchedFields[issue.path[0] as string] = true;
+        }
+      });
+      setTouched((prev) => ({ ...prev, ...touchedFields }));
+      return;
+    }
+
+    // Check duplicate data validation error check
+    const duplicateFields = Object.keys(duplicateErrors);
+    if (duplicateFields.length > 0) {
+      const messages = duplicateFields.map((f) => duplicateErrors[f]);
+      toast.error(`Duplicate data found: \n${messages.join("\n")}`);
       return;
     }
 
@@ -1211,6 +1293,7 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
                     placeholder="e.g. VEN-001"
                   />
                   {touched.vendor_code && zodErrors.vendor_code?._errors && <p className="text-red-500 text-[10px] mt-0.5">{zodErrors.vendor_code._errors[0]}</p>}
+                  {duplicateErrors.vendor_code && <p className="text-red-500 text-[10px] mt-0.5">{duplicateErrors.vendor_code}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="company_name">Company Name <span className="text-red-500">*</span></Label>
@@ -1222,6 +1305,7 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
                     placeholder="e.g. Acme Corp"
                   />
                   {touched.company_name && zodErrors.company_name?._errors && <p className="text-red-500 text-[10px] mt-0.5">{zodErrors.company_name._errors[0]}</p>}
+                  {duplicateErrors.company_name && <p className="text-red-500 text-[10px] mt-0.5">{duplicateErrors.company_name}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="vendor_name">Vendor Display Name <span className="text-zinc-400 font-normal">(Optional)</span></Label>
@@ -1322,11 +1406,15 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
                   <Input
                     id="contact_no"
                     value={info.contact_no}
-                    onChange={(e) => setInfo((p) => ({ ...p, contact_no: e.target.value }))}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                      setInfo((p) => ({ ...p, contact_no: val }));
+                    }}
                     onBlur={() => touch("contact_no")}
                     placeholder="10 digit mobile"
                   />
                   {touched.contact_no && zodErrors.contact_no?._errors && <p className="text-red-500 text-[10px] mt-0.5">{zodErrors.contact_no._errors[0]}</p>}
+                  {duplicateErrors.contact_no && <p className="text-red-500 text-[10px] mt-0.5">{duplicateErrors.contact_no}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email <span className="text-red-500">*</span></Label>
@@ -1338,6 +1426,7 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
                     placeholder="Email address"
                   />
                   {touched.email && zodErrors.email?._errors && <p className="text-red-500 text-[10px] mt-0.5">{zodErrors.email._errors[0]}</p>}
+                  {duplicateErrors.email && <p className="text-red-500 text-[10px] mt-0.5">{duplicateErrors.email}</p>}
                 </div>
               </div>
 
@@ -1348,7 +1437,10 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
                   <Input
                     id="alternate_mobile_no"
                     value={info.alternate_mobile_no}
-                    onChange={(e) => setInfo((p) => ({ ...p, alternate_mobile_no: e.target.value }))}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                      setInfo((p) => ({ ...p, alternate_mobile_no: val }));
+                    }}
                     onBlur={() => touch("alternate_mobile_no")}
                     placeholder="Alternate number"
                   />
@@ -1425,37 +1517,64 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
                   <Input
                     id="gst_no"
                     value={info.gst_no}
-                    onChange={(e) => setInfo((p) => ({ ...p, gst_no: e.target.value.toUpperCase() }))}
+                    onChange={(e) => setInfo((p) => ({ ...p, gst_no: e.target.value.toUpperCase().slice(0, 15) }))}
                     onBlur={() => touch("gst_no")}
                     placeholder="15 character GSTIN"
                   />
                   {touched.gst_no && zodErrors.gst_no?._errors && <p className="text-red-500 text-[10px] mt-0.5">{zodErrors.gst_no._errors[0]}</p>}
+                  {duplicateErrors.gst_no && <p className="text-red-500 text-[10px] mt-0.5">{duplicateErrors.gst_no}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="pan_no">PAN No. <span className="text-red-500">*</span></Label>
                   <Input
                     id="pan_no"
                     value={info.pan_no}
-                    onChange={(e) => setInfo((p) => ({ ...p, pan_no: e.target.value.toUpperCase() }))}
+                    onChange={(e) => setInfo((p) => ({ ...p, pan_no: e.target.value.toUpperCase().slice(0, 10) }))}
                     onBlur={() => touch("pan_no")}
                     placeholder="10 character PAN"
                   />
                   {touched.pan_no && zodErrors.pan_no?._errors && <p className="text-red-500 text-[10px] mt-0.5">{zodErrors.pan_no._errors[0]}</p>}
+                  {duplicateErrors.pan_no && <p className="text-red-500 text-[10px] mt-0.5">{duplicateErrors.pan_no}</p>}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="status_id">Status</Label>
-                  <select
-                    id="status_id"
-                    value={info.status_id}
-                    onChange={(e) => setInfo((p) => ({ ...p, status_id: Number(e.target.value) }))}
-                    className="flex h-9 w-full rounded-md border border-zinc-200 dark:border-zinc-700 bg-transparent dark:bg-zinc-900 dark:text-white px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-950 dark:focus-visible:ring-zinc-400"
+                <div className="space-y-2 relative" ref={statusDropdownRef}>
+                  <Label htmlFor="status_id">Status <span className="text-red-500">*</span></Label>
+                  <div
+                    onClick={() => { setIsStatusDropdownOpen(!isStatusDropdownOpen); }}
+                    className="flex min-h-[38px] w-full items-center justify-between rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-1.5 text-sm shadow-sm cursor-pointer select-none"
                   >
-                    {(metaDataResponse?.data?.statuses || []).map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.status_name}
-                      </option>
-                    ))}
-                  </select>
+                    <span className="text-xs">
+                      {(() => {
+                        const selectedStatus = (metaDataResponse?.data?.statuses || []).find(
+                          (s) => Number(s.id) === Number(info.status_id)
+                        );
+                        return selectedStatus?.status_name || "Select Status";
+                      })()}
+                    </span>
+                    <span className="text-zinc-400 text-xs">▼</span>
+                  </div>
+
+                  {isStatusDropdownOpen && (
+                    <div className="absolute z-50 mt-1 w-full rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-2 shadow-lg max-h-60 overflow-y-auto">
+                      {(metaDataResponse?.data?.statuses || []).map((s) => {
+                        const isSelected = Number(s.id) === Number(info.status_id);
+                        return (
+                          <div
+                            key={s.id}
+                            onClick={() => {
+                              setInfo((p) => ({ ...p, status_id: Number(s.id) }));
+                              setIsStatusDropdownOpen(false);
+                            }}
+                            className={cn(
+                              "p-2 rounded hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 cursor-pointer select-none text-sm transition-colors",
+                              isSelected && "bg-zinc-100 dark:bg-zinc-800 font-semibold"
+                            )}
+                          >
+                            {s.status_name}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1572,7 +1691,10 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
                     <Label>Pincode <span className="text-red-500">*</span></Label>
                     <Input
                       value={addressForm.pincode}
-                      onChange={(e) => setAddressForm((p) => ({ ...p, pincode: e.target.value }))}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                        setAddressForm((p) => ({ ...p, pincode: val }));
+                      }}
                       onBlur={() => touchAddr("pincode")}
                       placeholder="6 digit pincode"
                     />
@@ -1686,7 +1808,10 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
                     <Label>Phone No. <span className="text-red-500">*</span></Label>
                     <Input
                       value={contactForm.phone}
-                      onChange={(e) => setContactForm((p) => ({ ...p, phone: e.target.value }))}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                        setContactForm((p) => ({ ...p, phone: val }));
+                      }}
                       onBlur={() => touchContact("phone")}
                       placeholder="Contact number"
                     />
@@ -1832,7 +1957,10 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
                     <Label>Account Number <span className="text-red-500">*</span></Label>
                     <Input
                       value={bankForm.account_no}
-                      onChange={(e) => setBankForm((p) => ({ ...p, account_no: e.target.value }))}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, "").slice(0, 18);
+                        setBankForm((p) => ({ ...p, account_no: val }));
+                      }}
                       onBlur={() => touchBank("account_no")}
                       placeholder="9 to 18 digit account number"
                     />
@@ -1842,7 +1970,7 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
                     <Label>IFSC Code <span className="text-red-500">*</span></Label>
                     <Input
                       value={bankForm.ifsc}
-                      onChange={(e) => setBankForm((p) => ({ ...p, ifsc: e.target.value.toUpperCase() }))}
+                      onChange={(e) => setBankForm((p) => ({ ...p, ifsc: e.target.value.toUpperCase().slice(0, 11) }))}
                       onBlur={() => touchBank("ifsc")}
                       placeholder="e.g. SBIN0001234"
                     />
@@ -1855,9 +1983,9 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
                     <Label>SWIFT Code (Optional)</Label>
                     <Input
                       value={bankForm.swift}
-                      onChange={(e) => setBankForm((p) => ({ ...p, swift: e.target.value.toUpperCase() }))}
+                      onChange={(e) => setBankForm((p) => ({ ...p, swift: e.target.value.toUpperCase().slice(0, 11) }))}
                       onBlur={() => touchBank("swift")}
-                      placeholder="Bank swift code"
+                      placeholder="e.g. BARCINBB or BARCINBB123"
                     />
                     {bankTouched.swift && bankErrors.swift?._errors && <p className="text-red-500 text-[10px] mt-0.5">{bankErrors.swift._errors[0]}</p>}
                   </div>

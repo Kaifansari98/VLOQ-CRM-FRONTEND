@@ -84,6 +84,11 @@ export interface CompanyVendorMasterEntry {
   in_house: boolean;
   is_deleted: boolean;
   vendor_id: number;
+  status_id?: number | null;
+  status?: {
+    id: number;
+    status_name: string;
+  } | null;
 }
 
 export interface CompanyVendorMasterResponse {
