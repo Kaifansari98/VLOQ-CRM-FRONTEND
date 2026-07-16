@@ -86,7 +86,7 @@ interface PreviewModalProps {
   onClose: () => void;
 }
 
-const PreviewModal: React.FC<PreviewModalProps> = ({ url, fileName, fileExt, onClose }) => {
+export const PreviewModal: React.FC<PreviewModalProps> = ({ url, fileName, fileExt, onClose }) => {
   const [iframeLoaded, setIframeLoaded] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -483,6 +483,16 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
                 <Download className="w-3.5 h-3.5" />
               )}
             </button>
+            {canDelete && !shouldHideDelete && (
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="p-1.5 rounded border border-border bg-muted/20 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 transition"
+                aria-label="Delete document"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
 

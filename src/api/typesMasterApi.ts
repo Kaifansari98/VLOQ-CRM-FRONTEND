@@ -957,3 +957,155 @@ export const updateUserPrivileges = async (
   );
   return res.data;
 }
+
+// -------------------------------------------------------------
+// Detailed Company Vendor API Definitions & Clients
+// -------------------------------------------------------------
+
+export interface CompanyVendorAddressEntry {
+  id?: number;
+  address_line_1: string;
+  address_line_2?: string | null;
+  landmark?: string | null;
+  pincode: string;
+  state_id: number;
+  city_id: number;
+  is_primary: boolean;
+  state?: { id: number; name: string };
+  city?: { id: number; name: string };
+}
+
+export interface CompanyVendorContactEntry {
+  id?: number;
+  name: string;
+  department?: string | null;
+  phone: string;
+  designation?: string | null;
+  email?: string | null;
+  is_primary: boolean;
+}
+
+export interface CompanyVendorBankEntry {
+  id?: number;
+  holder_name: string;
+  account_no: string;
+  ifsc: string;
+  swift?: string | null;
+  branch: string;
+  cancelled_cheque_path?: string | null;
+  cancelled_cheque_url?: string | null;
+  is_default: boolean;
+}
+
+export interface CompanyVendorDocMappingEntry {
+  id?: number;
+  document_type_id: number;
+  file_path?: string;
+  document_url?: string;
+  documentType?: { id: number; document_name: string };
+}
+
+export interface DetailedCompanyVendorEntry {
+  id: number;
+  vendor_code: string;
+  company_name: string;
+  vendor_name: string;
+  point_of_contact: string;
+  contact_no: string;
+  email?: string | null;
+  address?: string | null;
+  alternate_mobile_no?: string | null;
+  alternate_email?: string | null;
+  gst_no?: string | null;
+  pan_no?: string | null;
+  status_id?: number | null;
+  default_payment_term_id?: number | null;
+  in_house: boolean;
+  is_deleted: boolean;
+  vendor_id: number;
+  addresses: CompanyVendorAddressEntry[];
+  contactPersons: CompanyVendorContactEntry[];
+  bankAccounts: CompanyVendorBankEntry[];
+  documents: CompanyVendorDocMappingEntry[];
+  vendorTypes: { id: number; vendor_type_id: number; vendorType?: { id: number; vendor_type_name: string } }[];
+  status?: { id: number; status_name: string };
+  defaultPaymentTerm?: { id: number; term_name: string };
+  paymentTerms?: { id?: number; term_name: string; description?: string | null; is_active?: boolean }[];
+}
+
+export interface DetailedCompanyVendorResponse {
+  success: boolean;
+  data: DetailedCompanyVendorEntry;
+}
+
+export interface CompanyVendorMetaData {
+  vendorTypes: { id: number; vendor_type_name: string }[];
+  statuses: { id: number; status_name: string }[];
+  documentTypes: { id: number; document_name: string }[];
+  states: { id: number; name: string }[];
+  cities: { id: number; name: string; state_id: number }[];
+  paymentTerms: { id: number; term_name: string }[];
+}
+
+export interface CompanyVendorMetaDataResponse {
+  success: boolean;
+  data: CompanyVendorMetaData;
+}
+
+export const fetchCompanyVendorMetaData = async (vendorId: number) => {
+  const res = await apiClient.get<CompanyVendorMetaDataResponse>(
+    `/vendor/company-vendors/meta?vendor_id=${vendorId}`
+  );
+  return res.data;
+};
+
+export const fetchDetailedCompanyVendor = async (id: number) => {
+  const res = await apiClient.get<DetailedCompanyVendorResponse>(
+    `/vendor/company-vendors/${id}`
+  );
+  return res.data;
+};
+
+export const createDetailedCompanyVendor = async (formData: FormData, vendorId: number, userId: number) => {
+  const res = await apiClient.post(
+    `/vendor/company-vendors`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+        "x-vendor-id": vendorId.toString(),
+        "x-user-id": userId.toString(),
+      },
+    }
+  );
+  return res.data;
+};
+
+export const updateDetailedCompanyVendor = async (id: number, formData: FormData, vendorId: number, userId: number) => {
+  const res = await apiClient.put(
+    `/vendor/company-vendors/${id}`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+        "x-vendor-id": vendorId.toString(),
+        "x-user-id": userId.toString(),
+      },
+    }
+  );
+  return res.data;
+};
+
+export const deleteDetailedCompanyVendor = async (id: number, vendorId: number, userId: number) => {
+  const res = await apiClient.delete(
+    `/vendor/company-vendors/${id}`,
+    {
+      headers: {
+        "x-vendor-id": vendorId.toString(),
+        "x-user-id": userId.toString(),
+      },
+    }
+  );
+  return res.data;
+};
+
