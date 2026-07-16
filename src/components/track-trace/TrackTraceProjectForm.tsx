@@ -42,7 +42,7 @@ import {
   useUpdateTrackTraceProject,
 } from "@/hooks/track-trace-hooks/useTrackTraceMasterHooks";
 
-import { TrackTraceLeadOption } from "@/types/track-trace";
+import { TrackTraceLeadOption, PackingType } from "@/types/track-trace";
 
 const projectFormSchema = z.object({
   projectName: z
@@ -57,6 +57,11 @@ const projectFormSchema = z.object({
   client_name: z.string().optional(),
   client_address: z.string().optional(),
   client_contact_no: z.string().optional(),
+  packing_type:
+    z.enum(
+      PackingType
+    ),
+
 
   file: z
     .array(z.instanceof(File))
@@ -71,7 +76,7 @@ const projectFormSchema = z.object({
 
         return (
           file.type ===
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
           file.type === "application/vnd.ms-excel" ||
           file.name.toLowerCase().endsWith(".xlsx") ||
           file.name.toLowerCase().endsWith(".xls")
@@ -309,18 +314,19 @@ export default function TrackTraceProjectForm({
   const [selectedLeadFromProject, setSelectedLeadFromProject] =
     useState<ExtendedLeadOption | null>(null);
 
-const form = useForm<ProjectFormInput, unknown, ProjectFormData>({
-  resolver: zodResolver(projectFormSchema),
-  defaultValues: {
-    projectName: "",
-    lead_id: null,
-    order_no: "",
-    client_name: "",
-    client_address: "",
-    client_contact_no: "",
-    file: [],
-  },
-});
+  const form = useForm<ProjectFormInput, unknown, ProjectFormData>({
+    resolver: zodResolver(projectFormSchema),
+    defaultValues: {
+      projectName: "",
+      lead_id: null,
+      order_no: "",
+      client_name: "",
+      client_address: "",
+      client_contact_no: "",
+      packing_type: PackingType.DEFAULT,
+      file: [],
+    },
+  });
 
   const selectedLeadId = form.watch("lead_id");
   const isLeadSelected = !!selectedLeadId;
@@ -337,6 +343,10 @@ const form = useForm<ProjectFormInput, unknown, ProjectFormData>({
       client_name: project.client_name || "",
       client_address: project.client_address || "",
       client_contact_no: project.client_contact_no || "",
+      packing_type:
+        project.packing_type ||
+        PackingType.DEFAULT,
+
       file: [],
     });
 
@@ -452,6 +462,7 @@ const form = useForm<ProjectFormInput, unknown, ProjectFormData>({
       client_name: data.client_name?.trim() || undefined,
       client_address: data.client_address?.trim() || undefined,
       client_contact_no: data.client_contact_no?.trim() || undefined,
+      packing_type: data.packing_type,
 
       file: data.file?.[0] || undefined,
     };
@@ -572,7 +583,7 @@ const form = useForm<ProjectFormInput, unknown, ProjectFormData>({
         </Button>
       </div>
 
-      <div className="rounded-2xl border bg-card shadow-sm">        
+      <div className="rounded-2xl border bg-card shadow-sm">
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-5">
@@ -748,6 +759,91 @@ const form = useForm<ProjectFormInput, unknown, ProjectFormData>({
                   </FormItem>
                 )}
               />
+
+             <FormField
+  control={form.control}
+  name="packing_type"
+  render={({ field }) => (
+    <FormItem>
+      <FormLabel>
+        Packing Type{" "}
+        <span className="text-destructive">
+          *
+        </span>
+      </FormLabel>
+
+      <FormControl>
+        <select
+          value={
+            field.value ||
+            PackingType.DEFAULT
+          }
+          onChange={(event) =>
+            field.onChange(
+              event.target
+                .value as PackingType
+            )
+          }
+          disabled={isPending}
+          className="
+            h-10
+            w-full
+            rounded-md
+            border
+            border-input
+            bg-background
+            px-3
+            py-2
+            text-sm
+            outline-none
+            transition-colors
+            focus:border-indigo-500
+            focus:ring-2
+            focus:ring-indigo-200
+            disabled:cursor-not-allowed
+            disabled:opacity-50
+          "
+        >
+          <option
+            value={
+              PackingType.DEFAULT
+            }
+          >
+            Default
+          </option>
+
+          <option
+            value={
+              PackingType.GROUPWISE
+            }
+          >
+            Groupwise
+          </option>
+        </select>
+      </FormControl>
+
+      {field.value ===
+      PackingType.GROUPWISE ? (
+        <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+          Items belonging to one
+          group can be packed only
+          with items from the same
+          group. One group may be
+          packed across multiple
+          boxes.
+        </div>
+      ) : (
+        <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-800 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300">
+          Any item can be packed in
+          any box without group
+          restrictions.
+        </div>
+      )}
+
+      <FormMessage />
+    </FormItem>
+  )}
+/>
 
               <FormField
                 control={form.control}
