@@ -162,6 +162,11 @@ formData.append("packing_type",payload.packing_type || PackingType.DEFAULT);
     formData.append("client_contact_no", payload.client_contact_no);
   }
 
+  formData.append(
+  "box_info_fields",
+  JSON.stringify(payload.box_info_fields || [])
+);
+
   const response = await apiClient.put<CreateTrackTraceProjectResponse>(
     `/track-trace-project/onboard/project/${uniqueProjectId}`,
     formData,
@@ -184,7 +189,10 @@ export const createTrackTraceProjectApi = async (
   formData.append("vendorId", String(payload.vendorId));
   formData.append("projectName", payload.projectName);
   formData.append("packing_type",payload.packing_type || PackingType.DEFAULT);
-
+formData.append(
+  "box_info_fields",
+  JSON.stringify(payload.box_info_fields || [])
+);
   if (payload.file) {
     formData.append("file", payload.file);
   }

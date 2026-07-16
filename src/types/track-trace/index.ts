@@ -348,6 +348,7 @@ export type CreateTrackTraceProjectRequest = {
   client_address?: string;
   client_contact_no?: string;
   packing_type?: PackingType;
+  box_info_fields?: ProjectBoxInfoField[];
 
 };
 
@@ -380,3 +381,18 @@ export enum PackingType {
   GROUPWISE =
   "GROUPWISE",
 }
+
+export type BoxInfoFieldType =
+  | "TEXT"
+  | "NUMBER"
+  | "DATE"
+  | "TEXTAREA";
+
+export type ProjectBoxInfoField = {
+  id?: number;
+  field_label: string;
+  field_type: BoxInfoFieldType;
+  is_required: boolean;
+  sort_order?: number;
+  active?: boolean;
+};

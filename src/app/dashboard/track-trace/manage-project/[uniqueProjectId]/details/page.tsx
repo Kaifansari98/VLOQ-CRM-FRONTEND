@@ -105,6 +105,13 @@ function BoxCard({
   const factoryOut = !!box.factory_out_at;
   const siteIn = !!box.site_in_at;
 
+  const visibleBoxInfoValues =
+    box.box_info_values?.filter(
+      (item) =>
+        item.field_value &&
+        String(item.field_value).trim()
+    ) || [];
+
   return (
     <div
       onClick={onClick}
@@ -139,6 +146,24 @@ function BoxCard({
             {box.items_count} items
           </span>
         </div>
+        {visibleBoxInfoValues.length > 0 && (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {visibleBoxInfoValues.map((item) => (
+              <div
+                key={`${box.id}-${item.field_id}`}
+                className="inline-flex max-w-full items-center gap-1.5 rounded-lg border bg-muted/40 px-2 py-1"
+              >
+                <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                  {item.field_label}
+                </span>
+
+                <span className="max-w-32 truncate text-[11px] font-semibold text-foreground">
+                  {item.field_value}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="flex items-center gap-4 flex-wrap">
           <DispatchStep

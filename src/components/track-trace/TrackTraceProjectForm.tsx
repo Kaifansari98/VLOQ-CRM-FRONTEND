@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
@@ -32,6 +32,8 @@ import {
   CheckCircle2,
   X,
   ArrowLeft,
+  Plus,
+  Trash2,
 } from "lucide-react";
 
 import {
@@ -43,6 +45,36 @@ import {
 } from "@/hooks/track-trace-hooks/useTrackTraceMasterHooks";
 
 import { TrackTraceLeadOption, PackingType } from "@/types/track-trace";
+
+const boxInfoFieldSchema = z.object({
+  id: z.number().optional(),
+
+  field_label: z
+    .string()
+    .min(1, "Field name is required")
+    .max(50, "Field name must not exceed 50 characters"),
+
+  field_type: z
+    .enum([
+      "TEXT",
+      "NUMBER",
+      "DATE",
+      "TEXTAREA",
+    ])
+    .default("TEXT"),
+
+  is_required: z
+    .boolean()
+    .default(false),
+
+  sort_order: z
+    .number()
+    .optional(),
+
+  active: z
+    .boolean()
+    .default(true),
+});
 
 const projectFormSchema = z.object({
   projectName: z
@@ -61,6 +93,9 @@ const projectFormSchema = z.object({
     z.enum(
       PackingType
     ),
+  box_info_fields: z
+    .array(boxInfoFieldSchema)
+    .default([]),
 
 
   file: z
@@ -324,8 +359,18 @@ export default function TrackTraceProjectForm({
       client_address: "",
       client_contact_no: "",
       packing_type: PackingType.DEFAULT,
+      box_info_fields: [],
       file: [],
     },
+  });
+
+  const {
+    fields: boxInfoFields,
+    append: appendBoxInfoField,
+    remove: removeBoxInfoField,
+  } = useFieldArray({
+    control: form.control,
+    name: "box_info_fields",
   });
 
   const selectedLeadId = form.watch("lead_id");
@@ -337,18 +382,50 @@ export default function TrackTraceProjectForm({
     const project = projectData as any;
 
     form.reset({
-      projectName: project.project_name || "",
-      lead_id: project.lead_id || null,
-      order_no: project.order_no || "",
-      client_name: project.client_name || "",
-      client_address: project.client_address || "",
-      client_contact_no: project.client_contact_no || "",
-      packing_type:
-        project.packing_type ||
-        PackingType.DEFAULT,
+  projectName: project.project_name || "",
+  lead_id: project.lead_id || null,
+  order_no: project.order_no || "",
+  client_name: project.client_name || "",
+  client_address: project.client_address || "",
+  client_contact_no: project.client_contact_no || "",
 
-      file: [],
-    });
+  packing_type:
+    project.packing_type ||
+    PackingType.DEFAULT,
+
+  box_info_fields:
+    project.box_info_fields?.map(
+      (
+        item: any,
+        index: number
+      ) => ({
+        id: Number(item.id),
+
+        field_label:
+          item.field_label ||
+          "",
+
+        field_type:
+          item.field_type ||
+          "TEXT",
+
+        is_required:
+          Boolean(
+            item.is_required
+          ),
+
+        sort_order:
+          item.sort_order ||
+          index + 1,
+
+        active:
+          item.active ??
+          true,
+      })
+    ) || [],
+
+  file: [],
+});
 
     if (project.lead) {
       setSelectedLeadFromProject(project.lead as ExtendedLeadOption);
@@ -463,6 +540,42 @@ export default function TrackTraceProjectForm({
       client_address: data.client_address?.trim() || undefined,
       client_contact_no: data.client_contact_no?.trim() || undefined,
       packing_type: data.packing_type,
+      box_info_fields:
+        data.box_info_fields
+          ?.filter(
+            (
+              field
+            ) =>
+              field.field_label
+                ?.trim()
+          )
+          .map(
+            (
+              field,
+              index
+            ) => ({
+              id:
+                field.id,
+
+              field_label:
+                field.field_label.trim(),
+
+              field_type:
+                field.field_type ||
+                "TEXT",
+
+              is_required:
+                Boolean(
+                  field.is_required
+                ),
+
+              sort_order:
+                index + 1,
+
+              active:
+                true,
+            })
+          ) || [],
 
       file: data.file?.[0] || undefined,
     };
@@ -760,32 +873,32 @@ export default function TrackTraceProjectForm({
                 )}
               />
 
-             <FormField
-  control={form.control}
-  name="packing_type"
-  render={({ field }) => (
-    <FormItem>
-      <FormLabel>
-        Packing Type{" "}
-        <span className="text-destructive">
-          *
-        </span>
-      </FormLabel>
+              <FormField
+                control={form.control}
+                name="packing_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Packing Type{" "}
+                      <span className="text-destructive">
+                        *
+                      </span>
+                    </FormLabel>
 
-      <FormControl>
-        <select
-          value={
-            field.value ||
-            PackingType.DEFAULT
-          }
-          onChange={(event) =>
-            field.onChange(
-              event.target
-                .value as PackingType
-            )
-          }
-          disabled={isPending}
-          className="
+                    <FormControl>
+                      <select
+                        value={
+                          field.value ||
+                          PackingType.DEFAULT
+                        }
+                        onChange={(event) =>
+                          field.onChange(
+                            event.target
+                              .value as PackingType
+                          )
+                        }
+                        disabled={isPending}
+                        className="
             h-10
             w-full
             rounded-md
@@ -803,47 +916,47 @@ export default function TrackTraceProjectForm({
             disabled:cursor-not-allowed
             disabled:opacity-50
           "
-        >
-          <option
-            value={
-              PackingType.DEFAULT
-            }
-          >
-            Default
-          </option>
+                      >
+                        <option
+                          value={
+                            PackingType.DEFAULT
+                          }
+                        >
+                          Default
+                        </option>
 
-          <option
-            value={
-              PackingType.GROUPWISE
-            }
-          >
-            Groupwise
-          </option>
-        </select>
-      </FormControl>
+                        <option
+                          value={
+                            PackingType.GROUPWISE
+                          }
+                        >
+                          Groupwise
+                        </option>
+                      </select>
+                    </FormControl>
 
-      {field.value ===
-      PackingType.GROUPWISE ? (
-        <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
-          Items belonging to one
-          group can be packed only
-          with items from the same
-          group. One group may be
-          packed across multiple
-          boxes.
-        </div>
-      ) : (
-        <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-800 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300">
-          Any item can be packed in
-          any box without group
-          restrictions.
-        </div>
-      )}
+                    {field.value ===
+                      PackingType.GROUPWISE ? (
+                      <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+                        Items belonging to one
+                        group can be packed only
+                        with items from the same
+                        group. One group may be
+                        packed across multiple
+                        boxes.
+                      </div>
+                    ) : (
+                      <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-800 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300">
+                        Any item can be packed in
+                        any box without group
+                        restrictions.
+                      </div>
+                    )}
 
-      <FormMessage />
-    </FormItem>
-  )}
-/>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}
@@ -867,6 +980,169 @@ export default function TrackTraceProjectForm({
                   </FormItem>
                 )}
               />
+
+              <div className="md:col-span-2 rounded-2xl border bg-muted/20 p-4">
+  <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+    <div>
+      <h3 className="text-sm font-semibold">
+        Box Information Fields
+      </h3>
+
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">
+        Configure extra box fields for the mobile app. Example: Floor Name,
+        Room Name, Zone, Area, Tower, Flat No.
+      </p>
+    </div>
+
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      disabled={isPending}
+      onClick={() =>
+        appendBoxInfoField({
+          field_label: "",
+          field_type: "TEXT",
+          is_required: false,
+          active: true,
+          sort_order: boxInfoFields.length + 1,
+        })
+      }
+    >
+      <Plus className="mr-2 h-4 w-4" />
+      Add New
+    </Button>
+  </div>
+
+  {boxInfoFields.length === 0 ? (
+    <div className="rounded-xl border border-dashed bg-background px-4 py-6 text-center">
+      <p className="text-sm font-medium">
+        No box information fields configured
+      </p>
+
+      <p className="mt-1 text-xs text-muted-foreground">
+        Click Add New to create fields that will appear in the mobile app while
+        creating or editing a box.
+      </p>
+    </div>
+  ) : (
+    <div className="space-y-3">
+      {boxInfoFields.map((item, index) => (
+        <div
+          key={item.id}
+          className="grid gap-3 rounded-xl border bg-background p-3 md:grid-cols-[1fr_150px_120px_44px]"
+        >
+          <FormField
+            control={form.control}
+            name={`box_info_fields.${index}.field_label`}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-xs">
+                  Field Name
+                </FormLabel>
+
+                <FormControl>
+                  <Input
+                    placeholder="e.g., Floor Name"
+                    disabled={isPending}
+                    {...field}
+                    className="h-10"
+                  />
+                </FormControl>
+
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name={`box_info_fields.${index}.field_type`}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-xs">
+                  Type
+                </FormLabel>
+
+                <FormControl>
+                  <select
+                    value={field.value || "TEXT"}
+                    disabled={isPending}
+                    onChange={(event) =>
+                      field.onChange(event.target.value)
+                    }
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="TEXT">
+                      Text
+                    </option>
+
+                    <option value="NUMBER">
+                      Number
+                    </option>
+
+                    <option value="DATE">
+                      Date
+                    </option>
+
+                    <option value="TEXTAREA">
+                      Textarea
+                    </option>
+                  </select>
+                </FormControl>
+
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name={`box_info_fields.${index}.is_required`}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-xs">
+                  Required
+                </FormLabel>
+
+                <FormControl>
+                  <label className="flex h-10 items-center gap-2 rounded-md border bg-background px-3 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(field.value)}
+                      disabled={isPending}
+                      onChange={(event) =>
+                        field.onChange(event.target.checked)
+                      }
+                      className="h-4 w-4"
+                    />
+
+                    Yes
+                  </label>
+                </FormControl>
+
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className="flex items-end justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              disabled={isPending}
+              onClick={() => removeBoxInfoField(index)}
+              className="text-red-600 hover:bg-red-50 hover:text-red-700"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
 
               <FormField
                 control={form.control}
