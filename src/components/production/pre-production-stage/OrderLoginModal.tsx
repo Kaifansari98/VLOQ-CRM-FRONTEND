@@ -456,10 +456,24 @@ export default function OrderLoginModal({
                 >
                   <AssignToPicker
                     data={
-                      vendors?.map((v: any) => ({
-                        id: v.id,
-                        label: v.company_name,
-                      })) ?? []
+                      (() => {
+                        const baseList =
+                          vendors?.map((v: any) => ({
+                            id: v.id,
+                            label: v.company_name,
+                          })) ?? [];
+                        if (
+                          currentCompanyVendorId &&
+                          !baseList.some((v: any) => v.id === currentCompanyVendorId) &&
+                          companyVendorName
+                        ) {
+                          baseList.push({
+                            id: currentCompanyVendorId,
+                            label: `${companyVendorName} (Inactive)`,
+                          });
+                        }
+                        return baseList;
+                      })()
                     }
                     disabled={isVendorDisabled}
                     value={selectedVendorId || undefined}

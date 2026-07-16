@@ -215,12 +215,32 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   };
 
   // Users list
-  const users =
-    companyVendors?.map((vendor: any) => ({
-      id: vendor.id,
-      label: vendor.company_name,
-      in_house: Boolean(vendor.in_house),
-    })) || [];
+  const users = useMemo(() => {
+    const list =
+      companyVendors?.map((vendor: any) => ({
+        id: vendor.id,
+        label: vendor.company_name,
+        in_house: Boolean(vendor.in_house),
+      })) || [];
+
+    // Add any vendor already assigned in orderLoginData but not present in companyVendors
+    if (orderLoginData && Array.isArray(orderLoginData)) {
+      orderLoginData.forEach((item: any) => {
+        if (item.companyVendor) {
+          const exists = list.some((u: any) => u.id === item.companyVendor.id);
+          if (!exists) {
+            list.push({
+              id: item.companyVendor.id,
+              label: `${item.companyVendor.company_name}`,
+              in_house: Boolean(item.companyVendor.in_house),
+            });
+          }
+        }
+      });
+    }
+
+    return list;
+  }, [companyVendors, orderLoginData]);
 
   // Titles
   const legacyDefaultTitles = [

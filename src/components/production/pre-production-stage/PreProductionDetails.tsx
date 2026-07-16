@@ -30,6 +30,7 @@ export interface OrderLoginItem {
   completion_date: string; // ISO string
 
   companyVendor?: CompanyVendor;
+  company_vendor_id?: number | null;
 
   created_at?: string;
   updated_at?: string;
@@ -125,6 +126,7 @@ export default function PreProductionDetails({
               desc={item.item_desc}
               companyVendorName={item.companyVendor?.company_name}
               companyVendorContact={item.companyVendor?.contact_no}
+              currentCompanyVendorId={item.company_vendor_id}
               leadId={leadId || 0}
               vendorId={vendorId || 0}
               factory_user_vendor_selection_remark={
