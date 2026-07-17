@@ -49,7 +49,7 @@ type CompanyVendorRow = {
   email?: string | null;
   address?: string | null;
   in_house: boolean;
-  status: "active" | "inactive";
+  status: string;
 };
 
 const getCompanyVendorColumns = ({
@@ -222,7 +222,9 @@ export default function CompanyVendorMastersTable({
         email: item.email,
         address: item.address,
         in_house: item.in_house ?? false,
-        status: item.is_deleted ? "inactive" : "active",
+        status: item.status?.status_name 
+          ? item.status.status_name.toLowerCase()
+          : (item.is_deleted ? "inactive" : "active"),
       })),
     [data],
   );
