@@ -1150,7 +1150,7 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
         toast.success(getSuccessMessage());
 
         if (isFinal) {
-          router.push("/dashboard/masters-management/field-masters?vendor_id=" + sessionVendorId);
+          router.push("/dashboard/masters-management/field-masters?vendor_id=" + sessionVendorId + "&tab=company-vendor-master");
         } else {
           const tabsOrder = ["company-info", "address", "contact-person", "bank-account", "documents"];
           const currentIdx = tabsOrder.indexOf(activeTab);
@@ -1164,7 +1164,7 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
         const newId = response.data?.id;
         if (newId) {
           if (isFinal) {
-            router.push("/dashboard/masters-management/field-masters?vendor_id=" + sessionVendorId);
+            router.push("/dashboard/masters-management/field-masters?vendor_id=" + sessionVendorId + "&tab=company-vendor-master");
           } else {
             router.replace(`/dashboard/masters-management/field-masters/company-vendor/edit/${newId}?tab=address`);
           }
@@ -1214,7 +1214,7 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
             variant="ghost"
             size="icon"
             className="shrink-0"
-            onClick={() => router.push("/dashboard/masters-management/field-masters?vendor_id=" + sessionVendorId)}
+            onClick={() => router.push("/dashboard/masters-management/field-masters?vendor_id=" + sessionVendorId + "&tab=company-vendor-master")}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>

@@ -36,7 +36,7 @@ export default function EditCompanyVendorPage() {
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="/dashboard/masters-management/field-masters">
+                <BreadcrumbLink href="/dashboard/masters-management/field-masters?tab=company-vendor-master">
                   Field Masters
                 </BreadcrumbLink>
               </BreadcrumbItem>

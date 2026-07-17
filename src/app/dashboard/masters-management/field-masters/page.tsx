@@ -89,6 +89,8 @@ export default function FieldMastersPage() {
       : []),
   ];
 
+  const activeTab = searchParams.get("tab") || "site-master";
+
   return (
     <>
       <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
@@ -129,10 +131,15 @@ export default function FieldMastersPage() {
         </div>
 
         <SmoothTab
-          defaultTabId="site-master"
+          defaultTabId={activeTab}
           items={tabItems}
           contentHeightClass="min-h-[240px]"
           pinTabsToBottom={false}
+          onChange={(tabId) => {
+            const params = new URLSearchParams(window.location.search);
+            params.set("tab", tabId);
+            window.history.replaceState(null, "", `${window.location.pathname}?${params.toString()}`);
+          }}
         />
       </div>
     </>

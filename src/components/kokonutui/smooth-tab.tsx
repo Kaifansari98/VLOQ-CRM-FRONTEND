@@ -311,6 +311,18 @@ export default function SmoothTab({
   const tabRefs = React.useRef<Map<string, HTMLSpanElement>>(new Map());
   const containerRef = React.useRef<HTMLDivElement>(null);
 
+  // Synchronize internal state when defaultTabId changes externally
+  React.useEffect(() => {
+    if (defaultTabId && defaultTabId !== selected) {
+      const currentIndex = items.findIndex((item) => item.id === selected);
+      const newIndex = items.findIndex((item) => item.id === defaultTabId);
+      if (newIndex !== -1) {
+        setDirection(newIndex > currentIndex ? 1 : -1);
+        setSelected(defaultTabId);
+      }
+    }
+  }, [defaultTabId, items]);
+
   // Update dimensions whenever selected tab changes or on mount
   React.useLayoutEffect(() => {
     const updateDimensions = () => {
