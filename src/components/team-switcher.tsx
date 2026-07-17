@@ -32,6 +32,7 @@ export function TeamSwitcher({
     name: string;
     logo: React.ElementType;
     plan: string;
+    moduledForB2b?: boolean;
   }[];
   activeTeamId?: number | null;
 }) {
@@ -102,6 +103,9 @@ export function TeamSwitcher({
     };
   }, []);
 
+  const b2bTeams = teams.filter((team) => team.moduledForB2b);
+  const regularTeams = teams.filter((team) => !team.moduledForB2b);
+
   return (
     <>
       <SidebarMenu>
@@ -160,10 +164,42 @@ export function TeamSwitcher({
                 side={isMobile ? "bottom" : "right"}
                 sideOffset={4}
               >
+                {b2bTeams.length > 0 && (
+                  <>
+                    <DropdownMenuLabel className="text-muted-foreground text-xs">
+                      B2B Franchise
+                    </DropdownMenuLabel>
+                    {b2bTeams.map((team) => (
+                      <DropdownMenuItem
+                        key={team.id}
+                        onClick={() => handleTeamClick(team)}
+                        className={
+                          team.id === activeTeam.id
+                            ? "gap-2 p-2 bg-muted/50"
+                            : "gap-2 p-2"
+                        }
+                      >
+                        <div className="flex size-6 items-center justify-center rounded-md border">
+                          <team.logo className="size-3.5 shrink-0" />
+                        </div>
+                        {team.name}
+                        <DropdownMenuShortcut>
+                          {team.id === activeTeam.id ? (
+                            <span className="inline-flex items-center justify-end w-6">
+                              <span className="size-2 rounded-full bg-green-500 mr-1.5" />
+                            </span>
+                          ) : (
+                            `⌘${teams.indexOf(team) + 1}`
+                          )}
+                        </DropdownMenuShortcut>
+                      </DropdownMenuItem>
+                    ))}
+                  </>
+                )}
                 <DropdownMenuLabel className="text-muted-foreground text-xs">
-                  Teams
+                  Franchise
                 </DropdownMenuLabel>
-                {teams.map((team, index) => (
+                {regularTeams.map((team) => (
                   <DropdownMenuItem
                     key={team.id}
                     onClick={() => handleTeamClick(team)}
@@ -183,7 +219,7 @@ export function TeamSwitcher({
                           <span className="size-2 rounded-full bg-green-500 mr-1.5" />
                         </span>
                       ) : (
-                        `⌘${index + 1}`
+                        `⌘${teams.indexOf(team) + 1}`
                       )}
                     </DropdownMenuShortcut>
                   </DropdownMenuItem>

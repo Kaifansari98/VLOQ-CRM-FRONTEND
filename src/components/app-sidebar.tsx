@@ -197,6 +197,72 @@ const data = {
       showCount: "total_servicing_stage_leads" as const,
     },
   ],
+  b2bNavMain: [
+    {
+      title: "Dashboard",
+      url: "/dashboard",
+      icon: LayoutDashboard,
+    },
+    {
+      title: "CRM Reports",
+      url: "/dashboard/crm-reports",
+      icon: BarChart3,
+    },
+    {
+      title: "My Task",
+      url: "/dashboard/my-tasks",
+      icon: ClipboardList,
+      showCount: "total_my_tasks" as const,
+    },
+    {
+      title: "Overall Leads",
+      url: "/dashboard/overall-leads",
+      icon: Users,
+      showCount: "total_overall_leads" as const,
+    },
+    {
+      title: "Delivered Projects",
+      url: "/dashboard/delivered-projects",
+      icon: Handshake,
+      showCount: "total_project_completed_stage_leads" as const,
+    },
+    {
+      title: "Open Leads",
+      url: "/dashboard/leads/leadstable",
+      icon: NotebookPen,
+      showCount: "total_open_leads" as const,
+    },
+    {
+      title: "Designing Stage",
+      url: "/dashboard/leads/designing-stage",
+      icon: NotebookPen,
+      showCount: "total_designing_stage_leads" as const,
+    },
+    {
+      title: "Booking Stage",
+      url: "/dashboard/leads/booking-stage",
+      icon: NotebookPen,
+      showCount: "total_booking_stage_leads" as const,
+    },
+    {
+      title: "Order Login",
+      url: "/dashboard/production/order-login",
+      icon: Forklift,
+      showCount: "total_order_login_leads" as const,
+    },
+    {
+      title: "Production",
+      url: "/dashboard/production/pre-post-prod",
+      icon: Forklift,
+      showCount: "total_production_stage_leads" as const,
+    },
+    {
+      title: "Dispatch",
+      url: "/dashboard/installation/dispatch-stage",
+      icon: Drill,
+      showCount: "total_dispatch_stage_leads" as const,
+    },
+  ],
   trackTraceNav: [
     {
       title: "Track Trace",
@@ -344,6 +410,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     vendorId ?? 0,
     !!vendorId,
   );
+
+  const isActiveFranchiseB2b = React.useMemo(() => {
+    const activeFranchise = franchises.find(
+      (franchise) => franchise.id === franchiseId,
+    );
+    return activeFranchise?.moduled_for_b2b ?? false;
+  }, [franchises, franchiseId]);
 
   React.useEffect(() => {
     if (!shouldBootstrapFranchise) return;
@@ -572,7 +645,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       return item;
     });
 
-    const finalNavItems = isCrmEnabled ? finalNavItemsSource : [];
+    const finalNavItems = !isCrmEnabled
+      ? []
+      : isActiveFranchiseB2b
+        ? data.b2bNavMain
+        : finalNavItemsSource;
 
     const finalTrackTraceItems = isSuperAdmin && isTrackTraceEnabled
       ? data.trackTraceNav
@@ -613,6 +690,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     isInventoryEnabled,
     isTrackTraceEnabled,
     customPrivilegeCodes,
+    isActiveFranchiseB2b,
   ]);
 
   const teams = React.useMemo(() => {
@@ -658,6 +736,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       name: franchise.franchise_name,
       logo: GalleryVerticalEnd,
       plan: (franchise.franchise_code ?? user?.user_type?.user_type) || "",
+      moduledForB2b: franchise.moduled_for_b2b ?? false,
     }));
   }, [user, isMasterAdmin, isSuperAdmin, franchises, franchiseId]);
 
