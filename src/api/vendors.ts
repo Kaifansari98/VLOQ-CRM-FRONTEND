@@ -23,6 +23,18 @@ export interface VendorListItem {
   logoUrl?: string;
   iconUrl?: string;
   loginImageUrl?: string;
+  gst_no?: string | null;
+  toll_free_no?: string | null;
+  website_link?: string | null;
+  tag_line?: string | null;
+  address?: string | null;
+  pincode?: string | null;
+  city?: string | null;
+  state_id?: number | null;
+  state?: {
+    id: number;
+    name: string;
+  } | null;
 }
 
 export interface VendorListParams {
@@ -65,6 +77,18 @@ export interface OnboardVendorPayload {
   is_crm_enabled?: boolean;
   is_inventory_enabled: boolean;
   is_tracktrace_enabled: boolean;
+  gst_no?: string | null;
+  toll_free_no?: string | null;
+  website_link?: string | null;
+  tag_line?: string | null;
+  address?: string | null;
+  pincode?: string | null;
+  city?: string | null;
+  state_id?: number | null;
+  state?: {
+    id: number;
+    name: string;
+  } | null;
 }
 
 export interface UpdateVendorPayload {
@@ -80,6 +104,18 @@ export interface UpdateVendorPayload {
   is_crm_enabled: boolean;
   is_inventory_enabled: boolean;
   is_tracktrace_enabled: boolean;
+  gst_no?: string | null;
+  toll_free_no?: string | null;
+  website_link?: string | null;
+  tag_line?: string | null;
+  address?: string | null;
+  pincode?: string | null;
+  city?: string | null;
+  state_id?: number | null;
+  state?: {
+    id: number;
+    name: string;
+  } | null;
 }
 
 // ─── API fn ──────────────────────────────────────────────────────────────────
@@ -171,6 +207,29 @@ export const useVendorById = (vendorId?: number) => {
     queryKey: ["vendor", vendorId],
     queryFn: () => fetchVendorById(vendorId as number),
     enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+};
+
+
+export interface StateListItem {
+  id: number;
+  name: string;
+}
+
+export const fetchStates = async (): Promise<{
+  success: boolean;
+  data: StateListItem[];
+}> => {
+  const { data } = await apiClient.get("/vendors/states");
+  return data;
+};
+
+export const useStates = () => {
+  return useQuery({
+    queryKey: ["states"],
+    queryFn: fetchStates,
     retry: false,
     refetchOnWindowFocus: false,
   });
