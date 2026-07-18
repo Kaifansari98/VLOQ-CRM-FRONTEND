@@ -125,9 +125,14 @@ export default function PreProductionFilesSection({
     ) || [];
 
   const canDelete =
-    userType === "super-admin" || (userType === "pre-prod" && !isPreProdDone);
+    userType === "super-admin" ||
+    userType === "admin" ||
+    (userType === "pre-prod" && !isPreProdDone);
 
-  const canViewAndWork = userType === "super-admin" || userType === "pre-prod";
+  const canViewAndWork =
+    userType === "super-admin" ||
+    userType === "admin" ||
+    userType === "pre-prod";
   const canUploadPreProductionFiles =
     userType === "custom"
       ? customPrivilegeCodes.includes(
@@ -147,7 +152,9 @@ export default function PreProductionFilesSection({
         )
       : canViewAndWork;
   const canEditPreProdRemark =
-    userType === "super-admin" || userType === "pre-prod";
+    userType === "super-admin" ||
+    userType === "admin" ||
+    userType === "pre-prod";
 
   useEffect(() => {
     setRemark(normalizedRemark);

@@ -26,6 +26,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useCreateVendorLoginLaunch } from "@/api/auth";
 import { useOnboardVendor, useUpdateVendor } from "@/api/vendors";
 import { toastManager } from "@/components/ui/toast";
@@ -68,6 +75,7 @@ const createVendorSchema = z.object({
   is_crm_enabled: z.boolean(),
   is_inventory_enabled: z.boolean(),
   is_tracktrace_enabled: z.boolean(),
+  status: z.enum(["active", "inactive"]),
 });
 
 type CreateVendorForm = z.infer<typeof createVendorSchema>;
@@ -87,6 +95,7 @@ export default function VendorsPage() {
     is_crm_enabled: true,
     is_inventory_enabled: false,
     is_tracktrace_enabled: false,
+    status: "active",
   });
   const [fieldErrors, setFieldErrors] = React.useState<CreateVendorFieldErrors>({});
   const [logoFile, setLogoFile] = React.useState<File[]>([]);
@@ -165,6 +174,7 @@ export default function VendorsPage() {
       is_crm_enabled: true,
       is_inventory_enabled: false,
       is_tracktrace_enabled: false,
+      status: "active",
     });
     setLogoFile([]);
     setIconFile([]);
@@ -191,6 +201,7 @@ export default function VendorsPage() {
       is_crm_enabled: boolean;
       is_inventory_enabled: boolean;
       is_tracktrace_enabled: boolean;
+      status?: string | null;
     }) => {
       setEditingVendorId(row.id);
       setForm({
@@ -204,6 +215,7 @@ export default function VendorsPage() {
         is_crm_enabled: row.is_crm_enabled,
         is_inventory_enabled: row.is_inventory_enabled,
         is_tracktrace_enabled: row.is_tracktrace_enabled,
+        status: (row.status || "active").toLowerCase() as "active" | "inactive",
       });
       setLogoFile([]);
       setIconFile([]);
@@ -245,7 +257,7 @@ export default function VendorsPage() {
         formData.append("primary_contact_email", validatedForm.data.primary_contact_email);
         formData.append("country_code", "+91");
         formData.append("head_office_id", "");
-        formData.append("status", "active");
+        formData.append("status", validatedForm.data.status);
         formData.append("time_zone", "Asia/Kolkata");
         formData.append("handlesLargeScaleProjects", String(validatedForm.data.handlesLargeScaleProjects));
         formData.append("is_crm_enabled", String(validatedForm.data.is_crm_enabled));
@@ -276,7 +288,7 @@ export default function VendorsPage() {
         formData.append("primary_contact_email", validatedForm.data.primary_contact_email);
         formData.append("country_code", "+91");
         formData.append("head_office_id", "");
-        formData.append("status", "active");
+        formData.append("status", validatedForm.data.status);
         formData.append("time_zone", "Asia/Kolkata");
         formData.append("handlesLargeScaleProjects", String(validatedForm.data.handlesLargeScaleProjects));
         formData.append("is_crm_enabled", String(validatedForm.data.is_crm_enabled));
@@ -574,6 +586,24 @@ export default function VendorsPage() {
                   ))}
                 </div>
               </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="status">Status</Label>
+              <Select
+                value={form.status}
+                onValueChange={(value: "active" | "inactive") =>
+                  setForm((prev) => ({ ...prev, status: value }))
+                }
+              >
+                <SelectTrigger id="status" className="w-full bg-background border-border">
+                  <SelectValue placeholder="Select Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
