@@ -76,6 +76,7 @@ import {
 } from "@/hooks/useTypesMaster";
 import { updateLeadProductType, clearLeadProductStructures } from "@/api/leads";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useFranchisesByVendorId } from "@/api/franchise";
 
 type OpenLeadDetailsProps = {
   leadId: number;
@@ -164,6 +165,10 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     useProductItemCodes();
   const { data: productStructureTypes } = useProductStructureTypes();
   const { data: productTypes } = useProductTypes();
+  const { data: franchisesForB2b = [] } = useFranchisesByVendorId(
+    vendorId,
+    !!vendorId,
+  );
 
   // ✅ 3. ALL useState HOOKS
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
@@ -560,6 +565,13 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     () => getStructureOptions(addParentFilter),
     [addParentFilter, productStructureTypes?.data],
   );
+
+  const isB2b = useMemo(() => {
+    const leadFranchise = franchisesForB2b.find(
+      (franchise: any) => franchise.id === lead?.franchise_id,
+    );
+    return leadFranchise?.moduled_for_b2b ?? false;
+  }, [franchisesForB2b, lead?.franchise_id]);
 
   // ✅ 9. EARLY RETURNS — SARE HOOKS KE BAAD
   if (isLoading && !lead) {
@@ -1494,8 +1506,8 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                     href={lead.site_map_link}
                     target="_blank"
                     className="
-          pl-6 underline 
-          font-medium text-heading dark:text-neutral-200 
+          pl-6 underline
+          font-medium text-heading dark:text-neutral-200
           hover:opacity-80
         "
                   >
@@ -1505,6 +1517,17 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   <p className="pl-6 text-subtle">No map link provided</p>
                 )}
               </div>
+
+              {isB2b && (
+                <>
+                  <InfoRow icon={Magnet} label="Source" value={lead.source?.type} />
+                  <InfoRow
+                    icon={Package}
+                    label="Order Number"
+                    value={lead.order_number}
+                  />
+                </>
+              )}
             </div>
 
             {/* Site Address below full width */}
@@ -1518,55 +1541,60 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
           </SectionCard>
 
           {/* PROJECT DETAILS */}
-          <SectionCard title="Project Details">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <InfoRow
-                icon={User}
-                label="Architect Name"
-                value={<span className="capitalize">{lead.archetech_name}</span>}
-              />
-              {lead.archetech_number && (
+          {!isB2b && (
+            <SectionCard title="Project Details">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <InfoRow
-                  icon={Phone}
-                  label="Architect Number"
-                  value={lead.archetech_number}
+                  icon={User}
+                  label="Architect Name"
+                  value={<span className="capitalize">{lead.archetech_name}</span>}
                 />
-              )}
-              <InfoRow
-                icon={Building}
-                label="Site Type"
-                value={lead.siteType?.type}
-              />
-              <InfoRow icon={Magnet} label="Source" value={lead.source?.type} />
-              <InfoRow icon={Package} label="Priority" value={lead.priority} />
-            </div>
-          </SectionCard>
+                {lead.archetech_number && (
+                  <InfoRow
+                    icon={Phone}
+                    label="Architect Number"
+                    value={lead.archetech_number}
+                  />
+                )}
+                <InfoRow
+                  icon={Building}
+                  label="Site Type"
+                  value={lead.siteType?.type}
+                />
+                <InfoRow icon={Magnet} label="Source" value={lead.source?.type} />
+                <InfoRow icon={Package} label="Priority" value={lead.priority} />
+              </div>
+            </SectionCard>
+          )}
 
           {/* ADDITIONAL INFORMATION */}
-          <SectionCard title="Additional Information">
-            <div className="space-y-4">
-              <div>
-                <div className="flex items-center gap-2 text-sm text-subtle mb-2">
-                  <MessageSquare className="w-4 h-4" />
-                  Design Remarks
-                </div>
+          {!isB2b && (
+            <SectionCard title="Additional Information">
+              <div className="space-y-4">
+                <div>
+                  <div className="flex items-center gap-2 text-sm text-subtle mb-2">
+                    <MessageSquare className="w-4 h-4" />
+                    Design Remarks
+                  </div>
 
-                <div
-                  className="
-    bg-[#fff] dark:bg-[#0a0a0a] 
-    border border-border 
+                  <div
+                    className="
+    bg-[#fff] dark:bg-[#0a0a0a]
+    border border-border
     rounded-xl p-4 ml-6
   "
-                >
-                  <p className="text-[15px] leading-relaxed text-heading dark:text-neutral-200">
-                    {lead.designer_remark || "No remarks provided"}
-                  </p>
+                  >
+                    <p className="text-[15px] leading-relaxed text-heading dark:text-neutral-200">
+                      {lead.designer_remark || "No remarks provided"}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          </SectionCard>
+            </SectionCard>
+          )}
 
           {/* Site Photos */}
+          {!isB2b && (
           <motion.section
             variants={itemVariants}
             className="
@@ -1755,6 +1783,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
               )}
             </motion.div>
           </motion.section>
+          )}
 
           <Dialog
             open={boqModalOpen}

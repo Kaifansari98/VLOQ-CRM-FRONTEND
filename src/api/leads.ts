@@ -81,6 +81,8 @@ export interface Lead {
   updated_at: string;
   vendor_id: number;
   franchise_id?: number | null;
+  order_number?: string | null;
+  client_id?: number | null;
   priority?: string;
   assign_to: number | null;
   assigned_by: number | null;
@@ -239,6 +241,9 @@ export interface EditLeadPayload {
   designer_remark?: string;
   updated_by: number;
   initial_site_measurement_date?: string;
+  client_id?: number;
+  order_number?: string;
+  refered_by?: string;
 }
 
 export interface CreateClientVisitPayload {

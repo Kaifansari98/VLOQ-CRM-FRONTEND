@@ -58,6 +58,10 @@ import {
 } from "@/components/ui/select";
 import { toastError } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { useFranchisesByVendorId } from "@/api/franchise";
+import { useClients } from "@/hooks/useClientMaster";
+import Link from "next/link";
+import { ExternalLink } from "lucide-react";
 
 // ✅ Utility: Normalize phone numbers to E.164 format
 const toE164 = (number?: string, countryCode?: string): string => {
@@ -119,96 +123,159 @@ const optionalDateField = z
   .string()
   .optional();
 
-const completeFormSchema = z.object({
-  firstname: z.string().trim().min(1, "First name is required").max(300),
-  lastname: z.string().trim().min(1, "Last name is required").max(300),
-  contact_no: requiredPhoneField,
-  email: z
-    .string()
-    .trim()
-    .email("Please enter a valid email")
-    .or(z.literal("")),
-  site_type_id: z.string().min(1, "Please select a site type"),
-  site_address: z
-    .string()
-    .min(1, "Site Address is required")
-    .max(2000)
+const completeFormSchema = (isB2b: boolean, referenceSourceIds: string[]) =>
+  z
+    .object({
+      firstname: z.string().trim().min(1, "First name is required").max(300),
+      lastname: z
+        .string()
+        .trim()
+        .min(1, isB2b ? "Project name is required" : "Last name is required")
+        .max(300),
+      contact_no: isB2b
+        ? z.string().optional().or(z.literal(""))
+        : requiredPhoneField,
+      email: z
+        .string()
+        .trim()
+        .email("Please enter a valid email")
+        .or(z.literal("")),
+      site_type_id: isB2b
+        ? z.string().optional().or(z.literal(""))
+        : z.string().min(1, "Please select a site type"),
+      site_address: isB2b
+        ? z
+            .string()
+            .optional()
+            .or(z.literal(""))
+            .refine(
+              (val) => !val || !/^(https?:\/\/[^\s]+)/i.test(val.trim()),
+              { message: "Invalid link" },
+            )
+        : z
+            .string()
+            .min(1, "Site Address is required")
+            .max(2000)
+            .refine(
+              (val) => !/^(https?:\/\/[^\s]+)/i.test(val.trim()),
+              { message: "Invalid link" },
+            ),
+      site_map_link: z.string().optional().or(z.literal("")),
+      source_id: z.string().min(1, "Please select a source"),
+      refered_by: z.string().max(300).optional().or(z.literal("")),
+      client_id: isB2b
+        ? z.string().min(1, "Please select a client")
+        : z.string().optional().or(z.literal("")),
+      order_number: z.string().max(100).optional().or(z.literal("")),
+      priority: z.enum(["High", "Medium", "Low"]),
+      alt_contact_no: optionalPhoneField,
+      archetech_name: z.string().max(300).optional(),
+      archetech_number: optionalArchitectPhoneField,
+      designer_remark: z.string().max(2000).optional(),
+      product_types: z.array(z.string()).optional(),
+      product_structures: z.array(z.string()).optional(),
+      initial_site_measurement_date: optionalDateField,
+    })
     .refine(
-      (val) => !/^(https?:\/\/[^\s]+)/i.test(val.trim()),
-      { message: "Invalid link" }
-    ),
-  site_map_link: z.string().optional().or(z.literal("")),
-  source_id: z.string().min(1, "Please select a source"),
-  priority: z.enum(["High", "Medium", "Low"]),
-  alt_contact_no: optionalPhoneField,
-  archetech_name: z.string().max(300).optional(),
-  archetech_number: optionalArchitectPhoneField,
-  designer_remark: z.string().max(2000).optional(),
-  product_types: z.array(z.string()).optional(),
-  product_structures: z.array(z.string()).optional(),
-  initial_site_measurement_date: optionalDateField,
-}).refine(
-  (data) => {
-    if (data.product_types && data.product_types.length > 0) {
-      return data.product_structures && data.product_structures.length > 0;
-    }
-    return true;
-  },
-  {
-    message: "Please select at least one Furniture Structure",
-    path: ["product_structures"],
-  }
-);
-
-const draftFormSchema = z.object({
-  firstname: z.string().max(300).optional(),
-  lastname: z.string().max(300).optional(),
-  contact_no: z
-    .string()
-    .optional()
-    .refine(
-      (value) => !value || value.trim() === "" || isPhoneValueValid(value),
-      {
-        message: "Please enter a valid phone number",
+      (data) => {
+        if (data.product_types && data.product_types.length > 0) {
+          return data.product_structures && data.product_structures.length > 0;
+        }
+        return true;
       },
-    ),
-  email: z
-    .string()
-    .trim()
-    .email("Please enter a valid email")
-    .or(z.literal("")),
-  site_type_id: z.string().optional(),
-  site_address: z
-    .string()
-    .optional()
-    .refine(
-      (val) => !val || !/^(https?:\/\/[^\s]+)/i.test(val.trim()),
-      { message: "Invalid link" }
-    ),
-  site_map_link: z.string().optional().or(z.literal("")),
-  source_id: z.string().optional(),
-  priority: z.enum(["High", "Medium", "Low"]).or(z.literal("")),
-  alt_contact_no: optionalPhoneField,
-  archetech_name: z.string().max(300).optional(),
-  archetech_number: optionalArchitectPhoneField,
-  designer_remark: z.string().max(2000).optional(),
-  product_types: z.array(z.string()).optional(),
-  product_structures: z.array(z.string()).optional(),
-  initial_site_measurement_date: optionalDateField,
-}).refine(
-  (data) => {
-    if (data.product_types && data.product_types.length > 0) {
-      return data.product_structures && data.product_structures.length > 0;
-    }
-    return true;
-  },
-  {
-    message: "Please select at least one Furniture Structure",
-    path: ["product_structures"],
-  }
-);
+      {
+        message: "Please select at least one Furniture Structure",
+        path: ["product_structures"],
+      },
+    )
+    .superRefine((values, ctx) => {
+      const requiresReferenceField =
+        isB2b &&
+        typeof values.source_id === "string" &&
+        referenceSourceIds.includes(values.source_id);
 
-type FormValues = z.infer<typeof draftFormSchema>;
+      if (requiresReferenceField && !values.refered_by?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["refered_by"],
+          message: "Please enter referred by",
+        });
+      }
+    });
+
+const draftFormSchema = (isB2b: boolean, referenceSourceIds: string[]) =>
+  z
+    .object({
+      firstname: z.string().max(300).optional(),
+      lastname: z.string().max(300).optional(),
+      contact_no: z
+        .string()
+        .optional()
+        .refine(
+          (value) => !value || value.trim() === "" || isPhoneValueValid(value),
+          {
+            message: "Please enter a valid phone number",
+          },
+        ),
+      email: z
+        .string()
+        .trim()
+        .email("Please enter a valid email")
+        .or(z.literal("")),
+      site_type_id: z.string().optional(),
+      site_address: z
+        .string()
+        .optional()
+        .refine(
+          (val) => !val || !/^(https?:\/\/[^\s]+)/i.test(val.trim()),
+          { message: "Invalid link" },
+        ),
+      site_map_link: z.string().optional().or(z.literal("")),
+      source_id: isB2b
+        ? z.string().min(1, "Please select a source")
+        : z.string().optional(),
+      refered_by: z.string().max(300).optional().or(z.literal("")),
+      client_id: isB2b
+        ? z.string().min(1, "Please select a client")
+        : z.string().optional().or(z.literal("")),
+      order_number: z.string().max(100).optional().or(z.literal("")),
+      priority: z.enum(["High", "Medium", "Low"]).or(z.literal("")),
+      alt_contact_no: optionalPhoneField,
+      archetech_name: z.string().max(300).optional(),
+      archetech_number: optionalArchitectPhoneField,
+      designer_remark: z.string().max(2000).optional(),
+      product_types: z.array(z.string()).optional(),
+      product_structures: z.array(z.string()).optional(),
+      initial_site_measurement_date: optionalDateField,
+    })
+    .refine(
+      (data) => {
+        if (data.product_types && data.product_types.length > 0) {
+          return data.product_structures && data.product_structures.length > 0;
+        }
+        return true;
+      },
+      {
+        message: "Please select at least one Furniture Structure",
+        path: ["product_structures"],
+      },
+    )
+    .superRefine((values, ctx) => {
+      const requiresReferenceField =
+        isB2b &&
+        typeof values.source_id === "string" &&
+        referenceSourceIds.includes(values.source_id);
+
+      if (requiresReferenceField && !values.refered_by?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["refered_by"],
+          message: "Please enter referred by",
+        });
+      }
+    });
+
+type FormValues = z.infer<ReturnType<typeof draftFormSchema>>;
 
 interface EditLeadFormProps {
   leadData: any;
@@ -219,6 +286,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
   const [isLoadingLead, setIsLoadingLead] = useState(false);
   const [isDraftLead, setIsDraftLead] = useState(false);
   const [leadStage, setLeadStage] = useState("");
+  const [leadFranchiseId, setLeadFranchiseId] = useState<number | null>(null);
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const createdBy = useAppSelector((state) => state.auth.user?.id);
   const handlesLargeScaleProjects = useAppSelector(
@@ -230,6 +298,23 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
   );
   const router = useRouter();
   const queryClient = useQueryClient();
+
+  const { data: franchisesForB2b = [] } = useFranchisesByVendorId(
+    vendorId,
+    !!vendorId,
+  );
+  const isB2b = useMemo(() => {
+    const leadFranchise = franchisesForB2b.find(
+      (franchise) => franchise.id === leadFranchiseId,
+    );
+    return leadFranchise?.moduled_for_b2b ?? false;
+  }, [franchisesForB2b, leadFranchiseId]);
+
+  const { data: clientsData, isLoading: isClientsLoading } = useClients({
+    vendor_id: vendorId,
+    limit: 200,
+  });
+  const clientsList = clientsData?.data?.data ?? [];
   const [mapOpen, setMapOpen] = useState(false);
   const [savedMapLocation, setSavedMapLocation] = useState<{
     lat: number;
@@ -405,9 +490,35 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
       updateLead(payload, leadData.id, createdBy!),
   });
 
+  const { data: sourceTypes, isLoading: isSourceTypesLoading } =
+    useSourceTypes();
+  const sourcePickerData = useMemo(
+    () =>
+      sourceTypes?.data?.map((source: any) => ({
+        id: source.id,
+        label: source.type,
+      })) || [],
+    [sourceTypes?.data],
+  );
+  const referenceSourceIds = useMemo(
+    () =>
+      sourceTypes?.data
+        ?.filter(
+          (source: any) =>
+            String(source.type || "").trim().toLowerCase() === "reference",
+        )
+        .map((source: any) => String(source.id)) || [],
+    [sourceTypes?.data],
+  );
+
   const resolver = useMemo(
-    () => zodResolver(isDraftLead ? draftFormSchema : completeFormSchema),
-    [isDraftLead],
+    () =>
+      zodResolver(
+        isDraftLead
+          ? draftFormSchema(isB2b, referenceSourceIds)
+          : completeFormSchema(isB2b, referenceSourceIds),
+      ),
+    [isDraftLead, isB2b, referenceSourceIds],
   );
 
   const form = useForm<FormValues>({
@@ -422,6 +533,9 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
       site_address: "",
       site_map_link: "",
       source_id: "",
+      client_id: "",
+      order_number: "",
+      refered_by: "",
       priority: "Medium",
       archetech_name: "",
       archetech_number: "",
@@ -440,7 +554,48 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
 
   const shouldShowFurnitureFields = isDraftLead || leadStage === "open" || leadStage === "";
   const shouldShowSiteTypeField = isDraftLead || leadStage === "open" || leadStage === "";
-  const requiresFurnitureSelection = !handlesLargeScaleProjects;
+  const requiresFurnitureSelection = !handlesLargeScaleProjects && !isB2b;
+
+  const selectedClientId = form.watch("client_id");
+  const selectedSourceId = form.watch("source_id");
+  const selectedClient = useMemo(
+    () => clientsList.find((c: any) => String(c.id) === selectedClientId),
+    [clientsList, selectedClientId],
+  );
+  const showReferredByField =
+    isB2b && !!selectedSourceId && referenceSourceIds.includes(selectedSourceId);
+
+  useEffect(() => {
+    if (!isB2b || !selectedClient) return;
+
+    const companyName =
+      selectedClient.company_name || selectedClient.name || "";
+    if (form.getValues("firstname") !== companyName) {
+      form.setValue("firstname", companyName, {
+        shouldDirty: true,
+        shouldValidate: false,
+      });
+    }
+
+    const digits = (selectedClient.contact || "").replace(/\D/g, "");
+    const normalizedDigits =
+      digits.length > 10 && digits.startsWith("91") ? digits.slice(2) : digits;
+    const e164ContactNo = normalizedDigits ? `+91${normalizedDigits}` : "";
+    if (form.getValues("contact_no") !== e164ContactNo) {
+      form.setValue("contact_no", e164ContactNo, {
+        shouldDirty: true,
+        shouldValidate: false,
+      });
+    }
+
+    const clientEmail = selectedClient.email || "";
+    if (form.getValues("email") !== clientEmail) {
+      form.setValue("email", clientEmail, {
+        shouldDirty: true,
+        shouldValidate: false,
+      });
+    }
+  }, [isB2b, selectedClient, form]);
 
   // Product type & structure hooks
   const { data: productStructures, isLoading: isStructuresLoading } =
@@ -633,6 +788,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           instancesResponse.data || [];
         setIsDraftLead(Boolean(lead.is_draft));
         setLeadStage(lead.statusType?.type?.toLowerCase() || lead.status_type?.toLowerCase() || "");
+        setLeadFranchiseId(lead.franchise_id ?? null);
 
         // ✅ Normalize phone numbers to E.164 format
         const formattedContactNo = toE164(lead.contact_no, lead.country_code);
@@ -681,6 +837,9 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           site_address: lead.site_address || "",
           site_map_link: lead.site_map_link || "",
           source_id: lead.source_id ? String(lead.source_id) : "",
+          client_id: lead.client_id ? String(lead.client_id) : "",
+          order_number: lead.order_number || "",
+          refered_by: lead.refered_by || "",
           priority: lead.priority || "Medium",
           archetech_name: lead.archetech_name || "",
           archetech_number: lead.archetech_number || "",
@@ -825,6 +984,16 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
     if (isDirty("site_map_link")) {
       payload.site_map_link = values.site_map_link?.trim() || "";
     }
+    if (isDirty("client_id")) {
+      payload.client_id =
+        isB2b && values.client_id ? Number(values.client_id) : undefined;
+    }
+    if (isDirty("order_number")) {
+      payload.order_number = values.order_number || "";
+    }
+    if (isDirty("refered_by")) {
+      payload.refered_by = values.refered_by?.trim() || "";
+    }
     if (isDirty("archetech_name"))
       payload.archetech_name = values.archetech_name || "";
     if (isDirty("archetech_number") && values.archetech_number?.trim()) {
@@ -963,48 +1132,136 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 p-5">
-        {/* First Name & Last Name */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <FormField
-            control={form.control}
-            name="firstname"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm">First Name *</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter first name"
-                    type="text"
-                    className="text-sm"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        {/* Client / Project (B2B) or First Name & Last Name */}
+        {isB2b ? (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="client_id"
+                render={({ field }) => {
+                  const pickerData = clientsList.map((c: any) => ({
+                    id: c.id,
+                    label: c.company_name || c.name,
+                    subLabel: c.clientCode,
+                  }));
 
-          <FormField
-            control={form.control}
-            name="lastname"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm">Last Name *</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter last name"
-                    type="text"
-                    className="text-sm"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+                  return (
+                    <FormItem>
+                      <div className="w-full flex items-center justify-between">
+                        <FormLabel className="text-sm">Select Client *</FormLabel>
+                        <Link
+                          href="/dashboard/masters-management/client-master"
+                          target="_blank"
+                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          New client
+                        </Link>
+                      </div>
+                      {isClientsLoading ? (
+                        <p className="text-xs text-muted-foreground">
+                          Loading clients...
+                        </p>
+                      ) : (
+                        <AssignToPicker
+                          data={pickerData}
+                          value={field.value ? Number(field.value) : undefined}
+                          onChange={(selectedId: number | null) => {
+                            field.onChange(selectedId ? String(selectedId) : "");
+                          }}
+                          placeholder="Search client..."
+                        />
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+
+              <FormField
+                control={form.control}
+                name="lastname"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm">Project Name *</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter project name"
+                        type="text"
+                        className="text-sm"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="order_number"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm">Order Number</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter order number"
+                      type="text"
+                      className="text-sm"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <FormField
+              control={form.control}
+              name="firstname"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm">First Name *</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter first name"
+                      type="text"
+                      className="text-sm"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="lastname"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm">Last Name *</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter last name"
+                      type="text"
+                      className="text-sm"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        )}
 
         {/* Contact Numbers - ✅ SIMPLIFIED */}
+        {!isB2b && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
           <FormField
             control={form.control}
@@ -1050,8 +1307,10 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
             )}
           />
         </div>
+        )}
 
         {/* Email & Furniture Type */}
+        {!isB2b && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
           <FormField
             control={form.control}
@@ -1072,109 +1331,129 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
             )}
           />
         </div>
+        )}
 
-        {/* Site Type & Source */}
-        <div className={`grid grid-cols-1 ${shouldShowSiteTypeField ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-3 items-center`}>
-          {shouldShowSiteTypeField && (
+        {/* Site Type & Priority */}
+        {!isB2b && (
+          <div className={`grid grid-cols-1 ${shouldShowSiteTypeField ? 'sm:grid-cols-2' : 'sm:grid-cols-1'} gap-3 items-center`}>
+            {shouldShowSiteTypeField && (
+              <FormField
+                control={form.control}
+                name="site_type_id"
+                render={({ field }) => {
+                const { data: siteTypes, isLoading } = useSiteTypes();
+
+                const pickerData =
+                  siteTypes?.data?.map((site: any) => ({
+                    id: site.id,
+                    label: site.type,
+                  })) || [];
+
+                return (
+                  <FormItem>
+                    <FormLabel className="text-sm">Site Type *</FormLabel>
+
+                    {isLoading ? (
+                      <p className="text-xs text-muted-foreground">
+                        Loading site types...
+                      </p>
+                    ) : (
+                      <AssignToPicker
+                        data={pickerData}
+                        value={field.value ? Number(field.value) : undefined}
+                        onChange={(selectedId: number | null) => {
+                          field.onChange(selectedId ? String(selectedId) : "");
+                        }}
+                        placeholder="Search site type..."
+                      />
+                    )}
+
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+            )}
+
             <FormField
               control={form.control}
-              name="site_type_id"
-              render={({ field }) => {
-              const { data: siteTypes, isLoading } = useSiteTypes();
-
-              const pickerData =
-                siteTypes?.data?.map((site: any) => ({
-                  id: site.id,
-                  label: site.type,
-                })) || [];
-
-              return (
+              name="priority"
+              render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm">Site Type *</FormLabel>
-
-                  {isLoading ? (
-                    <p className="text-xs text-muted-foreground">
-                      Loading site types...
-                    </p>
-                  ) : (
-                    <AssignToPicker
-                      data={pickerData}
-                      value={field.value ? Number(field.value) : undefined}
-                      onChange={(selectedId: number | null) => {
-                        field.onChange(selectedId ? String(selectedId) : "");
-                      }}
-                      placeholder="Search site type..."
-                    />
-                  )}
-
+                  <FormLabel className="text-sm">Priority *</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger className="text-sm w-full">
+                        <SelectValue placeholder="Select priority" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {priorityOptions.map((option) => (
+                        <SelectItem key={option.id} value={option.id}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
-              );
-            }}
-          />
-          )}
+              )}
+            />
+          </div>
+        )}
 
+        {/* Source (+ Phone Number for B2B) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
           <FormField
             control={form.control}
             name="source_id"
-            render={({ field }) => {
-              const { data: sourceTypes, isLoading } = useSourceTypes();
-
-              const pickerData =
-                sourceTypes?.data?.map((source: any) => ({
-                  id: source.id,
-                  label: source.type,
-                })) || [];
-
-              return (
-                <FormItem>
-                  <FormLabel className="text-sm">Source *</FormLabel>
-
-                  {isLoading ? (
-                    <p className="text-xs text-muted-foreground">
-                      Loading sources...
-                    </p>
-                  ) : (
-                    <AssignToPicker
-                      data={pickerData}
-                      value={field.value ? Number(field.value) : undefined}
-                      onChange={(selectedId: number | null) => {
-                        field.onChange(selectedId ? String(selectedId) : "");
-                      }}
-                      placeholder="Search source..."
-                    />
-                  )}
-
-                  <FormMessage />
-                </FormItem>
-              );
-            }}
-          />
-
-          <FormField
-            control={form.control}
-            name="priority"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-sm">Priority *</FormLabel>
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <FormControl>
-                    <SelectTrigger className="text-sm w-full">
-                      <SelectValue placeholder="Select priority" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {priorityOptions.map((option) => (
-                      <SelectItem key={option.id} value={option.id}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <FormLabel className="text-sm">Source *</FormLabel>
+
+                {isSourceTypesLoading ? (
+                  <p className="text-xs text-muted-foreground">
+                    Loading sources...
+                  </p>
+                ) : (
+                  <AssignToPicker
+                    data={sourcePickerData}
+                    value={field.value ? Number(field.value) : undefined}
+                    onChange={(selectedId: number | null) => {
+                      field.onChange(selectedId ? String(selectedId) : "");
+                    }}
+                    placeholder="Search source..."
+                  />
+                )}
+
                 <FormMessage />
               </FormItem>
             )}
           />
+
+          {isB2b && (
+            <FormField
+              control={form.control}
+              name="alt_contact_no"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm">Phone Number</FormLabel>
+                  <FormControl>
+                    <PhoneInput
+                      defaultCountry="IN"
+                      placeholder="Enter phone number"
+                      className="text-sm"
+                      value={field.value}
+                      onChange={(val) => field.onChange(val)}
+                      onBlur={field.onBlur}
+                      validateIndianNumber={true}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
         </div>
 
         {/* Site Address */}
@@ -1184,7 +1463,9 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           render={({ field }) => (
             <FormItem>
               <div className="w-full flex justify-between">
-                <FormLabel className="text-sm">Site Address *</FormLabel>
+                <FormLabel className="text-sm">
+                  {isB2b ? "Site Address" : "Site Address *"}
+                </FormLabel>
                 <Button
                   type="button"
                   variant="outline"
@@ -1241,6 +1522,29 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
             </FormItem>
           )}
         />
+
+        {showReferredByField && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <FormField
+              control={form.control}
+              name="refered_by"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm">Referred By *</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter referred by"
+                      type="text"
+                      className="text-sm"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        )}
 
         {requiresFurnitureSelection && shouldShowFurnitureFields && (
           <>
@@ -1396,6 +1700,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
           </>
         )}
 
+        {!isB2b && (
         <div
           className={`grid grid-cols-1 gap-3 items-start ${isCustomVendorFlow ? "sm:grid-cols-3" : "sm:grid-cols-2"
             }`}
@@ -1465,8 +1770,10 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
             )}
           />
         </div>
+        )}
 
         {/* Designer Remark */}
+        {!isB2b && (
         <FormField
           control={form.control}
           name="designer_remark"
@@ -1484,6 +1791,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
             </FormItem>
           )}
         />
+        )}
 
         <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
           <Button
