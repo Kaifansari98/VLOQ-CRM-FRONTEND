@@ -400,19 +400,39 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const canEditLeadDetailsForCustomUser = customPrivilegeCodes.includes(
     "leads.open_leads.details_of_lead.edit",
   );
+
+  // Lead stage tags look like "Type 1", "Type 4", "Type 17" — extract the
+  // ordinal so we can gate editing to a max stage per role instead of a
+  // single boolean "open" check.
+  const leadStageTypeNumber = (() => {
+    const match = String(leadStatusTag || "").match(/(\d+)/);
+    return match ? Number(match[1]) : null;
+  })();
+  const isWithinStageRange = (maxType: number) =>
+    leadStageTypeNumber !== null &&
+    leadStageTypeNumber >= 1 &&
+    leadStageTypeNumber <= maxType;
+
+  const canEditAtCurrentStage =
+    normalizedUserType === "admin" || normalizedUserType === "super-admin"
+      ? isWithinStageRange(17)
+      : normalizedUserType === "sales-executive"
+        ? isWithinStageRange(4)
+        : isOpenStage;
+
   const canEditStructures =
     !isAuditor &&
     (normalizedUserType === "custom"
       ? canEditLeadDetailsForCustomUser
-      : isOpenStage || ["admin", "super-admin"].includes(userType || ""));
+      : canEditAtCurrentStage);
   const canEditProductType =
     !isAuditor &&
     (normalizedUserType === "custom"
       ? canEditLeadDetailsForCustomUser
-      : normalizedUserType === "admin" ||
-      normalizedUserType === "super-admin" ||
-      (normalizedUserType === "sales-executive" && isOpenStage));
-  const canEditBoqItems = canEditStructures && isOpenStage;
+      : ["admin", "super-admin", "sales-executive"].includes(normalizedUserType)
+        ? canEditAtCurrentStage
+        : false);
+  const canEditBoqItems = canEditStructures;
   const currentProductTypeId =
     lead?.productMappings?.[0]?.product_type_id ||
     lead?.productMappings?.[0]?.productType?.id ||
@@ -953,7 +973,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
             <SectionCard
               title="Product Information"
               action={
-                canEditStructures && isOpenStage && (
+                canEditStructures && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div className="w-auto">
@@ -1002,7 +1022,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   label={
                     <span className="inline-flex items-center gap-2">
                       <span>Product Types</span>
-                      {canEditProductType && isOpenStage && (
+                      {canEditProductType && (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button
@@ -1088,7 +1108,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                               {item.title || item.productStructure?.type || "—"}
                             </p>
                             <div className="flex items-center gap-1 shrink-0">
-                              {canEditStructures && isOpenStage && (
+                              {canEditStructures && (
                                 <>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
