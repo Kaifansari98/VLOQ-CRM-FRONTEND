@@ -412,6 +412,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       : normalizedUserType === "admin" ||
       normalizedUserType === "super-admin" ||
       (normalizedUserType === "sales-executive" && isOpenStage));
+  const canEditBoqItems = canEditStructures && isOpenStage;
   const currentProductTypeId =
     lead?.productMappings?.[0]?.product_type_id ||
     lead?.productMappings?.[0]?.productType?.id ||
@@ -1172,7 +1173,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
             <SectionCard
               title="Bill of Quantity"
               action={
-                canEditStructures && boqInstances.length > 0 ? (
+                canEditBoqItems && boqInstances.length > 0 ? (
                   <Button
                     type="button"
                     className="gap-2"
@@ -1191,11 +1192,11 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                 <button
                   type="button"
                   onClick={() => {
-                    if (!canEditStructures || shouldDisableBlockedActions) return;
+                    if (!canEditBoqItems || shouldDisableBlockedActions) return;
                     setBoqModalOpen(true);
                   }}
                   className={`group flex w-full flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-border/70 bg-muted/20 px-6 py-14 text-center transition hover:border-primary/50 hover:bg-muted/30 ${
-                    !canEditStructures ? "cursor-default" : ""
+                    !canEditBoqItems ? "cursor-default" : ""
                   }`}
                 >
                   <span className="flex h-16 w-16 items-center justify-center rounded-full border border-dashed border-border/80 bg-background shadow-sm transition group-hover:scale-105">
@@ -1267,7 +1268,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 	                                  {item.productItemCode?.item_code || item.title || "—"}
 	                                </p>
 	                              </div>
-	                              {canEditStructures && (
+	                              {canEditBoqItems && (
 	                                <div className="flex shrink-0 items-center gap-1">
 	                                  <Tooltip>
 	                                    <TooltipTrigger asChild>
@@ -1406,7 +1407,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 	                                      {item.quantity ?? "—"}
 	                                    </span>
 	                                  </div>
-	                                  {canEditStructures && (
+	                                  {canEditBoqItems && (
 	                                    <Button
 	                                      type="button"
 	                                      variant="ghost"

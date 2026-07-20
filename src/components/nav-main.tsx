@@ -210,7 +210,7 @@ export function NavMain({
   }, [franchisesForB2b, franchiseId]);
   const enhancedMastersItems = React.useMemo(() => {
     if (!mastersItems?.length) return mastersItems ?? [];
-    if (!handlesLargeScaleProjects) return mastersItems;
+    if (!handlesLargeScaleProjects && !isActiveFranchiseB2b) return mastersItems;
 
     return mastersItems.map((section) => {
       if (!section.items?.length) return section;
@@ -224,25 +224,27 @@ export function NavMain({
       let nextItems = section.items;
       let changed = false;
 
-      if (!nextItems.some((item) => item.title === "BOQ Master")) {
-        nextItems = [...nextItems];
-        nextItems.splice(userMasterIndex + 1, 0, {
-          title: "BOQ Master",
-          url: "/dashboard/masters-management/boq-items-master",
-        });
-        changed = true;
-      }
+      if (handlesLargeScaleProjects) {
+        if (!nextItems.some((item) => item.title === "BOQ Master")) {
+          nextItems = [...nextItems];
+          nextItems.splice(userMasterIndex + 1, 0, {
+            title: "BOQ Master",
+            url: "/dashboard/masters-management/boq-items-master",
+          });
+          changed = true;
+        }
 
-      if (!nextItems.some((item) => item.title === "Specs Master")) {
-        const boqMasterIndex = nextItems.findIndex(
-          (item) => item.title === "BOQ Master",
-        );
-        nextItems = [...nextItems];
-        nextItems.splice(boqMasterIndex + 1, 0, {
-          title: "Specs Master",
-          url: "/dashboard/masters-management/specs-master",
-        });
-        changed = true;
+        if (!nextItems.some((item) => item.title === "Specs Master")) {
+          const boqMasterIndex = nextItems.findIndex(
+            (item) => item.title === "BOQ Master",
+          );
+          nextItems = [...nextItems];
+          nextItems.splice(boqMasterIndex + 1, 0, {
+            title: "Specs Master",
+            url: "/dashboard/masters-management/specs-master",
+          });
+          changed = true;
+        }
       }
 
       if (
@@ -252,8 +254,10 @@ export function NavMain({
         const specsMasterIndex = nextItems.findIndex(
           (item) => item.title === "Specs Master",
         );
+        const insertAt =
+          specsMasterIndex !== -1 ? specsMasterIndex + 1 : userMasterIndex + 1;
         nextItems = [...nextItems];
-        nextItems.splice(specsMasterIndex + 1, 0, {
+        nextItems.splice(insertAt, 0, {
           title: "Client Master",
           url: "/dashboard/masters-management/client-master",
         });
