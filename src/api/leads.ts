@@ -37,6 +37,7 @@ export interface CreateLeadPayload {
   site_address: string;
   site_type_id: number;
   source_id: number;
+  refered_by?: string;
   archetech_name?: string;
   archetech_number?: string;
   designer_remark?: string;
@@ -69,6 +70,7 @@ export interface Lead {
   site_address: string;
   site_type_id: number;
   source_id: number;
+  refered_by?: string | null;
   account_id: number;
   archetech_name: string;
   archetech_number?: string | null;

@@ -198,6 +198,16 @@ export function NavMain({
     vendorFranchises,
   ]);
   const { isMobile, setOpenMobile } = useSidebar();
+  const { data: franchisesForB2b = [] } = useFranchisesByVendorId(
+    vendorId ?? 0,
+    !!vendorId,
+  );
+  const isActiveFranchiseB2b = React.useMemo(() => {
+    const activeFranchise = franchisesForB2b.find(
+      (franchise) => franchise.id === franchiseId,
+    );
+    return activeFranchise?.moduled_for_b2b ?? false;
+  }, [franchisesForB2b, franchiseId]);
   const enhancedMastersItems = React.useMemo(() => {
     if (!mastersItems?.length) return mastersItems ?? [];
     if (!handlesLargeScaleProjects) return mastersItems;
@@ -235,6 +245,26 @@ export function NavMain({
         changed = true;
       }
 
+      if (
+        isActiveFranchiseB2b &&
+        !nextItems.some((item) => item.title === "Client Master")
+      ) {
+        const specsMasterIndex = nextItems.findIndex(
+          (item) => item.title === "Specs Master",
+        );
+        nextItems = [...nextItems];
+        nextItems.splice(specsMasterIndex + 1, 0, {
+          title: "Client Master",
+          url: "/dashboard/masters-management/client-master",
+        });
+        changed = true;
+      }
+
+      if (!isActiveFranchiseB2b && nextItems.some((item) => item.title === "Client Master")) {
+        nextItems = nextItems.filter((item) => item.title !== "Client Master");
+        changed = true;
+      }
+
       if (!changed) return section;
 
       return {
@@ -242,7 +272,7 @@ export function NavMain({
         items: nextItems,
       };
     });
-  }, [handlesLargeScaleProjects, mastersItems]);
+  }, [handlesLargeScaleProjects, mastersItems, isActiveFranchiseB2b]);
 
   const pathname = usePathname();
   const allItems = [

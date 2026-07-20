@@ -44,6 +44,13 @@ export default function AssignDesignerModal({
   const queryClient = useQueryClient();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const vendorCustomUserTypeMode = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only as
+        | boolean
+        | null
+        | undefined,
+  );
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: [
@@ -58,10 +65,14 @@ export default function AssignDesignerModal({
       const response = await getVendorSalesExecutiveUsers(
         vendorId,
         data.franchiseId ?? undefined,
-        {
-          assigneeUserType: "custom",
-          requiredPrivilegeCode: "leads.designing_stage.designs.upload",
-        },
+        vendorCustomUserTypeMode === true
+          ? {
+              assigneeUserType: "custom",
+              requiredPrivilegeCode: "leads.designing_stage.designs.upload",
+            }
+          : {
+              assigneeUserType: "designer",
+            },
       );
 
       const payload = response?.data;
