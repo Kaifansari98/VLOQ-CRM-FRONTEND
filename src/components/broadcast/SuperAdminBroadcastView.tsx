@@ -69,6 +69,9 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
   const [audienceFilter, setAudienceFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("");
 
+  const [rowsPerPage, setRowsPerPage] = useState("10");
+  const [currentPage, setCurrentPage] = useState(1);
+
   // Filtered dataset
   const filteredBroadcasts = useMemo(() => {
     return broadcasts.filter((item) => {
@@ -90,6 +93,21 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
       return matchesSearch && matchesStatus && matchesAudience && matchesDate;
     });
   }, [broadcasts, search, statusFilter, audienceFilter, dateFilter]);
+
+  const pageSize = Number(rowsPerPage) || 10;
+  const totalItems = filteredBroadcasts.length;
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, audienceFilter, dateFilter, rowsPerPage]);
+
+  const startIndex = totalItems === 0 ? 0 : (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+
+  const paginatedBroadcasts = useMemo(() => {
+    return filteredBroadcasts.slice(startIndex, endIndex);
+  }, [filteredBroadcasts, startIndex, endIndex]);
 
   const getStatusBadge = (status: BroadcastStatus) => {
     switch (status) {
@@ -169,13 +187,18 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
       <div className="space-y-0.5">
         <div className="flex flex-wrap items-center gap-1">
           {visibleItems.map((name, idx) => (
-            <span
-              key={idx}
-              className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-muted/50 border text-foreground max-w-[150px] truncate"
-              title={name}
-            >
-              {name}
-            </span>
+            <Tooltip key={idx}>
+              <TooltipTrigger asChild>
+                <span
+                  className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-muted/50 border text-foreground max-w-[260px] truncate cursor-default"
+                >
+                  {name}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="px-2.5 py-1 text-xs font-medium">
+                {name}
+              </TooltipContent>
+            </Tooltip>
           ))}
           {hiddenCount > 0 && (
             <Tooltip>
@@ -321,8 +344,8 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
           </TableHeader>
 
           <TableBody>
-            {filteredBroadcasts.length > 0 ? (
-              filteredBroadcasts.map((item) => {
+            {paginatedBroadcasts.length > 0 ? (
+              paginatedBroadcasts.map((item) => {
                 const readPercentage = item.totalSent > 0 ? Math.round((item.readCount / item.totalSent) * 100) : 0;
                 return (
                   <TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
@@ -422,35 +445,83 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
         </Table>
 
         {/* Pagination Footer */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t bg-muted/20 text-xs text-center sm:text-left">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t bg-muted/20 text-xs">
           <div className="text-muted-foreground">
-            Showing <span className="font-semibold text-foreground">1</span> to{" "}
-            <span className="font-semibold text-foreground">{filteredBroadcasts.length}</span> of{" "}
-            <span className="font-semibold text-foreground">{broadcasts.length}</span> results
+            Showing <span className="font-semibold text-foreground">{totalItems === 0 ? 0 : startIndex + 1}</span> to{" "}
+            <span className="font-semibold text-foreground">{endIndex}</span> of{" "}
+            <span className="font-semibold text-foreground">{totalItems}</span> results
           </div>
 
-          <div className="flex items-center gap-1">
-            <Button variant="outline" size="icon" className="h-8 w-8" disabled>
-              <ChevronsLeft className="w-4 h-4" />
-            </Button>
-            <Button variant="outline" size="icon" className="h-8 w-8" disabled>
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <Button variant="default" size="sm" className="h-8 w-8 text-xs font-bold rounded-lg">
-              1
-            </Button>
-            <Button variant="outline" size="sm" className="h-8 w-8 text-xs font-bold rounded-lg">
-              2
-            </Button>
-            <Button variant="outline" size="sm" className="h-8 w-8 text-xs font-bold rounded-lg">
-              3
-            </Button>
-            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg">
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg">
-              <ChevronsRight className="w-4 h-4" />
-            </Button>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground">Rows per page</span>
+              <Select value={rowsPerPage} onValueChange={(val) => setRowsPerPage(val)}>
+                <SelectTrigger className="w-[65px] h-8 text-xs bg-muted/30 rounded-lg">
+                  <SelectValue placeholder="10" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-lg"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage(1)}
+                title="First Page"
+              >
+                <ChevronsLeft className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-lg"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                title="Previous Page"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                <Button
+                  key={pageNum}
+                  variant={pageNum === currentPage ? "default" : "outline"}
+                  size="sm"
+                  className="h-8 w-8 text-xs font-bold rounded-lg"
+                  onClick={() => setCurrentPage(pageNum)}
+                >
+                  {pageNum}
+                </Button>
+              ))}
+
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-lg"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                title="Next Page"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-lg"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage(totalPages)}
+                title="Last Page"
+              >
+                <ChevronsRight className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>

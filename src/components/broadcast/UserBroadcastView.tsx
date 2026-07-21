@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +58,7 @@ export const UserBroadcastView: React.FC<UserBroadcastViewProps> = ({
   const [updatedByFilter, setUpdatedByFilter] = useState("all");
   const [sortBy, setSortBy] = useState("latest");
   const [rowsPerPage, setRowsPerPage] = useState("10");
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Separate counts
   const circularsCount = useMemo(() => broadcasts.filter((b) => b.type === "circular").length, [broadcasts]);
@@ -94,6 +95,21 @@ export const UserBroadcastView: React.FC<UserBroadcastViewProps> = ({
         return 0;
       });
   }, [broadcasts, activeTab, search, dateFilter, updatedByFilter, sortBy]);
+
+  const pageSize = Number(rowsPerPage) || 10;
+  const totalItems = filteredData.length;
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, search, dateFilter, updatedByFilter, sortBy, rowsPerPage]);
+
+  const startIndex = totalItems === 0 ? 0 : (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+
+  const paginatedData = useMemo(() => {
+    return filteredData.slice(startIndex, endIndex);
+  }, [filteredData, startIndex, endIndex]);
 
   return (
     <div className="space-y-6">
@@ -260,8 +276,8 @@ export const UserBroadcastView: React.FC<UserBroadcastViewProps> = ({
           </TableHeader>
 
           <TableBody>
-            {filteredData.length > 0 ? (
-              filteredData.map((item) => (
+            {paginatedData.length > 0 ? (
+              paginatedData.map((item) => (
                 <TableRow
                   key={item.id}
                   className="hover:bg-muted/30 transition-colors cursor-pointer"
@@ -330,18 +346,18 @@ export const UserBroadcastView: React.FC<UserBroadcastViewProps> = ({
         </Table>
 
         {/* Pagination Footer */}
-        <div className="flex items-center justify-between p-4 border-t bg-muted/20 text-xs">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t bg-muted/20 text-xs">
           <div className="text-muted-foreground">
-            Showing <span className="font-semibold text-foreground">1</span> to{" "}
-            <span className="font-semibold text-foreground">{filteredData.length}</span> of{" "}
-            <span className="font-semibold text-foreground">{filteredData.length}</span> results
+            Showing <span className="font-semibold text-foreground">{totalItems === 0 ? 0 : startIndex + 1}</span> to{" "}
+            <span className="font-semibold text-foreground">{endIndex}</span> of{" "}
+            <span className="font-semibold text-foreground">{totalItems}</span> results
           </div>
 
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground">Rows per page</span>
-              <Select value={rowsPerPage} onValueChange={setRowsPerPage}>
-                <SelectTrigger className="w-[60px] h-8 text-xs bg-muted/30 rounded-lg">
+              <Select value={rowsPerPage} onValueChange={(val) => setRowsPerPage(val)}>
+                <SelectTrigger className="w-[65px] h-8 text-xs bg-muted/30 rounded-lg">
                   <SelectValue placeholder="10" />
                 </SelectTrigger>
                 <SelectContent>
@@ -353,19 +369,33 @@ export const UserBroadcastView: React.FC<UserBroadcastViewProps> = ({
             </div>
 
             <div className="flex items-center gap-1">
-              <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" disabled>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-lg"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <Button variant="default" size="sm" className="h-8 w-8 text-xs font-bold rounded-lg">
-                1
-              </Button>
-              <Button variant="outline" size="sm" className="h-8 w-8 text-xs font-bold rounded-lg">
-                2
-              </Button>
-              <Button variant="outline" size="sm" className="h-8 w-8 text-xs font-bold rounded-lg">
-                3
-              </Button>
-              <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                <Button
+                  key={pageNum}
+                  variant={pageNum === currentPage ? "default" : "outline"}
+                  size="sm"
+                  className="h-8 w-8 text-xs font-bold rounded-lg"
+                  onClick={() => setCurrentPage(pageNum)}
+                >
+                  {pageNum}
+                </Button>
+              ))}
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-lg"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              >
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>

@@ -24,6 +24,7 @@ import {
   useCreateBroadcastMutation,
   useUpdateBroadcastMutation,
   useDeleteBroadcastMutation,
+  useMarkBroadcastReadMutation,
   markBroadcastAsReadLocal,
   CreateBroadcastPayload,
   stripHtmlAndEntities,
@@ -73,6 +74,7 @@ export default function BroadcastPage() {
   const createBroadcastMutation = useCreateBroadcastMutation();
   const updateBroadcastMutation = useUpdateBroadcastMutation();
   const deleteBroadcastMutation = useDeleteBroadcastMutation();
+  const markBroadcastReadMutation = useMarkBroadcastReadMutation();
 
   // Sync API data when fetched from backend - always update, even if empty array
   useEffect(() => {
@@ -146,9 +148,11 @@ export default function BroadcastPage() {
   const handleViewItem = (item: BroadcastItem) => {
     setSelectedItem(item);
     setDetailSheetOpen(true);
-    if (item.numericId || item.id) {
-      markBroadcastAsReadLocal(item.numericId || item.id, user?.id);
+    const numId = item.numericId || parseInt(String(item.id).replace(/\D/g, ""), 10);
+    if (numId && !isNaN(numId)) {
+      markBroadcastReadMutation.mutate(numId);
     }
+    markBroadcastAsReadLocal(numId || item.id, user?.id);
   };
 
   return (
