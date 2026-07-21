@@ -24,6 +24,7 @@ import {
   useCreateBroadcastMutation,
   useUpdateBroadcastMutation,
   useDeleteBroadcastMutation,
+  markBroadcastAsReadLocal,
   CreateBroadcastPayload,
   stripHtmlAndEntities,
 } from "@/api/broadcast";
@@ -145,6 +146,9 @@ export default function BroadcastPage() {
   const handleViewItem = (item: BroadcastItem) => {
     setSelectedItem(item);
     setDetailSheetOpen(true);
+    if (item.numericId || item.id) {
+      markBroadcastAsReadLocal(item.numericId || item.id, user?.id);
+    }
   };
 
   return (

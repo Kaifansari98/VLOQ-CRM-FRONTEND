@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/popover";
 import { Calendar as CalendarUI } from "@/components/ui/calendar";
 import { BroadcastItem } from "@/types/broadcast";
-import { stripHtmlAndEntities } from "@/api/broadcast";
+import { stripHtmlAndEntities, markBroadcastAsReadLocal } from "@/api/broadcast";
 
 interface UserBroadcastViewProps {
   broadcasts: BroadcastItem[];
@@ -265,7 +265,10 @@ export const UserBroadcastView: React.FC<UserBroadcastViewProps> = ({
                 <TableRow
                   key={item.id}
                   className="hover:bg-muted/30 transition-colors cursor-pointer"
-                  onClick={() => onViewItem(item)}
+                  onClick={() => {
+                    markBroadcastAsReadLocal(item.numericId || item.id);
+                    onViewItem(item);
+                  }}
                 >
                   {/* Document Column */}
                   <TableCell className="py-3.5 pl-4">

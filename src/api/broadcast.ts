@@ -1,3 +1,4 @@
+import React from "react";
 import { apiClient } from "@/lib/apiClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { BroadcastItem, BroadcastType, BroadcastStatus } from "@/types/broadcast";
@@ -341,9 +342,85 @@ export const useMarkBroadcastReadMutation = () => {
   return useMutation({
     mutationFn: markBroadcastReadApi,
     onSuccess: (_, id) => {
+      markBroadcastAsReadLocal(id);
       queryClient.invalidateQueries({ queryKey: ["broadcasts"] });
       queryClient.invalidateQueries({ queryKey: ["broadcast", id] });
       queryClient.invalidateQueries({ queryKey: ["broadcast-readers", id] });
     },
   });
+};
+
+export const getReadBroadcastIds = (userId?: number): string[] => {
+  if (typeof window === "undefined") return [];
+  try {
+    const key = `read_broadcast_ids_${userId || "default"}`;
+    const item = localStorage.getItem(key);
+    return item ? JSON.parse(item) : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+export const markBroadcastAsReadLocal = (broadcastId: number | string, userId?: number) => {
+  if (typeof window === "undefined" || !broadcastId) return;
+  try {
+    const key = `read_broadcast_ids_${userId || "default"}`;
+    const current = getReadBroadcastIds(userId);
+    const idStr = String(broadcastId);
+    if (!current.includes(idStr)) {
+      const updated = [...current, idStr];
+      localStorage.setItem(key, JSON.stringify(updated));
+      window.dispatchEvent(new Event("broadcasts-read-updated"));
+    }
+  } catch (e) {
+    // ignore
+  }
+};
+
+export const markAllBroadcastsAsReadLocal = (broadcasts: BroadcastItem[], userId?: number) => {
+  if (typeof window === "undefined") return;
+  try {
+    const key = `read_broadcast_ids_${userId || "default"}`;
+    const current = getReadBroadcastIds(userId);
+    const newIds = broadcasts.map((b) => String(b.numericId || b.id));
+    const merged = Array.from(new Set([...current, ...newIds]));
+    localStorage.setItem(key, JSON.stringify(merged));
+    window.dispatchEvent(new Event("broadcasts-read-updated"));
+  } catch (e) {
+    // ignore
+  }
+};
+
+export const useUnreadBroadcastCount = (userId?: number, vendorId?: number, isSuperAdmin?: boolean) => {
+  const { data: broadcasts = [], isLoading } = useBroadcasts({
+    vendorId,
+    forMe: !isSuperAdmin,
+  });
+  const [readIds, setReadIds] = React.useState<string[]>(() => getReadBroadcastIds(userId));
+
+  React.useEffect(() => {
+    const handleUpdate = () => {
+      setReadIds(getReadBroadcastIds(userId));
+    };
+    handleUpdate();
+    window.addEventListener("broadcasts-read-updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener("broadcasts-read-updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, [userId]);
+
+  const unreadCount = React.useMemo(() => {
+    const published = broadcasts.filter((b) => b.status === "published");
+    if (published.length === 0) return 0;
+    const unread = published.filter((b) => {
+      const numIdStr = String(b.numericId ?? "");
+      const fullIdStr = String(b.id ?? "");
+      return !readIds.includes(numIdStr) && !readIds.includes(fullIdStr);
+    });
+    return unread.length;
+  }, [broadcasts, readIds]);
+
+  return { unreadCount, isLoading };
 };

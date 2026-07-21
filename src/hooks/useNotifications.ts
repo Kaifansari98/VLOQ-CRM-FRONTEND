@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import axios from "axios";
 import { toastManager } from "@/components/ui/toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { fetchNotifications } from "@/api/notifications"
 import { useAppSelector } from "@/redux/store"
 import { useDispatch } from "react-redux"
@@ -19,6 +20,7 @@ const getUnreadIds = (items: NotificationItem[]) =>
 
 export const useNotifications = () => {
   const dispatch = useDispatch()
+  const queryClient = useQueryClient()
   const user = useAppSelector((state) => state.auth.user)
   const notifications = useAppSelector((state) => state.notifications.items)
   const unreadCount = useAppSelector((state) => state.notifications.unreadCount)
@@ -60,6 +62,7 @@ export const useNotifications = () => {
             unreadCount,
           })
         )
+        queryClient.invalidateQueries({ queryKey: ["broadcasts"] });
 
         if (typeof window !== "undefined") {
           const nextUnreadIds = new Set(getUnreadIds(sortedItems))

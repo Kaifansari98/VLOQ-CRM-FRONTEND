@@ -36,6 +36,7 @@ import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { setFranchiseId } from "@/redux/slices/authSlice";
 import { usePendingMiscellaneousCount } from "@/api/installation/useUnderInstallationStageLeads";
 import { useFranchisesByVendorId } from "@/api/franchise";
+import { useUnreadBroadcastCount } from "@/api/broadcast";
 import { useTheme } from "next-themes";
 import { sanitize } from "@/components/utils/sanitizeCapitalize";
 
@@ -360,6 +361,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const miscLeadsCount = miscCountData?.pending_miscellaneous_leads ?? 0;
 
+  const { unreadCount: unreadBroadcastCount, isLoading: isBroadcastLoading } = useUnreadBroadcastCount(userId, vendorId ?? undefined, isSuperAdmin);
+
   const userData = user
     ? {
         name: user?.user_name || "username",
@@ -383,9 +386,27 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       process.env.NEXT_PUBLIC_ENVIRONMENT ?? "PRODUCTION"
     ).toUpperCase();
 
+    const navMainWithBroadcast = data.navMain.map((item) => {
+      if (item.title === "Broadcast") {
+        if (isSuperAdmin) {
+          return item;
+        }
+        return {
+          ...item,
+          customCount: unreadBroadcastCount ?? 0,
+          customCountLoading: isBroadcastLoading,
+          badgeClassName: badgeBg || badgeText ? undefined : "bg-red-500 text-white font-bold",
+          badgeStyle: badgeBg || badgeText
+            ? { backgroundColor: badgeBg, color: badgeText }
+            : undefined,
+        };
+      }
+      return item;
+    });
+
     const withoutOverall = canSeeOverallLeads
-      ? data.navMain
-      : data.navMain.filter((item) => item.title !== "Overall Leads");
+      ? navMainWithBroadcast
+      : navMainWithBroadcast.filter((item) => item.title !== "Overall Leads");
 
     const hideSectionsForRole =
       userType === "site-supervisor" ||

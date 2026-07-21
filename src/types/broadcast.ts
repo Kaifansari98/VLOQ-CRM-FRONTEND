@@ -44,6 +44,7 @@ export interface BroadcastItem {
   fileType?: "docx" | "pdf" | "xlsx" | "pptx" | "zip";
   fileSize?: string;
   bookmarked?: boolean;
+  isRead?: boolean;
   videoLinks?: string[];
   attachments?: BroadcastAttachment[];
   versionHistory?: BroadcastVersion[];

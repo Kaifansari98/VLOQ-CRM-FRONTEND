@@ -44,7 +44,7 @@ export const QuillEditor: React.FC<QuillEditorProps> = ({
         [{ color: [] }, { background: [] }],
         [{ list: "ordered" }, { list: "bullet" }],
         [{ align: [] }],
-        ["link", "image"],
+        ["link"],
         ["clean"],
       ],
     }),
@@ -62,7 +62,6 @@ export const QuillEditor: React.FC<QuillEditorProps> = ({
     "list",
     "align",
     "link",
-    "image",
   ];
 
   return (
