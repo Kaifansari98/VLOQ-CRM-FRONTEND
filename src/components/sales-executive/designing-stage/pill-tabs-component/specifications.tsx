@@ -4,32 +4,111 @@ import { useState } from "react";
 import { ClipboardList, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ComingSoon from "@/components/generics/ComingSoon";
-import AddSpecsModal, { SpecFormId } from "./modals/add-specs-modal";
-import CarcassFormModal from "./modals/carcass-form-modal";
-import ShutterFormModal from "./modals/shutter-form-modal";
 import ViewSpecsModal from "./modals/view-specs-modal";
 import { useDetails } from "./details-context";
 import { useAppSelector } from "@/redux/store";
-import { useLeadSpecifications } from "@/hooks/designing-stage/designing-leads-hooks";
+import {
+  useLeadSpecifications,
+  useCreateLeadSpecification,
+} from "@/hooks/designing-stage/designing-leads-hooks";
 import type { LeadSpecificationEntry } from "@/api/designingStageQueries";
+import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
+import AssignToPicker from "@/components/assign-to-picker";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toastManager } from "@/components/ui/toast";
 
 export default function SpecificationsTab() {
   const { leadId } = useDetails();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const userId = useAppSelector((state) => state.auth.user?.id);
 
-  const [openAddSpecs, setOpenAddSpecs] = useState(false);
-  const [openCarcassForm, setOpenCarcassForm] = useState(false);
-  const [openShutterForm, setOpenShutterForm] = useState(false);
+  const [openCreateConfirm, setOpenCreateConfirm] = useState(false);
+  const [selectedItemCodeId, setSelectedItemCodeId] = useState<number | null>(
+    null,
+  );
   const [selectedSpec, setSelectedSpec] =
     useState<LeadSpecificationEntry | null>(null);
 
   const { data: specifications = [] } = useLeadSpecifications(vendorId, leadId);
   const hasSpecifications = specifications.length > 0;
 
-  const handleSelectForm = (form: SpecFormId) => {
-    setOpenAddSpecs(false);
-    if (form === "carcass") setOpenCarcassForm(true);
-    if (form === "shutter") setOpenShutterForm(true);
+  const {
+    data: structureInstancesData,
+    isLoading: isProductItemCodesLoading,
+  } = useLeadProductStructureInstances(leadId, vendorId);
+  const structureInstances = structureInstancesData?.data || [];
+  const itemCodeGroupMap = new Map<number, string>(
+    structureInstances
+      .filter((instance: any) => instance.productItemCode)
+      .map((instance: any) => [
+        instance.productItemCode.id,
+        instance.productType?.type ||
+          instance.productItemCode?.productStructure?.productType?.type ||
+          "—",
+      ]),
+  );
+  const itemCodePickerData = Array.from(
+    new Map<number, { id: number; label: string; subLabel: string }>(
+      structureInstances
+        .filter((instance: any) => instance.productItemCode)
+        .map((instance: any) => [
+          instance.productItemCode.id,
+          {
+            id: instance.productItemCode.id,
+            label: instance.productItemCode.item_code,
+            subLabel: `${itemCodeGroupMap.get(instance.productItemCode.id)}`,
+          },
+        ]),
+    ).values(),
+  );
+  const selectedItemGroup = selectedItemCodeId
+    ? itemCodeGroupMap.get(selectedItemCodeId)
+    : undefined;
+
+  const createSpecification = useCreateLeadSpecification();
+
+  const handleCreateSpecification = () => {
+    if (!vendorId || !userId) {
+      toastManager.add({
+        title: "Vendor or user information is missing!",
+        type: "error",
+      });
+      return;
+    }
+
+    createSpecification.mutate(
+      {
+        vendorId,
+        leadId,
+        createdBy: userId,
+        itemCodeId: selectedItemCodeId ?? undefined,
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: "Specification created successfully!",
+            type: "success",
+          });
+          setOpenCreateConfirm(false);
+          setSelectedItemCodeId(null);
+        },
+        onError: (err: any) => {
+          toastManager.add({
+            title: err?.message || "Failed to create specification",
+            type: "error",
+          });
+        },
+      },
+    );
   };
 
   return (
@@ -41,7 +120,7 @@ export default function SpecificationsTab() {
             Specifications
           </h1>
         </div>
-        <Button size="sm" onClick={() => setOpenAddSpecs(true)}>
+        <Button size="sm" onClick={() => setOpenCreateConfirm(true)}>
           <Plus size={16} className="mr-1" />
           <span>Add Specs</span>
         </Button>
@@ -77,13 +156,58 @@ export default function SpecificationsTab() {
         />
       )}
 
-      <AddSpecsModal
-        open={openAddSpecs}
-        onOpenChange={setOpenAddSpecs}
-        onSelectForm={handleSelectForm}
-      />
-      <CarcassFormModal open={openCarcassForm} onOpenChange={setOpenCarcassForm} />
-      <ShutterFormModal open={openShutterForm} onOpenChange={setOpenShutterForm} />
+      <AlertDialog
+        open={openCreateConfirm}
+        onOpenChange={(open) => {
+          setOpenCreateConfirm(open);
+          if (!open) setSelectedItemCodeId(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Create Specification?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will create a new specification card for this lead.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="px-1">
+            <label className="text-xs font-medium text-muted-foreground">
+              Item Code
+            </label>
+            <div className="mt-1">
+              {isProductItemCodesLoading ? (
+                <p className="text-xs text-muted-foreground">
+                  Loading item codes...
+                </p>
+              ) : (
+                <AssignToPicker
+                  data={itemCodePickerData}
+                  value={selectedItemCodeId ?? undefined}
+                  onChange={(id) => setSelectedItemCodeId(id)}
+                  placeholder="Search item code..."
+                />
+              )}
+            </div>
+            {selectedItemCodeId && (
+              <div className="mt-2 flex items-center gap-2 text-xs">
+                <span className="text-foreground">{selectedItemGroup}</span>
+              </div>
+            )}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={createSpecification.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCreateSpecification}
+              disabled={createSpecification.isPending}
+            >
+              {createSpecification.isPending ? "Creating..." : "Confirm"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <ViewSpecsModal
         open={!!selectedSpec}
         onOpenChange={(open) => {

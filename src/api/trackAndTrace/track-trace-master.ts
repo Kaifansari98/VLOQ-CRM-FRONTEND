@@ -13,6 +13,7 @@ import {
   VendorLeadsResponse,
   TrackTraceLeadOption,
   TrackTraceVendorConfig,
+  PackingType,
 } from "@/types/track-trace";
 
 
@@ -136,7 +137,7 @@ export const updateTrackTraceProjectApi = async (
 
   formData.append("vendorId", String(payload.vendorId));
   formData.append("projectName", payload.projectName);
-
+formData.append("packing_type",payload.packing_type || PackingType.DEFAULT);
   if (payload.file) {
     formData.append("file", payload.file);
   }
@@ -182,6 +183,7 @@ export const createTrackTraceProjectApi = async (
 
   formData.append("vendorId", String(payload.vendorId));
   formData.append("projectName", payload.projectName);
+  formData.append("packing_type",payload.packing_type || PackingType.DEFAULT);
 
   if (payload.file) {
     formData.append("file", payload.file);

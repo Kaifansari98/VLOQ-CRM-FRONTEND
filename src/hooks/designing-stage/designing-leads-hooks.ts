@@ -10,9 +10,14 @@ import {
   getElectricalPlumbingDoc,
   getFinalIsmUploadDoc,
   getLeadSpecifications,
+  createLeadSpecification,
+  updateLeadSpecificationLightsRemark,
+  type LightsRemark,
   getLeadCarcassMaterialMappings,
   getLeadShutterMaterialMappings,
   getLeadHardwareMappings,
+  getLeadLightCarcasUnitMappings,
+  getLeadOtherAppliancesMappings,
   getCHSSelectionTypeMappings,
   getCHSManufacturingDaysByInstance,
   getInstanceStage,
@@ -35,6 +40,10 @@ import {
   UpsertLeadShutterMaterialMappingPayload,
   upsertLeadHardwareMapping,
   UpsertLeadHardwareMappingPayload,
+  upsertLeadLightCarcasUnitMapping,
+  UpsertLeadLightCarcasUnitMappingPayload,
+  upsertLeadOtherAppliancesMapping,
+  UpsertLeadOtherAppliancesMappingPayload,
   upsertCHSSelectionTypeMapping,
   UpsertCHSMappingPayload,
   updateCHSSelectionTypeMapping,
@@ -166,6 +175,50 @@ export const useLeadSpecifications = (vendorId?: number, leadId?: number) => {
   });
 };
 
+export const useCreateLeadSpecification = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      vendorId,
+      leadId,
+      createdBy,
+      itemCodeId,
+    }: {
+      vendorId: number;
+      leadId: number;
+      createdBy: number;
+      itemCodeId?: number;
+    }) => createLeadSpecification(vendorId, leadId, createdBy, itemCodeId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["leadSpecifications", variables.vendorId, variables.leadId],
+      });
+    },
+  });
+};
+
+export const useUpdateLeadSpecificationLightsRemark = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      specsId,
+      lightsRemark,
+    }: {
+      specsId: number;
+      lightsRemark: LightsRemark;
+      vendorId: number;
+      leadId: number;
+    }) => updateLeadSpecificationLightsRemark(specsId, lightsRemark),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["leadSpecifications", variables.vendorId, variables.leadId],
+      });
+    },
+  });
+};
+
 export const useLeadCarcassMaterialMappings = (
   vendorId?: number,
   leadId?: number,
@@ -247,6 +300,68 @@ export const useUpsertLeadHardwareMapping = () => {
           "leadHardwareMappings",
           variables.vendor_id,
           variables.lead_id,
+        ],
+      });
+    },
+  });
+};
+
+export const useLeadLightCarcasUnitMappings = (
+  vendorId?: number,
+  leadId?: number,
+  specsId?: number,
+) => {
+  return useQuery({
+    queryKey: ["leadLightCarcasUnitMappings", vendorId, leadId, specsId],
+    queryFn: () => getLeadLightCarcasUnitMappings(vendorId!, leadId!, specsId!),
+    enabled: !!vendorId && !!leadId && !!specsId,
+  });
+};
+
+export const useUpsertLeadLightCarcasUnitMapping = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: UpsertLeadLightCarcasUnitMappingPayload) =>
+      upsertLeadLightCarcasUnitMapping(payload),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [
+          "leadLightCarcasUnitMappings",
+          variables.vendor_id,
+          variables.lead_id,
+          variables.specs_id,
+        ],
+      });
+    },
+  });
+};
+
+export const useLeadOtherAppliancesMappings = (
+  vendorId?: number,
+  leadId?: number,
+  specsId?: number,
+) => {
+  return useQuery({
+    queryKey: ["leadOtherAppliancesMappings", vendorId, leadId, specsId],
+    queryFn: () => getLeadOtherAppliancesMappings(vendorId!, leadId!, specsId!),
+    enabled: !!vendorId && !!leadId && !!specsId,
+  });
+};
+
+export const useUpsertLeadOtherAppliancesMapping = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: UpsertLeadOtherAppliancesMappingPayload) =>
+      upsertLeadOtherAppliancesMapping(payload),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [
+          "leadOtherAppliancesMappings",
+          variables.vendor_id,
+          variables.lead_id,
+          variables.specs_id,
         ],
       });
     },

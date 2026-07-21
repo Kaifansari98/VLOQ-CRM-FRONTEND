@@ -13,15 +13,35 @@ import {
   fetchPrivilegeMasters,
   fetchCompanyVendorsForMaster,
   fetchCarcassTypes,
+  createCarcassType,
   fetchCarcasMaterials,
+  createCarcasMaterial,
   fetchCarcassMaterialFinishes,
+  fetchAllCarcassMaterialFinishes,
+  createCarcassMaterialFinish,
   fetchFastProductionTimelineRules,
   fetchShutterTypes,
+  createShutterType,
   fetchShutterMaterials,
+  createShutterMaterial,
   fetchShutterMaterialFinishes,
+  fetchAllShutterMaterialFinishes,
+  createShutterMaterialFinish,
   fetchCarcassLegs,
+  createCarcassLegs,
   fetchSkirtingCarcassLegs,
+  fetchAllSkirtingCarcassLegs,
+  createSkirtingCarcassLegs,
   fetchSkirtingCarcassLegsColors,
+  fetchAllSkirtingCarcassLegsColors,
+  createSkirtingCarcassLegsColor,
+  fetchLightCarcasTypes,
+  createLightCarcasType,
+  fetchLightCarcasUnits,
+  fetchAllLightCarcasUnits,
+  createLightCarcasUnit,
+  fetchOtherAppliances,
+  createOtherAppliances,
   fetchHandleTypes,
   createMiscellaneousTeam,
   createMiscellaneousType,
@@ -90,6 +110,9 @@ const getShutterMaterialFinishesQueryKey = (shutterMaterialId?: number) => ["shu
 const getCarcassLegsQueryKey = (vendorId?: number) => ["carcassLegs", vendorId];
 const getSkirtingCarcassLegsQueryKey = (carcassLegsId?: number) => ["skirtingCarcassLegs", carcassLegsId];
 const getSkirtingCarcassLegsColorsQueryKey = (skirtingCarcassLegsId?: number) => ["skirtingCarcassLegsColors", skirtingCarcassLegsId];
+const getLightCarcasTypesQueryKey = (vendorId?: number) => ["lightCarcasTypes", vendorId];
+const getLightCarcasUnitsQueryKey = (lightCarcasTypeId?: number) => ["lightCarcasUnits", lightCarcasTypeId];
+const getOtherAppliancesQueryKey = (vendorId?: number) => ["otherAppliances", vendorId];
 const getHandleTypesQueryKey = (vendorId?: number) => ["handleTypes", vendorId];
 const getFastProductionTimelineRulesQueryKey = (vendorId?: number) => ["fastProductionTimelineRules", vendorId];
 const getSmallOrderRequestTypesQueryKey = (vendorId?: number) => ["smallOrderRequestTypes", vendorId];
@@ -487,6 +510,252 @@ export const useCarcassMaterialFinishes = (carcasMaterialId?: number) => {
   });
 }
 
+export const useAllCarcassMaterialFinishes = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: ["allCarcassMaterialFinishes", vendorId],
+    queryFn: () => fetchAllCarcassMaterialFinishes(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useCreateCarcassType = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createCarcassType,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: getCarcassTypesQueryKey(vendorId),
+      });
+      toastManager.add({
+        title: "Carcass type created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to create carcass type.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useCreateCarcasMaterial = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createCarcasMaterial,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: getCarcasMaterialsQueryKey(vendorId),
+      });
+      toastManager.add({
+        title: "Carcass material created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error || "Failed to create carcass material.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useCreateCarcassMaterialFinish = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createCarcassMaterialFinish,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["allCarcassMaterialFinishes", vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["carcassMaterialFinishes"],
+      });
+      toastManager.add({
+        title: "Carcass material finish created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          "Failed to create carcass material finish.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useCreateShutterType = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createShutterType,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: getShutterTypesQueryKey(vendorId),
+      });
+      toastManager.add({
+        title: "Shutter type created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to create shutter type.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useCreateShutterMaterial = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createShutterMaterial,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: getShutterMaterialsQueryKey(vendorId),
+      });
+      toastManager.add({
+        title: "Shutter material created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error || "Failed to create shutter material.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useCreateShutterMaterialFinish = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createShutterMaterialFinish,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["allShutterMaterialFinishes", vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["shutterMaterialFinishes"],
+      });
+      toastManager.add({
+        title: "Shutter material finish created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          "Failed to create shutter material finish.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useCreateCarcassLegs = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createCarcassLegs,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: getCarcassLegsQueryKey(vendorId),
+      });
+      toastManager.add({
+        title: "Carcass legs created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to create carcass legs.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useCreateSkirtingCarcassLegs = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createSkirtingCarcassLegs,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["allSkirtingCarcassLegs", vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["skirtingCarcassLegs"],
+      });
+      toastManager.add({
+        title: "Skirting created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to create skirting.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useCreateSkirtingCarcassLegsColor = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createSkirtingCarcassLegsColor,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["allSkirtingCarcassLegsColors", vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["skirtingCarcassLegsColors"],
+      });
+      toastManager.add({
+        title: "Skirting color created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error || "Failed to create skirting color.",
+        type: "error",
+      });
+    },
+  });
+}
+
 export const useShutterTypes = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   return useQuery({
@@ -540,11 +809,166 @@ export const useSkirtingCarcassLegs = (carcassLegsId?: number) => {
   });
 }
 
+export const useLightCarcasTypes = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: getLightCarcasTypesQueryKey(vendorId),
+    queryFn: () => fetchLightCarcasTypes(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useLightCarcasUnits = (lightCarcasTypeId?: number) => {
+  return useQuery({
+    queryKey: getLightCarcasUnitsQueryKey(lightCarcasTypeId),
+    queryFn: () => fetchLightCarcasUnits(lightCarcasTypeId!),
+    enabled: !!lightCarcasTypeId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useAllLightCarcasUnits = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: ["allLightCarcasUnits", vendorId],
+    queryFn: () => fetchAllLightCarcasUnits(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useCreateLightCarcasType = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createLightCarcasType,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: getLightCarcasTypesQueryKey(vendorId),
+      });
+      toastManager.add({
+        title: "Light carcas type created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          "Failed to create light carcas type.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useCreateLightCarcasUnit = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createLightCarcasUnit,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["allLightCarcasUnits", vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["lightCarcasUnits"],
+      });
+      toastManager.add({
+        title: "Light carcas unit created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          "Failed to create light carcas unit.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useOtherAppliances = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: getOtherAppliancesQueryKey(vendorId),
+    queryFn: () => fetchOtherAppliances(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useCreateOtherAppliances = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createOtherAppliances,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: getOtherAppliancesQueryKey(vendorId),
+      });
+      toastManager.add({
+        title: "Entry created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to create entry.",
+        type: "error",
+      });
+    },
+  });
+}
+
 export const useSkirtingCarcassLegsColors = (skirtingCarcassLegsId?: number) => {
   return useQuery({
     queryKey: getSkirtingCarcassLegsColorsQueryKey(skirtingCarcassLegsId),
     queryFn: () => fetchSkirtingCarcassLegsColors(skirtingCarcassLegsId!),
     enabled: !!skirtingCarcassLegsId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useAllShutterMaterialFinishes = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: ["allShutterMaterialFinishes", vendorId],
+    queryFn: () => fetchAllShutterMaterialFinishes(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useAllSkirtingCarcassLegs = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: ["allSkirtingCarcassLegs", vendorId],
+    queryFn: () => fetchAllSkirtingCarcassLegs(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useAllSkirtingCarcassLegsColors = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: ["allSkirtingCarcassLegsColors", vendorId],
+    queryFn: () => fetchAllSkirtingCarcassLegsColors(vendorId!),
+    enabled: !!vendorId,
     retry: false,
     refetchOnWindowFocus: false,
   });

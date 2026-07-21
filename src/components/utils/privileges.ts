@@ -433,11 +433,10 @@ export function canDoERDMiscellaneousDate(
   role: string,
   stage: string,
 ): boolean {
-  // can work and view both and factory work only final-handover-stage.
   return (
     role === "admin" ||
     role === "super-admin" ||
-    (role === "factory" && stage === "under-installation-stage")
+    role === "factory"
   );
 }
 

@@ -7,6 +7,7 @@ export interface FranchiseSummary {
   franchise_name: string;
   franchise_code?: string | null;
   is_head_office?: boolean;
+  moduled_for_b2b?: boolean;
   status?: string | null;
 }
 

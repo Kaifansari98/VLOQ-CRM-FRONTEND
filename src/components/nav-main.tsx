@@ -198,9 +198,19 @@ export function NavMain({
     vendorFranchises,
   ]);
   const { isMobile, setOpenMobile } = useSidebar();
+  const { data: franchisesForB2b = [] } = useFranchisesByVendorId(
+    vendorId ?? 0,
+    !!vendorId,
+  );
+  const isActiveFranchiseB2b = React.useMemo(() => {
+    const activeFranchise = franchisesForB2b.find(
+      (franchise) => franchise.id === franchiseId,
+    );
+    return activeFranchise?.moduled_for_b2b ?? false;
+  }, [franchisesForB2b, franchiseId]);
   const enhancedMastersItems = React.useMemo(() => {
     if (!mastersItems?.length) return mastersItems ?? [];
-    if (!handlesLargeScaleProjects) return mastersItems;
+    if (!handlesLargeScaleProjects && !isActiveFranchiseB2b) return mastersItems;
 
     return mastersItems.map((section) => {
       if (!section.items?.length) return section;
@@ -210,22 +220,63 @@ export function NavMain({
       );
 
       if (userMasterIndex === -1) return section;
-      if (section.items.some((item) => item.title === "BOQ Master")) {
-        return section;
+
+      let nextItems = section.items;
+      let changed = false;
+
+      if (handlesLargeScaleProjects) {
+        if (!nextItems.some((item) => item.title === "BOQ Master")) {
+          nextItems = [...nextItems];
+          nextItems.splice(userMasterIndex + 1, 0, {
+            title: "BOQ Master",
+            url: "/dashboard/masters-management/boq-items-master",
+          });
+          changed = true;
+        }
+
+        if (!nextItems.some((item) => item.title === "Specs Master")) {
+          const boqMasterIndex = nextItems.findIndex(
+            (item) => item.title === "BOQ Master",
+          );
+          nextItems = [...nextItems];
+          nextItems.splice(boqMasterIndex + 1, 0, {
+            title: "Specs Master",
+            url: "/dashboard/masters-management/specs-master",
+          });
+          changed = true;
+        }
       }
 
-      const nextItems = [...section.items];
-      nextItems.splice(userMasterIndex + 1, 0, {
-        title: "BOQ Master",
-        url: "/dashboard/masters-management/boq-items-master",
-      });
+      if (
+        isActiveFranchiseB2b &&
+        !nextItems.some((item) => item.title === "Client Master")
+      ) {
+        const specsMasterIndex = nextItems.findIndex(
+          (item) => item.title === "Specs Master",
+        );
+        const insertAt =
+          specsMasterIndex !== -1 ? specsMasterIndex + 1 : userMasterIndex + 1;
+        nextItems = [...nextItems];
+        nextItems.splice(insertAt, 0, {
+          title: "Client Master",
+          url: "/dashboard/masters-management/client-master",
+        });
+        changed = true;
+      }
+
+      if (!isActiveFranchiseB2b && nextItems.some((item) => item.title === "Client Master")) {
+        nextItems = nextItems.filter((item) => item.title !== "Client Master");
+        changed = true;
+      }
+
+      if (!changed) return section;
 
       return {
         ...section,
         items: nextItems,
       };
     });
-  }, [handlesLargeScaleProjects, mastersItems]);
+  }, [handlesLargeScaleProjects, mastersItems, isActiveFranchiseB2b]);
 
   const pathname = usePathname();
   const allItems = [

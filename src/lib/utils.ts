@@ -105,6 +105,23 @@ export function getInitials(name: string) {
   return first; // Return only one initial
 }
 
+const AVATAR_COLORS = [
+  "bg-purple-500",
+  "bg-cyan-500",
+  "bg-blue-500",
+  "bg-green-500",
+  "bg-amber-500",
+  "bg-rose-500",
+];
+
+export function getAvatarColor(name: string) {
+  if (!name) return AVATAR_COLORS[0];
+  const charCodeSum = name
+    .split("")
+    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return AVATAR_COLORS[charCodeSum % AVATAR_COLORS.length];
+}
+
 export function extractTitleText(input: string = ""): string {
   if (!input) return "";
 

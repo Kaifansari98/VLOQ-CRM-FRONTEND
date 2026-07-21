@@ -617,11 +617,19 @@ export const getInstanceStage = async (
   return data?.data;
 };
 
+export type LightsRemark =
+  | "In our scope"
+  | "Not in our scope"
+  | "Provide only grooves";
+
 export interface LeadSpecificationEntry {
   id: number;
   vendor_id: number;
   lead_id: number;
   name: string;
+  lights_remark: LightsRemark | null;
+  item_code_id: number | null;
+  productItemCode?: { id: number; item_code: string } | null;
   created_at: string;
   created_by: number;
 }
@@ -635,6 +643,32 @@ export const getLeadSpecifications = async (
   );
 
   return Array.isArray(data?.data) ? data.data : [];
+};
+
+export const createLeadSpecification = async (
+  vendorId: number,
+  leadId: number,
+  createdBy: number,
+  itemCodeId?: number,
+): Promise<LeadSpecificationEntry> => {
+  const { data } = await apiClient.post(
+    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/specifications`,
+    { created_by: createdBy, item_code_id: itemCodeId },
+  );
+
+  return data?.data;
+};
+
+export const updateLeadSpecificationLightsRemark = async (
+  specsId: number,
+  lightsRemark: LightsRemark,
+): Promise<LeadSpecificationEntry> => {
+  const { data } = await apiClient.put(
+    `/leads/designing-stage/specifications/${specsId}/lights-remark`,
+    { lights_remark: lightsRemark },
+  );
+
+  return data?.data;
 };
 
 export interface LeadCarcassMaterialMappingEntry {
@@ -772,4 +806,98 @@ export const upsertLeadHardwareMapping = async (
     payload,
   );
   return data?.data as LeadHardwareMappingEntry;
+};
+
+export interface LeadLightCarcasUnitMappingEntry {
+  id: number;
+  vendor_id: number;
+  lead_id: number;
+  specs_id: number;
+  light_carcas_unit_master_id: number;
+  created_at: string;
+  created_by: number;
+  lightCarcasUnit?: {
+    id: number;
+    type: string;
+    light_carcas_type_id: number;
+    lightCarcasType?: { id: number; type: string };
+  };
+}
+
+export interface UpsertLeadLightCarcasUnitMappingPayload {
+  id?: number;
+  vendor_id: number;
+  lead_id: number;
+  specs_id: number;
+  light_carcas_unit_master_id: number;
+  created_by: number;
+}
+
+export const getLeadLightCarcasUnitMappings = async (
+  vendorId: number,
+  leadId: number,
+  specsId: number,
+): Promise<LeadLightCarcasUnitMappingEntry[]> => {
+  const { data } = await apiClient.get(
+    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/specs/${specsId}/light-carcas-unit-mappings`,
+  );
+
+  return Array.isArray(data?.data) ? data.data : [];
+};
+
+export const upsertLeadLightCarcasUnitMapping = async (
+  payload: UpsertLeadLightCarcasUnitMappingPayload,
+) => {
+  const { data } = await apiClient.post(
+    "/leads/designing-stage/light-carcas-unit-mappings",
+    payload,
+  );
+  return data?.data as LeadLightCarcasUnitMappingEntry;
+};
+
+export interface LeadOtherAppliancesMappingEntry {
+  id: number;
+  vendor_id: number;
+  lead_id: number;
+  specs_id: number;
+  other_appliances_master_id: number;
+  created_at: string;
+  created_by: number;
+  otherAppliances?: {
+    id: number;
+    type: string;
+    article_number: string;
+    description: string;
+  };
+}
+
+export interface UpsertLeadOtherAppliancesMappingPayload {
+  id?: number;
+  vendor_id: number;
+  lead_id: number;
+  specs_id: number;
+  other_appliances_master_id: number;
+  created_by: number;
+}
+
+export const getLeadOtherAppliancesMappings = async (
+  vendorId: number,
+  leadId: number,
+  specsId: number,
+): Promise<LeadOtherAppliancesMappingEntry[]> => {
+  const { data } = await apiClient.get(
+    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/specs/${specsId}/other-appliances-mappings`,
+  );
+
+  return Array.isArray(data?.data) ? data.data : [];
+};
+
+export const upsertLeadOtherAppliancesMapping = async (
+  payload: UpsertLeadOtherAppliancesMappingPayload,
+) => {
+  const { data } = await apiClient.post(
+    "/leads/designing-stage/other-appliances-mappings",
+    payload,
+  );
+  return data?.data as LeadOtherAppliancesMappingEntry;
 };

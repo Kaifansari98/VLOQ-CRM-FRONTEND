@@ -41,7 +41,10 @@ import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUse
 import TextAreaInput from "@/components/origin-text-area";
 import CustomeDatePicker from "@/components/date-picker";
 import MapPicker from "@/components/MapPicker";
-import { MapPin, Loader2 } from "lucide-react";
+import { MapPin, Loader2, ExternalLink } from "lucide-react";
+import Link from "next/link";
+import { useFranchisesByVendorId } from "@/api/franchise";
+import { useClients } from "@/hooks/useClientMaster";
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -126,101 +129,170 @@ const renameLeadSitePhotoFiles = ({
 const createFormSchema = (
   userType: string | undefined,
   requiresFurnitureSelection: boolean,
+  isB2b: boolean,
+  referenceSourceIds: string[],
 ) => {
   const isAdminOrSuperAdmin =
     userType === "admin" || userType === "super-admin";
 
-  return z.object({
-    firstname: z.string().trim().min(1, "First name is required").max(300),
-    lastname: z.string().trim().min(1, "Last name is required").max(300),
-    contact_no: z.string().min(1, "This Contact number isn't valid").max(20),
-    alt_contact_no: z.string().optional().or(z.literal("")),
-    email: z
-      .string()
-      .email("Please enter a valid email")
-      .optional()
-      .or(z.literal("")),
-    site_type_id: z.string().min(1, "Please select a site type"),
-    site_address: z
-      .string()
-      .min(1, "Site Address is required")
-      .max(2000)
-      .refine(
-        (val) => !/^(https?:\/\/[^\s]+)/i.test(val.trim()),
-        { message: "Invalid link" }
-      ),
-    source_id: z.string().min(1, "Please select a source"),
-    product_types: requiresFurnitureSelection
-      ? z.array(z.string()).min(1, "Please select at least one product type")
-      : z.array(z.string()).optional(),
-    product_structures: requiresFurnitureSelection
-      ? z
-          .array(z.string())
-          .min(1, "Please select at least one product structure")
-      : z.array(z.string()).optional(),
-    assign_to: isAdminOrSuperAdmin
-      ? z.string().min(1, "Please select an assignee")
-      : z.string().optional(),
-    assigned_by: isAdminOrSuperAdmin ? z.string() : z.string().optional(),
-    documents: z.string().optional(),
-    archetech_name: z.string().max(300).optional(),
-    architect_id: z.string().optional(),
-    archetech_number: z
-      .string()
-      .regex(/^\+?\d{7,20}$/, "Please enter a valid architect number")
-      .optional()
-      .or(z.literal("")),
-    designer_id: z.string().optional(),
-    designer_remark: z.string().max(2000).optional(),
-    initial_site_measurement_date: z.string().optional(),
-    priority: z.enum(["High", "Medium", "Low"], {
-      message: "Please select a priority",
-    }),
-  });
+  return z
+    .object({
+      firstname: z.string().trim().min(1, "First name is required").max(300),
+      lastname: z
+        .string()
+        .trim()
+        .min(1, isB2b ? "Project name is required" : "Last name is required")
+        .max(300),
+      contact_no: isB2b
+        ? z.string().optional().or(z.literal(""))
+        : z.string().min(1, "This Contact number isn't valid").max(20),
+      alt_contact_no: z.string().optional().or(z.literal("")),
+      email: z
+        .string()
+        .email("Please enter a valid email")
+        .optional()
+        .or(z.literal("")),
+      site_type_id: isB2b
+        ? z.string().optional().or(z.literal(""))
+        : z.string().min(1, "Please select a site type"),
+      site_address: isB2b
+        ? z
+            .string()
+            .optional()
+            .or(z.literal(""))
+            .refine(
+              (val) => !val || !/^(https?:\/\/[^\s]+)/i.test(val.trim()),
+              { message: "Invalid link" }
+            )
+        : z
+            .string()
+            .min(1, "Site Address is required")
+            .max(2000)
+            .refine(
+              (val) => !/^(https?:\/\/[^\s]+)/i.test(val.trim()),
+              { message: "Invalid link" }
+            ),
+      source_id: z.string().min(1, "Please select a source"),
+      refered_by: z.string().max(300).optional().or(z.literal("")),
+      client_id: isB2b
+        ? z.string().min(1, "Please select a client")
+        : z.string().optional().or(z.literal("")),
+      order_number: z.string().max(100).optional().or(z.literal("")),
+      product_types: requiresFurnitureSelection
+        ? z.array(z.string()).min(1, "Please select at least one product type")
+        : z.array(z.string()).optional(),
+      product_structures: requiresFurnitureSelection
+        ? z
+            .array(z.string())
+            .min(1, "Please select at least one product structure")
+        : z.array(z.string()).optional(),
+      assign_to: isAdminOrSuperAdmin
+        ? z.string().min(1, "Please select an assignee")
+        : z.string().optional(),
+      assigned_by: isAdminOrSuperAdmin ? z.string() : z.string().optional(),
+      documents: z.string().optional(),
+      archetech_name: z.string().max(300).optional(),
+      architect_id: z.string().optional(),
+      archetech_number: z
+        .string()
+        .regex(/^\+?\d{7,20}$/, "Please enter a valid architect number")
+        .optional()
+        .or(z.literal("")),
+      designer_id: z.string().optional(),
+      designer_remark: z.string().max(2000).optional(),
+      initial_site_measurement_date: z.string().optional(),
+      priority: z.enum(["High", "Medium", "Low"], {
+        message: "Please select a priority",
+      }),
+    })
+    .superRefine((values, ctx) => {
+      const requiresReferenceField =
+        isB2b &&
+        typeof values.source_id === "string" &&
+        referenceSourceIds.includes(values.source_id);
+
+      if (requiresReferenceField && !values.refered_by?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["refered_by"],
+          message: "Please enter referred by",
+        });
+      }
+    });
 };
 
 // Schema for Draft - only name, contact, and assign_to (for admin) required
-const draftFormSchema = (userType: string | undefined) => {
+const draftFormSchema = (
+  userType: string | undefined,
+  isB2b: boolean,
+  referenceSourceIds: string[],
+) => {
   const isAdminOrSuperAdmin =
     userType === "admin" || userType === "super-admin";
 
-  return z.object({
-    firstname: z.string().trim().min(1, "First name is required").max(300),
-    lastname: z.string().trim().min(1, "Last name is required").max(300),
-    contact_no: z.string().min(1, "Contact number is required").max(20),
-    // Admin must assign even in draft
-    assign_to: isAdminOrSuperAdmin
-      ? z.string().min(1, "Please select an assignee")
-      : z.string().optional(),
-    // All other fields are optional for draft
-    alt_contact_no: z.string().optional().or(z.literal("")),
-    email: z.string().optional().or(z.literal("")),
-    site_type_id: z.string().optional().or(z.literal("")),
-    site_address: z
-      .string()
-      .optional()
-      .or(z.literal(""))
-      .refine(
-        (val) => !val || !/^(https?:\/\/[^\s]+)/i.test(val.trim()),
-        { message: "Invalid link" }
-      ),
-    source_id: z.string().optional().or(z.literal("")),
-    product_types: z.array(z.string()).optional(),
-    product_structures: z.array(z.string()).optional(),
-    assigned_by: z.string().optional(),
-    documents: z.string().optional(),
-    archetech_name: z.string().optional(),
-    architect_id: z.string().optional(),
-    archetech_number: z
-      .string()
-      .regex(/^\+?\d{7,20}$/, "Please enter a valid architect number")
-      .optional()
-      .or(z.literal("")),
-    designer_id: z.string().optional(),
-    designer_remark: z.string().optional(),
-    initial_site_measurement_date: z.string().optional(),
-    priority: z.enum(["High", "Medium", "Low"]).optional(),
-  });
+  return z
+    .object({
+      firstname: z.string().trim().min(1, "First name is required").max(300),
+      lastname: z
+        .string()
+        .trim()
+        .min(1, isB2b ? "Project name is required" : "Last name is required")
+        .max(300),
+      contact_no: isB2b
+        ? z.string().optional().or(z.literal(""))
+        : z.string().min(1, "Contact number is required").max(20),
+      assign_to: isAdminOrSuperAdmin
+        ? z.string().min(1, "Please select an assignee")
+        : z.string().optional(),
+      alt_contact_no: z.string().optional().or(z.literal("")),
+      email: z.string().optional().or(z.literal("")),
+      site_type_id: z.string().optional().or(z.literal("")),
+      site_address: z
+        .string()
+        .optional()
+        .or(z.literal(""))
+        .refine(
+          (val) => !val || !/^(https?:\/\/[^\s]+)/i.test(val.trim()),
+          { message: "Invalid link" }
+        ),
+      source_id: isB2b
+        ? z.string().min(1, "Please select a source")
+        : z.string().optional().or(z.literal("")),
+      refered_by: z.string().max(300).optional().or(z.literal("")),
+      client_id: isB2b
+        ? z.string().min(1, "Please select a client")
+        : z.string().optional().or(z.literal("")),
+      order_number: z.string().max(100).optional().or(z.literal("")),
+      product_types: z.array(z.string()).optional(),
+      product_structures: z.array(z.string()).optional(),
+      assigned_by: z.string().optional(),
+      documents: z.string().optional(),
+      archetech_name: z.string().optional(),
+      architect_id: z.string().optional(),
+      archetech_number: z
+        .string()
+        .regex(/^\+?\d{7,20}$/, "Please enter a valid architect number")
+        .optional()
+        .or(z.literal("")),
+      designer_id: z.string().optional(),
+      designer_remark: z.string().optional(),
+      initial_site_measurement_date: z.string().optional(),
+      priority: z.enum(["High", "Medium", "Low"]).optional(),
+    })
+    .superRefine((values, ctx) => {
+      const requiresReferenceField =
+        isB2b &&
+        typeof values.source_id === "string" &&
+        referenceSourceIds.includes(values.source_id);
+
+      if (requiresReferenceField && !values.refered_by?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["refered_by"],
+          message: "Please enter referred by",
+        });
+      }
+    });
 };
 
 interface LeadsGenerationFormProps {
@@ -419,10 +491,54 @@ export default function LeadsGenerationForm({
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type as string | undefined
   );
-  const requiresFurnitureSelection = !handlesLargeScaleProjects;
+
+  const { data: franchisesForB2b = [] } = useFranchisesByVendorId(
+    vendorId,
+    !!vendorId,
+  );
+  const isB2b = useMemo(() => {
+    const activeFranchise = franchisesForB2b.find(
+      (franchise) => franchise.id === franchiseId,
+    );
+    return activeFranchise?.moduled_for_b2b ?? false;
+  }, [franchisesForB2b, franchiseId]);
+  const requiresFurnitureSelection = !handlesLargeScaleProjects && !isB2b;
+
+  const { data: clientsData, isLoading: isClientsLoading } = useClients({
+    vendor_id: vendorId,
+    limit: 200,
+  });
+  const clientsList = clientsData?.data?.data ?? [];
+  const { data: sourceTypes, isLoading: isSourceTypesLoading } =
+    useSourceTypes();
+  const sourcePickerData = useMemo(
+    () =>
+      sourceTypes?.data?.map((source: any) => ({
+        id: source.id,
+        label: source.type,
+      })) || [],
+    [sourceTypes?.data],
+  );
+  const referenceSourceIds = useMemo(
+    () =>
+      sourceTypes?.data
+        ?.filter(
+          (source: any) =>
+            String(source.type || "").trim().toLowerCase() === "reference",
+        )
+        .map((source: any) => String(source.id)) || [],
+    [sourceTypes?.data],
+  );
+
   const formSchema = useMemo(
-    () => createFormSchema(userType, requiresFurnitureSelection),
-    [requiresFurnitureSelection, userType],
+    () =>
+      createFormSchema(
+        userType,
+        requiresFurnitureSelection,
+        isB2b,
+        referenceSourceIds,
+      ),
+    [requiresFurnitureSelection, userType, isB2b, referenceSourceIds],
   );
 
   const form = useForm({
@@ -436,6 +552,9 @@ export default function LeadsGenerationForm({
       site_type_id: "",
       site_address: "",
       source_id: "",
+      refered_by: "",
+      client_id: "",
+      order_number: "",
       product_types: [],
       product_structures: [],
       documents: "",
@@ -453,6 +572,36 @@ export default function LeadsGenerationForm({
   });
 
   type FormValues = z.infer<typeof formSchema>;
+
+  const selectedClientId = form.watch("client_id");
+  const selectedSourceId = form.watch("source_id");
+  const selectedClient = useMemo(
+    () => clientsList.find((c) => String(c.id) === selectedClientId),
+    [clientsList, selectedClientId],
+  );
+  const showReferredByField =
+    isB2b && referenceSourceIds.includes(selectedSourceId);
+
+  useEffect(() => {
+    if (!isB2b || !selectedClient) return;
+
+    const companyName = selectedClient.company_name || selectedClient.name || "";
+    if (form.getValues("firstname") !== companyName) {
+      form.setValue("firstname", companyName, { shouldValidate: false });
+    }
+
+    const digits = (selectedClient.contact || "").replace(/\D/g, "");
+    const normalizedDigits =
+      digits.length > 10 && digits.startsWith("91") ? digits.slice(2) : digits;
+    if (form.getValues("contact_no") !== normalizedDigits) {
+      form.setValue("contact_no", normalizedDigits, { shouldValidate: false });
+    }
+
+    const clientEmail = selectedClient.email || "";
+    if (form.getValues("email") !== clientEmail) {
+      form.setValue("email", clientEmail, { shouldValidate: false });
+    }
+  }, [isB2b, selectedClient, form]);
   const selectedProductTypes = form.watch("product_types");
   const selectedProductStructures = form.watch("product_structures");
   const { data: productStructures, isLoading: isStructuresLoading } =
@@ -988,14 +1137,18 @@ export default function LeadsGenerationForm({
     }
 
     // Parse phone number properly
-    const phone = values.contact_no
-      ? parsePhoneNumberFromString(values.contact_no)
-      : null;
-
-    const countryCode = phone?.countryCallingCode
-      ? `+${phone.countryCallingCode}`
-      : "";
-    const phoneNumber = phone?.nationalNumber || "";
+    let countryCode: string;
+    let phoneNumber: string;
+    if (isB2b) {
+      countryCode = "+91";
+      phoneNumber = (values.contact_no || "").replace(/\D/g, "");
+    } else {
+      const phone = values.contact_no
+        ? parsePhoneNumberFromString(values.contact_no)
+        : null;
+      countryCode = phone?.countryCallingCode ? `+${phone.countryCallingCode}` : "";
+      phoneNumber = phone?.nationalNumber || "";
+    }
 
     // Alt contact number (just keep digits)
     const altContactNo = values.alt_contact_no?.replace(/\D/g, "") || undefined;
@@ -1004,9 +1157,12 @@ export default function LeadsGenerationForm({
       firstname: values.firstname,
       lastname: values.lastname,
       email: values.email,
-      site_address: values.site_address,
-      site_type_id: Number(values.site_type_id),
+      site_address: values.site_address || undefined,
+      site_type_id: values.site_type_id ? Number(values.site_type_id) : undefined,
       source_id: Number(values.source_id),
+      refered_by: values.refered_by?.trim() || undefined,
+      client_id: isB2b && values.client_id ? Number(values.client_id) : undefined,
+      order_number: values.order_number || undefined,
       archetech_name: values.archetech_name || undefined,
       architect_id: values.architect_id ? Number(values.architect_id) : undefined,
       archetech_number: values.archetech_number || undefined,
@@ -1083,7 +1239,7 @@ export default function LeadsGenerationForm({
 
   async function handleSaveAsDraft() {
     // Temporarily switch to draft schema for validation
-    const draftSchema = draftFormSchema(userType);
+    const draftSchema = draftFormSchema(userType, isB2b, referenceSourceIds);
     const values = form.getValues();
 
     // Validate against draft schema
@@ -1107,13 +1263,18 @@ export default function LeadsGenerationForm({
       return;
     }
 
-    const phone = values.contact_no
-      ? parsePhoneNumberFromString(values.contact_no)
-      : null;
-    const countryCode = phone?.countryCallingCode
-      ? `+${phone.countryCallingCode}`
-      : "";
-    const phoneNumber = phone?.nationalNumber || "";
+    let countryCode: string;
+    let phoneNumber: string;
+    if (isB2b) {
+      countryCode = "+91";
+      phoneNumber = (values.contact_no || "").replace(/\D/g, "");
+    } else {
+      const phone = values.contact_no
+        ? parsePhoneNumberFromString(values.contact_no)
+        : null;
+      countryCode = phone?.countryCallingCode ? `+${phone.countryCallingCode}` : "";
+      phoneNumber = phone?.nationalNumber || "";
+    }
 
     const payload = {
       firstname: values.firstname,
@@ -1124,6 +1285,9 @@ export default function LeadsGenerationForm({
         ? Number(values.site_type_id)
         : undefined,
       source_id: values.source_id ? Number(values.source_id) : undefined,
+      refered_by: values.refered_by?.trim() || undefined,
+      client_id: isB2b && values.client_id ? Number(values.client_id) : undefined,
+      order_number: values.order_number || undefined,
       archetech_name: values.archetech_name || undefined,
       architect_id: values.architect_id ? Number(values.architect_id) : undefined,
       archetech_number: values.archetech_number || undefined,
@@ -1200,154 +1364,239 @@ export default function LeadsGenerationForm({
           className="space-y-4 p-5">
         {/* File Upload */}
 
-        {/* First Name & Last Name */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <FormField
-            control={form.control}
-            name="firstname"
-            render={({ field }) => (
-              <FormItem data-name={field?.name || ""} >
-                <FormLabel className="text-sm">First Name *</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter first name"
-                    type="text"
-                    className="text-sm"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        {/* Client / Project (B2B) or First Name & Last Name */}
+        {isB2b ? (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="client_id"
+                render={({ field }) => {
+                  const pickerData = clientsList.map((c) => ({
+                    id: c.id,
+                    label: c.company_name || c.name,
+                    subLabel: c.clientCode,
+                  }));
 
-          <FormField
-            control={form.control}
-            name="lastname"
-            render={({ field }) => (
-              <FormItem data-name={field?.name || ""} >
-                <FormLabel className="text-sm">Last Name *</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter last name"
-                    type="text"
-                    className="text-sm"
-                    {...field}
-                  />
-                </FormControl>
-                {/* <FormDescription className="text-xs">
-                    Lead's last name.
-                  </FormDescription> */}
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+                  return (
+                    <FormItem data-name={field?.name || ""}>
+                      <div className="w-full flex items-center justify-between">
+                        <FormLabel className="text-sm">Select Client *</FormLabel>
+                        <Link
+                          href="/dashboard/masters-management/client-master"
+                          target="_blank"
+                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          New client
+                        </Link>
+                      </div>
+                      {isClientsLoading ? (
+                        <p className="text-xs text-muted-foreground">
+                          Loading clients...
+                        </p>
+                      ) : (
+                        <AssignToPicker
+                          data={pickerData}
+                          value={field.value ? Number(field.value) : undefined}
+                          onChange={(selectedId: number | null) => {
+                            field.onChange(selectedId ? String(selectedId) : "");
+                          }}
+                          placeholder="Search client..."
+                        />
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
 
-        {/* Contact Numbers */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-          <FormField
-            control={form.control}
-            name="contact_no"
-            render={({ field }) => (
-              <FormItem data-name={field?.name || ""} >
-                <FormLabel className="text-sm">Phone Number *</FormLabel>
-                <FormControl>
-                  <PhoneInput
-                    defaultCountry="IN"
-                    placeholder="Enter phone number"
-                    className="text-sm"
-                    value={field.value}
-                    onChange={(val) => {
-                      field.onChange(val);
-                      resetSimilarLeadValidation();
-                    }}
-                    onBlur={() => {
-                      field.onBlur();
-                      handleDuplicateCheck("contact_no");
-                      handleSimilarLeadCheck();
-                    }}
-                     validateIndianNumber={true}
-                  />
-                </FormControl>
-                {/* <FormDescription className="text-xs">
-                    Primary phone number.
-                  </FormDescription> */}
-                <FormMessage />
-                {similarLeadWarning && (
-                  <p className="text-sm font-medium text-destructive">
-                    {similarLeadErrorMessage}
-                  </p>
-                )}
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="alt_contact_no"
-            render={({ field }) => (
-              <FormItem data-name={field?.name || ""} >
-                <FormLabel className="text-sm">Alt. Phone Number</FormLabel>
-                <FormControl>
-                  {/* Use regular Input instead of PhoneInput */}
-                  {/* <Input
-                        placeholder="Enter alternate number"
-                        type="tel"
+              <FormField
+                control={form.control}
+                name="lastname"
+                render={({ field }) => (
+                  <FormItem data-name={field?.name || ""} >
+                    <FormLabel className="text-sm">Project Name *</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter project name"
+                        type="text"
                         className="text-sm"
                         {...field}
-                        /> */}
-                  <PhoneInput
-                    defaultCountry="IN"
-                    placeholder="Enter alt number"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="order_number"
+              render={({ field }) => (
+                <FormItem data-name={field?.name || ""} >
+                  <FormLabel className="text-sm">Order Number</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter order number"
+                      type="text"
+                      className="text-sm"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <FormField
+              control={form.control}
+              name="firstname"
+              render={({ field }) => (
+                <FormItem data-name={field?.name || ""} >
+                  <FormLabel className="text-sm">First Name *</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter first name"
+                      type="text"
+                      className="text-sm"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="lastname"
+              render={({ field }) => (
+                <FormItem data-name={field?.name || ""} >
+                  <FormLabel className="text-sm">Last Name *</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter last name"
+                      type="text"
+                      className="text-sm"
+                      {...field}
+                    />
+                  </FormControl>
+                  {/* <FormDescription className="text-xs">
+                      Lead's last name.
+                    </FormDescription> */}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        )}
+
+        {/* Contact Numbers */}
+        {!isB2b && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+            <FormField
+              control={form.control}
+              name="contact_no"
+              render={({ field }) => (
+                <FormItem data-name={field?.name || ""} >
+                  <FormLabel className="text-sm">Phone Number *</FormLabel>
+                  <FormControl>
+                    <PhoneInput
+                      defaultCountry="IN"
+                      placeholder="Enter phone number"
+                      className="text-sm"
+                      value={field.value}
+                      onChange={(val) => {
+                        field.onChange(val);
+                        resetSimilarLeadValidation();
+                      }}
+                      onBlur={() => {
+                        field.onBlur();
+                        handleDuplicateCheck("contact_no");
+                        handleSimilarLeadCheck();
+                      }}
+                       validateIndianNumber={true}
+                    />
+                  </FormControl>
+                  {/* <FormDescription className="text-xs">
+                      Primary phone number.
+                    </FormDescription> */}
+                  <FormMessage />
+                  {similarLeadWarning && (
+                    <p className="text-sm font-medium text-destructive">
+                      {similarLeadErrorMessage}
+                    </p>
+                  )}
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="alt_contact_no"
+              render={({ field }) => (
+                <FormItem data-name={field?.name || ""} >
+                  <FormLabel className="text-sm">Alt. Phone Number</FormLabel>
+                  <FormControl>
+                    <PhoneInput
+                      defaultCountry="IN"
+                      placeholder="Enter alt number"
+                      className="text-sm"
+                      value={field.value}
+                      onChange={(val) => field.onChange(val)}
+                      onBlur={() => {
+                        field.onBlur();
+                        handleDuplicateCheck("alt_contact_no");
+                      }}
+                      validateIndianNumber={true}
+                    />
+                  </FormControl>
+                  {/* <FormDescription className="text-xs">
+                      Optional alternate number (without country code).
+                    </FormDescription> */}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        )}
+
+        {/* Email */}
+        {!isB2b && (
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem data-name={field?.name || ""} >
+                <FormLabel className="text-sm">Email</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Enter email address"
+                    type="email"
                     className="text-sm"
                     value={field.value}
-                    onChange={(val) => field.onChange(val)}
-                    onBlur={() => {
+                    onChange={field.onChange}
+                    onBlur={(e) => {
                       field.onBlur();
-                      handleDuplicateCheck("alt_contact_no");
+                      handleDuplicateCheck("email");
                     }}
-                    validateIndianNumber={true}
                   />
                 </FormControl>
                 {/* <FormDescription className="text-xs">
-                    Optional alternate number (without country code).
+                    Lead's email address.
                   </FormDescription> */}
                 <FormMessage />
               </FormItem>
             )}
           />
-        </div>
-
-        {/* Email */}
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem data-name={field?.name || ""} >
-              <FormLabel className="text-sm">Email</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="Enter email address"
-                  type="email"
-                  className="text-sm"
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={(e) => {
-                    field.onBlur();
-                    handleDuplicateCheck("email");
-                  }}
-                />
-              </FormControl>
-              {/* <FormDescription className="text-xs">
-                  Lead's email address.
-                </FormDescription> */}
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        )}
 
         {/* Site Type */}
+        {!isB2b && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
           <FormField
             control={form.control}
@@ -1364,7 +1613,9 @@ export default function LeadsGenerationForm({
 
               return (
                 <FormItem data-name={field?.name || ""} >
-                  <FormLabel className="text-sm">Site Type *</FormLabel>
+                  <FormLabel className="text-sm">
+                    Site Type *
+                  </FormLabel>
 
                   {isLoading ? (
                     <p className="text-xs text-muted-foreground">
@@ -1415,32 +1666,24 @@ export default function LeadsGenerationForm({
             )}
           />
         </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
           <FormField
             control={form.control}
             name="source_id"
             render={({ field }) => {
-              const { data: sourceTypes, isLoading } = useSourceTypes();
-
-              // Convert backend data to AssignToPicker format
-              const pickerData =
-                sourceTypes?.data?.map((source: any) => ({
-                  id: source.id,
-                  label: source.type, // or whatever field you want to show
-                })) || [];
-
               return (
                 <FormItem data-name={field?.name || ""} >
                   <FormLabel className="text-sm">Source *</FormLabel>
 
-                  {isLoading ? (
+                  {isSourceTypesLoading ? (
                     <p className="text-xs text-muted-foreground">
                       Loading sources...
                     </p>
                   ) : (
                     <AssignToPicker
-                      data={pickerData}
+                      data={sourcePickerData}
                       value={field.value ? Number(field.value) : undefined}
                       onChange={(selectedId: number | null) => {
                         field.onChange(selectedId ? String(selectedId) : "");
@@ -1454,7 +1697,93 @@ export default function LeadsGenerationForm({
               );
             }}
           />
+
+          {isB2b && (
+            <FormField
+              control={form.control}
+              name="alt_contact_no"
+              render={({ field }) => (
+                <FormItem data-name={field?.name || ""} >
+                  <FormLabel className="text-sm">Phone Number</FormLabel>
+                  <FormControl>
+                    <PhoneInput
+                      defaultCountry="IN"
+                      placeholder="Enter phone number"
+                      className="text-sm"
+                      value={field.value}
+                      onChange={(val) => field.onChange(val)}
+                      onBlur={() => {
+                        field.onBlur();
+                        handleDuplicateCheck("alt_contact_no");
+                      }}
+                      validateIndianNumber={true}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
         </div>
+
+        {(showReferredByField || canReassingLead(userType)) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+            {showReferredByField && (
+              <FormField
+                control={form.control}
+                name="refered_by"
+                render={({ field }) => (
+                  <FormItem data-name={field?.name || ""} >
+                    <FormLabel className="text-sm">Referred By *</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter referred by"
+                        type="text"
+                        className="text-sm"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {canReassingLead(userType) && (
+              <FormField
+                control={form.control}
+                name="assign_to"
+                render={({ field }) => {
+                  const pickerData =
+                    vendorUserss?.map((user: any) => ({
+                      id: user.id,
+                      label: user.user_type?.user_type === 'super-admin'
+                        ? `${user.user_name} - super admin`
+                        : user.user_name,
+                    })) || [];
+
+                  return (
+                    <FormItem data-name={field?.name || ""} >
+                      <FormLabel className="text-sm">Assign Lead To *</FormLabel>
+
+                      <AssignToPicker
+                        data={pickerData}
+                        value={field.value ? Number(field.value) : undefined}
+                        onChange={(selectedId) => {
+                          field.onChange(selectedId ? String(selectedId) : "");
+                        }}
+                        placeholder="Search assignee..."
+                        disabled={isVendorUsersLoading}
+                      />
+
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+            )}
+          </div>
+        )}
 
         {/* Site Address */}
         <FormField
@@ -1463,7 +1792,9 @@ export default function LeadsGenerationForm({
           render={({ field }) => (
             <FormItem data-name={field?.name || ""} >
               <div className="w-full flex justify-between ">
-                <FormLabel className="text-sm">Site Address *</FormLabel>
+                <FormLabel className="text-sm">
+                  {isB2b ? "Site Address" : "Site Address *"}
+                </FormLabel>
                 <Button
                   type="button"
                   variant="outline"
@@ -1685,62 +2016,30 @@ export default function LeadsGenerationForm({
           </>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start mb-3">
-          {canReassingLead(userType) && (
+        {!isB2b && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start mb-3">
             <FormField
               control={form.control}
-              name="assign_to"
-              render={({ field }) => {
-                const pickerData =
-                  vendorUserss?.map((user: any) => ({
-                    id: user.id,
-                    label: user.user_type?.user_type === 'super-admin' 
-                      ? `${user.user_name} - super admin`
-                      : user.user_name,
-                  })) || [];
-
-                return (
-                  <FormItem data-name={field?.name || ""} >
-                    <FormLabel className="text-sm">Assign Lead To *</FormLabel>
-
-                    <AssignToPicker
-                      data={pickerData}
-                      value={field.value ? Number(field.value) : undefined} // ✅ string → number
-                      onChange={(selectedId) => {
-                        field.onChange(selectedId ? String(selectedId) : ""); // ✅ number → string
-                      }}
-                      placeholder="Search assignee..."
-                      disabled={isVendorUsersLoading}
+              name="initial_site_measurement_date"
+              render={({ field }) => (
+                <FormItem data-name={field?.name || ""} >
+                  <FormLabel className="text-sm">
+                    Initial Site Measurement Date
+                  </FormLabel>
+                  <FormControl>
+                    <CustomeDatePicker
+                      value={field.value}
+                      onChange={field.onChange}
+                      restriction="futureOnly"
                     />
-
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          )}
-
-          <FormField
-            control={form.control}
-            name="initial_site_measurement_date"
-            render={({ field }) => (
-              <FormItem data-name={field?.name || ""} >
-                <FormLabel className="text-sm">
-                  Initial Site Measurement Date
-                </FormLabel>
-                <FormControl>
-                  <CustomeDatePicker
-                    value={field.value}
-                    onChange={field.onChange}
-                    restriction="futureOnly"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        {vendorCustomUserTypeMode && (
+          </div>
+        )}
+        {vendorCustomUserTypeMode && !isB2b && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start mb-3">
             <FormField
               control={form.control}
@@ -1809,7 +2108,7 @@ export default function LeadsGenerationForm({
             />
           </div>
         )}
-        {!vendorCustomUserTypeMode && (
+        {!vendorCustomUserTypeMode && !isB2b && (
           <div className="grid grid-cols-1 gap-3 items-start sm:grid-cols-2">
             {/* Architect Name */}
             <FormField
@@ -1854,80 +2153,84 @@ export default function LeadsGenerationForm({
         )}
 
         {/* Designer Remark */}
-        <FormField
-          control={form.control}
-          name="designer_remark"
-          render={({ field }) => (
-            <FormItem data-name={field?.name || ""} >
-              <FormLabel className="text-sm">Designer's Remark</FormLabel>
-              <FormControl>
-                <TextAreaInput placeholder="Enter your remarks" {...field} />
-              </FormControl>
-              {/* <FormDescription className="text-xs">
-                  Additional remarks or notes.
-                </FormDescription> */}
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {!isB2b && (
+          <FormField
+            control={form.control}
+            name="designer_remark"
+            render={({ field }) => (
+              <FormItem data-name={field?.name || ""} >
+                <FormLabel className="text-sm">Designer's Remark</FormLabel>
+                <FormControl>
+                  <TextAreaInput placeholder="Enter your remarks" {...field} />
+                </FormControl>
+                {/* <FormDescription className="text-xs">
+                    Additional remarks or notes.
+                  </FormDescription> */}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
-        <FormField
-          control={form.control}
-          name="documents"
-          render={({ field }) => (
-            <FormItem data-name={field?.name || ""} >
-              <FormLabel className="text-sm">Site Photos</FormLabel>
-              <FormControl>
-                {isMultiInstanceSitePhotoUploadFlow ? (
-                  <div className="space-y-4">
-                    <div className="text-xs text-muted-foreground border-b pb-4">
-                      Upload site photos for each selected instance.
-                    </div>
-                    <div className="grid gap-2">
-                      {structureQuantityItems.map((item) => (
-                        <div key={item.key}>
-                          <div className="space-y-2">
-                            <div>
-                              <h4 className="text-sm font-semibold">
-                                {item.title || item.label}
-                              </h4>
-                              {item.desc ? (
-                                <p className="text-xs text-muted-foreground">
-                                  {item.desc}
-                                </p>
-                              ) : null}
+        {!isB2b && (
+          <FormField
+            control={form.control}
+            name="documents"
+            render={({ field }) => (
+              <FormItem data-name={field?.name || ""} >
+                <FormLabel className="text-sm">Site Photos</FormLabel>
+                <FormControl>
+                  {isMultiInstanceSitePhotoUploadFlow ? (
+                    <div className="space-y-4">
+                      <div className="text-xs text-muted-foreground border-b pb-4">
+                        Upload site photos for each selected instance.
+                      </div>
+                      <div className="grid gap-2">
+                        {structureQuantityItems.map((item) => (
+                          <div key={item.key}>
+                            <div className="space-y-2">
+                              <div>
+                                <h4 className="text-sm font-semibold">
+                                  {item.title || item.label}
+                                </h4>
+                                {item.desc ? (
+                                  <p className="text-xs text-muted-foreground">
+                                    {item.desc}
+                                  </p>
+                                ) : null}
+                              </div>
+                              <FileUploadField
+                                value={instanceSitePhotoUploads[item.key] ?? []}
+                                onChange={(nextFiles) =>
+                                  setInstanceSitePhotoUploads((prev) => ({
+                                    ...prev,
+                                    [item.key]: nextFiles,
+                                  }))
+                                }
+                              />
                             </div>
-                            <FileUploadField
-                              value={instanceSitePhotoUploads[item.key] ?? []}
-                              onChange={(nextFiles) =>
-                                setInstanceSitePhotoUploads((prev) => ({
-                                  ...prev,
-                                  [item.key]: nextFiles,
-                                }))
-                              }
-                            />
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <FileUploadField
-                  value={files}
-                  onChange={setFiles}
-                  multiple={true}
-                  maxFiles={40}
-                  maxSizeMB={400}
-                />
-                )}
-              </FormControl>
-              <FormDescription className="text-xs">
-                Upload photos or documents.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                  ) : (
+                    <FileUploadField
+                      value={files}
+                      onChange={setFiles}
+                      multiple={true}
+                      maxFiles={40}
+                      maxSizeMB={400}
+                    />
+                  )}
+                </FormControl>
+                <FormDescription className="text-xs">
+                  Upload photos or documents.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <AlertDialog
           open={duplicatePrompt.open}

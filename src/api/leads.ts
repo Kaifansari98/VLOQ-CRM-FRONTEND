@@ -37,6 +37,7 @@ export interface CreateLeadPayload {
   site_address: string;
   site_type_id: number;
   source_id: number;
+  refered_by?: string;
   archetech_name?: string;
   archetech_number?: string;
   designer_remark?: string;
@@ -69,6 +70,7 @@ export interface Lead {
   site_address: string;
   site_type_id: number;
   source_id: number;
+  refered_by?: string | null;
   account_id: number;
   archetech_name: string;
   archetech_number?: string | null;
@@ -79,6 +81,8 @@ export interface Lead {
   updated_at: string;
   vendor_id: number;
   franchise_id?: number | null;
+  order_number?: string | null;
+  client_id?: number | null;
   priority?: string;
   assign_to: number | null;
   assigned_by: number | null;
@@ -100,11 +104,11 @@ export interface Lead {
   site_map_link: string;
   has_pending_fast_production_request?: boolean;
   productStructureInstances?: LeadProductStructureInstance[];
-  assigned_designer_from_mapping?: {
+  assigned_designers_from_mapping?: Array<{
     user_id: number;
     user_name: string | null;
     created_at: string;
-  } | null;
+  }>;
   smallOrderRequest?: {
     id: number;
     is_request_resolved?: boolean;
@@ -237,6 +241,9 @@ export interface EditLeadPayload {
   designer_remark?: string;
   updated_by: number;
   initial_site_measurement_date?: string;
+  client_id?: number;
+  order_number?: string;
+  refered_by?: string;
 }
 
 export interface CreateClientVisitPayload {
@@ -986,6 +993,21 @@ export const assignDesignerToLead = async (
 ) => {
   const response = await apiClient.post(
     `/leads/vendorId/${vendorId}/leadId/${leadId}/assign-designer`,
+    payload,
+  );
+  return response.data;
+};
+
+export const unassignDesignerFromLead = async (
+  vendorId: number,
+  leadId: number,
+  payload: {
+    user_id: number;
+    updated_by: number;
+  },
+) => {
+  const response = await apiClient.post(
+    `/leads/vendorId/${vendorId}/leadId/${leadId}/unassign-designer`,
     payload,
   );
   return response.data;

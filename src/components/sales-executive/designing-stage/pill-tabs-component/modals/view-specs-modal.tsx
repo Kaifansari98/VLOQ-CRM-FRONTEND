@@ -5,12 +5,20 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
+  DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Box, PanelsTopLeft, Sparkles, Wrench } from "lucide-react";
-import ComingSoon from "@/components/generics/ComingSoon";
 import { formatDate } from "@/lib/format";
-import type { LeadSpecificationEntry } from "@/api/designingStageQueries";
+import type { LeadSpecificationEntry, LightsRemark } from "@/api/designingStageQueries";
 import AssignToPicker from "@/components/assign-to-picker";
 import { useAppSelector } from "@/redux/store";
 import {
@@ -19,20 +27,29 @@ import {
   useShutterMaterials,
   useShutterTypes,
   useCarcassLegs,
+  useLightCarcasTypes,
+  useOtherAppliances,
 } from "@/hooks/useTypesMaster";
 import {
   useLeadCarcassMaterialMappings,
   useLeadShutterMaterialMappings,
   useLeadHardwareMappings,
+  useLeadLightCarcasUnitMappings,
+  useLeadOtherAppliancesMappings,
   useUpsertLeadCarcassMaterialMapping,
   useUpsertLeadShutterMaterialMapping,
   useUpsertLeadHardwareMapping,
+  useUpsertLeadLightCarcasUnitMapping,
+  useUpsertLeadOtherAppliancesMapping,
+  useUpdateLeadSpecificationLightsRemark,
 } from "@/hooks/designing-stage/designing-leads-hooks";
 import {
   fetchCarcassMaterialFinishes,
   fetchShutterMaterialFinishes,
   fetchSkirtingCarcassLegs,
   fetchSkirtingCarcassLegsColors,
+  fetchLightCarcasUnits,
+  type OtherAppliancesMasterEntry,
 } from "@/api/typesMasterApi";
 import { useQueries } from "@tanstack/react-query";
 import { toastManager } from "@/components/ui/toast";
@@ -68,6 +85,19 @@ type HardwareRow = {
   note: string;
 };
 
+type LightRow = {
+  localId: string;
+  id?: number;
+  light_carcas_type_id: string;
+  light_carcas_unit_master_id: string;
+};
+
+type OtherApplianceRow = {
+  localId: string;
+  id?: number;
+  other_appliances_master_id: string;
+};
+
 const makeBlankCarcassRow = (): CarcassRow => ({
   localId: `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
   carcass_type_id: "",
@@ -88,6 +118,17 @@ const makeBlankHardwareRow = (): HardwareRow => ({
   skirting_carcass_legs_id: "",
   skirting_carcass_legs_color_id: "",
   note: "",
+});
+
+const makeBlankLightRow = (): LightRow => ({
+  localId: `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  light_carcas_type_id: "",
+  light_carcas_unit_master_id: "",
+});
+
+const makeBlankOtherApplianceRow = (): OtherApplianceRow => ({
+  localId: `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  other_appliances_master_id: "",
 });
 
 const pickerClassName =
@@ -117,18 +158,46 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     vendorId,
     specification?.lead_id,
   );
+  const { data: lightCarcasTypesData } = useLightCarcasTypes();
+  const { data: lightMappingsData } = useLeadLightCarcasUnitMappings(
+    vendorId,
+    specification?.lead_id,
+    specification?.id,
+  );
+  const { data: otherAppliancesData } = useOtherAppliances();
+  const { data: otherApplianceMappingsData } = useLeadOtherAppliancesMappings(
+    vendorId,
+    specification?.lead_id,
+    specification?.id,
+  );
   const upsertCarcassMapping = useUpsertLeadCarcassMaterialMapping();
   const upsertShutterMapping = useUpsertLeadShutterMaterialMapping();
   const upsertHardwareMapping = useUpsertLeadHardwareMapping();
+  const upsertLightMapping = useUpsertLeadLightCarcasUnitMapping();
+  const upsertOtherApplianceMapping = useUpsertLeadOtherAppliancesMapping();
+  const updateLightsRemark = useUpdateLeadSpecificationLightsRemark();
   const [carcassRows, setCarcassRows] = React.useState<CarcassRow[]>([]);
   const [shutterRows, setShutterRows] = React.useState<ShutterRow[]>([]);
   const [hardwareRows, setHardwareRows] = React.useState<HardwareRow[]>([]);
+  const [lightsRemark, setLightsRemark] = React.useState<LightsRemark | "">("");
+  const [lightRows, setLightRows] = React.useState<LightRow[]>([]);
+  const [otherApplianceRowsByType, setOtherApplianceRowsByType] = React.useState<
+    Record<string, OtherApplianceRow[]>
+  >({});
 
   const carcassTypes = carcassTypesData?.data ?? [];
   const carcasMaterials = carcasMaterialsData?.data ?? [];
   const shutterTypes = shutterTypesData?.data ?? [];
   const shutterMaterials = shutterMaterialsData?.data ?? [];
   const carcassLegs = carcassLegsData?.data ?? [];
+  const lightCarcasTypes = lightCarcasTypesData?.data ?? [];
+  const otherAppliancesByType = React.useMemo(() => {
+    const grouped: Record<string, OtherAppliancesMasterEntry[]> = {};
+    (otherAppliancesData?.data ?? []).forEach((item) => {
+      (grouped[item.type] ??= []).push(item);
+    });
+    return grouped;
+  }, [otherAppliancesData]);
   const carcassMappings = React.useMemo(
     () => carcassMappingsData ?? [],
     [carcassMappingsData],
@@ -140,6 +209,14 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   const hardwareMappings = React.useMemo(
     () => hardwareMappingsData ?? [],
     [hardwareMappingsData],
+  );
+  const lightMappings = React.useMemo(
+    () => lightMappingsData ?? [],
+    [lightMappingsData],
+  );
+  const otherApplianceMappings = React.useMemo(
+    () => otherApplianceMappingsData ?? [],
+    [otherApplianceMappingsData],
   );
 
   React.useEffect(() => {
@@ -207,6 +284,50 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     setHardwareRows([...persistedRows, makeBlankHardwareRow()]);
   }, [hardwareMappings, specification?.id]);
 
+  React.useEffect(() => {
+    if (!specification) {
+      setLightRows([]);
+      return;
+    }
+
+    const persistedRows: LightRow[] = lightMappings.map((item) => ({
+      localId: `saved-${item.id}`,
+      id: item.id,
+      light_carcas_type_id: item.lightCarcasUnit?.light_carcas_type_id
+        ? String(item.lightCarcasUnit.light_carcas_type_id)
+        : "",
+      light_carcas_unit_master_id: String(item.light_carcas_unit_master_id),
+    }));
+
+    setLightRows([...persistedRows, makeBlankLightRow()]);
+  }, [lightMappings, specification?.id]);
+
+  React.useEffect(() => {
+    setLightsRemark(specification?.lights_remark ?? "");
+  }, [specification?.id, specification?.lights_remark]);
+
+  React.useEffect(() => {
+    if (!specification) {
+      setOtherApplianceRowsByType({});
+      return;
+    }
+
+    const grouped: Record<string, OtherApplianceRow[]> = {};
+    Object.keys(otherAppliancesByType).forEach((type) => {
+      const persistedRows: OtherApplianceRow[] = otherApplianceMappings
+        .filter((item) => item.otherAppliances?.type === type)
+        .map((item) => ({
+          localId: `saved-${item.id}`,
+          id: item.id,
+          other_appliances_master_id: String(item.other_appliances_master_id),
+        }));
+
+      grouped[type] = [...persistedRows, makeBlankOtherApplianceRow()];
+    });
+
+    setOtherApplianceRowsByType(grouped);
+  }, [otherApplianceMappings, otherAppliancesByType, specification?.id]);
+
   const finishQueries = useQueries({
     queries: carcassRows.map((row) => {
       const materialId = Number(row.carcas_material_id);
@@ -247,6 +368,17 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         queryKey: ["skirtingCarcassLegsColors", skirtingId],
         queryFn: () => fetchSkirtingCarcassLegsColors(skirtingId),
         enabled: skirtingId > 0,
+      };
+    }),
+  });
+
+  const lightUnitQueries = useQueries({
+    queries: lightRows.map((row) => {
+      const typeId = Number(row.light_carcas_type_id);
+      return {
+        queryKey: ["lightCarcasUnits", typeId],
+        queryFn: () => fetchLightCarcasUnits(typeId),
+        enabled: typeId > 0,
       };
     }),
   });
@@ -630,18 +762,235 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     [saveHardwareRowIfComplete],
   );
 
+  const saveLightRowIfComplete = React.useCallback(
+    async (row: LightRow) => {
+      if (
+        !vendorId ||
+        !userId ||
+        !specification?.lead_id ||
+        !specification?.id ||
+        !row.light_carcas_type_id ||
+        !row.light_carcas_unit_master_id
+      ) {
+        return;
+      }
+
+      try {
+        await upsertLightMapping.mutateAsync({
+          id: row.id,
+          vendor_id: vendorId,
+          lead_id: specification.lead_id,
+          specs_id: specification.id,
+          light_carcas_unit_master_id: Number(row.light_carcas_unit_master_id),
+          created_by: userId,
+        });
+      } catch (error: any) {
+        toastManager.add({
+          title:
+            error?.response?.data?.message ||
+            error?.message ||
+            "Failed to save light specification.",
+          type: "error",
+        });
+      }
+    },
+    [specification?.lead_id, specification?.id, upsertLightMapping, userId, vendorId],
+  );
+
+  const updateLightRow = React.useCallback(
+    (
+      localId: string,
+      field: keyof Omit<LightRow, "localId" | "id">,
+      value: string,
+    ) => {
+      let nextRow: LightRow | null = null;
+      let duplicateMessage = "";
+
+      setLightRows((prev) =>
+        prev.map((row) => {
+          if (row.localId !== localId) return row;
+
+          const updatedRow: LightRow = { ...row, [field]: value };
+          if (field === "light_carcas_type_id") {
+            updatedRow.light_carcas_unit_master_id = "";
+          }
+
+          const isComplete =
+            !!updatedRow.light_carcas_type_id &&
+            !!updatedRow.light_carcas_unit_master_id;
+
+          if (isComplete) {
+            const isDuplicate = prev.some(
+              (otherRow) =>
+                otherRow.localId !== localId &&
+                otherRow.light_carcas_unit_master_id ===
+                  updatedRow.light_carcas_unit_master_id,
+            );
+
+            if (isDuplicate) {
+              duplicateMessage =
+                "This carcass type and remark combination has already been added.";
+              return row;
+            }
+          }
+
+          nextRow = updatedRow;
+          return updatedRow;
+        }),
+      );
+
+      if (duplicateMessage) {
+        toastManager.add({
+          title: duplicateMessage,
+          type: "error",
+        });
+        return;
+      }
+
+      if (nextRow) {
+        void saveLightRowIfComplete(nextRow);
+      }
+    },
+    [saveLightRowIfComplete],
+  );
+
+  const saveOtherApplianceRowIfComplete = React.useCallback(
+    async (row: OtherApplianceRow) => {
+      if (
+        !vendorId ||
+        !userId ||
+        !specification?.lead_id ||
+        !specification?.id ||
+        !row.other_appliances_master_id
+      ) {
+        return;
+      }
+
+      try {
+        await upsertOtherApplianceMapping.mutateAsync({
+          id: row.id,
+          vendor_id: vendorId,
+          lead_id: specification.lead_id,
+          specs_id: specification.id,
+          other_appliances_master_id: Number(row.other_appliances_master_id),
+          created_by: userId,
+        });
+      } catch (error: any) {
+        toastManager.add({
+          title:
+            error?.response?.data?.message ||
+            error?.message ||
+            "Failed to save entry.",
+          type: "error",
+        });
+      }
+    },
+    [
+      specification?.lead_id,
+      specification?.id,
+      upsertOtherApplianceMapping,
+      userId,
+      vendorId,
+    ],
+  );
+
+  const updateOtherApplianceRow = React.useCallback(
+    (type: string, localId: string, value: string) => {
+      let nextRow: OtherApplianceRow | null = null;
+      let duplicateMessage = "";
+
+      setOtherApplianceRowsByType((prev) => {
+        const rowsForType = prev[type] ?? [];
+
+        const updatedRows = rowsForType.map((row) => {
+          if (row.localId !== localId) return row;
+
+          const updatedRow: OtherApplianceRow = {
+            ...row,
+            other_appliances_master_id: value,
+          };
+
+          if (value) {
+            const isDuplicate = rowsForType.some(
+              (otherRow) =>
+                otherRow.localId !== localId &&
+                otherRow.other_appliances_master_id === value,
+            );
+
+            if (isDuplicate) {
+              duplicateMessage = "This article has already been added.";
+              return row;
+            }
+          }
+
+          nextRow = updatedRow;
+          return updatedRow;
+        });
+
+        return { ...prev, [type]: updatedRows };
+      });
+
+      if (duplicateMessage) {
+        toastManager.add({
+          title: duplicateMessage,
+          type: "error",
+        });
+        return;
+      }
+
+      if (nextRow) {
+        void saveOtherApplianceRowIfComplete(nextRow);
+      }
+    },
+    [saveOtherApplianceRowIfComplete],
+  );
+
+  const handleLightsRemarkChange = React.useCallback(
+    (value: LightsRemark) => {
+      if (!vendorId || !specification?.lead_id || !specification?.id) return;
+
+      const previousValue = lightsRemark;
+      setLightsRemark(value);
+
+      updateLightsRemark.mutate(
+        {
+          specsId: specification.id,
+          lightsRemark: value,
+          vendorId,
+          leadId: specification.lead_id,
+        },
+        {
+          onError: (error: any) => {
+            setLightsRemark(previousValue);
+            toastManager.add({
+              title:
+                error?.response?.data?.message ||
+                error?.message ||
+                "Failed to update lights remark.",
+              type: "error",
+            });
+          },
+        },
+      );
+    },
+    [lightsRemark, specification?.id, specification?.lead_id, updateLightsRemark, vendorId],
+  );
+
+  const isLightsEnabled =
+    lightsRemark === "In our scope" || lightsRemark === "Provide only grooves";
+
   if (!specification) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="min-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader className="">
-          <h2 className="text-lg font-semibold tracking-tight">
+          <DialogTitle className="text-lg font-semibold tracking-tight">
             {specification.name}
-          </h2>
-          <p className="text-xs text-muted-foreground">
+          </DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground">
             Created on {formatDate(specification.created_at)}
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="carcass" className="flex-1 min-h-0 flex flex-col">
@@ -1060,10 +1409,200 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
             </div>
           </TabsContent>
           <TabsContent value="others" className="flex-1 overflow-y-auto">
-            <ComingSoon
-              heading="No Other Specifications"
-              description="Other specifications for this entry will show up here once added."
-            />
+            <div className="flex items-center justify-between gap-3 mb-2 mt-3">
+              <h3 className="text-sm font-semibold">Lights</h3>
+              <Select
+                value={lightsRemark || undefined}
+                onValueChange={(value) =>
+                  handleLightsRemarkChange(value as LightsRemark)
+                }
+              >
+                <SelectTrigger className="w-64">
+                  <SelectValue placeholder="Select lights remark" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="In our scope">In our scope</SelectItem>
+                  <SelectItem value="Not in our scope">
+                    Not in our scope
+                  </SelectItem>
+                  <SelectItem value="Provide only grooves">
+                    Provide only grooves
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="rounded-xl border border-border overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-zinc-700">
+                    <tr className="border-b">
+                      <th className="px-4 py-3 text-left font-bold text-white">
+                        Carcass Type
+                      </th>
+                      <th className="px-4 py-3 text-left font-bold text-white">
+                        Remark
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lightRows.map((row, index) => {
+                      const unitOptions =
+                        lightUnitQueries[index]?.data?.data ?? [];
+
+                      return (
+                        <tr key={row.localId} className="border-b last:border-b-0">
+                          <td className="px-4 py-3 align-top">
+                            <AssignToPicker
+                              data={lightCarcasTypes.map((type) => ({
+                                id: type.id,
+                                label: type.type,
+                              }))}
+                              value={
+                                row.light_carcas_type_id
+                                  ? Number(row.light_carcas_type_id)
+                                  : undefined
+                              }
+                              onChange={(value) =>
+                                updateLightRow(
+                                  row.localId,
+                                  "light_carcas_type_id",
+                                  value ? String(value) : "",
+                                )
+                              }
+                              disabled={!isLightsEnabled}
+                              placeholder={
+                                isLightsEnabled
+                                  ? "Search carcass type..."
+                                  : "Select lights remark first"
+                              }
+                              emptyLabel={
+                                isLightsEnabled
+                                  ? "Select carcass type"
+                                  : "Select lights remark first"
+                              }
+                              className={pickerClassName}
+                            />
+                          </td>
+                          <td className="px-4 py-3 align-top">
+                            <AssignToPicker
+                              data={unitOptions.map((unit) => ({
+                                id: unit.id,
+                                label: unit.type,
+                              }))}
+                              value={
+                                row.light_carcas_unit_master_id
+                                  ? Number(row.light_carcas_unit_master_id)
+                                  : undefined
+                              }
+                              onChange={(value) =>
+                                updateLightRow(
+                                  row.localId,
+                                  "light_carcas_unit_master_id",
+                                  value ? String(value) : "",
+                                )
+                              }
+                              disabled={!isLightsEnabled || !row.light_carcas_type_id}
+                              placeholder={
+                                !isLightsEnabled
+                                  ? "Select lights remark first"
+                                  : row.light_carcas_type_id
+                                    ? "Search remark..."
+                                    : "Select carcass type first"
+                              }
+                              emptyLabel={
+                                !isLightsEnabled
+                                  ? "Select lights remark first"
+                                  : row.light_carcas_type_id
+                                    ? "Select remark"
+                                    : "Select carcass type first"
+                              }
+                              className={pickerClassName}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {Object.keys(otherAppliancesByType).map((type) => {
+              const options = otherAppliancesByType[type] ?? [];
+              const rows = otherApplianceRowsByType[type] ?? [];
+
+              return (
+                <div key={type}>
+                  <h3 className="text-sm font-semibold mb-2 mt-6">{type}</h3>
+                  <div className="rounded-xl border border-border overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-zinc-700">
+                          <tr className="border-b">
+                            <th className="px-4 py-3 text-left font-bold text-white">
+                              Article Code
+                            </th>
+                            <th className="px-4 py-3 text-left font-bold text-white">
+                              Description
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rows.map((row) => {
+                            const selectedEntry = options.find(
+                              (option) =>
+                                String(option.id) ===
+                                row.other_appliances_master_id,
+                            );
+
+                            return (
+                              <tr
+                                key={row.localId}
+                                className="border-b last:border-b-0"
+                              >
+                                <td className="px-4 py-3 align-top">
+                                  <AssignToPicker
+                                    data={options.map((option) => ({
+                                      id: option.id,
+                                      label: option.article_number,
+                                    }))}
+                                    value={
+                                      row.other_appliances_master_id
+                                        ? Number(row.other_appliances_master_id)
+                                        : undefined
+                                    }
+                                    onChange={(value) =>
+                                      updateOtherApplianceRow(
+                                        type,
+                                        row.localId,
+                                        value ? String(value) : "",
+                                      )
+                                    }
+                                    placeholder="Search article code..."
+                                    emptyLabel="Select article code"
+                                    className={pickerClassName}
+                                  />
+                                </td>
+                                <td className="px-4 py-3 align-top">
+                                  <input
+                                    type="text"
+                                    value={selectedEntry?.description ?? ""}
+                                    readOnly
+                                    disabled
+                                    placeholder="Select article code first"
+                                    className={`${pickerClassName} w-full text-muted-foreground`}
+                                  />
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </TabsContent>
         </Tabs>
       </DialogContent>

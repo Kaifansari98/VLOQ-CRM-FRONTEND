@@ -20,6 +20,7 @@ import { useActivityStatusCounts } from "@/hooks/useActivityStatus";
 import ViewOpenLeadTable from "@/app/_components/view-leads-table";
 import PendingLeadsTable from "../../../_components/pending-leads-table";
 import { useUniversalStageLeadsPost } from "@/api/universalstage";
+import { useFranchisesByVendorId } from "@/api/franchise";
 import {
   Popover,
   PopoverContent,
@@ -70,14 +71,25 @@ export default function LeadsGenerationPage() {
   };
 
   const privileged = isPrivilegedUser(userType);
+
+  const { data: franchises = [] } = useFranchisesByVendorId(vendorId, !!vendorId);
+  const isB2bFranchise = useMemo(() => {
+    const activeFranchise = franchises.find((f) => f.id === franchiseId);
+    return activeFranchise?.moduled_for_b2b ?? false;
+  }, [franchises, franchiseId]);
+
   const canShowOnHoldTab =
-    normalizedUserType === "custom"
+    isB2bFranchise
+      ? false
+      : normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
           "leads.open_leads.details_of_lead.mark_on_hold",
         )
       : true;
   const canShowLostTabs =
-    normalizedUserType === "custom"
+    isB2bFranchise
+      ? false
+      : normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
           "leads.open_leads.details_of_lead.mark_as_lost",
         )
@@ -251,84 +263,88 @@ export default function LeadsGenerationPage() {
 
         <div className="flex items-center gap-2">
           <div className="flex gap-2 items-center">
-            <div className="hidden md:flex items-center gap-2">
-              {tabItems.map((item) => (
-                <button
-                  key={item.value}
-                  onClick={() => handleTabChange(item.value)}
-                  className={clsx(
-                    "flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition",
-                    "hover:bg-muted",
-                    item.value === tab
-                      ? "bg-muted font-semibold"
-                      : "text-muted-foreground",
-                  )}
-                >
-                  <span
-                    className="w-2 h-2 rounded-full shrink-0"
-                    style={{ backgroundColor: item.dotColor }}
-                  />
-                  <span>{item.label}</span>
-                  <span className="text-xs opacity-70">{item.count}</span>
-                </button>
-              ))}
-            </div>
+            {!isB2bFranchise && (
+              <>
+                <div className="hidden md:flex items-center gap-2">
+                  {tabItems.map((item) => (
+                    <button
+                      key={item.value}
+                      onClick={() => handleTabChange(item.value)}
+                      className={clsx(
+                        "flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition",
+                        "hover:bg-muted",
+                        item.value === tab
+                          ? "bg-muted font-semibold"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      <span
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: item.dotColor }}
+                      />
+                      <span>{item.label}</span>
+                      <span className="text-xs opacity-70">{item.count}</span>
+                    </button>
+                  ))}
+                </div>
 
-            <Popover open={openPopover} onOpenChange={setOpenPopover}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="
+                <Popover open={openPopover} onOpenChange={setOpenPopover}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="
         flex items-center gap-2
         max-w-[180px] sm:max-w-none
         truncate md:hidden
       "
-                >
-                  <span
-                    className="w-2 h-2 rounded-full shrink-0"
-                    style={{ backgroundColor: activeItem?.dotColor }}
-                  />
-
-                  {/* Title truncates on mobile */}
-                  <span className="truncate">{tabInfo[tab].title}</span>
-
-                  <ChevronDown size={16} className="opacity-70 shrink-0" />
-                </Button>
-              </PopoverTrigger>
-
-              <PopoverContent
-                align="end"
-                sideOffset={6}
-                className="w-44 sm:w-40 p-1"
-              >
-                <div className="flex flex-col gap-1">
-                  {tabItems.map((item) => (
-                    <button
-                      key={item.value}
-                      onClick={() => {
-                        handleTabChange(item.value);
-                        setOpenPopover(false);
-                      }}
-                      className={clsx(
-                        "flex justify-between items-center px-3 py-2 rounded-md text-sm hover:bg-muted transition",
-                        item.value === tab && "bg-muted font-semibold",
-                      )}
                     >
-                      <span className="flex items-center gap-2 truncate">
-                        <span
-                          className="w-2 h-2 rounded-full shrink-0"
-                          style={{ backgroundColor: item.dotColor }}
-                        />
-                        <span className="truncate">{item.label}</span>
-                      </span>
+                      <span
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: activeItem?.dotColor }}
+                      />
 
-                      <span className="opacity-70 shrink-0">{item.count}</span>
-                    </button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
+                      {/* Title truncates on mobile */}
+                      <span className="truncate">{tabInfo[tab].title}</span>
+
+                      <ChevronDown size={16} className="opacity-70 shrink-0" />
+                    </Button>
+                  </PopoverTrigger>
+
+                  <PopoverContent
+                    align="end"
+                    sideOffset={6}
+                    className="w-44 sm:w-40 p-1"
+                  >
+                    <div className="flex flex-col gap-1">
+                      {tabItems.map((item) => (
+                        <button
+                          key={item.value}
+                          onClick={() => {
+                            handleTabChange(item.value);
+                            setOpenPopover(false);
+                          }}
+                          className={clsx(
+                            "flex justify-between items-center px-3 py-2 rounded-md text-sm hover:bg-muted transition",
+                            item.value === tab && "bg-muted font-semibold",
+                          )}
+                        >
+                          <span className="flex items-center gap-2 truncate">
+                            <span
+                              className="w-2 h-2 rounded-full shrink-0"
+                              style={{ backgroundColor: item.dotColor }}
+                            />
+                            <span className="truncate">{item.label}</span>
+                          </span>
+
+                          <span className="opacity-70 shrink-0">{item.count}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </>
+            )}
 
             {/* ✅ Show only for admin, super-admin, sales-executive */}
             {canShowAddNewLeadButton && (

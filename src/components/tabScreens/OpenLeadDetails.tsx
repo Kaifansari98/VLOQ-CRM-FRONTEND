@@ -76,6 +76,7 @@ import {
 } from "@/hooks/useTypesMaster";
 import { updateLeadProductType, clearLeadProductStructures } from "@/api/leads";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useFranchisesByVendorId } from "@/api/franchise";
 
 type OpenLeadDetailsProps = {
   leadId: number;
@@ -164,6 +165,10 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     useProductItemCodes();
   const { data: productStructureTypes } = useProductStructureTypes();
   const { data: productTypes } = useProductTypes();
+  const { data: franchisesForB2b = [] } = useFranchisesByVendorId(
+    vendorId,
+    !!vendorId,
+  );
 
   // ✅ 3. ALL useState HOOKS
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
@@ -395,18 +400,39 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const canEditLeadDetailsForCustomUser = customPrivilegeCodes.includes(
     "leads.open_leads.details_of_lead.edit",
   );
+
+  // Lead stage tags look like "Type 1", "Type 4", "Type 17" — extract the
+  // ordinal so we can gate editing to a max stage per role instead of a
+  // single boolean "open" check.
+  const leadStageTypeNumber = (() => {
+    const match = String(leadStatusTag || "").match(/(\d+)/);
+    return match ? Number(match[1]) : null;
+  })();
+  const isWithinStageRange = (maxType: number) =>
+    leadStageTypeNumber !== null &&
+    leadStageTypeNumber >= 1 &&
+    leadStageTypeNumber <= maxType;
+
+  const canEditAtCurrentStage =
+    normalizedUserType === "admin" || normalizedUserType === "super-admin"
+      ? isWithinStageRange(17)
+      : normalizedUserType === "sales-executive"
+        ? isWithinStageRange(4)
+        : isOpenStage;
+
   const canEditStructures =
     !isAuditor &&
     (normalizedUserType === "custom"
       ? canEditLeadDetailsForCustomUser
-      : isOpenStage || ["admin", "super-admin"].includes(userType || ""));
+      : canEditAtCurrentStage);
   const canEditProductType =
     !isAuditor &&
     (normalizedUserType === "custom"
       ? canEditLeadDetailsForCustomUser
-      : normalizedUserType === "admin" ||
-      normalizedUserType === "super-admin" ||
-      (normalizedUserType === "sales-executive" && isOpenStage));
+      : ["admin", "super-admin", "sales-executive"].includes(normalizedUserType)
+        ? canEditAtCurrentStage
+        : false);
+  const canEditBoqItems = canEditStructures;
   const currentProductTypeId =
     lead?.productMappings?.[0]?.product_type_id ||
     lead?.productMappings?.[0]?.productType?.id ||
@@ -560,6 +586,13 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     () => getStructureOptions(addParentFilter),
     [addParentFilter, productStructureTypes?.data],
   );
+
+  const isB2b = useMemo(() => {
+    const leadFranchise = franchisesForB2b.find(
+      (franchise: any) => franchise.id === lead?.franchise_id,
+    );
+    return leadFranchise?.moduled_for_b2b ?? false;
+  }, [franchisesForB2b, lead?.franchise_id]);
 
   // ✅ 9. EARLY RETURNS — SARE HOOKS KE BAAD
   if (isLoading && !lead) {
@@ -940,7 +973,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
             <SectionCard
               title="Product Information"
               action={
-                canEditStructures && isOpenStage && (
+                canEditStructures && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div className="w-auto">
@@ -989,7 +1022,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   label={
                     <span className="inline-flex items-center gap-2">
                       <span>Product Types</span>
-                      {canEditProductType && isOpenStage && (
+                      {canEditProductType && (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button
@@ -1075,7 +1108,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                               {item.title || item.productStructure?.type || "—"}
                             </p>
                             <div className="flex items-center gap-1 shrink-0">
-                              {canEditStructures && isOpenStage && (
+                              {canEditStructures && (
                                 <>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
@@ -1160,7 +1193,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
             <SectionCard
               title="Bill of Quantity"
               action={
-                canEditStructures && boqInstances.length > 0 ? (
+                canEditBoqItems && boqInstances.length > 0 ? (
                   <Button
                     type="button"
                     className="gap-2"
@@ -1179,11 +1212,11 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                 <button
                   type="button"
                   onClick={() => {
-                    if (!canEditStructures || shouldDisableBlockedActions) return;
+                    if (!canEditBoqItems || shouldDisableBlockedActions) return;
                     setBoqModalOpen(true);
                   }}
                   className={`group flex w-full flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-border/70 bg-muted/20 px-6 py-14 text-center transition hover:border-primary/50 hover:bg-muted/30 ${
-                    !canEditStructures ? "cursor-default" : ""
+                    !canEditBoqItems ? "cursor-default" : ""
                   }`}
                 >
                   <span className="flex h-16 w-16 items-center justify-center rounded-full border border-dashed border-border/80 bg-background shadow-sm transition group-hover:scale-105">
@@ -1255,7 +1288,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 	                                  {item.productItemCode?.item_code || item.title || "—"}
 	                                </p>
 	                              </div>
-	                              {canEditStructures && (
+	                              {canEditBoqItems && (
 	                                <div className="flex shrink-0 items-center gap-1">
 	                                  <Tooltip>
 	                                    <TooltipTrigger asChild>
@@ -1394,7 +1427,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 	                                      {item.quantity ?? "—"}
 	                                    </span>
 	                                  </div>
-	                                  {canEditStructures && (
+	                                  {canEditBoqItems && (
 	                                    <Button
 	                                      type="button"
 	                                      variant="ghost"
@@ -1494,8 +1527,8 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                     href={lead.site_map_link}
                     target="_blank"
                     className="
-          pl-6 underline 
-          font-medium text-heading dark:text-neutral-200 
+          pl-6 underline
+          font-medium text-heading dark:text-neutral-200
           hover:opacity-80
         "
                   >
@@ -1505,6 +1538,17 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   <p className="pl-6 text-subtle">No map link provided</p>
                 )}
               </div>
+
+              {isB2b && (
+                <>
+                  <InfoRow icon={Magnet} label="Source" value={lead.source?.type} />
+                  <InfoRow
+                    icon={Package}
+                    label="Order Number"
+                    value={lead.order_number}
+                  />
+                </>
+              )}
             </div>
 
             {/* Site Address below full width */}
@@ -1518,55 +1562,60 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
           </SectionCard>
 
           {/* PROJECT DETAILS */}
-          <SectionCard title="Project Details">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <InfoRow
-                icon={User}
-                label="Architect Name"
-                value={<span className="capitalize">{lead.archetech_name}</span>}
-              />
-              {lead.archetech_number && (
+          {!isB2b && (
+            <SectionCard title="Project Details">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <InfoRow
-                  icon={Phone}
-                  label="Architect Number"
-                  value={lead.archetech_number}
+                  icon={User}
+                  label="Architect Name"
+                  value={<span className="capitalize">{lead.archetech_name}</span>}
                 />
-              )}
-              <InfoRow
-                icon={Building}
-                label="Site Type"
-                value={lead.siteType?.type}
-              />
-              <InfoRow icon={Magnet} label="Source" value={lead.source?.type} />
-              <InfoRow icon={Package} label="Priority" value={lead.priority} />
-            </div>
-          </SectionCard>
+                {lead.archetech_number && (
+                  <InfoRow
+                    icon={Phone}
+                    label="Architect Number"
+                    value={lead.archetech_number}
+                  />
+                )}
+                <InfoRow
+                  icon={Building}
+                  label="Site Type"
+                  value={lead.siteType?.type}
+                />
+                <InfoRow icon={Magnet} label="Source" value={lead.source?.type} />
+                <InfoRow icon={Package} label="Priority" value={lead.priority} />
+              </div>
+            </SectionCard>
+          )}
 
           {/* ADDITIONAL INFORMATION */}
-          <SectionCard title="Additional Information">
-            <div className="space-y-4">
-              <div>
-                <div className="flex items-center gap-2 text-sm text-subtle mb-2">
-                  <MessageSquare className="w-4 h-4" />
-                  Design Remarks
-                </div>
+          {!isB2b && (
+            <SectionCard title="Additional Information">
+              <div className="space-y-4">
+                <div>
+                  <div className="flex items-center gap-2 text-sm text-subtle mb-2">
+                    <MessageSquare className="w-4 h-4" />
+                    Design Remarks
+                  </div>
 
-                <div
-                  className="
-    bg-[#fff] dark:bg-[#0a0a0a] 
-    border border-border 
+                  <div
+                    className="
+    bg-[#fff] dark:bg-[#0a0a0a]
+    border border-border
     rounded-xl p-4 ml-6
   "
-                >
-                  <p className="text-[15px] leading-relaxed text-heading dark:text-neutral-200">
-                    {lead.designer_remark || "No remarks provided"}
-                  </p>
+                  >
+                    <p className="text-[15px] leading-relaxed text-heading dark:text-neutral-200">
+                      {lead.designer_remark || "No remarks provided"}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          </SectionCard>
+            </SectionCard>
+          )}
 
           {/* Site Photos */}
+          {!isB2b && (
           <motion.section
             variants={itemVariants}
             className="
@@ -1755,6 +1804,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
               )}
             </motion.div>
           </motion.section>
+          )}
 
           <Dialog
             open={boqModalOpen}

@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { useParams, useSearchParams } from "next/navigation";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
 import { Button } from "@/components/ui/button";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
 import { useAppSelector } from "@/redux/store";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
@@ -95,6 +95,8 @@ import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
 import AddVisitModal from "@/components/sales-executive/Lead/add-visit-modal";
 import { formatBlockedAt } from "@/lib/utils";
+import MoveToDesigningStageModal from "@/components/sales-executive/Lead/move-to-designing-stage-modal";
+import { useFranchisesByVendorId } from "@/api/franchise";
 
 
 export default function LeadDetails() {
@@ -109,12 +111,33 @@ export default function LeadDetails() {
 
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
+  const franchiseId = useAppSelector(
+    (state) => state.auth.franchise_id ?? state.auth.user?.franchise_id,
+  );
   const isClientVisitEnabled = useAppSelector(
     (s) => s.auth.user?.vendor?.is_client_visit_enabled === true,
   );
+  const { data: franchisesForB2b = [] } = useFranchisesByVendorId(
+    vendorId,
+    !!vendorId,
+  );
+  const isB2b = useMemo(() => {
+    const activeFranchise = franchisesForB2b.find(
+      (franchise) => franchise.id === franchiseId,
+    );
+    return activeFranchise?.moduled_for_b2b ?? false;
+  }, [franchisesForB2b, franchiseId]);
+  console.log("isB2b :- ", isB2b);
 
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
+  );
+  const vendorCustomUserTypeMode = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only as
+        | boolean
+        | null
+        | undefined,
   );
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
@@ -154,6 +177,7 @@ export default function LeadDetails() {
   // modals
   const [assignOpen, setAssignOpen] = useState(false);
   const [visitOpen, setVisitOpen] = useState(false);
+  const [moveToDesigningOpen, setMoveToDesigningOpen] = useState(false);
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
@@ -411,6 +435,24 @@ export default function LeadDetails() {
           </Breadcrumb>
         </div>
         <div className="flex items-center space-x-2">
+          {(vendorCustomUserTypeMode === true || isB2b) && !isAuditor && (
+            <CustomeTooltip
+              value={blockedAtTooltip}
+              truncateValue={
+                <span>
+                  <Button
+                    size="sm"
+                    className="hidden sm:flex"
+                    onClick={() => setMoveToDesigningOpen(true)}
+                    disabled={isLeadBlocked || uiDisabled}
+                  >
+                    Move to Designing Stage
+                  </Button>
+                </span>
+              }
+            />
+          )}
+
           {isClientVisitEnabled && !isAuditor && (
             <CustomeTooltip
               value={blockedAtTooltip}
@@ -467,7 +509,18 @@ export default function LeadDetails() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {(isB2b) && (
+                    <DropdownMenuItem
+                      className="sm:hidden"
+                      onClick={() => setMoveToDesigningOpen(true)}
+                      disabled={uiDisabled || isLeadBlocked}
+                    >
+                      <UserPlus size={20} />
+                      Move to Designing Stage
+                    </DropdownMenuItem>
+                  )}
               {isClientVisitEnabled && (
+                <>
                 <DropdownMenuItem
                   className="sm:hidden"
                   onClick={() => setVisitOpen(true)}
@@ -476,6 +529,7 @@ export default function LeadDetails() {
                   <FolderOpen size={20} />
                   Add Visit
                 </DropdownMenuItem>
+                </>
               )}
 
               {canAccessAssignTask && (
@@ -760,6 +814,15 @@ export default function LeadDetails() {
           userId={userId ?? 0}
         />
       )}
+      <MoveToDesigningStageModal
+        open={moveToDesigningOpen}
+        onOpenChange={setMoveToDesigningOpen}
+        data={{
+          id: leadIdNum,
+          accountId: accountId || lead?.account_id || 0,
+          franchiseId: lead?.franchise_id ?? null,
+        }}
+      />
       <AssignLeadModal
         open={assignOpenLead}
         onOpenChange={setAssignOpenLead}

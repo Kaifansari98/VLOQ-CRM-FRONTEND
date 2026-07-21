@@ -4,6 +4,7 @@ export interface User {
   id: number
   vendor_id: number
   franchise_id?: number | null
+  moduled_for_b2b?: boolean
   user_name: string
   user_contact: string
   user_email: string
@@ -39,6 +40,7 @@ interface AuthState {
   token: string | null
   franchise_id: number | null
   is_ho_user: boolean
+  moduled_for_b2b: boolean
 }
 
 const initialState: AuthState = {
@@ -46,6 +48,7 @@ const initialState: AuthState = {
   token: null,
   franchise_id: null,
   is_ho_user: false,
+  moduled_for_b2b: false,
 }
 
 const authSlice = createSlice({
@@ -60,6 +63,7 @@ const authSlice = createSlice({
       state.token = action.payload.token
       state.franchise_id = action.payload.user.franchise_id ?? null
       state.is_ho_user = action.payload.user.is_ho_user ?? false
+      state.moduled_for_b2b = action.payload.user.moduled_for_b2b ?? false
       if (typeof window !== "undefined") {
         localStorage.setItem("token", action.payload.token)
         localStorage.setItem("user", JSON.stringify(action.payload.user))
@@ -70,6 +74,7 @@ const authSlice = createSlice({
       state.token = null
       state.franchise_id = null
       state.is_ho_user = false
+      state.moduled_for_b2b = false
       if (typeof window !== "undefined") {
         localStorage.removeItem("token")
         localStorage.removeItem("user")
@@ -85,6 +90,7 @@ const authSlice = createSlice({
           state.user = JSON.parse(user)
           state.franchise_id = state.user?.franchise_id ?? null
           state.is_ho_user = state.user?.is_ho_user ?? false
+          state.moduled_for_b2b = state.user?.moduled_for_b2b ?? false
         }
       }
     },

@@ -4,8 +4,8 @@ export interface Machine {
   status: "ACTIVE" | "MAINTENANCE" | "INACTIVE" | "IDLE";
   operator?: string;
   utilization: number;
-  machine_name:string;
-  user_name:string;
+  machine_name: string;
+  user_name: string;
 }
 
 export interface Item {
@@ -18,22 +18,22 @@ export interface Item {
   status: "in_process" | "queued" | "completed" | "on_hold";
   duration?: string;
   timestamp: Date;
-  project_name:string;
-  lead_code:string;
-  lead:Lead;
-  cut_list:CutList;
-  actual_in_at_formatted:string;
+  project_name: string;
+  lead_code: string;
+  lead: Lead;
+  cut_list: CutList;
+  actual_in_at_formatted: string;
 
 
 }
-export interface Operator{
-  user_name:string;
+export interface Operator {
+  user_name: string;
 }
 
-export interface CutList{
-  item_name:string;
-  material_details:string;
-  description:string;
+export interface CutList {
+  item_name: string;
+  material_details: string;
+  description: string;
 }
 
 export interface Operator {
@@ -53,13 +53,13 @@ export interface Project {
   completed: number;
   inProgress: number;
   progress: number;
-  project_name:string;
-  lead_code:string;
-  sqft_processed:string;
-processed:string;
-sqft_pending:string;
-pending:string;
-progress_sqft:string
+  project_name: string;
+  lead_code: string;
+  sqft_processed: string;
+  processed: string;
+  sqft_pending: string;
+  pending: string;
+  progress_sqft: string
 
 
 }
@@ -107,12 +107,12 @@ export type FilterOptions = {
   operator: string;
   status: string;
   dateRange:
-    | "today"
-    | "yesterday"
-    | "last7days"
-    | "thisMonth"
-    | "lastMonth"
-    | "custom";
+  | "today"
+  | "yesterday"
+  | "last7days"
+  | "thisMonth"
+  | "lastMonth"
+  | "custom";
   startDate?: string; // format: "YYYY-MM-DD", only used when dateRange === "custom"
   endDate?: string;   // format: "YYYY-MM-DD", only used when dateRange === "custom"
 };
@@ -124,8 +124,8 @@ export interface MachineData {
   id: number;
   machine_name: string;
   machine_code: string;
-  machine_type_id:number;
-  machine_type:string,
+  machine_type_id: number;
+  machine_type: string,
   status: MachineStatus;
   scan_type: MachineScanType;
   description: string;
@@ -138,7 +138,7 @@ export interface MachineData {
   created_at: string;
   updated_at: string;
   updated_by: number;
-  
+
 }
 
 export interface GetMachinesByVendorResponse {
@@ -159,7 +159,7 @@ export interface CreateMachinePayload {
   target_per_hour: number;
   created_by?: number;
   machine_image: File;
-  updated_by?:number;
+  updated_by?: number;
 }
 
 export interface UpdateMachinePayload {
@@ -347,6 +347,8 @@ export type CreateTrackTraceProjectRequest = {
   client_name?: string;
   client_address?: string;
   client_contact_no?: string;
+  packing_type?: PackingType;
+
 };
 
 export interface CreateTrackTraceProjectResponse {
@@ -369,4 +371,12 @@ export interface TrackTraceLeadOption {
 export interface TrackTraceVendorConfig {
   vendor_id: number;
   is_crm_enabled: boolean;
+}
+
+export enum PackingType {
+  DEFAULT =
+  "DEFAULT",
+
+  GROUPWISE =
+  "GROUPWISE",
 }
