@@ -183,11 +183,13 @@ export const useCreateLeadSpecification = () => {
       vendorId,
       leadId,
       createdBy,
+      itemCodeId,
     }: {
       vendorId: number;
       leadId: number;
       createdBy: number;
-    }) => createLeadSpecification(vendorId, leadId, createdBy),
+      itemCodeId?: number;
+    }) => createLeadSpecification(vendorId, leadId, createdBy, itemCodeId),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ["leadSpecifications", variables.vendorId, variables.leadId],

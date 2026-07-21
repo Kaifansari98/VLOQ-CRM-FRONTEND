@@ -628,6 +628,8 @@ export interface LeadSpecificationEntry {
   lead_id: number;
   name: string;
   lights_remark: LightsRemark | null;
+  item_code_id: number | null;
+  productItemCode?: { id: number; item_code: string } | null;
   created_at: string;
   created_by: number;
 }
@@ -647,10 +649,11 @@ export const createLeadSpecification = async (
   vendorId: number,
   leadId: number,
   createdBy: number,
+  itemCodeId?: number,
 ): Promise<LeadSpecificationEntry> => {
   const { data } = await apiClient.post(
     `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/specifications`,
-    { created_by: createdBy },
+    { created_by: createdBy, item_code_id: itemCodeId },
   );
 
   return data?.data;

@@ -12,6 +12,8 @@ import {
   useCreateLeadSpecification,
 } from "@/hooks/designing-stage/designing-leads-hooks";
 import type { LeadSpecificationEntry } from "@/api/designingStageQueries";
+import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
+import AssignToPicker from "@/components/assign-to-picker";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,11 +32,47 @@ export default function SpecificationsTab() {
   const userId = useAppSelector((state) => state.auth.user?.id);
 
   const [openCreateConfirm, setOpenCreateConfirm] = useState(false);
+  const [selectedItemCodeId, setSelectedItemCodeId] = useState<number | null>(
+    null,
+  );
   const [selectedSpec, setSelectedSpec] =
     useState<LeadSpecificationEntry | null>(null);
 
   const { data: specifications = [] } = useLeadSpecifications(vendorId, leadId);
   const hasSpecifications = specifications.length > 0;
+
+  const {
+    data: structureInstancesData,
+    isLoading: isProductItemCodesLoading,
+  } = useLeadProductStructureInstances(leadId, vendorId);
+  const structureInstances = structureInstancesData?.data || [];
+  const itemCodeGroupMap = new Map<number, string>(
+    structureInstances
+      .filter((instance: any) => instance.productItemCode)
+      .map((instance: any) => [
+        instance.productItemCode.id,
+        instance.productType?.type ||
+          instance.productItemCode?.productStructure?.productType?.type ||
+          "—",
+      ]),
+  );
+  const itemCodePickerData = Array.from(
+    new Map<number, { id: number; label: string; subLabel: string }>(
+      structureInstances
+        .filter((instance: any) => instance.productItemCode)
+        .map((instance: any) => [
+          instance.productItemCode.id,
+          {
+            id: instance.productItemCode.id,
+            label: instance.productItemCode.item_code,
+            subLabel: `${itemCodeGroupMap.get(instance.productItemCode.id)}`,
+          },
+        ]),
+    ).values(),
+  );
+  const selectedItemGroup = selectedItemCodeId
+    ? itemCodeGroupMap.get(selectedItemCodeId)
+    : undefined;
 
   const createSpecification = useCreateLeadSpecification();
 
@@ -48,7 +86,12 @@ export default function SpecificationsTab() {
     }
 
     createSpecification.mutate(
-      { vendorId, leadId, createdBy: userId },
+      {
+        vendorId,
+        leadId,
+        createdBy: userId,
+        itemCodeId: selectedItemCodeId ?? undefined,
+      },
       {
         onSuccess: () => {
           toastManager.add({
@@ -56,6 +99,7 @@ export default function SpecificationsTab() {
             type: "success",
           });
           setOpenCreateConfirm(false);
+          setSelectedItemCodeId(null);
         },
         onError: (err: any) => {
           toastManager.add({
@@ -112,7 +156,13 @@ export default function SpecificationsTab() {
         />
       )}
 
-      <AlertDialog open={openCreateConfirm} onOpenChange={setOpenCreateConfirm}>
+      <AlertDialog
+        open={openCreateConfirm}
+        onOpenChange={(open) => {
+          setOpenCreateConfirm(open);
+          if (!open) setSelectedItemCodeId(null);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Create Specification?</AlertDialogTitle>
@@ -120,6 +170,30 @@ export default function SpecificationsTab() {
               This will create a new specification card for this lead.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="px-1">
+            <label className="text-xs font-medium text-muted-foreground">
+              Item Code
+            </label>
+            <div className="mt-1">
+              {isProductItemCodesLoading ? (
+                <p className="text-xs text-muted-foreground">
+                  Loading item codes...
+                </p>
+              ) : (
+                <AssignToPicker
+                  data={itemCodePickerData}
+                  value={selectedItemCodeId ?? undefined}
+                  onChange={(id) => setSelectedItemCodeId(id)}
+                  placeholder="Search item code..."
+                />
+              )}
+            </div>
+            {selectedItemCodeId && (
+              <div className="mt-2 flex items-center gap-2 text-xs">
+                <span className="text-foreground">{selectedItemGroup}</span>
+              </div>
+            )}
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={createSpecification.isPending}>
               Cancel
