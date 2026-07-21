@@ -19,6 +19,7 @@ import {
   BarChart3,
   MapPinned,
   Building2,
+  Megaphone,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -49,6 +50,11 @@ const data = {
       title: "Dashboard",
       url: "/dashboard",
       icon: LayoutDashboard,
+    },
+    {
+      title: "Broadcast",
+      url: "/dashboard/broadcast",
+      icon: Megaphone,
     },
     {
       title: "CRM Reports",
