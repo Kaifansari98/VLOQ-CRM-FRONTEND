@@ -768,16 +768,13 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
       return;
     }
 
-    // Local duplicate account number + IFSC check
+    // Local duplicate account number check
     const isDuplicateBank = banks.some((b, i) => {
       if (editingBankIndex !== null && i === editingBankIndex) return false;
-      return (
-        b.account_no === bankForm.account_no &&
-        b.ifsc.toUpperCase() === bankForm.ifsc.toUpperCase()
-      );
+      return b.account_no === bankForm.account_no;
     });
     if (isDuplicateBank) {
-      toast.error("A bank account with this Account Number and IFSC Code has already been added.");
+      toast.error("A bank account with this Account Number has already been added.");
       return;
     }
 
@@ -862,6 +859,14 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
     const docTypeObj = (metaDataResponse?.data?.documentTypes || []).find(
       (d) => String(d.id) === String(docForm.document_type_id)
     );
+
+    const isDuplicate = documents.some(
+      (d, i) => i !== editingDocIndex && String(d.document_type_id) === String(docForm.document_type_id)
+    );
+    if (isDuplicate) {
+      toast.error(`A document of type "${docTypeObj?.document_name || "selected type"}" has already been uploaded.`);
+      return;
+    }
 
     const localUrl = docForm.file ? URL.createObjectURL(docForm.file) : null;
 
@@ -2204,11 +2209,16 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
                       className="flex h-9 w-full rounded-md border border-zinc-200 dark:border-zinc-700 bg-transparent dark:bg-zinc-900 dark:text-white px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-950 dark:focus-visible:ring-zinc-400"
                     >
                       <option value="">Select Document Type</option>
-                      {(metaDataResponse?.data?.documentTypes || []).map((docType) => (
-                        <option key={docType.id} value={docType.id}>
-                          {docType.document_name}
-                        </option>
-                      ))}
+                      {(metaDataResponse?.data?.documentTypes || []).map((docType) => {
+                        const isAlreadySelected = documents.some(
+                          (d, idx) => idx !== editingDocIndex && String(d.document_type_id) === String(docType.id)
+                        );
+                        return (
+                          <option key={docType.id} value={docType.id} disabled={isAlreadySelected}>
+                            {docType.document_name} {isAlreadySelected ? " (Already Added)" : ""}
+                          </option>
+                        );
+                      })}
                     </select>
                     {docTouched.document_type_id && docErrors.document_type_id?._errors && <p className="text-red-500 text-[10px] mt-0.5">{docErrors.document_type_id._errors[0]}</p>}
                   </div>

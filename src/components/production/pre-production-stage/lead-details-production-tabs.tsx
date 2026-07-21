@@ -8,8 +8,8 @@ import {
   useCheckPreProductionFilesReady,
 } from "@/api/production/production-api";
 import { useAppSelector } from "@/redux/store";
-import React, { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { canViewDefaultSubTabProductionStage } from "@/components/utils/privileges";
 import ProductionFilesSection from "../order-login-stage/ProductionFilesModal";
 import PreProductionFilesSection from "./PreProductionFilesSection";
@@ -48,6 +48,8 @@ export default function LeadDetailsProductionUtil({
   const effectiveUserType = userType === "admin" ? "sales-executive" : userType;
   const userId = useAppSelector((s) => s.auth.user?.id);
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const instanceFromUrlRaw = searchParams.get("instance_id");
   const instanceFromUrl = instanceFromUrlRaw
     ? Number(instanceFromUrlRaw)
@@ -167,6 +169,7 @@ export default function LeadDetailsProductionUtil({
   const normalizedUserType = userType?.trim()?.toLowerCase();
   const canAccessAllTabs =
     normalizedUserType === "super-admin" ||
+    normalizedUserType === "admin" ||
     normalizedUserType === "factory" ||
     normalizedUserType === "pre-prod" ||
     normalizedUserType === "auditor";
@@ -204,7 +207,13 @@ export default function LeadDetailsProductionUtil({
           normalizedUserType ?? "",
         );
 
-  const allTabs = [
+  const handleTabChange = useCallback((tabId: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", tabId);
+    router.replace(`${pathname}?${params.toString()}`);
+  }, [router, pathname, searchParams]);
+
+  const allTabs = useMemo(() => [
     {
       id: "productionFiles",
       title: "Production Files",
@@ -292,7 +301,20 @@ export default function LeadDetailsProductionUtil({
         />
       ),
     },
-  ];
+  ], [
+    canViewProductionFiles,
+    normalizedUserType,
+    leadId,
+    accountId,
+    effectiveInstanceId,
+    showPreProductionTab,
+    canViewPreProductionFiles,
+    canAccessUnderProduction,
+    readyForUnderProduction,
+    isOrderLoginFilled,
+    canViewPostProduction,
+    readyForPostProduction,
+  ]);
 
   const showInstanceTabs =
     hasMultipleInstances &&
@@ -400,6 +422,7 @@ export default function LeadDetailsProductionUtil({
           const firstEnabledTab = allTabs.find((tab) => !tab.disabled);
           return firstEnabledTab ? firstEnabledTab.id : "productionFiles";
         })()}
+        onChange={handleTabChange}
       />
     </div>
   );
