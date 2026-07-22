@@ -150,10 +150,27 @@ export interface ProjectDetailData {
     total: number; scanned: number; pending: number; pct: number;
   }[];
   boxes: {
-    id: number; box_name: string; box_status: string; items_count: number;
-    factory_out_at: string | null; factory_out_by: string | null;
-    site_in_at: string | null; site_in_by: string | null;
+  id: number;
+  box_name: string;
+  box_status: string;
+  items_count: number;
+
+  factory_out_at: string | null;
+  factory_out_by: string | null;
+  site_in_at: string | null;
+  site_in_by: string | null;
+
+  box_info_values: {
+    id?: number;
+    field_id: number;
+    field_label: string;
+    field_key: string;
+    field_type: string;
+    field_value: string;
+    is_required?: boolean;
+    sort_order?: number;
   }[];
+}[];
   cutlist: {
     id: number; item_name: string; unique_code: string; description: string;
     qty: number; category: string; group: string;

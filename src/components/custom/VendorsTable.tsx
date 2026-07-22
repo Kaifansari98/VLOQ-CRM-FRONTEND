@@ -39,7 +39,22 @@ type VendorRow = {
   primary_contact_email: string;
   primary_contact_number: string;
   primary_contact_name: string;
+
+  gst_no?: string | null;
+  toll_free_no?: string | null;
+  website_link?: string | null;
+  tag_line?: string | null;
+  address?: string | null;
+  pincode?: string | null;
+  city?: string | null;
+  state_id?: number | null;
+  state?: {
+    id: number;
+    name: string;
+  } | null;
+
   status: string;
+  handlesLargeScaleProjects: boolean;
   is_crm_enabled: boolean;
   is_inventory_enabled: boolean;
   is_tracktrace_enabled: boolean;
@@ -93,28 +108,40 @@ export default function VendorsTable({
   const [viewerOpen, setViewerOpen] = React.useState(false);
   const [viewerUrl, setViewerUrl] = React.useState("");
 
-  const tableData = React.useMemo<VendorRow[]>(
-    () =>
-      (data?.data ?? []).map((item: VendorListItem, index: number) => ({
-        srNo: pagination.pageIndex * pagination.pageSize + index + 1,
-        id: item.id,
-        vendor_name: item.vendor_name ?? "",
-        vendor_code: item.vendor_code ?? "",
-        subdomain_url: item.subdomain_url ?? "",
-        primary_contact_name: item.primary_contact_name ?? "",
-        primary_contact_email: item.primary_contact_email ?? "",
-        primary_contact_number: item.primary_contact_number ?? "",
-        status: item.status ?? "",
-        is_crm_enabled: item.is_crm_enabled !== false,
-        is_inventory_enabled: item.is_inventory_enabled === true,
-        is_tracktrace_enabled: item.is_tracktrace_enabled === true,
-        createdAt: item.createdAt ?? "",
-        logoUrl: item.logoUrl ?? "",
-        iconUrl: item.iconUrl ?? "",
-        loginImageUrl: item.loginImageUrl ?? "",
-      })),
-    [data, pagination.pageIndex, pagination.pageSize],
-  );
+ const tableData = React.useMemo<VendorRow[]>(
+  () =>
+    (data?.data ?? []).map((item: VendorListItem, index: number) => ({
+      srNo: pagination.pageIndex * pagination.pageSize + index + 1,
+      id: item.id,
+      vendor_name: item.vendor_name ?? "",
+      vendor_code: item.vendor_code ?? "",
+      subdomain_url: item.subdomain_url ?? "",
+      primary_contact_name: item.primary_contact_name ?? "",
+      primary_contact_email: item.primary_contact_email ?? "",
+      primary_contact_number: item.primary_contact_number ?? "",
+
+      gst_no: item.gst_no ?? "",
+      toll_free_no: item.toll_free_no ?? "",
+      website_link: item.website_link ?? "",
+      tag_line: item.tag_line ?? "",
+      address: item.address ?? "",
+      pincode: item.pincode ?? "",
+      city: item.city ?? "",
+      state_id: item.state_id ?? null,
+      state: item.state ?? null,
+
+      status: item.status ?? "",
+      handlesLargeScaleProjects: item.handlesLargeScaleProjects === true,
+      is_crm_enabled: item.is_crm_enabled !== false,
+      is_inventory_enabled: item.is_inventory_enabled === true,
+      is_tracktrace_enabled: item.is_tracktrace_enabled === true,
+      createdAt: item.createdAt ?? "",
+      logoUrl: item.logoUrl ?? "",
+      iconUrl: item.iconUrl ?? "",
+      loginImageUrl: item.loginImageUrl ?? "",
+    })),
+  [data, pagination.pageIndex, pagination.pageSize],
+);
 
   const columns = React.useMemo<ColumnDef<VendorRow>[]>(
     () => [

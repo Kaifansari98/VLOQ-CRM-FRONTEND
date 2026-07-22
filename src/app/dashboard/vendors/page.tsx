@@ -34,10 +34,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCreateVendorLoginLaunch } from "@/api/auth";
-import { useOnboardVendor, useUpdateVendor } from "@/api/vendors";
+import { useOnboardVendor, useUpdateVendor, useStates } from "@/api/vendors";
 import { toastManager } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { z } from "zod";
+
+const gstRegex =
+  /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
+
+const websiteRegex =
+  /^(https?:\/\/)?([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/.*)?$/;
 
 const subdomainHostRegex =
   /^(?=.{4,253}$)(?!.*\.\.)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
@@ -76,12 +82,50 @@ const createVendorSchema = z.object({
   is_inventory_enabled: z.boolean(),
   is_tracktrace_enabled: z.boolean(),
   status: z.enum(["active", "inactive"]),
+  gst_no: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal(""))
+    .refine((value) => !value || gstRegex.test(value.toUpperCase()), {
+      message: "Enter a valid GST number",
+    }),
+
+  toll_free_no: z.string().trim().optional().or(z.literal("")),
+
+  website_link: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal(""))
+    .refine((value) => !value || websiteRegex.test(value), {
+      message: "Enter a valid website link",
+    }),
+
+  tag_line: z.string().trim().optional().or(z.literal("")),
+  address: z.string().trim().optional().or(z.literal("")),
+
+  pincode: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal(""))
+    .refine((value) => !value || /^\d{6}$/.test(value), {
+      message: "Pincode must be 6 digits",
+    }),
+
+  city: z.string().trim().optional().or(z.literal("")),
+
+  state_id: z.number().nullable().optional(),
 });
 
 type CreateVendorForm = z.infer<typeof createVendorSchema>;
 type CreateVendorFieldErrors = Partial<Record<keyof CreateVendorForm, string>>;
 
 export default function VendorsPage() {
+
+  const statesQuery = useStates();
+  const states = statesQuery.data?.data || [];
   const [openCreateVendor, setOpenCreateVendor] = React.useState(false);
   const [editingVendorId, setEditingVendorId] = React.useState<number | null>(null);
   const [form, setForm] = React.useState<CreateVendorForm>({
@@ -96,6 +140,13 @@ export default function VendorsPage() {
     is_inventory_enabled: false,
     is_tracktrace_enabled: false,
     status: "active",
+    gst_no: "",
+toll_free_no: "",
+website_link: "",
+tag_line: "",
+address: "",
+pincode: "",
+city: "",
   });
   const [fieldErrors, setFieldErrors] = React.useState<CreateVendorFieldErrors>({});
   const [logoFile, setLogoFile] = React.useState<File[]>([]);
@@ -129,22 +180,43 @@ export default function VendorsPage() {
     [createVendorLoginLaunchMutation],
   );
 
-  const handleFieldChange =
-    (field: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement>) => {
-      const nextValue =
-        field === "primary_contact_number"
-          ? event.target.value.replace(/\D/g, "").slice(0, 10)
-          : field === "subdomain_url"
-            ? event.target.value.trim().toLowerCase()
-          : event.target.value;
+  const handleStateChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+  const value = event.target.value;
 
-      setForm((prev) => ({
-        ...prev,
-        [field]:
-          field === "vendor_code" ? nextValue.toUpperCase() : nextValue,
-      }));
-      setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
-    };
+  setForm((prev) => ({
+    ...prev,
+    state_id: value ? Number(value) : null,
+  }));
+
+  setFieldErrors((prev) => ({
+    ...prev,
+    state_id: undefined,
+  }));
+};
+
+  const handleFieldChange =
+    (field: keyof typeof form) =>
+      (event: React.ChangeEvent<HTMLInputElement>) => {
+        const nextValue =
+          field === "primary_contact_number"
+            ? event.target.value.replace(/\D/g, "").slice(0, 10)
+            : field === "pincode"
+              ? event.target.value.replace(/\D/g, "").slice(0, 6)
+              : field === "toll_free_no"
+                ? event.target.value.replace(/\D/g, "").slice(0, 15)
+                : field === "gst_no"
+                  ? event.target.value.toUpperCase().slice(0, 15)
+                  : field === "subdomain_url"
+                    ? event.target.value.trim().toLowerCase()
+                    : event.target.value;
+
+        setForm((prev) => ({
+          ...prev,
+          [field]: field === "vendor_code" ? nextValue.toUpperCase() : nextValue,
+        }));
+
+        setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
+      };
 
   const handleBooleanFieldChange =
     (
@@ -155,12 +227,12 @@ export default function VendorsPage() {
         | "is_tracktrace_enabled",
       value: boolean,
     ) =>
-    () => {
-      setForm((prev) => ({
-        ...prev,
-        [field]: value,
-      }));
-    };
+      () => {
+        setForm((prev) => ({
+          ...prev,
+          [field]: value,
+        }));
+      };
 
   const resetForm = () => {
     setForm({
@@ -175,6 +247,14 @@ export default function VendorsPage() {
       is_inventory_enabled: false,
       is_tracktrace_enabled: false,
       status: "active",
+      gst_no: "",
+      toll_free_no: "",
+      website_link: "",
+      tag_line: "",
+      address: "",
+      pincode: "",
+      city: "",
+      state_id: null,
     });
     setLogoFile([]);
     setIconFile([]);
@@ -202,8 +282,16 @@ export default function VendorsPage() {
       is_inventory_enabled: boolean;
       is_tracktrace_enabled: boolean;
       status?: string | null;
+      gst_no?: string | null;
+      toll_free_no?: string | null;
+      website_link?: string | null;
+      tag_line?: string | null;
+      address?: string | null;
+      pincode?: string | null;
+      city?: string | null;
     }) => {
       setEditingVendorId(row.id);
+      console.log("EDIT VENDOR ROW:", row);
       setForm({
         vendor_name: row.vendor_name,
         vendor_code: row.vendor_code,
@@ -216,6 +304,13 @@ export default function VendorsPage() {
         is_inventory_enabled: row.is_inventory_enabled,
         is_tracktrace_enabled: row.is_tracktrace_enabled,
         status: (row.status || "active").toLowerCase() as "active" | "inactive",
+        gst_no: row.gst_no || "",
+        toll_free_no: row.toll_free_no || "",
+        website_link: row.website_link || "",
+        tag_line: row.tag_line || "",
+        address: row.address || "",
+        pincode: row.pincode || "",
+        city: row.city || "",
       });
       setLogoFile([]);
       setIconFile([]);
@@ -238,6 +333,10 @@ export default function VendorsPage() {
         primary_contact_name: nextFieldErrors.primary_contact_name?.[0],
         primary_contact_number: nextFieldErrors.primary_contact_number?.[0],
         primary_contact_email: nextFieldErrors.primary_contact_email?.[0],
+        gst_no: nextFieldErrors.gst_no?.[0],
+        website_link: nextFieldErrors.website_link?.[0],
+        pincode: nextFieldErrors.pincode?.[0],
+        state_id: nextFieldErrors.state_id?.[0],
       });
       toastManager.add({
         title: nextFieldErrors.subdomain_url?.[0] || "Please fix the form errors",
@@ -263,6 +362,17 @@ export default function VendorsPage() {
         formData.append("is_crm_enabled", String(validatedForm.data.is_crm_enabled));
         formData.append("is_inventory_enabled", String(validatedForm.data.is_inventory_enabled));
         formData.append("is_tracktrace_enabled", String(validatedForm.data.is_tracktrace_enabled));
+        formData.append("gst_no", validatedForm.data.gst_no || "");
+        formData.append("toll_free_no", validatedForm.data.toll_free_no || "");
+        formData.append("website_link", validatedForm.data.website_link || "");
+        formData.append("tag_line", validatedForm.data.tag_line || "");
+        formData.append("address", validatedForm.data.address || "");
+        formData.append("pincode", validatedForm.data.pincode || "");
+        formData.append("city", validatedForm.data.city || "");
+        formData.append(
+          "state_id",
+          validatedForm.data.state_id ? String(validatedForm.data.state_id) : ""
+        );
 
         if (logoFile[0]) {
           formData.append("logo", logoFile[0]);
@@ -294,6 +404,17 @@ export default function VendorsPage() {
         formData.append("is_crm_enabled", String(validatedForm.data.is_crm_enabled));
         formData.append("is_inventory_enabled", String(validatedForm.data.is_inventory_enabled));
         formData.append("is_tracktrace_enabled", String(validatedForm.data.is_tracktrace_enabled));
+        formData.append("gst_no", validatedForm.data.gst_no || "");
+        formData.append("toll_free_no", validatedForm.data.toll_free_no || "");
+        formData.append("website_link", validatedForm.data.website_link || "");
+        formData.append("tag_line", validatedForm.data.tag_line || "");
+        formData.append("address", validatedForm.data.address || "");
+        formData.append("pincode", validatedForm.data.pincode || "");
+        formData.append("city", validatedForm.data.city || "");
+        formData.append(
+          "state_id",
+          validatedForm.data.state_id ? String(validatedForm.data.state_id) : ""
+        );
 
         if (logoFile[0]) {
           formData.append("logo", logoFile[0]);
@@ -380,213 +501,320 @@ export default function VendorsPage() {
         size="lg"
       >
         <form className="space-y-4 p-6" onSubmit={handleSubmitVendor}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <Label htmlFor="vendor_name">Vendor Name</Label>
-                <Input
-                  id="vendor_name"
-                  value={form.vendor_name}
-                  onChange={handleFieldChange("vendor_name")}
-                  placeholder="Enter vendor name"
-                  required
-                />
-                {fieldErrors.vendor_name ? (
-                  <p className="text-xs text-destructive">{fieldErrors.vendor_name}</p>
-                ) : null}
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="vendor_code">Vendor Code</Label>
-                <Input
-                  id="vendor_code"
-                  value={form.vendor_code}
-                  onChange={handleFieldChange("vendor_code")}
-                  placeholder="Enter vendor code"
-                  required
-                />
-                {fieldErrors.vendor_code ? (
-                  <p className="text-xs text-destructive">{fieldErrors.vendor_code}</p>
-                ) : null}
-              </div>
-            </div>
-
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
-              <Label htmlFor="subdomain_url">Domain</Label>
+              <Label htmlFor="vendor_name">Vendor Name</Label>
               <Input
-                id="subdomain_url"
-                value={form.subdomain_url}
-                onChange={handleFieldChange("subdomain_url")}
-                placeholder="durian.shambhala.com"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
+                id="vendor_name"
+                value={form.vendor_name}
+                onChange={handleFieldChange("vendor_name")}
+                placeholder="Enter vendor name"
                 required
               />
-              <p className="text-xs text-muted-foreground">
-                Enter domain only. Do not include protocol, path, or query string.
-              </p>
-              {fieldErrors.subdomain_url ? (
-                <p className="text-xs text-destructive">{fieldErrors.subdomain_url}</p>
+              {fieldErrors.vendor_name ? (
+                <p className="text-xs text-destructive">{fieldErrors.vendor_name}</p>
               ) : null}
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <Label htmlFor="primary_contact_name">Primary Contact Name</Label>
-                <Input
-                  id="primary_contact_name"
-                  value={form.primary_contact_name}
-                  onChange={handleFieldChange("primary_contact_name")}
-                  placeholder="Enter primary contact name"
-                  required
-                />
-                {fieldErrors.primary_contact_name ? (
-                  <p className="text-xs text-destructive">
-                    {fieldErrors.primary_contact_name}
-                  </p>
-                ) : null}
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="primary_contact_number">Primary Contact Number</Label>
-                <Input
-                  id="primary_contact_number"
-                  inputMode="numeric"
-                  value={form.primary_contact_number}
-                  onChange={handleFieldChange("primary_contact_number")}
-                  placeholder="Enter 10 digit number"
-                  required
-                />
-                {fieldErrors.primary_contact_number ? (
-                  <p className="text-xs text-destructive">
-                    {fieldErrors.primary_contact_number}
-                  </p>
-                ) : null}
-              </div>
-            </div>
-
             <div className="grid gap-2">
-              <Label htmlFor="primary_contact_email">Primary Contact Email</Label>
+              <Label htmlFor="vendor_code">Vendor Code</Label>
               <Input
-                id="primary_contact_email"
-                type="email"
-                value={form.primary_contact_email}
-                onChange={handleFieldChange("primary_contact_email")}
-                placeholder="Enter primary contact email"
+                id="vendor_code"
+                value={form.vendor_code}
+                onChange={handleFieldChange("vendor_code")}
+                placeholder="Enter vendor code"
                 required
               />
-              {fieldErrors.primary_contact_email ? (
+              {fieldErrors.vendor_code ? (
+                <p className="text-xs text-destructive">{fieldErrors.vendor_code}</p>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="subdomain_url">Domain</Label>
+            <Input
+              id="subdomain_url"
+              value={form.subdomain_url}
+              onChange={handleFieldChange("subdomain_url")}
+              placeholder="durian.shambhala.com"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              required
+            />
+            <p className="text-xs text-muted-foreground">
+              Enter domain only. Do not include protocol, path, or query string.
+            </p>
+            {fieldErrors.subdomain_url ? (
+              <p className="text-xs text-destructive">{fieldErrors.subdomain_url}</p>
+            ) : null}
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <Label htmlFor="primary_contact_name">Primary Contact Name</Label>
+              <Input
+                id="primary_contact_name"
+                value={form.primary_contact_name}
+                onChange={handleFieldChange("primary_contact_name")}
+                placeholder="Enter primary contact name"
+                required
+              />
+              {fieldErrors.primary_contact_name ? (
                 <p className="text-xs text-destructive">
-                  {fieldErrors.primary_contact_email}
+                  {fieldErrors.primary_contact_name}
                 </p>
               ) : null}
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <Label>Handles Large Scale Projects</Label>
-                <div className="flex items-center gap-6 pt-1">
-                  {[
-                    { label: "Yes", value: true },
-                    { label: "No", value: false },
-                  ].map((option) => (
-                    <label
-                      key={`large-scale-${String(option.value)}`}
-                      className="flex cursor-pointer items-center gap-2"
-                      htmlFor={`large-scale-${String(option.value)}`}
-                    >
-                      <Checkbox
-                        id={`large-scale-${String(option.value)}`}
-                        checked={form.handlesLargeScaleProjects === option.value}
-                        onCheckedChange={handleBooleanFieldChange(
-                          "handlesLargeScaleProjects",
-                          option.value,
-                        )}
-                      />
-                      <span className="text-sm font-medium">{option.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+            <div className="grid gap-2">
+              <Label htmlFor="primary_contact_number">Primary Contact Number</Label>
+              <Input
+                id="primary_contact_number"
+                inputMode="numeric"
+                value={form.primary_contact_number}
+                onChange={handleFieldChange("primary_contact_number")}
+                placeholder="Enter 10 digit number"
+                required
+              />
+              {fieldErrors.primary_contact_number ? (
+                <p className="text-xs text-destructive">
+                  {fieldErrors.primary_contact_number}
+                </p>
+              ) : null}
+            </div>
+          </div>
 
-              <div className="grid gap-2">
-                <Label>CRM Enabled</Label>
-                <div className="flex items-center gap-6 pt-1">
-                  {[
-                    { label: "Yes", value: true },
-                    { label: "No", value: false },
-                  ].map((option) => (
-                    <label
-                      key={`crm-${String(option.value)}`}
-                      className="flex items-center gap-2 cursor-pointer"
-                      htmlFor={`crm-${String(option.value)}`}
-                    >
-                      <Checkbox
-                        id={`crm-${String(option.value)}`}
-                        checked={form.is_crm_enabled === option.value}
-                        onCheckedChange={handleBooleanFieldChange(
-                          "is_crm_enabled",
-                          option.value,
-                        )}
-                      />
-                      <span className="text-sm font-medium">{option.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+          <div className="grid gap-2">
+            <Label htmlFor="primary_contact_email">Primary Contact Email</Label>
+            <Input
+              id="primary_contact_email"
+              type="email"
+              value={form.primary_contact_email}
+              onChange={handleFieldChange("primary_contact_email")}
+              placeholder="Enter primary contact email"
+              required
+            />
+            {fieldErrors.primary_contact_email ? (
+              <p className="text-xs text-destructive">
+                {fieldErrors.primary_contact_email}
+              </p>
+            ) : null}
+          </div>
 
-              <div className="grid gap-2">
-                <Label>Inventory Enabled</Label>
-                <div className="flex items-center gap-6 pt-1">
-                  {[
-                    { label: "Yes", value: true },
-                    { label: "No", value: false },
-                  ].map((option) => (
-                    <label
-                      key={`inventory-${String(option.value)}`}
-                      className="flex items-center gap-2 cursor-pointer"
-                      htmlFor={`inventory-${String(option.value)}`}
-                    >
-                      <Checkbox
-                        id={`inventory-${String(option.value)}`}
-                        checked={form.is_inventory_enabled === option.value}
-                        onCheckedChange={handleBooleanFieldChange(
-                          "is_inventory_enabled",
-                          option.value,
-                        )}
-                      />
-                      <span className="text-sm font-medium">{option.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+  <div className="space-y-2">
+    <Label htmlFor="gst_no">GST No</Label>
+    <Input
+      id="gst_no"
+      value={form.gst_no}
+      onChange={handleFieldChange("gst_no")}
+      placeholder="27AAZFA7533R1ZC"
+      maxLength={15}
+    />
+    {fieldErrors.gst_no && (
+      <p className="text-xs text-destructive">{fieldErrors.gst_no}</p>
+    )}
+  </div>
 
-              <div className="grid gap-2">
-                <Label>Track Trace Enabled</Label>
-                <div className="flex items-center gap-6 pt-1">
-                  {[
-                    { label: "Yes", value: true },
-                    { label: "No", value: false },
-                  ].map((option) => (
-                    <label
-                      key={`tracktrace-${String(option.value)}`}
-                      className="flex items-center gap-2 cursor-pointer"
-                      htmlFor={`tracktrace-${String(option.value)}`}
-                    >
-                      <Checkbox
-                        id={`tracktrace-${String(option.value)}`}
-                        checked={form.is_tracktrace_enabled === option.value}
-                        onCheckedChange={handleBooleanFieldChange(
-                          "is_tracktrace_enabled",
-                          option.value,
-                        )}
-                      />
-                      <span className="text-sm font-medium">{option.label}</span>
-                    </label>
-                  ))}
-                </div>
+  <div className="space-y-2">
+    <Label htmlFor="toll_free_no">Toll Free</Label>
+    <Input
+      id="toll_free_no"
+      value={form.toll_free_no}
+      onChange={handleFieldChange("toll_free_no")}
+      placeholder="18002674949"
+    />
+  </div>
+
+  <div className="space-y-2">
+    <Label htmlFor="website_link">Website Link</Label>
+    <Input
+      id="website_link"
+      value={form.website_link}
+      onChange={handleFieldChange("website_link")}
+      placeholder="www.adarshindia.in"
+    />
+    {fieldErrors.website_link && (
+      <p className="text-xs text-destructive">{fieldErrors.website_link}</p>
+    )}
+  </div>
+
+  <div className="space-y-2">
+    <Label htmlFor="tag_line">Tag Line</Label>
+    <Input
+      id="tag_line"
+      value={form.tag_line}
+      onChange={handleFieldChange("tag_line")}
+      placeholder="Design. Build. Deliver"
+    />
+  </div>
+</div>
+
+<div className="space-y-2">
+  <Label htmlFor="address">Address</Label>
+  <Input
+    id="address"
+    value={form.address}
+    onChange={handleFieldChange("address")}
+    placeholder="280 & 283, Bilavali"
+  />
+</div>
+
+<div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+  <div className="space-y-2">
+    <Label htmlFor="pincode">Pincode</Label>
+    <Input
+      id="pincode"
+      value={form.pincode}
+      onChange={handleFieldChange("pincode")}
+      placeholder="421312"
+      maxLength={6}
+    />
+    {fieldErrors.pincode && (
+      <p className="text-xs text-destructive">{fieldErrors.pincode}</p>
+    )}
+  </div>
+
+  <div className="space-y-2">
+    <Label htmlFor="city">City</Label>
+    <Input
+      id="city"
+      value={form.city}
+      onChange={handleFieldChange("city")}
+      placeholder="Palghar"
+    />
+  </div>
+
+  <div className="space-y-2">
+    <Label htmlFor="state_id">State</Label>
+   <select
+  id="state_id"
+  value={form.state_id || ""}
+  onChange={handleStateChange}
+  className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+>
+  <option value="">Select State</option>
+
+  {states.map((state) => (
+    <option key={state.id} value={state.id}>
+      {state.name}
+    </option>
+  ))}
+</select>
+
+    {fieldErrors.state_id && (
+      <p className="text-xs text-destructive">{fieldErrors.state_id}</p>
+    )}
+  </div>
+</div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <Label>Handles Large Scale Projects</Label>
+              <div className="flex items-center gap-6 pt-1">
+                {[
+                  { label: "Yes", value: true },
+                  { label: "No", value: false },
+                ].map((option) => (
+                  <label
+                    key={`large-scale-${String(option.value)}`}
+                    className="flex cursor-pointer items-center gap-2"
+                    htmlFor={`large-scale-${String(option.value)}`}
+                  >
+                    <Checkbox
+                      id={`large-scale-${String(option.value)}`}
+                      checked={form.handlesLargeScaleProjects === option.value}
+                      onCheckedChange={handleBooleanFieldChange(
+                        "handlesLargeScaleProjects",
+                        option.value,
+                      )}
+                    />
+                    <span className="text-sm font-medium">{option.label}</span>
+                  </label>
+                ))}
               </div>
             </div>
+
+            <div className="grid gap-2">
+              <Label>CRM Enabled</Label>
+              <div className="flex items-center gap-6 pt-1">
+                {[
+                  { label: "Yes", value: true },
+                  { label: "No", value: false },
+                ].map((option) => (
+                  <label
+                    key={`crm-${String(option.value)}`}
+                    className="flex items-center gap-2 cursor-pointer"
+                    htmlFor={`crm-${String(option.value)}`}
+                  >
+                    <Checkbox
+                      id={`crm-${String(option.value)}`}
+                      checked={form.is_crm_enabled === option.value}
+                      onCheckedChange={handleBooleanFieldChange(
+                        "is_crm_enabled",
+                        option.value,
+                      )}
+                    />
+                    <span className="text-sm font-medium">{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Inventory Enabled</Label>
+              <div className="flex items-center gap-6 pt-1">
+                {[
+                  { label: "Yes", value: true },
+                  { label: "No", value: false },
+                ].map((option) => (
+                  <label
+                    key={`inventory-${String(option.value)}`}
+                    className="flex items-center gap-2 cursor-pointer"
+                    htmlFor={`inventory-${String(option.value)}`}
+                  >
+                    <Checkbox
+                      id={`inventory-${String(option.value)}`}
+                      checked={form.is_inventory_enabled === option.value}
+                      onCheckedChange={handleBooleanFieldChange(
+                        "is_inventory_enabled",
+                        option.value,
+                      )}
+                    />
+                    <span className="text-sm font-medium">{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Track Trace Enabled</Label>
+              <div className="flex items-center gap-6 pt-1">
+                {[
+                  { label: "Yes", value: true },
+                  { label: "No", value: false },
+                ].map((option) => (
+                  <label
+                    key={`tracktrace-${String(option.value)}`}
+                    className="flex items-center gap-2 cursor-pointer"
+                    htmlFor={`tracktrace-${String(option.value)}`}
+                  >
+                    <Checkbox
+                      id={`tracktrace-${String(option.value)}`}
+                      checked={form.is_tracktrace_enabled === option.value}
+                      onCheckedChange={handleBooleanFieldChange(
+                        "is_tracktrace_enabled",
+                        option.value,
+                      )}
+                    />
+                    <span className="text-sm font-medium">{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
 
             <div className="grid gap-2">
               <Label htmlFor="status">Status</Label>
@@ -606,65 +834,65 @@ export default function VendorsPage() {
               </Select>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <Label>Upload Logo</Label>
-                <FileUploadField
-                  value={logoFile}
-                  onChange={setLogoFile}
-                  accept="image/*"
-                  multiple={false}
-                  maxFiles={1}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Upload Icon</Label>
-                <FileUploadField
-                  value={iconFile}
-                  onChange={setIconFile}
-                  accept="image/*"
-                  multiple={false}
-                  maxFiles={1}
-                />
-              </div>
-            </div>
-
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
-              <Label>Upload Login Image</Label>
+              <Label>Upload Logo</Label>
               <FileUploadField
-                value={loginImageFile}
-                onChange={setLoginImageFile}
+                value={logoFile}
+                onChange={setLogoFile}
                 accept="image/*"
                 multiple={false}
                 maxFiles={1}
               />
             </div>
+            <div className="grid gap-2">
+              <Label>Upload Icon</Label>
+              <FileUploadField
+                value={iconFile}
+                onChange={setIconFile}
+                accept="image/*"
+                multiple={false}
+                maxFiles={1}
+              />
+            </div>
+          </div>
 
-            <DialogFooter className="border-t pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setOpenCreateVendor(false);
-                  resetForm();
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={onboardVendorMutation.isPending || updateVendorMutation.isPending}
-              >
-                {editingVendorId
-                  ? updateVendorMutation.isPending
-                    ? "Updating..."
-                    : "Update"
-                  : onboardVendorMutation.isPending
-                    ? "Creating..."
-                    : "Confirm"}
-              </Button>
-            </DialogFooter>
-          </form>
+          <div className="grid gap-2">
+            <Label>Upload Login Image</Label>
+            <FileUploadField
+              value={loginImageFile}
+              onChange={setLoginImageFile}
+              accept="image/*"
+              multiple={false}
+              maxFiles={1}
+            />
+          </div>
+
+          <DialogFooter className="border-t pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setOpenCreateVendor(false);
+                resetForm();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={onboardVendorMutation.isPending || updateVendorMutation.isPending}
+            >
+              {editingVendorId
+                ? updateVendorMutation.isPending
+                  ? "Updating..."
+                  : "Update"
+                : onboardVendorMutation.isPending
+                  ? "Creating..."
+                  : "Confirm"}
+            </Button>
+          </DialogFooter>
+        </form>
       </BaseModal>
     </>
   );
