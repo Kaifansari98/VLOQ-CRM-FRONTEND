@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { LucideIcon } from "lucide-react";
 import { useFranchisesByVendorId } from "@/api/franchise";
 import { useLeadStats } from "@/hooks/useLeadStats";
+import { useActivityStatusCounts } from "@/hooks/useActivityStatus";
 import { useAppSelector } from "@/redux/store";
 import { Badge } from "./ui/badge";
 import { usePathname } from "next/navigation";
@@ -166,6 +167,12 @@ export function NavMain({
     userId,
     franchiseId
   );
+  const { data: activityStatusCounts, isLoading: isActivityStatusCountsLoading } =
+    useActivityStatusCounts(
+      vendorId,
+      franchiseId,
+      normalizedUserType === "sales-executive" ? userId : undefined,
+    );
   const { data: vendorFranchises = [], isLoading: isFranchisesLoading } =
     useFranchisesByVendorId(
       vendorId ?? 0,
@@ -278,9 +285,54 @@ export function NavMain({
     });
   }, [handlesLargeScaleProjects, mastersItems, isActiveFranchiseB2b]);
 
+  const enhancedNavItems = React.useMemo(() => {
+    if (!handlesLargeScaleProjects) return items;
+
+    return items.map((item) => {
+      if (item.title !== "Leads" || !item.items?.length) return item;
+      if (item.items.some((sub) => sub.title === "On Hold")) return item;
+
+      const openLeadsIndex = item.items.findIndex(
+        (sub) => sub.title === "Open Leads",
+      );
+      if (openLeadsIndex === -1) return item;
+
+      const nextItems = [...item.items];
+      nextItems.splice(
+        openLeadsIndex + 1,
+        0,
+        {
+          title: "On Hold",
+          url: "/dashboard/leads/leadstable?tab=onHold",
+          customCount: activityStatusCounts?.onHold ?? 0,
+          customCountLoading: isActivityStatusCountsLoading,
+        },
+        {
+          title: "Lost Approval",
+          url: "/dashboard/leads/leadstable?tab=lostApproval",
+          customCount: activityStatusCounts?.lostApproval ?? 0,
+          customCountLoading: isActivityStatusCountsLoading,
+        },
+        {
+          title: "Lost",
+          url: "/dashboard/leads/leadstable?tab=lost",
+          customCount: activityStatusCounts?.lost ?? 0,
+          customCountLoading: isActivityStatusCountsLoading,
+        },
+      );
+
+      return { ...item, items: nextItems };
+    });
+  }, [
+    items,
+    handlesLargeScaleProjects,
+    activityStatusCounts,
+    isActivityStatusCountsLoading,
+  ]);
+
   const pathname = usePathname();
   const allItems = [
-    ...items,
+    ...enhancedNavItems,
     ...(trackTraceItems ?? []),
     ...(inventoryItems ?? []),
     ...(enhancedMastersItems ?? []),
@@ -505,10 +557,10 @@ export function NavMain({
   return (
     <>
       {/* ── CRM Platform Group ── */}
-      {isCrmEnabled && items.length > 0 && (
+      {isCrmEnabled && enhancedNavItems.length > 0 && (
         <SidebarGroup>
           <SidebarGroupLabel>CRM Platform</SidebarGroupLabel>
-          <SidebarMenu>{items.map((item) => renderItem(item))}</SidebarMenu>
+          <SidebarMenu>{enhancedNavItems.map((item) => renderItem(item))}</SidebarMenu>
         </SidebarGroup>
       )}
 

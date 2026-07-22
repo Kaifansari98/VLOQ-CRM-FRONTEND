@@ -127,7 +127,6 @@ export default function LeadDetails() {
     );
     return activeFranchise?.moduled_for_b2b ?? false;
   }, [franchisesForB2b, franchiseId]);
-  console.log("isB2b :- ", isB2b);
 
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,

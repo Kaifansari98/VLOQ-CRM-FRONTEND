@@ -77,6 +77,9 @@ export default function LeadsGenerationPage() {
     const activeFranchise = franchises.find((f) => f.id === franchiseId);
     return activeFranchise?.moduled_for_b2b ?? false;
   }, [franchises, franchiseId]);
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
 
   const canShowOnHoldTab =
     isB2bFranchise
@@ -263,7 +266,7 @@ export default function LeadsGenerationPage() {
 
         <div className="flex items-center gap-2">
           <div className="flex gap-2 items-center">
-            {!isB2bFranchise && (
+            {!isB2bFranchise && !handlesLargeScaleProjects && (
               <>
                 <div className="hidden md:flex items-center gap-2">
                   {tabItems.map((item) => (
