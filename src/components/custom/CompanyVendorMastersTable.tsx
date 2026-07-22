@@ -222,9 +222,7 @@ export default function CompanyVendorMastersTable({
         email: item.email,
         address: item.address,
         in_house: item.in_house ?? false,
-        status: item.status?.status_name 
-          ? item.status.status_name.toLowerCase()
-          : (item.is_deleted ? "inactive" : "active"),
+        status: item.is_active ? "active" : "inactive",
       })),
     [data],
   );

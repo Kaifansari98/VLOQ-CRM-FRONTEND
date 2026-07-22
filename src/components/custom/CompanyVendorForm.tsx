@@ -52,7 +52,7 @@ const companyInfoSchema = z.object({
   payment_term_id: z.union([z.string(), z.number()]).refine(val => !!val, { message: "Payment Term is required" }),
   gst_no: z.string().regex(/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}[Z]{1}[A-Z\d]{1}$/, "Invalid GST No. format").min(1, "GST No. is required"),
   pan_no: z.string().regex(/^[A-Z]{5}\d{4}[A-Z]{1}$/, "Invalid PAN No. format").min(1, "PAN No. is required"),
-  status_id: z.coerce.number().min(1, "Status is required"),
+  is_active: z.boolean().default(true),
 });
 
 const addressSchema = z.object({
@@ -203,7 +203,7 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
     gst_no: "",
     pan_no: "",
     payment_term_id: "",
-    status_id: 1,
+    is_active: true,
     // Primary contact person data
     point_of_contact: "",
     contact_no: "",
@@ -412,7 +412,7 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
         gst_no: v.gst_no || "",
         pan_no: v.pan_no || "",
         payment_term_id: v.default_payment_term_id ? String(v.default_payment_term_id) : "",
-        status_id: v.status_id || 1,
+        is_active: v.is_active ?? true,
         point_of_contact: v.point_of_contact || "",
         contact_no: v.contact_no || "",
         email: v.email || "",
@@ -1067,7 +1067,7 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
       gst_no: info.gst_no || null,
       pan_no: info.pan_no || null,
       payment_term_id: info.payment_term_id ? Number(info.payment_term_id) : null,
-      status_id: info.status_id,
+      is_active: info.is_active,
       
       addresses: addresses.map((a) => ({
         id: a.id,
@@ -1542,31 +1542,29 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
                   {duplicateErrors.pan_no && <p className="text-red-500 text-[10px] mt-0.5">{duplicateErrors.pan_no}</p>}
                 </div>
                 <div className="space-y-2 relative" ref={statusDropdownRef}>
-                  <Label htmlFor="status_id">Status <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="is_active">Status <span className="text-red-500">*</span></Label>
                   <div
                     onClick={() => { setIsStatusDropdownOpen(!isStatusDropdownOpen); }}
                     className="flex min-h-[38px] w-full items-center justify-between rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-1.5 text-sm shadow-sm cursor-pointer select-none"
                   >
                     <span className="text-xs">
-                      {(() => {
-                        const selectedStatus = (metaDataResponse?.data?.statuses || []).find(
-                          (s) => Number(s.id) === Number(info.status_id)
-                        );
-                        return selectedStatus?.status_name || "Select Status";
-                      })()}
+                      {info.is_active ? "Active" : "Inactive"}
                     </span>
                     <span className="text-zinc-400 text-xs">▼</span>
                   </div>
 
                   {isStatusDropdownOpen && (
                     <div className="absolute z-50 mt-1 w-full rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-2 shadow-lg max-h-60 overflow-y-auto">
-                      {(metaDataResponse?.data?.statuses || []).map((s) => {
-                        const isSelected = Number(s.id) === Number(info.status_id);
+                      {[
+                        { label: "Active", value: true },
+                        { label: "Inactive", value: false },
+                      ].map((s) => {
+                        const isSelected = s.value === info.is_active;
                         return (
                           <div
-                            key={s.id}
+                            key={s.label}
                             onClick={() => {
-                              setInfo((p) => ({ ...p, status_id: Number(s.id) }));
+                              setInfo((p) => ({ ...p, is_active: s.value }));
                               setIsStatusDropdownOpen(false);
                             }}
                             className={cn(
@@ -1574,7 +1572,7 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
                               isSelected && "bg-zinc-100 dark:bg-zinc-800 font-semibold"
                             )}
                           >
-                            {s.status_name}
+                            {s.label}
                           </div>
                         );
                       })}

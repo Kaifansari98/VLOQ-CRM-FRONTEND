@@ -184,6 +184,7 @@ export const useCreateCompanyVendor = (vendorIdOverride?: number) => {
       createCompanyVendor(vendorId!, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: getCompanyVendorsMasterQueryKey(vendorId) });
+      queryClient.invalidateQueries({ queryKey: ["companyVendors", vendorId] });
       toastManager.add({
         title: "Company vendor created successfully.",
         type: "success",
@@ -1350,6 +1351,7 @@ export const useUpdateCompanyVendor = (vendorIdOverride?: number) => {
     }) => updateCompanyVendor(vendorId!, companyVendorId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: getCompanyVendorsMasterQueryKey(vendorId) });
+      queryClient.invalidateQueries({ queryKey: ["companyVendors", vendorId] });
       toastManager.add({
         title: "Company vendor updated successfully.",
         type: "success",
@@ -1378,6 +1380,7 @@ export const useUpdateCompanyVendorStatus = (vendorIdOverride?: number) => {
     }) => updateCompanyVendorStatus(vendorId!, companyVendorId, payload),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: getCompanyVendorsMasterQueryKey(vendorId) });
+      queryClient.invalidateQueries({ queryKey: ["companyVendors", vendorId] });
       toastManager.add({
         title: `Company vendor marked ${variables.payload.is_deleted ? "inactive" : "active"}.`,
         type: "success",

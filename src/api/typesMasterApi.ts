@@ -84,11 +84,7 @@ export interface CompanyVendorMasterEntry {
   in_house: boolean;
   is_deleted: boolean;
   vendor_id: number;
-  status_id?: number | null;
-  status?: {
-    id: number;
-    status_name: string;
-  } | null;
+  is_active?: boolean | null;
 }
 
 export interface CompanyVendorMasterResponse {
@@ -1299,7 +1295,7 @@ export interface DetailedCompanyVendorEntry {
   alternate_email?: string | null;
   gst_no?: string | null;
   pan_no?: string | null;
-  status_id?: number | null;
+  is_active?: boolean | null;
   default_payment_term_id?: number | null;
   in_house: boolean;
   is_deleted: boolean;
@@ -1309,7 +1305,6 @@ export interface DetailedCompanyVendorEntry {
   bankAccounts: CompanyVendorBankEntry[];
   documents: CompanyVendorDocMappingEntry[];
   vendorTypes: { id: number; vendor_type_id: number; vendorType?: { id: number; vendor_type_name: string } }[];
-  status?: { id: number; status_name: string };
   defaultPaymentTerm?: { id: number; term_name: string };
   paymentTerms?: { id?: number; term_name: string; description?: string | null; is_active?: boolean }[];
 }
@@ -1321,7 +1316,6 @@ export interface DetailedCompanyVendorResponse {
 
 export interface CompanyVendorMetaData {
   vendorTypes: { id: number; vendor_type_name: string }[];
-  statuses: { id: number; status_name: string }[];
   documentTypes: { id: number; document_name: string }[];
   states: { id: number; name: string }[];
   cities: { id: number; name: string; state_id: number }[];
