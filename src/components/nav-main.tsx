@@ -7,7 +7,7 @@ import { useLeadStats } from "@/hooks/useLeadStats";
 import { useActivityStatusCounts } from "@/hooks/useActivityStatus";
 import { useAppSelector } from "@/redux/store";
 import { Badge } from "./ui/badge";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useSidebar } from "@/components/ui/sidebar";
 
 import {
@@ -110,11 +110,33 @@ interface NavItem {
 
 // --------------- HELPERS ------------------
 
-function findGroupForPath(items: NavItem[], pathname: string): string | null {
+function isUrlActive(
+  pathname: string,
+  searchParams: URLSearchParams,
+  url: string,
+): boolean {
+  const [urlPath, urlQuery] = url.split("?");
+  if (!pathname.startsWith(urlPath)) return false;
+  if (!urlQuery) {
+    const tabParam = searchParams.get("tab");
+    return !tabParam || tabParam === "open";
+  }
+  const urlParams = new URLSearchParams(urlQuery);
+  for (const [key, value] of urlParams.entries()) {
+    if (searchParams.get(key) !== value) return false;
+  }
+  return true;
+}
+
+function findGroupForPath(
+  items: NavItem[],
+  pathname: string,
+  searchParams: URLSearchParams,
+): string | null {
   for (const item of items) {
     if (item.items && item.items.length > 0) {
       const hasActiveChild = item.items.some((sub) =>
-        pathname.startsWith(sub.url),
+        isUrlActive(pathname, searchParams, sub.url),
       );
       if (hasActiveChild) return item.title;
     }
@@ -331,6 +353,7 @@ export function NavMain({
   ]);
 
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const allItems = [
     ...enhancedNavItems,
     ...(trackTraceItems ?? []),
@@ -340,7 +363,7 @@ export function NavMain({
 
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
     const initial = new Set<string>();
-    const activeGroup = findGroupForPath(allItems, pathname);
+    const activeGroup = findGroupForPath(allItems, pathname, searchParams);
     if (activeGroup) {
       initial.add(activeGroup);
     } else {
@@ -350,7 +373,7 @@ export function NavMain({
   });
 
   useEffect(() => {
-    const activeGroup = findGroupForPath(allItems, pathname);
+    const activeGroup = findGroupForPath(allItems, pathname, searchParams);
     if (!activeGroup) return;
     setOpenGroups((prev) => {
       if (prev.has(activeGroup)) return prev;
@@ -358,7 +381,7 @@ export function NavMain({
       next.add(activeGroup);
       return next;
     });
-  }, [allItems, pathname]);
+  }, [allItems, pathname, searchParams]);
 
   const getCountForItem = (showCount?: string) => {
     if (!leadStats?.data || !showCount) return undefined;
@@ -395,12 +418,13 @@ export function NavMain({
 
   const renderItem = (item: NavItem) => {
     const isSingle = !item.items || item.items.length === 0;
-    const isSingleActive = isSingle && pathname.startsWith(item.url ?? "");
+    const isSingleActive =
+      isSingle && isUrlActive(pathname, searchParams, item.url ?? "");
 
     if (!isSingle) {
       const isOpen = openGroups.has(item.title);
       const isGroupActive = item.items!.some((sub) =>
-        pathname.startsWith(sub.url)
+        isUrlActive(pathname, searchParams, sub.url)
       );
 
       return (
@@ -462,7 +486,11 @@ export function NavMain({
               <CollapsibleContent>
                 <SidebarMenuSub>
                   {item.items!.map((subItem) => {
-                    const isSubActive = pathname.startsWith(subItem.url);
+                    const isSubActive = isUrlActive(
+                      pathname,
+                      searchParams,
+                      subItem.url,
+                    );
                     return (
                       <SidebarMenuSubItem key={subItem.title}>
                         <SidebarMenuSubButton asChild>
