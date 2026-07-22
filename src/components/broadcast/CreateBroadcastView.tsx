@@ -40,6 +40,7 @@ import { useUserTypes, useUsersForMaster } from "@/hooks/useTypesMaster";
 import { useFranchisesByVendorId } from "@/api/franchise";
 import { useAppSelector } from "@/redux/store";
 import { CreateBroadcastPayload } from "@/api/broadcast";
+import { toastManager } from "@/components/ui/toast";
 
 interface CreateBroadcastViewProps {
   onBack: () => void;
@@ -82,12 +83,11 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
   // Form states
   const [title, setTitle] = useState("");
   const [type, setType] = useState<BroadcastType>("circular");
-  const [summary, setSummary] = useState("");
   const [content, setContent] = useState("");
   const [department, setDepartment] = useState("Operations");
 
   // Audience State (Support Multiple Roles, Franchises and Users)
-  const [audienceType, setAudienceType] = useState<"ALL" | "ROLE" | "FRANCHISE" | "USER">("ALL");
+  const [audienceType, setAudienceType] = useState<"ALL" | "ROLE" | "FRANCHISE" | "USER" | "CUSTOM" | "">("CUSTOM");
   const [selectedRoleIds, setSelectedRoleIds] = useState<number[]>([]);
   const [selectedFranchiseIds, setSelectedFranchiseIds] = useState<number[]>([]);
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
@@ -97,23 +97,52 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
   const [userSearch, setUserSearch] = useState("");
 
   // Schedule & Attachments
-  const [scheduleType, setScheduleType] = useState("now");
+  const [scheduleType, setScheduleType] = useState("");
   const [publishDate, setPublishDate] = useState("");
   const [videoUrlInput, setVideoUrlInput] = useState("");
   const [videoLinks, setVideoLinks] = useState<string[]>([]);
   const [attachments, setAttachments] = useState<
     Array<{ id: string; name: string; size: string; type: string; fileObj?: File }>
   >([]);
+  const [scheduleVisited, setScheduleVisited] = useState(false);
+
+  // Validation error states
+  const [errors, setErrors] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (errors.audience && (selectedFranchiseIds.length > 0 || selectedRoleIds.length > 0 || selectedUserIds.length > 0 || audienceType === "ALL")) {
+      setErrors((prev) => ({ ...prev, audience: false }));
+    }
+  }, [selectedFranchiseIds, selectedRoleIds, selectedUserIds, audienceType, errors.audience]);
+
+  useEffect(() => {
+    if (scheduleType) {
+      setErrors((prev) => ({ ...prev, scheduleType: false }));
+    }
+  }, [scheduleType]);
+
+  useEffect(() => {
+    if (publishDate) {
+      setErrors((prev) => ({ ...prev, publishDate: false }));
+    }
+  }, [publishDate]);
 
   // Hydrate form fields when editing an existing broadcast
   useEffect(() => {
     if (editingBroadcast) {
       setTitle(editingBroadcast.title || "");
       setType(editingBroadcast.type || "circular");
-      setSummary(editingBroadcast.summary || "");
+
       setContent(editingBroadcast.content || "");
       setDepartment(editingBroadcast.department || "Operations");
-      setAudienceType((editingBroadcast.audienceScope as any) || "ALL");
+      setScheduleVisited(true);
+      
+      const scope = editingBroadcast.audienceScope;
+      if (scope && scope !== "ALL") {
+        setAudienceType("CUSTOM");
+      } else {
+        setAudienceType("ALL");
+      }
       
       const isSched = editingBroadcast.status === "scheduled";
       setScheduleType(isSched ? "later" : "now");
@@ -128,7 +157,7 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
           editingBroadcast.attachments.map((att, idx) => ({
             id: att.id || `att-${idx}`,
             name: att.name || "Attachment",
-            size: att.size || "1.5 MB",
+            size: att.size || "-",
             type: att.type || "pdf",
           }))
         );
@@ -140,6 +169,20 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
           .map((a: any) => Number(a.targetId));
         if (userTargetIds.length > 0) {
           setSelectedUserIds(userTargetIds);
+        }
+
+        const roleTargetIds = editingBroadcast.audiences
+          .filter((a: any) => a.audienceType === "ROLE" && a.targetId)
+          .map((a: any) => Number(a.targetId));
+        if (roleTargetIds.length > 0) {
+          setSelectedRoleIds(roleTargetIds);
+        }
+
+        const franchiseTargetIds = editingBroadcast.audiences
+          .filter((a: any) => a.audienceType === "FRANCHISE" && a.targetId)
+          .map((a: any) => Number(a.targetId));
+        if (franchiseTargetIds.length > 0) {
+          setSelectedFranchiseIds(franchiseTargetIds);
         }
       }
     }
@@ -183,10 +226,16 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
   }, [usersList, userSearch]);
 
   const toggleRoleSelect = (id: number) => {
-    if (selectedRoleIds.includes(id)) {
-      setSelectedRoleIds(selectedRoleIds.filter((rId) => rId !== id));
+    const numId = Number(id);
+    console.log("[Broadcast] Selected Role ID:", numId);
+    if (selectedRoleIds.includes(numId)) {
+      const updated = selectedRoleIds.filter((rId) => rId !== numId);
+      console.log("[Broadcast] Updated Selected Role IDs:", updated);
+      setSelectedRoleIds(updated);
     } else {
-      setSelectedRoleIds([...selectedRoleIds, id]);
+      const updated = [...selectedRoleIds, numId];
+      console.log("[Broadcast] Updated Selected Role IDs:", updated);
+      setSelectedRoleIds(updated);
     }
   };
 
@@ -194,15 +243,16 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
     if (selectedRoleIds.length === filteredRoles.length) {
       setSelectedRoleIds([]);
     } else {
-      setSelectedRoleIds(filteredRoles.map((r: any) => r.id));
+      setSelectedRoleIds(filteredRoles.map((r: any) => Number(r.id)));
     }
   };
 
   const toggleFranchiseSelect = (id: number) => {
-    if (selectedFranchiseIds.includes(id)) {
-      setSelectedFranchiseIds(selectedFranchiseIds.filter((fId) => fId !== id));
+    const numId = Number(id);
+    if (selectedFranchiseIds.includes(numId)) {
+      setSelectedFranchiseIds(selectedFranchiseIds.filter((fId) => fId !== numId));
     } else {
-      setSelectedFranchiseIds([...selectedFranchiseIds, id]);
+      setSelectedFranchiseIds([...selectedFranchiseIds, numId]);
     }
   };
 
@@ -210,15 +260,16 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
     if (selectedFranchiseIds.length === filteredFranchises.length) {
       setSelectedFranchiseIds([]);
     } else {
-      setSelectedFranchiseIds(filteredFranchises.map((f: any) => f.id));
+      setSelectedFranchiseIds(filteredFranchises.map((f: any) => Number(f.id)));
     }
   };
 
   const toggleUserSelect = (id: number) => {
-    if (selectedUserIds.includes(id)) {
-      setSelectedUserIds(selectedUserIds.filter((uId) => uId !== id));
+    const numId = Number(id);
+    if (selectedUserIds.includes(numId)) {
+      setSelectedUserIds(selectedUserIds.filter((uId) => uId !== numId));
     } else {
-      setSelectedUserIds([...selectedUserIds, id]);
+      setSelectedUserIds([...selectedUserIds, numId]);
     }
   };
 
@@ -226,15 +277,44 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
     if (selectedUserIds.length === filteredUsers.length && filteredUsers.length > 0) {
       setSelectedUserIds([]);
     } else {
-      setSelectedUserIds(filteredUsers.map((u: any) => u.id));
+      setSelectedUserIds(filteredUsers.map((u: any) => Number(u.id)));
     }
   };
 
   const handleAddVideo = () => {
-    if (videoUrlInput.trim()) {
-      setVideoLinks([...videoLinks, videoUrlInput.trim()]);
-      setVideoUrlInput("");
+    const trimmed = videoUrlInput.trim();
+    if (!trimmed) return;
+
+    try {
+      const parsedUrl = new URL(trimmed);
+      const hostname = parsedUrl.hostname.toLowerCase();
+      const isValidHost = hostname === "youtube.com" || 
+                          hostname.endsWith(".youtube.com") || 
+                          hostname === "youtu.be" || 
+                          hostname === "youtube-nocookie.com" ||
+                          hostname.endsWith(".youtube-nocookie.com");
+      
+      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+      const match = trimmed.match(regExp);
+      const hasValidVideoId = match && match[2] && match[2].length === 11;
+
+      if (!isValidHost || !hasValidVideoId) {
+        toastManager.add({
+          title: "Please enter a valid YouTube video URL",
+          type: "error",
+        });
+        return;
+      }
+    } catch (e) {
+      toastManager.add({
+        title: "Please enter a valid YouTube video URL",
+        type: "error",
+      });
+      return;
     }
+
+    setVideoLinks([...videoLinks, trimmed]);
+    setVideoUrlInput("");
   };
 
   const handleRemoveVideo = (index: number) => {
@@ -278,7 +358,81 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
   };
 
   const handleSubmit = (status: "published" | "draft", overridePublishNow: boolean = false) => {
-    if (!title) return;
+    const newErrors: Record<string, boolean> = {};
+
+    let hasContentError = false;
+    if (!title || !title.trim()) {
+      newErrors.title = true;
+      hasContentError = true;
+    }
+
+    const textContent = content.replace(/<[^>]*>/g, "").trim();
+    if (!content || !textContent) {
+      newErrors.content = true;
+      hasContentError = true;
+    }
+
+    if (hasContentError) {
+      setErrors(newErrors);
+      if (newErrors.title) {
+        toastManager.add({ title: "Title is required.", type: "error" });
+      } else {
+        toastManager.add({ title: "Content is required.", type: "error" });
+      }
+      setActiveTab("content");
+      return;
+    }
+
+    if (status === "published") {
+      // 2. Check Audience Tab
+      if (
+        audienceType !== "ALL" &&
+        selectedFranchiseIds.length === 0 &&
+        selectedRoleIds.length === 0 &&
+        selectedUserIds.length === 0
+      ) {
+        newErrors.audience = true;
+        setErrors(newErrors);
+        toastManager.add({
+          title: "Please select at least one Franchise, User Role, or Specific User.",
+          type: "error",
+        });
+        setActiveTab("audience");
+        return;
+      }
+
+      // 3. Check Schedule Tab
+      let hasScheduleError = false;
+      if (!scheduleType) {
+        newErrors.scheduleType = true;
+        hasScheduleError = true;
+      } else if (scheduleType === "later" && !publishDate) {
+        newErrors.publishDate = true;
+        hasScheduleError = true;
+      }
+
+      if (hasScheduleError) {
+        setErrors(newErrors);
+        if (newErrors.scheduleType) {
+          toastManager.add({ title: "Please select a Publishing Timing Option.", type: "error" });
+        } else {
+          toastManager.add({ title: "Please select a Publishing Date & Time.", type: "error" });
+        }
+        setActiveTab("schedule");
+        return;
+      }
+    }
+
+    setErrors({});
+
+    if (status === "published" && !scheduleVisited) {
+      toastManager.add({
+        title: "Please review and select options in the Schedule tab first.",
+        type: "error",
+      });
+      setActiveTab("schedule");
+      return;
+    }
 
     // Build backend audiences array supporting MULTIPLE selections
     let audiencePayloadList: Array<{ audienceType: "ALL" | "ROLE" | "USER" | "FRANCHISE"; targetId?: number | null }> = [];
@@ -287,55 +441,45 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
     if (audienceType === "ALL") {
       audiencePayloadList = [{ audienceType: "ALL", targetId: null }];
       audienceLabel = "All Users";
-    } else if (audienceType === "ROLE") {
-      if (selectedRoleIds.length > 0) {
-        audiencePayloadList = selectedRoleIds.map((rId) => ({
-          audienceType: "ROLE",
-          targetId: rId,
-        }));
-        const matchedNames = userRolesList
-          .filter((r) => selectedRoleIds.includes(r.id))
-          .map((r) => r.user_type || r.user_type_name || r.name || `Role #${r.id}`);
-        audienceLabel = matchedNames.join(", ");
-      } else {
-        audiencePayloadList = [{ audienceType: "ROLE", targetId: null }];
-        audienceLabel = "All Roles";
-      }
-    } else if (audienceType === "FRANCHISE") {
+    } else {
+      // Handles CUSTOM selection (combination of FRANCHISE, ROLE, and USER)
+      const labelParts: string[] = [];
+
       if (selectedFranchiseIds.length > 0) {
-        audiencePayloadList = selectedFranchiseIds.map((fId) => ({
-          audienceType: "FRANCHISE",
-          targetId: fId,
-        }));
-        const matchedNames = (franchisesData || [])
-          .filter((f: any) => selectedFranchiseIds.includes(f.id))
+        selectedFranchiseIds.forEach((fId) => {
+          audiencePayloadList.push({ audienceType: "FRANCHISE", targetId: fId });
+        });
+        const matchedFran = (franchisesData || [])
+          .filter((f: any) => selectedFranchiseIds.includes(Number(f.id)))
           .map((f: any) => f.franchise_name);
-        audienceLabel = matchedNames.join(", ");
-      } else {
-        audiencePayloadList = [{ audienceType: "FRANCHISE", targetId: null }];
-        audienceLabel = "All Franchises";
+        labelParts.push(...matchedFran);
       }
-    } else if (audienceType === "USER") {
-      let userIds = [...selectedUserIds];
-      if (targetUserIdsInput.trim()) {
-        const manualIds = targetUserIdsInput
-          .split(",")
-          .map((u) => parseInt(u.trim(), 10))
-          .filter((u) => !isNaN(u));
-        userIds = Array.from(new Set([...userIds, ...manualIds]));
+
+      if (selectedRoleIds.length > 0) {
+        selectedRoleIds.forEach((rId) => {
+          audiencePayloadList.push({ audienceType: "ROLE", targetId: rId });
+        });
+        const matchedRoles = userRolesList
+          .filter((r) => selectedRoleIds.includes(Number(r.id)))
+          .map((r) => r.user_type || r.user_type_name || r.name || `Role #${r.id}`);
+        labelParts.push(...matchedRoles);
       }
-      if (userIds.length > 0) {
-        audiencePayloadList = userIds.map((uId) => ({
-          audienceType: "USER",
-          targetId: uId,
-        }));
-        const matchedNames = usersList
-          .filter((u: any) => userIds.includes(u.id))
+
+      if (selectedUserIds.length > 0) {
+        selectedUserIds.forEach((uId) => {
+          audiencePayloadList.push({ audienceType: "USER", targetId: uId });
+        });
+        const matchedUsers = usersList
+          .filter((u: any) => selectedUserIds.includes(Number(u.id)))
           .map((u: any) => u.user_name || `User #${u.id}`);
-        audienceLabel = matchedNames.length > 0 ? matchedNames.join(", ") : `Users (${userIds.join(", ")})`;
+        labelParts.push(...matchedUsers);
+      }
+
+      if (audiencePayloadList.length === 0) {
+        audiencePayloadList = [{ audienceType: "ALL", targetId: null }];
+        audienceLabel = "All Users";
       } else {
-        audiencePayloadList = [{ audienceType: "USER", targetId: null }];
-        audienceLabel = "Specific Users";
+        audienceLabel = labelParts.join(", ");
       }
     }
 
@@ -351,10 +495,13 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
 
     const backendPayload: CreateBroadcastPayload = {
       title,
-      content: content || summary || "No body content",
+      content: content || "No body content",
       type: type === "document" ? "DOCUMENT" : "CIRCULAR",
       status: effectiveStatus === "draft" ? "INACTIVE" : "ACTIVE",
       publishAt: finalPublishDate,
+      vendorId: vendorId || undefined,
+      userTypeId: audienceType === "ROLE" && selectedRoleIds.length > 0 ? selectedRoleIds : undefined,
+      userTypeIds: audienceType === "ROLE" && selectedRoleIds.length > 0 ? selectedRoleIds : undefined,
       audiences: audiencePayloadList,
       attachments: [
         ...videoLinks.map((link) => ({
@@ -375,8 +522,8 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
       title,
       type,
       status: effectiveStatus === "published" && scheduleType === "later" && !overridePublishNow ? "scheduled" : effectiveStatus,
-      summary,
-      content: content || summary || "No content body provided.",
+      summary: "",
+      content: content || "No content body provided.",
       department,
       audience: audienceLabel,
       audienceScope: audienceType,
@@ -387,7 +534,6 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
         role: "Super Admin",
         avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=SuperAdmin",
       },
-      version: "1.0",
       fileType: attachments.length > 0 ? (attachments[0].type as any) : "pdf",
       fileSize: attachments.length > 0 ? attachments[0].size : "1.2 MB",
       videoLinks,
@@ -400,6 +546,13 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
       isEditing: !!editingBroadcast,
       editId: editingBroadcast?.numericId,
     });
+  };
+
+  const handleTabChange = (tabId: string) => {
+    if (tabId === "schedule") {
+      setScheduleVisited(true);
+    }
+    setActiveTab(tabId);
   };
 
   return (
@@ -424,10 +577,8 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
           <Button variant="outline" size="sm" onClick={onBack} className="flex-1 sm:flex-none rounded-xl h-10 text-xs font-semibold">
             Cancel
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => handleSubmit("draft")} className="flex-1 sm:flex-none rounded-xl h-10 text-xs font-semibold">
-            Save Draft
-          </Button>
-          {(editingBroadcast?.status === "scheduled" || scheduleType === "later") && (
+       
+          {editingBroadcast && (editingBroadcast.status === "scheduled" || scheduleType === "later") && (
             <Button
               type="button"
               size="sm"
@@ -445,7 +596,7 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
 
       {/* Main Full Page Card */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col">
           {/* CRM Pill Shaped Header Tabs with Smooth Animation */}
           <div className="py-4 flex justify-start overflow-x-auto max-w-full">
             <div className="inline-flex items-center p-1 bg-muted/50 border rounded-full gap-1 h-12 shrink-0">
@@ -461,7 +612,7 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
                   <button
                     key={tab.id}
                     type="button"
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => handleTabChange(tab.id)}
                     className={`relative flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-bold rounded-full transition-colors duration-200 select-none ${
                       isActive
                         ? "text-white dark:text-black"
@@ -531,35 +682,40 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
 
               {/* Title */}
               <div className="space-y-2">
-                <Label className="text-xs font-bold">Title *</Label>
+                <Label className={`text-xs font-bold transition-colors ${errors.title ? "text-red-500" : ""}`}>Title *</Label>
                 <Input
                   placeholder="Enter broadcast title..."
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="h-11 text-sm rounded-xl"
+                  onChange={(e) => {
+                    setTitle(e.target.value);
+                    if (errors.title) {
+                      setErrors((prev) => ({ ...prev, title: false }));
+                    }
+                  }}
+                  className={`h-11 text-sm rounded-xl transition-all duration-200 ${
+                    errors.title ? "border-red-500 focus-visible:ring-red-500 bg-red-50/5" : ""
+                  }`}
                 />
+                {errors.title && <p className="text-xs text-red-500 mt-1">Title is required</p>}
               </div>
 
-              {/* Summary */}
-              <div className="space-y-2">
-                <Label className="text-xs font-bold">Summary (Optional)</Label>
-                <Input
-                  placeholder="Enter short summary..."
-                  value={summary}
-                  onChange={(e) => setSummary(e.target.value)}
-                  className="h-11 text-sm rounded-xl"
-                />
-              </div>
 
               {/* Rich Text Editor */}
               <div className="space-y-2">
-                <Label className="text-xs font-bold">Content *</Label>
+                <Label className={`text-xs font-bold transition-colors ${errors.content ? "text-red-500" : ""}`}>Content *</Label>
                 <QuillEditor
                   value={content}
-                  onChange={setContent}
+                  onChange={(val) => {
+                    setContent(val);
+                    if (errors.content) {
+                      setErrors((prev) => ({ ...prev, content: false }));
+                    }
+                  }}
                   placeholder="Write your broadcast content here..."
                   minHeight="220px"
+                  className={errors.content ? "border-red-500 ring-1 ring-red-500" : ""}
                 />
+                {errors.content && <p className="text-xs text-red-500 mt-1">Content is required</p>}
               </div>
 
               {/* Video Links */}
@@ -655,261 +811,243 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
             {/* AUDIENCE TAB: MULTIPLE ROLE & FRANCHISE SELECTION WITH HUMAN READABLE NAMES */}
             <TabsContent value="audience" className="m-0 space-y-6">
               <div className="space-y-3">
-                <Label className="text-xs font-bold">Target Audience Type</Label>
-                <RadioGroup
-                  value={audienceType}
-                  onValueChange={(val: string) => setAudienceType(val as any)}
-                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+                <div
+                  onClick={() => setAudienceType(audienceType === "ALL" ? "CUSTOM" : "ALL")}
+                  className={`flex items-start gap-4 p-5 rounded-2xl border cursor-pointer select-none transition-all ${
+                    audienceType === "ALL"
+                      ? "border-primary bg-primary/5 shadow-sm font-semibold text-primary"
+                      : "border-border bg-card hover:border-primary/40 text-foreground"
+                  }`}
                 >
-                  <label className={`flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition-all ${audienceType === "ALL" ? "border-primary bg-primary/5" : "bg-card hover:border-primary/40"}`}>
-                    <RadioGroupItem value="ALL" id="aud-all" className="mt-0.5" />
-                    <div>
-                      <div className="text-sm font-bold">All Organization Users</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">Broadcast will be sent to all active users across all departments and branches.</div>
-                    </div>
-                  </label>
-
-                  <label className={`flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition-all ${audienceType === "ROLE" ? "border-primary bg-primary/5" : "bg-card hover:border-primary/40"}`}>
-                    <RadioGroupItem value="ROLE" id="aud-role" className="mt-0.5" />
-                    <div>
-                      <div className="text-sm font-bold flex items-center gap-2">
-                        <UserCheck className="w-4 h-4 text-primary" /> Specific User Roles (Select Multiple)
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-0.5">Target specific CRM roles (e.g., Sales Executive, Site Supervisor, Factory Manager, etc.).</div>
-                    </div>
-                  </label>
-
-                  <label className={`flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition-all ${audienceType === "FRANCHISE" ? "border-primary bg-primary/5" : "bg-card hover:border-primary/40"}`}>
-                    <RadioGroupItem value="FRANCHISE" id="aud-franchise" className="mt-0.5" />
-                    <div>
-                      <div className="text-sm font-bold flex items-center gap-2">
-                        <Building2 className="w-4 h-4 text-primary" /> Specific Franchises (Select Multiple)
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-0.5">Limit broadcast visibility to specific franchise branches.</div>
-                    </div>
-                  </label>
-
-                  <label className={`flex items-start gap-3 p-4 rounded-2xl border cursor-pointer transition-all ${audienceType === "USER" ? "border-primary bg-primary/5" : "bg-card hover:border-primary/40"}`}>
-                    <RadioGroupItem value="USER" id="aud-user" className="mt-0.5" />
-                    <div>
-                      <div className="text-sm font-bold flex items-center gap-2">
-                        <UserCheck className="w-4 h-4 text-primary" /> Specific Users (Select Multiple)
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-0.5">Target specific users by searching their name, email, or role.</div>
-                    </div>
-                  </label>
-                </RadioGroup>
+                  <Checkbox
+                    id="send-all-users"
+                    checked={audienceType === "ALL"}
+                    onCheckedChange={(checked) => setAudienceType(checked ? "ALL" : "CUSTOM")}
+                    className="mt-1"
+                  />
+                  <div className="space-y-1">
+                    <div className="text-sm font-bold leading-none">Send to all active organization users</div>
+                    <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                      If checked, this broadcast will be distributed globally to all branches, departments, and roles. Custom target filters below will be disabled.
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              {/* MULTIPLE ROLE SELECTION CONTAINER WITH HUMAN READABLE ROLE NAMES */}
-              {audienceType === "ROLE" && (
-                <div className="p-5 border rounded-2xl bg-muted/10 space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <h4 className="text-sm font-bold text-foreground">Select CRM Roles ({selectedRoleIds.length} selected)</h4>
-                      <p className="text-xs text-muted-foreground">Check all user roles that should receive this broadcast</p>
+              {/* MULTIPLE FRANCHISE, ROLE & USER SELECTION CONTAINERS IN SCROLL FORMAT */}
+              <div
+                className={`space-y-6 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar border p-4 rounded-2xl bg-muted/5 transition-all duration-300 ${
+                  audienceType === "ALL" ? "opacity-35 pointer-events-none select-none filter grayscale-[40%]" : ""
+                } ${errors.audience ? "border-red-500 ring-1 ring-red-500" : ""}`}
+              >
+                  {/* MULTIPLE FRANCHISE SELECTION CONTAINER */}
+                  <div className="p-5 border rounded-2xl bg-muted/10 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <h4 className="text-sm font-bold text-foreground">Select Franchises ({selectedFranchiseIds.length} selected)</h4>
+                        <p className="text-xs text-muted-foreground">Select target franchise branches (At least one selection required)</p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Button type="button" variant="outline" size="sm" onClick={toggleSelectAllFranchises} className="h-8 text-xs rounded-lg">
+                          {selectedFranchiseIds.length === filteredFranchises.length ? "Deselect All" : "Select All"}
+                        </Button>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <Button type="button" variant="outline" size="sm" onClick={toggleSelectAllRoles} className="h-8 text-xs rounded-lg">
-                        {selectedRoleIds.length === filteredRoles.length ? "Deselect All" : "Select All"}
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Search Roles */}
-                  <div className="relative border rounded-xl bg-background flex flex-wrap items-center gap-2 p-1 pl-3 min-h-[44px]">
-                    <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-                    
-                    {selectedRoleIds.map((id) => {
-                      const role = userRolesList.find((r) => r.id === id);
-                      if (!role) return null;
-                      const name = role.user_type || role.user_type_name || role.name || `Role #${id}`;
-                      return (
-                        <Badge key={id} variant="secondary" className="text-[10px] py-0.5 flex items-center gap-1 shrink-0">
-                          {name}
-                          <X className="w-3 h-3 cursor-pointer" onClick={(e) => { e.preventDefault(); toggleRoleSelect(id); }} />
-                        </Badge>
-                      );
-                    })}
-
-                    <Input
-                      placeholder={selectedRoleIds.length === 0 ? "Search roles (e.g. Sales Executive...)" : "Search more..."}
-                      value={roleSearch}
-                      onChange={(e) => setRoleSearch(e.target.value)}
-                      className="flex-1 border-0 h-8 shadow-none focus-visible:ring-0 px-1 text-xs min-w-[150px] bg-transparent"
-                    />
-                  </div>
-
-                  {/* Checkbox Grid for CRM User Roles */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-60 overflow-y-auto p-1">
-                    {filteredRoles.map((role: any) => {
-                      const roleName = role.user_type || role.user_type_name || role.name || `Role #${role.id}`;
-                      const isChecked = selectedRoleIds.includes(role.id);
-                      return (
-                        <label
-                          key={role.id}
-                          className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                            isChecked ? "border-primary bg-primary/10 font-bold" : "bg-card hover:border-primary/40"
-                          }`}
-                        >
-                          <Checkbox
-                            checked={isChecked}
-                            onCheckedChange={() => toggleRoleSelect(role.id)}
-                          />
-                          <div className="truncate text-xs">
-                            <span className="font-semibold text-foreground truncate block">{roleName}</span>
-                            <span className="text-[10px] text-muted-foreground">Role ID: #{role.id}</span>
-                          </div>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* MULTIPLE FRANCHISE SELECTION CONTAINER */}
-              {audienceType === "FRANCHISE" && (
-                <div className="p-5 border rounded-2xl bg-muted/10 space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <h4 className="text-sm font-bold text-foreground">Select Franchises ({selectedFranchiseIds.length} selected)</h4>
-                      <p className="text-xs text-muted-foreground">Check all franchise units that should receive this broadcast</p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Button type="button" variant="outline" size="sm" onClick={toggleSelectAllFranchises} className="h-8 text-xs rounded-lg">
-                        {selectedFranchiseIds.length === filteredFranchises.length ? "Deselect All" : "Select All"}
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Search Franchises */}
-                  <div className="relative border rounded-xl bg-background flex flex-wrap items-center gap-2 p-1 pl-3 min-h-[44px]">
-                    <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-                    
-                    {selectedFranchiseIds.map((id) => {
-                      const fran = franchisesData?.find((f: any) => f.id === id);
-                      if (!fran) return null;
-                      const name = fran.franchise_name || `Franchise #${id}`;
-                      return (
-                        <Badge key={id} variant="secondary" className="text-[10px] py-0.5 flex items-center gap-1 shrink-0">
-                          {name}
-                          <X className="w-3 h-3 cursor-pointer" onClick={(e) => { e.preventDefault(); toggleFranchiseSelect(id); }} />
-                        </Badge>
-                      );
-                    })}
-
-                    <Input
-                      placeholder={selectedFranchiseIds.length === 0 ? "Search franchises..." : "Search more..."}
-                      value={franchiseSearch}
-                      onChange={(e) => setFranchiseSearch(e.target.value)}
-                      className="flex-1 border-0 h-8 shadow-none focus-visible:ring-0 px-1 text-xs min-w-[150px] bg-transparent"
-                    />
-                  </div>
-
-                  {/* Checkbox Grid for Franchises */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-60 overflow-y-auto p-1">
-                    {filteredFranchises.map((fran: any) => {
-                      const isChecked = selectedFranchiseIds.includes(fran.id);
-                      return (
-                        <label
-                          key={fran.id}
-                          className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                            isChecked ? "border-primary bg-primary/10 font-bold" : "bg-card hover:border-primary/40"
-                          }`}
-                        >
-                          <Checkbox
-                            checked={isChecked}
-                            onCheckedChange={() => toggleFranchiseSelect(fran.id)}
-                          />
-                          <div className="truncate text-xs">
-                            <span className="font-semibold text-foreground truncate block">{fran.franchise_name}</span>
-                            <span className="text-[10px] text-muted-foreground">
-                              {fran.franchise_code || `ID: #${fran.id}`}
-                            </span>
-                          </div>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* MULTIPLE USER SELECTION CONTAINER */}
-              {audienceType === "USER" && (
-                <div className="p-5 border rounded-2xl bg-muted/10 space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <h4 className="text-sm font-bold text-foreground">Select Users ({selectedUserIds.length} selected)</h4>
-                      <p className="text-xs text-muted-foreground">Search and check all users who should receive this broadcast</p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Button type="button" variant="outline" size="sm" onClick={toggleSelectAllUsers} className="h-8 text-xs rounded-lg">
-                        {selectedUserIds.length === filteredUsers.length && filteredUsers.length > 0 ? "Deselect All" : "Select All"}
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Search Users */}
-                  <div className="relative border rounded-xl bg-background flex flex-wrap items-center gap-2 p-1.5 pl-3 min-h-[44px]">
-                    <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-                    
-                    {selectedUserIds.map((id) => {
-                      const usr = usersList.find((u: any) => u.id === id);
-                      const name = usr?.user_name || `User #${id}`;
-                      return (
-                        <Badge key={id} variant="secondary" className="text-[10px] py-0.5 flex items-center gap-1 shrink-0">
-                          {name}
-                          <X className="w-3 h-3 cursor-pointer" onClick={(e) => { e.preventDefault(); toggleUserSelect(id); }} />
-                        </Badge>
-                      );
-                    })}
-
-                    <Input
-                      placeholder={selectedUserIds.length === 0 ? "Search users by name, email, or role..." : "Search more..."}
-                      value={userSearch}
-                      onChange={(e) => setUserSearch(e.target.value)}
-                      className="flex-1 border-0 h-8 shadow-none focus-visible:ring-0 px-1 text-xs min-w-[150px] bg-transparent"
-                    />
-                  </div>
-
-                  {/* Checkbox Grid for CRM Users */}
-                  {isLoadingUsers ? (
-                    <div className="py-6 text-center text-xs text-muted-foreground">Loading users list...</div>
-                  ) : filteredUsers.length === 0 ? (
-                    <div className="py-6 text-center text-xs text-muted-foreground">No users found matching "{userSearch}"</div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 max-h-60 overflow-y-auto p-1">
-                      {filteredUsers.map((usr: any) => {
-                        const userName = usr.user_name || `User #${usr.id}`;
-                        const isChecked = selectedUserIds.includes(usr.id);
-                        const roleTitle = usr.user_type?.user_type || usr.user_type?.user_type_name || "";
+                    {/* Search Franchises */}
+                    <div className="relative border rounded-xl bg-background flex flex-wrap items-center gap-2 p-1 pl-3 min-h-[44px]">
+                      <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+                      
+                      {selectedFranchiseIds.map((id) => {
+                        const fran = franchisesData?.find((f: any) => Number(f.id) === Number(id));
+                        if (!fran) return null;
+                        const name = fran.franchise_name || `Franchise #${id}`;
                         return (
-                          <label
-                            key={usr.id}
+                          <Badge key={id} variant="secondary" className="text-[10px] py-0.5 flex items-center gap-1 shrink-0">
+                            {name}
+                            <X className="w-3 h-3 cursor-pointer" onClick={(e) => { e.preventDefault(); toggleFranchiseSelect(id); }} />
+                          </Badge>
+                        );
+                      })}
+
+                      <Input
+                        placeholder={selectedFranchiseIds.length === 0 ? "Search franchises (e.g. Mumbai)..." : "Search more..."}
+                        value={franchiseSearch}
+                        onChange={(e) => setFranchiseSearch(e.target.value)}
+                        className="flex-1 border-0 h-8 shadow-none focus-visible:ring-0 px-1 text-xs min-w-[150px] bg-transparent"
+                      />
+                    </div>
+
+                    {/* Checkbox Grid for Franchises */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-52 overflow-y-auto p-1">
+                      {filteredFranchises.map((fran: any) => {
+                        const isChecked = selectedFranchiseIds.includes(Number(fran.id));
+                        return (
+                          <div
+                            key={fran.id}
+                            onClick={() => toggleFranchiseSelect(fran.id)}
                             className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
                               isChecked ? "border-primary bg-primary/10 font-bold" : "bg-card hover:border-primary/40"
                             }`}
                           >
                             <Checkbox
                               checked={isChecked}
-                              onCheckedChange={() => toggleUserSelect(usr.id)}
+                              onCheckedChange={() => {}}
                             />
                             <div className="truncate text-xs">
-                              <span className="font-semibold text-foreground truncate block">{userName}</span>
-                              <span className="text-[10px] text-muted-foreground block truncate">
-                                {roleTitle ? `${roleTitle} • ` : ""}{usr.user_email || `ID: #${usr.id}`}
+                              <span className="font-semibold text-foreground truncate block">{fran.franchise_name}</span>
+                              <span className="text-[10px] text-muted-foreground">
+                                {fran.franchise_code || `ID: #${fran.id}`}
                               </span>
                             </div>
-                          </label>
+                          </div>
                         );
                       })}
                     </div>
-                  )}
+                  </div>
+
+                  {/* MULTIPLE ROLE SELECTION CONTAINER */}
+                  <div className="p-5 border rounded-2xl bg-muted/10 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <h4 className="text-sm font-bold text-foreground">Select User Roles ({selectedRoleIds.length} selected)</h4>
+                        <p className="text-xs text-muted-foreground">Select user roles to receive this broadcast (Leave unselected to target All Roles)</p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Button type="button" variant="outline" size="sm" onClick={toggleSelectAllRoles} className="h-8 text-xs rounded-lg">
+                          {selectedRoleIds.length === filteredRoles.length ? "Deselect All" : "Select All"}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Search Roles */}
+                    <div className="relative border rounded-xl bg-background flex flex-wrap items-center gap-2 p-1 pl-3 min-h-[44px]">
+                      <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+                      
+                      {selectedRoleIds.map((id) => {
+                        const role = userRolesList.find((r) => Number(r.id) === Number(id));
+                        if (!role) return null;
+                        const name = role.user_type || role.user_type_name || role.name || `Role #${id}`;
+                        return (
+                          <Badge key={id} variant="secondary" className="text-[10px] py-0.5 flex items-center gap-1 shrink-0">
+                            {name}
+                            <X className="w-3 h-3 cursor-pointer" onClick={(e) => { e.preventDefault(); toggleRoleSelect(id); }} />
+                          </Badge>
+                        );
+                      })}
+
+                      <Input
+                        placeholder={selectedRoleIds.length === 0 ? "Search roles (e.g. Sales Executive...)" : "Search more..."}
+                        value={roleSearch}
+                        onChange={(e) => setRoleSearch(e.target.value)}
+                        className="flex-1 border-0 h-8 shadow-none focus-visible:ring-0 px-1 text-xs min-w-[150px] bg-transparent"
+                      />
+                    </div>
+
+                    {/* Checkbox Grid for CRM User Roles */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-52 overflow-y-auto p-1">
+                      {filteredRoles.map((role: any) => {
+                        const roleName = role.user_type || role.user_type_name || role.name || `Role #${role.id}`;
+                        const isChecked = selectedRoleIds.includes(Number(role.id));
+                        return (
+                          <div
+                            key={role.id}
+                            onClick={() => toggleRoleSelect(role.id)}
+                            className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                              isChecked ? "border-primary bg-primary/10 font-bold" : "bg-card hover:border-primary/40"
+                            }`}
+                          >
+                            <Checkbox
+                              checked={isChecked}
+                              onCheckedChange={() => {}}
+                            />
+                            <div className="truncate text-xs">
+                              <span className="font-semibold text-foreground truncate block">{roleName}</span>
+                              <span className="text-[10px] text-muted-foreground">Role ID: #{role.id}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* MULTIPLE USER SELECTION CONTAINER */}
+                  <div className="p-5 border rounded-2xl bg-muted/10 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <h4 className="text-sm font-bold text-foreground">Select Users ({selectedUserIds.length} selected)</h4>
+                        <p className="text-xs text-muted-foreground">Search and check all users who should receive this broadcast</p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Button type="button" variant="outline" size="sm" onClick={toggleSelectAllUsers} className="h-8 text-xs rounded-lg">
+                          {selectedUserIds.length === filteredUsers.length && filteredUsers.length > 0 ? "Deselect All" : "Select All"}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Search Users */}
+                    <div className="relative border rounded-xl bg-background flex flex-wrap items-center gap-2 p-1.5 pl-3 min-h-[44px]">
+                      <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+                      
+                      {selectedUserIds.map((id) => {
+                        const usr = usersList.find((u: any) => Number(u.id) === Number(id));
+                        const name = usr?.user_name || `User #${id}`;
+                        return (
+                          <Badge key={id} variant="secondary" className="text-[10px] py-0.5 flex items-center gap-1 shrink-0">
+                            {name}
+                            <X className="w-3 h-3 cursor-pointer" onClick={(e) => { e.preventDefault(); toggleUserSelect(id); }} />
+                          </Badge>
+                        );
+                      })}
+
+                      <Input
+                        placeholder={selectedUserIds.length === 0 ? "Search users by name, email, or role..." : "Search more..."}
+                        value={userSearch}
+                        onChange={(e) => setUserSearch(e.target.value)}
+                        className="flex-1 border-0 h-8 shadow-none focus-visible:ring-0 px-1 text-xs min-w-[150px] bg-transparent"
+                      />
+                    </div>
+
+                    {/* Checkbox Grid for CRM Users */}
+                    {isLoadingUsers ? (
+                      <div className="py-6 text-center text-xs text-muted-foreground">Loading users list...</div>
+                    ) : filteredUsers.length === 0 ? (
+                      <div className="py-6 text-center text-xs text-muted-foreground">No users found matching "{userSearch}"</div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 max-h-60 overflow-y-auto p-1">
+                        {filteredUsers.map((usr: any) => {
+                          const userName = usr.user_name || `User #${usr.id}`;
+                          const isChecked = selectedUserIds.includes(Number(usr.id));
+                          const roleTitle = usr.user_type?.user_type || usr.user_type?.user_type_name || "";
+                          return (
+                            <div
+                              key={usr.id}
+                              onClick={() => toggleUserSelect(usr.id)}
+                              className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                                isChecked ? "border-primary bg-primary/10 font-bold" : "bg-card hover:border-primary/40"
+                              }`}
+                            >
+                              <Checkbox
+                                checked={isChecked}
+                                onCheckedChange={() => {}}
+                              />
+                              <div className="truncate text-xs">
+                                <span className="font-semibold text-foreground truncate block">{userName}</span>
+                                <span className="text-[10px] text-muted-foreground block truncate">
+                                  {roleTitle ? `${roleTitle} • ` : ""}{usr.user_email || `ID: #${usr.id}`}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                 </div>
-              )}
+              </div>
+              {errors.audience && <p className="text-xs text-red-500 mt-1">Please select at least one Franchise, User Role, or Specific User</p>}
             </TabsContent>
 
             {/* ENHANCED SCHEDULE TAB */}
@@ -922,68 +1060,74 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
                   </p>
                 </div>
 
-                <RadioGroup value={scheduleType} onValueChange={setScheduleType} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <label className={`flex items-start gap-4 p-5 rounded-2xl border-2 cursor-pointer transition-all ${scheduleType === "now" ? "border-primary bg-primary/5 shadow-md" : "border-border bg-card hover:border-primary/40"}`}>
-                    <RadioGroupItem value="now" id="sched-now" className="mt-1" />
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-foreground">Publish Immediately</span>
-                        <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-200 text-[10px] font-bold">
-                          INSTANT
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        Broadcast will be published and delivered instantly to all targeted audience members upon clicking publish.
-                      </p>
+                {/* Publish Immediately Checkbox Card */}
+                <div
+                  onClick={() => setScheduleType(scheduleType === "now" ? "later" : "now")}
+                  className={`flex items-start gap-4 p-5 rounded-2xl border cursor-pointer select-none transition-all ${
+                    scheduleType === "now"
+                      ? "border-primary bg-primary/5 shadow-sm font-semibold text-primary"
+                      : "border-border bg-card hover:border-primary/40 text-foreground"
+                  } ${errors.scheduleType ? "border-red-500 ring-1 ring-red-500" : ""}`}
+                >
+                  <Checkbox
+                    id="sched-now-checkbox"
+                    checked={scheduleType === "now"}
+                    onCheckedChange={(checked) => setScheduleType(checked ? "now" : "later")}
+                    className="mt-1"
+                  />
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold leading-none">Publish Immediately</span>
+                      <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-200 text-[10px] font-bold py-0.5">
+                        INSTANT
+                      </Badge>
                     </div>
-                  </label>
-
-                  <label className={`flex items-start gap-4 p-5 rounded-2xl border-2 cursor-pointer transition-all ${scheduleType === "later" ? "border-primary bg-primary/5 shadow-md" : "border-border bg-card hover:border-primary/40"}`}>
-                    <RadioGroupItem value="later" id="sched-later" className="mt-1" />
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-foreground">Schedule for Later</span>
-                        <Badge className="bg-amber-500/10 text-amber-600 border-amber-200 text-[10px] font-bold">
-                          AUTOMATED
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        Specify exact future date & time. System will automatically release this broadcast at the scheduled time.
-                      </p>
-                    </div>
-                  </label>
-                </RadioGroup>
-              </div>
-
-              {scheduleType === "later" && (
-                <div className="p-6 border rounded-2xl bg-muted/10 space-y-5 animate-in fade-in-50">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                      <Label className="text-xs font-bold text-foreground">Select Publishing Date & Time *</Label>
-                      <p className="text-xs text-muted-foreground mt-0.5">Timezone: Asia/Kolkata (IST GMT+5:30)</p>
-                    </div>
-                    <Badge variant="outline" className="text-xs font-mono font-bold w-fit px-3 py-1">
-                      {publishDate ? new Date(publishDate).toLocaleString() : "No Date Selected"}
-                    </Badge>
-                  </div>
-
-                  <div className="w-full pt-2">
-                    <ModernDateTimePicker
-                      value={publishDate}
-                      onChange={setPublishDate}
-                    />
-                  </div>
-
-                  <div className="p-4 rounded-xl border bg-card text-xs space-y-2">
-                    <div className="font-bold flex items-center gap-2 text-primary">
-                      <CalendarIcon className="w-4 h-4" /> Scheduled Release Information
-                    </div>
-                    <p className="text-muted-foreground">
-                      This broadcast will remain in <strong className="text-foreground">Scheduled</strong> status until the release timestamp. You can edit or cancel scheduled broadcasts at any time prior to publication.
+                    <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                      Broadcast will be published and delivered instantly to all targeted audience members upon clicking publish.
                     </p>
                   </div>
                 </div>
-              )}
+                {errors.scheduleType && <p className="text-xs text-red-500 mt-1">Please select a Publishing Timing Option</p>}
+              </div>
+
+              {/* Schedule for Later Date Time Picker (Faded/disabled if checked) */}
+              <div
+                className={`p-6 border rounded-2xl bg-muted/10 space-y-5 transition-all duration-300 ${
+                  scheduleType === "now" ? "opacity-35 pointer-events-none select-none filter grayscale-[40%]" : ""
+                } ${errors.publishDate ? "border-red-500 ring-1 ring-red-500" : ""}`}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <Label className={`text-xs font-bold transition-colors ${errors.publishDate ? "text-red-500" : "text-foreground"}`}>Select Publishing Date & Time *</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">Timezone: Asia/Kolkata (IST GMT+5:30)</p>
+                  </div>
+                  <Badge variant="outline" className="text-xs font-mono font-bold w-fit px-3 py-1">
+                    {publishDate ? new Date(publishDate).toLocaleString() : "No Date Selected"}
+                  </Badge>
+                </div>
+
+                <div className="w-full pt-2" onClick={() => { if (scheduleType !== "later") setScheduleType("later"); }}>
+                  <ModernDateTimePicker
+                    value={publishDate}
+                    onChange={(val) => {
+                      setPublishDate(val);
+                      if (scheduleType !== "later") {
+                        setScheduleType("later");
+                      }
+                    }}
+                  />
+                </div>
+
+                <div className="p-4 rounded-xl border bg-card text-xs space-y-2">
+                  <div className="font-bold flex items-center gap-2 text-primary">
+                    <CalendarIcon className="w-4 h-4" /> Scheduled Release Information
+                  </div>
+                  <p className="text-muted-foreground">
+                    This broadcast will remain in <strong className="text-foreground">Scheduled</strong> status until the release timestamp. You can edit or cancel scheduled broadcasts at any time prior to publication.
+                  </p>
+                </div>
+              </div>
+              {errors.publishDate && <p className="text-xs text-red-500 mt-1">Please select a Publishing Date & Time</p>}
             </TabsContent>
 
             {/* PREVIEW TAB */}
@@ -1002,11 +1146,6 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
                   </p>
                 </div>
 
-                {summary && (
-                  <div className="p-4 bg-muted/30 rounded-xl text-xs italic text-muted-foreground border">
-                    "{summary}"
-                  </div>
-                )}
 
                 <div
                   className="text-xs space-y-2 leading-relaxed p-2"

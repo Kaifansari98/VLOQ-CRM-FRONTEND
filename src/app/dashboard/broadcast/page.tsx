@@ -30,10 +30,20 @@ import {
   stripHtmlAndEntities,
 } from "@/api/broadcast";
 import { useAppSelector } from "@/redux/store";
+import { useRouter } from "next/navigation";
 
 export default function BroadcastPage() {
+  const router = useRouter();
   const user = useAppSelector((state) => state.auth.user);
   const isHoUser = useAppSelector((state) => state.auth.is_ho_user);
+
+  const isBroadcastEnabled = user?.vendor?.is_broadcast_enabled === true;
+
+  useEffect(() => {
+    if (!isBroadcastEnabled) {
+      router.replace("/dashboard");
+    }
+  }, [isBroadcastEnabled, router]);
 
   // Check if current user is Super Admin or Head Office User
   const isSuperAdmin = useMemo(() => {
@@ -155,6 +165,8 @@ export default function BroadcastPage() {
     markBroadcastAsReadLocal(numId || item.id, user?.id);
   };
 
+  if (!isBroadcastEnabled) return null;
+
   return (
     <>
       {/* Dashboard Top Header */}
@@ -215,6 +227,7 @@ export default function BroadcastPage() {
               broadcasts={broadcasts}
               onViewItem={handleViewItem}
               onToggleBookmark={handleToggleBookmark}
+              userId={user?.id}
             />
           )}
         </FadeInProvider>

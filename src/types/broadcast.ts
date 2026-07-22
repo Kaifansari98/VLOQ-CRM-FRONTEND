@@ -30,6 +30,7 @@ export interface BroadcastItem {
   audiences?: Array<{ audienceType: string; targetId?: number | null }>;
   department: string;
   publishDate: string;
+  rawPublishAt: string; // ISO string for reliable date sorting
   updatedAt: string;
   updatedBy: {
     name: string;

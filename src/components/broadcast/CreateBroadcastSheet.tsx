@@ -59,7 +59,7 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
   onCreateBroadcast,
 }) => {
   const user = useAppSelector((state) => state.auth.user);
-  const vendorId = user?.vendor_id || user?.vendor?.id || 1;
+  const vendorId = user?.vendor_id || user?.vendor?.id;
 
   // Fetch real CRM User Roles, Franchises & Users
   const { data: userTypesResponse } = useUserTypes();
@@ -144,10 +144,15 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
   }, [usersList, userSearch]);
 
   const toggleRoleSelect = (id: number) => {
+    console.log("[Broadcast] Selected Role ID:", id);
     if (selectedRoleIds.includes(id)) {
-      setSelectedRoleIds(selectedRoleIds.filter((rId) => rId !== id));
+      const updated = selectedRoleIds.filter((rId) => rId !== id);
+      console.log("[Broadcast] Updated Selected Role IDs:", updated);
+      setSelectedRoleIds(updated);
     } else {
-      setSelectedRoleIds([...selectedRoleIds, id]);
+      const updated = [...selectedRoleIds, id];
+      console.log("[Broadcast] Updated Selected Role IDs:", updated);
+      setSelectedRoleIds(updated);
     }
   };
 
@@ -288,7 +293,7 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
       }
     }
 
-    const newBroadcast: Partial<BroadcastItem> & { targetId?: number } = {
+    const newBroadcast: Partial<BroadcastItem> & { targetId?: number; vendorId?: number } = {
       title,
       type,
       status: status === "published" && scheduleType === "later" ? "scheduled" : status,
@@ -300,6 +305,7 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
       targetId: audienceType === "ROLE" && selectedRoleIds.length > 0 ? selectedRoleIds[0] :
                 audienceType === "FRANCHISE" && selectedFranchiseIds.length > 0 ? selectedFranchiseIds[0] :
                 audienceType === "USER" && selectedUserIds.length > 0 ? selectedUserIds[0] : undefined,
+      vendorId,
       publishDate: finalPublishDate,
       updatedAt: new Date().toLocaleString(),
       updatedBy: {
@@ -870,9 +876,6 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
               Cancel
             </Button>
             <div className="flex items-center gap-2">
-              <Button type="button" variant="secondary" size="sm" onClick={() => handleSubmit("draft")}>
-                Save Draft
-              </Button>
               {activeTab !== "preview" ? (
                 <Button
                   type="button"
