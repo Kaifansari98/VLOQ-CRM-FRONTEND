@@ -59,6 +59,9 @@ export const useCreateDetailedCompanyVendor = (
       queryClient.invalidateQueries({
         queryKey: getCompanyVendorMetaDataQueryKey(vendorId),
       });
+      queryClient.invalidateQueries({
+        queryKey: ["companyVendors", vendorId],
+      });
     },
   });
 };
@@ -79,6 +82,9 @@ export const useUpdateDetailedCompanyVendor = (
       queryClient.invalidateQueries({
         queryKey: getDetailedCompanyVendorQueryKey(id),
       });
+      queryClient.invalidateQueries({
+        queryKey: ["companyVendors", vendorId],
+      });
     },
   });
 };
@@ -94,6 +100,9 @@ export const useDeleteDetailedCompanyVendor = (
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: getCompanyVendorsMasterQueryKey(vendorId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["companyVendors", vendorId],
       });
     },
   });
