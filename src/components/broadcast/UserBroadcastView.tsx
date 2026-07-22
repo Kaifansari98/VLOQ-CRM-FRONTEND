@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,61 +39,89 @@ import {
 } from "@/components/ui/popover";
 import { Calendar as CalendarUI } from "@/components/ui/calendar";
 import { BroadcastItem } from "@/types/broadcast";
-import { stripHtmlAndEntities, markBroadcastAsReadLocal } from "@/api/broadcast";
+import { stripHtmlAndEntities, markBroadcastAsReadLocal, getReadBroadcastIds } from "@/api/broadcast";
 
 interface UserBroadcastViewProps {
   broadcasts: BroadcastItem[];
   onViewItem: (item: BroadcastItem) => void;
   onToggleBookmark: (id: string) => void;
+  userId?: number;
 }
 
 export const UserBroadcastView: React.FC<UserBroadcastViewProps> = ({
   broadcasts,
   onViewItem,
   onToggleBookmark,
+  userId,
 }) => {
   const [activeTab, setActiveTab] = useState<"circulars" | "documents">("circulars");
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState("");
-  const [updatedByFilter, setUpdatedByFilter] = useState("all");
   const [sortBy, setSortBy] = useState("latest");
   const [rowsPerPage, setRowsPerPage] = useState("10");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [readIds, setReadIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setReadIds(getReadBroadcastIds(userId));
+    };
+    handleUpdate();
+    window.addEventListener("broadcasts-read-updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener("broadcasts-read-updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, [userId]);
 
   // Separate counts
   const circularsCount = useMemo(() => broadcasts.filter((b) => b.type === "circular").length, [broadcasts]);
+
   const documentsCount = useMemo(() => broadcasts.filter((b) => b.type === "document").length, [broadcasts]);
 
-  // Filtered dataset
+  // Filtered + sorted dataset
   const filteredData = useMemo(() => {
     return broadcasts
       .filter((item) => {
-        // Tab type filter
         if (activeTab === "circulars" && item.type !== "circular") return false;
         if (activeTab === "documents" && item.type !== "document") return false;
 
-        // Search text
         const matchesSearch =
           item.title.toLowerCase().includes(search.toLowerCase()) ||
           (item.summary && item.summary.toLowerCase().includes(search.toLowerCase()));
 
-        // Date Filter
         const matchesDate =
           !dateFilter ||
-          (item.publishDate && item.publishDate.includes(dateFilter)) ||
-          (item.updatedAt && item.updatedAt.includes(dateFilter));
+          (item.rawPublishAt && item.rawPublishAt.startsWith(dateFilter)) ||
+          (item.publishDate && item.publishDate.includes(dateFilter));
 
-        // Select Filters
-        const matchesUpdatedBy = updatedByFilter === "all" || item.updatedBy.name.toLowerCase().includes(updatedByFilter.toLowerCase());
-
-        return matchesSearch && matchesDate && matchesUpdatedBy;
+        return matchesSearch && matchesDate;
       })
       .sort((a, b) => {
-        if (sortBy === "latest") return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-        if (sortBy === "oldest") return new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+        const dateA = new Date(a.rawPublishAt).getTime();
+        const dateB = new Date(b.rawPublishAt).getTime();
+        if (sortBy === "latest") return dateB - dateA;
+        if (sortBy === "oldest") return dateA - dateB;
         if (sortBy === "title") return a.title.localeCompare(b.title);
         return 0;
       });
-  }, [broadcasts, activeTab, search, dateFilter, updatedByFilter, sortBy]);
+  }, [broadcasts, activeTab, search, dateFilter, sortBy]);
+
+  const pageSize = Number(rowsPerPage) || 10;
+  const totalItems = filteredData.length;
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, search, dateFilter, sortBy, rowsPerPage]);
+
+  const startIndex = totalItems === 0 ? 0 : (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+
+  const paginatedData = useMemo(() => {
+    return filteredData.slice(startIndex, endIndex);
+  }, [filteredData, startIndex, endIndex]);
 
   return (
     <div className="space-y-6">
@@ -106,9 +134,10 @@ export const UserBroadcastView: React.FC<UserBroadcastViewProps> = ({
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-4">
+        {/* Single toolbar row */}
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Search Bar */}
-          <div className="relative flex-1 w-full max-w-md">
+          <div className="relative flex-1 min-w-[180px]">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder={`Search ${activeTab === "circulars" ? "circulars" : "documents"}...`}
@@ -118,8 +147,68 @@ export const UserBroadcastView: React.FC<UserBroadcastViewProps> = ({
             />
           </div>
 
-          {/* CRM Pill Shaped Tabs with Smooth Animation */}
-          <div className="inline-flex items-center p-1 bg-muted/50 border rounded-full gap-1 shrink-0 w-fit">
+          {/* Date Filter */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={`h-10 text-xs rounded-xl shadow-sm justify-start text-left font-normal px-3 bg-card border-input hover:bg-accent hover:text-accent-foreground shrink-0 ${
+                  !dateFilter && "text-muted-foreground"
+                }`}
+              >
+                <Calendar className="mr-2 h-4 w-4" />
+                {dateFilter ? new Date(dateFilter).toLocaleDateString() : <span>Pick a date</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <CalendarUI
+                mode="single"
+                selected={dateFilter ? new Date(dateFilter) : undefined}
+                onSelect={(date) => {
+                  if (date) {
+                    setDateFilter(date.toISOString().split("T")[0]);
+                  } else {
+                    setDateFilter("");
+                  }
+                }}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+
+          {/* Sort By */}
+          <div className="flex items-center gap-1.5 text-xs shrink-0">
+            <span className="text-muted-foreground font-medium">Sort By</span>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-[110px] h-10 text-xs bg-card border rounded-xl shadow-sm">
+                <SelectValue placeholder="Latest" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="latest">Latest</SelectItem>
+                <SelectItem value="oldest">Oldest</SelectItem>
+                <SelectItem value="title">Title A-Z</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Clear Filters */}
+          {(search || dateFilter) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSearch("");
+                setDateFilter("");
+                setSortBy("latest");
+              }}
+              className="text-xs text-muted-foreground hover:text-foreground h-10 shrink-0"
+            >
+              Clear
+            </Button>
+          )}
+
+          {/* CRM Pill Shaped Tabs — pushed to the far right */}
+          <div className="ml-auto inline-flex items-center p-1 bg-muted/50 border rounded-full gap-1 shrink-0 w-fit">
             {[
               { id: "circulars", label: "Circulars", icon: Megaphone, count: circularsCount },
               { id: "documents", label: "Documents", icon: FileText, count: documentsCount },
@@ -160,88 +249,9 @@ export const UserBroadcastView: React.FC<UserBroadcastViewProps> = ({
               );
             })}
           </div>
-
-          {/* Date Filter */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={`w-full sm:w-[190px] h-10 text-xs rounded-xl shadow-sm justify-start text-left font-normal px-3 bg-card border-input hover:bg-accent hover:text-accent-foreground ${
-                  !dateFilter && "text-muted-foreground"
-                }`}
-              >
-                <Calendar className="mr-2 h-4 w-4" />
-                {dateFilter ? new Date(dateFilter).toLocaleDateString() : <span>Pick a date</span>}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <CalendarUI
-                mode="single"
-                selected={dateFilter ? new Date(dateFilter) : undefined}
-                onSelect={(date) => {
-                  if (date) {
-                    setDateFilter(date.toISOString().split("T")[0]);
-                  } else {
-                    setDateFilter("");
-                  }
-                }}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
         </div>
       </div>
 
-      {/* Filter Row */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl border bg-card shadow-sm">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Created By */}
-          <div className="flex items-center gap-1.5 text-xs">
-            <span className="text-muted-foreground font-medium">Created By</span>
-            <Select value={updatedByFilter} onValueChange={setUpdatedByFilter}>
-              <SelectTrigger className="w-[140px] h-8 text-xs bg-muted/20 rounded-lg">
-                <SelectValue placeholder="All" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="super admin">Super Admin</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Sort By */}
-          <div className="flex items-center gap-1.5 text-xs">
-            <span className="text-muted-foreground font-medium">Sort By</span>
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-[110px] h-8 text-xs bg-muted/20 rounded-lg">
-                <SelectValue placeholder="Latest" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="latest">Latest</SelectItem>
-                <SelectItem value="oldest">Oldest</SelectItem>
-                <SelectItem value="title">Title A-Z</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Clear Action */}
-        {(updatedByFilter !== "all" || search || dateFilter) && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setSearch("");
-              setDateFilter("");
-              setUpdatedByFilter("all");
-              setSortBy("latest");
-            }}
-            className="text-xs text-muted-foreground hover:text-foreground h-8"
-          >
-            Clear Filters
-          </Button>
-        )}
-      </div>
 
       {/* Main Table View */}
       <div className="border rounded-2xl bg-card overflow-hidden shadow-sm">
@@ -260,65 +270,66 @@ export const UserBroadcastView: React.FC<UserBroadcastViewProps> = ({
           </TableHeader>
 
           <TableBody>
-            {filteredData.length > 0 ? (
-              filteredData.map((item) => (
-                <TableRow
-                  key={item.id}
-                  className="hover:bg-muted/30 transition-colors cursor-pointer"
-                  onClick={() => {
-                    markBroadcastAsReadLocal(item.numericId || item.id);
-                    onViewItem(item);
-                  }}
-                >
-                  {/* Document Column */}
-                  <TableCell className="py-3.5 pl-4">
-                    <div className="font-bold text-xs text-foreground hover:text-primary transition-colors">
-                      {item.title}
-                    </div>
-                  </TableCell>
+            {paginatedData.length > 0 ? (
+              paginatedData.map((item) => {
+                const isRead = readIds.includes(String(item.numericId || item.id));
+                return (
+                  <TableRow
+                    key={item.id}
+                    className="hover:bg-muted/30 transition-colors cursor-pointer"
+                    onClick={() => {
+                      markBroadcastAsReadLocal(item.numericId || item.id, userId);
+                      onViewItem(item);
+                    }}
+                  >
+                    {/* Document Column */}
+                    <TableCell className="py-3.5 pl-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 flex items-center justify-center shrink-0">
+                          {!isRead && (
+                            <span
+                              className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"
+                              title="Unread"
+                            />
+                          )}
+                        </div>
+                        <div className="font-bold text-xs text-foreground hover:text-primary transition-colors truncate max-w-[400px]">
+                          {item.title}
+                        </div>
+                      </div>
+                    </TableCell>
 
-                  {/* Published Date Column */}
-                  <TableCell className="text-xs font-medium text-foreground">{item.publishDate || item.updatedAt}</TableCell>
 
-                  {/* Created By Column */}
-                  <TableCell className="text-xs">
-                    <span className="font-semibold text-foreground">{item.updatedBy.name}</span>
-                  </TableCell>
+                    {/* Published Date Column */}
+                    <TableCell className="text-xs font-medium text-foreground">
+                      {item.publishDate || item.updatedAt}
+                    </TableCell>
 
-                  {/* Actions Column */}
-                  <TableCell className="text-right pr-4" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-1">
-                      {/* Download */}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                        title="Download Document"
-                        onClick={() => {
-                          if (item.attachments && item.attachments.length > 0 && item.attachments[0].url) {
-                            window.open(item.attachments[0].url, "_blank");
-                          } else {
-                            alert("No file attached to this broadcast.");
-                          }
-                        }}
-                      >
-                        <Download className="w-4 h-4" />
-                      </Button>
+                    {/* Created By Column */}
+                    <TableCell className="text-xs font-medium text-foreground">
+                      <span>{item.updatedBy.name}</span>
+                    </TableCell>
 
-                      {/* Details Eye */}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                        title="View Details"
-                        onClick={() => onViewItem(item)}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+                    {/* Actions Column */}
+                    <TableCell className="text-right pr-4" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1">
+                        {/* Details Eye */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                          title="View Details"
+                          onClick={() => onViewItem(item)}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+
+
             ) : (
               <TableRow>
                 <TableCell colSpan={6} className="h-32 text-center text-xs text-muted-foreground">
@@ -330,18 +341,18 @@ export const UserBroadcastView: React.FC<UserBroadcastViewProps> = ({
         </Table>
 
         {/* Pagination Footer */}
-        <div className="flex items-center justify-between p-4 border-t bg-muted/20 text-xs">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t bg-muted/20 text-xs">
           <div className="text-muted-foreground">
-            Showing <span className="font-semibold text-foreground">1</span> to{" "}
-            <span className="font-semibold text-foreground">{filteredData.length}</span> of{" "}
-            <span className="font-semibold text-foreground">{filteredData.length}</span> results
+            Showing <span className="font-semibold text-foreground">{totalItems === 0 ? 0 : startIndex + 1}</span> to{" "}
+            <span className="font-semibold text-foreground">{endIndex}</span> of{" "}
+            <span className="font-semibold text-foreground">{totalItems}</span> results
           </div>
 
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground">Rows per page</span>
-              <Select value={rowsPerPage} onValueChange={setRowsPerPage}>
-                <SelectTrigger className="w-[60px] h-8 text-xs bg-muted/30 rounded-lg">
+              <Select value={rowsPerPage} onValueChange={(val) => setRowsPerPage(val)}>
+                <SelectTrigger className="w-[65px] h-8 text-xs bg-muted/30 rounded-lg">
                   <SelectValue placeholder="10" />
                 </SelectTrigger>
                 <SelectContent>
@@ -353,19 +364,33 @@ export const UserBroadcastView: React.FC<UserBroadcastViewProps> = ({
             </div>
 
             <div className="flex items-center gap-1">
-              <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" disabled>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-lg"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <Button variant="default" size="sm" className="h-8 w-8 text-xs font-bold rounded-lg">
-                1
-              </Button>
-              <Button variant="outline" size="sm" className="h-8 w-8 text-xs font-bold rounded-lg">
-                2
-              </Button>
-              <Button variant="outline" size="sm" className="h-8 w-8 text-xs font-bold rounded-lg">
-                3
-              </Button>
-              <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                <Button
+                  key={pageNum}
+                  variant={pageNum === currentPage ? "default" : "outline"}
+                  size="sm"
+                  className="h-8 w-8 text-xs font-bold rounded-lg"
+                  onClick={() => setCurrentPage(pageNum)}
+                >
+                  {pageNum}
+                </Button>
+              ))}
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-lg"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              >
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>

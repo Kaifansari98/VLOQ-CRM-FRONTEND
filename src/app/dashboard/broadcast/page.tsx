@@ -24,15 +24,26 @@ import {
   useCreateBroadcastMutation,
   useUpdateBroadcastMutation,
   useDeleteBroadcastMutation,
+  useMarkBroadcastReadMutation,
   markBroadcastAsReadLocal,
   CreateBroadcastPayload,
   stripHtmlAndEntities,
 } from "@/api/broadcast";
 import { useAppSelector } from "@/redux/store";
+import { useRouter } from "next/navigation";
 
 export default function BroadcastPage() {
+  const router = useRouter();
   const user = useAppSelector((state) => state.auth.user);
   const isHoUser = useAppSelector((state) => state.auth.is_ho_user);
+
+  const isBroadcastEnabled = user?.vendor?.is_broadcast_enabled === true;
+
+  useEffect(() => {
+    if (!isBroadcastEnabled) {
+      router.replace("/dashboard");
+    }
+  }, [isBroadcastEnabled, router]);
 
   // Check if current user is Super Admin or Head Office User
   const isSuperAdmin = useMemo(() => {
@@ -73,6 +84,7 @@ export default function BroadcastPage() {
   const createBroadcastMutation = useCreateBroadcastMutation();
   const updateBroadcastMutation = useUpdateBroadcastMutation();
   const deleteBroadcastMutation = useDeleteBroadcastMutation();
+  const markBroadcastReadMutation = useMarkBroadcastReadMutation();
 
   // Sync API data when fetched from backend - always update, even if empty array
   useEffect(() => {
@@ -146,10 +158,14 @@ export default function BroadcastPage() {
   const handleViewItem = (item: BroadcastItem) => {
     setSelectedItem(item);
     setDetailSheetOpen(true);
-    if (item.numericId || item.id) {
-      markBroadcastAsReadLocal(item.numericId || item.id, user?.id);
+    const numId = item.numericId || parseInt(String(item.id).replace(/\D/g, ""), 10);
+    if (numId && !isNaN(numId)) {
+      markBroadcastReadMutation.mutate(numId);
     }
+    markBroadcastAsReadLocal(numId || item.id, user?.id);
   };
+
+  if (!isBroadcastEnabled) return null;
 
   return (
     <>
@@ -211,6 +227,7 @@ export default function BroadcastPage() {
               broadcasts={broadcasts}
               onViewItem={handleViewItem}
               onToggleBookmark={handleToggleBookmark}
+              userId={user?.id}
             />
           )}
         </FadeInProvider>

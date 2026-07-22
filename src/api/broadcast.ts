@@ -19,6 +19,7 @@ export interface BackendBroadcastAttachment {
   file_url: string;
   file_name?: string | null;
   file_type?: string | null;
+  file_size?: number | bigint | null; // bytes stored in DB
 }
 
 export interface BackendBroadcast {
@@ -54,6 +55,8 @@ export interface CreateBroadcastPayload {
   status: "ACTIVE" | "INACTIVE";
   publishAt?: string | null;
   vendorId?: number | null;
+  userTypeId?: number | number[];
+  userTypeIds?: number[];
   audiences: Array<{ audienceType: "ALL" | "ROLE" | "USER" | "FRANCHISE"; targetId?: number | null }>;
   attachments?: AttachmentItemInput[];
 }
@@ -69,6 +72,17 @@ export interface BroadcastReader {
     email?: string;
   };
 }
+
+/** Format bytes to human-readable size string (KB / MB / GB) */
+const formatFileSize = (bytes?: number | bigint | null): string => {
+  if (bytes == null) return "-";
+  const n = typeof bytes === "bigint" ? Number(bytes) : bytes;
+  if (n === 0) return "0 B";
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  if (n < 1024 * 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(n / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+};
 
 export const stripHtmlAndEntities = (html: string): string => {
   if (!html) return "";
@@ -96,6 +110,7 @@ export const mapBackendBroadcastToFrontend = (item: BackendBroadcast): Broadcast
       audience: "All Users",
       department: "General",
       publishDate: new Date().toLocaleString(),
+      rawPublishAt: new Date().toISOString(),
       updatedAt: new Date().toLocaleString(),
       updatedBy: { name: "System" },
       version: "1.0",
@@ -114,7 +129,7 @@ export const mapBackendBroadcastToFrontend = (item: BackendBroadcast): Broadcast
     .map((a, idx) => ({
       id: String(a.id || `att-${idx}`),
       name: a.title || a.file_name || "Attachment",
-      size: "1.5 MB",
+      size: formatFileSize(a.file_size),
       type: a.file_type || a.file_url?.split(".").pop() || "pdf",
       url: a.file_url,
     }));
@@ -145,6 +160,7 @@ export const mapBackendBroadcastToFrontend = (item: BackendBroadcast): Broadcast
     audienceScope: item.audiences && item.audiences.length > 0 ? item.audiences[0].audience_type : "ALL",
     department: isCircular ? "Operations" : "IT",
     publishDate: item.publish_at ? new Date(item.publish_at).toLocaleString() : new Date(item.created_at).toLocaleString(),
+    rawPublishAt: item.publish_at || item.created_at,
     updatedAt: new Date(item.updated_at).toLocaleString(),
     updatedBy: {
       name: item.updatedBy?.user_name || item.createdBy?.user_name || "Super Admin",
@@ -157,7 +173,7 @@ export const mapBackendBroadcastToFrontend = (item: BackendBroadcast): Broadcast
     summary: cleanTextContent ? cleanTextContent.substring(0, 120) + (cleanTextContent.length > 120 ? "..." : "") : "",
     content: item.content,
     fileType: (firstFile?.file_type?.toLowerCase() as any) || (isCircular ? "pdf" : "docx"),
-    fileSize: "1.5 MB",
+    fileSize: formatFileSize(firstFile?.file_size),
     bookmarked: false,
     videoLinks: youtubeLinks,
     attachments: attachmentsList,

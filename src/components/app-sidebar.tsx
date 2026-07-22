@@ -383,6 +383,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const isCustomUserTypeOnlyVendor =
     user?.vendor?.is_this_vendor_is_custom_usertype_only === true;
   const isCrmEnabled = user?.vendor?.is_crm_enabled !== false;
+  const isBroadcastEnabled = user?.vendor?.is_broadcast_enabled === true;
   const isInventoryEnabled = user?.vendor?.is_inventory_enabled === true;
   const isTrackTraceEnabled = user?.vendor?.is_tracktrace_enabled === true;
   const canSeeOverallLeads = userType === "admin" || userType === "super-admin" || userType === "auditor";
@@ -672,11 +673,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       return item;
     });
 
-    const finalNavItems = !isCrmEnabled
+    const initialNavItems = !isCrmEnabled
       ? []
       : isActiveFranchiseB2b
         ? data.b2bNavMain
         : finalNavItemsSource;
+
+    const finalNavItems = isBroadcastEnabled
+      ? initialNavItems
+      : initialNavItems.filter((item) => item.title !== "Broadcast");
 
     const finalTrackTraceItems = isSuperAdmin && isTrackTraceEnabled
       ? data.trackTraceNav
@@ -714,6 +719,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     userType,
     isCustomUserTypeOnlyVendor,
     isCrmEnabled,
+    isBroadcastEnabled,
     isInventoryEnabled,
     isTrackTraceEnabled,
     customPrivilegeCodes,

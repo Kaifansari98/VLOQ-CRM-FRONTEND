@@ -35,6 +35,8 @@ import {
   ChevronsRight,
   Volume2,
   FileText,
+  ChevronDown,
+  X,
 } from "lucide-react";
 import {
   Popover,
@@ -67,7 +69,24 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [audienceFilter, setAudienceFilter] = useState("all");
+  const [audienceSearch, setAudienceSearch] = useState("");
+  const [audienceOpen, setAudienceOpen] = useState(false);
   const [dateFilter, setDateFilter] = useState("");
+
+  const [rowsPerPage, setRowsPerPage] = useState("10");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Dynamic unique audiences from data (each segment split by ", ")
+  const uniqueAudiences = useMemo(() => {
+    const set = new Set<string>();
+    broadcasts.forEach((b) => {
+      b.audience.split(", ").forEach((a) => {
+        const trimmed = a.trim();
+        if (trimmed) set.add(trimmed);
+      });
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [broadcasts]);
 
   // Filtered dataset
   const filteredBroadcasts = useMemo(() => {
@@ -78,18 +97,38 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
         (item.summary && item.summary.toLowerCase().includes(search.toLowerCase()));
 
       const matchesStatus = statusFilter === "all" || item.status === statusFilter;
+
+      // Exact-segment audience match: check each comma-separated audience label
       const matchesAudience =
         audienceFilter === "all" ||
-        item.audience.toLowerCase().includes(audienceFilter.toLowerCase());
+        item.audience
+          .split(", ")
+          .some((a) => a.trim().toLowerCase() === audienceFilter.toLowerCase());
 
       const matchesDate =
         !dateFilter ||
-        (item.publishDate && item.publishDate.includes(dateFilter)) ||
-        (item.updatedAt && item.updatedAt.includes(dateFilter));
+        (item.rawPublishAt && item.rawPublishAt.startsWith(dateFilter)) ||
+        (item.publishDate && item.publishDate.includes(dateFilter));
 
       return matchesSearch && matchesStatus && matchesAudience && matchesDate;
     });
   }, [broadcasts, search, statusFilter, audienceFilter, dateFilter]);
+
+
+  const pageSize = Number(rowsPerPage) || 10;
+  const totalItems = filteredBroadcasts.length;
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, audienceFilter, dateFilter, rowsPerPage]);
+
+  const startIndex = totalItems === 0 ? 0 : (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+
+  const paginatedBroadcasts = useMemo(() => {
+    return filteredBroadcasts.slice(startIndex, endIndex);
+  }, [filteredBroadcasts, startIndex, endIndex]);
 
   const getStatusBadge = (status: BroadcastStatus) => {
     switch (status) {
@@ -105,18 +144,8 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Scheduled
           </span>
         );
-      case "draft":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-500/10 text-slate-600 border border-slate-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-slate-500" /> Draft
-          </span>
-        );
-      case "expired":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-600 border border-red-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Expired
-          </span>
-        );
+  
+  
     }
   };
 
@@ -135,7 +164,6 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
           <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-muted/60 border text-foreground">
             All Users
           </span>
-          <div className="text-[10px] text-muted-foreground uppercase font-mono mt-0.5">ALL</div>
         </div>
       );
     }
@@ -146,7 +174,6 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
           <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-muted/60 border text-foreground">
             All Franchises
           </span>
-          <div className="text-[10px] text-muted-foreground uppercase font-mono mt-0.5">FRANCHISE</div>
         </div>
       );
     }
@@ -166,40 +193,42 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
     const hiddenCount = items.length - maxVisible;
 
     return (
-      <div className="space-y-0.5">
-        <div className="flex flex-wrap items-center gap-1">
-          {visibleItems.map((name, idx) => (
-            <span
-              key={idx}
-              className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-muted/50 border text-foreground max-w-[150px] truncate"
-              title={name}
-            >
+      <div className="flex flex-wrap items-center gap-1">
+        {visibleItems.map((name, idx) => (
+          <Tooltip key={idx}>
+            <TooltipTrigger asChild>
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-muted/50 border text-foreground max-w-[260px] truncate cursor-default"
+              >
+                {name}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent className="px-2.5 py-1 text-xs font-medium">
               {name}
-            </span>
-          ))}
-          {hiddenCount > 0 && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-primary/10 text-primary border border-primary/20 cursor-pointer hover:bg-primary/20 transition-colors">
-                  +{hiddenCount}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs space-y-1.5 p-2.5">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Selected Audience ({items.length})
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {items.map((name, i) => (
-                    <span key={i} className="px-2 py-0.5 bg-background text-foreground rounded-md text-xs font-semibold border shadow-xs">
-                      {name}
-                    </span>
-                  ))}
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          )}
-        </div>
-        <div className="text-[10px] text-muted-foreground uppercase font-mono">{audienceScope || "ALL"}</div>
+            </TooltipContent>
+          </Tooltip>
+        ))}
+        {hiddenCount > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-primary/10 text-primary border border-primary/20 cursor-pointer hover:bg-primary/20 transition-colors">
+                +{hiddenCount}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs space-y-1.5 p-2.5">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Selected Audience ({items.length})
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {items.map((name, i) => (
+                  <span key={i} className="px-2 py-0.5 bg-background text-foreground rounded-md text-xs font-semibold border shadow-xs">
+                    {name}
+                  </span>
+                ))}
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
     );
   };
@@ -241,23 +270,78 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
             <SelectItem value="all">Status: All</SelectItem>
             <SelectItem value="published">Published</SelectItem>
             <SelectItem value="scheduled">Scheduled</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="expired">Expired</SelectItem>
+       
           </SelectContent>
         </Select>
 
-        {/* Audience Select */}
-        <Select value={audienceFilter} onValueChange={setAudienceFilter}>
-          <SelectTrigger className="w-full sm:w-[150px] h-9 text-xs rounded-xl">
-            <SelectValue placeholder="Audience" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Audience: All</SelectItem>
-            <SelectItem value="all users">All Users</SelectItem>
-            <SelectItem value="role">Target Role</SelectItem>
-            <SelectItem value="franchise">Target Franchise</SelectItem>
-          </SelectContent>
-        </Select>
+        {/* Audience — searchable Popover */}
+        <Popover open={audienceOpen} onOpenChange={setAudienceOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={`w-full sm:w-[160px] h-9 text-xs rounded-xl justify-between font-normal px-3 ${
+                audienceFilter !== "all"
+                  ? "border-primary text-primary"
+                  : "text-muted-foreground"
+              }`}
+            >
+              <span className="truncate">
+                {audienceFilter === "all" ? "Audience: All" : audienceFilter}
+              </span>
+              <ChevronDown className="ml-1 h-3.5 w-3.5 shrink-0 opacity-60" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            className="w-[220px] p-0 shadow-xl border rounded-xl overflow-hidden"
+            align="start"
+            sideOffset={6}
+          >
+            {/* Search input */}
+            <div className="flex items-center border-b px-3 py-2 gap-2">
+              <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <input
+                className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+                placeholder="Search source..."
+                value={audienceSearch}
+                onChange={(e) => setAudienceSearch(e.target.value)}
+                autoFocus
+              />
+              {audienceSearch && (
+                <button onClick={() => setAudienceSearch("")} className="text-muted-foreground hover:text-foreground">
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+            {/* Scrollable list */}
+            <div className="max-h-52 overflow-y-auto py-1">
+              {/* All option */}
+              <button
+                className={`w-full text-left px-4 py-2 text-xs hover:bg-muted/60 transition-colors ${
+                  audienceFilter === "all" ? "bg-muted font-semibold" : ""
+                }`}
+                onClick={() => { setAudienceFilter("all"); setAudienceOpen(false); setAudienceSearch(""); }}
+              >
+                All
+              </button>
+              {uniqueAudiences
+                .filter((a) => a.toLowerCase().includes(audienceSearch.toLowerCase()))
+                .map((aud) => (
+                  <button
+                    key={aud}
+                    className={`w-full text-left px-4 py-2 text-xs hover:bg-muted/60 transition-colors ${
+                      audienceFilter === aud ? "bg-muted font-semibold" : ""
+                    }`}
+                    onClick={() => { setAudienceFilter(aud); setAudienceOpen(false); setAudienceSearch(""); }}
+                  >
+                    {aud}
+                  </button>
+                ))}
+              {uniqueAudiences.filter((a) => a.toLowerCase().includes(audienceSearch.toLowerCase())).length === 0 && (
+                <p className="px-4 py-3 text-xs text-muted-foreground text-center">No results</p>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
 
         {/* Date Filter */}
         <Popover>
@@ -297,6 +381,7 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
               setSearch("");
               setStatusFilter("all");
               setAudienceFilter("all");
+              setAudienceSearch("");
               setDateFilter("");
             }}
             className="h-9 text-xs text-muted-foreground w-full sm:w-auto"
@@ -321,8 +406,8 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
           </TableHeader>
 
           <TableBody>
-            {filteredBroadcasts.length > 0 ? (
-              filteredBroadcasts.map((item) => {
+            {paginatedBroadcasts.length > 0 ? (
+              paginatedBroadcasts.map((item) => {
                 const readPercentage = item.totalSent > 0 ? Math.round((item.readCount / item.totalSent) * 100) : 0;
                 return (
                   <TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
@@ -391,9 +476,14 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                          title="Edit Broadcast"
-                          onClick={() => (onEditItem ? onEditItem(item) : onViewItem(item))}
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
+                          title={item.status === "published" ? "Published broadcasts cannot be edited" : "Edit Broadcast"}
+                          disabled={item.status === "published"}
+                          onClick={() => {
+                            if (item.status !== "published" && onEditItem) {
+                              onEditItem(item);
+                            }
+                          }}
                         >
                           <Edit3 className="w-4 h-4" />
                         </Button>
@@ -422,35 +512,83 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
         </Table>
 
         {/* Pagination Footer */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t bg-muted/20 text-xs text-center sm:text-left">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t bg-muted/20 text-xs">
           <div className="text-muted-foreground">
-            Showing <span className="font-semibold text-foreground">1</span> to{" "}
-            <span className="font-semibold text-foreground">{filteredBroadcasts.length}</span> of{" "}
-            <span className="font-semibold text-foreground">{broadcasts.length}</span> results
+            Showing <span className="font-semibold text-foreground">{totalItems === 0 ? 0 : startIndex + 1}</span> to{" "}
+            <span className="font-semibold text-foreground">{endIndex}</span> of{" "}
+            <span className="font-semibold text-foreground">{totalItems}</span> results
           </div>
 
-          <div className="flex items-center gap-1">
-            <Button variant="outline" size="icon" className="h-8 w-8" disabled>
-              <ChevronsLeft className="w-4 h-4" />
-            </Button>
-            <Button variant="outline" size="icon" className="h-8 w-8" disabled>
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <Button variant="default" size="sm" className="h-8 w-8 text-xs font-bold rounded-lg">
-              1
-            </Button>
-            <Button variant="outline" size="sm" className="h-8 w-8 text-xs font-bold rounded-lg">
-              2
-            </Button>
-            <Button variant="outline" size="sm" className="h-8 w-8 text-xs font-bold rounded-lg">
-              3
-            </Button>
-            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg">
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg">
-              <ChevronsRight className="w-4 h-4" />
-            </Button>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground">Rows per page</span>
+              <Select value={rowsPerPage} onValueChange={(val) => setRowsPerPage(val)}>
+                <SelectTrigger className="w-[65px] h-8 text-xs bg-muted/30 rounded-lg">
+                  <SelectValue placeholder="10" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-lg"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage(1)}
+                title="First Page"
+              >
+                <ChevronsLeft className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-lg"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                title="Previous Page"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                <Button
+                  key={pageNum}
+                  variant={pageNum === currentPage ? "default" : "outline"}
+                  size="sm"
+                  className="h-8 w-8 text-xs font-bold rounded-lg"
+                  onClick={() => setCurrentPage(pageNum)}
+                >
+                  {pageNum}
+                </Button>
+              ))}
+
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-lg"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                title="Next Page"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-lg"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage(totalPages)}
+                title="Last Page"
+              >
+                <ChevronsRight className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
