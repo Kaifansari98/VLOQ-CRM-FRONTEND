@@ -123,7 +123,6 @@ export default function ProjectFinanceSummary({
         lead_id: leadId,
         account_id: accountId,
         vendor_id: vendorId,
-        client_id: 1,
         created_by: userId,
         amount: values.amount,
         payment_text: values.payment_text,

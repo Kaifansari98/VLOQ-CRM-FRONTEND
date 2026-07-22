@@ -71,7 +71,6 @@ const BookingEditModal: React.FC<LeadViewModalProps> = ({
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const leadId = data?.id;
-  const clientId = 1;
   const accountId = data?.accountId;
 
   const {
@@ -106,14 +105,13 @@ const BookingEditModal: React.FC<LeadViewModalProps> = ({
   }, [data, form]);
 
   const handleSubmit = (values: BookingFormValues) => {
-    if (!leadId || !vendorId || !userId || !accountId || !clientId) return;
+    if (!leadId || !vendorId || !userId || !accountId) return;
     editBooking(
       {
         lead_id: leadId,
         account_id: accountId,
         vendor_id: vendorId,
         created_by: userId,
-        client_id: clientId,
         bookingAmount: values.amount_received,
         finalBookingAmount: values.final_booking_amount,
         siteSupervisorId: Number(values.assign_to),

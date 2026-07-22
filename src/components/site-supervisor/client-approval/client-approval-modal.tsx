@@ -42,7 +42,6 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
-  const clientId = 1;
   const queryClient = useQueryClient();
   const { mutate, isPending } = useSubmitClientApproval();
 
@@ -152,7 +151,6 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
     formData.append("lead_id", String(data.id));
     formData.append("vendor_id", String(vendorId));
     formData.append("account_id", String(data.accountId));
-    formData.append("client_id", String(clientId));
     formData.append("created_by", String(userId));
     if (values.advance_payment_date) {
       formData.append("advance_payment_date", values.advance_payment_date);

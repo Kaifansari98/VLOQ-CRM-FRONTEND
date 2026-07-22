@@ -314,8 +314,6 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
   });
 
 
-  const clientId = 1;
-
   const clientName = React.useMemo(
     () =>
       data?.name?.trim() ||
@@ -355,7 +353,6 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
       formData.append("account_id", accountId?.toString() || "");
       formData.append("vendor_id", vendorId?.toString() || "");
       formData.append("created_by", userId?.toString() || "");
-      formData.append("client_id", clientId.toString() || "");
       formData.append("user_id", userId?.toString() || "");
 
       sitePhotos.forEach(({ file, instanceId }) => {
@@ -425,7 +422,6 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
     },
     [
       accountId,
-      clientId,
       clientName,
       furnitureTypeName,
       isCustomDocNomenclatureEnabled,

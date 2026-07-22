@@ -229,7 +229,6 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
     formData.append("account_id", data?.account?.id?.toString() || leadId?.toString() || "");
     formData.append("vendor_id", vendorId?.toString() || "");
     formData.append("created_by", userId?.toString() || "");
-    formData.append("client_id", "1");
     formData.append("user_id", userId?.toString() || "");
 
     if (type === 'photos') {

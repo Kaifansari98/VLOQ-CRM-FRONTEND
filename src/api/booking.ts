@@ -7,7 +7,7 @@ export interface BookingPayload {
   account_id: number;
   vendor_id: number;
   created_by: number;
-  client_id: number;
+  client_id?: number;
   bookingAmount: number;
   bookingAmountPaymentDetailsText: string;
   finalBookingAmount: number;
@@ -23,7 +23,9 @@ export const moveToBookingStage = async (payload: BookingPayload) => {
   formData.append("account_id", payload.account_id.toString());
   formData.append("vendor_id", payload.vendor_id.toString());
   formData.append("created_by", payload.created_by.toString());
-  formData.append("client_id", payload.client_id.toString());
+  if (payload.client_id !== undefined && payload.client_id !== null) {
+    formData.append("client_id", payload.client_id.toString());
+  }
   formData.append("bookingAmount", payload.bookingAmount.toString());
   formData.append("mrpValue", payload.mrpValue.toString());
   formData.append(
@@ -95,7 +97,7 @@ export interface EditBookingPayload {
   account_id: number;
   vendor_id: number;
   created_by: number;
-  client_id: number;
+  client_id?: number;
   bookingAmount?: number;
   finalBookingAmount?: number;
   siteSupervisorId?: number;
@@ -223,7 +225,7 @@ export interface AddPaymentPayload {
   lead_id: number;
   account_id: number;
   vendor_id: number;
-  client_id: number; // fixed as 1 for now
+  client_id?: number;
   created_by: number;
   amount: number;
   payment_text: string;

@@ -157,7 +157,6 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
   const [openSelectDocModal, setOpenSelectDocModal] = useState(false);
   const leadId = data?.id;
   const accountId = data?.accountId;
-  const clientId = 1;
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -298,7 +297,6 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       account_id: accountId,
       vendor_id: vendorId,
       created_by: userId,
-      client_id: clientId,
       bookingAmount: values.amount_received,
       bookingAmountPaymentDetailsText: values.payment_text,
       finalBookingAmount: values.final_booking_amount,

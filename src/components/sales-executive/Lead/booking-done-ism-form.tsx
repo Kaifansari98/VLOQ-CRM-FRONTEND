@@ -150,8 +150,6 @@ const BookingDoneIsmForm: React.FC<LeadViewModalProps> = ({
     router.push("/dashboard/leads/designing-stage");
   };
 
-  const clientId = 1;
-
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     if (!leadId || !accountId) {
       toastManager.add({ title: "Lead or account data is missing!", type: "error" });
@@ -163,7 +161,6 @@ const BookingDoneIsmForm: React.FC<LeadViewModalProps> = ({
     formData.append("account_id", accountId?.toString() || "");
     formData.append("vendor_id", vendorId?.toString() || "");
     formData.append("created_by", userId?.toString() || "");
-    formData.append("client_id", clientId.toString() || "");
     formData.append("user_id", userId?.toString() || "");
 
     values.current_site_photos?.forEach((file: File) => {
