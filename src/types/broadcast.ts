@@ -19,10 +19,12 @@ export interface BroadcastVersion {
 }
 
 export interface BroadcastItem {
-  id: string; // e.g. "BC-00045"
+  id: string; // e.g. "BD-00045"
   numericId?: number;
   title: string;
   type: BroadcastType;
+  category?: string;
+  category_id?: number | null;
   status: BroadcastStatus;
   audience: string; // e.g., "All Users", "Sales Executive", "Site Supervisor", "Vloq Franchise"
   audienceScope?: "ALL" | "ROLE" | "USER" | "FRANCHISE" | string;
@@ -59,4 +61,14 @@ export interface BroadcastFilterState {
   version: string;
   updatedBy: string;
   sortBy: string;
+}
+
+export interface BroadcastCategoryMaster {
+  id: number;
+  category: string;
+  type: string;
+  vendor_id: number;
+  is_active: boolean;
+  created_by: number;
+  created_at: string;
 }

@@ -10,6 +10,7 @@ interface QuillEditorProps {
   placeholder?: string;
   className?: string;
   minHeight?: string;
+  maxHeight?: string;
 }
 
 export const QuillEditor: React.FC<QuillEditorProps> = ({
@@ -18,6 +19,7 @@ export const QuillEditor: React.FC<QuillEditorProps> = ({
   placeholder = "Write content here...",
   className = "",
   minHeight = "200px",
+  maxHeight = "280px",
 }) => {
   // Dynamically import ReactQuill to prevent SSR issues in Next.js
   const ReactQuill = useMemo(
@@ -83,6 +85,8 @@ export const QuillEditor: React.FC<QuillEditorProps> = ({
 
         .quill-wrapper .ql-editor {
           min-height: ${minHeight};
+          max-height: ${maxHeight};
+          overflow-y: auto;
           padding: 16px;
           color: var(--foreground, hsl(var(--foreground)));
         }

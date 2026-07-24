@@ -25,6 +25,7 @@ export interface BackendBroadcastAttachment {
 export interface BackendBroadcast {
   id: number;
   title: string;
+  category?: string;
   content: string;
   type: "CIRCULAR" | "DOCUMENT";
   status: "ACTIVE" | "INACTIVE";
@@ -48,8 +49,18 @@ export interface AttachmentItemInput {
   fileObj?: File;
 }
 
+export interface BroadcastCategoryMaster {
+  id: number;
+  category: string;
+  type: string;
+  vendor_id: number;
+  is_active: boolean;
+}
+
 export interface CreateBroadcastPayload {
   title: string;
+  category?: string;
+  category_id?: number;
   content: string;
   type: "CIRCULAR" | "DOCUMENT";
   status: "ACTIVE" | "INACTIVE";
@@ -102,7 +113,7 @@ export const stripHtmlAndEntities = (html: string): string => {
 export const mapBackendBroadcastToFrontend = (item: BackendBroadcast): BroadcastItem => {
   if (!item) {
     return {
-      id: "BC-00000",
+      id: "BD-00000",
       numericId: 0,
       title: "Unknown",
       type: "circular",
@@ -137,10 +148,14 @@ export const mapBackendBroadcastToFrontend = (item: BackendBroadcast): Broadcast
   const cleanTextContent = stripHtmlAndEntities(item.content || "");
 
   return {
-    id: `BC-${String(item.id).padStart(5, "0")}`,
+    id: `BD-${String(item.id).padStart(5, "0")}`,
     numericId: item.id,
     title: item.title,
     type: isCircular ? "circular" : "document",
+    category:
+      typeof item.category === "object" && item.category !== null
+        ? (item.category as any).category
+        : item.category || undefined,
     status: (() => {
       if (item.status === "INACTIVE") return "draft";
       if (item.publish_at && new Date(item.publish_at) > new Date()) return "scheduled";
@@ -164,7 +179,7 @@ export const mapBackendBroadcastToFrontend = (item: BackendBroadcast): Broadcast
     updatedAt: new Date(item.updated_at).toLocaleString(),
     updatedBy: {
       name: item.updatedBy?.user_name || item.createdBy?.user_name || "Super Admin",
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${item.createdBy?.user_name || "SuperAdmin"}`,
+      avatar: (item.updatedBy as any)?.avatar || (item.createdBy as any)?.avatar || undefined,
       role: "Super Admin",
     },
     version: "1.0",
@@ -205,6 +220,31 @@ export const fetchBroadcastsApi = async (params?: {
 export const fetchBroadcastByIdApi = async (id: number) => {
   const { data } = await apiClient.get(`/broadcasts/${id}`);
   return mapBackendBroadcastToFrontend(data?.data);
+};
+
+export const fetchBroadcastCategoriesApi = async (vendorId: number) => {
+  const { data } = await apiClient.get(`/broadcasts/categories/${vendorId}`);
+  return (data?.data || []) as BroadcastCategoryMaster[];
+};
+
+export const fetchBroadcastCategoriesForMasterApi = async (vendorId: number) => {
+  const { data } = await apiClient.get(`/broadcasts/categories/${vendorId}?all=true`);
+  return (data?.data || []) as BroadcastCategoryMaster[];
+};
+
+export const createBroadcastCategoryApi = async (payload: { vendor_id: number; category: string; type?: string }) => {
+  const { data } = await apiClient.post("/broadcasts/categories", payload);
+  return data;
+};
+
+export const updateBroadcastCategoryApi = async (id: number, payload: { category: string; type?: string }) => {
+  const { data } = await apiClient.patch(`/broadcasts/categories/${id}`, payload);
+  return data;
+};
+
+export const toggleBroadcastCategoryStatusApi = async (id: number) => {
+  const { data } = await apiClient.patch(`/broadcasts/categories/${id}/status`);
+  return data;
 };
 
 export const createBroadcastApi = async (payload: CreateBroadcastPayload) => {
@@ -311,6 +351,56 @@ export const useBroadcastDetail = (id: number | null | undefined) => {
     queryKey: ["broadcast", id],
     queryFn: () => fetchBroadcastByIdApi(id!),
     enabled: typeof id === "number" && id > 0,
+  });
+};
+
+export const useBroadcastCategories = (vendorId: number | null | undefined) => {
+  return useQuery({
+    queryKey: ["broadcast-categories", vendorId],
+    queryFn: () => fetchBroadcastCategoriesApi(vendorId!),
+    enabled: typeof vendorId === "number" && vendorId > 0,
+  });
+};
+
+export const useBroadcastCategoriesForMaster = (vendorId: number | null | undefined) => {
+  return useQuery({
+    queryKey: ["broadcast-categories-master", vendorId],
+    queryFn: () => fetchBroadcastCategoriesForMasterApi(vendorId!),
+    enabled: typeof vendorId === "number" && vendorId > 0,
+  });
+};
+
+export const useCreateBroadcastCategory = (vendorId?: number) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createBroadcastCategoryApi,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["broadcast-categories", vendorId] });
+      queryClient.invalidateQueries({ queryKey: ["broadcast-categories-master", vendorId] });
+    },
+  });
+};
+
+export const useUpdateBroadcastCategory = (vendorId?: number) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { id: number; payload: { category: string; type?: string } }) =>
+      updateBroadcastCategoryApi(data.id, data.payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["broadcast-categories", vendorId] });
+      queryClient.invalidateQueries({ queryKey: ["broadcast-categories-master", vendorId] });
+    },
+  });
+};
+
+export const useToggleBroadcastCategoryStatus = (vendorId?: number) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => toggleBroadcastCategoryStatusApi(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["broadcast-categories", vendorId] });
+      queryClient.invalidateQueries({ queryKey: ["broadcast-categories-master", vendorId] });
+    },
   });
 };
 

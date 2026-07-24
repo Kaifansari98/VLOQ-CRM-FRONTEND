@@ -19,6 +19,7 @@ import { SuperAdminBroadcastView } from "@/components/broadcast/SuperAdminBroadc
 import { UserBroadcastView } from "@/components/broadcast/UserBroadcastView";
 import { CreateBroadcastView } from "@/components/broadcast/CreateBroadcastView";
 import { BroadcastDetailSheet } from "@/components/broadcast/BroadcastDetailSheet";
+import { BroadcastDetailView } from "@/components/broadcast/BroadcastDetailView";
 import {
   useBroadcasts,
   useCreateBroadcastMutation,
@@ -30,10 +31,11 @@ import {
   stripHtmlAndEntities,
 } from "@/api/broadcast";
 import { useAppSelector } from "@/redux/store";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function BroadcastPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const user = useAppSelector((state) => state.auth.user);
   const isHoUser = useAppSelector((state) => state.auth.is_ho_user);
 
@@ -93,6 +95,23 @@ export default function BroadcastPage() {
     }
   }, [apiBroadcasts]);
 
+  // Handle URL query parameter ?id=BD-XXXXX to open detail view directly
+  useEffect(() => {
+    const targetId = searchParams.get("id") || searchParams.get("broadcastId");
+    if (!targetId || broadcasts.length === 0) return;
+
+    const matched = broadcasts.find(
+      (b) =>
+        b.id.toLowerCase() === targetId.toLowerCase() ||
+        String(b.numericId) === targetId
+    );
+
+    if (matched) {
+      setSelectedItem(matched);
+      setDetailSheetOpen(true);
+    }
+  }, [searchParams, broadcasts]);
+
   // Handle creating or updating broadcast to backend API & local state
   const handleSaveBroadcast = async ({
     broadcast: newBroadcast,
@@ -150,20 +169,39 @@ export default function BroadcastPage() {
       if (selectedItem?.id === id) {
         setDetailSheetOpen(false);
         setSelectedItem(null);
+        router.push("/dashboard/broadcast");
       }
     }
   };
 
   // View detail handler
   const handleViewItem = (item: BroadcastItem) => {
-    setSelectedItem(item);
-    setDetailSheetOpen(true);
-    const numId = item.numericId || parseInt(String(item.id).replace(/\D/g, ""), 10);
-    if (numId && !isNaN(numId)) {
-      markBroadcastReadMutation.mutate(numId);
-    }
-    markBroadcastAsReadLocal(numId || item.id, user?.id);
+    // We let the useEffect handle the actual state update so it's fully driven by the URL
+    router.push(`/dashboard/broadcast?id=${item.id}`);
   };
+
+  // Deep linking: Automatically open a broadcast if an ID is present in the URL
+  // Also close it if the ID is removed (e.g. hitting back button)
+  useEffect(() => {
+    const idFromUrl = searchParams.get("id");
+    if (idFromUrl && broadcasts.length > 0) {
+      if (selectedItem?.id !== idFromUrl) {
+        const match = broadcasts.find((b) => String(b.id) === idFromUrl);
+        if (match) {
+          setSelectedItem(match);
+          setDetailSheetOpen(true);
+          const numId = match.numericId || parseInt(String(match.id).replace(/\D/g, ""), 10);
+          if (numId && !isNaN(numId)) {
+            markBroadcastReadMutation.mutate(numId);
+          }
+          markBroadcastAsReadLocal(numId || match.id, user?.id);
+        }
+      }
+    } else if (!idFromUrl && selectedItem) {
+      setSelectedItem(null);
+      setDetailSheetOpen(false);
+    }
+  }, [searchParams, broadcasts, selectedItem, markBroadcastReadMutation, user?.id]);
 
   if (!isBroadcastEnabled) return null;
 
@@ -208,6 +246,15 @@ export default function BroadcastPage() {
               onSubmitBroadcast={handleSaveBroadcast}
               editingBroadcast={editingBroadcast}
             />
+          ) : selectedItem ? (
+            <BroadcastDetailView
+              item={selectedItem}
+              onBack={() => {
+                router.push("/dashboard/broadcast");
+              }}
+              onToggleBookmark={handleToggleBookmark}
+              isSuperAdmin={isSuperAdmin}
+            />
           ) : isSuperAdmin ? (
             <SuperAdminBroadcastView
               broadcasts={broadcasts}
@@ -232,15 +279,6 @@ export default function BroadcastPage() {
           )}
         </FadeInProvider>
       </main>
-
-      {/* Broadcast Detail Drawer (Document & Circular Overview for all users) */}
-      <BroadcastDetailSheet
-        item={selectedItem}
-        open={detailSheetOpen}
-        onOpenChange={setDetailSheetOpen}
-        onToggleBookmark={handleToggleBookmark}
-        isSuperAdmin={isSuperAdmin}
-      />
     </>
   );
 }

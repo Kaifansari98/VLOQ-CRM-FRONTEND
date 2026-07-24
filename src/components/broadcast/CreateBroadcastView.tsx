@@ -34,13 +34,16 @@ import {
   UserCheck,
   Search,
   Send,
+  ExternalLink,
 } from "lucide-react";
 import { BroadcastItem, BroadcastType } from "@/types/broadcast";
 import { useUserTypes, useUsersForMaster } from "@/hooks/useTypesMaster";
 import { useFranchisesByVendorId } from "@/api/franchise";
 import { useAppSelector } from "@/redux/store";
-import { CreateBroadcastPayload } from "@/api/broadcast";
+import { CreateBroadcastPayload, stripHtmlAndEntities, useBroadcastCategories } from "@/api/broadcast";
 import { toastManager } from "@/components/ui/toast";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { getYouTubeEmbedUrl } from "@/lib/utils";
 
 interface CreateBroadcastViewProps {
   onBack: () => void;
@@ -65,6 +68,14 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
   const { data: userTypesResponse, isLoading: isLoadingRoles } = useUserTypes();
   const { data: franchisesData, isLoading: isLoadingFranchises } = useFranchisesByVendorId(vendorId);
   const { data: usersResponse, isLoading: isLoadingUsers } = useUsersForMaster({ page: 1, limit: 1000 }, vendorId);
+  
+  const { data: categoriesResponse, isLoading: isLoadingCategories } = useBroadcastCategories(vendorId);
+  const categoriesList = useMemo(() => {
+    if (!categoriesResponse) return [];
+    if (Array.isArray((categoriesResponse as any).data)) return (categoriesResponse as any).data;
+    if (Array.isArray(categoriesResponse)) return categoriesResponse as any;
+    return [];
+  }, [categoriesResponse]);
 
   const userRolesList: Array<{ id: number; user_type?: string; user_type_name?: string; name?: string }> =
     Array.isArray(userTypesResponse)
@@ -81,8 +92,10 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
   const [activeTab, setActiveTab] = useState<string>("content");
 
   // Form states
+  const [customId, setCustomId] = useState("");
   const [title, setTitle] = useState("");
-  const [type, setType] = useState<BroadcastType>("circular");
+  const [type, setType] = useState<BroadcastType | "">("");
+  const [categoryId, setCategoryId] = useState<string>("");
   const [content, setContent] = useState("");
   const [department, setDepartment] = useState("Operations");
 
@@ -127,12 +140,66 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
     }
   }, [publishDate]);
 
+  // Check if each of the 3 tabs' required data has been filled
+  const isContentFilled = useMemo(() => {
+    if (!type) return false;
+    const hasTitle = Boolean(title && title.trim() !== "");
+    const cleanContent = stripHtmlAndEntities(content || "");
+    const hasContent = Boolean(cleanContent && cleanContent.trim() !== "");
+    const hasCategory = type !== "document" || Boolean(categoryId && categoryId.trim() !== "");
+    return hasTitle && hasContent && hasCategory;
+  }, [title, content, type, categoryId]);
+
+  const isAudienceFilled = useMemo(() => {
+    if (audienceType === "ALL") return true;
+    return (
+      selectedRoleIds.length > 0 ||
+      selectedFranchiseIds.length > 0 ||
+      selectedUserIds.length > 0
+    );
+  }, [audienceType, selectedRoleIds, selectedFranchiseIds, selectedUserIds]);
+
+  const isScheduleFilled = useMemo(() => {
+    if (scheduleType === "now") return true;
+    if (scheduleType === "later") {
+      return Boolean(publishDate && publishDate.trim() !== "" && new Date(publishDate) >= new Date());
+    }
+    return false;
+  }, [scheduleType, publishDate]);
+
+  const isAllTabsFilled = isContentFilled && isAudienceFilled && isScheduleFilled;
+
+  // Tooltip explaining which mandatory tab fields are missing before publishing
+  const missingFieldsTooltip = useMemo(() => {
+    if (isAllTabsFilled) return "";
+    const missing: string[] = [];
+    if (!isContentFilled) {
+      const contentParts: string[] = [];
+      if (!type) contentParts.push("Broadcast Type");
+      if (!title || !title.trim()) contentParts.push("Title");
+      if (!content || !stripHtmlAndEntities(content).trim()) contentParts.push("Content");
+      if (type === "document" && (!categoryId || !categoryId.trim())) contentParts.push("Category");
+      missing.push(`Content Tab (${contentParts.join(", ") || "Incomplete"})`);
+    }
+    if (!isAudienceFilled) {
+      missing.push("Audience Tab (Target Audience)");
+    }
+    if (!isScheduleFilled) {
+      if (!scheduleType) {
+        missing.push("Schedule Tab (Timing Option)");
+      } else if (scheduleType === "later" && (!publishDate || new Date(publishDate) < new Date())) {
+        missing.push("Schedule Tab (Valid Future Date & Time)");
+      }
+    }
+    return `Please fill required fields in: ${missing.join(" • ")}`;
+  }, [isAllTabsFilled, isContentFilled, isAudienceFilled, isScheduleFilled, title, content, type, categoryId, scheduleType, publishDate]);
+
   // Hydrate form fields when editing an existing broadcast
   useEffect(() => {
     if (editingBroadcast) {
       setTitle(editingBroadcast.title || "");
-      setType(editingBroadcast.type || "circular");
-
+      setType(editingBroadcast.type?.toLowerCase() as BroadcastType || "");
+      setCategoryId(String(editingBroadcast.category_id || ""));
       setContent(editingBroadcast.content || "");
       setDepartment(editingBroadcast.department || "Operations");
       setScheduleVisited(true);
@@ -285,27 +352,8 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
     const trimmed = videoUrlInput.trim();
     if (!trimmed) return;
 
-    try {
-      const parsedUrl = new URL(trimmed);
-      const hostname = parsedUrl.hostname.toLowerCase();
-      const isValidHost = hostname === "youtube.com" || 
-                          hostname.endsWith(".youtube.com") || 
-                          hostname === "youtu.be" || 
-                          hostname === "youtube-nocookie.com" ||
-                          hostname.endsWith(".youtube-nocookie.com");
-      
-      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-      const match = trimmed.match(regExp);
-      const hasValidVideoId = match && match[2] && match[2].length === 11;
-
-      if (!isValidHost || !hasValidVideoId) {
-        toastManager.add({
-          title: "Please enter a valid YouTube video URL",
-          type: "error",
-        });
-        return;
-      }
-    } catch (e) {
+    const embedUrl = getYouTubeEmbedUrl(trimmed);
+    if (!embedUrl) {
       toastManager.add({
         title: "Please enter a valid YouTube video URL",
         type: "error",
@@ -316,6 +364,7 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
     setVideoLinks([...videoLinks, trimmed]);
     setVideoUrlInput("");
   };
+
 
   const handleRemoveVideo = (index: number) => {
     setVideoLinks(videoLinks.filter((_, i) => i !== index));
@@ -366,6 +415,11 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
       hasContentError = true;
     }
 
+    if (type === "document" && (!categoryId || !categoryId.trim())) {
+      newErrors.categoryId = true;
+      hasContentError = true;
+    }
+
     const textContent = content.replace(/<[^>]*>/g, "").trim();
     if (!content || !textContent) {
       newErrors.content = true;
@@ -376,6 +430,8 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
       setErrors(newErrors);
       if (newErrors.title) {
         toastManager.add({ title: "Title is required.", type: "error" });
+      } else if (newErrors.categoryId) {
+        toastManager.add({ title: "Category is required for Document broadcasts.", type: "error" });
       } else {
         toastManager.add({ title: "Content is required.", type: "error" });
       }
@@ -492,9 +548,13 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
     }
 
     const effectiveStatus = overridePublishNow ? "published" : status;
+    const selectedCategoryObj = categoriesList.find((cat: any) => String(cat.id) === String(categoryId));
+    const selectedCategoryName = selectedCategoryObj?.category || undefined;
 
     const backendPayload: CreateBroadcastPayload = {
       title,
+      category: type === "document" ? selectedCategoryName : undefined,
+      category_id: type === "document" && categoryId ? Number(categoryId) : undefined,
       content: content || "No body content",
       type: type === "document" ? "DOCUMENT" : "CIRCULAR",
       status: effectiveStatus === "draft" ? "INACTIVE" : "ACTIVE",
@@ -520,7 +580,9 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
 
     const frontendBroadcast: Partial<BroadcastItem> = {
       title,
-      type,
+      type: (type || "circular") as BroadcastType,
+      category: type === "document" ? selectedCategoryName : undefined,
+      category_id: type === "document" && categoryId ? Number(categoryId) : undefined,
       status: effectiveStatus === "published" && scheduleType === "later" && !overridePublishNow ? "scheduled" : effectiveStatus,
       summary: "",
       content: content || "No content body provided.",
@@ -532,7 +594,6 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
       updatedBy: {
         name: user?.user_name || "Super Admin",
         role: "Super Admin",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=SuperAdmin",
       },
       fileType: attachments.length > 0 ? (attachments[0].type as any) : "pdf",
       fileSize: attachments.length > 0 ? attachments[0].size : "1.2 MB",
@@ -579,18 +640,54 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
           </Button>
        
           {editingBroadcast && (editingBroadcast.status === "scheduled" || scheduleType === "later") && (
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => handleSubmit("published", true)}
-              className="flex-1 sm:flex-none rounded-xl h-10 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 px-4 shadow-sm"
-            >
-              <Send className="w-4 h-4" /> Publish Now
-            </Button>
+            <TooltipProvider delayDuration={0}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={!isAllTabsFilled}
+                      onClick={() => handleSubmit("published", true)}
+                      className={`flex-1 sm:flex-none rounded-xl h-10 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 px-4 shadow-sm ${
+                        !isAllTabsFilled ? "opacity-60 cursor-not-allowed" : ""
+                      }`}
+                    >
+                      <Send className="w-4 h-4" /> Publish Now
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {missingFieldsTooltip && (
+                  <TooltipContent side="bottom" className="dark text-xs max-w-sm">
+                    {missingFieldsTooltip}
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
           )}
-          <Button size="sm" onClick={() => handleSubmit("published")} className="w-full sm:w-auto rounded-xl h-10 text-xs font-semibold px-5">
-            {editingBroadcast ? "Save Changes" : "Publish Broadcast"}
-          </Button>
+          <TooltipProvider delayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button
+                    size="sm"
+                    disabled={!isAllTabsFilled}
+                    onClick={() => handleSubmit("published")}
+                    className={`w-full sm:w-auto rounded-xl h-10 text-xs font-semibold px-5 transition-all ${
+                      !isAllTabsFilled ? "opacity-60 cursor-not-allowed" : ""
+                    }`}
+                  >
+                    {editingBroadcast ? "Save Changes" : "Publish Broadcast"}
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {missingFieldsTooltip && (
+                <TooltipContent side="bottom" className="dark text-xs max-w-sm">
+                  {missingFieldsTooltip}
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
 
@@ -680,23 +777,66 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
                 </RadioGroup>
               </div>
 
-              {/* Title */}
-              <div className="space-y-2">
-                <Label className={`text-xs font-bold transition-colors ${errors.title ? "text-red-500" : ""}`}>Title *</Label>
-                <Input
-                  placeholder="Enter broadcast title..."
-                  value={title}
-                  onChange={(e) => {
-                    setTitle(e.target.value);
-                    if (errors.title) {
-                      setErrors((prev) => ({ ...prev, title: false }));
-                    }
-                  }}
-                  className={`h-11 text-sm rounded-xl transition-all duration-200 ${
-                    errors.title ? "border-red-500 focus-visible:ring-red-500 bg-red-50/5" : ""
-                  }`}
-                />
-                {errors.title && <p className="text-xs text-red-500 mt-1">Title is required</p>}
+              {/* Broadcast ID, Title, Category */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                <div className="space-y-2 md:col-span-3">
+                  <Label className="text-xs font-bold flex items-center justify-between">
+                    <span>Broadcast ID</span>
+                    <span className="text-[10px] text-muted-foreground font-normal">(Optional)</span>
+                  </Label>
+                  <Input
+                    placeholder={editingBroadcast ? editingBroadcast.id : "Auto (BD-XXXXX)"}
+                    value={customId}
+                    onChange={(e) => setCustomId(e.target.value)}
+                    className="h-11 text-sm font-mono rounded-xl bg-muted/20"
+                  />
+                </div>
+
+                <div className="space-y-2 md:col-span-6">
+                  <Label className={`text-xs font-bold transition-colors ${errors.title ? "text-red-500" : ""}`}>Title *</Label>
+                  <Input
+                    placeholder="Enter broadcast title..."
+                    value={title}
+                    onChange={(e) => {
+                      setTitle(e.target.value);
+                      if (errors.title) {
+                        setErrors((prev) => ({ ...prev, title: false }));
+                      }
+                    }}
+                    className={`h-11 text-sm rounded-xl transition-all duration-200 ${
+                      errors.title ? "border-red-500 focus-visible:ring-red-500 bg-red-50/5" : ""
+                    }`}
+                  />
+                  {errors.title && <p className="text-xs text-red-500 mt-1">Title is required</p>}
+                </div>
+
+                {/* Category Dropdown (Shown when Document tab is selected) */}
+                {type === "document" && (
+                  <div className="md:col-span-3 space-y-2">
+                    <Label className={`text-xs font-bold transition-colors ${errors.categoryId ? "text-red-500" : ""}`}>Category *</Label>
+                    <Select 
+                      value={categoryId} 
+                      onValueChange={(val) => {
+                        setCategoryId(val);
+                        if (errors.categoryId) {
+                          setErrors((prev) => ({ ...prev, categoryId: false }));
+                        }
+                      }}
+                    >
+                      <SelectTrigger className={`h-11 text-sm rounded-xl transition-all duration-200 ${errors.categoryId ? "border-red-500 ring-1 ring-red-500 bg-red-50/5" : ""}`}>
+                        <SelectValue placeholder={isLoadingCategories ? "Loading..." : "Select category"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categoriesList.map((cat: any) => (
+                          <SelectItem key={cat.id} value={String(cat.id)}>
+                            {cat.category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.categoryId && <p className="text-xs text-red-500 mt-1">Category is required</p>}
+                  </div>
+                )}
               </div>
 
 
@@ -1147,10 +1287,80 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
                 </div>
 
 
-                <div
-                  className="text-xs space-y-2 leading-relaxed p-2"
-                  dangerouslySetInnerHTML={{ __html: content || "<p className='text-muted-foreground'>Broadcast body preview...</p>" }}
-                />
+                <div className="text-xs space-y-3 leading-relaxed p-4 rounded-xl border bg-muted/10 rich-text-container break-words w-full max-h-[280px] overflow-y-auto min-h-[100px]">
+                  <div dangerouslySetInnerHTML={{ __html: content || "<p className='text-muted-foreground'>Broadcast body preview...</p>" }} />
+                  <style dangerouslySetInnerHTML={{ __html: `
+                    .rich-text-container * {
+                      max-width: 100% !important;
+                      word-break: break-word !important;
+                    }
+                    .rich-text-container p {
+                      margin-bottom: 0.75rem;
+                    }
+                    .rich-text-container p:last-child {
+                      margin-bottom: 0;
+                    }
+                    .rich-text-container u {
+                      text-decoration: underline;
+                    }
+                    .rich-text-container s, .rich-text-container strike {
+                      text-decoration: line-through;
+                    }
+                    .rich-text-container strong, .rich-text-container b {
+                      font-weight: 700;
+                    }
+                    .rich-text-container em, .rich-text-container i {
+                      font-style: italic;
+                    }
+                    .rich-text-container ol {
+                      list-style-type: decimal;
+                      padding-left: 1.25rem;
+                    }
+                    .rich-text-container ul {
+                      list-style-type: disc;
+                      padding-left: 1.25rem;
+                    }
+                  `}} />
+                </div>
+
+                {videoLinks && videoLinks.length > 0 && (
+                  <div className="pt-4 border-t space-y-3">
+                    <div className="text-xs font-bold flex items-center gap-1.5 text-foreground">
+                      <Video className="w-4 h-4 text-primary" /> Video Attachments ({videoLinks.length})
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
+                      {videoLinks.map((url, idx) => {
+                        const embedUrl = getYouTubeEmbedUrl(url);
+                        return (
+                          <div key={idx} className="border rounded-xl overflow-hidden bg-card p-2 space-y-2 shadow-xs">
+                            {embedUrl ? (
+                              <div className="relative w-full aspect-video max-h-[200px] rounded-lg overflow-hidden bg-black">
+                                <iframe
+                                  src={embedUrl}
+                                  title={`Video ${idx + 1}`}
+                                  className="w-full h-full rounded-lg border-0"
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                  allowFullScreen
+                                />
+                              </div>
+                            ) : (
+                              <a
+                                href={url.startsWith("http") ? url : `https://${url}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center gap-2 text-xs text-primary underline p-1"
+                              >
+                                <ExternalLink className="w-4 h-4" /> Watch Video Tutorial ({url})
+                              </a>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+
 
                 {attachments.length > 0 && (
                   <div className="pt-4 border-t space-y-2">
