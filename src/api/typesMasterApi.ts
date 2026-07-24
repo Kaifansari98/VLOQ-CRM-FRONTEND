@@ -441,6 +441,21 @@ export interface BulkUploadLightCarcasUnitsResponse {
   };
 }
 
+export interface BulkUploadOtherAppliancesResponse {
+  success: boolean;
+  data: {
+    createdCount: number;
+    updatedCount: number;
+    successCount: number;
+    skippedCount: number;
+    skippedRows: Array<{
+      row: number;
+      sheet: string;
+      reason: string;
+    }>;
+  };
+}
+
 export interface CreateOtherAppliancesPayload {
   vendor_id: number;
   type: string;
@@ -901,6 +916,35 @@ export const createOtherAppliances = async (
   const res = await apiClient.post("/leads/create-other-appliances", payload);
   return res.data;
 }
+
+export const uploadOtherAppliances = async (
+  formData: FormData,
+): Promise<BulkUploadOtherAppliancesResponse> => {
+  const res = await apiClient.post<BulkUploadOtherAppliancesResponse>(
+    "/leads/upload-other-appliances",
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    },
+  );
+  return res.data;
+};
+
+export const downloadOtherAppliancesReport = async (
+  vendorId: number,
+): Promise<void> => {
+  const res = await apiClient.get(
+    `/leads/download-other-appliances/${vendorId}`,
+    { responseType: "blob" }
+  );
+  const url = URL.createObjectURL(new Blob([res.data]));
+  const link = document.createElement("a");
+  link.href = url;
+  const date = new Date().toISOString().split("T")[0];
+  link.download = `other_appliances_${vendorId}_${date}.xlsx`;
+  link.click();
+  URL.revokeObjectURL(url);
+};
 
 export const fetchHandleTypes = async (vendorId: number) => {
   const res = await apiClient.get<HandleTypeMasterResponse>(

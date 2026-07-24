@@ -63,6 +63,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useAppSelector } from "@/redux/store";
+import { toastManager } from "@/components/ui/toast";
 import {
   useCarcassTypes,
   useCarcasMaterials,
@@ -92,6 +93,8 @@ import {
   useUploadLightCarcasUnits,
   useOtherAppliances,
   useCreateOtherAppliances,
+  useUploadOtherAppliances,
+  useDownloadOtherAppliancesReport,
 } from "@/hooks/useTypesMaster";
 
 type MasterRow = {
@@ -529,6 +532,164 @@ async function computeLightUploadPreview(
     typesToAdd: newTypeNames.size,
     materialsToAdd: 0,
     finishesToAdd: unitsToAdd,
+    skippedMissing,
+    skippedDuplicate,
+    skippedRows,
+  };
+}
+
+async function parseOtherAppliancesFile(
+  file: File,
+): Promise<{ headers: string[]; rows: Record<string, string>[]; error?: string }> {
+  const isCsv =
+    file.name.toLowerCase().endsWith(".csv") || file.type === "text/csv";
+
+  const headers: string[] = [];
+  const rows: Record<string, string>[] = [];
+
+  if (isCsv) {
+    const text = await file.text();
+    parseCsvText(text).forEach((cells, idx) => {
+      if (idx === 0) {
+        cells.forEach((c) => headers.push(c.trim().toLowerCase()));
+      } else {
+        const rowData: Record<string, string> = {};
+        cells.forEach((c, colIdx) => {
+          const headerName = headers[colIdx];
+          if (headerName) rowData[headerName] = c.trim();
+        });
+        rows.push(rowData);
+      }
+    });
+  } else {
+    const buffer = await file.arrayBuffer();
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet) {
+      return {
+        headers: [],
+        rows: [],
+        error: "No worksheet found in the workbook.",
+      };
+    }
+    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+      if (rowNumber === 1) {
+        row.eachCell({ includeEmpty: true }, (cell) => {
+          headers.push(
+            String(cell.value ?? "")
+              .trim()
+              .toLowerCase(),
+          );
+        });
+      } else {
+        const rowData: Record<string, string> = {};
+        row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+          const headerName = headers[colNumber - 1];
+          if (headerName) {
+            rowData[headerName] = String(cell.value ?? "").trim();
+          }
+        });
+        rows.push(rowData);
+      }
+    });
+  }
+
+  return { headers, rows };
+}
+
+async function computeOtherAppliancesUploadPreview(
+  file: File,
+  existing: {
+    appliances: Array<{ id: number; article_number: string; type: string }>;
+  },
+  type: string,
+): Promise<MasterUploadPreview> {
+  const { headers, rows, error } = await parseOtherAppliancesFile(file);
+
+  if (error) {
+    return {
+      totalDataRows: 0,
+      typesToAdd: 0,
+      materialsToAdd: 0,
+      finishesToAdd: 0,
+      skippedMissing: 0,
+      skippedDuplicate: 0,
+      skippedRows: [],
+      headerError: error,
+    };
+  }
+
+  const articleKey = headers.find((h) => h.includes("article"));
+  const descKey = headers.find((h) => h.includes("desc"));
+
+  if (!articleKey || !descKey) {
+    return {
+      totalDataRows: rows.length,
+      typesToAdd: 0,
+      materialsToAdd: 0,
+      finishesToAdd: 0,
+      skippedMissing: 0,
+      skippedDuplicate: 0,
+      skippedRows: [],
+      headerError:
+        "Required columns missing. The sheet must have Article Number and Description columns.",
+    };
+  }
+
+  const existingArticles = new Set<string>(
+    existing.appliances
+      .filter((a) => a.type.toLowerCase() === type.toLowerCase())
+      .map((a) => a.article_number.trim().toLowerCase()),
+  );
+
+  const newArticlesInSheet = new Set<string>();
+
+  let skippedMissing = 0;
+  let skippedDuplicate = 0;
+  let entriesToAdd = 0;
+  const skippedRows: Array<{
+    row: number;
+    reason: string;
+    type: "duplicate" | "missing";
+  }> = [];
+
+  rows.forEach((row, idx) => {
+    const rowNumber = idx + 1;
+    const articleVal = (row[articleKey] || "").trim();
+    const descVal = (row[descKey] || "").trim();
+
+    if (!articleVal || !descVal) {
+      skippedMissing++;
+      skippedRows.push({
+        row: rowNumber,
+        reason: "Missing required value(s)",
+        type: "missing",
+      });
+      return;
+    }
+
+    const articleLower = articleVal.toLowerCase();
+
+    if (existingArticles.has(articleLower) || newArticlesInSheet.has(articleLower)) {
+      skippedDuplicate++;
+      skippedRows.push({
+        row: rowNumber,
+        reason: `Duplicate article number "${articleVal}"`,
+        type: "duplicate",
+      });
+      return;
+    }
+
+    newArticlesInSheet.add(articleLower);
+    entriesToAdd++;
+  });
+
+  return {
+    totalDataRows: rows.length,
+    typesToAdd: 0,
+    materialsToAdd: 0,
+    finishesToAdd: entriesToAdd,
     skippedMissing,
     skippedDuplicate,
     skippedRows,
@@ -3300,6 +3461,9 @@ function OtherAppliancesListingTable({
   isError,
   errorMessage,
   onAction,
+  onTemplateDownload,
+  onImportClick,
+  isDownloading,
 }: {
   type: string;
   rows: OtherApplianceMasterRow[];
@@ -3307,6 +3471,9 @@ function OtherAppliancesListingTable({
   isError: boolean;
   errorMessage?: string;
   onAction: () => void;
+  onTemplateDownload: () => void;
+  onImportClick: () => void;
+  isDownloading?: boolean;
 }) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -3376,14 +3543,33 @@ function OtherAppliancesListingTable({
           </p>
         </div>
 
-        <Button
-          type="button"
-          className="sm:self-start gap-2"
-          onClick={onAction}
-        >
-          <Plus className="h-4 w-4" />
-          Add {type}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2 sm:self-start">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onTemplateDownload}
+            disabled={isDownloading}
+          >
+            <Download className="h-4 w-4" />
+            Template
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onImportClick}
+          >
+            <Upload className="h-4 w-4" />
+            Import
+          </Button>
+          <Button
+            type="button"
+            className="gap-2"
+            onClick={onAction}
+          >
+            <Plus className="h-4 w-4" />
+            Add {type}
+          </Button>
+        </div>
       </CardHeader>
 
       <CardContent>
@@ -3421,6 +3607,8 @@ function OtherAppliancesTab({ type }: { type: string }) {
     error,
   } = useOtherAppliances();
   const createOtherAppliances = useCreateOtherAppliances();
+  const uploadMutation = useUploadOtherAppliances();
+  const downloadMutation = useDownloadOtherAppliancesReport();
 
   const rows = React.useMemo<OtherApplianceMasterRow[]>(
     () =>
@@ -3438,11 +3626,74 @@ function OtherAppliancesTab({ type }: { type: string }) {
   const [openModal, setOpenModal] = React.useState(false);
   const [articleNumber, setArticleNumber] = React.useState("");
   const [description, setDescription] = React.useState("");
+  const [openUploadModal, setOpenUploadModal] = React.useState(false);
+  const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
+  const [uploadPreview, setUploadPreview] =
+    React.useState<MasterUploadPreview | null>(null);
+  const [isParsingPreview, setIsParsingPreview] = React.useState(false);
+
+  React.useEffect(() => {
+    const file = selectedFiles[0];
+    if (!file) {
+      setUploadPreview(null);
+      return;
+    }
+
+    let cancelled = false;
+    setIsParsingPreview(true);
+    computeOtherAppliancesUploadPreview(
+      file,
+      {
+        appliances: otherAppliances?.data ?? [],
+      },
+      type,
+    )
+      .then((preview) => {
+        if (!cancelled) setUploadPreview(preview);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setUploadPreview({
+            totalDataRows: 0,
+            typesToAdd: 0,
+            materialsToAdd: 0,
+            finishesToAdd: 0,
+            skippedMissing: 0,
+            skippedDuplicate: 0,
+            skippedRows: [],
+            headerError:
+              "Could not read this file. Please check the format and try again.",
+          });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsParsingPreview(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedFiles, otherAppliances?.data, type]);
 
   const handleCreate = () => {
     const article = articleNumber.trim();
     const desc = description.trim();
     if (!article || !desc || !vendorId) return;
+
+    const articleLower = article.toLowerCase();
+    const isDuplicate = (otherAppliances?.data ?? []).some(
+      (item) =>
+        item.type.toLowerCase() === type.toLowerCase() &&
+        item.article_number.trim().toLowerCase() === articleLower,
+    );
+
+    if (isDuplicate) {
+      toastManager.add({
+        title: `Article number "${article}" already exists for ${type}.`,
+        type: "error",
+      });
+      return;
+    }
 
     createOtherAppliances.mutate(
       {
@@ -3470,7 +3721,160 @@ function OtherAppliancesTab({ type }: { type: string }) {
         isError={isError}
         errorMessage={(error as any)?.response?.data?.error}
         onAction={() => setOpenModal(true)}
+        onTemplateDownload={() => downloadMutation.mutate()}
+        onImportClick={() => {
+          setSelectedFiles([]);
+          setOpenUploadModal(true);
+          setUploadPreview(null);
+        }}
+        isDownloading={downloadMutation.isPending}
       />
+
+      <BaseModal
+        open={openUploadModal}
+        onOpenChange={(open) => {
+          setOpenUploadModal(open);
+          if (!open) {
+            setSelectedFiles([]);
+            setUploadPreview(null);
+          }
+        }}
+        title={`Import ${type}`}
+        description={`Upload a CSV or XLSX file containing a tab for ${type}. The columns 'Article Number' and 'Description' are required per sheet.`}
+        size="smd"
+      >
+        <div className="p-6 space-y-4">
+          <div className="space-y-4">
+            <FileUploadField
+              value={selectedFiles}
+              onChange={setSelectedFiles}
+              accept=".csv,.xlsx"
+              multiple={false}
+              maxFiles={1}
+            />
+          </div>
+
+          {selectedFiles.length > 0 && (
+            <div className="space-y-3">
+              {isParsingPreview ? (
+                <div className="flex items-center gap-2 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  Reading file…
+                </div>
+              ) : uploadPreview?.headerError ? (
+                <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-500/10 p-3 text-sm text-red-700 dark:border-red-500/30 dark:text-red-300">
+                  <FileWarning className="mt-0.5 h-4 w-4 shrink-0" />
+                  <p>{uploadPreview.headerError}</p>
+                </div>
+              ) : uploadPreview ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">
+                      Preview — {uploadPreview.totalDataRows} row
+                      {uploadPreview.totalDataRows === 1 ? "" : "s"} found
+                    </p>
+                    {uploadPreview.skippedRows.length > 0 && (
+                      <Badge
+                        variant="outline"
+                        className="text-muted-foreground"
+                      >
+                        {uploadPreview.skippedRows.length} skipped
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <PreviewStatTile
+                      icon={<Layers />}
+                      label={`New ${type}`}
+                      value={uploadPreview.finishesToAdd}
+                      tone="emerald"
+                    />
+                    <PreviewStatTile
+                      icon={<CopyX />}
+                      label="Skipped — duplicate"
+                      value={uploadPreview.skippedDuplicate}
+                      tone="amber"
+                    />
+                    {uploadPreview.skippedMissing > 0 && (
+                      <PreviewStatTile
+                        icon={<FileWarning />}
+                        label="Skipped — missing value(s)"
+                        value={uploadPreview.skippedMissing}
+                        tone="red"
+                      />
+                    )}
+                  </div>
+
+                  {uploadPreview.skippedRows.length > 0 && (
+                    <div className="rounded-lg border">
+                      <div className="border-b bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                        Skipped row details
+                      </div>
+                      <ScrollArea className="h-48">
+                        <div className="divide-y">
+                          {uploadPreview.skippedRows.map((s, i) => (
+                            <div
+                              key={i}
+                              className="flex items-center gap-2 px-3 py-1.5 text-xs"
+                            >
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "shrink-0 tabular-nums",
+                                  s.type === "duplicate"
+                                    ? "border-amber-200 text-amber-700 dark:border-amber-500/30 dark:text-amber-300"
+                                    : "border-red-200 text-red-700 dark:border-red-500/30 dark:text-red-300",
+                                )}
+                              >
+                                Row {s.row}
+                              </Badge>
+                              <span className="text-muted-foreground">
+                                {s.reason}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  )}
+                </>
+              ) : null}
+            </div>
+          )}
+
+          <div className="flex gap-2 justify-end border-t pt-4 mt-6">
+            <Button variant="outline" onClick={() => setOpenUploadModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                const file = selectedFiles[0];
+                if (!file || !vendorId) return;
+                const formData = new FormData();
+                formData.append("file", file);
+                formData.append("vendorId", String(vendorId));
+                formData.append("type", type);
+                uploadMutation.mutate(formData, {
+                  onSuccess: () => {
+                    setOpenUploadModal(false);
+                    setSelectedFiles([]);
+                    setUploadPreview(null);
+                  },
+                });
+              }}
+              disabled={
+                selectedFiles.length === 0 ||
+                isParsingPreview ||
+                !!uploadPreview?.headerError ||
+                uploadMutation.isPending
+              }
+            >
+              {uploadMutation.isPending ? "Uploading..." : "Upload & Import"}
+            </Button>
+          </div>
+        </div>
+      </BaseModal>
 
       <Dialog open={openModal} onOpenChange={setOpenModal}>
         <DialogContent>
@@ -3535,19 +3939,7 @@ function OtherAppliancesTab({ type }: { type: string }) {
 }
 
 function OthersMastersSection() {
-  const { data: otherAppliances } = useOtherAppliances();
-
-  const applianceTypes = React.useMemo(() => {
-    const seen = new Set<string>();
-    const types: string[] = [];
-    (otherAppliances?.data ?? []).forEach((item) => {
-      if (!seen.has(item.type)) {
-        seen.add(item.type);
-        types.push(item.type);
-      }
-    });
-    return types;
-  }, [otherAppliances?.data]);
+  const applianceTypes = ["Appliances", "Stone", "Sinks", "Faucets"];
 
   return (
     <Tabs defaultValue="lights" className="w-full">

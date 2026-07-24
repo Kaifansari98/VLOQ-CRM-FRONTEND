@@ -46,6 +46,8 @@ import {
   uploadLightCarcasUnits,
   fetchOtherAppliances,
   createOtherAppliances,
+  uploadOtherAppliances,
+  downloadOtherAppliancesReport,
   fetchHandleTypes,
   createMiscellaneousTeam,
   createMiscellaneousType,
@@ -1084,6 +1086,52 @@ export const useCreateOtherAppliances = () => {
     },
   });
 }
+
+export const useUploadOtherAppliances = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: (formData: FormData) => uploadOtherAppliances(formData),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({
+        queryKey: getOtherAppliancesQueryKey(vendorId),
+      });
+      const summary = res.data
+        ? `Created: ${res.data.createdCount}, Updated: ${res.data.updatedCount}, Skipped: ${res.data.skippedCount}`
+        : "";
+      toastManager.add({
+        title: `Other appliances uploaded successfully. ${summary}`,
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error || "Failed to upload other appliances.",
+        type: "error",
+      });
+    },
+  });
+};
+
+export const useDownloadOtherAppliancesReport = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: () => {
+      if (!vendorId) throw new Error("Vendor ID is missing");
+      return downloadOtherAppliancesReport(vendorId);
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.message || "Failed to download other appliances report.",
+        type: "error",
+      });
+    },
+  });
+};
 
 export const useSkirtingCarcassLegsColors = (skirtingCarcassLegsId?: number) => {
   return useQuery({
