@@ -339,6 +339,21 @@ export interface CreateCarcassMaterialFinishPayload {
   name: string;
 }
 
+export interface BulkUploadCarcassMaterialFinishesResponse {
+  success: boolean;
+  data: {
+    typesCreated: number;
+    materialsCreated: number;
+    finishesCreated: number;
+    successCount: number;
+    skippedCount: number;
+    skippedRows: Array<{
+      row: Record<string, string>;
+      reason: string;
+    }>;
+  };
+}
+
 export interface CreateShutterTypePayload {
   vendor_id: number;
   name: string;
@@ -352,6 +367,21 @@ export interface CreateShutterMaterialPayload {
 export interface CreateShutterMaterialFinishPayload {
   shutter_material_id: number;
   name: string;
+}
+
+export interface BulkUploadShutterMaterialFinishesResponse {
+  success: boolean;
+  data: {
+    typesCreated: number;
+    materialsCreated: number;
+    finishesCreated: number;
+    successCount: number;
+    skippedCount: number;
+    skippedRows: Array<{
+      row: Record<string, string>;
+      reason: string;
+    }>;
+  };
 }
 
 export interface CreateCarcassLegsPayload {
@@ -371,6 +401,21 @@ export interface CreateSkirtingCarcassLegsColorPayload {
   color: string;
 }
 
+export interface BulkUploadSkirtingCarcassLegsColorsResponse {
+  success: boolean;
+  data: {
+    typesCreated: number;
+    materialsCreated: number;
+    finishesCreated: number;
+    successCount: number;
+    skippedCount: number;
+    skippedRows: Array<{
+      row: Record<string, string>;
+      reason: string;
+    }>;
+  };
+}
+
 export interface CreateLightCarcasTypePayload {
   vendor_id: number;
   type: string;
@@ -380,6 +425,20 @@ export interface CreateLightCarcasUnitPayload {
   vendor_id: number;
   type: string;
   light_carcas_type_id: number;
+}
+
+export interface BulkUploadLightCarcasUnitsResponse {
+  success: boolean;
+  data: {
+    typesCreated: number;
+    unitsCreated: number;
+    successCount: number;
+    skippedCount: number;
+    skippedRows: Array<{
+      row: Record<string, string>;
+      reason: string;
+    }>;
+  };
 }
 
 export interface CreateOtherAppliancesPayload {
@@ -609,6 +668,17 @@ export const createCarcassMaterialFinish = async (
   return res.data;
 }
 
+export const uploadCarcassMaterialFinishes = async (formData: FormData) => {
+  const res = await apiClient.post<BulkUploadCarcassMaterialFinishesResponse>(
+    "/leads/upload-carcass-material-finish",
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    },
+  );
+  return res.data;
+}
+
 export const createShutterType = async (payload: CreateShutterTypePayload) => {
   const res = await apiClient.post("/leads/create-shutter-type", payload);
   return res.data;
@@ -657,6 +727,17 @@ export const createShutterMaterialFinish = async (
   const res = await apiClient.post(
     "/leads/create-shutter-material-finish",
     payload,
+  );
+  return res.data;
+}
+
+export const uploadShutterMaterialFinishes = async (formData: FormData) => {
+  const res = await apiClient.post<BulkUploadShutterMaterialFinishesResponse>(
+    "/leads/upload-shutter-material-finish",
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    },
   );
   return res.data;
 }
@@ -738,6 +819,17 @@ export const createSkirtingCarcassLegsColor = async (
   return res.data;
 }
 
+export const uploadSkirtingCarcassLegsColors = async (formData: FormData) => {
+  const res = await apiClient.post<BulkUploadSkirtingCarcassLegsColorsResponse>(
+    "/leads/upload-skirting-carcass-legs-color",
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    },
+  );
+  return res.data;
+}
+
 export const fetchLightCarcasTypes = async (vendorId: number) => {
   const res = await apiClient.get<LightCarcasTypeMasterResponse>(
     `/leads/get-all-light-carcas-types/${vendorId}`,
@@ -779,6 +871,17 @@ export const createLightCarcasUnit = async (
   payload: CreateLightCarcasUnitPayload,
 ) => {
   const res = await apiClient.post("/leads/create-light-carcas-unit", payload);
+  return res.data;
+}
+
+export const uploadLightCarcasUnits = async (formData: FormData) => {
+  const res = await apiClient.post<BulkUploadLightCarcasUnitsResponse>(
+    "/leads/upload-light-carcas-unit",
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    },
+  );
   return res.data;
 }
 

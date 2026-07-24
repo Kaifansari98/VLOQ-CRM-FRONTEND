@@ -19,6 +19,7 @@ import {
   fetchCarcassMaterialFinishes,
   fetchAllCarcassMaterialFinishes,
   createCarcassMaterialFinish,
+  uploadCarcassMaterialFinishes,
   fetchFastProductionTimelineRules,
   fetchShutterTypes,
   createShutterType,
@@ -27,6 +28,7 @@ import {
   fetchShutterMaterialFinishes,
   fetchAllShutterMaterialFinishes,
   createShutterMaterialFinish,
+  uploadShutterMaterialFinishes,
   fetchCarcassLegs,
   createCarcassLegs,
   fetchSkirtingCarcassLegs,
@@ -35,11 +37,13 @@ import {
   fetchSkirtingCarcassLegsColors,
   fetchAllSkirtingCarcassLegsColors,
   createSkirtingCarcassLegsColor,
+  uploadSkirtingCarcassLegsColors,
   fetchLightCarcasTypes,
   createLightCarcasType,
   fetchLightCarcasUnits,
   fetchAllLightCarcasUnits,
   createLightCarcasUnit,
+  uploadLightCarcasUnits,
   fetchOtherAppliances,
   createOtherAppliances,
   fetchHandleTypes,
@@ -600,6 +604,43 @@ export const useCreateCarcassMaterialFinish = () => {
   });
 }
 
+export const useUploadCarcassMaterialFinishes = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: (formData: FormData) => uploadCarcassMaterialFinishes(formData),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({
+        queryKey: getCarcassTypesQueryKey(vendorId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: getCarcasMaterialsQueryKey(vendorId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["allCarcassMaterialFinishes", vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["carcassMaterialFinishes"],
+      });
+      const summary = res.data
+        ? `Finishes added: ${res.data.finishesCreated}, Skipped: ${res.data.skippedCount}`
+        : "";
+      toastManager.add({
+        title: `Carcass masters uploaded successfully. ${summary}`,
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error || "Failed to upload carcass masters.",
+        type: "error",
+      });
+    },
+  });
+}
+
 export const useCreateShutterType = () => {
   const queryClient = useQueryClient();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -672,6 +713,43 @@ export const useCreateShutterMaterialFinish = () => {
         title:
           error?.response?.data?.error ||
           "Failed to create shutter material finish.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUploadShutterMaterialFinishes = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: (formData: FormData) => uploadShutterMaterialFinishes(formData),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({
+        queryKey: getShutterTypesQueryKey(vendorId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: getShutterMaterialsQueryKey(vendorId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["allShutterMaterialFinishes", vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["shutterMaterialFinishes"],
+      });
+      const summary = res.data
+        ? `Finishes added: ${res.data.finishesCreated}, Skipped: ${res.data.skippedCount}`
+        : "";
+      toastManager.add({
+        title: `Shutter masters uploaded successfully. ${summary}`,
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error || "Failed to upload shutter masters.",
         type: "error",
       });
     },
@@ -751,6 +829,47 @@ export const useCreateSkirtingCarcassLegsColor = () => {
       toastManager.add({
         title:
           error?.response?.data?.error || "Failed to create skirting color.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUploadSkirtingCarcassLegsColors = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: (formData: FormData) =>
+      uploadSkirtingCarcassLegsColors(formData),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({
+        queryKey: getCarcassLegsQueryKey(vendorId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["allSkirtingCarcassLegs", vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["skirtingCarcassLegs"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["allSkirtingCarcassLegsColors", vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["skirtingCarcassLegsColors"],
+      });
+      const summary = res.data
+        ? `Colors added: ${res.data.finishesCreated}, Skipped: ${res.data.skippedCount}`
+        : "";
+      toastManager.add({
+        title: `Hardware masters uploaded successfully. ${summary}`,
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error || "Failed to upload hardware masters.",
         type: "error",
       });
     },
@@ -891,6 +1010,40 @@ export const useCreateLightCarcasUnit = () => {
         title:
           error?.response?.data?.error ||
           "Failed to create light carcas unit.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUploadLightCarcasUnits = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: (formData: FormData) => uploadLightCarcasUnits(formData),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({
+        queryKey: getLightCarcasTypesQueryKey(vendorId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["allLightCarcasUnits", vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["lightCarcasUnits"],
+      });
+      const summary = res.data
+        ? `Units added: ${res.data.unitsCreated}, Skipped: ${res.data.skippedCount}`
+        : "";
+      toastManager.add({
+        title: `Light masters uploaded successfully. ${summary}`,
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error || "Failed to upload light masters.",
         type: "error",
       });
     },

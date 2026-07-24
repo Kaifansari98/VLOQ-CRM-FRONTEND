@@ -16,9 +16,25 @@ import SmoothTab from "@/components/kokonutui/smooth-tab";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import {
+  Plus,
+  Upload,
+  Download,
+  Layers,
+  Package,
+  Palette,
+  CopyX,
+  FileWarning,
+} from "lucide-react";
 import ClearInput from "@/components/origin-input";
 import { DataTable } from "@/components/data-table/data-table";
+import { FileUploadField } from "@/components/custom/file-upload";
+import BaseModal from "@/components/utils/baseModal";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -54,22 +70,26 @@ import {
   useCreateCarcassType,
   useCreateCarcasMaterial,
   useCreateCarcassMaterialFinish,
+  useUploadCarcassMaterialFinishes,
   useShutterTypes,
   useShutterMaterials,
   useAllShutterMaterialFinishes,
   useCreateShutterType,
   useCreateShutterMaterial,
   useCreateShutterMaterialFinish,
+  useUploadShutterMaterialFinishes,
   useCarcassLegs,
   useAllSkirtingCarcassLegs,
   useAllSkirtingCarcassLegsColors,
   useCreateCarcassLegs,
   useCreateSkirtingCarcassLegs,
   useCreateSkirtingCarcassLegsColor,
+  useUploadSkirtingCarcassLegsColors,
   useLightCarcasTypes,
   useAllLightCarcasUnits,
   useCreateLightCarcasType,
   useCreateLightCarcasUnit,
+  useUploadLightCarcasUnits,
   useOtherAppliances,
   useCreateOtherAppliances,
 } from "@/hooks/useTypesMaster";
@@ -82,6 +102,472 @@ type MasterRow = {
   status: string;
 };
 
+function parseCsvText(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (inQuotes) {
+      if (char === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += char;
+      }
+    } else if (char === '"') {
+      inQuotes = true;
+    } else if (char === ",") {
+      row.push(field);
+      field = "";
+    } else if (char === "\n" || char === "\r") {
+      if (char === "\r" && text[i + 1] === "\n") i++;
+      row.push(field);
+      field = "";
+      if (row.some((c) => c.trim() !== "")) rows.push(row);
+      row = [];
+    } else {
+      field += char;
+    }
+  }
+  if (field !== "" || row.length > 0) {
+    row.push(field);
+    if (row.some((c) => c.trim() !== "")) rows.push(row);
+  }
+  return rows;
+}
+
+type MasterUploadPreview = {
+  totalDataRows: number;
+  typesToAdd: number;
+  materialsToAdd: number;
+  finishesToAdd: number;
+  skippedMissing: number;
+  skippedDuplicate: number;
+  skippedRows: Array<{ row: number; reason: string; type: "duplicate" | "missing" }>;
+  headerError?: string;
+};
+
+async function parseUploadFile(
+  file: File,
+): Promise<{ headers: string[]; rows: Record<string, string>[] }> {
+  const isCsv =
+    file.name.toLowerCase().endsWith(".csv") || file.type === "text/csv";
+
+  const headers: string[] = [];
+  const rows: Record<string, string>[] = [];
+
+  if (isCsv) {
+    const text = await file.text();
+    parseCsvText(text).forEach((cells, idx) => {
+      if (idx === 0) {
+        cells.forEach((c) => headers.push(c.trim().toLowerCase()));
+      } else {
+        const rowData: Record<string, string> = {};
+        cells.forEach((c, colIdx) => {
+          const headerName = headers[colIdx];
+          if (headerName) rowData[headerName] = c.trim();
+        });
+        rows.push(rowData);
+      }
+    });
+  } else {
+    const buffer = await file.arrayBuffer();
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
+    const worksheet = workbook.worksheets[0];
+    if (worksheet) {
+      worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+        if (rowNumber === 1) {
+          row.eachCell({ includeEmpty: true }, (cell) => {
+            headers.push(String(cell.value ?? "").trim().toLowerCase());
+          });
+        } else {
+          const rowData: Record<string, string> = {};
+          row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+            const headerName = headers[colNumber - 1];
+            if (headerName) {
+              rowData[headerName] = String(cell.value ?? "").trim();
+            }
+          });
+          rows.push(rowData);
+        }
+      });
+    }
+  }
+
+  return { headers, rows };
+}
+
+async function computeMasterUploadPreview(
+  file: File,
+  existing: {
+    types: Array<{ id: number; name: string }>;
+    materials: Array<{ id: number; name: string }>;
+    finishes: Array<{ id: number; name: string; materialId: number }>;
+  },
+): Promise<MasterUploadPreview> {
+  const { headers, rows } = await parseUploadFile(file);
+
+  const typeKey = headers.find((h) => h.includes("type"));
+  const materialKey = headers.find(
+    (h) => h.includes("material") && !h.includes("finish"),
+  );
+  const finishKey = headers.find((h) => h.includes("finish"));
+
+  if (!typeKey || !materialKey || !finishKey) {
+    return {
+      totalDataRows: rows.length,
+      typesToAdd: 0,
+      materialsToAdd: 0,
+      finishesToAdd: 0,
+      skippedMissing: 0,
+      skippedDuplicate: 0,
+      skippedRows: [],
+      headerError:
+        "Required columns missing. The sheet must have Carcass Type, Carcass Material, and Carcass Material Finish columns.",
+    };
+  }
+
+  const typeMap = new Map<string, number>(
+    existing.types.map((t) => [t.name.trim().toLowerCase(), t.id]),
+  );
+  const materialMap = new Map<string, number>(
+    existing.materials.map((m) => [m.name.trim().toLowerCase(), m.id]),
+  );
+  const finishKeySet = new Set<string>(
+    existing.finishes.map(
+      (f) => `${f.materialId}::${f.name.trim().toLowerCase()}`,
+    ),
+  );
+  const newTypeNames = new Set<string>();
+  const newMaterialNames = new Set<string>();
+
+  let skippedMissing = 0;
+  let skippedDuplicate = 0;
+  let finishesToAdd = 0;
+  const skippedRows: Array<{
+    row: number;
+    reason: string;
+    type: "duplicate" | "missing";
+  }> = [];
+
+  rows.forEach((row, idx) => {
+    const rowNumber = idx + 2;
+    const typeName = (row[typeKey] || "").trim();
+    const materialName = (row[materialKey] || "").trim();
+    const finishName = (row[finishKey] || "").trim();
+
+    if (!typeName || !materialName || !finishName) {
+      skippedMissing++;
+      skippedRows.push({
+        row: rowNumber,
+        reason: "Missing required value(s)",
+        type: "missing",
+      });
+      return;
+    }
+
+    const typeLower = typeName.toLowerCase();
+    const materialLower = materialName.toLowerCase();
+    const finishLower = finishName.toLowerCase();
+
+    if (!typeMap.has(typeLower)) {
+      newTypeNames.add(typeLower);
+    }
+
+    const existingMaterialId = materialMap.get(materialLower);
+    if (!existingMaterialId) {
+      newMaterialNames.add(materialLower);
+    }
+
+    const materialDedupeId = existingMaterialId ?? `new:${materialLower}`;
+    const finishDedupeKey = `${materialDedupeId}::${finishLower}`;
+
+    if (finishKeySet.has(finishDedupeKey)) {
+      skippedDuplicate++;
+      skippedRows.push({
+        row: rowNumber,
+        reason: `Duplicate finish "${finishName}" for material "${materialName}"`,
+        type: "duplicate",
+      });
+      return;
+    }
+
+    finishKeySet.add(finishDedupeKey);
+    finishesToAdd++;
+  });
+
+  return {
+    totalDataRows: rows.length,
+    typesToAdd: newTypeNames.size,
+    materialsToAdd: newMaterialNames.size,
+    finishesToAdd,
+    skippedMissing,
+    skippedDuplicate,
+    skippedRows,
+  };
+}
+
+async function computeHardwareUploadPreview(
+  file: File,
+  existing: {
+    legs: Array<{ id: number; name: string }>;
+    skirtings: Array<{ id: number; name: string; legsId: number }>;
+    colors: Array<{ id: number; color: string; skirtingId: number }>;
+  },
+): Promise<MasterUploadPreview> {
+  const { headers, rows } = await parseUploadFile(file);
+
+  const legsKey = headers.find((h) => h.includes("legs"));
+  const skirtingKey = headers.find(
+    (h) => h.includes("skirting") && !h.includes("color"),
+  );
+  const colorKey = headers.find((h) => h.includes("color"));
+
+  if (!legsKey || !skirtingKey || !colorKey) {
+    return {
+      totalDataRows: rows.length,
+      typesToAdd: 0,
+      materialsToAdd: 0,
+      finishesToAdd: 0,
+      skippedMissing: 0,
+      skippedDuplicate: 0,
+      skippedRows: [],
+      headerError:
+        "Required columns missing. The sheet must have Carcass Legs, Skirting, and Skirting Color columns.",
+    };
+  }
+
+  const legsMap = new Map<string, number>(
+    existing.legs.map((l) => [l.name.trim().toLowerCase(), l.id]),
+  );
+  const skirtingMap = new Map<string, number>(
+    existing.skirtings.map((s) => [
+      `${s.legsId}::${s.name.trim().toLowerCase()}`,
+      s.id,
+    ]),
+  );
+  const colorKeySet = new Set<string>(
+    existing.colors.map(
+      (c) => `${c.skirtingId}::${c.color.trim().toLowerCase()}`,
+    ),
+  );
+  const newLegsNames = new Set<string>();
+  const newSkirtingKeys = new Set<string>();
+
+  let skippedMissing = 0;
+  let skippedDuplicate = 0;
+  let colorsToAdd = 0;
+  const skippedRows: Array<{
+    row: number;
+    reason: string;
+    type: "duplicate" | "missing";
+  }> = [];
+
+  rows.forEach((row, idx) => {
+    const rowNumber = idx + 2;
+    const legsName = (row[legsKey] || "").trim();
+    const skirtingName = (row[skirtingKey] || "").trim();
+    const colorValue = (row[colorKey] || "").trim();
+
+    if (!legsName || !skirtingName) {
+      skippedMissing++;
+      skippedRows.push({
+        row: rowNumber,
+        reason: "Missing required value(s)",
+        type: "missing",
+      });
+      return;
+    }
+
+    const legsLower = legsName.toLowerCase();
+    const existingLegsId = legsMap.get(legsLower);
+    if (!existingLegsId) {
+      newLegsNames.add(legsLower);
+    }
+    const legsDedupeId = existingLegsId ?? `new:${legsLower}`;
+
+    const skirtingLower = skirtingName.toLowerCase();
+    const skirtingLookupKey = `${legsDedupeId}::${skirtingLower}`;
+    const existingSkirtingId = skirtingMap.get(skirtingLookupKey);
+    if (!existingSkirtingId) {
+      newSkirtingKeys.add(skirtingLookupKey);
+    }
+    const skirtingDedupeId = existingSkirtingId ?? `new:${skirtingLookupKey}`;
+
+    if (!colorValue) {
+      return;
+    }
+
+    const colorLower = colorValue.toLowerCase();
+    const colorDedupeKey = `${skirtingDedupeId}::${colorLower}`;
+
+    if (colorKeySet.has(colorDedupeKey)) {
+      skippedDuplicate++;
+      skippedRows.push({
+        row: rowNumber,
+        reason: `Duplicate skirting color "${colorValue}" for skirting "${skirtingName}"`,
+        type: "duplicate",
+      });
+      return;
+    }
+
+    colorKeySet.add(colorDedupeKey);
+    colorsToAdd++;
+  });
+
+  return {
+    totalDataRows: rows.length,
+    typesToAdd: newLegsNames.size,
+    materialsToAdd: newSkirtingKeys.size,
+    finishesToAdd: colorsToAdd,
+    skippedMissing,
+    skippedDuplicate,
+    skippedRows,
+  };
+}
+
+async function computeLightUploadPreview(
+  file: File,
+  existing: {
+    types: Array<{ id: number; type: string }>;
+    units: Array<{ id: number; type: string; typeId: number }>;
+  },
+): Promise<MasterUploadPreview> {
+  const { headers, rows } = await parseUploadFile(file);
+
+  const typeKey = headers.find((h) => h.includes("type"));
+  const unitKey = headers.find((h) => h.includes("unit"));
+
+  if (!typeKey || !unitKey) {
+    return {
+      totalDataRows: rows.length,
+      typesToAdd: 0,
+      materialsToAdd: 0,
+      finishesToAdd: 0,
+      skippedMissing: 0,
+      skippedDuplicate: 0,
+      skippedRows: [],
+      headerError:
+        "Required columns missing. The sheet must have Light Carcas Type and Light Unit columns.",
+    };
+  }
+
+  const typeMap = new Map<string, number>(
+    existing.types.map((t) => [t.type.trim().toLowerCase(), t.id]),
+  );
+  const unitKeySet = new Set<string>(
+    existing.units.map(
+      (u) => `${u.typeId}::${u.type.trim().toLowerCase()}`,
+    ),
+  );
+  const newTypeNames = new Set<string>();
+
+  let skippedMissing = 0;
+  let skippedDuplicate = 0;
+  let unitsToAdd = 0;
+  const skippedRows: Array<{
+    row: number;
+    reason: string;
+    type: "duplicate" | "missing";
+  }> = [];
+
+  rows.forEach((row, idx) => {
+    const rowNumber = idx + 2;
+    const typeName = (row[typeKey] || "").trim();
+    const unitName = (row[unitKey] || "").trim();
+
+    if (!typeName || !unitName) {
+      skippedMissing++;
+      skippedRows.push({
+        row: rowNumber,
+        reason: "Missing required value(s)",
+        type: "missing",
+      });
+      return;
+    }
+
+    const typeLower = typeName.toLowerCase();
+    const existingTypeId = typeMap.get(typeLower);
+    if (!existingTypeId) {
+      newTypeNames.add(typeLower);
+    }
+    const typeDedupeId = existingTypeId ?? `new:${typeLower}`;
+
+    const unitLower = unitName.toLowerCase();
+    const unitDedupeKey = `${typeDedupeId}::${unitLower}`;
+
+    if (unitKeySet.has(unitDedupeKey)) {
+      skippedDuplicate++;
+      skippedRows.push({
+        row: rowNumber,
+        reason: `Duplicate light unit "${unitName}" for light carcas type "${typeName}"`,
+        type: "duplicate",
+      });
+      return;
+    }
+
+    unitKeySet.add(unitDedupeKey);
+    unitsToAdd++;
+  });
+
+  return {
+    totalDataRows: rows.length,
+    typesToAdd: newTypeNames.size,
+    materialsToAdd: 0,
+    finishesToAdd: unitsToAdd,
+    skippedMissing,
+    skippedDuplicate,
+    skippedRows,
+  };
+}
+
+const previewTileTones = {
+  indigo:
+    "border-indigo-200 bg-indigo-500/10 text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-300",
+  violet:
+    "border-violet-200 bg-violet-500/10 text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300",
+  emerald:
+    "border-emerald-200 bg-emerald-500/10 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300",
+  amber:
+    "border-amber-200 bg-amber-500/10 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300",
+  red: "border-red-200 bg-red-500/10 text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300",
+} as const;
+
+function PreviewStatTile({
+  icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  tone: keyof typeof previewTileTones;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-2.5 rounded-lg border px-3 py-2",
+        previewTileTones[tone],
+      )}
+    >
+      <div className="shrink-0 [&>svg]:h-4 [&>svg]:w-4">{icon}</div>
+      <div className="min-w-0 leading-tight">
+        <p className="text-base font-semibold tabular-nums">{value}</p>
+        <p className="truncate text-[11px] font-medium opacity-80">{label}</p>
+      </div>
+    </div>
+  );
+}
+
 function MasterListingTable({
   title,
   description,
@@ -93,6 +579,7 @@ function MasterListingTable({
   isError,
   errorMessage,
   onAction,
+  extraActions,
 }: {
   title: string;
   description: string;
@@ -104,6 +591,7 @@ function MasterListingTable({
   isError: boolean;
   errorMessage?: string;
   onAction?: () => void;
+  extraActions?: React.ReactNode;
 }) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -186,10 +674,13 @@ function MasterListingTable({
           <p className="text-sm text-muted-foreground">{description}</p>
         </div>
 
-        <Button type="button" className="sm:self-start gap-2" onClick={onAction}>
-          <Plus className="h-4 w-4" />
-          {actionLabel}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2 sm:self-start">
+          {extraActions}
+          <Button type="button" className="gap-2" onClick={onAction}>
+            <Plus className="h-4 w-4" />
+            {actionLabel}
+          </Button>
+        </div>
       </CardHeader>
 
       <CardContent>
@@ -242,6 +733,7 @@ function CarcassMastersSection() {
 
   const createCarcassType = useCreateCarcassType();
   const createCarcasMaterial = useCreateCarcasMaterial();
+  const uploadCarcassMaterialFinishes = useUploadCarcassMaterialFinishes();
   const createCarcassMaterialFinish = useCreateCarcassMaterialFinish();
 
   const carcassTypeRows = React.useMemo<MasterRow[]>(
@@ -285,6 +777,56 @@ function CarcassMastersSection() {
   const [openFinishModal, setOpenFinishModal] = React.useState(false);
   const [finishName, setFinishName] = React.useState("");
   const [finishMaterialId, setFinishMaterialId] = React.useState("");
+  const [openUploadModal, setOpenUploadModal] = React.useState(false);
+  const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
+  const [uploadPreview, setUploadPreview] =
+    React.useState<MasterUploadPreview | null>(null);
+  const [isParsingPreview, setIsParsingPreview] = React.useState(false);
+
+  React.useEffect(() => {
+    const file = selectedFiles[0];
+    if (!file) {
+      setUploadPreview(null);
+      return;
+    }
+
+    let cancelled = false;
+    setIsParsingPreview(true);
+    computeMasterUploadPreview(file, {
+      types: carcassTypes?.data ?? [],
+      materials: carcasMaterials?.data ?? [],
+      finishes: (carcassMaterialFinishes?.data ?? []).map((f) => ({
+        id: f.id,
+        name: f.name,
+        materialId: f.carcas_material_id,
+      })),
+    })
+      .then((preview) => {
+        if (!cancelled) setUploadPreview(preview);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setUploadPreview({
+            totalDataRows: 0,
+            typesToAdd: 0,
+            materialsToAdd: 0,
+            finishesToAdd: 0,
+            skippedMissing: 0,
+            skippedDuplicate: 0,
+            skippedRows: [],
+            headerError:
+              "Could not read this file. Please check the format and try again.",
+          });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsParsingPreview(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedFiles, carcassTypes?.data, carcasMaterials?.data, carcassMaterialFinishes?.data]);
 
   const handleCreateType = () => {
     const name = typeName.trim();
@@ -333,6 +875,50 @@ function CarcassMastersSection() {
     );
   };
 
+  const handleUploadSubmit = () => {
+    const file = selectedFiles[0];
+    if (!file || !vendorId) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("vendorId", String(vendorId));
+
+    uploadCarcassMaterialFinishes.mutate(formData, {
+      onSuccess: () => {
+        setOpenUploadModal(false);
+        setSelectedFiles([]);
+        setUploadPreview(null);
+      },
+      onError: () => {
+        setOpenUploadModal(false);
+        setSelectedFiles([]);
+        setUploadPreview(null);
+      },
+    });
+  };
+
+  const downloadCarcassTemplate = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Carcass Masters Template");
+
+    worksheet.columns = [
+      { header: "Carcass Type", key: "type", width: 30 },
+      { header: "Carcass Material", key: "material", width: 30 },
+      { header: "Carcass Material Finish", key: "finish", width: 30 },
+    ];
+
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true };
+    headerRow.alignment = { vertical: "middle", horizontal: "left" };
+    worksheet.getRow(1).height = 20;
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    saveAs(blob, "carcass_masters_template.xlsx");
+  };
+
   return (
     <>
       <Tabs defaultValue="finish" className="w-full">
@@ -356,6 +942,30 @@ function CarcassMastersSection() {
               (carcassMaterialFinishesError as any)?.response?.data?.error
             }
             onAction={() => setOpenFinishModal(true)}
+            extraActions={
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={downloadCarcassTemplate}
+                >
+                  <Download className="h-4 w-4" />
+                  Template
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedFiles([]);
+                    setOpenUploadModal(true);
+                  }}
+                  disabled={uploadCarcassMaterialFinishes.isPending}
+                >
+                  <Upload className="h-4 w-4" />
+                  Import
+                </Button>
+              </>
+            }
           />
         </TabsContent>
 
@@ -540,6 +1150,150 @@ function CarcassMastersSection() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <BaseModal
+        open={openUploadModal}
+        onOpenChange={(open) => {
+          setOpenUploadModal(open);
+          if (!open) {
+            setSelectedFiles([]);
+            setUploadPreview(null);
+          }
+        }}
+        title="Import Carcass Material Finish"
+        description="Upload a CSV or XLSX file with Carcass Type, Carcass Material, and Carcass Material Finish columns. All three columns are required per row; rows with missing values or duplicate finishes are skipped."
+        size="smd"
+      >
+        <div className="p-6 space-y-4">
+          <div className="space-y-4">
+            <FileUploadField
+              value={selectedFiles}
+              onChange={setSelectedFiles}
+              accept=".csv,.xlsx"
+              multiple={false}
+              maxFiles={1}
+            />
+          </div>
+
+          {selectedFiles.length > 0 && (
+            <div className="space-y-3">
+              {isParsingPreview ? (
+                <div className="flex items-center gap-2 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  Reading file…
+                </div>
+              ) : uploadPreview?.headerError ? (
+                <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-500/10 p-3 text-sm text-red-700 dark:border-red-500/30 dark:text-red-300">
+                  <FileWarning className="mt-0.5 h-4 w-4 shrink-0" />
+                  <p>{uploadPreview.headerError}</p>
+                </div>
+              ) : uploadPreview ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">
+                      Preview — {uploadPreview.totalDataRows} row
+                      {uploadPreview.totalDataRows === 1 ? "" : "s"} found
+                    </p>
+                    {uploadPreview.skippedRows.length > 0 && (
+                      <Badge variant="outline" className="text-muted-foreground">
+                        {uploadPreview.skippedRows.length} skipped
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <PreviewStatTile
+                      icon={<Layers />}
+                      label="New Carcass Type"
+                      value={uploadPreview.typesToAdd}
+                      tone="indigo"
+                    />
+                    <PreviewStatTile
+                      icon={<Package />}
+                      label="New Carcass Material"
+                      value={uploadPreview.materialsToAdd}
+                      tone="violet"
+                    />
+                    <PreviewStatTile
+                      icon={<Palette />}
+                      label="New Material Finish"
+                      value={uploadPreview.finishesToAdd}
+                      tone="emerald"
+                    />
+                    <PreviewStatTile
+                      icon={<CopyX />}
+                      label="Skipped — duplicate"
+                      value={uploadPreview.skippedDuplicate}
+                      tone="amber"
+                    />
+                  </div>
+
+                  {uploadPreview.skippedMissing > 0 && (
+                    <PreviewStatTile
+                      icon={<FileWarning />}
+                      label="Skipped — missing Type/Material/Finish value"
+                      value={uploadPreview.skippedMissing}
+                      tone="red"
+                    />
+                  )}
+
+                  {uploadPreview.skippedRows.length > 0 && (
+                    <div className="rounded-lg border">
+                      <div className="border-b bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                        Skipped row details
+                      </div>
+                      <ScrollArea className="h-48">
+                        <div className="divide-y">
+                          {uploadPreview.skippedRows.map((s, i) => (
+                            <div
+                              key={i}
+                              className="flex items-start gap-2 px-3 py-1.5 text-xs"
+                            >
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "mt-0.5 shrink-0 tabular-nums",
+                                  s.type === "duplicate"
+                                    ? "border-amber-200 text-amber-700 dark:border-amber-500/30 dark:text-amber-300"
+                                    : "border-red-200 text-red-700 dark:border-red-500/30 dark:text-red-300",
+                                )}
+                              >
+                                Row {s.row}
+                              </Badge>
+                              <span className="text-muted-foreground">
+                                {s.reason}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  )}
+                </>
+              ) : null}
+            </div>
+          )}
+
+          <div className="flex gap-2 justify-end border-t pt-4 mt-6">
+            <Button variant="outline" onClick={() => setOpenUploadModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUploadSubmit}
+              disabled={
+                selectedFiles.length === 0 ||
+                isParsingPreview ||
+                !!uploadPreview?.headerError ||
+                uploadCarcassMaterialFinishes.isPending
+              }
+            >
+              {uploadCarcassMaterialFinishes.isPending
+                ? "Uploading..."
+                : "Upload & Import"}
+            </Button>
+          </div>
+        </div>
+      </BaseModal>
     </>
   );
 }
@@ -568,6 +1322,7 @@ function ShutterMastersSection() {
 
   const createShutterType = useCreateShutterType();
   const createShutterMaterial = useCreateShutterMaterial();
+  const uploadShutterMaterialFinishes = useUploadShutterMaterialFinishes();
   const createShutterMaterialFinish = useCreateShutterMaterialFinish();
 
   const shutterTypeRows = React.useMemo<MasterRow[]>(
@@ -611,6 +1366,61 @@ function ShutterMastersSection() {
   const [openFinishModal, setOpenFinishModal] = React.useState(false);
   const [finishName, setFinishName] = React.useState("");
   const [finishMaterialId, setFinishMaterialId] = React.useState("");
+  const [openUploadModal, setOpenUploadModal] = React.useState(false);
+  const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
+  const [uploadPreview, setUploadPreview] =
+    React.useState<MasterUploadPreview | null>(null);
+  const [isParsingPreview, setIsParsingPreview] = React.useState(false);
+
+  React.useEffect(() => {
+    const file = selectedFiles[0];
+    if (!file) {
+      setUploadPreview(null);
+      return;
+    }
+
+    let cancelled = false;
+    setIsParsingPreview(true);
+    computeMasterUploadPreview(file, {
+      types: shutterTypes?.data ?? [],
+      materials: shutterMaterials?.data ?? [],
+      finishes: (shutterMaterialFinishes?.data ?? []).map((f) => ({
+        id: f.id,
+        name: f.name,
+        materialId: f.shutter_material_id,
+      })),
+    })
+      .then((preview) => {
+        if (!cancelled) setUploadPreview(preview);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setUploadPreview({
+            totalDataRows: 0,
+            typesToAdd: 0,
+            materialsToAdd: 0,
+            finishesToAdd: 0,
+            skippedMissing: 0,
+            skippedDuplicate: 0,
+            skippedRows: [],
+            headerError:
+              "Could not read this file. Please check the format and try again.",
+          });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsParsingPreview(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    selectedFiles,
+    shutterTypes?.data,
+    shutterMaterials?.data,
+    shutterMaterialFinishes?.data,
+  ]);
 
   const handleCreateType = () => {
     const name = typeName.trim();
@@ -659,6 +1469,50 @@ function ShutterMastersSection() {
     );
   };
 
+  const handleUploadSubmit = () => {
+    const file = selectedFiles[0];
+    if (!file || !vendorId) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("vendorId", String(vendorId));
+
+    uploadShutterMaterialFinishes.mutate(formData, {
+      onSuccess: () => {
+        setOpenUploadModal(false);
+        setSelectedFiles([]);
+        setUploadPreview(null);
+      },
+      onError: () => {
+        setOpenUploadModal(false);
+        setSelectedFiles([]);
+        setUploadPreview(null);
+      },
+    });
+  };
+
+  const downloadShutterTemplate = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Shutter Masters Template");
+
+    worksheet.columns = [
+      { header: "Shutter Type", key: "type", width: 30 },
+      { header: "Shutter Material", key: "material", width: 30 },
+      { header: "Shutter Material Finish", key: "finish", width: 30 },
+    ];
+
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true };
+    headerRow.alignment = { vertical: "middle", horizontal: "left" };
+    worksheet.getRow(1).height = 20;
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    saveAs(blob, "shutter_masters_template.xlsx");
+  };
+
   return (
     <>
       <Tabs defaultValue="finish" className="w-full">
@@ -682,6 +1536,30 @@ function ShutterMastersSection() {
               (shutterMaterialFinishesError as any)?.response?.data?.error
             }
             onAction={() => setOpenFinishModal(true)}
+            extraActions={
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={downloadShutterTemplate}
+                >
+                  <Download className="h-4 w-4" />
+                  Template
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedFiles([]);
+                    setOpenUploadModal(true);
+                  }}
+                  disabled={uploadShutterMaterialFinishes.isPending}
+                >
+                  <Upload className="h-4 w-4" />
+                  Import
+                </Button>
+              </>
+            }
           />
         </TabsContent>
 
@@ -866,6 +1744,150 @@ function ShutterMastersSection() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <BaseModal
+        open={openUploadModal}
+        onOpenChange={(open) => {
+          setOpenUploadModal(open);
+          if (!open) {
+            setSelectedFiles([]);
+            setUploadPreview(null);
+          }
+        }}
+        title="Import Shutter Material Finish"
+        description="Upload a CSV or XLSX file with Shutter Type, Shutter Material, and Shutter Material Finish columns. All three columns are required per row; rows with missing values or duplicate finishes are skipped."
+        size="smd"
+      >
+        <div className="p-6 space-y-4">
+          <div className="space-y-4">
+            <FileUploadField
+              value={selectedFiles}
+              onChange={setSelectedFiles}
+              accept=".csv,.xlsx"
+              multiple={false}
+              maxFiles={1}
+            />
+          </div>
+
+          {selectedFiles.length > 0 && (
+            <div className="space-y-3">
+              {isParsingPreview ? (
+                <div className="flex items-center gap-2 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  Reading file…
+                </div>
+              ) : uploadPreview?.headerError ? (
+                <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-500/10 p-3 text-sm text-red-700 dark:border-red-500/30 dark:text-red-300">
+                  <FileWarning className="mt-0.5 h-4 w-4 shrink-0" />
+                  <p>{uploadPreview.headerError}</p>
+                </div>
+              ) : uploadPreview ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">
+                      Preview — {uploadPreview.totalDataRows} row
+                      {uploadPreview.totalDataRows === 1 ? "" : "s"} found
+                    </p>
+                    {uploadPreview.skippedRows.length > 0 && (
+                      <Badge variant="outline" className="text-muted-foreground">
+                        {uploadPreview.skippedRows.length} skipped
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <PreviewStatTile
+                      icon={<Layers />}
+                      label="New Shutter Type"
+                      value={uploadPreview.typesToAdd}
+                      tone="indigo"
+                    />
+                    <PreviewStatTile
+                      icon={<Package />}
+                      label="New Shutter Material"
+                      value={uploadPreview.materialsToAdd}
+                      tone="violet"
+                    />
+                    <PreviewStatTile
+                      icon={<Palette />}
+                      label="New Material Finish"
+                      value={uploadPreview.finishesToAdd}
+                      tone="emerald"
+                    />
+                    <PreviewStatTile
+                      icon={<CopyX />}
+                      label="Skipped — duplicate"
+                      value={uploadPreview.skippedDuplicate}
+                      tone="amber"
+                    />
+                  </div>
+
+                  {uploadPreview.skippedMissing > 0 && (
+                    <PreviewStatTile
+                      icon={<FileWarning />}
+                      label="Skipped — missing Type/Material/Finish value"
+                      value={uploadPreview.skippedMissing}
+                      tone="red"
+                    />
+                  )}
+
+                  {uploadPreview.skippedRows.length > 0 && (
+                    <div className="rounded-lg border">
+                      <div className="border-b bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                        Skipped row details
+                      </div>
+                      <ScrollArea className="h-48">
+                        <div className="divide-y">
+                          {uploadPreview.skippedRows.map((s, i) => (
+                            <div
+                              key={i}
+                              className="flex items-start gap-2 px-3 py-1.5 text-xs"
+                            >
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "mt-0.5 shrink-0 tabular-nums",
+                                  s.type === "duplicate"
+                                    ? "border-amber-200 text-amber-700 dark:border-amber-500/30 dark:text-amber-300"
+                                    : "border-red-200 text-red-700 dark:border-red-500/30 dark:text-red-300",
+                                )}
+                              >
+                                Row {s.row}
+                              </Badge>
+                              <span className="text-muted-foreground">
+                                {s.reason}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  )}
+                </>
+              ) : null}
+            </div>
+          )}
+
+          <div className="flex gap-2 justify-end border-t pt-4 mt-6">
+            <Button variant="outline" onClick={() => setOpenUploadModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUploadSubmit}
+              disabled={
+                selectedFiles.length === 0 ||
+                isParsingPreview ||
+                !!uploadPreview?.headerError ||
+                uploadShutterMaterialFinishes.isPending
+              }
+            >
+              {uploadShutterMaterialFinishes.isPending
+                ? "Uploading..."
+                : "Upload & Import"}
+            </Button>
+          </div>
+        </div>
+      </BaseModal>
     </>
   );
 }
@@ -895,6 +1917,7 @@ function HardwareMastersSection() {
   const createCarcassLegs = useCreateCarcassLegs();
   const createSkirtingCarcassLegs = useCreateSkirtingCarcassLegs();
   const createSkirtingCarcassLegsColor = useCreateSkirtingCarcassLegsColor();
+  const uploadSkirtingCarcassLegsColors = useUploadSkirtingCarcassLegsColors();
 
   const carcassLegsRows = React.useMemo<MasterRow[]>(
     () =>
@@ -949,6 +1972,61 @@ function HardwareMastersSection() {
       ),
     [skirtings?.data, colorLegsId],
   );
+
+  const [openUploadModal, setOpenUploadModal] = React.useState(false);
+  const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
+  const [uploadPreview, setUploadPreview] =
+    React.useState<MasterUploadPreview | null>(null);
+  const [isParsingPreview, setIsParsingPreview] = React.useState(false);
+
+  React.useEffect(() => {
+    const file = selectedFiles[0];
+    if (!file) {
+      setUploadPreview(null);
+      return;
+    }
+
+    let cancelled = false;
+    setIsParsingPreview(true);
+    computeHardwareUploadPreview(file, {
+      legs: carcassLegs?.data ?? [],
+      skirtings: (skirtings?.data ?? []).map((s) => ({
+        id: s.id,
+        name: s.name,
+        legsId: s.carcass_legs_id,
+      })),
+      colors: (skirtingColors?.data ?? []).map((c) => ({
+        id: c.id,
+        color: c.color,
+        skirtingId: c.skirting_carcass_legs_id,
+      })),
+    })
+      .then((preview) => {
+        if (!cancelled) setUploadPreview(preview);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setUploadPreview({
+            totalDataRows: 0,
+            typesToAdd: 0,
+            materialsToAdd: 0,
+            finishesToAdd: 0,
+            skippedMissing: 0,
+            skippedDuplicate: 0,
+            skippedRows: [],
+            headerError:
+              "Could not read this file. Please check the format and try again.",
+          });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsParsingPreview(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedFiles, carcassLegs?.data, skirtings?.data, skirtingColors?.data]);
 
   const handleCreateLegs = () => {
     const name = legsName.trim();
@@ -1010,6 +2088,50 @@ function HardwareMastersSection() {
     );
   };
 
+  const handleUploadSubmit = () => {
+    const file = selectedFiles[0];
+    if (!file || !vendorId) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("vendorId", String(vendorId));
+
+    uploadSkirtingCarcassLegsColors.mutate(formData, {
+      onSuccess: () => {
+        setOpenUploadModal(false);
+        setSelectedFiles([]);
+        setUploadPreview(null);
+      },
+      onError: () => {
+        setOpenUploadModal(false);
+        setSelectedFiles([]);
+        setUploadPreview(null);
+      },
+    });
+  };
+
+  const downloadHardwareTemplate = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Hardware Masters Template");
+
+    worksheet.columns = [
+      { header: "Carcass Legs", key: "legs", width: 30 },
+      { header: "Skirting", key: "skirting", width: 30 },
+      { header: "Skirting Color", key: "color", width: 30 },
+    ];
+
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true };
+    headerRow.alignment = { vertical: "middle", horizontal: "left" };
+    worksheet.getRow(1).height = 20;
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    saveAs(blob, "hardware_masters_template.xlsx");
+  };
+
   return (
     <>
       <Tabs defaultValue="color" className="w-full">
@@ -1031,6 +2153,30 @@ function HardwareMastersSection() {
             isError={isSkirtingColorsError}
             errorMessage={(skirtingColorsError as any)?.response?.data?.error}
             onAction={() => setOpenColorModal(true)}
+            extraActions={
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={downloadHardwareTemplate}
+                >
+                  <Download className="h-4 w-4" />
+                  Template
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedFiles([]);
+                    setOpenUploadModal(true);
+                  }}
+                  disabled={uploadSkirtingCarcassLegsColors.isPending}
+                >
+                  <Upload className="h-4 w-4" />
+                  Import
+                </Button>
+              </>
+            }
           />
         </TabsContent>
 
@@ -1281,6 +2427,150 @@ function HardwareMastersSection() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <BaseModal
+        open={openUploadModal}
+        onOpenChange={(open) => {
+          setOpenUploadModal(open);
+          if (!open) {
+            setSelectedFiles([]);
+            setUploadPreview(null);
+          }
+        }}
+        title="Import Skirting Color"
+        description="Upload a CSV or XLSX file with Carcass Legs, Skirting, and Skirting Color columns. Carcass Legs and Skirting are required per row; Skirting Color may be left blank, but a value that already exists for that skirting is skipped as a duplicate."
+        size="smd"
+      >
+        <div className="p-6 space-y-4">
+          <div className="space-y-4">
+            <FileUploadField
+              value={selectedFiles}
+              onChange={setSelectedFiles}
+              accept=".csv,.xlsx"
+              multiple={false}
+              maxFiles={1}
+            />
+          </div>
+
+          {selectedFiles.length > 0 && (
+            <div className="space-y-3">
+              {isParsingPreview ? (
+                <div className="flex items-center gap-2 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  Reading file…
+                </div>
+              ) : uploadPreview?.headerError ? (
+                <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-500/10 p-3 text-sm text-red-700 dark:border-red-500/30 dark:text-red-300">
+                  <FileWarning className="mt-0.5 h-4 w-4 shrink-0" />
+                  <p>{uploadPreview.headerError}</p>
+                </div>
+              ) : uploadPreview ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">
+                      Preview — {uploadPreview.totalDataRows} row
+                      {uploadPreview.totalDataRows === 1 ? "" : "s"} found
+                    </p>
+                    {uploadPreview.skippedRows.length > 0 && (
+                      <Badge variant="outline" className="text-muted-foreground">
+                        {uploadPreview.skippedRows.length} skipped
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <PreviewStatTile
+                      icon={<Layers />}
+                      label="New Carcass Legs"
+                      value={uploadPreview.typesToAdd}
+                      tone="indigo"
+                    />
+                    <PreviewStatTile
+                      icon={<Package />}
+                      label="New Skirting"
+                      value={uploadPreview.materialsToAdd}
+                      tone="violet"
+                    />
+                    <PreviewStatTile
+                      icon={<Palette />}
+                      label="New Skirting Color"
+                      value={uploadPreview.finishesToAdd}
+                      tone="emerald"
+                    />
+                    <PreviewStatTile
+                      icon={<CopyX />}
+                      label="Skipped — duplicate"
+                      value={uploadPreview.skippedDuplicate}
+                      tone="amber"
+                    />
+                  </div>
+
+                  {uploadPreview.skippedMissing > 0 && (
+                    <PreviewStatTile
+                      icon={<FileWarning />}
+                      label="Skipped — missing Carcass Legs/Skirting value"
+                      value={uploadPreview.skippedMissing}
+                      tone="red"
+                    />
+                  )}
+
+                  {uploadPreview.skippedRows.length > 0 && (
+                    <div className="rounded-lg border">
+                      <div className="border-b bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                        Skipped row details
+                      </div>
+                      <ScrollArea className="h-48">
+                        <div className="divide-y">
+                          {uploadPreview.skippedRows.map((s, i) => (
+                            <div
+                              key={i}
+                              className="flex items-start gap-2 px-3 py-1.5 text-xs"
+                            >
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "mt-0.5 shrink-0 tabular-nums",
+                                  s.type === "duplicate"
+                                    ? "border-amber-200 text-amber-700 dark:border-amber-500/30 dark:text-amber-300"
+                                    : "border-red-200 text-red-700 dark:border-red-500/30 dark:text-red-300",
+                                )}
+                              >
+                                Row {s.row}
+                              </Badge>
+                              <span className="text-muted-foreground">
+                                {s.reason}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  )}
+                </>
+              ) : null}
+            </div>
+          )}
+
+          <div className="flex gap-2 justify-end border-t pt-4 mt-6">
+            <Button variant="outline" onClick={() => setOpenUploadModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUploadSubmit}
+              disabled={
+                selectedFiles.length === 0 ||
+                isParsingPreview ||
+                !!uploadPreview?.headerError ||
+                uploadSkirtingCarcassLegsColors.isPending
+              }
+            >
+              {uploadSkirtingCarcassLegsColors.isPending
+                ? "Uploading..."
+                : "Upload & Import"}
+            </Button>
+          </div>
+        </div>
+      </BaseModal>
     </>
   );
 }
@@ -1303,6 +2593,7 @@ function LightMastersSection() {
 
   const createLightCarcasType = useCreateLightCarcasType();
   const createLightCarcasUnit = useCreateLightCarcasUnit();
+  const uploadLightCarcasUnits = useUploadLightCarcasUnits();
 
   const lightCarcasTypeRows = React.useMemo<MasterRow[]>(
     () =>
@@ -1332,6 +2623,55 @@ function LightMastersSection() {
   const [openUnitModal, setOpenUnitModal] = React.useState(false);
   const [unitName, setUnitName] = React.useState("");
   const [unitTypeId, setUnitTypeId] = React.useState("");
+  const [openUploadModal, setOpenUploadModal] = React.useState(false);
+  const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
+  const [uploadPreview, setUploadPreview] =
+    React.useState<MasterUploadPreview | null>(null);
+  const [isParsingPreview, setIsParsingPreview] = React.useState(false);
+
+  React.useEffect(() => {
+    const file = selectedFiles[0];
+    if (!file) {
+      setUploadPreview(null);
+      return;
+    }
+
+    let cancelled = false;
+    setIsParsingPreview(true);
+    computeLightUploadPreview(file, {
+      types: lightCarcasTypes?.data ?? [],
+      units: (lightCarcasUnits?.data ?? []).map((u) => ({
+        id: u.id,
+        type: u.type,
+        typeId: u.light_carcas_type_id,
+      })),
+    })
+      .then((preview) => {
+        if (!cancelled) setUploadPreview(preview);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setUploadPreview({
+            totalDataRows: 0,
+            typesToAdd: 0,
+            materialsToAdd: 0,
+            finishesToAdd: 0,
+            skippedMissing: 0,
+            skippedDuplicate: 0,
+            skippedRows: [],
+            headerError:
+              "Could not read this file. Please check the format and try again.",
+          });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsParsingPreview(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedFiles, lightCarcasTypes?.data, lightCarcasUnits?.data]);
 
   const handleCreateType = () => {
     const type = typeName.trim();
@@ -1369,6 +2709,49 @@ function LightMastersSection() {
     );
   };
 
+  const handleUploadSubmit = () => {
+    const file = selectedFiles[0];
+    if (!file || !vendorId) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("vendorId", String(vendorId));
+
+    uploadLightCarcasUnits.mutate(formData, {
+      onSuccess: () => {
+        setOpenUploadModal(false);
+        setSelectedFiles([]);
+        setUploadPreview(null);
+      },
+      onError: () => {
+        setOpenUploadModal(false);
+        setSelectedFiles([]);
+        setUploadPreview(null);
+      },
+    });
+  };
+
+  const downloadLightTemplate = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Light Masters Template");
+
+    worksheet.columns = [
+      { header: "Light Carcas Type", key: "type", width: 30 },
+      { header: "Light Unit", key: "unit", width: 30 },
+    ];
+
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true };
+    headerRow.alignment = { vertical: "middle", horizontal: "left" };
+    worksheet.getRow(1).height = 20;
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    saveAs(blob, "light_masters_template.xlsx");
+  };
+
   return (
     <>
       <Tabs defaultValue="unit" className="w-full">
@@ -1389,6 +2772,30 @@ function LightMastersSection() {
             isError={isLightCarcasUnitsError}
             errorMessage={(lightCarcasUnitsError as any)?.response?.data?.error}
             onAction={() => setOpenUnitModal(true)}
+            extraActions={
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={downloadLightTemplate}
+                >
+                  <Download className="h-4 w-4" />
+                  Template
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedFiles([]);
+                    setOpenUploadModal(true);
+                  }}
+                  disabled={uploadLightCarcasUnits.isPending}
+                >
+                  <Upload className="h-4 w-4" />
+                  Import
+                </Button>
+              </>
+            }
           />
         </TabsContent>
 
@@ -1511,6 +2918,143 @@ function LightMastersSection() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <BaseModal
+        open={openUploadModal}
+        onOpenChange={(open) => {
+          setOpenUploadModal(open);
+          if (!open) {
+            setSelectedFiles([]);
+            setUploadPreview(null);
+          }
+        }}
+        title="Import Light Unit"
+        description="Upload a CSV or XLSX file with Light Carcas Type and Light Unit columns. Both columns are required per row; duplicate light units are skipped."
+        size="smd"
+      >
+        <div className="p-6 space-y-4">
+          <div className="space-y-4">
+            <FileUploadField
+              value={selectedFiles}
+              onChange={setSelectedFiles}
+              accept=".csv,.xlsx"
+              multiple={false}
+              maxFiles={1}
+            />
+          </div>
+
+          {selectedFiles.length > 0 && (
+            <div className="space-y-3">
+              {isParsingPreview ? (
+                <div className="flex items-center gap-2 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  Reading file…
+                </div>
+              ) : uploadPreview?.headerError ? (
+                <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-500/10 p-3 text-sm text-red-700 dark:border-red-500/30 dark:text-red-300">
+                  <FileWarning className="mt-0.5 h-4 w-4 shrink-0" />
+                  <p>{uploadPreview.headerError}</p>
+                </div>
+              ) : uploadPreview ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">
+                      Preview — {uploadPreview.totalDataRows} row
+                      {uploadPreview.totalDataRows === 1 ? "" : "s"} found
+                    </p>
+                    {uploadPreview.skippedRows.length > 0 && (
+                      <Badge variant="outline" className="text-muted-foreground">
+                        {uploadPreview.skippedRows.length} skipped
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <PreviewStatTile
+                      icon={<Layers />}
+                      label="New Light Carcas Type"
+                      value={uploadPreview.typesToAdd}
+                      tone="indigo"
+                    />
+                    <PreviewStatTile
+                      icon={<Palette />}
+                      label="New Light Unit"
+                      value={uploadPreview.finishesToAdd}
+                      tone="emerald"
+                    />
+                    <PreviewStatTile
+                      icon={<CopyX />}
+                      label="Skipped — duplicate"
+                      value={uploadPreview.skippedDuplicate}
+                      tone="amber"
+                    />
+                    {uploadPreview.skippedMissing > 0 && (
+                      <PreviewStatTile
+                        icon={<FileWarning />}
+                        label="Skipped — missing value(s)"
+                        value={uploadPreview.skippedMissing}
+                        tone="red"
+                      />
+                    )}
+                  </div>
+
+                  {uploadPreview.skippedRows.length > 0 && (
+                    <div className="rounded-lg border">
+                      <div className="border-b bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                        Skipped row details
+                      </div>
+                      <ScrollArea className="h-48">
+                        <div className="divide-y">
+                          {uploadPreview.skippedRows.map((s, i) => (
+                            <div
+                              key={i}
+                              className="flex items-start gap-2 px-3 py-1.5 text-xs"
+                            >
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "mt-0.5 shrink-0 tabular-nums",
+                                  s.type === "duplicate"
+                                    ? "border-amber-200 text-amber-700 dark:border-amber-500/30 dark:text-amber-300"
+                                    : "border-red-200 text-red-700 dark:border-red-500/30 dark:text-red-300",
+                                )}
+                              >
+                                Row {s.row}
+                              </Badge>
+                              <span className="text-muted-foreground">
+                                {s.reason}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  )}
+                </>
+              ) : null}
+            </div>
+          )}
+
+          <div className="flex gap-2 justify-end border-t pt-4 mt-6">
+            <Button variant="outline" onClick={() => setOpenUploadModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUploadSubmit}
+              disabled={
+                selectedFiles.length === 0 ||
+                isParsingPreview ||
+                !!uploadPreview?.headerError ||
+                uploadLightCarcasUnits.isPending
+              }
+            >
+              {uploadLightCarcasUnits.isPending
+                ? "Uploading..."
+                : "Upload & Import"}
+            </Button>
+          </div>
+        </div>
+      </BaseModal>
     </>
   );
 }
