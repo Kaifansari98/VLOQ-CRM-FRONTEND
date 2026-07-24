@@ -390,18 +390,36 @@ export default function FastProductionRequestActionModal({
                     <div className="space-y-4">
                       
                       {/* Date */}
-                      <div className="flex flex-col gap-2">
-                        <p className="text-sm font-semibold capitalize text-foreground">
-                          Required Delivery Date
-                        </p>
-                        <div className="flex items-center gap-4 rounded-xl border border-border/60 bg-card p-4">
-                          <div className="rounded-md bg-muted p-2.5 text-foreground shrink-0">
-                            <Calendar className="h-5 w-5" />
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-2">
+                          <p className="text-sm font-semibold capitalize text-foreground">
+                            Required Delivery Date
+                          </p>
+                          <div className="flex items-center gap-4 rounded-xl border border-border/60 bg-card p-4">
+                            <div className="rounded-md bg-muted p-2.5 text-foreground shrink-0">
+                              <Calendar className="h-5 w-5" />
+                            </div>
+                            <div className="flex flex-col justify-center">
+                              <p className="text-sm font-bold text-foreground mt-0.5">
+                                {formatDateStr(activeRequest.client_required_delivery_date)}
+                              </p>
+                            </div>
                           </div>
-                          <div className="flex flex-col justify-center">
-                            <p className="text-sm font-bold text-foreground mt-0.5">
-                              {formatDateStr(activeRequest.client_required_delivery_date)}
-                            </p>
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                          <p className="text-sm font-semibold capitalize text-foreground">
+                            Tentative Order Login Date
+                          </p>
+                          <div className="flex items-center gap-4 rounded-xl border border-border/60 bg-card p-4">
+                            <div className="rounded-md bg-muted p-2.5 text-foreground shrink-0">
+                              <Calendar className="h-5 w-5" />
+                            </div>
+                            <div className="flex flex-col justify-center">
+                              <p className="text-sm font-bold text-foreground mt-0.5">
+                                {formatDateStr(activeRequest.tentative_order_login_date)}
+                              </p>
+                            </div>
                           </div>
                         </div>
                       </div>
