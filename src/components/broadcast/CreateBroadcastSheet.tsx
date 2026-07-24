@@ -51,6 +51,7 @@ import { CreateBroadcastPayload, stripHtmlAndEntities,
   useBroadcastCategories } from "@/api/broadcast";
 import { toastManager } from "@/components/ui/toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import DocumentCard from "@/components/utils/documentCard";
 
 const getYouTubeEmbedUrl = (url: string) => {
   try {
@@ -127,7 +128,7 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
   const [videoUrlInput, setVideoUrlInput] = useState("");
   const [videoLinks, setVideoLinks] = useState<string[]>([]);
   const [attachments, setAttachments] = useState<
-    Array<{ id: string; name: string; size: string; type: string; fileObj?: File }>
+    Array<{ id: string; name: string; size: string; type: string; fileObj?: File; url?: string }>
   >([]);
 
   // Fetch broadcast categories
@@ -297,6 +298,7 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
         size: `${(f.size / (1024 * 1024)).toFixed(2)} MB`,
         type: f.name.split(".").pop() || "doc",
         fileObj: f,
+        url: URL.createObjectURL(f),
       }));
       setAttachments((prev) => [...prev, ...newFiles]);
     }
@@ -1010,13 +1012,19 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
                 {attachments.length > 0 && (
                   <div className="pt-3 border-t space-y-2">
                     <div className="text-xs font-semibold">Attachments ({attachments.length})</div>
-                    {attachments.map((att) => (
-                      <div key={att.id} className="flex items-center gap-2 p-2 rounded-lg border bg-muted/20 text-xs">
-                        <FileText className="w-4 h-4 text-primary shrink-0" />
-                        <span className="font-semibold truncate flex-1">{att.name}</span>
-                        <span className="text-muted-foreground text-[10px]">{att.size}</span>
-                      </div>
-                    ))}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {attachments.map((att, idx) => (
+                        <DocumentCard
+                          key={att.id || idx}
+                          doc={{
+                            id: typeof att.id === "number" ? att.id : idx + 1,
+                            originalName: att.name || "Attachment",
+                            signedUrl: att.url || "",
+                          }}
+                          compact={true}
+                        />
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

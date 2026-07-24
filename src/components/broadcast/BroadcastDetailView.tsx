@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -26,6 +27,8 @@ import {
   ArrowDownToLine,
   Users,
   Search,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import { BroadcastItem } from "@/types/broadcast";
 import { useMarkBroadcastReadMutation, useBroadcastReaders, stripHtmlAndEntities } from "@/api/broadcast";
@@ -116,6 +119,8 @@ export const BroadcastDetailView: React.FC<BroadcastDetailViewProps> = ({
   isSuperAdmin = false,
 }) => {
   const markReadMutation = useMarkBroadcastReadMutation();
+  const [activeTab, setActiveTab] = useState<"attachments" | "readers">("attachments");
+  const [attachmentViewMode, setAttachmentViewMode] = useState<"grid" | "list">("grid");
   const [previewDoc, setPreviewDoc] = useState<{ url: string; name: string; ext: string } | null>(null);
   const [videoDoc, setVideoDoc] = useState<{ url: string; name: string } | null>(null);
   const [readerSearch, setReaderSearch] = useState("");
@@ -164,93 +169,78 @@ export const BroadcastDetailView: React.FC<BroadcastDetailViewProps> = ({
   });
 
   return (
-    <div className="flex flex-col h-[calc(100vh-5.5rem)] overflow-hidden space-y-4 font-sans">
-      {/* 1. Top Header Bar - Premium CRM Hero Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border bg-gradient-to-r from-card via-card to-muted/20 shadow-xs shrink-0">
-        <div className="flex items-center gap-3.5 min-w-0">
+    <div className="flex flex-col h-[calc(100vh-5.5rem)] overflow-hidden space-y-3 font-sans">
+      {/* 1. Sleek Compact Single Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border bg-card/60 shadow-2xs shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
           <Button
             variant="outline"
             size="icon"
             onClick={onBack}
-            className="h-9 w-9 rounded-xl shrink-0 border-border/60 bg-background/80 hover:bg-accent hover:text-accent-foreground shadow-2xs transition-all duration-200"
+            className="h-8 w-8 rounded-lg shrink-0 border-border/60 hover:bg-accent"
           >
             <ArrowLeft className="w-4 h-4" />
           </Button>
-          <div className="min-w-0 space-y-1">
+
+          <div className="min-w-0 space-y-0.5">
             <div className="flex items-center gap-2 flex-wrap">
               {/* Type Badge */}
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wider uppercase bg-primary/10 text-primary border border-primary/20">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
                 {item.type === "circular" ? <Megaphone className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
                 {item.type}
               </span>
 
               {/* Category Badge */}
               {item.type === "document" && item.category && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/50">
-                  <span className="text-[10px] text-indigo-500/70 font-normal">Category:</span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-900/40">
+                  <span className="text-indigo-500/70 font-normal">Category:</span>
                   <span className="font-bold">{item.category}</span>
                 </span>
               )}
 
               {/* Status Badge */}
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold capitalize bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold capitalize bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-900/40">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                 {item.status}
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-foreground truncate max-w-3xl">
+
+            <h1 className="text-base sm:text-lg font-bold tracking-tight text-foreground truncate max-w-2xl">
               {item.title}
             </h1>
           </div>
         </div>
-      </div>
 
-      {/* 2. Top Compact Metadata Bar (Sleek horizontal stat cards) */}
-      <div className={`grid grid-cols-1 sm:grid-cols-2 ${isSuperAdmin ? "lg:grid-cols-3" : "lg:grid-cols-2"} gap-3 shrink-0`}>
-        {/* Published Date */}
-        <div className="px-4 py-3 rounded-2xl border bg-card/80 backdrop-blur-xs flex items-center gap-3.5 shadow-2xs hover:border-primary/30 transition-all duration-200">
-          <div className="p-2.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl border border-emerald-200/60 dark:border-emerald-900/40 shrink-0">
-            <Calendar className="w-4 h-4" />
+        {/* Compact Right Metadata Strip */}
+        <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 flex-wrap">
+          <div className="flex items-center gap-1.5" title="Published Date">
+            <Calendar className="w-3.5 h-3.5 text-emerald-500" />
+            <span className="font-medium text-foreground text-[11px]">
+              {item.publishDate || item.updatedAt}
+            </span>
           </div>
-          <div className="space-y-0.5 min-w-0">
-            <span className="text-muted-foreground block text-[10px] font-bold uppercase tracking-wider">Published Date</span>
-            <span className="font-bold text-xs text-foreground block truncate">{item.publishDate || item.updatedAt}</span>
+
+          <div className="h-3 w-px bg-border/60 hidden sm:block" />
+
+          <div className="flex items-center gap-1.5" title="Created By">
+            <User className="w-3.5 h-3.5 text-indigo-500" />
+            <span className="font-medium text-foreground text-[11px]">
+              {item.updatedBy?.name || "Super Admin"}
+            </span>
           </div>
+
+          {isSuperAdmin && item.audience && (
+            <>
+              <div className="h-3 w-px bg-border/60 hidden sm:block" />
+              <div className="flex items-center gap-1.5 max-w-[180px]" title={`Audience: ${item.audience}`}>
+                <Users className="w-3.5 h-3.5 text-purple-500" />
+                <span className="font-medium text-foreground text-[11px] truncate">
+                  {item.audience}
+                </span>
+              </div>
+            </>
+          )}
         </div>
-
-        {/* Created By */}
-        <div className="px-4 py-3 rounded-2xl border bg-card/80 backdrop-blur-xs flex items-center gap-3.5 shadow-2xs hover:border-primary/30 transition-all duration-200">
-          <div className="p-2.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl border border-indigo-200/60 dark:border-indigo-900/40 shrink-0">
-            <User className="w-4 h-4" />
-          </div>
-          <div className="space-y-0.5 min-w-0">
-            <span className="text-muted-foreground block text-[10px] font-bold uppercase tracking-wider">Created By</span>
-            <div className="flex items-center gap-1.5 min-w-0">
-              {item.updatedBy?.avatar && item.updatedBy?.name?.toLowerCase() !== "super admin" && (
-                <Avatar className="h-4 w-4 shrink-0">
-                  <AvatarImage src={item.updatedBy.avatar} />
-                  <AvatarFallback>{item.updatedBy.name.slice(0, 2)}</AvatarFallback>
-                </Avatar>
-              )}
-              <span className="font-bold text-xs text-foreground truncate">{item.updatedBy?.name || "Super Admin"}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Target Audience (Super Admin only) */}
-        {isSuperAdmin && (
-          <div className="px-4 py-3 rounded-2xl border bg-card/80 backdrop-blur-xs flex items-center gap-3.5 shadow-2xs hover:border-primary/30 transition-all duration-200">
-            <div className="p-2.5 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-xl border border-purple-200/60 dark:border-purple-900/40 shrink-0">
-              <Users className="w-4 h-4" />
-            </div>
-            <div className="space-y-0.5 min-w-0 flex-1">
-              <span className="text-muted-foreground block text-[10px] font-bold uppercase tracking-wider">Target Audience</span>
-              <span className="font-bold text-xs text-foreground block truncate" title={item.audience}>
-                {item.audience || "All Users"}
-              </span>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* 3. Main Dashboard Viewport Area (Fills 100% remaining screen height) */}
@@ -311,15 +301,42 @@ export const BroadcastDetailView: React.FC<BroadcastDetailViewProps> = ({
         {/* Right Column: Attachments, Videos & Readers Activity (5 Cols) */}
         <div className="lg:col-span-5 flex flex-col h-full border rounded-2xl bg-card p-4.5 shadow-2xs overflow-hidden">
           {isSuperAdmin ? (
-            <Tabs defaultValue="attachments" className="flex-1 flex flex-col min-h-0 overflow-hidden">
-              <TabsList className="grid grid-cols-2 h-9 p-0.5 bg-muted/60 rounded-xl mb-3 shrink-0">
-                <TabsTrigger value="attachments" className="text-xs font-bold rounded-lg py-1">
-                  Attachments ({(item.attachments?.length || 0) + (item.videoLinks?.length || 0)})
-                </TabsTrigger>
-                <TabsTrigger value="readers" className="text-xs font-bold rounded-lg py-1">
-                  Read Activity ({readersList?.length || item.readCount})
-                </TabsTrigger>
-              </TabsList>
+            <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as "attachments" | "readers")} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="grid grid-cols-2 p-1 bg-muted/60 rounded-full mb-3 shrink-0 gap-1 relative">
+                {[
+                  {
+                    id: "attachments",
+                    label: `Attachments (${(item.attachments?.length || 0) + (item.videoLinks?.length || 0)})`,
+                  },
+                  {
+                    id: "readers",
+                    label: `Read Activity (${readersList?.length || item.readCount})`,
+                  },
+                ].map((tab) => {
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setActiveTab(tab.id as "attachments" | "readers")}
+                      className={`relative flex items-center justify-center py-2 text-xs font-bold rounded-full transition-colors duration-200 select-none ${
+                        isActive
+                          ? "text-white dark:text-black"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {isActive && (
+                        <motion.div
+                          layoutId="activeTabPill_BroadcastDetail"
+                          className="absolute inset-0 bg-black dark:bg-white rounded-full shadow-md"
+                          transition={{ type: "spring", stiffness: 450, damping: 30 }}
+                        />
+                      )}
+                      <span className="relative z-10">{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
 
               <TabsContent value="attachments" className="flex-1 overflow-y-auto space-y-4 m-0 pr-1">
                 {/* Video Links */}
@@ -362,11 +379,39 @@ export const BroadcastDetailView: React.FC<BroadcastDetailViewProps> = ({
 
                 {/* File Attachments */}
                 <div className="space-y-2">
-                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Document Attachments ({item.attachments?.length || 0})
-                  </h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Document Attachments ({item.attachments?.length || 0})
+                    </h4>
+                    <div className="flex items-center gap-1 bg-muted/40 p-0.5 rounded-lg border">
+                      <button
+                        type="button"
+                        onClick={() => setAttachmentViewMode("grid")}
+                        className={`p-1 rounded-md transition-all ${
+                          attachmentViewMode === "grid"
+                            ? "bg-background text-foreground shadow-2xs"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                        title="Grid View"
+                      >
+                        <LayoutGrid className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAttachmentViewMode("list")}
+                        className={`p-1 rounded-md transition-all ${
+                          attachmentViewMode === "list"
+                            ? "bg-background text-foreground shadow-2xs"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                        title="List View"
+                      >
+                        <List className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
                   {item.attachments && item.attachments.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-2">
+                    <div className={attachmentViewMode === "grid" ? "grid grid-cols-1 sm:grid-cols-2 gap-2.5" : "grid grid-cols-1 gap-2"}>
                       {item.attachments.map((att) => (
                         <DocumentCard
                           key={att.id}
@@ -478,11 +523,39 @@ export const BroadcastDetailView: React.FC<BroadcastDetailViewProps> = ({
 
               {/* File Attachments */}
               <div className="space-y-2">
-                <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Document Attachments ({item.attachments?.length || 0})
-                </h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Document Attachments ({item.attachments?.length || 0})
+                  </h4>
+                  <div className="flex items-center gap-1 bg-muted/40 p-0.5 rounded-lg border">
+                    <button
+                      type="button"
+                      onClick={() => setAttachmentViewMode("grid")}
+                      className={`p-1 rounded-md transition-all ${
+                        attachmentViewMode === "grid"
+                          ? "bg-background text-foreground shadow-2xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                      title="Grid View"
+                    >
+                      <LayoutGrid className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAttachmentViewMode("list")}
+                      className={`p-1 rounded-md transition-all ${
+                        attachmentViewMode === "list"
+                          ? "bg-background text-foreground shadow-2xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                      title="List View"
+                    >
+                      <List className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
                 {item.attachments && item.attachments.length > 0 ? (
-                  <div className="grid grid-cols-1 gap-2">
+                  <div className={attachmentViewMode === "grid" ? "grid grid-cols-1 sm:grid-cols-2 gap-2.5" : "grid grid-cols-1 gap-2"}>
                     {item.attachments.map((att) => (
                       <DocumentCard
                         key={att.id}

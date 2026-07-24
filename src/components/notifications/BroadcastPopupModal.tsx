@@ -19,6 +19,8 @@ import {
   Clock,
   Sparkles,
   User,
+  Paperclip,
+  Video,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -158,6 +160,8 @@ export function BroadcastPopupModal() {
 
   const contentSnippet = stripHtmlAndEntities(activeBroadcast.content || "");
   const timerPercentage = (timeLeft / POPUP_DURATION_SECONDS) * 100;
+  const fileCount = activeBroadcast.attachments?.length || 0;
+  const videoCount = activeBroadcast.videoLinks?.length || 0;
 
   return (
     <AnimatePresence>
@@ -206,6 +210,22 @@ export function BroadcastPopupModal() {
             {activeBroadcast.type === "document" && activeBroadcast.category && (
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/50">
                 {activeBroadcast.category}
+              </span>
+            )}
+
+            {/* File Attachments Count Badge */}
+            {fileCount > 0 && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50">
+                <Paperclip className="w-3 h-3" />
+                +{fileCount} {fileCount === 1 ? "File" : "Files"}
+              </span>
+            )}
+
+            {/* Video Attachments Count Badge */}
+            {videoCount > 0 && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-900/50">
+                <Video className="w-3 h-3" />
+                +{videoCount} {videoCount === 1 ? "Video" : "Videos"}
               </span>
             )}
 

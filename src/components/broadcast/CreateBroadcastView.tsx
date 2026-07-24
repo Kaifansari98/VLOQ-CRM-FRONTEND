@@ -43,6 +43,7 @@ import { useAppSelector } from "@/redux/store";
 import { CreateBroadcastPayload, stripHtmlAndEntities, useBroadcastCategories } from "@/api/broadcast";
 import { toastManager } from "@/components/ui/toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import DocumentCard from "@/components/utils/documentCard";
 import { getYouTubeEmbedUrl } from "@/lib/utils";
 
 interface CreateBroadcastViewProps {
@@ -115,7 +116,7 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
   const [videoUrlInput, setVideoUrlInput] = useState("");
   const [videoLinks, setVideoLinks] = useState<string[]>([]);
   const [attachments, setAttachments] = useState<
-    Array<{ id: string; name: string; size: string; type: string; fileObj?: File }>
+    Array<{ id: string; name: string; size: string; type: string; fileObj?: File; url?: string }>
   >([]);
   const [scheduleVisited, setScheduleVisited] = useState(false);
 
@@ -226,6 +227,7 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
             name: att.name || "Attachment",
             size: att.size || "-",
             type: att.type || "pdf",
+            url: att.url,
           }))
         );
       }
@@ -378,6 +380,7 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
         size: `${(f.size / (1024 * 1024)).toFixed(2)} MB`,
         type: f.name.split(".").pop() || "doc",
         fileObj: f,
+        url: URL.createObjectURL(f),
       }));
       setAttachments((prev) => [...prev, ...newFiles]);
     }
@@ -1365,13 +1368,19 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
                 {attachments.length > 0 && (
                   <div className="pt-4 border-t space-y-2">
                     <div className="text-xs font-bold">Attachments ({attachments.length})</div>
-                    {attachments.map((att) => (
-                      <div key={att.id} className="flex items-center gap-3 p-3 rounded-xl border bg-muted/20 text-xs">
-                        <FileText className="w-4 h-4 text-primary shrink-0" />
-                        <span className="font-bold truncate flex-1">{att.name}</span>
-                        <span className="text-muted-foreground text-xs">{att.size}</span>
-                      </div>
-                    ))}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {attachments.map((att, idx) => (
+                        <DocumentCard
+                          key={att.id || idx}
+                          doc={{
+                            id: typeof att.id === "number" ? att.id : idx + 1,
+                            originalName: att.name || "Attachment",
+                            signedUrl: att.url || "",
+                          }}
+                          compact={true}
+                        />
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
