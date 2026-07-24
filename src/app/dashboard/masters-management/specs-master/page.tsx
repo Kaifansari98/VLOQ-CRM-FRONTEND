@@ -150,7 +150,11 @@ type MasterUploadPreview = {
   finishesToAdd: number;
   skippedMissing: number;
   skippedDuplicate: number;
-  skippedRows: Array<{ row: number; reason: string; type: "duplicate" | "missing" }>;
+  skippedRows: Array<{
+    row: number;
+    reason: string;
+    type: "duplicate" | "missing";
+  }>;
   headerError?: string;
 };
 
@@ -186,7 +190,11 @@ async function parseUploadFile(
       worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
         if (rowNumber === 1) {
           row.eachCell({ includeEmpty: true }, (cell) => {
-            headers.push(String(cell.value ?? "").trim().toLowerCase());
+            headers.push(
+              String(cell.value ?? "")
+                .trim()
+                .toLowerCase(),
+            );
           });
         } else {
           const rowData: Record<string, string> = {};
@@ -464,9 +472,7 @@ async function computeLightUploadPreview(
     existing.types.map((t) => [t.type.trim().toLowerCase(), t.id]),
   );
   const unitKeySet = new Set<string>(
-    existing.units.map(
-      (u) => `${u.typeId}::${u.type.trim().toLowerCase()}`,
-    ),
+    existing.units.map((u) => `${u.typeId}::${u.type.trim().toLowerCase()}`),
   );
   const newTypeNames = new Set<string>();
 
@@ -652,7 +658,9 @@ function MasterListingTable({
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     globalFilterFn: (row, columnId, value) => {
-      const search = String(value ?? "").trim().toLowerCase();
+      const search = String(value ?? "")
+        .trim()
+        .toLowerCase();
       if (!search) return true;
       return String(row.getValue(columnId) ?? "")
         .toLowerCase()
@@ -826,7 +834,12 @@ function CarcassMastersSection() {
     return () => {
       cancelled = true;
     };
-  }, [selectedFiles, carcassTypes?.data, carcasMaterials?.data, carcassMaterialFinishes?.data]);
+  }, [
+    selectedFiles,
+    carcassTypes?.data,
+    carcasMaterials?.data,
+    carcassMaterialFinishes?.data,
+  ]);
 
   const handleCreateType = () => {
     const name = typeName.trim();
@@ -970,6 +983,46 @@ function CarcassMastersSection() {
         </TabsContent>
 
         <TabsContent value="material" className="mt-4">
+
+
+               <MasterListingTable
+            title="Carcass Material Finish"
+            description="Carcass material finish master entries for the current vendor."
+            searchPlaceholder="Search carcass material finish..."
+            actionLabel="Add Carcass Material Finish"
+            rows={carcassMaterialFinishRows}
+            showParent
+            isLoading={isCarcassMaterialFinishesLoading}
+            isError={isCarcassMaterialFinishesError}
+            errorMessage={
+              (carcassMaterialFinishesError as any)?.response?.data?.error
+            }
+            onAction={() => setOpenFinishModal(true)}
+            extraActions={
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={downloadCarcassTemplate}
+                >
+                  <Download className="h-4 w-4" />
+                  Template
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedFiles([]);
+                    setOpenUploadModal(true);
+                  }}
+                  disabled={uploadCarcassMaterialFinishes.isPending}
+                >
+                  <Upload className="h-4 w-4" />
+                  Import
+                </Button>
+              </>
+            }
+          />
           <MasterListingTable
             title="Carcass Material"
             description="Carcass material master entries for the current vendor."
@@ -984,6 +1037,44 @@ function CarcassMastersSection() {
         </TabsContent>
 
         <TabsContent value="type" className="mt-4">
+          <MasterListingTable
+            title="Carcass Material Finish"
+            description="Carcass material finish master entries for the current vendor."
+            searchPlaceholder="Search carcass material finish..."
+            actionLabel="Add Carcass Material Finish"
+            rows={carcassMaterialFinishRows}
+            showParent
+            isLoading={isCarcassMaterialFinishesLoading}
+            isError={isCarcassMaterialFinishesError}
+            errorMessage={
+              (carcassMaterialFinishesError as any)?.response?.data?.error
+            }
+            onAction={() => setOpenFinishModal(true)}
+            extraActions={
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={downloadCarcassTemplate}
+                >
+                  <Download className="h-4 w-4" />
+                  Template
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedFiles([]);
+                    setOpenUploadModal(true);
+                  }}
+                  disabled={uploadCarcassMaterialFinishes.isPending}
+                >
+                  <Upload className="h-4 w-4" />
+                  Import
+                </Button>
+              </>
+            }
+          />
           <MasterListingTable
             title="Carcass Type"
             description="Carcass type master entries for the current vendor."
@@ -1099,7 +1190,10 @@ function CarcassMastersSection() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Carcass Material</Label>
-              <Select value={finishMaterialId} onValueChange={setFinishMaterialId}>
+              <Select
+                value={finishMaterialId}
+                onValueChange={setFinishMaterialId}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select carcass material" />
                 </SelectTrigger>
@@ -1195,7 +1289,10 @@ function CarcassMastersSection() {
                       {uploadPreview.totalDataRows === 1 ? "" : "s"} found
                     </p>
                     {uploadPreview.skippedRows.length > 0 && (
-                      <Badge variant="outline" className="text-muted-foreground">
+                      <Badge
+                        variant="outline"
+                        className="text-muted-foreground"
+                      >
                         {uploadPreview.skippedRows.length} skipped
                       </Badge>
                     )}
@@ -1573,7 +1670,30 @@ function ShutterMastersSection() {
             isLoading={isShutterMaterialsLoading}
             isError={isShutterMaterialsError}
             errorMessage={(shutterMaterialsError as any)?.response?.data?.error}
-            onAction={() => setOpenMaterialModal(true)}
+            onAction={() => setOpenMaterialModal(true)} extraActions={
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={downloadShutterTemplate}
+                >
+                  <Download className="h-4 w-4" />
+                  Template
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedFiles([]);
+                    setOpenUploadModal(true);
+                  }}
+                  disabled={uploadShutterMaterialFinishes.isPending}
+                >
+                  <Upload className="h-4 w-4" />
+                  Import
+                </Button>
+              </>
+            }
           />
         </TabsContent>
 
@@ -1587,7 +1707,30 @@ function ShutterMastersSection() {
             isLoading={isShutterTypesLoading}
             isError={isShutterTypesError}
             errorMessage={(shutterTypesError as any)?.response?.data?.error}
-            onAction={() => setOpenTypeModal(true)}
+            onAction={() => setOpenTypeModal(true)} extraActions={
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={downloadShutterTemplate}
+                >
+                  <Download className="h-4 w-4" />
+                  Template
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedFiles([]);
+                    setOpenUploadModal(true);
+                  }}
+                  disabled={uploadShutterMaterialFinishes.isPending}
+                >
+                  <Upload className="h-4 w-4" />
+                  Import
+                </Button>
+              </>
+            }
           />
         </TabsContent>
       </Tabs>
@@ -1693,7 +1836,10 @@ function ShutterMastersSection() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Shutter Material</Label>
-              <Select value={finishMaterialId} onValueChange={setFinishMaterialId}>
+              <Select
+                value={finishMaterialId}
+                onValueChange={setFinishMaterialId}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select shutter material" />
                 </SelectTrigger>
@@ -1789,7 +1935,10 @@ function ShutterMastersSection() {
                       {uploadPreview.totalDataRows === 1 ? "" : "s"} found
                     </p>
                     {uploadPreview.skippedRows.length > 0 && (
-                      <Badge variant="outline" className="text-muted-foreground">
+                      <Badge
+                        variant="outline"
+                        className="text-muted-foreground"
+                      >
                         {uploadPreview.skippedRows.length} skipped
                       </Badge>
                     )}
@@ -2191,7 +2340,30 @@ function HardwareMastersSection() {
             isLoading={isSkirtingsLoading}
             isError={isSkirtingsError}
             errorMessage={(skirtingsError as any)?.response?.data?.error}
-            onAction={() => setOpenSkirtingModal(true)}
+            onAction={() => setOpenSkirtingModal(true)}  extraActions={
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={downloadHardwareTemplate}
+                >
+                  <Download className="h-4 w-4" />
+                  Template
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedFiles([]);
+                    setOpenUploadModal(true);
+                  }}
+                  disabled={uploadSkirtingCarcassLegsColors.isPending}
+                >
+                  <Upload className="h-4 w-4" />
+                  Import
+                </Button>
+              </>
+            }
           />
         </TabsContent>
 
@@ -2205,7 +2377,30 @@ function HardwareMastersSection() {
             isLoading={isCarcassLegsLoading}
             isError={isCarcassLegsError}
             errorMessage={(carcassLegsError as any)?.response?.data?.error}
-            onAction={() => setOpenLegsModal(true)}
+            onAction={() => setOpenLegsModal(true)}  extraActions={
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={downloadHardwareTemplate}
+                >
+                  <Download className="h-4 w-4" />
+                  Template
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedFiles([]);
+                    setOpenUploadModal(true);
+                  }}
+                  disabled={uploadSkirtingCarcassLegsColors.isPending}
+                >
+                  <Upload className="h-4 w-4" />
+                  Import
+                </Button>
+              </>
+            }
           />
         </TabsContent>
       </Tabs>
@@ -2291,7 +2486,10 @@ function HardwareMastersSection() {
 
             <div className="space-y-2">
               <Label>In Scope</Label>
-              <Select value={skirtingInScope} onValueChange={setSkirtingInScope}>
+              <Select
+                value={skirtingInScope}
+                onValueChange={setSkirtingInScope}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select scope" />
                 </SelectTrigger>
@@ -2472,7 +2670,10 @@ function HardwareMastersSection() {
                       {uploadPreview.totalDataRows === 1 ? "" : "s"} found
                     </p>
                     {uploadPreview.skippedRows.length > 0 && (
-                      <Badge variant="outline" className="text-muted-foreground">
+                      <Badge
+                        variant="outline"
+                        className="text-muted-foreground"
+                      >
                         {uploadPreview.skippedRows.length} skipped
                       </Badge>
                     )}
@@ -2809,8 +3010,31 @@ function LightMastersSection() {
             isLoading={isLightCarcasTypesLoading}
             isError={isLightCarcasTypesError}
             errorMessage={(lightCarcasTypesError as any)?.response?.data?.error}
-            onAction={() => setOpenTypeModal(true)}
-          />
+            onAction={() => setOpenTypeModal(true)}  extraActions={
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={downloadLightTemplate}
+                >
+                  <Download className="h-4 w-4" />
+                  Template
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedFiles([]);
+                    setOpenUploadModal(true);
+                  }}
+                  disabled={uploadLightCarcasUnits.isPending}
+                >
+                  <Upload className="h-4 w-4" />
+                  Import
+                </Button>
+              </>
+            }
+          />    
         </TabsContent>
       </Tabs>
 
@@ -2963,7 +3187,10 @@ function LightMastersSection() {
                       {uploadPreview.totalDataRows === 1 ? "" : "s"} found
                     </p>
                     {uploadPreview.skippedRows.length > 0 && (
-                      <Badge variant="outline" className="text-muted-foreground">
+                      <Badge
+                        variant="outline"
+                        className="text-muted-foreground"
+                      >
                         {uploadPreview.skippedRows.length} skipped
                       </Badge>
                     )}
@@ -3123,7 +3350,9 @@ function OtherAppliancesListingTable({
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     globalFilterFn: (row, columnId, value) => {
-      const search = String(value ?? "").trim().toLowerCase();
+      const search = String(value ?? "")
+        .trim()
+        .toLowerCase();
       if (!search) return true;
       return String(row.getValue(columnId) ?? "")
         .toLowerCase()
@@ -3147,7 +3376,11 @@ function OtherAppliancesListingTable({
           </p>
         </div>
 
-        <Button type="button" className="sm:self-start gap-2" onClick={onAction}>
+        <Button
+          type="button"
+          className="sm:self-start gap-2"
+          onClick={onAction}
+        >
           <Plus className="h-4 w-4" />
           Add {type}
         </Button>
@@ -3371,9 +3604,7 @@ export default function SpecsMasterPage() {
 
       <div className="flex flex-1 flex-col gap-4 p-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">
-            Specs Master
-          </h1>
+          <h1 className="text-xl font-semibold tracking-tight">Specs Master</h1>
           <p className="text-sm text-muted-foreground">
             Manage carcass, shutter, hardware and other specification masters
             for large-scale project leads from one place.
