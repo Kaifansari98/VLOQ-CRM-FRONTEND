@@ -408,7 +408,9 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
           <TableBody>
             {paginatedBroadcasts.length > 0 ? (
               paginatedBroadcasts.map((item) => {
-                const readPercentage = item.totalSent > 0 ? Math.round((item.readCount / item.totalSent) * 100) : 0;
+                const rawPercentage = item.totalSent > 0 ? Math.round((item.readCount / item.totalSent) * 100) : 0;
+                const readPercentage = Math.min(100, rawPercentage);
+                const displayReadCount = item.totalSent > 0 ? Math.min(item.readCount, item.totalSent) : item.readCount;
                 return (
                   <TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
                     {/* Title & Icon & ID */}
@@ -424,8 +426,15 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
                           >
                             {item.title}
                           </div>
-                          <div className="text-[11px] text-muted-foreground font-mono mt-0.5">
-                            ID: {item.id}
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                            <span className="text-[11px] text-muted-foreground font-mono">
+                              ID: {item.id}
+                            </span>
+                            {item.type === "document" && item.category && (
+                              <Badge variant="outline" className="text-[10px] font-semibold px-1.5 py-0 bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200/60 dark:border-blue-900/40 rounded-md">
+                                {item.category}
+                              </Badge>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -450,7 +459,7 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
                         <div className="space-y-1">
                           <div className="flex items-center justify-between text-xs font-semibold">
                             <span>
-                              {item.readCount} / {item.totalSent}
+                              {displayReadCount} / {item.totalSent}
                             </span>
                             <span className="text-[11px] text-emerald-600 font-bold">{readPercentage}%</span>
                           </div>

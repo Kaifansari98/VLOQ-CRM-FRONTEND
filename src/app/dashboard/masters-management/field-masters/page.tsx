@@ -20,6 +20,7 @@ import MiscellaneousTeamMastersTable from "@/components/custom/MiscellaneousTeam
 import InstallerUserMastersTable from "@/components/custom/InstallerUserMastersTable";
 import CompanyVendorMastersTable from "@/components/custom/CompanyVendorMastersTable";
 import ArchitectureMastersTable from "@/components/custom/ArchitectureMastersTable";
+import BroadcastCategoryMastersTable from "@/components/custom/BroadcastCategoryMastersTable";
 import { useSearchParams } from "next/navigation";
 import { useVendorById } from "@/api/vendors";
 import { useAppSelector } from "@/redux/store";
@@ -34,7 +35,7 @@ export default function FieldMastersPage() {
   const showArchitectureMaster = vendorIdOverride
     ? vendorResponse?.data?.handlesLargeScaleProjects === true
     : sessionVendorAllowsLargeScale;
-  const tabItems = [
+  const rawTabItems = [
     {
       id: "site-master",
       title: "Site Master",
@@ -77,6 +78,12 @@ export default function FieldMastersPage() {
       color: "bg-black hover:bg-black",
       cardContent: <CompanyVendorMastersTable vendorIdOverride={vendorIdOverride} />,
     },
+    {
+      id: "broadcast-category-master",
+      title: "Broadcast Category Master",
+      color: "bg-black hover:bg-black",
+      cardContent: <BroadcastCategoryMastersTable vendorIdOverride={vendorIdOverride} />,
+    },
     ...(showArchitectureMaster
       ? [
         {
@@ -89,7 +96,9 @@ export default function FieldMastersPage() {
       : []),
   ];
 
-  const activeTab = searchParams.get("tab") || "site-master";
+  const tabItems = rawTabItems.sort((a, b) => a.title.localeCompare(b.title));
+
+  const activeTab = searchParams.get("tab") || tabItems[0]?.id || "site-master";
 
   return (
     <>

@@ -10,6 +10,7 @@ import { useDispatch } from "react-redux";
 import { logout } from "@/redux/slices/authSlice";
 import { useRouter } from "next/navigation";
 import { registerPushToken } from "@/api/notifications";
+import { BroadcastPopupModal } from "@/components/notifications/BroadcastPopupModal";
 
 export default function DashboardLayout({
   children,
@@ -118,6 +119,8 @@ export default function DashboardLayout({
       <SidebarInset className="w-full flex flex-col min-w-0">
         {children}
       </SidebarInset>
+
+      <BroadcastPopupModal />
     </SidebarProvider>
   );
 }

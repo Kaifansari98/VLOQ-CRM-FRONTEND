@@ -431,6 +431,10 @@ const ServicingActionModal: React.FC<ServicingActionModalProps> = ({
                           !rejectRemark.trim() ||
                           rejectMutation.isPending
                         }
+                        onClick={() => {
+                          if (shouldDisableBlockedActions) return;
+                          setOpenRejectConfirm(true);
+                        }}
                       >
                         Reject
                       </Button>

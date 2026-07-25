@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
 import {
   Select,
   SelectContent,
@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/table";
 import {
   Search,
-  Download,
   Eye,
   Megaphone,
   FileText,
@@ -292,9 +291,16 @@ export const UserBroadcastView: React.FC<UserBroadcastViewProps> = ({
                               title="Unread"
                             />
                           )}
-                        </div>
-                        <div className="font-bold text-xs text-foreground hover:text-primary transition-colors truncate max-w-[400px]">
-                          {item.title}
+                          </div>
+                        <div>
+                          <div className="font-bold text-xs text-foreground hover:text-primary transition-colors truncate max-w-[400px]">
+                            {item.title}
+                          </div>
+                          {item.type === "document" && item.category && (
+                            <Badge variant="outline" className="text-[10px] font-semibold px-1.5 py-0 bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200/60 dark:border-blue-900/40 rounded-md mt-0.5">
+                              {item.category}
+                            </Badge>
+                          )}
                         </div>
                       </div>
                     </TableCell>

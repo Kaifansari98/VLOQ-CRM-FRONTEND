@@ -41,11 +41,33 @@ import {
   Building2,
   UserCheck,
   Search,
+  ExternalLink,
 } from "lucide-react";
 import { BroadcastItem, BroadcastType } from "@/types/broadcast";
 import { useUserTypes, useUsersForMaster } from "@/hooks/useTypesMaster";
 import { useFranchisesByVendorId } from "@/api/franchise";
 import { useAppSelector } from "@/redux/store";
+import { CreateBroadcastPayload, stripHtmlAndEntities, 
+  useBroadcastCategories } from "@/api/broadcast";
+import { toastManager } from "@/components/ui/toast";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import DocumentCard from "@/components/utils/documentCard";
+
+const getYouTubeEmbedUrl = (url: string) => {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname.includes("youtube.com")) {
+      const v = parsed.searchParams.get("v");
+      if (v) return `https://www.youtube.com/embed/${v}`;
+    } else if (parsed.hostname.includes("youtu.be")) {
+      const v = parsed.pathname.slice(1);
+      if (v) return `https://www.youtube.com/embed/${v}`;
+    }
+  } catch (e) {
+    // ignore
+  }
+  return null;
+};
 
 interface CreateBroadcastSheetProps {
   open: boolean;
@@ -81,11 +103,14 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
   const [activeTab, setActiveTab] = useState<string>("content");
 
   // Form states
+  const [customId, setCustomId] = useState("");
   const [title, setTitle] = useState("");
-  const [type, setType] = useState<BroadcastType>("circular");
+  const [type, setType] = useState<BroadcastType | "">("");
+  const [categoryId, setCategoryId] = useState<string>("");
   const [summary, setSummary] = useState("");
   const [content, setContent] = useState("");
   const [department, setDepartment] = useState("Operations");
+  const [errors, setErrors] = useState<Record<string, boolean>>({});
 
   // Audience State (Support Multiple Roles, Franchises and Users)
   const [audienceType, setAudienceType] = useState<"ALL" | "ROLE" | "FRANCHISE" | "USER">("ALL");
@@ -103,8 +128,66 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
   const [videoUrlInput, setVideoUrlInput] = useState("");
   const [videoLinks, setVideoLinks] = useState<string[]>([]);
   const [attachments, setAttachments] = useState<
-    Array<{ id: string; name: string; size: string; type: string; fileObj?: File }>
+    Array<{ id: string; name: string; size: string; type: string; fileObj?: File; url?: string }>
   >([]);
+
+  // Fetch broadcast categories
+  const { data: categoriesResponse, isLoading: isLoadingCategories } = useBroadcastCategories(vendorId);
+  const categoriesList = categoriesResponse || [];
+
+  // Check if each of the 3 tabs' required data has been filled
+  const isContentFilled = useMemo(() => {
+    if (!type) return false;
+    const hasTitle = Boolean(title && title.trim() !== "");
+    const cleanContent = stripHtmlAndEntities(content || "");
+    const hasContent = Boolean(cleanContent && cleanContent.trim() !== "");
+    const hasCategory = type !== "document" || Boolean(categoryId && categoryId.trim() !== "");
+    return hasTitle && hasContent && hasCategory;
+  }, [title, content, type, categoryId]);
+
+  const isAudienceFilled = useMemo(() => {
+    if (audienceType === "ALL") return true;
+    return (
+      selectedRoleIds.length > 0 ||
+      selectedFranchiseIds.length > 0 ||
+      selectedUserIds.length > 0
+    );
+  }, [audienceType, selectedRoleIds, selectedFranchiseIds, selectedUserIds]);
+
+  const isScheduleFilled = useMemo(() => {
+    if (scheduleType === "now") return true;
+    if (scheduleType === "later") {
+      return Boolean(publishDate && publishDate.trim() !== "" && new Date(publishDate) >= new Date());
+    }
+    return false;
+  }, [scheduleType, publishDate]);
+
+  const isAllTabsFilled = isContentFilled && isAudienceFilled && isScheduleFilled;
+
+  // Tooltip explaining which mandatory tab fields are missing before publishing
+  const missingFieldsTooltip = useMemo(() => {
+    if (isAllTabsFilled) return "";
+    const missing: string[] = [];
+    if (!isContentFilled) {
+      const contentParts: string[] = [];
+      if (!type) contentParts.push("Broadcast Type");
+      if (!title || !title.trim()) contentParts.push("Title");
+      if (!content || !stripHtmlAndEntities(content).trim()) contentParts.push("Content");
+      if (type === "document" && (!categoryId || !categoryId.trim())) contentParts.push("Category");
+      missing.push(`Content Tab (${contentParts.join(", ") || "Incomplete"})`);
+    }
+    if (!isAudienceFilled) {
+      missing.push("Audience Tab");
+    }
+    if (!isScheduleFilled) {
+      if (!scheduleType) {
+        missing.push("Schedule Tab (Timing Option)");
+      } else if (scheduleType === "later" && (!publishDate || new Date(publishDate) < new Date())) {
+        missing.push("Schedule Tab (Valid Future Date & Time)");
+      }
+    }
+    return `Please fill required fields in: ${missing.join(" • ")}`;
+  }, [isAllTabsFilled, isContentFilled, isAudienceFilled, isScheduleFilled, title, content, type, categoryId, scheduleType, publishDate]);
 
   // Filtered Roles list
   const filteredRoles = useMemo(() => {
@@ -215,6 +298,7 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
         size: `${(f.size / (1024 * 1024)).toFixed(2)} MB`,
         type: f.name.split(".").pop() || "doc",
         fileObj: f,
+        url: URL.createObjectURL(f),
       }));
       setAttachments((prev) => [...prev, ...newFiles]);
     }
@@ -244,7 +328,16 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
   };
 
   const handleSubmit = (status: "published" | "draft") => {
-    if (!title) return;
+    const newErrors: Record<string, boolean> = {};
+    if (!title || !title.trim()) newErrors.title = true;
+    if (type === "document" && (!categoryId || !categoryId.trim())) newErrors.categoryId = true;
+    
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      toastManager.add({ title: "Please fill out all required fields.", type: "error" });
+      setActiveTab("content");
+      return;
+    }
 
     let audienceLabel = "All Users";
 
@@ -293,9 +386,13 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
       }
     }
 
+    const selectedCategory = categoriesList.find((c) => String(c.id) === categoryId);
+
     const newBroadcast: Partial<BroadcastItem> & { targetId?: number; vendorId?: number } = {
       title,
-      type,
+      type: (type || "circular") as BroadcastType,
+      category: type === "document" ? selectedCategory?.category : undefined,
+      category_id: type === "document" && categoryId ? parseInt(categoryId, 10) : undefined,
       status: status === "published" && scheduleType === "later" ? "scheduled" : status,
       summary,
       content: content || summary || "No content body provided.",
@@ -311,7 +408,6 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
       updatedBy: {
         name: user?.user_name || "Super Admin",
         role: "Super Admin",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=SuperAdmin",
       },
       version: "1.0",
       fileType: attachments.length > 0 ? (attachments[0].type as any) : "pdf",
@@ -328,6 +424,7 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
   const resetForm = () => {
     setTitle("");
     setType("circular");
+    setCategoryId("");
     setSummary("");
     setContent("");
     setAudienceType("ALL");
@@ -439,35 +536,57 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
                 </RadioGroup>
               </div>
 
-              {/* Title & Department */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-2 space-y-1.5">
-                  <Label className="text-xs font-semibold">Title *</Label>
+              {/* Broadcast ID, Title, Category */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                <div className="space-y-1.5 md:col-span-3">
+                  <Label className="text-xs font-semibold">Broadcast ID</Label>
+                  <Input
+                    placeholder="Auto (BD-XXXXX)"
+                    value={customId}
+                    onChange={(e) => setCustomId(e.target.value)}
+                    className="h-10 text-sm font-mono bg-muted/20"
+                  />
+                </div>
+                
+                <div className="space-y-1.5 md:col-span-6">
+                  <Label className={`text-xs font-semibold ${errors.title ? "text-red-500" : ""}`}>Title *</Label>
                   <Input
                     placeholder="Enter broadcast title..."
                     value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="h-10 text-sm"
+                    onChange={(e) => {
+                      setTitle(e.target.value);
+                      if (errors.title) setErrors((prev) => ({ ...prev, title: false }));
+                    }}
+                    className={`h-10 text-sm ${errors.title ? "border-red-500 bg-red-50/5" : ""}`}
                   />
+                  {errors.title && <p className="text-[10px] text-red-500 mt-1">Title is required</p>}
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">Department Tag *</Label>
-                  <Select value={department} onValueChange={setDepartment}>
-                    <SelectTrigger className="h-10 text-sm">
-                      <SelectValue placeholder="Select Department" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Operations">Operations</SelectItem>
-                      <SelectItem value="IT">IT & Systems</SelectItem>
-                      <SelectItem value="Safety">Safety & Compliance</SelectItem>
-                      <SelectItem value="Human Resources">Human Resources</SelectItem>
-                      <SelectItem value="Sales">Sales & Marketing</SelectItem>
-                      <SelectItem value="Quality">Quality Control</SelectItem>
-                      <SelectItem value="Engineering">Engineering & CAD</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* Category Dropdown (Shown when Document tab is selected) */}
+                {type === "document" && (
+                  <div className="md:col-span-3 space-y-1.5">
+                    <Label className={`text-xs font-semibold ${errors.categoryId ? "text-red-500" : ""}`}>Category *</Label>
+                    <Select 
+                      value={categoryId} 
+                      onValueChange={(val) => {
+                        setCategoryId(val);
+                        if (errors.categoryId) setErrors((prev) => ({ ...prev, categoryId: false }));
+                      }}
+                    >
+                      <SelectTrigger className={`h-10 text-sm ${errors.categoryId ? "border-red-500 bg-red-50/5" : ""}`}>
+                        <SelectValue placeholder={isLoadingCategories ? "Loading..." : "Select category"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categoriesList.map((cat) => (
+                          <SelectItem key={cat.id} value={String(cat.id)}>
+                            {cat.category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.categoryId && <p className="text-[10px] text-red-500 mt-1">Required</p>}
+                  </div>
+                )}
               </div>
 
               {/* Summary */}
@@ -849,21 +968,63 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
                   </div>
                 )}
 
-                <div
-                  className="text-xs space-y-2 leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: content || "<p className='text-muted-foreground'>Broadcast body preview...</p>" }}
-                />
+                <div className="text-xs space-y-3 leading-relaxed p-4 rounded-xl border bg-muted/10 rich-text-container break-words w-full max-h-[250px] overflow-y-auto min-h-[100px]">
+                  <div dangerouslySetInnerHTML={{ __html: content || "<p className='text-muted-foreground'>Broadcast body preview...</p>" }} />
+                </div>
+
+                {videoLinks && videoLinks.length > 0 && (
+                  <div className="pt-3 border-t space-y-3">
+                    <div className="text-xs font-semibold flex items-center gap-1.5">
+                      <Video className="w-3.5 h-3.5 text-primary" /> Video Attachments ({videoLinks.length})
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl">
+                      {videoLinks.map((url, idx) => {
+                        const embedUrl = getYouTubeEmbedUrl(url);
+                        return (
+                          <div key={idx} className="border rounded-xl overflow-hidden bg-card p-2 space-y-2 shadow-xs">
+                            {embedUrl ? (
+                              <div className="relative w-full aspect-video max-h-[200px] rounded-lg overflow-hidden bg-black">
+                                <iframe
+                                  src={embedUrl}
+                                  title={`Video ${idx + 1}`}
+                                  className="w-full h-full rounded-lg border-0"
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                  allowFullScreen
+                                />
+                              </div>
+                            ) : (
+                              <a
+                                href={url.startsWith("http") ? url : `https://${url}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center gap-2 text-xs text-primary underline p-1.5"
+                              >
+                                <ExternalLink className="w-4 h-4" /> Watch Video Tutorial
+                              </a>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {attachments.length > 0 && (
                   <div className="pt-3 border-t space-y-2">
                     <div className="text-xs font-semibold">Attachments ({attachments.length})</div>
-                    {attachments.map((att) => (
-                      <div key={att.id} className="flex items-center gap-2 p-2 rounded-lg border bg-muted/20 text-xs">
-                        <FileText className="w-4 h-4 text-primary shrink-0" />
-                        <span className="font-semibold truncate flex-1">{att.name}</span>
-                        <span className="text-muted-foreground text-[10px]">{att.size}</span>
-                      </div>
-                    ))}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {attachments.map((att, idx) => (
+                        <DocumentCard
+                          key={att.id || idx}
+                          doc={{
+                            id: typeof att.id === "number" ? att.id : idx + 1,
+                            originalName: att.name || "Attachment",
+                            signedUrl: att.url || "",
+                          }}
+                          compact={true}
+                        />
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -889,9 +1050,28 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
                   Next
                 </Button>
               ) : (
-                <Button type="button" size="sm" onClick={() => handleSubmit("published")}>
-                  Publish Broadcast
-                </Button>
+                <TooltipProvider delayDuration={0}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={!isAllTabsFilled}
+                          onClick={() => handleSubmit("published")}
+                          className={!isAllTabsFilled ? "opacity-60 cursor-not-allowed" : ""}
+                        >
+                          Publish Broadcast
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    {missingFieldsTooltip && (
+                      <TooltipContent side="top" className="dark text-xs max-w-xs">
+                        {missingFieldsTooltip}
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
               )}
             </div>
           </DialogFooter>

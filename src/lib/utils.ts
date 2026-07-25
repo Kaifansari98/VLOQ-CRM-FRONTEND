@@ -500,3 +500,56 @@ export const formatBlockedAt = (value?: string | null) => {
     hour12: true,
   }).format(parsedDate);
 };
+
+export function getYouTubeEmbedUrl(url: string): string | null {
+  if (!url) return null;
+  let formattedUrl = url.trim();
+  if (!formattedUrl) return null;
+
+  if (!/^https?:\/\//i.test(formattedUrl)) {
+    formattedUrl = `https://${formattedUrl}`;
+  }
+
+  try {
+    const parsed = new URL(formattedUrl);
+    const hostname = parsed.hostname.toLowerCase();
+
+    const isYouTube =
+      hostname.includes("youtube.com") ||
+      hostname.includes("youtu.be") ||
+      hostname.includes("youtube-nocookie.com");
+
+    if (isYouTube) {
+      const v = parsed.searchParams.get("v");
+      if (v && v.length >= 11) return `https://www.youtube.com/embed/${v.substring(0, 11)}`;
+
+      const pathSegments = parsed.pathname.split("/").filter(Boolean);
+
+      if (pathSegments[0] === "embed" && pathSegments[1]) {
+        return `https://www.youtube.com/embed/${pathSegments[1].substring(0, 11)}`;
+      }
+
+      if (pathSegments[0] === "shorts" && pathSegments[1]) {
+        return `https://www.youtube.com/embed/${pathSegments[1].substring(0, 11)}`;
+      }
+
+      if ((pathSegments[0] === "live" || pathSegments[0] === "v") && pathSegments[1]) {
+        return `https://www.youtube.com/embed/${pathSegments[1].substring(0, 11)}`;
+      }
+
+      if (hostname.includes("youtu.be") && pathSegments[0]) {
+        return `https://www.youtube.com/embed/${pathSegments[0].substring(0, 11)}`;
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  const regExp = /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|shorts\/|live\/))([\w-]{11})/;
+  const match = formattedUrl.match(regExp);
+  if (match && match[1]) {
+    return `https://www.youtube.com/embed/${match[1]}`;
+  }
+
+  return null;
+}
