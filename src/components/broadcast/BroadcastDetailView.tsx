@@ -270,65 +270,67 @@ export const BroadcastDetailView: React.FC<BroadcastDetailViewProps> = ({
                 </div>
               </div>
 
-              {/* Target Audience */}
-              <div className="px-4 last:pr-0 space-y-1">
-                <div className="flex items-center gap-1.5 text-muted-foreground font-medium text-[11px]">
-                  <Users className="w-4 h-4 text-foreground shrink-0 stroke-[2.2]" />
-                  <span>Target Audience</span>
-                </div>
-                {(() => {
-                  const rawAud = item.audience || "";
-                  const isAll = !rawAud || rawAud === "-" || rawAud.toLowerCase() === "all users" || rawAud.toLowerCase() === "all organization users";
-                  if (isAll) {
-                    return (
-                      <div className="font-bold text-foreground text-xs leading-tight">
-                        All Organization Users
-                      </div>
-                    );
-                  }
-
-                  const audienceList = rawAud.split(",").map((s) => s.trim()).filter(Boolean);
-
-                  if (audienceList.length <= 1) {
-                    return (
-                      <div className="font-bold text-foreground text-xs leading-tight max-w-[180px] truncate">
-                        {audienceList[0] || rawAud}
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button className="flex items-center gap-1.5 font-bold text-foreground text-xs leading-tight hover:opacity-80 cursor-pointer transition-opacity text-left group">
-                          <span className="truncate max-w-[120px]">{audienceList[0]}</span>
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-muted text-foreground border border-border/80 group-hover:bg-accent transition-colors shrink-0">
-                            +{audienceList.length - 1}
-                          </span>
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent align="start" className="w-64 p-3 space-y-2 shadow-md border rounded-xl">
-                        <div className="flex items-center justify-between pb-1.5 border-b text-xs font-bold text-foreground">
-                          <span className="flex items-center gap-1.5 text-foreground">
-                            <Users className="w-3.5 h-3.5 text-foreground" />
-                            Target Audience ({audienceList.length})
-                          </span>
+              {/* Target Audience (Only for Super Admin) */}
+              {isSuperAdmin && (
+                <div className="px-4 last:pr-0 space-y-1">
+                  <div className="flex items-center gap-1.5 text-muted-foreground font-medium text-[11px]">
+                    <Users className="w-4 h-4 text-foreground shrink-0 stroke-[2.2]" />
+                    <span>Target Audience</span>
+                  </div>
+                  {(() => {
+                    const rawAud = item.audience || "";
+                    const isAll = !rawAud || rawAud === "-" || rawAud.toLowerCase() === "all users" || rawAud.toLowerCase() === "all organization users";
+                    if (isAll) {
+                      return (
+                        <div className="font-bold text-foreground text-xs leading-tight">
+                          All Organization Users
                         </div>
-                        <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pt-1">
-                          {audienceList.map((aud, index) => (
-                            <span
-                              key={index}
-                              className="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold bg-muted/80 text-foreground border border-border"
-                            >
-                              {aud}
+                      );
+                    }
+
+                    const audienceList = rawAud.split(",").map((s) => s.trim()).filter(Boolean);
+
+                    if (audienceList.length <= 1) {
+                      return (
+                        <div className="font-bold text-foreground text-xs leading-tight max-w-[180px] truncate">
+                          {audienceList[0] || rawAud}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button className="flex items-center gap-1.5 font-bold text-foreground text-xs leading-tight hover:opacity-80 cursor-pointer transition-opacity text-left group">
+                            <span className="truncate max-w-[120px]">{audienceList[0]}</span>
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-muted text-foreground border border-border/80 group-hover:bg-accent transition-colors shrink-0">
+                              +{audienceList.length - 1}
                             </span>
-                          ))}
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  );
-                })()}
-              </div>
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent align="start" className="w-64 p-3 space-y-2 shadow-md border rounded-xl">
+                          <div className="flex items-center justify-between pb-1.5 border-b text-xs font-bold text-foreground">
+                            <span className="flex items-center gap-1.5 text-foreground">
+                              <Users className="w-3.5 h-3.5 text-foreground" />
+                              Target Audience ({audienceList.length})
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pt-1">
+                            {audienceList.map((aud, index) => (
+                              <span
+                                key={index}
+                                className="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold bg-muted/80 text-foreground border border-border"
+                              >
+                                {aud}
+                              </span>
+                            ))}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
           );
         })()}

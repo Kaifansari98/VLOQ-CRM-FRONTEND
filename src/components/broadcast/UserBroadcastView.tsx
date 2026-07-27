@@ -261,7 +261,6 @@ export const UserBroadcastView: React.FC<UserBroadcastViewProps> = ({
               <TableHead className="text-xs font-semibold tracking-wider uppercase pl-4">
                 {activeTab === "circulars" ? "CIRCULAR" : "DOCUMENT"}
               </TableHead>
-              <TableHead className="text-xs font-semibold tracking-wider uppercase">AUDIENCE</TableHead>
               <TableHead className="text-xs font-semibold tracking-wider uppercase flex items-center gap-1">
                 PUBLISHED DATE <ArrowUpDown className="w-3 h-3 text-muted-foreground" />
               </TableHead>
@@ -307,56 +306,7 @@ export const UserBroadcastView: React.FC<UserBroadcastViewProps> = ({
                       </div>
                     </TableCell>
 
-                    {/* Audience Column */}
-                    <TableCell className="text-xs font-medium">
-                      {(() => {
-                        const aud = item.audience || "All Users";
-                        const list = aud.split(",").map((s) => s.trim()).filter(Boolean);
-                        if (list.length <= 1) {
-                          return (
-                            <Badge variant="outline" className="text-[10px] font-semibold px-2 py-0.5 bg-muted/50 border-border/80 text-foreground">
-                              {aud}
-                            </Badge>
-                          );
-                        }
-                        return (
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <button
-                                type="button"
-                                className="inline-flex items-center gap-1 cursor-pointer focus:outline-none"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <Badge variant="outline" className="text-[10px] font-semibold px-2 py-0.5 bg-muted/50 border-border/80 text-foreground hover:bg-muted transition-colors">
-                                  {list[0]}
-                                </Badge>
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-muted text-foreground border border-border/80 hover:bg-accent transition-colors">
-                                  +{list.length - 1}
-                                </span>
-                              </button>
-                            </PopoverTrigger>
-                            <PopoverContent align="start" className="w-64 p-3 space-y-2 shadow-md border rounded-xl" onClick={(e) => e.stopPropagation()}>
-                              <div className="flex items-center justify-between pb-1.5 border-b text-xs font-bold text-foreground">
-                                <span className="flex items-center gap-1.5 text-foreground">
-                                  <Users className="w-3.5 h-3.5 text-foreground" />
-                                  Target Audience ({list.length})
-                                </span>
-                              </div>
-                              <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pt-1">
-                                {list.map((a, index) => (
-                                  <span
-                                    key={index}
-                                    className="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold bg-muted/80 text-foreground border border-border"
-                                  >
-                                    {a}
-                                  </span>
-                                ))}
-                              </div>
-                            </PopoverContent>
-                          </Popover>
-                        );
-                      })()}
-                    </TableCell>
+
 
 
                     {/* Published Date Column */}
