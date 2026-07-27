@@ -312,7 +312,7 @@ export function NavMain({
 
     return items.map((item) => {
       if (item.title !== "Leads" || !item.items?.length) return item;
-      if (item.items.some((sub) => sub.title === "On Hold")) return item;
+      if (item.items.some((sub) => sub.title === "OnHold Leads")) return item;
 
       const openLeadsIndex = item.items.findIndex(
         (sub) => sub.title === "Open Leads",
@@ -324,19 +324,19 @@ export function NavMain({
         openLeadsIndex + 1,
         0,
         {
-          title: "On Hold",
+          title: "OnHold Leads",
           url: "/dashboard/leads/leadstable?tab=onHold",
           customCount: activityStatusCounts?.onHold ?? 0,
           customCountLoading: isActivityStatusCountsLoading,
         },
         {
-          title: "Lost Approval",
+          title: "Lost Approvals",
           url: "/dashboard/leads/leadstable?tab=lostApproval",
           customCount: activityStatusCounts?.lostApproval ?? 0,
           customCountLoading: isActivityStatusCountsLoading,
         },
         {
-          title: "Lost",
+          title: "Lost Leads",
           url: "/dashboard/leads/leadstable?tab=lost",
           customCount: activityStatusCounts?.lost ?? 0,
           customCountLoading: isActivityStatusCountsLoading,

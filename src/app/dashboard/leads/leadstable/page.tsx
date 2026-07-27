@@ -190,7 +190,7 @@ export default function LeadsGenerationPage() {
       ? [
           {
             value: "onHold" as LeadTab,
-            label: "On Hold",
+            label: "OnHold Leads",
             count: counts?.onHold ?? 0,
             dotColor: "#facc15",
           },
@@ -202,13 +202,13 @@ export default function LeadsGenerationPage() {
     tabItems.push(
       {
         value: "lostApproval",
-        label: "Lost Approval",
+        label: "Lost Approvals",
         count: counts?.lostApproval ?? 0,
         dotColor: "#22c55e",
       },
       {
         value: "lost",
-        label: "Lost",
+        label: "Lost Leads",
         count: counts?.lost ?? 0,
         dotColor: "#ef4444",
       },

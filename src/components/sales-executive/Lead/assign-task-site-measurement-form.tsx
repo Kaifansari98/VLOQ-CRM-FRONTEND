@@ -30,6 +30,7 @@ import {
   useCheckFastProductionLimit,
   useFastProductionRequestDraft,
   useLeadById,
+  useLeadProductStructureInstances,
 } from "@/hooks/useLeadsQueries";
 import { AssignToSiteMeasurementPayload } from "@/api/leads";
 import { toastManager } from "@/components/ui/toast";
@@ -117,6 +118,9 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     (state) =>
       state.auth.user?.vendor?.is_self_assign_task_type_master_enabed !== false,
   );
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
   const loggedInUserName = useAppSelector(
     (state) => state.auth.user?.user_name ?? "",
   );
@@ -149,6 +153,23 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   const lead = leadData?.data?.lead;
   const isLeadFastProductionAlready = lead?.is_fast_production === true;
   const isFastProductionPending = lead?.has_pending_fast_production_request === true;
+
+  const { data: structureInstancesData, isLoading: isLoadingBoqInstances } =
+    useLeadProductStructureInstances(
+      leadId,
+      vendorId,
+      open && handlesLargeScaleProjects,
+    );
+  const boqInstances = React.useMemo(
+    () =>
+      (structureInstancesData?.data || []).filter(
+        (item: any) =>
+          item?.isLargeScaleProjectInstance === true ||
+          item?.product_item_code_id,
+      ),
+    [structureInstancesData?.data],
+  );
+  const isBoqMissing = handlesLargeScaleProjects && boqInstances.length === 0;
 
   const isLimitReached = (userType || "").toLowerCase() === "super-admin" ? false : isLimitReachedRaw;
 
@@ -283,16 +304,20 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     isLoadingInitialSiteMeasurementTaskConflicts ||
     !!initialSiteMeasurementConflict ||
     !!onlyFollowUp ||
-    !canShowInitialSiteMeasurementOption;
+    !canShowInitialSiteMeasurementOption ||
+    isLoadingBoqInstances ||
+    isBoqMissing;
 
   const initialSiteMeasurementTooltip =
-    isLoadingInitialSiteMeasurementTaskConflicts
+    isLoadingInitialSiteMeasurementTaskConflicts || isLoadingBoqInstances
       ? "Checking existing tasks"
       : initialSiteMeasurementConflict
         ? "Initial Site Measurement task already created and not completed"
         : !canShowInitialSiteMeasurementOption
           ? "You don't have permission to assign Initial Site Measurement."
-          : "Initial Site Measurement is not available here";
+          : isBoqMissing
+            ? "Add at least one Bill of Quantity item to this lead before assigning Initial Site Measurement."
+            : "Initial Site Measurement is not available here";
 
   const { data: followUpUsersData } = useFollowUpUsers(
     vendorId,
