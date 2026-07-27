@@ -96,6 +96,14 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
   }, [uniqueProductTypes?.data, form]);
 
   const onSubmit = async (data: DesignsFormValues) => {
+    if (isCustomVendor && !data.design_type) {
+      form.setError("design_type", {
+        type: "manual",
+        message: "Design type is required",
+      });
+      return;
+    }
+
     if (isCustomVendor && !data.product_type) {
       form.setError("product_type", {
         type: "manual",
