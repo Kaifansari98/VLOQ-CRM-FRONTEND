@@ -48,7 +48,7 @@ const CostingFileTab = () => {
     (state) => state.customPrivileges.codes,
   );
 
-  const { data, error, isLoading } = useCostingFileDoc(vendorId!, leadId);
+  const { data, error, isLoading, isFetching } = useCostingFileDoc(vendorId!, leadId);
   const costingDocs = data?.data?.documents || [];
   const sortedCostingDocs = getSortedLatestFirst(costingDocs);
 
@@ -85,7 +85,12 @@ const CostingFileTab = () => {
         )
       : userType === "admin" || userType === "super-admin";
 
-  if (isLoading) {
+  const shouldShowLoader =
+    (isLoading || isFetching) &&
+    !error &&
+    !data;
+
+  if (shouldShowLoader) {
     return <Loader size={250} message="Loading Costing Files..." />;
   }
 
