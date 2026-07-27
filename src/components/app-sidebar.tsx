@@ -528,7 +528,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ? filteredItems
             .filter(
               (item) =>
-                item.title === "Broadcast" ||
                 item.title !== "Servicing" ||
                 customPrivilegeCodes.some((code) =>
                   code.startsWith("installation.servicing."),
