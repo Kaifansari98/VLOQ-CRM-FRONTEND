@@ -139,14 +139,10 @@ export default function MoveToDesigningStageModal({
   useEffect(() => {
     if (!open) return;
 
-    const preAssignedUser = alreadyAssignedDesigner
-      ? eligibleUsers.find((user: any) => user.id === alreadyAssignedDesigner.user_id)
-      : undefined;
-
-    if (preAssignedUser) {
-      form.setValue("assign_to_user_id", preAssignedUser.id);
-      setSelectedUserName(preAssignedUser.user_name || "Designer");
-      setShowSingleUserConfirm(false);
+    if (alreadyAssignedDesigner) {
+      form.setValue("assign_to_user_id", alreadyAssignedDesigner.user_id);
+      setSelectedUserName(alreadyAssignedDesigner.user_name || "Designer");
+      setShowSingleUserConfirm(true);
       return;
     }
 
@@ -230,7 +226,7 @@ export default function MoveToDesigningStageModal({
     moveMutation.mutate(values.assign_to_user_id);
   };
 
-  if (showSingleUserConfirm && eligibleUsers.length === 1) {
+  if (showSingleUserConfirm) {
     return (
       <AlertDialog
         open={showSingleUserConfirm}
