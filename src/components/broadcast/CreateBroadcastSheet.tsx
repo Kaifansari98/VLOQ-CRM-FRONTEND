@@ -103,7 +103,6 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
   const [activeTab, setActiveTab] = useState<string>("content");
 
   // Form states
-  const [customId, setCustomId] = useState("");
   const [title, setTitle] = useState("");
   const [type, setType] = useState<BroadcastType | "">("");
   const [categoryId, setCategoryId] = useState<string>("");
@@ -536,19 +535,9 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
                 </RadioGroup>
               </div>
 
-              {/* Broadcast ID, Title, Category */}
+              {/* Title & Category */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-                <div className="space-y-1.5 md:col-span-3">
-                  <Label className="text-xs font-semibold">Broadcast ID</Label>
-                  <Input
-                    placeholder="Auto (BD-XXXXX)"
-                    value={customId}
-                    onChange={(e) => setCustomId(e.target.value)}
-                    className="h-10 text-sm font-mono bg-muted/20"
-                  />
-                </div>
-                
-                <div className="space-y-1.5 md:col-span-6">
+                <div className={`space-y-1.5 ${type === "document" ? "md:col-span-8" : "md:col-span-12"}`}>
                   <Label className={`text-xs font-semibold ${errors.title ? "text-red-500" : ""}`}>Title *</Label>
                   <Input
                     placeholder="Enter broadcast title..."
@@ -564,7 +553,7 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
 
                 {/* Category Dropdown (Shown when Document tab is selected) */}
                 {type === "document" && (
-                  <div className="md:col-span-3 space-y-1.5">
+                  <div className="md:col-span-4 space-y-1.5">
                     <Label className={`text-xs font-semibold ${errors.categoryId ? "text-red-500" : ""}`}>Category *</Label>
                     <Select 
                       value={categoryId} 

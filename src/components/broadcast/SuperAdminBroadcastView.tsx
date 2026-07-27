@@ -37,6 +37,7 @@ import {
   FileText,
   ChevronDown,
   X,
+  Users,
 } from "lucide-react";
 import {
   Popover,
@@ -209,25 +210,39 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
           </Tooltip>
         ))}
         {hiddenCount > 0 && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-primary/10 text-primary border border-primary/20 cursor-pointer hover:bg-primary/20 transition-colors">
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-primary/10 text-primary border border-primary/20 cursor-pointer hover:bg-primary/20 transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
                 +{hiddenCount}
-              </span>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-xs space-y-1.5 p-2.5">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                Selected Audience ({items.length})
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="start"
+              className="w-64 p-3 space-y-2 shadow-md border rounded-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between pb-1.5 border-b text-xs font-bold text-foreground">
+                <span className="flex items-center gap-1.5 text-foreground">
+                  <Users className="w-3.5 h-3.5 text-foreground" />
+                  Target Audience ({items.length})
+                </span>
               </div>
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pt-1">
                 {items.map((name, i) => (
-                  <span key={i} className="px-2 py-0.5 bg-background text-foreground rounded-md text-xs font-semibold border shadow-xs">
+                  <span
+                    key={i}
+                    className="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold bg-muted/80 text-foreground border border-border"
+                  >
                     {name}
                   </span>
                 ))}
               </div>
-            </TooltipContent>
-          </Tooltip>
+            </PopoverContent>
+          </Popover>
         )}
       </div>
     );
@@ -398,6 +413,7 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
             <TableRow>
               <TableHead className="text-xs font-semibold tracking-wider uppercase pl-6">TITLE</TableHead>
               <TableHead className="text-xs font-semibold tracking-wider uppercase">AUDIENCE</TableHead>
+              <TableHead className="text-xs font-semibold tracking-wider uppercase">CREATED BY</TableHead>
               <TableHead className="text-xs font-semibold tracking-wider uppercase">STATUS</TableHead>
               <TableHead className="text-xs font-semibold tracking-wider uppercase">PUBLISH DATE</TableHead>
               <TableHead className="text-xs font-semibold tracking-wider uppercase">READ / SENT</TableHead>
@@ -443,6 +459,11 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
                     {/* Audience */}
                     <TableCell className="text-xs">
                       {renderAudienceCell(item.audience, item.audienceScope)}
+                    </TableCell>
+
+                    {/* Created By */}
+                    <TableCell className="text-xs font-medium text-foreground">
+                      {item.updatedBy?.name || "Super Admin"}
                     </TableCell>
 
                     {/* Status */}

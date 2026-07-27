@@ -171,12 +171,12 @@ export function BroadcastPopupModal() {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: 20 }}
           transition={{ type: "spring", stiffness: 350, damping: 25 }}
-          className="relative w-full max-w-lg bg-card text-card-foreground border border-border/80 shadow-2xl rounded-3xl overflow-hidden p-6"
+          className="relative w-full max-w-2xl bg-card text-card-foreground border border-border/80 shadow-2xl rounded-3xl overflow-hidden p-7 sm:p-8"
         >
-          {/* Top Progress Timer Bar */}
+          {/* Top Progress Timer Bar (Black/Grey Gradient) */}
           <div className="absolute top-0 left-0 right-0 h-1 bg-muted/40 overflow-hidden">
             <motion.div
-              className="h-full bg-gradient-to-r from-primary via-indigo-500 to-purple-500"
+              className="h-full bg-gradient-to-r from-zinc-900 via-zinc-700 to-zinc-900 dark:from-zinc-100 dark:via-zinc-300 dark:to-zinc-100"
               initial={{ width: "100%" }}
               animate={{ width: `${timerPercentage}%` }}
               transition={{ duration: 1, ease: "linear" }}
@@ -186,62 +186,64 @@ export function BroadcastPopupModal() {
           {/* Close X Button */}
           <button
             onClick={handleDismiss}
-            className="absolute top-4 right-4 p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+            className="absolute top-5 right-5 p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors z-10"
             title="Close popup"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
 
-          {/* Header Badges */}
-          <div className="flex items-center gap-2 mb-3 pr-8 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
-              <Sparkles className="w-3 h-3" /> New Broadcast
+          {/* 1. Title at Top */}
+          <div className="pt-1 mb-3 pr-10">
+            <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-foreground line-clamp-2 leading-snug">
+              {activeBroadcast.title}
+            </h2>
+          </div>
+
+          {/* 2. Badges Below Title */}
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
+              <Sparkles className="w-3.5 h-3.5" /> New Broadcast
             </span>
 
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-muted text-foreground border border-border/60">
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-muted text-foreground border border-border/60">
               {activeBroadcast.type === "circular" ? (
-                <Megaphone className="w-3 h-3" />
+                <Megaphone className="w-3.5 h-3.5" />
               ) : (
-                <FileText className="w-3 h-3" />
+                <FileText className="w-3.5 h-3.5" />
               )}
               {activeBroadcast.type}
             </span>
 
             {activeBroadcast.type === "document" && activeBroadcast.category && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/50">
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/50">
                 {activeBroadcast.category}
               </span>
             )}
 
             {/* File Attachments Count Badge */}
             {fileCount > 0 && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50">
-                <Paperclip className="w-3 h-3" />
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50">
+                <Paperclip className="w-3.5 h-3.5" />
                 +{fileCount} {fileCount === 1 ? "File" : "Files"}
               </span>
             )}
 
             {/* Video Attachments Count Badge */}
             {videoCount > 0 && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-900/50">
-                <Video className="w-3 h-3" />
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-900/50">
+                <Video className="w-3.5 h-3.5" />
                 +{videoCount} {videoCount === 1 ? "Video" : "Videos"}
               </span>
             )}
 
-            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-muted-foreground ml-auto">
-              <Clock className="w-3 h-3" /> {timeLeft}s
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground ml-auto">
+              <Clock className="w-3.5 h-3.5" /> {timeLeft}s
             </span>
           </div>
 
-          {/* Title */}
-          <h2 className="text-xl font-extrabold tracking-tight text-foreground line-clamp-2 mb-2">
-            {activeBroadcast.title}
-          </h2>
-
           {/* Author & Date metadata */}
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
-            <User className="w-3.5 h-3.5 text-primary" />
+          <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground mb-4">
+            <User className="w-4 h-4 text-primary" />
             <span>
               Created by{" "}
               <strong className="text-foreground font-semibold">
@@ -253,8 +255,10 @@ export function BroadcastPopupModal() {
           </div>
 
           {/* Preview Snippet */}
-          <div className="p-3.5 rounded-2xl bg-muted/40 border border-border/40 text-xs text-muted-foreground line-clamp-3 leading-relaxed mb-6">
-            {contentSnippet || "New announcement details are available to read."}
+          <div className="p-4 rounded-2xl bg-muted/30 border border-border/40 mb-6 overflow-hidden max-h-48 overflow-y-auto">
+            <p className="text-sm text-muted-foreground leading-relaxed break-words">
+              {contentSnippet || "New announcement details are available to read."}
+            </p>
           </div>
 
           {/* Footer Action Buttons */}
