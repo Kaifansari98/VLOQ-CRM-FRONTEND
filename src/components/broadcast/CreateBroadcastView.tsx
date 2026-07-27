@@ -57,6 +57,150 @@ interface CreateBroadcastViewProps {
   editingBroadcast?: BroadcastItem | null;
 }
 
+interface MultiSelectOption {
+  id: number;
+  label: string;
+  sublabel?: string;
+}
+
+interface MultiSelectDropdownProps {
+  title: string;
+  placeholder: string;
+  options: MultiSelectOption[];
+  selectedIds: number[];
+  onToggle: (id: number) => void;
+  onSelectAll?: () => void;
+  isLoading?: boolean;
+  dropUp?: boolean;
+}
+
+const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
+  title,
+  placeholder,
+  options,
+  selectedIds,
+  onToggle,
+  onSelectAll,
+  isLoading,
+  dropUp = false,
+}) => {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return options;
+    const q = search.toLowerCase().trim();
+    return options.filter(
+      (opt) =>
+        opt.label.toLowerCase().includes(q) ||
+        (opt.sublabel && opt.sublabel.toLowerCase().includes(q))
+    );
+  }, [options, search]);
+
+  const selectedCount = selectedIds.length;
+
+  return (
+    <div className="p-4 border rounded-2xl bg-card space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <Label className="text-xs font-bold text-foreground block">
+            {title} ({selectedCount} selected)
+          </Label>
+        </div>
+        {onSelectAll && options.length > 0 && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onSelectAll}
+            className="h-7 text-xs rounded-lg px-2.5 cursor-pointer"
+          >
+            {selectedCount === options.length ? "Deselect All" : "Select All"}
+          </Button>
+        )}
+      </div>
+
+      <div className="relative">
+        <div
+          onClick={() => setOpen(true)}
+          className="relative min-h-[44px] w-full border rounded-xl bg-background p-1.5 pl-3 flex flex-wrap items-center gap-1.5 cursor-pointer hover:border-primary/50 transition-colors"
+        >
+          <Search className="w-4 h-4 text-muted-foreground shrink-0 mr-1" />
+          
+          {selectedIds.map((id) => {
+            const opt = options.find((o) => o.id === id);
+            const label = opt ? opt.label : `#${id}`;
+            return (
+              <Badge
+                key={id}
+                variant="secondary"
+                className="text-xs font-semibold py-1 px-2.5 rounded-lg flex items-center gap-1.5 bg-primary/10 text-primary border border-primary/20 shrink-0"
+              >
+                {label}
+                <X
+                  className="w-3.5 h-3.5 hover:text-destructive cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggle(id);
+                  }}
+                />
+              </Badge>
+            );
+          })}
+
+          <input
+            type="text"
+            placeholder={selectedCount === 0 ? placeholder : "Search and add more..."}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onFocus={() => setOpen(true)}
+            className="flex-1 bg-transparent border-0 text-xs focus:outline-hidden px-1.5 min-w-[140px]"
+          />
+        </div>
+
+        {open && (
+          <>
+            <div
+              className="fixed inset-0 z-30"
+              onClick={() => setOpen(false)}
+            />
+            <div className={`absolute ${dropUp ? "bottom-full mb-1.5" : "top-full mt-1.5"} left-0 right-0 z-40 bg-popover text-popover-foreground border shadow-xl rounded-2xl p-2 max-h-60 overflow-y-auto space-y-1`}>
+              {isLoading ? (
+                <div className="p-4 text-center text-xs text-muted-foreground">Loading options...</div>
+              ) : filtered.length === 0 ? (
+                <div className="p-4 text-center text-xs text-muted-foreground">No items match "{search}"</div>
+              ) : (
+                filtered.map((opt) => {
+                  const isChecked = selectedIds.includes(opt.id);
+                  return (
+                    <div
+                      key={opt.id}
+                      onClick={() => onToggle(opt.id)}
+                      className={`flex items-center gap-3 p-2.5 rounded-xl border text-xs cursor-pointer transition-colors ${
+                        isChecked
+                          ? "bg-primary/10 border-primary/30 font-bold text-primary"
+                          : "hover:bg-muted/60 border-transparent"
+                      }`}
+                    >
+                      <Checkbox checked={isChecked} onCheckedChange={() => {}} />
+                      <div className="truncate flex-1">
+                        <span className="font-semibold block truncate text-foreground">{opt.label}</span>
+                        {opt.sublabel && (
+                          <span className="text-[10px] text-muted-foreground block truncate">{opt.sublabel}</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
   onBack,
   onSubmitBroadcast,
@@ -90,10 +234,33 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
     return [];
   }, [usersResponse]);
 
+  const franchiseOptions = useMemo(() => {
+    return (franchisesData || []).map((f: any) => ({
+      id: Number(f.id),
+      label: f.franchise_name || `Franchise #${f.id}`,
+      sublabel: f.franchise_code || `ID: #${f.id}`,
+    }));
+  }, [franchisesData]);
+
+  const roleOptions = useMemo(() => {
+    return userRolesList.map((r: any) => ({
+      id: Number(r.id),
+      label: r.user_type || r.user_type_name || r.name || `Role #${r.id}`,
+      sublabel: `Role ID: #${r.id}`,
+    }));
+  }, [userRolesList]);
+
+  const userOptions = useMemo(() => {
+    return usersList.map((u: any) => ({
+      id: Number(u.id),
+      label: u.user_name || `User #${u.id}`,
+      sublabel: `${u.user_type?.user_type || u.user_type?.user_type_name || "User"} • ${u.user_email || `ID: #${u.id}`}`,
+    }));
+  }, [usersList]);
+
   const [activeTab, setActiveTab] = useState<string>("content");
 
   // Form states
-  const [customId, setCustomId] = useState("");
   const [title, setTitle] = useState("");
   const [type, setType] = useState<BroadcastType | "">("");
   const [categoryId, setCategoryId] = useState<string>("");
@@ -780,22 +947,9 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
                 </RadioGroup>
               </div>
 
-              {/* Broadcast ID, Title, Category */}
+              {/* Title & Category */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                <div className="space-y-2 md:col-span-3">
-                  <Label className="text-xs font-bold flex items-center justify-between">
-                    <span>Broadcast ID</span>
-                    <span className="text-[10px] text-muted-foreground font-normal">(Optional)</span>
-                  </Label>
-                  <Input
-                    placeholder={editingBroadcast ? editingBroadcast.id : "Auto (BD-XXXXX)"}
-                    value={customId}
-                    onChange={(e) => setCustomId(e.target.value)}
-                    className="h-11 text-sm font-mono rounded-xl bg-muted/20"
-                  />
-                </div>
-
-                <div className="space-y-2 md:col-span-6">
+                <div className={`space-y-2 ${type === "document" ? "md:col-span-8" : "md:col-span-12"}`}>
                   <Label className={`text-xs font-bold transition-colors ${errors.title ? "text-red-500" : ""}`}>Title *</Label>
                   <Input
                     placeholder="Enter broadcast title..."
@@ -815,7 +969,7 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
 
                 {/* Category Dropdown (Shown when Document tab is selected) */}
                 {type === "document" && (
-                  <div className="md:col-span-3 space-y-2">
+                  <div className="md:col-span-4 space-y-2">
                     <Label className={`text-xs font-bold transition-colors ${errors.categoryId ? "text-red-500" : ""}`}>Category *</Label>
                     <Select 
                       value={categoryId} 
@@ -927,24 +1081,19 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
                 </label>
 
                 {attachments.length > 0 && (
-                  <div className="space-y-2 mt-3">
-                    {attachments.map((att) => (
-                      <div key={att.id} className="flex items-center justify-between p-3 rounded-xl border bg-card text-xs">
-                        <div className="flex items-center gap-3 truncate">
-                          <FileText className="w-4 h-4 text-primary shrink-0" />
-                          <span className="truncate font-semibold">{att.name}</span>
-                          <span className="text-muted-foreground text-xs">({att.size})</span>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-destructive"
-                          onClick={() => handleRemoveAttachment(att.id)}
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
+                  <div className={attachments.length > 1 ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mt-3" : "grid grid-cols-1 gap-2.5 mt-3"}>
+                    {attachments.map((att, idx) => (
+                      <DocumentCard
+                        key={att.id || idx}
+                        doc={{
+                          id: idx + 1,
+                          originalName: att.name || "Attachment",
+                          signedUrl: att.url || "",
+                        }}
+                        canDelete={true}
+                        onDelete={() => handleRemoveAttachment(att.id)}
+                        compact={true}
+                      />
                     ))}
                   </div>
                 )}
@@ -952,7 +1101,7 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
             </TabsContent>
 
             {/* AUDIENCE TAB: MULTIPLE ROLE & FRANCHISE SELECTION WITH HUMAN READABLE NAMES */}
-            <TabsContent value="audience" className="m-0 space-y-6">
+            <TabsContent value="audience" className="m-0 space-y-6 pb-36">
               <div className="space-y-3">
                 <div
                   onClick={() => setAudienceType(audienceType === "ALL" ? "CUSTOM" : "ALL")}
@@ -977,218 +1126,45 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
                 </div>
               </div>
 
-              {/* MULTIPLE FRANCHISE, ROLE & USER SELECTION CONTAINERS IN SCROLL FORMAT */}
+              {/* SEARCHABLE MULTI-SELECT DROPDOWNS */}
               <div
-                className={`space-y-6 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar border p-4 rounded-2xl bg-muted/5 transition-all duration-300 ${
+                className={`space-y-4 border p-4 rounded-2xl bg-muted/5 transition-all duration-300 ${
                   audienceType === "ALL" ? "opacity-35 pointer-events-none select-none filter grayscale-[40%]" : ""
                 } ${errors.audience ? "border-red-500 ring-1 ring-red-500" : ""}`}
               >
-                  {/* MULTIPLE FRANCHISE SELECTION CONTAINER */}
-                  <div className="p-5 border rounded-2xl bg-muted/10 space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div>
-                        <h4 className="text-sm font-bold text-foreground">Select Franchises ({selectedFranchiseIds.length} selected)</h4>
-                        <p className="text-xs text-muted-foreground">Select target franchise branches (At least one selection required)</p>
-                      </div>
+                {/* 1. Franchises Multi-Select Dropdown */}
+                <MultiSelectDropdown
+                  title="Target Franchises / Branches"
+                  placeholder="Select or search franchise branches..."
+                  options={franchiseOptions}
+                  selectedIds={selectedFranchiseIds}
+                  onToggle={toggleFranchiseSelect}
+                  onSelectAll={toggleSelectAllFranchises}
+                  isLoading={isLoadingFranchises}
+                />
 
-                      <div className="flex items-center gap-2">
-                        <Button type="button" variant="outline" size="sm" onClick={toggleSelectAllFranchises} className="h-8 text-xs rounded-lg">
-                          {selectedFranchiseIds.length === filteredFranchises.length ? "Deselect All" : "Select All"}
-                        </Button>
-                      </div>
-                    </div>
+                {/* 2. User Roles Multi-Select Dropdown */}
+                <MultiSelectDropdown
+                  title="Target User Roles"
+                  placeholder="Select or search user roles (e.g. Sales Executive)..."
+                  options={roleOptions}
+                  selectedIds={selectedRoleIds}
+                  onToggle={toggleRoleSelect}
+                  onSelectAll={toggleSelectAllRoles}
+                  isLoading={isLoadingRoles}
+                />
 
-                    {/* Search Franchises */}
-                    <div className="relative border rounded-xl bg-background flex flex-wrap items-center gap-2 p-1 pl-3 min-h-[44px]">
-                      <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-                      
-                      {selectedFranchiseIds.map((id) => {
-                        const fran = franchisesData?.find((f: any) => Number(f.id) === Number(id));
-                        if (!fran) return null;
-                        const name = fran.franchise_name || `Franchise #${id}`;
-                        return (
-                          <Badge key={id} variant="secondary" className="text-[10px] py-0.5 flex items-center gap-1 shrink-0">
-                            {name}
-                            <X className="w-3 h-3 cursor-pointer" onClick={(e) => { e.preventDefault(); toggleFranchiseSelect(id); }} />
-                          </Badge>
-                        );
-                      })}
-
-                      <Input
-                        placeholder={selectedFranchiseIds.length === 0 ? "Search franchises (e.g. Mumbai)..." : "Search more..."}
-                        value={franchiseSearch}
-                        onChange={(e) => setFranchiseSearch(e.target.value)}
-                        className="flex-1 border-0 h-8 shadow-none focus-visible:ring-0 px-1 text-xs min-w-[150px] bg-transparent"
-                      />
-                    </div>
-
-                    {/* Checkbox Grid for Franchises */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-52 overflow-y-auto p-1">
-                      {filteredFranchises.map((fran: any) => {
-                        const isChecked = selectedFranchiseIds.includes(Number(fran.id));
-                        return (
-                          <div
-                            key={fran.id}
-                            onClick={() => toggleFranchiseSelect(fran.id)}
-                            className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                              isChecked ? "border-primary bg-primary/10 font-bold" : "bg-card hover:border-primary/40"
-                            }`}
-                          >
-                            <Checkbox
-                              checked={isChecked}
-                              onCheckedChange={() => {}}
-                            />
-                            <div className="truncate text-xs">
-                              <span className="font-semibold text-foreground truncate block">{fran.franchise_name}</span>
-                              <span className="text-[10px] text-muted-foreground">
-                                {fran.franchise_code || `ID: #${fran.id}`}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* MULTIPLE ROLE SELECTION CONTAINER */}
-                  <div className="p-5 border rounded-2xl bg-muted/10 space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div>
-                        <h4 className="text-sm font-bold text-foreground">Select User Roles ({selectedRoleIds.length} selected)</h4>
-                        <p className="text-xs text-muted-foreground">Select user roles to receive this broadcast (Leave unselected to target All Roles)</p>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Button type="button" variant="outline" size="sm" onClick={toggleSelectAllRoles} className="h-8 text-xs rounded-lg">
-                          {selectedRoleIds.length === filteredRoles.length ? "Deselect All" : "Select All"}
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Search Roles */}
-                    <div className="relative border rounded-xl bg-background flex flex-wrap items-center gap-2 p-1 pl-3 min-h-[44px]">
-                      <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-                      
-                      {selectedRoleIds.map((id) => {
-                        const role = userRolesList.find((r) => Number(r.id) === Number(id));
-                        if (!role) return null;
-                        const name = role.user_type || role.user_type_name || role.name || `Role #${id}`;
-                        return (
-                          <Badge key={id} variant="secondary" className="text-[10px] py-0.5 flex items-center gap-1 shrink-0">
-                            {name}
-                            <X className="w-3 h-3 cursor-pointer" onClick={(e) => { e.preventDefault(); toggleRoleSelect(id); }} />
-                          </Badge>
-                        );
-                      })}
-
-                      <Input
-                        placeholder={selectedRoleIds.length === 0 ? "Search roles (e.g. Sales Executive...)" : "Search more..."}
-                        value={roleSearch}
-                        onChange={(e) => setRoleSearch(e.target.value)}
-                        className="flex-1 border-0 h-8 shadow-none focus-visible:ring-0 px-1 text-xs min-w-[150px] bg-transparent"
-                      />
-                    </div>
-
-                    {/* Checkbox Grid for CRM User Roles */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-52 overflow-y-auto p-1">
-                      {filteredRoles.map((role: any) => {
-                        const roleName = role.user_type || role.user_type_name || role.name || `Role #${role.id}`;
-                        const isChecked = selectedRoleIds.includes(Number(role.id));
-                        return (
-                          <div
-                            key={role.id}
-                            onClick={() => toggleRoleSelect(role.id)}
-                            className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                              isChecked ? "border-primary bg-primary/10 font-bold" : "bg-card hover:border-primary/40"
-                            }`}
-                          >
-                            <Checkbox
-                              checked={isChecked}
-                              onCheckedChange={() => {}}
-                            />
-                            <div className="truncate text-xs">
-                              <span className="font-semibold text-foreground truncate block">{roleName}</span>
-                              <span className="text-[10px] text-muted-foreground">Role ID: #{role.id}</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* MULTIPLE USER SELECTION CONTAINER */}
-                  <div className="p-5 border rounded-2xl bg-muted/10 space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div>
-                        <h4 className="text-sm font-bold text-foreground">Select Users ({selectedUserIds.length} selected)</h4>
-                        <p className="text-xs text-muted-foreground">Search and check all users who should receive this broadcast</p>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Button type="button" variant="outline" size="sm" onClick={toggleSelectAllUsers} className="h-8 text-xs rounded-lg">
-                          {selectedUserIds.length === filteredUsers.length && filteredUsers.length > 0 ? "Deselect All" : "Select All"}
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Search Users */}
-                    <div className="relative border rounded-xl bg-background flex flex-wrap items-center gap-2 p-1.5 pl-3 min-h-[44px]">
-                      <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-                      
-                      {selectedUserIds.map((id) => {
-                        const usr = usersList.find((u: any) => Number(u.id) === Number(id));
-                        const name = usr?.user_name || `User #${id}`;
-                        return (
-                          <Badge key={id} variant="secondary" className="text-[10px] py-0.5 flex items-center gap-1 shrink-0">
-                            {name}
-                            <X className="w-3 h-3 cursor-pointer" onClick={(e) => { e.preventDefault(); toggleUserSelect(id); }} />
-                          </Badge>
-                        );
-                      })}
-
-                      <Input
-                        placeholder={selectedUserIds.length === 0 ? "Search users by name, email, or role..." : "Search more..."}
-                        value={userSearch}
-                        onChange={(e) => setUserSearch(e.target.value)}
-                        className="flex-1 border-0 h-8 shadow-none focus-visible:ring-0 px-1 text-xs min-w-[150px] bg-transparent"
-                      />
-                    </div>
-
-                    {/* Checkbox Grid for CRM Users */}
-                    {isLoadingUsers ? (
-                      <div className="py-6 text-center text-xs text-muted-foreground">Loading users list...</div>
-                    ) : filteredUsers.length === 0 ? (
-                      <div className="py-6 text-center text-xs text-muted-foreground">No users found matching "{userSearch}"</div>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 max-h-60 overflow-y-auto p-1">
-                        {filteredUsers.map((usr: any) => {
-                          const userName = usr.user_name || `User #${usr.id}`;
-                          const isChecked = selectedUserIds.includes(Number(usr.id));
-                          const roleTitle = usr.user_type?.user_type || usr.user_type?.user_type_name || "";
-                          return (
-                            <div
-                              key={usr.id}
-                              onClick={() => toggleUserSelect(usr.id)}
-                              className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                                isChecked ? "border-primary bg-primary/10 font-bold" : "bg-card hover:border-primary/40"
-                              }`}
-                            >
-                              <Checkbox
-                                checked={isChecked}
-                                onCheckedChange={() => {}}
-                              />
-                              <div className="truncate text-xs">
-                                <span className="font-semibold text-foreground truncate block">{userName}</span>
-                                <span className="text-[10px] text-muted-foreground block truncate">
-                                  {roleTitle ? `${roleTitle} • ` : ""}{usr.user_email || `ID: #${usr.id}`}
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                </div>
+                {/* 3. Specific Users Multi-Select Dropdown */}
+                <MultiSelectDropdown
+                  title="Target Specific Users"
+                  placeholder="Select or search specific users by name or email..."
+                  options={userOptions}
+                  selectedIds={selectedUserIds}
+                  onToggle={toggleUserSelect}
+                  onSelectAll={toggleSelectAllUsers}
+                  isLoading={isLoadingUsers}
+                  dropUp={true}
+                />
               </div>
               {errors.audience && <p className="text-xs text-red-500 mt-1">Please select at least one Franchise, User Role, or Specific User</p>}
             </TabsContent>

@@ -30,6 +30,7 @@ import {
   CreateBroadcastPayload,
   stripHtmlAndEntities,
 } from "@/api/broadcast";
+import { toastManager } from "@/components/ui/toast";
 import { useAppSelector } from "@/redux/store";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -130,8 +131,20 @@ export default function BroadcastPage() {
           id: editId,
           payload: backendPayload,
         });
+        toastManager.add({
+          title: "Broadcast updated successfully!",
+          type: "success",
+        });
       } else {
         await createBroadcastMutation.mutateAsync(backendPayload);
+        const message =
+          backendPayload.status === "ACTIVE"
+            ? "Broadcast published successfully! Target recipients have been notified."
+            : "Broadcast draft saved successfully!";
+        toastManager.add({
+          title: message,
+          type: "success",
+        });
       }
       
       await refetchBroadcasts();
@@ -139,7 +152,10 @@ export default function BroadcastPage() {
       setEditingBroadcast(null);
     } catch (err: any) {
       console.error("Failed to save broadcast in backend:", err);
-      alert(`Error saving broadcast: ${err.response?.data?.message || err.message}`);
+      toastManager.add({
+        title: err.response?.data?.message || err.message || "Error saving broadcast",
+        type: "error",
+      });
     }
   };
 

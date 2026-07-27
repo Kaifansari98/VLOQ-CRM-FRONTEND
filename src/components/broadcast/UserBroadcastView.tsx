@@ -30,6 +30,7 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  Users,
 } from "lucide-react";
 import {
   Popover,
@@ -50,7 +51,7 @@ interface UserBroadcastViewProps {
 export const UserBroadcastView: React.FC<UserBroadcastViewProps> = ({
   broadcasts,
   onViewItem,
-  onToggleBookmark,
+
   userId,
 }) => {
   const [activeTab, setActiveTab] = useState<"circulars" | "documents">("circulars");
@@ -304,6 +305,8 @@ export const UserBroadcastView: React.FC<UserBroadcastViewProps> = ({
                         </div>
                       </div>
                     </TableCell>
+
+
 
 
                     {/* Published Date Column */}

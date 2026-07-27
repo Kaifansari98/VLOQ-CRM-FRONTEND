@@ -389,6 +389,34 @@ export default function NotificationsPage() {
       }
     }
 
+    // Handle Broadcast / Announcement notifications redirection
+    const isBroadcast =
+      notification.title?.toLowerCase().includes("announcement") ||
+      notification.title?.toLowerCase().includes("broadcast") ||
+      (notification.redirect_url && notification.redirect_url.toLowerCase().includes("broadcast"));
+
+    if (isBroadcast) {
+      let targetId = "";
+      if (notification.redirect_url) {
+        const matchParam = notification.redirect_url.match(/(?:id|broadcastId)=([^&]+)/i);
+        if (matchParam && matchParam[1]) {
+          targetId = matchParam[1];
+        } else {
+          const matchPath = notification.redirect_url.match(/\/broadcasts?\/([^?/#]+)/i);
+          if (matchPath && matchPath[1]) {
+            targetId = matchPath[1];
+          }
+        }
+      }
+
+      if (targetId) {
+        router.push(`/dashboard/broadcast?id=${targetId}`);
+      } else {
+        router.push(`/dashboard/broadcast`);
+      }
+      return;
+    }
+
     if (notification.redirect_url) {
       /^https?:\/\//i.test(notification.redirect_url)
         ? window.location.assign(notification.redirect_url)

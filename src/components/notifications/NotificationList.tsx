@@ -61,7 +61,7 @@ export const NotificationList = ({
               })}
             </span>
           </div>
-          <p className="text-xs text-muted-foreground line-clamp-2">
+          <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed break-words">
             {notification.message}
           </p>
         </button>
