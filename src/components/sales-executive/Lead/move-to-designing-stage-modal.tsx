@@ -24,7 +24,7 @@ import AssignToPicker from "@/components/assign-to-picker";
 import { toastManager } from "@/components/ui/toast";
 import { useAppSelector } from "@/redux/store";
 import { assignDesignerToLead, getVendorSalesExecutiveUsers } from "@/api/leads";
-import { useUpdateLeadStage } from "@/hooks/useLeadsQueries";
+import { useLeadById, useUpdateLeadStage } from "@/hooks/useLeadsQueries";
 
 const schema = z.object({
   assign_to_user_id: z.number().min(1, "Please select a designer"),
@@ -93,6 +93,20 @@ export default function MoveToDesigningStageModal({
     staleTime: 60_000,
   });
 
+  const { data: leadData } = useLeadById(data.id, vendorId, userId);
+  const lead = leadData?.data?.lead;
+  const assignedDesigners: Array<{
+    user_id: number;
+    user_name: string | null;
+    created_at: string;
+  }> = lead?.assigned_designers_from_mapping ?? [];
+  const alreadyAssignedDesigner = useMemo(() => {
+    if (assignedDesigners.length === 0) return null;
+    return [...assignedDesigners].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    )[0];
+  }, [assignedDesigners]);
+
   const eligibleUsers = useMemo(
     () =>
       (users || []).filter(
@@ -125,6 +139,17 @@ export default function MoveToDesigningStageModal({
   useEffect(() => {
     if (!open) return;
 
+    const preAssignedUser = alreadyAssignedDesigner
+      ? eligibleUsers.find((user: any) => user.id === alreadyAssignedDesigner.user_id)
+      : undefined;
+
+    if (preAssignedUser) {
+      form.setValue("assign_to_user_id", preAssignedUser.id);
+      setSelectedUserName(preAssignedUser.user_name || "Designer");
+      setShowSingleUserConfirm(false);
+      return;
+    }
+
     if (eligibleUsers.length === 1) {
       const singleUser = eligibleUsers[0];
       form.setValue("assign_to_user_id", singleUser.id);
@@ -136,7 +161,7 @@ export default function MoveToDesigningStageModal({
     form.setValue("assign_to_user_id", 0);
     setSelectedUserName(null);
     setShowSingleUserConfirm(false);
-  }, [open, eligibleUsers, form]);
+  }, [open, eligibleUsers, alreadyAssignedDesigner, form]);
 
   const { mutateAsync: updateStageAsync, isPending: isUpdatingStage } =
     useUpdateLeadStage();

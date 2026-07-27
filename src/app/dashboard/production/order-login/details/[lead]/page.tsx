@@ -10,7 +10,10 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { useParams, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
-import { useLeadById, useLeadSuperAdminApprovalLockIns } from "@/hooks/useLeadsQueries";
+import {
+  useLeadById,
+  useLeadSuperAdminApprovalLockIns,
+} from "@/hooks/useLeadsQueries";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import {
@@ -111,57 +114,57 @@ export default function OrderLoginLeadDetails() {
       leadIdNum,
       validInstanceId ?? undefined,
     );
-  const {
-    data: orderLoginLockIns = [],
-    isLoading: orderLoginLockInsLoading,
-  } = useLeadSuperAdminApprovalLockIns(vendorId, leadIdNum, "order_login");
+  const { data: orderLoginLockIns = [], isLoading: orderLoginLockInsLoading } =
+    useLeadSuperAdminApprovalLockIns(vendorId, leadIdNum, "order_login");
 
   // derive convenience flags & message
   const lacksProdFiles = readiness ? !readiness.productionFiles?.hasAny : false;
   const canMoveToProductionStage =
     userType === "custom"
       ? customPrivilegeCodes.includes(
-        "production.order_login.move_to_production.enable_disable",
-      )
+          "production.order_login.move_to_production.enable_disable",
+        )
       : canMoveToProduction(effectiveUserType);
   const canViewTodoTask =
     userType === "custom"
       ? customPrivilegeCodes.includes(
-        "production.order_login.approved_documents.view",
-      ) ||
-      customPrivilegeCodes.includes(
-        "production.order_login.production_files.view",
-      ) ||
-      customPrivilegeCodes.includes(
-        "production.order_login.order_login_details.enable_disable",
-      )
+          "production.order_login.approved_documents.view",
+        ) ||
+        customPrivilegeCodes.includes(
+          "production.order_login.production_files.view",
+        ) ||
+        customPrivilegeCodes.includes(
+          "production.order_login.order_login_details.enable_disable",
+        )
       : canWorkTodoTaskOrderLoginStage(effectiveUserType);
   const canViewOrderLoginTabByDefault =
     isAuditor ||
     (userType === "custom"
       ? customPrivilegeCodes.some((code) =>
-        code.startsWith("production.order_login."),
-      )
+          code.startsWith("production.order_login."),
+        )
       : canOrderLogin(effectiveUserType));
   const canViewSiteHistory =
     isAuditor ||
     (effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.open_leads.details_of_lead.site_history.enable_disable",
-      )
+          "leads.open_leads.details_of_lead.site_history.enable_disable",
+        )
       : canViewSiteHistoryTab(effectiveUserType) &&
-      effectiveUserType?.toLowerCase() !== "admin");
+        effectiveUserType?.toLowerCase() !== "admin");
   const canViewChats =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.open_leads.details_of_lead.chat.enable_disable",
-      )
+          "leads.open_leads.details_of_lead.chat.enable_disable",
+        )
       : true;
   const canViewDocuments =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.some((code) =>
-        code.startsWith("leads.open_leads.details_of_lead.documents_section."),
-      )
+          code.startsWith(
+            "leads.open_leads.details_of_lead.documents_section.",
+          ),
+        )
       : true;
 
   const hasPendingOrderLoginApproval = orderLoginLockIns.some((lockIn) => {
@@ -203,8 +206,6 @@ export default function OrderLoginLeadDetails() {
 
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [activityType, setActivityType] = useState<"onHold">("onHold");
-
-
 
   const updateStatusMutation = useUpdateActivityStatus();
   const queryClient = useQueryClient();
@@ -253,41 +254,34 @@ export default function OrderLoginLeadDetails() {
   const instanceSuffix =
     validInstanceId && totalInstanceCount > 1
       ? (
-        instances.find((instance: any) => instance.id === validInstanceId) ??
-        lead?.productStructureInstances?.find(
-          (instance: any) => instance.id === validInstanceId,
-        )
-      )?.quantity_index
+          instances.find((instance: any) => instance.id === validInstanceId) ??
+          lead?.productStructureInstances?.find(
+            (instance: any) => instance.id === validInstanceId,
+          )
+        )?.quantity_index
       : null;
   const displayLeadCode =
     leadCode && instanceSuffix ? `${leadCode}.${instanceSuffix}` : leadCode;
   const instanceName = validInstanceId
     ? ((
-      instances.find((instance: any) => instance.id === validInstanceId) ??
-      lead?.productStructureInstances?.find(
-        (instance: any) => instance.id === validInstanceId,
-      )
-    )?.title ?? "")
+        instances.find((instance: any) => instance.id === validInstanceId) ??
+        lead?.productStructureInstances?.find(
+          (instance: any) => instance.id === validInstanceId,
+        )
+      )?.title ?? "")
     : "";
   const accountId = Number(lead?.account_id);
-  const requiresOrderLoginCompletedBeforeProduction =
-    isSmallOrderLead;
+  const requiresOrderLoginCompletedBeforeProduction = isSmallOrderLead;
   const isBlockedByIncompleteSmallOrderLogin =
     requiresOrderLoginCompletedBeforeProduction &&
     !isSmallOrderOrderLoginCompleted;
 
-
-
-
-  const {
-    isLeadBlocked,
-    blockedTooltip,
-    shouldDisableBlockedActions,
-  } = useLeadAccessControl({
-    leadId: leadIdNum,
-    userType,
-    lead,
-  });
+  const { isLeadBlocked, blockedTooltip, shouldDisableBlockedActions } =
+    useLeadAccessControl({
+      leadId: leadIdNum,
+      userType,
+      lead,
+    });
 
   const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
 
@@ -295,18 +289,13 @@ export default function OrderLoginLeadDetails() {
   const unblockLeadMutation = useUnblockLead();
 
   const isBlockActionPending =
-    blockLeadMutation.isPending ||
-    unblockLeadMutation.isPending;
+    blockLeadMutation.isPending || unblockLeadMutation.isPending;
   const deleteLeadMutation = useDeleteLead();
-
-
 
   const handleToggleLeadBlock = () => {
     if (!vendorId || !userId || !leadIdNum) return;
 
-    const mutation = isLeadBlocked
-      ? unblockLeadMutation
-      : blockLeadMutation;
+    const mutation = isLeadBlocked ? unblockLeadMutation : blockLeadMutation;
 
     mutation.mutate(
       {
@@ -365,7 +354,9 @@ export default function OrderLoginLeadDetails() {
   }
 
   if (!lead) {
-    return <p className="p-6">Lead details not found or you do not have access.</p>;
+    return (
+      <p className="p-6">Lead details not found or you do not have access.</p>
+    );
   }
 
   const canReassign = canReassignLeadButton(effectiveUserType ?? "");
@@ -375,8 +366,8 @@ export default function OrderLoginLeadDetails() {
     isAuditor ||
     (effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.open_leads.details_of_lead.payment_information.enable_disable",
-      )
+          "leads.open_leads.details_of_lead.payment_information.enable_disable",
+        )
       : canViewPaymentTab(effectiveUserType ?? ""));
   const moveToProductionDisabledReason = isBlockedByIncompleteSmallOrderLogin
     ? "Mark Order Login Completed before moving this small-order lead to Production"
@@ -446,7 +437,6 @@ export default function OrderLoginLeadDetails() {
             {/* ✅ Show only if user has permission */}
             {canMoveToProductionStage &&
               (() => {
-
                 if (shouldDisableBlockedActions) {
                   return (
                     <CustomeTooltip
@@ -483,9 +473,7 @@ export default function OrderLoginLeadDetails() {
 
                 return (
                   <CustomeTooltip
-                    value={
-                      moveToProductionDisabledReason
-                    }
+                    value={moveToProductionDisabledReason}
                     truncateValue={
                       <Button
                         variant="outline"
@@ -528,175 +516,159 @@ export default function OrderLoginLeadDetails() {
 
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                className="lg:hidden"
-                onClick={() => setAssignOpen(true)}
-              >
-                <UserPlus size={20} />
-                Assign Task
-              </DropdownMenuItem>
+                  className="lg:hidden"
+                  onClick={() => setAssignOpen(true)}
+                >
+                  <UserPlus size={20} />
+                  Assign Task
+                </DropdownMenuItem>
 
-              {canMoveToProductionStage &&
-                (() => {
+                {canMoveToProductionStage &&
+                  (() => {
+                    if (shouldDisableBlockedActions) {
+                      // Lead block handling added for DropdownMenu action
+                      return (
+                        <CustomeTooltip
+                          value={blockedTooltip}
+                          truncateValue={
+                            <DropdownMenuItem disabled className="md:hidden">
+                              <ArrowUpRight size={16} />
+                              Move To Production
+                            </DropdownMenuItem>
+                          }
+                        />
+                      );
+                    }
 
-                  if (shouldDisableBlockedActions) {
-                    // Lead block handling added for DropdownMenu action
+                    if (
+                      canMove &&
+                      !isOrderLoginApprovalPending &&
+                      !isBlockedByIncompleteSmallOrderLogin
+                    ) {
+                      return (
+                        <DropdownMenuItem
+                          className="md:hidden"
+                          onClick={() => setOpenMoveToProduction(true)}
+                        >
+                          <ArrowUpRight size={16} />
+                          Move To Production
+                        </DropdownMenuItem>
+                      );
+                    }
+
                     return (
                       <CustomeTooltip
-                        value={blockedTooltip}
+                        value={moveToProductionDisabledReason}
                         truncateValue={
-                          <DropdownMenuItem
-                            disabled
-                            className="md:hidden"
-                          >
+                          <DropdownMenuItem className="md:hidden" disabled>
                             <ArrowUpRight size={16} />
                             Move To Production
                           </DropdownMenuItem>
                         }
                       />
                     );
-                  }
-
-                  if (
-                    canMove &&
-                    !isOrderLoginApprovalPending &&
-                    !isBlockedByIncompleteSmallOrderLogin
-                  ) {
-                    return (
-                      <DropdownMenuItem
-                        className="md:hidden"
-                        onClick={() =>
-                          setOpenMoveToProduction(true)
-                        }
-                      >
-                        <ArrowUpRight size={16} />
-                        Move To Production
-                      </DropdownMenuItem>
-                    );
-                  }
-
-                  return (
-                    <CustomeTooltip
-                      value={
-                        moveToProductionDisabledReason
-                      }
-                      truncateValue={
-                        <DropdownMenuItem
-                          className="md:hidden"
-                          disabled
-                        >
-                          <ArrowUpRight size={16} />
-                          Move To Production
-                        </DropdownMenuItem>
-                      }
-                    />
-                  );
-                })()}
-              {/* --- NEW: Lead Status submenu (Mark On Hold / Mark As Lost) */}
-              {/* Lead block handling added for DropdownMenu action */}
-              {shouldDisableBlockedActions ? (
-                <CustomeTooltip
-                  value={blockedTooltip}
-                  truncateValue={
-                    <DropdownMenuItem disabled>
-                      <Clock className=" h-4 w-4" />
-                      Mark On Hold
-                    </DropdownMenuItem>
-                  }
-                />
-              ) : (
-                <DropdownMenuItem
-                  onSelect={() => {
-                    setActivityType("onHold");
-                    setActivityModalOpen(true);
-                  }}
-                >
-                  <Clock className=" h-4 w-4" />
-                  Mark On Hold
-                </DropdownMenuItem>
-              )}
-
-              {canEdit && (
-                // Lead block handling added for DropdownMenu action
-                shouldDisableBlockedActions ? (
+                  })()}
+                {/* --- NEW: Lead Status submenu (Mark On Hold / Mark As Lost) */}
+                {/* Lead block handling added for DropdownMenu action */}
+                {shouldDisableBlockedActions ? (
                   <CustomeTooltip
                     value={blockedTooltip}
                     truncateValue={
                       <DropdownMenuItem disabled>
-                        <SquarePen size={20} />
-                        Edit
+                        <Clock className=" h-4 w-4" />
+                        Mark On Hold
                       </DropdownMenuItem>
                     }
                   />
                 ) : (
-                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                    <SquarePen size={20} />
-                    Edit
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setActivityType("onHold");
+                      setActivityModalOpen(true);
+                    }}
+                  >
+                    <Clock className=" h-4 w-4" />
+                    Mark On Hold
                   </DropdownMenuItem>
-                )
-              )}
+                )}
 
-              {canReassign && (
-                // Lead block handling added for DropdownMenu action
-                shouldDisableBlockedActions ? (
-                  <CustomeTooltip
-                    value={blockedTooltip}
-                    truncateValue={
-                      <DropdownMenuItem disabled>
-                        <Users size={20} />
-                        Reassign Lead
-                      </DropdownMenuItem>
-                    }
-                  />
-                ) : (
-                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                    <Users size={20} />
-                    Reassign Lead
-                  </DropdownMenuItem>
-                )
-              )}
-
-
-              {userType?.toLowerCase() === "super-admin" && (
-  <DropdownMenuItem
-    onSelect={() => setOpenBlockConfirm(true)}
-    disabled={isBlockActionPending}
-  >
-    {isLeadBlocked ? (
-      <LockOpen className="h-4 w-4" />
-    ) : (
-      <Lock className="h-4 w-4" />
-    )}
-
-    {isLeadBlocked
-      ? "Unblock Lead"
-      : "Block Lead"}
-  </DropdownMenuItem>
-)}
-
-              {canDelete && (
-                <>
-                  <DropdownMenuSeparator />
-                  {/* Lead block handling added for DropdownMenu action */}
-                  {shouldDisableBlockedActions ? (
+                {canEdit &&
+                  // Lead block handling added for DropdownMenu action
+                  (shouldDisableBlockedActions ? (
                     <CustomeTooltip
                       value={blockedTooltip}
                       truncateValue={
                         <DropdownMenuItem disabled>
-                          <XCircle size={20} className="text-red-500" />
-                          Delete
+                          <SquarePen size={20} />
+                          Edit
                         </DropdownMenuItem>
                       }
                     />
                   ) : (
-                    <DropdownMenuItem onClick={() => setOpenDelete(true)}>
-                      <XCircle size={20} className="text-red-500" />
-                      Delete
+                    <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                      <SquarePen size={20} />
+                      Edit
                     </DropdownMenuItem>
-                  )}
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                  ))}
+
+                {canReassign &&
+                  // Lead block handling added for DropdownMenu action
+                  (shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <Users size={20} />
+                          Reassign Lead
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                      <Users size={20} />
+                      Reassign Lead
+                    </DropdownMenuItem>
+                  ))}
+
+                {userType?.toLowerCase() === "super-admin" && (
+                  <DropdownMenuItem
+                    onSelect={() => setOpenBlockConfirm(true)}
+                    disabled={isBlockActionPending}
+                  >
+                    {isLeadBlocked ? (
+                      <LockOpen className="h-4 w-4" />
+                    ) : (
+                      <Lock className="h-4 w-4" />
+                    )}
+
+                    {isLeadBlocked ? "Unblock Lead" : "Block Lead"}
+                  </DropdownMenuItem>
+                )}
+
+                {canDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    {/* Lead block handling added for DropdownMenu action */}
+                    {shouldDisableBlockedActions ? (
+                      <CustomeTooltip
+                        value={blockedTooltip}
+                        truncateValue={
+                          <DropdownMenuItem disabled>
+                            <XCircle size={20} className="text-red-500" />
+                            Delete
+                          </DropdownMenuItem>
+                        }
+                      />
+                    ) : (
+                      <DropdownMenuItem onClick={() => setOpenDelete(true)}>
+                        <XCircle size={20} className="text-red-500" />
+                        Delete
+                      </DropdownMenuItem>
+                    )}
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
       </header>
@@ -716,8 +688,8 @@ export default function OrderLoginLeadDetails() {
                   Lead Details
                 </TabsTrigger>
 
-                {!isAuditor && (
-                  canViewTodoTask ? (
+                {!isAuditor &&
+                  (canViewTodoTask ? (
                     // Actual Tab
                     <TabsTrigger value="todo">
                       <PencilLine size={16} className="mr-1" />
@@ -738,8 +710,7 @@ export default function OrderLoginLeadDetails() {
                         </TabsTrigger>
                       }
                     />
-                  )
-                )}
+                  ))}
 
                 {canViewSiteHistory && (
                   <TabsTrigger value="history">
@@ -934,47 +905,38 @@ export default function OrderLoginLeadDetails() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={openBlockConfirm} onOpenChange={setOpenBlockConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isLeadBlocked ? "Unblock Lead?" : "Block Lead?"}
+            </AlertDialogTitle>
 
+            <AlertDialogDescription>
+              {isLeadBlocked
+                ? "This will unblock the lead and allow normal actions."
+                : "This will block the lead and disable lead actions."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
 
-      <AlertDialog
-  open={openBlockConfirm}
-  onOpenChange={setOpenBlockConfirm}
->
-  <AlertDialogContent>
-    <AlertDialogHeader>
-      <AlertDialogTitle>
-        {isLeadBlocked
-          ? "Unblock Lead?"
-          : "Block Lead?"}
-      </AlertDialogTitle>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBlockActionPending}>
+              Cancel
+            </AlertDialogCancel>
 
-      <AlertDialogDescription>
-        {isLeadBlocked
-          ? "This will unblock the lead and allow normal actions."
-          : "This will block the lead and disable lead actions."}
-      </AlertDialogDescription>
-    </AlertDialogHeader>
-
-    <AlertDialogFooter>
-      <AlertDialogCancel
-        disabled={isBlockActionPending}
-      >
-        Cancel
-      </AlertDialogCancel>
-
-      <AlertDialogAction
-        onClick={handleToggleLeadBlock}
-        disabled={isBlockActionPending}
-      >
-        {isBlockActionPending
-          ? "Processing..."
-          : isLeadBlocked
-            ? "Unblock"
-            : "Block"}
-      </AlertDialogAction>
-    </AlertDialogFooter>
-  </AlertDialogContent>
-</AlertDialog>
+            <AlertDialogAction
+              onClick={handleToggleLeadBlock}
+              disabled={isBlockActionPending}
+            >
+              {isBlockActionPending
+                ? "Processing..."
+                : isLeadBlocked
+                  ? "Unblock"
+                  : "Block"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

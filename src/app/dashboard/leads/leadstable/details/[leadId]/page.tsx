@@ -70,6 +70,7 @@ import {
   useLeadById,
   useUnblockLead,
   useRevokeFastProductionRequest,
+  useLeadProductStructureInstances,
 } from "@/hooks/useLeadsQueries";
 import CancelFastProductionModal from "@/components/generics/CancelFastProductionModal";
 import {
@@ -127,6 +128,9 @@ export default function LeadDetails() {
     );
     return activeFranchise?.moduled_for_b2b ?? false;
   }, [franchisesForB2b, franchiseId]);
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
 
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
@@ -159,6 +163,25 @@ export default function LeadDetails() {
 
   const uiDisabled = isLoading || !lead;
   const isLeadBlocked = leadBlockStatus?.is_blocked ?? !!lead?.is_blocked;
+
+  const { data: structureInstancesData } = useLeadProductStructureInstances(
+    leadIdNum,
+    vendorId,
+    handlesLargeScaleProjects,
+  );
+  const boqInstances = useMemo(
+    () =>
+      (structureInstancesData?.data || []).filter(
+        (item: any) =>
+          item?.isLargeScaleProjectInstance === true ||
+          item?.product_item_code_id,
+      ),
+    [structureInstancesData?.data],
+  );
+  const boqRequiredTooltip =
+    "Add at least one Bill of Quantity item to this lead before moving it to the Designing Stage.";
+  const isBoqMissingForDesign =
+    handlesLargeScaleProjects && boqInstances.length === 0;
 
 
   const blockedAtTooltip = isLeadBlocked
@@ -436,14 +459,20 @@ export default function LeadDetails() {
         <div className="flex items-center space-x-2">
           {(vendorCustomUserTypeMode === true || isB2b) && !isAuditor && (
             <CustomeTooltip
-              value={blockedAtTooltip}
+              value={
+                isLeadBlocked
+                  ? blockedAtTooltip
+                  : isBoqMissingForDesign
+                    ? boqRequiredTooltip
+                    : ""
+              }
               truncateValue={
                 <span>
                   <Button
                     size="sm"
                     className="hidden sm:flex"
                     onClick={() => setMoveToDesigningOpen(true)}
-                    disabled={isLeadBlocked || uiDisabled}
+                    disabled={isLeadBlocked || uiDisabled || isBoqMissingForDesign}
                   >
                     Move to Designing Stage
                   </Button>
@@ -509,14 +538,25 @@ export default function LeadDetails() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               {(isB2b) && (
-                    <DropdownMenuItem
-                      className="sm:hidden"
-                      onClick={() => setMoveToDesigningOpen(true)}
-                      disabled={uiDisabled || isLeadBlocked}
-                    >
-                      <UserPlus size={20} />
-                      Move to Designing Stage
-                    </DropdownMenuItem>
+                    <CustomeTooltip
+                      value={
+                        isLeadBlocked
+                          ? blockedAtTooltip
+                          : isBoqMissingForDesign
+                            ? boqRequiredTooltip
+                            : ""
+                      }
+                      truncateValue={
+                        <DropdownMenuItem
+                          className="sm:hidden"
+                          onClick={() => setMoveToDesigningOpen(true)}
+                          disabled={uiDisabled || isLeadBlocked || isBoqMissingForDesign}
+                        >
+                          <UserPlus size={20} />
+                          Move to Designing Stage
+                        </DropdownMenuItem>
+                      }
+                    />
                   )}
               {isClientVisitEnabled && (
                 <>

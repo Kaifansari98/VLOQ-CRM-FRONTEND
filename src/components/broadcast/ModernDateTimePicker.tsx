@@ -38,19 +38,33 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
   const [seconds, setSeconds] = useState(0);
   const [ampm, setAmpm] = useState<"AM" | "PM">(rawHours >= 12 ? "PM" : "AM");
 
+  // Prevent past dates/months selection helper
+  const now = new Date();
+  const todayDateMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const isPrevMonthDisabled =
+    currentYear < now.getFullYear() ||
+    (currentYear === now.getFullYear() && currentMonth <= now.getMonth());
+
+  const isDayInPast = (day: number) => {
+    const targetDate = new Date(currentYear, currentMonth, day);
+    return targetDate < todayDateMidnight;
+  };
+
   // Sync internal state if external value changes
   useEffect(() => {
     if (!value) return;
-    const d = new Date(value);
-    if (!isNaN(d.getTime())) {
-      setCurrentMonth(d.getMonth());
-      setCurrentYear(d.getFullYear());
-      setSelectedDay(d.getDate());
-      const h = d.getHours();
-      setHour12(h % 12 === 0 ? 12 : h % 12);
-      setMinutes(d.getMinutes());
-      setAmpm(h >= 12 ? "PM" : "AM");
+    let d = new Date(value);
+    if (isNaN(d.getTime()) || d < new Date()) {
+      d = new Date();
     }
+    setCurrentMonth(d.getMonth());
+    setCurrentYear(d.getFullYear());
+    setSelectedDay(d.getDate());
+    const h = d.getHours();
+    setHour12(h % 12 === 0 ? 12 : h % 12);
+    setMinutes(d.getMinutes());
+    setAmpm(h >= 12 ? "PM" : "AM");
   }, [value]);
 
   // Update parent with YYYY-MM-DDTHH:mm format
@@ -64,6 +78,30 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
   ) => {
     let militaryHour = h12 % 12;
     if (period === "PM") militaryHour += 12;
+
+    const currentTime = new Date();
+    let targetDate = new Date(year, month, day, militaryHour, m);
+
+    // If target date/time is in the past, clamp to current present time
+    if (targetDate < currentTime) {
+      targetDate = new Date();
+      day = targetDate.getDate();
+      month = targetDate.getMonth();
+      year = targetDate.getFullYear();
+      const h = targetDate.getHours();
+      militaryHour = h;
+      h12 = h % 12 === 0 ? 12 : h % 12;
+      m = targetDate.getMinutes();
+      period = h >= 12 ? "PM" : "AM";
+
+      // Sync local component state to clamped time
+      setSelectedDay(day);
+      setCurrentMonth(month);
+      setCurrentYear(year);
+      setHour12(h12);
+      setMinutes(m);
+      setAmpm(period);
+    }
 
     const formattedYear = String(year);
     const formattedMonth = String(month + 1).padStart(2, "0");
@@ -80,6 +118,7 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
   const firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay();
 
   const handlePrevMonth = () => {
+    if (isPrevMonthDisabled) return;
     if (currentMonth === 0) {
       setCurrentMonth(11);
       setCurrentYear((prev) => prev - 1);
@@ -98,6 +137,7 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
   };
 
   const handleSelectDay = (day: number) => {
+    if (isDayInPast(day)) return;
     setSelectedDay(day);
     applyDateTime(day, currentMonth, currentYear, hour12, minutes, ampm);
   };
@@ -141,7 +181,13 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
             <button
               type="button"
               onClick={handlePrevMonth}
-              className="p-2 rounded-xl hover:bg-neutral-100 transition-colors border border-neutral-200 text-neutral-800"
+              disabled={isPrevMonthDisabled}
+              className={cn(
+                "p-2 rounded-xl border border-neutral-200 text-neutral-800 transition-colors",
+                isPrevMonthDisabled
+                  ? "opacity-30 cursor-not-allowed bg-neutral-100"
+                  : "hover:bg-neutral-100"
+              )}
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -177,14 +223,18 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const dayNum = i + 1;
               const isSelected = dayNum === selectedDay;
+              const isPast = isDayInPast(dayNum);
               return (
                 <button
                   key={`day-${dayNum}`}
                   type="button"
-                  onClick={() => handleSelectDay(dayNum)}
+                  disabled={isPast}
+                  onClick={() => !isPast && handleSelectDay(dayNum)}
                   className={cn(
                     "h-9 w-full rounded-xl text-xs font-semibold flex items-center justify-center transition-all",
-                    isSelected
+                    isPast
+                      ? "text-neutral-400/70 bg-neutral-100/60 cursor-not-allowed pointer-events-none font-normal"
+                      : isSelected
                       ? "bg-black text-white font-extrabold shadow-md shadow-neutral-900/30 scale-105"
                       : "text-neutral-700 hover:bg-neutral-100 hover:text-black"
                   )}
@@ -202,7 +252,20 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => handleSelectDay(new Date().getDate())}
+            onClick={() => {
+              const nowDate = new Date();
+              setCurrentMonth(nowDate.getMonth());
+              setCurrentYear(nowDate.getFullYear());
+              setSelectedDay(nowDate.getDate());
+              const h = nowDate.getHours();
+              const h12 = h % 12 === 0 ? 12 : h % 12;
+              const m = nowDate.getMinutes();
+              const period: "AM" | "PM" = h >= 12 ? "PM" : "AM";
+              setHour12(h12);
+              setMinutes(m);
+              setAmpm(period);
+              applyDateTime(nowDate.getDate(), nowDate.getMonth(), nowDate.getFullYear(), h12, m, period);
+            }}
             className="w-full rounded-xl text-xs font-bold h-9 text-neutral-700 border-neutral-200 hover:bg-neutral-50"
           >
             Today
