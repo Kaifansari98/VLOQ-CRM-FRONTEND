@@ -267,6 +267,7 @@ export interface SubmitCostingFilePayload {
   leadId: number;
   userId: number;
   productStructureInstanceIds?: number[] | string[];
+  specificationId?: number | null;
 }
 
 export const submitCostingFile = async (payload: SubmitCostingFilePayload) => {
@@ -275,6 +276,9 @@ export const submitCostingFile = async (payload: SubmitCostingFilePayload) => {
   formData.append("vendorId", payload.vendorId.toString());
   formData.append("leadId", payload.leadId.toString());
   formData.append("userId", payload.userId.toString());
+  if (payload.specificationId) {
+    formData.append("specification_id", payload.specificationId.toString());
+  }
 
   payload.files.forEach((file) => {
     formData.append("files", file);

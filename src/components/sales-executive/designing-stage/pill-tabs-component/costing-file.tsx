@@ -147,9 +147,8 @@ const CostingFileTab = () => {
                 const ext = doc.doc_og_name?.split(".").pop()?.toLowerCase();
                 const isImage = IMAGE_EXTENSIONS.includes(ext || "");
 
-                return isImage ? (
+                const cardElement = isImage ? (
                   <ImageComponent
-                    key={doc.id}
                     doc={{
                       id: doc.id,
                       doc_og_name: doc.doc_og_name,
@@ -162,7 +161,6 @@ const CostingFileTab = () => {
                   />
                 ) : (
                   <DocumentCard
-                    key={doc.id}
                     doc={{
                       id: doc.id,
                       originalName: doc.doc_og_name,
@@ -173,6 +171,17 @@ const CostingFileTab = () => {
                     canDelete={canDelete}
                     onDelete={(id) => setConfirmDelete(id)}
                   />
+                );
+
+                return (
+                  <div key={doc.id} className="relative mt-2">
+                    {doc.specification?.name && (
+                      <span className="absolute -top-3.5 left-4 z-10 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground bg-muted border border-border rounded-full shadow-sm">
+                        {doc.specification.name}
+                      </span>
+                    )}
+                    {cardElement}
+                  </div>
                 );
               })}
             </div>

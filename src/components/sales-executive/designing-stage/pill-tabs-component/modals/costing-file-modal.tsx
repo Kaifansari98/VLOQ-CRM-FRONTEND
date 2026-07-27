@@ -18,8 +18,7 @@ import { toastManager } from "@/components/ui/toast";
 import { DocumentsUploader } from "@/components/document-upload";
 import { useDetails } from "../details-context";
 import { useAppSelector } from "@/redux/store";
-import { useSubmitCostingFile } from "@/hooks/designing-stage/designing-leads-hooks";
-import { useLeadUniqueProductTypes, useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
+import { useSubmitCostingFile, useLeadSpecifications } from "@/hooks/designing-stage/designing-leads-hooks";
 import {
   Select,
   SelectContent,
@@ -29,7 +28,7 @@ import {
 } from "@/components/ui/select";
 
 const costingFileSchema = z.object({
-  product_type: z.string().optional(),
+  specification_id: z.string().optional(),
   upload_pdf: z
     .any()
     .refine((files) => files && files.length > 0, {
@@ -54,69 +53,40 @@ const CostingFileModal: React.FC<CostingFileModalProps> = ({
   const { leadId } = useDetails();
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id)!;
   const userId = useAppSelector((s) => s.auth.user?.id)!;
-  const isCustomVendor = useAppSelector((s) => s.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only);
 
-  const { data: uniqueProductTypes } = useLeadUniqueProductTypes(leadId, vendorId, open);
-  const { data: structureInstancesData } = useLeadProductStructureInstances(leadId, vendorId, open);
+  const { data: specifications = [] } = useLeadSpecifications(vendorId, leadId);
 
   const form = useForm<CostingFileFormValues>({
     resolver: zodResolver(costingFileSchema),
-    defaultValues: { upload_pdf: [], product_type: "" },
+    defaultValues: { upload_pdf: [], specification_id: "" },
   });
-
-  const showProductTypeSelect =
-    !uniqueProductTypes?.data || uniqueProductTypes.data.length > 1;
-
-  React.useEffect(() => {
-    if (uniqueProductTypes?.data && uniqueProductTypes.data.length === 1) {
-      form.setValue("product_type", uniqueProductTypes.data[0].type);
-    }
-  }, [uniqueProductTypes?.data, form]);
 
   React.useEffect(() => {
     if (!open) {
-      form.reset({ upload_pdf: [], product_type: "" });
+      form.reset({ upload_pdf: [], specification_id: "" });
     }
   }, [open, form]);
 
   const submitCostingFileMutation = useSubmitCostingFile();
 
   const onSubmit = async (data: CostingFileFormValues) => {
-    if (isCustomVendor && !data.product_type) {
-      form.setError("product_type", {
-        type: "manual",
-        message: "Product type is required",
-      });
-      return;
-    }
-
     try {
-      let productStructureInstanceIds: number[] = [];
-
-      if (data.product_type) {
-        const instancesList = structureInstancesData?.data;
-        if (instancesList && Array.isArray(instancesList)) {
-          productStructureInstanceIds = instancesList
-            .filter((inst: any) => {
-              const type1 = inst.productType?.type;
-              const type2 = inst.productItemCode?.productStructure?.productType?.type;
-              return type1 === data.product_type || type2 === data.product_type;
-            })
-            .map((inst: any) => inst.id);
-        }
-      }
+      const specId =
+        data.specification_id && data.specification_id !== "none"
+          ? Number(data.specification_id)
+          : null;
 
       await submitCostingFileMutation.mutateAsync({
         files: Array.from(data.upload_pdf),
         vendorId,
         leadId,
         userId,
-        productStructureInstanceIds,
+        specificationId: specId,
       });
 
       toastManager.add({ title: "Costing file uploaded successfully!", type: "success" });
 
-      form.reset({ upload_pdf: [], product_type: "" });
+      form.reset({ upload_pdf: [], specification_id: "" });
       onOpenChange(false);
     } catch (error: any) {
       const errorMessage =
@@ -145,38 +115,33 @@ const CostingFileModal: React.FC<CostingFileModalProps> = ({
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-5">
-          {isCustomVendor && showProductTypeSelect && (
-            <FormField
-              control={form.control}
-              name="product_type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Product Type *</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select product type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {uniqueProductTypes?.data && uniqueProductTypes.data.length > 0 ? (
-                        uniqueProductTypes.data.map((pt: any) => (
-                          <SelectItem key={pt.id} value={pt.type}>
-                            {pt.type}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="none" disabled>
-                          No product types available
+          <FormField
+            control={form.control}
+            name="specification_id"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Specification (Optional)</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select specification" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {specifications && specifications.length > 0 ? (
+                      specifications.map((spec: any) => (
+                        <SelectItem key={spec.id} value={String(spec.id)}>
+                          {spec.name}
                         </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          )}
+                      ))
+                    ) : null}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
           <FormField
             control={form.control}
