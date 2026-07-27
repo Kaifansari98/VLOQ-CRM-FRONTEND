@@ -22,6 +22,7 @@ import Loader from "@/components/utils/loader";
 import { Button } from "@/components/ui/button";
 import ComingSoon from "@/components/generics/ComingSoon";
 import CostingFileModal from "./modals/costing-file-modal";
+import ViewSpecsModal from "./modals/view-specs-modal";
 
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"];
 
@@ -56,6 +57,7 @@ const CostingFileTab = () => {
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
   const [openUploadModal, setOpenUploadModal] = useState(false);
+  const [selectedSpec, setSelectedSpec] = useState<any | null>(null);
 
   const handleConfirmDelete = () => {
     if (confirmDelete) {
@@ -173,12 +175,57 @@ const CostingFileTab = () => {
                   />
                 );
 
+                const hasSpec = !!doc.specification?.name;
+
                 return (
-                  <div key={doc.id} className="relative mt-2">
-                    {doc.specification?.name && (
-                      <span className="absolute -top-3.5 left-4 z-10 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground bg-muted border border-border rounded-full shadow-sm">
-                        {doc.specification.name}
-                      </span>
+                  <div key={doc.id} className="relative mt-8">
+                    {hasSpec && (
+                      <>
+                        {/* Dot on the left edge of the card */}
+                        <div className="absolute top-[20px] left-[-7px] w-[14px] h-[14px] rounded-full bg-muted-foreground border-2 border-background shadow-sm z-20" />
+                        
+                        <svg
+                          className="absolute pointer-events-none z-10"
+                          style={{ left: "-20px", top: "-30px", width: "100px", height: "100px", overflow: "visible" }}
+                        >
+                          <path
+                            d="M 20,57 L 12,57 Q 6,57 6,51 L 6,17 Q 6,9 14,9 L 44,9"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            className="text-muted-foreground/60"
+                          />
+                          {/* Arrow head pointing to spec badge */}
+                          <path
+                            d="M 39,6 L 44,9 L 39,12"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="text-muted-foreground/60"
+                          />
+                        </svg>
+
+                        {/* Specification Badge */}
+                        <button
+                          onClick={() => setSelectedSpec({
+                            id: doc.specification.id,
+                            name: doc.specification.name,
+                            lead_id: Number(leadId),
+                            vendor_id: Number(vendorId),
+                            created_by: Number(userId),
+                            created_at: new Date().toISOString(),
+                            lights_remark: null,
+                            item_code_id: null,
+                          })}
+                          type="button"
+                          className="absolute -top-7 left-6 z-10 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground bg-muted border border-border rounded-full shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+                        >
+                          {doc.specification.name}
+                        </button>
+                      </>
                     )}
                     {cardElement}
                   </div>
@@ -222,6 +269,15 @@ const CostingFileTab = () => {
       <CostingFileModal
         open={openUploadModal}
         onOpenChange={setOpenUploadModal}
+      />
+
+      <ViewSpecsModal
+        open={!!selectedSpec}
+        onOpenChange={(open) => {
+          if (!open) setSelectedSpec(null);
+        }}
+        specification={selectedSpec}
+        readOnly={true}
       />
     </div>
   );

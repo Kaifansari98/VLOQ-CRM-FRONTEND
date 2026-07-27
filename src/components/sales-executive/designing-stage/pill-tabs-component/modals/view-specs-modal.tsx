@@ -58,6 +58,7 @@ interface ViewSpecsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   specification: LeadSpecificationEntry | null;
+  readOnly?: boolean;
 }
 
 type CarcassRow = {
@@ -138,6 +139,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   open,
   onOpenChange,
   specification,
+  readOnly = false,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -1014,7 +1016,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
           </TabsList>
 
           <TabsContent value="carcass" className="flex-1 overflow-y-auto">
-            <div className="rounded-xl border border-border overflow-hidden mt-3">
+            <div className={`rounded-xl border border-border overflow-hidden mt-3 ${readOnly ? "pointer-events-none select-none opacity-90" : ""}`}>
               {/* <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
                 <h3 className="text-sm font-semibold">Carcass Specifications</h3>
                 <Button
@@ -1133,7 +1135,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
             </div>
           </TabsContent>
           <TabsContent value="shutter" className="flex-1 overflow-y-auto">
-            <div className="rounded-xl border border-border overflow-hidden mt-3">
+            <div className={`rounded-xl border border-border overflow-hidden mt-3 ${readOnly ? "pointer-events-none select-none opacity-90" : ""}`}>
               {/* <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
                 <h3 className="text-sm font-semibold">Shutter Specifications</h3>
                 <Button
@@ -1253,7 +1255,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
             </div>
           </TabsContent>
           <TabsContent value="hardware" className="flex-1 overflow-y-auto">
-            <div className="rounded-xl border border-border overflow-hidden mt-3">
+            <div className={`rounded-xl border border-border overflow-hidden mt-3 ${readOnly ? "pointer-events-none select-none opacity-90" : ""}`}>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-zinc-700">
@@ -1409,7 +1411,8 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
             </div>
           </TabsContent>
           <TabsContent value="others" className="flex-1 overflow-y-auto">
-            <div className="flex items-center justify-between gap-3 mb-2 mt-3">
+            <div className={readOnly ? "pointer-events-none select-none opacity-90" : ""}>
+              <div className="flex items-center justify-between gap-3 mb-2 mt-3">
               <h3 className="text-sm font-semibold">Lights</h3>
               <Select
                 value={lightsRemark || undefined}
@@ -1603,6 +1606,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                 </div>
               );
             })}
+            </div>
           </TabsContent>
         </Tabs>
       </DialogContent>
