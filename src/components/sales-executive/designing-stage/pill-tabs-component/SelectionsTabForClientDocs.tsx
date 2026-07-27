@@ -139,11 +139,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const router = useRouter();
   const pathname = usePathname();
   const projectFilesLabel = isCustomVendorFlow
-    ? "Client Documentation - Project Files"
-    : "Client Documentation - Project Files";
-  const designFilesLabel = isCustomVendorFlow
     ? "Client Documentation - Presentation Files"
-    : "Client Documentation - Pytha Design Files";
+    : "Client Documentation - Project Files";
+  const designFilesLabel = "Client Documentation - Pytha Design Files";
 
   // ✅ Lead block access control
   const { shouldDisableBlockedActions, blockedTooltip } = useLeadAccessControl({
