@@ -138,6 +138,12 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const queryClient = useQueryClient();
   const router = useRouter();
   const pathname = usePathname();
+  const projectFilesLabel = isCustomVendorFlow
+    ? "Client Documentation - Project Files"
+    : "Client Documentation - Project Files";
+  const designFilesLabel = isCustomVendorFlow
+    ? "Client Documentation - Presentation Files"
+    : "Client Documentation - Pytha Design Files";
 
   // ✅ Lead block access control
   const { shouldDisableBlockedActions, blockedTooltip } = useLeadAccessControl({
@@ -1426,7 +1432,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-sm">
-                            Client Documentation - Project Files *
+                            {projectFilesLabel} *
                           </FormLabel>
                           <FormControl>
                             <FileUploadField
@@ -1456,7 +1462,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-sm">
-                            Client Documentation - Pytha Design Files *
+                            {designFilesLabel} *
                           </FormLabel>
                           <FormControl>
                             <FileUploadField
@@ -1582,7 +1588,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                   {canViewProjectFiles && docs.ppt.length > 0 && (
                     <div className="space-y-3">
                       <h5 className="text-sm font-medium">
-                        Client Documentation - Project Files
+                        {projectFilesLabel}
                       </h5>
                       <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-2 gap-3">
                         {(() => {
