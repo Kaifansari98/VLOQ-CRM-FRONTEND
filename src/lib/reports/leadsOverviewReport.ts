@@ -28,11 +28,13 @@ interface LeadsOverviewRow {
   furniture_structure: string;
   instance: string;
   architect_name: string;
+  architect_number: string;
   carcass_selection: string;
   shutter_selection: string;
   handle_selection: string;
   designer_assigned: string;
   supervisor_assigned: string;
+  activity_status: string;
 }
 
 function sanitizeStageText(value: string | null | undefined): string {
@@ -72,6 +74,7 @@ function buildLeadsOverviewSheet(
   workbook: ExcelJS.Workbook,
   rows: LeadsOverviewRow[],
   sheetName: string,
+  reportSubType: "Ongoing" | "On Hold" | "Lost" = "Ongoing",
 ) {
   const sheet = workbook.addWorksheet(sheetName);
 
@@ -89,6 +92,7 @@ function buildLeadsOverviewSheet(
     { key: "furnitureStructure", width: 24 },
     { key: "instance", width: 20 },
     { key: "architectName", width: 22 },
+    { key: "architectNumber", width: 18 },
     { key: "carcassSelection", width: 22 },
     { key: "shutterSelection", width: 22 },
     { key: "handleSelection", width: 22 },
@@ -110,6 +114,7 @@ function buildLeadsOverviewSheet(
     "Furniture Structure",
     "Instances",
     "Architect Name",
+    "Architect Number",
     "Carcass Selection",
     "Shutter Selection",
     "Handle Selection",
@@ -119,7 +124,7 @@ function buildLeadsOverviewSheet(
 
   sheet.mergeCells(1, 1, 1, headers.length);
   const titleCell = sheet.getCell("A1");
-  titleCell.value = "Leads Overview Report";
+  titleCell.value = `Leads Overview Report - ${reportSubType}`;
   titleCell.font = { bold: true, size: 13, color: { argb: "FFFAF4E5" } };
   titleCell.alignment = { horizontal: "center", vertical: "middle" };
   titleCell.fill = {
@@ -168,6 +173,7 @@ function buildLeadsOverviewSheet(
       entry.furniture_structure,
       entry.instance,
       entry.architect_name,
+      entry.architect_number,
       entry.carcass_selection,
       entry.shutter_selection,
       entry.handle_selection,
@@ -230,14 +236,16 @@ export async function generateLeadsOverviewReport(
   workbook.creator = "FurnixCRM";
   workbook.created = new Date();
   const usedSheetNames = new Set<string>();
-  buildLeadsOverviewSheet(
-    workbook,
-    rows,
-    buildSheetName(
-      franchiseId === "all" || Array.isArray(franchiseId) ? "Consolidated" : "Leads Overview Report",
-      usedSheetNames,
-    ),
-  );
+
+  const mainBaseName = franchiseId === "all" || Array.isArray(franchiseId) ? "Consolidated" : "Leads Overview Report";
+  
+  const ongoing = rows.filter(r => r.activity_status === "onGoing");
+  const onHold = rows.filter(r => r.activity_status === "onHold");
+  const lost = rows.filter(r => r.activity_status === "lost" || r.activity_status === "lostApproval");
+
+  buildLeadsOverviewSheet(workbook, ongoing, buildSheetName(mainBaseName, usedSheetNames), "Ongoing");
+  buildLeadsOverviewSheet(workbook, onHold, buildSheetName(`${mainBaseName} - On Hold`, usedSheetNames), "On Hold");
+  buildLeadsOverviewSheet(workbook, lost, buildSheetName(`${mainBaseName} - Lost`, usedSheetNames), "Lost");
 
   if (franchiseId === "all" || Array.isArray(franchiseId)) {
     const groupedRows = new Map<string, LeadsOverviewRow[]>();
@@ -249,11 +257,17 @@ export async function generateLeadsOverviewReport(
     }
 
     for (const [franchiseName, franchiseRows] of groupedRows) {
-      buildLeadsOverviewSheet(
-        workbook,
-        franchiseRows,
-        buildSheetName(franchiseName, usedSheetNames),
-      );
+      const ongoingF = franchiseRows.filter(r => r.activity_status === "onGoing");
+      const onHoldF = franchiseRows.filter(r => r.activity_status === "onHold");
+      const lostF = franchiseRows.filter(r => r.activity_status === "lost" || r.activity_status === "lostApproval");
+
+      buildLeadsOverviewSheet(workbook, ongoingF, buildSheetName(franchiseName, usedSheetNames), "Ongoing");
+      if (onHoldF.length > 0) {
+        buildLeadsOverviewSheet(workbook, onHoldF, buildSheetName(`${franchiseName} - On Hold`, usedSheetNames), "On Hold");
+      }
+      if (lostF.length > 0) {
+        buildLeadsOverviewSheet(workbook, lostF, buildSheetName(`${franchiseName} - Lost`, usedSheetNames), "Lost");
+      }
     }
   }
 

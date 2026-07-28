@@ -31,6 +31,9 @@ interface InstallationReportLead {
   final_handover_marked_at: string | null;
   misc_count: number;
   issue_count: number;
+  installation_day_1?: string | null;
+  installation_day_2?: string | null;
+  installation_day_3?: string | null;
 }
 
 async function fetchReportData(
@@ -92,6 +95,9 @@ function buildInstallationSheet(
     { key: "leadName",           width: 26 },
     { key: "franchiseStore",     width: 22 },
     { key: "installStartDate",   width: 22 },
+    { key: "installDay1",        width: 22 },
+    { key: "installDay2",        width: 22 },
+    { key: "installDay3",        width: 22 },
     { key: "expectedCompletion", width: 26 },
     { key: "daysTaken",          width: 22 },
     { key: "miscCount",          width: 22 },
@@ -118,6 +124,9 @@ function buildInstallationSheet(
     "Lead Name",
     "Franchise Store",
     "Installation Start Date",
+    "Installation Day 1 Date",
+    "Installation Day 2 Date",
+    "Installation Day 3 Date",
     "Expected Date of Completion",
     "No. of Days Taken",
     "No. of Misc Generated",
@@ -150,6 +159,9 @@ function buildInstallationSheet(
       `${lead.firstname} ${lead.lastname}`.trim() || "-",
       lead.franchise_name ?? "-",
       formatDate(lead.actual_installation_start_date),
+      formatDate(lead.installation_day_1),
+      formatDate(lead.installation_day_2),
+      formatDate(lead.installation_day_3),
       formatDate(lead.expected_installation_end_date),
       daysBetween(lead.actual_installation_start_date, lead.actual_installation_completion_at),
       lead.misc_count,
@@ -163,7 +175,7 @@ function buildInstallationSheet(
 
     row.height = 18;
     row.eachCell({ includeEmpty: true }, (cell, colNum) => {
-      const isCenter = colNum === 1 || colNum === 7 || colNum === 8 || colNum === 9;
+      const isCenter = colNum === 1 || colNum === 10 || colNum === 11 || colNum === 12;
       cell.alignment = { horizontal: isCenter ? "center" : "left", vertical: "middle" };
       cell.font = { size: 10 };
       cell.border = {

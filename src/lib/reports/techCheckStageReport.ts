@@ -18,6 +18,7 @@ interface TechCheckStageReportRow {
   lead_code: string;
   client_name: string;
   franchise_store: string;
+  designer: string;
   tech_check_req_date: string | null;
   rejection_dates: string[];
   revised_upload_dates: string[];
@@ -81,6 +82,7 @@ function buildTechCheckSheet(
     "Lead Code",
     "Client Name",
     "Franchise Store",
+    "Designer",
     "TechCheck Req Date",
   ];
   const cycleHeaders = Array.from({ length: visibleCycles }, (_, index) => [
@@ -152,6 +154,7 @@ function buildTechCheckSheet(
       entry.lead_code,
       entry.client_name,
       entry.franchise_store,
+      entry.designer,
       formatDateTime(entry.tech_check_req_date),
       ...cycleValues,
       formatDateTime(entry.tech_check_approved_date),
@@ -159,7 +162,7 @@ function buildTechCheckSheet(
 
     row.height = 18;
     row.eachCell({ includeEmpty: true }, (cell, colNum) => {
-      const isCenter = colNum === 1 || colNum >= 5;
+      const isCenter = colNum === 1 || colNum >= 6;
       cell.alignment = {
         horizontal: isCenter ? "center" : "left",
         vertical: "middle",
