@@ -636,6 +636,8 @@ export interface LeadSpecificationEntry {
   productItemCode?: { id: number; item_code: string } | null;
   created_at: string;
   created_by: number;
+  is_latest_for_item_code?: boolean;
+  is_editable?: boolean;
 }
 
 export const getLeadSpecifications = async (

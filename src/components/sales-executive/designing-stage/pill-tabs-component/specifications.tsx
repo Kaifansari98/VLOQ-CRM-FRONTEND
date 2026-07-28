@@ -331,6 +331,7 @@ export default function SpecificationsTab() {
           if (!open) setSelectedSpec(null);
         }}
         specification={selectedSpec}
+        readOnly={selectedSpec ? selectedSpec.is_editable === false : false}
       />
     </div>
   );
