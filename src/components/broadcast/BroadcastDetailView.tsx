@@ -205,7 +205,7 @@ export const BroadcastDetailView: React.FC<BroadcastDetailViewProps> = ({
           </div>
 
           <div className="min-w-0 space-y-2">
-            <h1 className="text-lg sm:text-xl font-extrabold tracking-tight text-foreground truncate max-w-2xl">
+            <h1 className="text-lg sm:text-xl font-extrabold tracking-tight text-foreground max-w-3xl break-words">
               {item.title}
             </h1>
             <div className="flex items-center gap-2 flex-wrap">

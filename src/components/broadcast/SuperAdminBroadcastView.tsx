@@ -279,13 +279,13 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
             Create, manage and send announcements to your audience
           </p>
         </div>
-        <Button onClick={onCreateOpen} className="w-full sm:w-auto gap-2 text-xs font-semibold h-10 px-4 shadow-sm rounded-xl">
+        <Button onClick={onCreateOpen} className="w-fit gap-2 text-xs font-semibold h-10 px-4 shadow-sm rounded-xl">
           <Plus className="w-4 h-4" /> Create Broadcast
         </Button>
       </div>
 
       {/* Filter and Search Action Toolbar */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3 w-full">
         {/* Search */}
         <div className="relative flex-1 min-w-[200px] w-full sm:w-auto">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -297,8 +297,10 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
           />
         </div>
 
-        {/* Status Select */}
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        {/* Filters Group */}
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-3 w-full sm:w-auto">
+          {/* Status Select */}
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-full sm:w-[160px] h-9 text-xs rounded-xl">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
@@ -446,11 +448,12 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
               setDateFilter("");
               setSortBy("latest");
             }}
-            className="h-9 text-xs text-muted-foreground w-full sm:w-auto"
+            className="col-span-2 sm:col-span-1 h-9 text-xs text-muted-foreground w-full sm:w-auto"
           >
             Clear Filters
           </Button>
         )}
+        </div>
       </div>
 
       {/* Main Table Container */}
