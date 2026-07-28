@@ -37,6 +37,8 @@ const getSortedLatestFirst = <T extends { created_at?: string; id: number }>(
   });
 
 const UNASSIGNED_GROUP_ID = "__unassigned__";
+const normalizeGroupKey = (value?: string | null) =>
+  value?.trim().toLowerCase() || UNASSIGNED_GROUP_ID;
 
 const DesigningTab = () => {
   const { leadId } = useDetails();
@@ -96,24 +98,23 @@ const DesigningTab = () => {
 
     for (const doc of sortedDesignDocs) {
       const rawInstanceId = doc.product_structure_instance_id;
-      const groupKey =
+      const instance =
         rawInstanceId != null
-          ? String(rawInstanceId)
-          : UNASSIGNED_GROUP_ID;
-      const instance = rawInstanceId != null
-        ? instanceMap.get(String(rawInstanceId))
-        : null;
+          ? instanceMap.get(String(rawInstanceId))
+          : null;
+      const productTypeTitle = instance?.productType?.type?.trim() || "";
+      const groupKey = normalizeGroupKey(productTypeTitle);
 
       if (!grouped.has(groupKey)) {
         grouped.set(groupKey, {
           id: groupKey,
           title:
-            instance?.title ||
-            instance?.productStructure?.type ||
+            productTypeTitle ||
             (groupKey === UNASSIGNED_GROUP_ID ? "Other Designs" : "Item Group"),
           subtitle:
-            instance?.productType?.type ||
-            (groupKey === UNASSIGNED_GROUP_ID ? "Unassigned files" : "Design files"),
+            groupKey === UNASSIGNED_GROUP_ID
+              ? "Unassigned files"
+              : "Product type",
           docs: [],
         });
       }
@@ -121,13 +122,29 @@ const DesigningTab = () => {
       grouped.get(groupKey)!.docs.push(doc);
     }
 
-    for (const instance of structureInstances) {
-      const key = String(instance.id);
+    const uniqueProductTypes = [
+      ...new Set(
+        structureInstances
+          .map((instance: any) => normalizeGroupKey(instance.productType?.type))
+          .filter(Boolean),
+      ),
+    ];
+
+    for (const productTypeKey of uniqueProductTypes) {
+      const matchingInstance = structureInstances.find(
+        (instance: any) =>
+          normalizeGroupKey(instance.productType?.type) === productTypeKey,
+      );
+      const title =
+        matchingInstance?.productType?.type?.trim() ||
+        (productTypeKey === UNASSIGNED_GROUP_ID ? "Other Designs" : "Item Group");
+
+      const key = String(productTypeKey);
       if (!grouped.has(key)) {
         grouped.set(key, {
           id: key,
-          title: instance.title || instance.productStructure?.type || "Item Group",
-          subtitle: instance.productType?.type || "Design files",
+          title,
+          subtitle: "Product type",
           docs: [],
         });
       }
