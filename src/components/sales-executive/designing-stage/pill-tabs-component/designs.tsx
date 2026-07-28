@@ -68,7 +68,9 @@ const DesigningTab = () => {
     );
   const designDocs = data?.data?.documents || [];
   const sortedDesignDocs = getSortedLatestFirst(designDocs);
-  const structureInstances = structureInstancesData?.data || [];
+  const structureInstances: any[] = Array.isArray(structureInstancesData?.data)
+    ? structureInstancesData.data
+    : [];
 
   // ✅ Delete document mutation
   const { mutate: deleteDocument, isPending: deleting } =
