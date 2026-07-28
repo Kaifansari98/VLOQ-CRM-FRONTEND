@@ -195,7 +195,7 @@ const DesigningTab = () => {
   }
 
   // ✅ Empty State
-  if (!designDocs || designDocs.length === 0) {
+  if ((!designDocs || designDocs.length === 0) && !handlesLargeScaleProjects) {
     return (
       <ComingSoon
         heading="No Design Documents"
@@ -324,7 +324,7 @@ const DesigningTab = () => {
               <Images size={42} className="text-muted-foreground mb-3" />
               <p className="text-sm text-muted-foreground">
                 {handlesLargeScaleProjects && selectedGroup
-                  ? "No design documents found for this item group."
+                  ? "No design documents found for this product type."
                   : "No design documents found."}
               </p>
             </div>
