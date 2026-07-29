@@ -7,6 +7,7 @@ export interface BookingPayload {
   account_id: number;
   vendor_id: number;
   created_by: number;
+  product_type_id?: number;
   client_id?: number;
   bookingAmount: number;
   bookingAmountPaymentDetailsText: string;
@@ -23,6 +24,9 @@ export const moveToBookingStage = async (payload: BookingPayload) => {
   formData.append("account_id", payload.account_id.toString());
   formData.append("vendor_id", payload.vendor_id.toString());
   formData.append("created_by", payload.created_by.toString());
+  if (typeof payload.product_type_id !== "undefined") {
+    formData.append("product_type_id", payload.product_type_id.toString());
+  }
   if (payload.client_id !== undefined && payload.client_id !== null) {
     formData.append("client_id", payload.client_id.toString());
   }

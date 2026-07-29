@@ -28,12 +28,14 @@ import {
   useHeadSiteSupervisors,
 } from "@/hooks/booking-stage/use-booking";
 import { BookingPayload, assignTaskBooking } from "@/api/booking";
+import { LeadProductStructureInstance } from "@/api/leads";
 import { createLeadChatRoom } from "@/api/lead-chats";
 import { toastManager } from "@/components/ui/toast";
 import { useISMPaymentInfo } from "@/hooks/booking-stage/use-booking";
 import SelectDocumentModal from "@/components/modal/select-doc-modal";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 import { formatCurrencyINR } from "@/utils/formatCurrency";
 import CurrencyInput from "@/components/custom/CurrencyInput";
 import BaseModal from "@/components/utils/baseModal";
@@ -42,6 +44,8 @@ import {
   useFranchisesByVendorId,
 } from "@/api/franchise";
 import AssignToPicker from "@/components/assign-to-picker";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 // ✅ Enhanced Zod schema with proper file validation
 const bookingSchema = z
@@ -131,6 +135,12 @@ const bookingSchema = z
 // ✅ Proper type inference from schema
 type BookingFormValues = z.infer<typeof bookingSchema>;
 const bookingResolver = zodResolver(bookingSchema) as unknown as any;
+type BookingProductTypeTab = {
+  productTypeId: number;
+  label: string;
+  instanceIds: number[];
+  instanceTitles: string[];
+};
 
 interface LeadViewModalProps {
   open: boolean;
@@ -154,7 +164,13 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
   const vendorCustomUserTypeMode = useAppSelector(
     (state) => state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only
   );
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
   const [openSelectDocModal, setOpenSelectDocModal] = useState(false);
+  const [activeProductTypeId, setActiveProductTypeId] = useState<number | null>(
+    null,
+  );
   const leadId = data?.id;
   const accountId = data?.accountId;
   const router = useRouter();
@@ -164,6 +180,65 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
   const { data: ismPaymentInfo } = useISMPaymentInfo(leadId);
   console.log("PaymentInfo :- ", ismPaymentInfo);
   console.log("Amount :- ", ismPaymentInfo?.amount);
+  const { data: structureInstancesData } = useLeadProductStructureInstances(
+    leadId,
+    vendorId,
+    open,
+  );
+  const structureInstances: LeadProductStructureInstance[] = React.useMemo(
+    () =>
+      Array.isArray(structureInstancesData?.data)
+        ? structureInstancesData.data
+        : [],
+    [structureInstancesData?.data],
+  );
+  const productTypeTabs = React.useMemo<BookingProductTypeTab[]>(() => {
+    if (!handlesLargeScaleProjects) {
+      return [];
+    }
+
+    const tabs = new Map<number, BookingProductTypeTab>();
+
+    for (const instance of structureInstances) {
+      const productTypeId =
+        instance.productType?.id ??
+        instance.productItemCode?.productStructure?.productType?.id;
+      const productTypeLabel =
+        instance.productType?.type ||
+        instance.productItemCode?.productStructure?.productType?.type;
+
+      if (!productTypeId || !productTypeLabel) {
+        continue;
+      }
+
+      const existing = tabs.get(productTypeId);
+      if (existing) {
+        existing.instanceIds.push(instance.id);
+        if (instance.title && !existing.instanceTitles.includes(instance.title)) {
+          existing.instanceTitles.push(instance.title);
+        }
+        continue;
+      }
+
+      tabs.set(productTypeId, {
+        productTypeId,
+        label: productTypeLabel,
+        instanceIds: [instance.id],
+        instanceTitles: instance.title ? [instance.title] : [],
+      });
+    }
+
+    return Array.from(tabs.values()).sort((a, b) =>
+      a.label.localeCompare(b.label),
+    );
+  }, [handlesLargeScaleProjects, structureInstances]);
+  const activeProductTypeTab = React.useMemo(
+    () =>
+      productTypeTabs.find(
+        (tab) => tab.productTypeId === activeProductTypeId,
+      ) ?? null,
+    [activeProductTypeId, productTypeTabs],
+  );
 
   const { data: headSiteSupervisors, isLoading } =
     useHeadSiteSupervisors(vendorId!);
@@ -197,6 +272,21 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
     },
     mode: "onChange",
   });
+
+  React.useEffect(() => {
+    if (!open) return;
+    if (productTypeTabs.length === 0) {
+      setActiveProductTypeId(null);
+      return;
+    }
+
+    setActiveProductTypeId((current) =>
+      current &&
+      productTypeTabs.some((tab) => tab.productTypeId === current)
+        ? current
+        : productTypeTabs[0].productTypeId,
+    );
+  }, [open, productTypeTabs]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -277,6 +367,14 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       return;
     }
 
+    if (productTypeTabs.length > 0 && !activeProductTypeTab) {
+      toastManager.add({
+        title: "Please select a product type before submitting.",
+        type: "error",
+      });
+      return;
+    }
+
     // 🚨 check file errors
     const hasFileError =
       values.payment_details_document?.some((f: any) => f.error) ||
@@ -297,6 +395,9 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       account_id: accountId,
       vendor_id: vendorId,
       created_by: userId,
+      product_type_id: handlesLargeScaleProjects
+        ? activeProductTypeTab?.productTypeId
+        : undefined,
       bookingAmount: values.amount_received,
       bookingAmountPaymentDetailsText: values.payment_text,
       finalBookingAmount: values.final_booking_amount,
@@ -409,6 +510,80 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
           })}
           className="space-y-6 p-5"
         >
+          {productTypeTabs.length > 0 && (
+            <div className="rounded-2xl border border-border/60 bg-muted/30 p-3">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold">Item Group</p>
+                  <p className="text-xs text-muted-foreground">
+                    Select the scope for this booking submission.
+                  </p>
+                </div>
+                <Badge variant="outline" className="rounded-full px-2 py-1">
+                  {productTypeTabs.length}{" "}
+                  {productTypeTabs.length === 1 ? "group" : "groups"}
+                </Badge>
+              </div>
+
+              <div className="flex gap-2 overflow-x-auto scrollbar-none">
+                {productTypeTabs.map((tab) => (
+                  <div
+                    key={tab.productTypeId}
+                    className={cn(
+                      "relative shrink-0 rounded-xl border transition-all",
+                      activeProductTypeId === tab.productTypeId
+                        ? "border-primary/30 bg-background"
+                        : "border-border/60 bg-background/70 hover:border-border hover:bg-background",
+                    )}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setActiveProductTypeId(tab.productTypeId)}
+                      className={cn(
+                        "min-w-[180px] px-4 py-3 text-left focus-visible:outline-none",
+                        "focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-xl",
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p
+                            className={cn(
+                              "truncate text-sm font-semibold",
+                              activeProductTypeId === tab.productTypeId
+                                ? "text-foreground"
+                                : "text-foreground/90",
+                            )}
+                          >
+                            {tab.label}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {tab.instanceIds.length}{" "}
+                            {tab.instanceIds.length === 1
+                              ? "instance"
+                              : "instances"}
+                          </p>
+                        </div>
+                        <Badge
+                          variant={
+                            activeProductTypeId === tab.productTypeId
+                              ? "default"
+                              : "outline"
+                          }
+                          className="rounded-full"
+                        >
+                          {tab.instanceIds.length}
+                        </Badge>
+                      </div>
+                      {activeProductTypeId === tab.productTypeId && (
+                        <span className="mt-3 block h-1 rounded-full bg-primary/80" />
+                      )}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* File Upload Section */}
 
           <FormField
