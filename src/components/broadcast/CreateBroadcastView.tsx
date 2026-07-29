@@ -137,13 +137,17 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
                 className="text-xs font-semibold py-1 px-2.5 rounded-lg flex items-center gap-1.5 bg-primary/10 text-primary border border-primary/20 shrink-0"
               >
                 {label}
-                <X
-                  className="w-3.5 h-3.5 hover:text-destructive cursor-pointer"
+                <button
+                  type="button"
+                  className="hover:text-destructive cursor-pointer focus:outline-hidden"
                   onClick={(e) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     onToggle(id);
                   }}
-                />
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
               </Badge>
             );
           })}
@@ -182,7 +186,7 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
                           : "hover:bg-muted/60 border-transparent"
                       }`}
                     >
-                      <Checkbox checked={isChecked} onCheckedChange={() => {}} />
+                      <Checkbox checked={isChecked} onCheckedChange={() => onToggle(opt.id)} />
                       <div className="truncate flex-1">
                         <span className="font-semibold block truncate text-foreground">{opt.label}</span>
                         {opt.sublabel && (
@@ -206,6 +210,7 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
   onSubmitBroadcast,
   editingBroadcast,
 }) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const user = useAppSelector((state) => state.auth.user);
   const vendorId = user?.vendor_id || user?.vendor?.id || 1;
 
@@ -461,49 +466,44 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
     });
   }, [usersList, userSearch]);
 
-  const toggleRoleSelect = (id: number) => {
+  const toggleRoleSelect = (id: number | string) => {
     const numId = Number(id);
-    console.log("[Broadcast] Selected Role ID:", numId);
-    if (selectedRoleIds.includes(numId)) {
-      const updated = selectedRoleIds.filter((rId) => rId !== numId);
-      console.log("[Broadcast] Updated Selected Role IDs:", updated);
-      setSelectedRoleIds(updated);
+    if (selectedRoleIds.some(r => Number(r) === numId)) {
+      setSelectedRoleIds(selectedRoleIds.filter((rId) => Number(rId) !== numId));
     } else {
-      const updated = [...selectedRoleIds, numId];
-      console.log("[Broadcast] Updated Selected Role IDs:", updated);
-      setSelectedRoleIds(updated);
+      setSelectedRoleIds([...selectedRoleIds, numId]);
     }
   };
 
   const toggleSelectAllRoles = () => {
-    if (selectedRoleIds.length === filteredRoles.length) {
+    if (selectedRoleIds.length === filteredRoles.length && filteredRoles.length > 0) {
       setSelectedRoleIds([]);
     } else {
       setSelectedRoleIds(filteredRoles.map((r: any) => Number(r.id)));
     }
   };
 
-  const toggleFranchiseSelect = (id: number) => {
+  const toggleFranchiseSelect = (id: number | string) => {
     const numId = Number(id);
-    if (selectedFranchiseIds.includes(numId)) {
-      setSelectedFranchiseIds(selectedFranchiseIds.filter((fId) => fId !== numId));
+    if (selectedFranchiseIds.some(f => Number(f) === numId)) {
+      setSelectedFranchiseIds(selectedFranchiseIds.filter((fId) => Number(fId) !== numId));
     } else {
       setSelectedFranchiseIds([...selectedFranchiseIds, numId]);
     }
   };
 
   const toggleSelectAllFranchises = () => {
-    if (selectedFranchiseIds.length === filteredFranchises.length) {
+    if (selectedFranchiseIds.length === filteredFranchises.length && filteredFranchises.length > 0) {
       setSelectedFranchiseIds([]);
     } else {
       setSelectedFranchiseIds(filteredFranchises.map((f: any) => Number(f.id)));
     }
   };
 
-  const toggleUserSelect = (id: number) => {
+  const toggleUserSelect = (id: number | string) => {
     const numId = Number(id);
-    if (selectedUserIds.includes(numId)) {
-      setSelectedUserIds(selectedUserIds.filter((uId) => uId !== numId));
+    if (selectedUserIds.some(u => Number(u) === numId)) {
+      setSelectedUserIds(selectedUserIds.filter((uId) => Number(uId) !== numId));
     } else {
       setSelectedUserIds([...selectedUserIds, numId]);
     }
@@ -576,8 +576,11 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
     setAttachments(attachments.filter((a) => a.id !== id));
   };
 
-  const handleSubmit = (status: "published" | "draft", overridePublishNow: boolean = false) => {
-    const newErrors: Record<string, boolean> = {};
+  const handleSubmit = async (status: "published" | "draft", overridePublishNow: boolean = false) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const newErrors: Record<string, boolean> = {};
 
     let hasContentError = false;
     if (!title || !title.trim()) {
@@ -771,12 +774,15 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
       attachments,
     };
 
-    onSubmitBroadcast({
+    await onSubmitBroadcast({
       broadcast: frontendBroadcast,
       backendPayload,
       isEditing: !!editingBroadcast,
       editId: editingBroadcast?.numericId,
     });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleTabChange = (tabId: string) => {
@@ -817,7 +823,7 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
                     <Button
                       type="button"
                       size="sm"
-                      disabled={!isAllTabsFilled}
+                      disabled={!isAllTabsFilled || isSubmitting}
                       onClick={() => handleSubmit("published", true)}
                       className={`flex-1 sm:flex-none rounded-xl h-10 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 px-4 shadow-sm ${
                         !isAllTabsFilled ? "opacity-60 cursor-not-allowed" : ""
@@ -841,7 +847,7 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
                 <span>
                   <Button
                     size="sm"
-                    disabled={!isAllTabsFilled}
+                    disabled={!isAllTabsFilled || isSubmitting}
                     onClick={() => handleSubmit("published")}
                     className={`w-full sm:w-auto rounded-xl h-10 text-xs font-semibold px-5 transition-all ${
                       !isAllTabsFilled ? "opacity-60 cursor-not-allowed" : ""

@@ -110,6 +110,7 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
   const [content, setContent] = useState("");
   const [department, setDepartment] = useState("Operations");
   const [errors, setErrors] = useState<Record<string, boolean>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Audience State (Support Multiple Roles, Franchises and Users)
   const [audienceType, setAudienceType] = useState<"ALL" | "ROLE" | "FRANCHISE" | "USER">("ALL");
@@ -225,48 +226,48 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
     });
   }, [usersList, userSearch]);
 
-  const toggleRoleSelect = (id: number) => {
-    console.log("[Broadcast] Selected Role ID:", id);
-    if (selectedRoleIds.includes(id)) {
-      const updated = selectedRoleIds.filter((rId) => rId !== id);
-      console.log("[Broadcast] Updated Selected Role IDs:", updated);
+  const toggleRoleSelect = (id: number | string) => {
+    const numId = Number(id);
+    if (selectedRoleIds.some(rId => Number(rId) === numId)) {
+      const updated = selectedRoleIds.filter((rId) => Number(rId) !== numId);
       setSelectedRoleIds(updated);
     } else {
-      const updated = [...selectedRoleIds, id];
-      console.log("[Broadcast] Updated Selected Role IDs:", updated);
+      const updated = [...selectedRoleIds, numId];
       setSelectedRoleIds(updated);
     }
   };
 
   const toggleSelectAllRoles = () => {
-    if (selectedRoleIds.length === filteredRoles.length) {
+    if (selectedRoleIds.length === filteredRoles.length && filteredRoles.length > 0) {
       setSelectedRoleIds([]);
     } else {
-      setSelectedRoleIds(filteredRoles.map((r: any) => r.id));
+      setSelectedRoleIds(filteredRoles.map((r: any) => Number(r.id)));
     }
   };
 
-  const toggleFranchiseSelect = (id: number) => {
-    if (selectedFranchiseIds.includes(id)) {
-      setSelectedFranchiseIds(selectedFranchiseIds.filter((fId) => fId !== id));
+  const toggleFranchiseSelect = (id: number | string) => {
+    const numId = Number(id);
+    if (selectedFranchiseIds.some(fId => Number(fId) === numId)) {
+      setSelectedFranchiseIds(selectedFranchiseIds.filter((fId) => Number(fId) !== numId));
     } else {
-      setSelectedFranchiseIds([...selectedFranchiseIds, id]);
+      setSelectedFranchiseIds([...selectedFranchiseIds, numId]);
     }
   };
 
   const toggleSelectAllFranchises = () => {
-    if (selectedFranchiseIds.length === filteredFranchises.length) {
+    if (selectedFranchiseIds.length === filteredFranchises.length && filteredFranchises.length > 0) {
       setSelectedFranchiseIds([]);
     } else {
-      setSelectedFranchiseIds(filteredFranchises.map((f: any) => f.id));
+      setSelectedFranchiseIds(filteredFranchises.map((f: any) => Number(f.id)));
     }
   };
 
-  const toggleUserSelect = (id: number) => {
-    if (selectedUserIds.includes(id)) {
-      setSelectedUserIds(selectedUserIds.filter((uId) => uId !== id));
+  const toggleUserSelect = (id: number | string) => {
+    const numId = Number(id);
+    if (selectedUserIds.some(uId => Number(uId) === numId)) {
+      setSelectedUserIds(selectedUserIds.filter((uId) => Number(uId) !== numId));
     } else {
-      setSelectedUserIds([...selectedUserIds, id]);
+      setSelectedUserIds([...selectedUserIds, numId]);
     }
   };
 
@@ -274,7 +275,7 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
     if (selectedUserIds.length === filteredUsers.length && filteredUsers.length > 0) {
       setSelectedUserIds([]);
     } else {
-      setSelectedUserIds(filteredUsers.map((u: any) => u.id));
+      setSelectedUserIds(filteredUsers.map((u: any) => Number(u.id)));
     }
   };
 
@@ -326,8 +327,11 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
     setAttachments(attachments.filter((a) => a.id !== id));
   };
 
-  const handleSubmit = (status: "published" | "draft") => {
-    const newErrors: Record<string, boolean> = {};
+  const handleSubmit = async (status: "published" | "draft") => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const newErrors: Record<string, boolean> = {};
     if (!title || !title.trim()) newErrors.title = true;
     if (type === "document" && (!categoryId || !categoryId.trim())) newErrors.categoryId = true;
     
@@ -415,9 +419,12 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
       attachments,
     };
 
-    onCreateBroadcast(newBroadcast);
+    await onCreateBroadcast(newBroadcast);
     resetForm();
     onOpenChange(false);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const resetForm = () => {
@@ -845,7 +852,13 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
                       return (
                         <Badge key={id} variant="secondary" className="text-[10px] py-0.5 flex items-center gap-1 shrink-0">
                           {name}
-                          <X className="w-3 h-3 cursor-pointer" onClick={(e) => { e.preventDefault(); toggleUserSelect(id); }} />
+                          <button
+                            type="button"
+                            className="hover:text-destructive cursor-pointer focus:outline-hidden"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleUserSelect(id); }}
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
                         </Badge>
                       );
                     })}
@@ -1046,9 +1059,9 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
                         <Button
                           type="button"
                           size="sm"
-                          disabled={!isAllTabsFilled}
+                          disabled={!isAllTabsFilled || isSubmitting}
                           onClick={() => handleSubmit("published")}
-                          className={!isAllTabsFilled ? "opacity-60 cursor-not-allowed" : ""}
+                          className={!isAllTabsFilled || isSubmitting ? "opacity-60 cursor-not-allowed" : ""}
                         >
                           Publish Broadcast
                         </Button>
