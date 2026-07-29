@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CheckCircle2, CircleDashed, Loader2 } from "lucide-react";
 import {
   useMoveToBookingStage,
   useHeadSiteSupervisors,
@@ -135,12 +136,22 @@ const bookingSchema = z
 // ✅ Proper type inference from schema
 type BookingFormValues = z.infer<typeof bookingSchema>;
 const bookingResolver = zodResolver(bookingSchema) as unknown as any;
+const defaultBookingValues: BookingFormValues = {
+  final_documents: [],
+  amount_received: 0,
+  final_booking_amount: 0,
+  payment_details_document: [],
+  payment_text: "",
+  assign_to: "",
+  mrp_value: 0,
+};
 type BookingProductTypeTab = {
   productTypeId: number;
   label: string;
   instanceIds: number[];
   instanceTitles: string[];
 };
+type BookingDraftMap = Record<number, BookingFormValues>;
 
 interface LeadViewModalProps {
   open: boolean;
@@ -171,6 +182,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
   const [activeProductTypeId, setActiveProductTypeId] = useState<number | null>(
     null,
   );
+  const [bookingDrafts, setBookingDrafts] = useState<BookingDraftMap>({});
   const leadId = data?.id;
   const accountId = data?.accountId;
   const router = useRouter();
@@ -258,20 +270,115 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
     () => franchises.find((f) => f.is_head_office)?.id,
     [franchises]
   );
-  const { mutate, isPending } = useMoveToBookingStage();
+  const isMultiGroupBooking = productTypeTabs.length > 1;
+  const { mutateAsync, isPending } = useMoveToBookingStage();
   const form = useForm<BookingFormValues>({
     resolver: bookingResolver,
-    defaultValues: {
-      final_documents: [],
-      amount_received: 0,
-      final_booking_amount: 0,
-      payment_details_document: [],
-      payment_text: "",
-      assign_to: "",
-      mrp_value: 0,
-    },
+    defaultValues: defaultBookingValues,
     mode: "onChange",
   });
+
+  const buildDefaultBookingValues = React.useCallback(
+    (assignTo = ""): BookingFormValues => ({
+      ...defaultBookingValues,
+      assign_to: assignTo,
+    }),
+    [],
+  );
+
+  const getCurrentDraft = React.useCallback(
+    (): BookingFormValues => ({
+      final_documents: form.getValues("final_documents") || [],
+      amount_received: form.getValues("amount_received") ?? 0,
+      final_booking_amount: form.getValues("final_booking_amount") ?? 0,
+      payment_details_document: form.getValues("payment_details_document") || [],
+      payment_text: form.getValues("payment_text") || "",
+      assign_to: form.getValues("assign_to") || "",
+      mrp_value: form.getValues("mrp_value") ?? 0,
+    }),
+    [form],
+  );
+
+  const validateBookingValues = React.useCallback(
+    (values: BookingFormValues) => {
+      const result = bookingSchema.safeParse(values);
+      if (!result.success) {
+        return false;
+      }
+
+      if (
+        vendorCustomUserTypeMode !== true &&
+        (!values.assign_to || values.assign_to.trim() === "")
+      ) {
+        return false;
+      }
+
+      const hasFileError =
+        values.payment_details_document?.some((file: any) => file?.error) ||
+        values.final_documents?.some((file: any) => file?.error);
+
+      if (hasFileError) {
+        return false;
+      }
+
+      return true;
+    },
+    [vendorCustomUserTypeMode],
+  );
+
+  const persistDraft = React.useCallback(
+    (productTypeId: number, values: BookingFormValues) => {
+      setBookingDrafts((prev) => {
+        const next = { ...prev };
+
+        for (const key of Object.keys(next)) {
+          const numericKey = Number(key);
+          next[numericKey] = {
+            ...next[numericKey],
+            assign_to: values.assign_to,
+          };
+        }
+
+        next[productTypeId] = {
+          ...values,
+        };
+
+        return next;
+      });
+    },
+    [],
+  );
+
+  const tabCompletion = React.useMemo(() => {
+    const completion = new Map<number, boolean>();
+
+    for (const tab of productTypeTabs) {
+      const values =
+        tab.productTypeId === activeProductTypeId
+          ? getCurrentDraft()
+          : bookingDrafts[tab.productTypeId] ||
+            buildDefaultBookingValues(form.getValues("assign_to") || "");
+
+      completion.set(tab.productTypeId, validateBookingValues(values));
+    }
+
+    return completion;
+  }, [
+    activeProductTypeId,
+    bookingDrafts,
+    buildDefaultBookingValues,
+    form,
+    getCurrentDraft,
+    productTypeTabs,
+    validateBookingValues,
+  ]);
+
+  const completedGroupCount = React.useMemo(
+    () =>
+      productTypeTabs.filter((tab) => tabCompletion.get(tab.productTypeId))
+        .length,
+    [productTypeTabs, tabCompletion],
+  );
 
   React.useEffect(() => {
     if (!open) return;
@@ -280,13 +387,42 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       return;
     }
 
+    setBookingDrafts((prev) => {
+      const assignTo = form.getValues("assign_to") || "";
+      const next: BookingDraftMap = {};
+
+      for (const tab of productTypeTabs) {
+        next[tab.productTypeId] =
+          prev[tab.productTypeId] || buildDefaultBookingValues(assignTo);
+      }
+
+      return next;
+    });
+
     setActiveProductTypeId((current) =>
       current &&
       productTypeTabs.some((tab) => tab.productTypeId === current)
         ? current
         : productTypeTabs[0].productTypeId,
     );
-  }, [open, productTypeTabs]);
+  }, [buildDefaultBookingValues, form, open, productTypeTabs]);
+
+  React.useEffect(() => {
+    if (!open || !activeProductTypeId || productTypeTabs.length === 0) return;
+
+    const assignTo = form.getValues("assign_to") || "";
+    const nextDraft =
+      bookingDrafts[activeProductTypeId] || buildDefaultBookingValues(assignTo);
+
+    form.reset(nextDraft);
+  }, [
+    activeProductTypeId,
+    bookingDrafts,
+    buildDefaultBookingValues,
+    form,
+    open,
+    productTypeTabs.length,
+  ]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -334,6 +470,20 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
     form.setValue("assign_to", String(selected.id), {
       shouldValidate: true,
     });
+    if (productTypeTabs.length > 0) {
+      setBookingDrafts((prev) => {
+        const next = { ...prev };
+
+        for (const tab of productTypeTabs) {
+          next[tab.productTypeId] = {
+            ...(next[tab.productTypeId] || buildDefaultBookingValues()),
+            assign_to: String(selected.id),
+          };
+        }
+
+        return next;
+      });
+    }
     // console.log(
     //   "[BookingModal] auto-selected head site supervisor",
     //   selected.user_name
@@ -345,13 +495,55 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
     hasMultipleSupervisors,
     headSupervisorMapping,
     headOfficeFranchiseId,
+    productTypeTabs,
+    buildDefaultBookingValues,
   ]);
 
   if (isLoading) {
     return <div>Loading...</div>;
   }
 
-  const onSubmit: SubmitHandler<BookingFormValues> = (values) => {
+  const submitSingleBooking = React.useCallback(
+    async (values: BookingFormValues, productTypeId?: number) => {
+      if (!leadId || !accountId || !vendorId || !userId) {
+        throw new Error("Missing booking identifiers");
+      }
+
+      const payload: BookingPayload = {
+        lead_id: leadId,
+        account_id: accountId,
+        vendor_id: vendorId,
+        created_by: userId,
+        product_type_id: productTypeId,
+        bookingAmount: values.amount_received,
+        bookingAmountPaymentDetailsText: values.payment_text,
+        finalBookingAmount: values.final_booking_amount,
+        mrpValue: values.mrp_value,
+        booking_payment_file: values.payment_details_document,
+        final_documents: values.final_documents,
+      };
+
+      if (
+        vendorCustomUserTypeMode !== true &&
+        values.assign_to &&
+        values.assign_to.trim() !== ""
+      ) {
+        payload.siteSupervisorId = Number(values.assign_to);
+      }
+
+      await mutateAsync(payload);
+    },
+    [
+      accountId,
+      leadId,
+      mutateAsync,
+      userId,
+      vendorCustomUserTypeMode,
+      vendorId,
+    ],
+  );
+
+  const onSubmit: SubmitHandler<BookingFormValues> = async (values) => {
     if (vendorCustomUserTypeMode !== true && (!values.assign_to || values.assign_to.trim() === "")) {
       form.setError("assign_to", { type: "manual", message: "Site supervisor is required." });
       return;
@@ -390,93 +582,134 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       return;
     }
 
-    const payload: BookingPayload = {
-      lead_id: leadId,
-      account_id: accountId,
-      vendor_id: vendorId,
-      created_by: userId,
-      product_type_id: handlesLargeScaleProjects
-        ? activeProductTypeTab?.productTypeId
-        : undefined,
-      bookingAmount: values.amount_received,
-      bookingAmountPaymentDetailsText: values.payment_text,
-      finalBookingAmount: values.final_booking_amount,
-      mrpValue: values.mrp_value, // ➕ ADD
-      booking_payment_file: values.payment_details_document,
-      final_documents: values.final_documents,
-    };
-
-    if (
-      vendorCustomUserTypeMode !== true &&
-      values.assign_to &&
-      values.assign_to.trim() !== ""
-    ) {
-      payload.siteSupervisorId = Number(values.assign_to);
-    }
-
-    console.log("✅ Booking Payload:", payload);
-
-    mutate(payload, {
-      onSuccess: () => {
-        toastManager.add({ title: "Booking saved successfully!", type: "success" });
-
-        // Add head site supervisor to lead chatroom
-        createLeadChatRoom(leadId, userId!).catch(() => {
-          // best-effort — don't block on chat member sync failure
-        });
-
-        // Auto-create task for head site supervisor
-        if (values.assign_to) {
-          const today = new Date().toISOString().split("T")[0];
-          assignTaskBooking(leadId, {
-            task_type: "Assign a Site Supervisor",
-            due_date: today,
-            user_id: Number(values.assign_to),
-            created_by: userId!,
-          }).catch(() => {
-            // best-effort — don't block on task creation failure
+    try {
+      if (isMultiGroupBooking) {
+        if (!activeProductTypeTab) {
+          toastManager.add({
+            title: "Please select an item group before submitting.",
+            type: "error",
           });
+          return;
         }
 
-        queryClient.invalidateQueries({
-          queryKey: ["leadStats", vendorId, userId],
-        });
+        persistDraft(activeProductTypeTab.productTypeId, values);
 
-        queryClient.invalidateQueries({
-          queryKey: ["universal-stage-leads"],
-          exact: false,
-        });
+        const mergedDrafts: BookingDraftMap = {
+          ...bookingDrafts,
+          [activeProductTypeTab.productTypeId]: values,
+        };
 
+        const incompleteTab = productTypeTabs.find(
+          (tab) => !validateBookingValues(mergedDrafts[tab.productTypeId]),
+        );
 
-        onOpenChange(false);
-        form.reset();
+        if (incompleteTab) {
+          if (incompleteTab.productTypeId !== activeProductTypeTab.productTypeId) {
+            setActiveProductTypeId(incompleteTab.productTypeId);
+          }
+          toastManager.add({
+            title: `Complete booking details for ${incompleteTab.label} before final submission.`,
+            type: "error",
+          });
+          return;
+        }
 
-        router.push("/dashboard/leads/booking-stage");
-      },
-      onError: (err: any) => {
-        const errorMessage =
-          err?.response?.data?.error ||
-          err?.response?.data?.message ||
-          err?.message ||
-          "Something went wrong";
+        for (const tab of productTypeTabs) {
+          await submitSingleBooking(mergedDrafts[tab.productTypeId], tab.productTypeId);
+        }
+      } else {
+        await submitSingleBooking(
+          values,
+          handlesLargeScaleProjects ? activeProductTypeTab?.productTypeId : undefined,
+        );
+      }
 
-        toastManager.add({
-          title: errorMessage,
-          type: "error",
-        });
-        console.error("❌ Booking error:", err);
-      },
-    });
+      toastManager.add({ title: "Booking saved successfully!", type: "success" });
+
+      createLeadChatRoom(leadId!, userId!).catch(() => {});
+
+      if (values.assign_to) {
+        const today = new Date().toISOString().split("T")[0];
+        assignTaskBooking(leadId!, {
+          task_type: "Assign a Site Supervisor",
+          due_date: today,
+          user_id: Number(values.assign_to),
+          created_by: userId!,
+        }).catch(() => {});
+      }
+
+      queryClient.invalidateQueries({
+        queryKey: ["leadStats", vendorId, userId],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["universal-stage-leads"],
+        exact: false,
+      });
+
+      onOpenChange(false);
+      form.reset(defaultBookingValues);
+      setBookingDrafts({});
+
+      router.push("/dashboard/leads/booking-stage");
+    } catch (err: any) {
+      const errorMessage =
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        err?.message ||
+        "Something went wrong";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
+      console.error("❌ Booking error:", err);
+    }
   };
 
   const handleReset = () => {
-    form.reset({
-      final_documents: [],
-      amount_received: 0,
-      final_booking_amount: 0,
-      payment_details_document: [],
-      payment_text: "",
+    if (isMultiGroupBooking && activeProductTypeId) {
+      const assignTo = form.getValues("assign_to") || "";
+      const nextValues = buildDefaultBookingValues(assignTo);
+      form.reset(nextValues);
+      persistDraft(activeProductTypeId, nextValues);
+      return;
+    }
+
+    form.reset(buildDefaultBookingValues(form.getValues("assign_to") || ""));
+  };
+
+  const handleTabChange = (nextProductTypeId: number) => {
+    if (nextProductTypeId === activeProductTypeId) return;
+    if (activeProductTypeId) {
+      persistDraft(activeProductTypeId, getCurrentDraft());
+    }
+    setActiveProductTypeId(nextProductTypeId);
+  };
+
+  const handleSaveCurrentGroup = async () => {
+    const isValid = await form.trigger();
+    if (!isValid || !activeProductTypeTab) {
+      return;
+    }
+
+    const values = getCurrentDraft();
+    persistDraft(activeProductTypeTab.productTypeId, values);
+
+    const nextIncompleteTab = productTypeTabs.find(
+      (tab) =>
+        tab.productTypeId !== activeProductTypeTab.productTypeId &&
+        !tabCompletion.get(tab.productTypeId),
+    );
+
+    toastManager.add({
+      title: `${activeProductTypeTab.label} booking details saved.`,
+      type: "success",
     });
+
+    if (nextIncompleteTab) {
+      setActiveProductTypeId(nextIncompleteTab.productTypeId);
+    }
   };
 
 
@@ -516,12 +749,11 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                 <div>
                   <p className="text-sm font-semibold">Item Group</p>
                   <p className="text-xs text-muted-foreground">
-                    Select the scope for this booking submission.
+                    Complete each item group before final booking submission.
                   </p>
                 </div>
                 <Badge variant="outline" className="rounded-full px-2 py-1">
-                  {productTypeTabs.length}{" "}
-                  {productTypeTabs.length === 1 ? "group" : "groups"}
+                  {completedGroupCount}/{productTypeTabs.length} completed
                 </Badge>
               </div>
 
@@ -538,7 +770,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                   >
                     <button
                       type="button"
-                      onClick={() => setActiveProductTypeId(tab.productTypeId)}
+                      onClick={() => handleTabChange(tab.productTypeId)}
                       className={cn(
                         "min-w-[180px] px-4 py-3 text-left focus-visible:outline-none",
                         "focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-xl",
@@ -563,16 +795,32 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                               : "instances"}
                           </p>
                         </div>
+                        {tabCompletion.get(tab.productTypeId) ? (
+                          <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
+                            <CheckCircle2 className="h-4 w-4" />
+                          </span>
+                        ) : (
+                          <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                            <CircleDashed className="h-4 w-4" />
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-3 flex items-center justify-between gap-2">
                         <Badge
                           variant={
-                            activeProductTypeId === tab.productTypeId
+                            tabCompletion.get(tab.productTypeId)
                               ? "default"
                               : "outline"
                           }
                           className="rounded-full"
                         >
-                          {tab.instanceIds.length}
+                          {tabCompletion.get(tab.productTypeId)
+                            ? "Complete"
+                            : "Pending"}
                         </Badge>
+                        <span className="text-[11px] text-muted-foreground">
+                          {tab.instanceIds.length} linked
+                        </span>
                       </div>
                       {activeProductTypeId === tab.productTypeId && (
                         <span className="mt-3 block h-1 rounded-full bg-primary/80" />
@@ -581,6 +829,14 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                   </div>
                 ))}
               </div>
+
+              {isMultiGroupBooking && (
+                <div className="mt-3 rounded-xl border border-dashed border-border/70 bg-background/80 px-3 py-2 text-xs text-muted-foreground">
+                  {completedGroupCount === productTypeTabs.length
+                    ? "All item groups are complete. Final submit will now move the lead to booking stage."
+                    : `Complete all ${productTypeTabs.length} item groups before final submit. The modal will stay open until every group is filled.`}
+                </div>
+              )}
             </div>
           )}
 
@@ -763,12 +1019,32 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
             >
               Reset
             </Button>
+            {isMultiGroupBooking && (
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-md"
+                disabled={isPending || form.formState.isSubmitting}
+                onClick={handleSaveCurrentGroup}
+              >
+                Save This Group
+              </Button>
+            )}
             <Button
               type="submit"
               className="rounded-md"
               disabled={isPending || form.formState.isSubmitting} // <- mutate ka pending bhi disable karega
             >
-              {isPending ? "Submitting..." : "Submit Booking"}
+              {isPending ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Submitting...
+                </span>
+              ) : isMultiGroupBooking ? (
+                "Submit All Groups"
+              ) : (
+                "Submit Booking"
+              )}
             </Button>
           </div>
         </form>
