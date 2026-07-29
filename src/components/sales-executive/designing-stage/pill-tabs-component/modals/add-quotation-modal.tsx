@@ -53,13 +53,18 @@ interface LeadViewModalProps {
 const getRevisionKey = (fileName: string, prefix: "Q" | "D" | "R") => {
   let parsedName = fileName.replace(/\.[^/.]+$/, "");
   parsedName = parsedName.replace(/^\[.*?\]\s*/, "");
-  const match = parsedName.match(
-    new RegExp(`^${prefix}(\\d+)-(.+)-\\d{4}-\\d{2}-\\d{2}$`, "i"),
-  );
+  const match =
+    prefix === "Q"
+      ? parsedName.match(/^Q(\d+)_(.+)_\d{4}-\d{2}-\d{2}$/i)
+      : parsedName.match(/^D(\d+)_(?:(2D|3D)_)?(.+)_\d{4}-\d{2}-\d{2}$/i);
 
   if (!match) return null;
 
-  return `${match[1]}-${match[2].toLowerCase()}`;
+  if (prefix === "Q") {
+    return `${match[1]}-${match[2].toLowerCase()}`;
+  }
+
+  return `${match[1]}-${match[3].toLowerCase()}`;
 };
 
 const getDesignRevisionKey = (fileName: string) =>
