@@ -336,24 +336,157 @@ function CutListSection({ cutlist, machineIds }: {
   machineIds: { id: number; name: string }[];
 }) {
   const [search, setSearch] = useState("");
-  const filtered = cutlist.filter(item =>
-    item.item_name.toLowerCase().includes(search.toLowerCase()) ||
-    item.unique_code.toLowerCase().includes(search.toLowerCase()) ||
-    item.category.toLowerCase().includes(search.toLowerCase())
-  );
+  const [productGroup, setProductGroup] = useState("all");
+  const [selectedMachineId, setSelectedMachineId] = useState("all");
+  const [machineStatus, setMachineStatus] = useState<"both" | "done" | "pending">("both");
+
+  const getProductGroup = (item: any) => {
+    return (
+      item.group ||
+      item.group_name ||
+      item.groupName ||
+      item.product_group ||
+      item.productGroup ||
+      "Ungrouped"
+    );
+  };
+
+  const productGroups = Array.from(
+    new Set(cutlist.map((item: any) => getProductGroup(item)).filter(Boolean))
+  ).sort();
+
+  const filtered = cutlist.filter((item: any) => {
+    const searchText = search.trim().toLowerCase();
+    const itemName = String(item.item_name || "").toLowerCase();
+    const uniqueCode = String(item.unique_code || "").toLowerCase();
+    const category = String(item.category || "").toLowerCase();
+    const group = String(getProductGroup(item) || "").toLowerCase();
+
+    const matchesSearch =
+      !searchText ||
+      itemName.includes(searchText) ||
+      uniqueCode.includes(searchText) ||
+      category.includes(searchText) ||
+      group.includes(searchText);
+
+    const matchesProductGroup =
+      productGroup === "all" || getProductGroup(item) === productGroup;
+
+    let matchesMachine = true;
+
+    if (selectedMachineId !== "all") {
+      const machineId = Number(selectedMachineId);
+      const mapping = item.machines.find(
+        (machineMapping: any) => Number(machineMapping.machine_id) === machineId
+      );
+
+      if (!mapping) {
+        matchesMachine = false;
+      } else if (machineStatus === "done") {
+        matchesMachine = mapping.scanned === true;
+      } else if (machineStatus === "pending") {
+        matchesMachine = mapping.scanned !== true;
+      } else {
+        matchesMachine = true;
+      }
+    }
+
+    return matchesSearch && matchesProductGroup && matchesMachine;
+  });
+
+  const resetFilters = () => {
+    setSearch("");
+    setProductGroup("all");
+    setSelectedMachineId("all");
+    setMachineStatus("both");
+  };
 
   return (
     <div className="rounded-xl border overflow-hidden shadow-sm">
-      <div className="flex items-center justify-between px-4 py-3 bg-muted/40 border-b gap-3 flex-wrap">
-        <h2 className="font-bold text-sm text-foreground flex items-center gap-2">
-          <Layers size={15} className="text-indigo-500" /> Cut List ({cutlist.length} items)
-        </h2>
-        <input
-          className="border rounded-lg px-3 py-1.5 text-sm w-56 bg-background focus:outline-none focus:ring-2 focus:ring-indigo-300"
-          placeholder="Search items…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
+      <div className="border-b bg-muted/40 px-4 py-3">
+        <div className="mb-3 flex items-center justify-between gap-3 flex-wrap">
+          <h2 className="font-bold text-sm text-foreground flex items-center gap-2">
+            <Layers size={15} className="text-indigo-500" />
+            Cut List ({filtered.length}/{cutlist.length} items)
+          </h2>
+
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={resetFilters}
+            className="h-8 gap-1 text-xs"
+          >
+            <X size={13} />
+            Reset
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Search
+            </label>
+            <input
+              className="h-9 w-full rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              placeholder="Search items, code, product…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Product / Group
+            </label>
+            <select
+              value={productGroup}
+              onChange={(e) => setProductGroup(e.target.value)}
+              className="h-9 w-full rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            >
+              <option value="all">All Products / Groups</option>
+              {productGroups.map((group) => (
+                <option key={group} value={group}>
+                  {group}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Machine
+            </label>
+            <select
+              value={selectedMachineId}
+              onChange={(e) => setSelectedMachineId(e.target.value)}
+              className="h-9 w-full rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            >
+              <option value="all">All Machines</option>
+              {machineIds.map((machine) => (
+                <option key={machine.id} value={machine.id}>
+                  {machine.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Status
+            </label>
+            <select
+              value={machineStatus}
+              onChange={(e) => setMachineStatus(e.target.value as "both" | "done" | "pending")}
+              disabled={selectedMachineId === "all"}
+              className="h-9 w-full rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <option value="both">Both</option>
+              <option value="done">Done</option>
+              <option value="pending">Pending</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       <div className="overflow-x-auto">
@@ -362,6 +495,7 @@ function CutListSection({ cutlist, machineIds }: {
             <TableRow className="bg-muted/50 hover:bg-muted/50">
               <TableHead className="text-xs font-black uppercase w-8">#</TableHead>
               <TableHead className="text-xs font-black uppercase">Item</TableHead>
+              <TableHead className="text-xs font-black uppercase">Product</TableHead>
               <TableHead className="text-xs font-black uppercase">Code</TableHead>
               <TableHead className="text-xs font-black uppercase">Size (mm)</TableHead>
               <TableHead className="text-xs font-black uppercase">Qty</TableHead>
@@ -378,19 +512,20 @@ function CutListSection({ cutlist, machineIds }: {
                   No items found
                 </TableCell>
               </TableRow>
-            ) : filtered.map((item, idx) => (
+            ) : filtered.map((item: any, idx) => (
               <TableRow key={item.id} className={cn("hover:bg-primary/5", idx % 2 === 0 ? "bg-background" : "bg-muted/20")}>
                 <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
                 <TableCell className="font-semibold text-sm">{item.item_name}</TableCell>
+                <TableCell className="font-semibold text-sm">{getProductGroup(item)}</TableCell>
                 <TableCell className="font-mono text-xs text-muted-foreground">{item.unique_code}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">
                   {item.length}×{item.width}×{item.thickness}
                 </TableCell>
-                <TableCell className="text-xs font-bold">{item.qty}</TableCell>
+                <TableCell className="text-xs font-bold">1</TableCell>
                 <TableCell className="text-xs">{item.category}</TableCell>
 
                 {machineIds.map(m => {
-                  const mapping = item.machines.find(mm => mm.machine_id === m.id);
+                  const mapping = item.machines.find((mm: any) => Number(mm.machine_id) === Number(m.id));
                   if (!mapping) {
                     return <TableCell key={m.id} className="text-center text-xs text-muted-foreground">—</TableCell>;
                   }
