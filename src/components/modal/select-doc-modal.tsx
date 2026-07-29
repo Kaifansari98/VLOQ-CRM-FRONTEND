@@ -38,15 +38,31 @@ interface LinkedDocGroup {
 
 const getDocKey = (doc: DocItem) => `${doc.type}-${doc.id}`;
 
+const stripDocPrefix = (fileName: string) =>
+  fileName.replace(/\.[^/.]+$/, "").replace(/^\[.*?\]\s*/, "");
+
 const getLinkedRevisionKey = (fileName: string, prefix: "Q" | "D" | "R") => {
-  const parsedName = fileName.replace(/\.[^/.]+$/, "");
-  const match = parsedName.match(
+  const parsedName = stripDocPrefix(fileName);
+
+  const underscoreMatch = parsedName.match(
+    new RegExp(
+      `^${prefix}(\\d+)_(?:(2D|3D)_)?(.+)_\\d{4}-\\d{2}-\\d{2}$`,
+      "i",
+    ),
+  );
+
+  if (underscoreMatch) {
+    const [, revision, , baseSegment] = underscoreMatch;
+    return `${revision}-${baseSegment.toLowerCase()}`;
+  }
+
+  const hyphenMatch = parsedName.match(
     new RegExp(`^${prefix}(\\d+)-(.+)-\\d{4}-\\d{2}-\\d{2}$`, "i"),
   );
 
-  if (!match) return null;
+  if (!hyphenMatch) return null;
 
-  return `${match[1]}-${match[2].toLowerCase()}`;
+  return `${hyphenMatch[1]}-${hyphenMatch[2].toLowerCase()}`;
 };
 
 const getDesignRevisionKey = (fileName: string) =>
