@@ -47,7 +47,7 @@ export default function CustomeTooltip({
           side={side}
           align={align}
           className={`
-            dark text-xs leading-snug wrap-break-word
+            dark text-xs leading-snug max-w-sm break-words
             ${contentClassName}
           `}
         >

@@ -110,22 +110,6 @@ export function BroadcastPopupModal() {
     }
   }, [broadcasts, readIds, dismissedIds, userId, activeBroadcast, isSuperAdmin]);
 
-  // 15-second Countdown timer
-  useEffect(() => {
-    if (isSuperAdmin || !activeBroadcast) return;
-
-    const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [activeBroadcast, isSuperAdmin]);
-
   const handleDismiss = () => {
     if (!activeBroadcast || !userId) return;
 
@@ -140,6 +124,25 @@ export function BroadcastPopupModal() {
     }
     setActiveBroadcast(null);
   };
+
+  // 15-second Countdown timer
+  useEffect(() => {
+    if (isSuperAdmin || !activeBroadcast) return;
+
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => prev - 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [activeBroadcast, isSuperAdmin]);
+
+  // Auto-dismiss when timer reaches 0
+  useEffect(() => {
+    if (timeLeft <= 0 && activeBroadcast) {
+      handleDismiss();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeLeft, activeBroadcast]);
 
   const handleViewBroadcast = () => {
     if (!activeBroadcast) return;
