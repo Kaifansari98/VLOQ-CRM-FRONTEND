@@ -27,8 +27,10 @@ interface LeadTrackingReportRow {
   furniture_type: string;
   furniture_structure: string;
   lead_creation_date: string | null;
+  ism_scheduled_date?: string | null;
   ism_completion_date: string | null;
   booking_done_date: string | null;
+  client_doc_completion_date?: string | null;
   fm_scheduled_date: string | null;
   fm_completion_date: string | null;
   client_approval_date: string | null;
@@ -118,10 +120,12 @@ function buildLeadTrackingSheet(
     "Furniture Type",
     "Furniture Structure",
     "Lead Creation Date",
+    "ISM Scheduled Date",
     "ISM Completion Date",
     "Booking Done Date",
     "FM Scheduled Date",
     "FM Completion Date",
+    "Client Doc Completion Date",
     "Client Approval Date",
     "TC Req Date",
     "TC Approval Date",
@@ -152,10 +156,12 @@ function buildLeadTrackingSheet(
     { key: "furnitureType", width: 20 },
     { key: "furnitureStructure", width: 24 },
     { key: "leadCreationDate", width: 18 },
+    { key: "ismScheduledDate", width: 18 },
     { key: "ismCompletionDate", width: 18 },
     { key: "bookingDoneDate", width: 18 },
     { key: "fmScheduledDate", width: 18 },
     { key: "fmCompletionDate", width: 18 },
+    { key: "clientDocCompletionDate", width: 22 },
     { key: "clientApprovalDate", width: 18 },
     { key: "tcReqDate", width: 18 },
     { key: "tcApprovalDate", width: 18 },
@@ -223,10 +229,12 @@ function buildLeadTrackingSheet(
       entry.furniture_type,
       entry.furniture_structure,
       formatDate(entry.lead_creation_date),
+      formatDate(entry.ism_scheduled_date),
       formatDate(entry.ism_completion_date),
       formatDate(entry.booking_done_date),
       formatDate(entry.fm_scheduled_date),
       formatDate(entry.fm_completion_date),
+      formatDate(entry.client_doc_completion_date),
       formatDate(entry.client_approval_date),
       formatDate(entry.tc_req_date),
       formatDate(entry.tc_approval_date),

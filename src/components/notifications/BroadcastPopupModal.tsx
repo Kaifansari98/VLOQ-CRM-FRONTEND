@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import {
   Megaphone,
   FileText,
-  X,
   ArrowRight,
   Clock,
   Sparkles,
@@ -183,15 +182,6 @@ export function BroadcastPopupModal() {
             />
           </div>
 
-          {/* Close X Button */}
-          <button
-            onClick={handleDismiss}
-            className="absolute top-5 right-5 p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors z-10"
-            title="Close popup"
-          >
-            <X className="w-5 h-5" />
-          </button>
-
           {/* 1. Title at Top */}
           <div className="pt-1 mb-3 pr-10">
             <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-foreground line-clamp-2 leading-snug">
@@ -263,14 +253,6 @@ export function BroadcastPopupModal() {
 
           {/* Footer Action Buttons */}
           <div className="flex items-center justify-end gap-3 pt-2 border-t">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDismiss}
-              className="rounded-xl h-9 text-xs px-4 border-border/60"
-            >
-              Dismiss
-            </Button>
             <Button
               size="sm"
               onClick={handleViewBroadcast}

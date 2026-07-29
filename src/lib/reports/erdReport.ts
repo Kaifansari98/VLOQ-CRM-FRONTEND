@@ -14,9 +14,12 @@ interface GenerateErdReportParams {
 
 interface ErdReportRow {
   lead_id: number;
+  instance_id: number | null;
   lead_code: string;
   client_name: string;
   franchise_store: string;
+  designer: string;
+  ol_moved_date: string | null;
   required_date: string | null;
   erd_date: string | null;
 }
@@ -61,6 +64,8 @@ function buildErdSheet(
     "Lead Code",
     "Client Name",
     "Franchise Store",
+    "Designer",
+    "OL Moved Date",
     "Required Date",
     "ERD Date",
   ];
@@ -70,6 +75,8 @@ function buildErdSheet(
     { key: "leadCode", width: 16 },
     { key: "clientName", width: 24 },
     { key: "franchiseStore", width: 24 },
+    { key: "designer", width: 24 },
+    { key: "olMovedDate", width: 18 },
     { key: "requiredDate", width: 18 },
     { key: "erdDate", width: 18 },
   ];
@@ -116,13 +123,15 @@ function buildErdSheet(
       entry.lead_code,
       entry.client_name,
       entry.franchise_store,
+      entry.designer,
+      formatDate(entry.ol_moved_date),
       formatDate(entry.required_date),
       formatDate(entry.erd_date),
     ]);
 
     row.height = 18;
     row.eachCell({ includeEmpty: true }, (cell, colNum) => {
-      const isCenter = colNum === 1 || colNum >= 5;
+      const isCenter = colNum === 1 || colNum >= 6;
       cell.alignment = {
         horizontal: isCenter ? "center" : "left",
         vertical: "middle",

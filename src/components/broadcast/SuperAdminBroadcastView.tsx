@@ -69,10 +69,12 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
 }) => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [audienceFilter, setAudienceFilter] = useState("all");
   const [audienceSearch, setAudienceSearch] = useState("");
   const [audienceOpen, setAudienceOpen] = useState(false);
   const [dateFilter, setDateFilter] = useState("");
+  const [sortBy, setSortBy] = useState("latest");
 
   const [rowsPerPage, setRowsPerPage] = useState("10");
   const [currentPage, setCurrentPage] = useState(1);
@@ -91,13 +93,14 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
 
   // Filtered dataset
   const filteredBroadcasts = useMemo(() => {
-    return broadcasts.filter((item) => {
+    const result = broadcasts.filter((item) => {
       const matchesSearch =
         item.title.toLowerCase().includes(search.toLowerCase()) ||
         item.id.toLowerCase().includes(search.toLowerCase()) ||
         (item.summary && item.summary.toLowerCase().includes(search.toLowerCase()));
 
       const matchesStatus = statusFilter === "all" || item.status === statusFilter;
+      const matchesType = typeFilter === "all" || item.type === typeFilter;
 
       // Exact-segment audience match: check each comma-separated audience label
       const matchesAudience =
@@ -111,9 +114,27 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
         (item.rawPublishAt && item.rawPublishAt.startsWith(dateFilter)) ||
         (item.publishDate && item.publishDate.includes(dateFilter));
 
-      return matchesSearch && matchesStatus && matchesAudience && matchesDate;
+      return matchesSearch && matchesStatus && matchesType && matchesAudience && matchesDate;
     });
-  }, [broadcasts, search, statusFilter, audienceFilter, dateFilter]);
+
+    result.sort((a, b) => {
+      if (sortBy === "latest") {
+        return new Date(b.rawPublishAt || b.updatedAt || 0).getTime() - new Date(a.rawPublishAt || a.updatedAt || 0).getTime();
+      }
+      if (sortBy === "oldest") {
+        return new Date(a.rawPublishAt || a.updatedAt || 0).getTime() - new Date(b.rawPublishAt || b.updatedAt || 0).getTime();
+      }
+      if (sortBy === "title_asc") {
+        return a.title.localeCompare(b.title);
+      }
+      if (sortBy === "title_desc") {
+        return b.title.localeCompare(a.title);
+      }
+      return 0;
+    });
+
+    return result;
+  }, [broadcasts, search, statusFilter, typeFilter, audienceFilter, dateFilter, sortBy]);
 
 
   const pageSize = Number(rowsPerPage) || 10;
@@ -122,7 +143,7 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [search, statusFilter, audienceFilter, dateFilter, rowsPerPage]);
+  }, [search, statusFilter, typeFilter, audienceFilter, dateFilter, sortBy, rowsPerPage]);
 
   const startIndex = totalItems === 0 ? 0 : (currentPage - 1) * pageSize;
   const endIndex = Math.min(startIndex + pageSize, totalItems);
@@ -258,13 +279,13 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
             Create, manage and send announcements to your audience
           </p>
         </div>
-        <Button onClick={onCreateOpen} className="w-full sm:w-auto gap-2 text-xs font-semibold h-10 px-4 shadow-sm rounded-xl">
+        <Button onClick={onCreateOpen} className="w-fit gap-2 text-xs font-semibold h-10 px-4 shadow-sm rounded-xl">
           <Plus className="w-4 h-4" /> Create Broadcast
         </Button>
       </div>
 
       {/* Filter and Search Action Toolbar */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3 w-full">
         {/* Search */}
         <div className="relative flex-1 min-w-[200px] w-full sm:w-auto">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -276,16 +297,29 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
           />
         </div>
 
-        {/* Status Select */}
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-[140px] h-9 text-xs rounded-xl">
+        {/* Filters Group */}
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-3 w-full sm:w-auto">
+          {/* Status Select */}
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-[160px] h-9 text-xs rounded-xl">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Status: All</SelectItem>
             <SelectItem value="published">Published</SelectItem>
             <SelectItem value="scheduled">Scheduled</SelectItem>
-       
+          </SelectContent>
+        </Select>
+
+        {/* Type Select */}
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-full sm:w-[160px] h-9 text-xs rounded-xl">
+            <SelectValue placeholder="Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Type: All</SelectItem>
+            <SelectItem value="circular">Circular</SelectItem>
+            <SelectItem value="document">Document</SelectItem>
           </SelectContent>
         </Select>
 
@@ -363,21 +397,24 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
           <PopoverTrigger asChild>
             <Button
               variant="outline"
-              className={`w-full sm:w-[170px] h-9 text-xs rounded-xl shadow-sm justify-start text-left font-normal px-3 bg-card border-input hover:bg-accent hover:text-accent-foreground ${
+              className={`w-full sm:w-[160px] h-9 text-xs rounded-xl shadow-sm justify-start text-left font-normal px-3 bg-card border-input hover:bg-accent hover:text-accent-foreground ${
                 !dateFilter && "text-muted-foreground"
               }`}
             >
               <Calendar className="mr-2 h-4 w-4" />
-              {dateFilter ? new Date(dateFilter).toLocaleDateString() : <span>Pick a date</span>}
+              {dateFilter ? new Date(dateFilter + "T12:00:00").toLocaleDateString() : <span>Pick a date</span>}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="end">
             <CalendarUI
               mode="single"
-              selected={dateFilter ? new Date(dateFilter) : undefined}
+              selected={dateFilter ? new Date(dateFilter + "T12:00:00") : undefined}
               onSelect={(date) => {
                 if (date) {
-                  setDateFilter(date.toISOString().split("T")[0]);
+                  const yyyy = date.getFullYear();
+                  const mm = String(date.getMonth() + 1).padStart(2, "0");
+                  const dd = String(date.getDate()).padStart(2, "0");
+                  setDateFilter(`${yyyy}-${mm}-${dd}`);
                 } else {
                   setDateFilter("");
                 }
@@ -387,23 +424,39 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
           </PopoverContent>
         </Popover>
 
+        {/* Sort Select */}
+        <Select value={sortBy} onValueChange={setSortBy}>
+          <SelectTrigger className="w-full sm:w-[160px] h-9 text-xs rounded-xl shadow-sm bg-card border-input">
+            <SelectValue placeholder="Sort By" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="latest">Latest</SelectItem>
+            <SelectItem value="oldest">Oldest</SelectItem>
+            <SelectItem value="title_asc">Title (A-Z)</SelectItem>
+            <SelectItem value="title_desc">Title (Z-A)</SelectItem>
+          </SelectContent>
+        </Select>
+
         {/* Clear Filters Button */}
-        {(search || statusFilter !== "all" || audienceFilter !== "all" || dateFilter) && (
+        {(search || statusFilter !== "all" || typeFilter !== "all" || audienceFilter !== "all" || dateFilter || sortBy !== "latest") && (
           <Button
             variant="ghost"
             size="sm"
             onClick={() => {
               setSearch("");
               setStatusFilter("all");
+              setTypeFilter("all");
               setAudienceFilter("all");
               setAudienceSearch("");
               setDateFilter("");
+              setSortBy("latest");
             }}
-            className="h-9 text-xs text-muted-foreground w-full sm:w-auto"
+            className="col-span-2 sm:col-span-1 h-9 text-xs text-muted-foreground w-full sm:w-auto"
           >
             Clear Filters
           </Button>
         )}
+        </div>
       </div>
 
       {/* Main Table Container */}
@@ -436,12 +489,19 @@ export const SuperAdminBroadcastView: React.FC<SuperAdminBroadcastViewProps> = (
                           {getTypeIcon(item.type)}
                         </div>
                         <div>
-                          <div
-                            onClick={() => onViewItem(item)}
-                            className="font-bold text-xs text-foreground hover:text-primary cursor-pointer transition-colors"
-                          >
-                            {item.title}
-                          </div>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div
+                                onClick={() => onViewItem(item)}
+                                className="font-bold text-xs text-foreground hover:text-primary cursor-pointer transition-colors truncate max-w-[250px] sm:max-w-[300px]"
+                              >
+                                {item.title}
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="max-w-[300px] text-xs break-words whitespace-pre-wrap">{item.title}</p>
+                            </TooltipContent>
+                          </Tooltip>
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                             <span className="text-[11px] text-muted-foreground font-mono">
                               ID: {item.id}
