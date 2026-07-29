@@ -499,10 +499,6 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
     buildDefaultBookingValues,
   ]);
 
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
-
   const submitSingleBooking = React.useCallback(
     async (values: BookingFormValues, productTypeId?: number) => {
       if (!leadId || !accountId || !vendorId || !userId) {
@@ -723,27 +719,35 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       description="Complete the booking details and attach all required documents."
       size="lg"
     > 
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit, (errors) => {
-            const errorKeys = Object.keys(errors);
-            if (errorKeys.length > 0) {
-              const firstErrorKey = errorKeys[0];
-              const el = document.querySelector(`[data-name="${firstErrorKey}"]`);
-              if (el) {
-                const isHidden = el.getBoundingClientRect().height === 0;
-                const targetScrollEl = isHidden ? (el.parentElement || el) : el;
-                targetScrollEl.scrollIntoView({ behavior: "smooth", block: "center" });
-                const focusable = el.querySelector("input, select, textarea, button");
-                if (focusable instanceof HTMLElement) {
-                  focusable.focus({ preventScroll: true });
+      {isLoading ? (
+        <div className="flex min-h-64 items-center justify-center p-6 text-sm text-muted-foreground">
+          <span className="inline-flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading booking details...
+          </span>
+        </div>
+      ) : (
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit, (errors) => {
+              const errorKeys = Object.keys(errors);
+              if (errorKeys.length > 0) {
+                const firstErrorKey = errorKeys[0];
+                const el = document.querySelector(`[data-name="${firstErrorKey}"]`);
+                if (el) {
+                  const isHidden = el.getBoundingClientRect().height === 0;
+                  const targetScrollEl = isHidden ? (el.parentElement || el) : el;
+                  targetScrollEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                  const focusable = el.querySelector("input, select, textarea, button");
+                  if (focusable instanceof HTMLElement) {
+                    focusable.focus({ preventScroll: true });
+                  }
                 }
               }
-            }
-          })}
-          className="space-y-6 p-5"
-        >
-          {productTypeTabs.length > 0 && (
+            })}
+            className="space-y-6 p-5"
+          >
+            {productTypeTabs.length > 0 && (
             <div className="rounded-2xl border border-border/60 bg-muted/30 p-3">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
@@ -1010,45 +1014,46 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
             )}
           />
 
-          <div className="flex justify-end space-x-3 pt-4 ">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleReset}
-              className="rounded-md"
-            >
-              Reset
-            </Button>
-            {isMultiGroupBooking && (
+            <div className="flex justify-end space-x-3 pt-4 ">
               <Button
                 type="button"
                 variant="outline"
+                onClick={handleReset}
+                className="rounded-md"
+              >
+                Reset
+              </Button>
+              {isMultiGroupBooking && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-md"
+                  disabled={isPending || form.formState.isSubmitting}
+                  onClick={handleSaveCurrentGroup}
+                >
+                  Save This Group
+                </Button>
+              )}
+              <Button
+                type="submit"
                 className="rounded-md"
                 disabled={isPending || form.formState.isSubmitting}
-                onClick={handleSaveCurrentGroup}
               >
-                Save This Group
+                {isPending ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Submitting...
+                  </span>
+                ) : isMultiGroupBooking ? (
+                  "Submit All Groups"
+                ) : (
+                  "Submit Booking"
+                )}
               </Button>
-            )}
-            <Button
-              type="submit"
-              className="rounded-md"
-              disabled={isPending || form.formState.isSubmitting} // <- mutate ka pending bhi disable karega
-            >
-              {isPending ? (
-                <span className="inline-flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Submitting...
-                </span>
-              ) : isMultiGroupBooking ? (
-                "Submit All Groups"
-              ) : (
-                "Submit Booking"
-              )}
-            </Button>
-          </div>
-        </form>
-      </Form>
+            </div>
+          </form>
+        </Form>
+      )}
 
       <SelectDocumentModal
         open={openSelectDocModal}
