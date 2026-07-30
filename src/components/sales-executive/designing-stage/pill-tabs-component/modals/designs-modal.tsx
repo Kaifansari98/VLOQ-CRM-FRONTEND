@@ -61,6 +61,12 @@ interface DesignsModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const getDefaultDesignValues = (): DesignsFormValues => ({
+  design_type: undefined,
+  product_type: "",
+  upload_pdf: [],
+});
+
 const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
   const { leadId, accountId } = useDetails();
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id)!;
@@ -72,12 +78,12 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
   const queryClient = useQueryClient();
   const form = useForm<DesignsFormValues>({
     resolver: zodResolver(designsSchema),
-    defaultValues: { upload_pdf: [], product_type: "" },
+    defaultValues: getDefaultDesignValues(),
   });
 
   React.useEffect(() => {
     if (!open) {
-      form.reset({ upload_pdf: [], product_type: "" }); 
+      form.reset(getDefaultDesignValues());
     }
   }, [open, form]);
 
@@ -91,7 +97,9 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
 
   React.useEffect(() => {
     if (uniqueProductTypes?.data && uniqueProductTypes.data.length === 1) {
-      form.setValue("product_type", uniqueProductTypes.data[0].type);
+      form.setValue("product_type", uniqueProductTypes.data[0].type, {
+        shouldValidate: true,
+      });
     }
   }, [uniqueProductTypes?.data, form]);
 
@@ -147,7 +155,7 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
         queryKey: ["designingStageCounts", vendorId, leadId],
       });
 
-      form.reset({ upload_pdf: [], product_type: "" });
+      form.reset(getDefaultDesignValues());
       onOpenChange(false);
     } catch (error: any) {
       const errorMessage =
@@ -167,7 +175,7 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
     <BaseModal
       open={open}
       onOpenChange={(state) => {
-        if (!state) form.reset();
+        if (!state) form.reset(getDefaultDesignValues());
         onOpenChange(state);
       }}
       title="Add Designs"
@@ -185,7 +193,13 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Design Type *</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select
+                      value={field.value}
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        form.clearErrors("design_type");
+                      }}
+                    >
                       <FormControl>
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select design type" />
@@ -209,11 +223,17 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Product Type *</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select product type" />
-                          </SelectTrigger>
+                      <Select
+                      value={field.value || ""}
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        form.clearErrors("product_type");
+                      }}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select product type" />
+                        </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           {uniqueProductTypes?.data && uniqueProductTypes.data.length > 0 ? (
@@ -260,7 +280,7 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
               type="button"
               variant="outline"
               onClick={() => {
-                form.reset();
+                form.reset(getDefaultDesignValues());
                 onOpenChange(false);
               }}
               disabled={submitDesignsMutation.isPending}
