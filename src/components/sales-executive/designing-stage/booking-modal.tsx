@@ -1799,6 +1799,9 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
         open={openSelectDocModal}
         onOpenChange={setOpenSelectDocModal}
         leadId={leadId!}
+        activeProductTypeId={
+          handlesLargeScaleProjects ? activeProductTypeId : undefined
+        }
         onSelectDocs={(files) => {
           const nextFiles =
             vendorCustomUserTypeMode === true

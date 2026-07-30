@@ -18,6 +18,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   leadId: number;
+  activeProductTypeId?: number | null;
   onSelectDocs?: (files: File[]) => void; // 👈 callback to booking modal
 }
 
@@ -27,6 +28,7 @@ export interface DocItem {
   signedUrl: string;
   type: "quotation" | "design";
   created_at?: string;
+  product_type_id?: number | null;
 }
 
 export interface LinkedDocMeta {
@@ -86,11 +88,15 @@ const SelectDocumentModal: React.FC<Props> = ({
   open,
   onOpenChange,
   leadId,
+  activeProductTypeId,
   onSelectDocs,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const vendorCustomUserTypeMode = useAppSelector(
     (state) => state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only
+  );
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
   );
 
   const { data: quotationData } = useQuotationDoc(vendorId!, leadId);
@@ -106,6 +112,7 @@ const SelectDocumentModal: React.FC<Props> = ({
       signedUrl: doc.signedUrl,
       type: "quotation" as const,
       created_at: doc.created_at,
+      product_type_id: doc.product_type_id ?? null,
     })) || [];
 
   const designs: DocItem[] =
@@ -115,10 +122,37 @@ const SelectDocumentModal: React.FC<Props> = ({
       signedUrl: doc.signedUrl,
       type: "design" as const,
       created_at: doc.created_at,
+      product_type_id: doc.product_type_id ?? null,
     })) || [];
 
-  const sortedQuotations = useMemo(() => sortLatestFirst(quotations), [quotations]);
-  const sortedDesigns = useMemo(() => sortLatestFirst(designs), [designs]);
+  const filteredQuotations = useMemo(
+    () =>
+      handlesLargeScaleProjects && activeProductTypeId
+        ? quotations.filter((doc) => doc.product_type_id === activeProductTypeId)
+        : quotations,
+    [activeProductTypeId, handlesLargeScaleProjects, quotations],
+  );
+
+  const filteredDesigns = useMemo(
+    () =>
+      handlesLargeScaleProjects && activeProductTypeId
+        ? designs.filter((doc) => doc.product_type_id === activeProductTypeId)
+        : designs,
+    [activeProductTypeId, designs, handlesLargeScaleProjects],
+  );
+
+  const sortedQuotations = useMemo(
+    () => sortLatestFirst(filteredQuotations),
+    [filteredQuotations],
+  );
+  const sortedDesigns = useMemo(
+    () => sortLatestFirst(filteredDesigns),
+    [filteredDesigns],
+  );
+
+  React.useEffect(() => {
+    setSelectedDocs([]);
+  }, [activeProductTypeId, open]);
 
   const linkedDocGroups = useMemo<LinkedDocGroup[]>(() => {
     const grouped = new Map<string, LinkedDocGroup>();
@@ -213,7 +247,11 @@ const SelectDocumentModal: React.FC<Props> = ({
       open={open}
       onOpenChange={onOpenChange}
       title="Select Documents"
-      description="Choose documents for the lead"
+      description={
+        handlesLargeScaleProjects && activeProductTypeId
+          ? "Choose documents for the selected item group"
+          : "Choose documents for the lead"
+      }
       size={vendorCustomUserTypeMode === true ? "lg" : "md"}
     >
       <div className="p-5 space-y-6">
@@ -342,7 +380,9 @@ const SelectDocumentModal: React.FC<Props> = ({
                 })
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  No quotation or design documents available
+                  {handlesLargeScaleProjects && activeProductTypeId
+                    ? "No quotation or design documents available for this item group"
+                    : "No quotation or design documents available"}
                 </p>
               )}
             </div>
@@ -394,7 +434,9 @@ const SelectDocumentModal: React.FC<Props> = ({
                   ))
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    No quotation documents available
+                    {handlesLargeScaleProjects && activeProductTypeId
+                      ? "No quotation documents available for this item group"
+                      : "No quotation documents available"}
                   </p>
                 )}
               </div>
@@ -446,7 +488,9 @@ const SelectDocumentModal: React.FC<Props> = ({
                   ))
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    No design documents available
+                    {handlesLargeScaleProjects && activeProductTypeId
+                      ? "No design documents available for this item group"
+                      : "No design documents available"}
                   </p>
                 )}
               </div>
