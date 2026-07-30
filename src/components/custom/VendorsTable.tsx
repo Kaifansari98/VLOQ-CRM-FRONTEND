@@ -58,6 +58,7 @@ type VendorRow = {
   is_crm_enabled: boolean;
   is_inventory_enabled: boolean;
   is_tracktrace_enabled: boolean;
+  is_scanpack_enabled: boolean;
   createdAt: string;
   logoUrl?: string;
   iconUrl?: string;
