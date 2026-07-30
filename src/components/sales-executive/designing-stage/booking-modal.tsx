@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useForm, SubmitHandler } from "react-hook-form";
+import { useForm, SubmitHandler, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
@@ -377,6 +377,9 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
     defaultValues: defaultBookingValues,
     mode: "onChange",
   });
+  const watchedValues = useWatch({
+    control: form.control,
+  });
 
   const buildDefaultBookingValues = React.useCallback(
     (assignTo = ""): BookingFormValues => ({
@@ -414,6 +417,23 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       totalAmount,
     };
   }, []);
+
+  const currentFormValues = React.useMemo<BookingFormValues>(
+    () => ({
+      ...defaultBookingValues,
+      ...watchedValues,
+      final_documents: watchedValues?.final_documents || [],
+      payment_details_document: watchedValues?.payment_details_document || [],
+      payment_text: watchedValues?.payment_text || "",
+      assign_to: watchedValues?.assign_to || "",
+      mrp_value: watchedValues?.mrp_value ?? 0,
+      basic_amount: watchedValues?.basic_amount ?? 0,
+      gst_percentage: watchedValues?.gst_percentage ?? 0,
+      amount_received: watchedValues?.amount_received ?? 0,
+      final_booking_amount: watchedValues?.final_booking_amount ?? 0,
+    }),
+    [watchedValues],
+  );
 
   const linkedDocsByKey = React.useMemo(() => {
     const map = new Map<string, { id: number; doc_og_name: string; signedUrl: string }>();
@@ -684,51 +704,57 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
   const areAllGroupsCompleted =
     productTypeTabs.length > 0 && completedGroupCount === productTypeTabs.length;
 
+  const getDraftSummary = React.useCallback(
+    (drafts: BookingDraftMap) => {
+      let totalBasicAmount = 0;
+      let totalGstAmount = 0;
+      let totalAmount = 0;
+
+      for (const tab of productTypeTabs) {
+        const values = drafts[tab.productTypeId];
+        if (!values) continue;
+
+        const amounts = getAmountsFromValues(values);
+        totalBasicAmount += amounts.basicAmount;
+        totalGstAmount += amounts.gstAmount;
+        totalAmount += amounts.totalAmount;
+      }
+
+      return {
+        totalBasicAmount: roundCurrency(totalBasicAmount),
+        totalGstAmount: roundCurrency(totalGstAmount),
+        totalAmount: roundCurrency(totalAmount),
+      };
+    },
+    [getAmountsFromValues, productTypeTabs],
+  );
+
   const currentGroupAmounts = React.useMemo(
-    () => getAmountsFromValues(getCurrentDraft()),
-    [getAmountsFromValues, getCurrentDraft],
+    () => getAmountsFromValues(currentFormValues),
+    [currentFormValues, getAmountsFromValues],
   );
 
   const aggregateSummary = React.useMemo(() => {
     const draftsSource =
       isMultiGroupBooking && activeProductTypeId
         ? {
-            ...bookingDrafts,
-            [activeProductTypeId]: getCurrentDraft(),
-          }
+          ...bookingDrafts,
+          [activeProductTypeId]: currentFormValues,
+        }
         : {
-            ...(activeProductTypeTab
-              ? { [activeProductTypeTab.productTypeId]: getCurrentDraft() }
-              : {}),
-          };
+          ...(activeProductTypeTab
+            ? { [activeProductTypeTab.productTypeId]: currentFormValues }
+            : {}),
+        };
 
-    let totalBasicAmount = 0;
-    let totalGstAmount = 0;
-    let totalAmount = 0;
-
-    for (const tab of productTypeTabs) {
-      const values = draftsSource[tab.productTypeId];
-      if (!values) continue;
-
-      const amounts = getAmountsFromValues(values);
-      totalBasicAmount += amounts.basicAmount;
-      totalGstAmount += amounts.gstAmount;
-      totalAmount += amounts.totalAmount;
-    }
-
-    return {
-      totalBasicAmount: roundCurrency(totalBasicAmount),
-      totalGstAmount: roundCurrency(totalGstAmount),
-      totalAmount: roundCurrency(totalAmount),
-    };
+    return getDraftSummary(draftsSource);
   }, [
     activeProductTypeId,
     activeProductTypeTab,
     bookingDrafts,
-    getAmountsFromValues,
-    getCurrentDraft,
+    currentFormValues,
+    getDraftSummary,
     isMultiGroupBooking,
-    productTypeTabs,
   ]);
 
   React.useEffect(() => {
@@ -1046,6 +1072,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
           ...bookingDrafts,
           [activeProductTypeTab.productTypeId]: values,
         };
+        const mergedDraftSummary = getDraftSummary(mergedDrafts);
 
         const incompleteTab = productTypeTabs.find(
           (tab) => !validateBookingValues(mergedDrafts[tab.productTypeId]),
@@ -1064,9 +1091,9 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
 
         setConfirmationSummary({
           drafts: mergedDrafts,
-          totalBasicAmount: aggregateSummary.totalBasicAmount,
-          totalGstAmount: aggregateSummary.totalGstAmount,
-          totalAmount: aggregateSummary.totalAmount,
+          totalBasicAmount: mergedDraftSummary.totalBasicAmount,
+          totalGstAmount: mergedDraftSummary.totalGstAmount,
+          totalAmount: mergedDraftSummary.totalAmount,
         });
         return;
       } else {
@@ -1531,103 +1558,6 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
               </p>
             )}
 
-            {handlesLargeScaleProjects && productTypeTabs.length > 0 && (
-              <div className="rounded-2xl border border-border/60 bg-background/80 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold">Bill Summary</p>
-                    <p className="text-xs text-muted-foreground">
-                      Product-type totals used to calculate the lead total amount.
-                    </p>
-                  </div>
-                  <Badge variant="outline" className="rounded-full">
-                    {completedGroupCount}/{productTypeTabs.length} groups saved
-                  </Badge>
-                </div>
-
-                <div className="mt-4 space-y-3">
-                  {productTypeTabs.map((tab) => {
-                    const values =
-                      bookingDrafts[tab.productTypeId] ||
-                      (tab.productTypeId === activeProductTypeId
-                        ? getCurrentDraft()
-                        : null);
-                    const amounts = values
-                      ? getAmountsFromValues(values)
-                      : {
-                          basicAmount: 0,
-                          gstPercentage: 0,
-                          gstAmount: 0,
-                          totalAmount: 0,
-                        };
-
-                    return (
-                      <div
-                        key={tab.productTypeId}
-                        className="grid grid-cols-1 gap-3 rounded-xl border border-border/50 px-4 py-3 md:grid-cols-4"
-                      >
-                        <div>
-                          <p className="text-xs text-muted-foreground">
-                            Item Group
-                          </p>
-                          <p className="font-medium">{tab.label}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Basic</p>
-                          <p className="font-medium">
-                            {formatCurrencyINR(amounts.basicAmount)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">
-                            GST Amount
-                          </p>
-                          <p className="font-medium">
-                            {formatCurrencyINR(amounts.gstAmount)}{" "}
-                            <span className="text-xs text-muted-foreground">
-                              ({amounts.gstPercentage}%)
-                            </span>
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Total</p>
-                          <p className="font-semibold">
-                            {formatCurrencyINR(amounts.totalAmount)}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="mt-4 grid gap-3 rounded-xl bg-muted/20 px-4 py-3 md:grid-cols-3">
-                  <div>
-                    <p className="text-xs text-muted-foreground">
-                      Total Basic Amount
-                    </p>
-                    <p className="font-semibold">
-                      {formatCurrencyINR(aggregateSummary.totalBasicAmount)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">
-                      Total GST Amount
-                    </p>
-                    <p className="font-semibold">
-                      {formatCurrencyINR(aggregateSummary.totalGstAmount)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">
-                      Grand Total
-                    </p>
-                    <p className="font-semibold">
-                      {formatCurrencyINR(aggregateSummary.totalAmount)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Payment Details fields */}
