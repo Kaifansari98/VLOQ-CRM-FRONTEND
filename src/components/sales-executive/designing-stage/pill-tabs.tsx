@@ -231,7 +231,7 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
 
       return {
         isReady: false,
-        tooltip: `Upload at least one design and one quotation for each product type before moving to booking. ${missingGroups.join("; ")}`,
+        tooltip: `Upload at least one design and one quotation for each Item Group before moving to booking. ${missingGroups.join("; ")}`,
       };
     }, [
       designDocs,
