@@ -16,7 +16,7 @@ interface BaseModalProps {
   title?: string;
   description?: string;
   children: ReactNode;
-  size?: "sm" | "md" | "lg" | "xl" | "smd";
+  size?: "sm" | "md" | "lg" | "xl" | "xxl" | "smd";
   icon?: ReactNode; // icon is optional
   modal?: boolean;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -22,13 +22,15 @@ import {
   Ban,
   UserPlus,
   UserPen,
+  Package,
 } from "lucide-react";
-import { DocumentBooking } from "@/types/booking-types";
+import { DocumentBooking, PaymentDetails } from "@/types/booking-types";
 import UploadFinalDoc from "./add-final-doc";
 import {
   useLeadById,
   useCheckSiteSupervisorAssigned,
 } from "@/hooks/useLeadsQueries";
+import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import DocumentCard from "@/components/utils/documentCard";
 import { Button } from "@/components/ui/button";
@@ -92,10 +94,18 @@ import { DocumentsUploader } from "@/components/document-upload";
 import { useUploadCSPBooking } from "@/hooks/useUploadCSPBooking";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 import CustomeTooltip from "@/components/custom-tooltip";
+import { formatCurrencyINR } from "@/utils/formatCurrency";
+import { cn } from "@/lib/utils";
 
 interface Props {
   leadId: number;
 }
+
+type BookingProductTypeGroup = {
+  productTypeId: number;
+  label: string;
+  instanceIds: number[];
+};
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -191,6 +201,9 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type,
   );
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
@@ -216,6 +229,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
     id: number;
     user_name: string;
   } | null>(null);
+  const [selectedBookingGroupId, setSelectedBookingGroupId] = useState<number | null>(null);
   const [cspUploadOpen, setCspUploadOpen] = useState(false);
   const [cspFiles, setCspFiles] = useState<File[]>([]);
 
@@ -229,6 +243,11 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   } = useBookingLeadById(vendorId, leadId);
   const { data, isLoading: loading } = useLeadById(leadId, vendorId, userId);
   const { data: leadStatus, error } = useLeadStatus(leadId, vendorId);
+  const { data: structureInstancesData } = useLeadProductStructureInstances(
+    leadId,
+    vendorId,
+    handlesLargeScaleProjects,
+  );
   const { data: siteSupervisorsData, isLoading: loadingSupervisors } =
     useSiteSupervisors(vendorId!);
   const { mutate: reassignSupervisor, isPending: reassigning } =
@@ -305,6 +324,9 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
     bookingDoneIsmDetails?.payment_images || [];
   const designDocs = designDocsData?.data?.documents || [];
   const siteSupervisors = siteSupervisorsData?.data?.site_supervisors || [];
+  const structureInstances: any[] = Array.isArray(structureInstancesData?.data)
+    ? structureInstancesData.data
+    : [];
   const currentSupervisor = leadData?.supervisors?.[0] || null;
   console.log("super visor :- ", currentSupervisor);
   const { data: siteSupervisorCheck } = useCheckSiteSupervisorAssigned(
@@ -345,6 +367,122 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
     leadData?.documents?.filter((doc) =>
       doc.s3Key.includes("booking-amount-payment-details"),
     ) || [];
+
+  const productTypeGroups = useMemo<BookingProductTypeGroup[]>(() => {
+    if (!handlesLargeScaleProjects) {
+      return [];
+    }
+
+    const groups = new Map<number, BookingProductTypeGroup>();
+
+    for (const instance of structureInstances) {
+      const productTypeId =
+        instance.productType?.id ??
+        instance.productItemCode?.productStructure?.productType?.id;
+      const productTypeLabel =
+        instance.productType?.type ||
+        instance.productItemCode?.productStructure?.productType?.type;
+
+      if (!productTypeId || !productTypeLabel) continue;
+
+      const existing = groups.get(productTypeId);
+      if (existing) {
+        existing.instanceIds.push(instance.id);
+        continue;
+      }
+
+      groups.set(productTypeId, {
+        productTypeId,
+        label: productTypeLabel,
+        instanceIds: [instance.id],
+      });
+    }
+
+    return Array.from(groups.values()).sort((a, b) =>
+      a.label.localeCompare(b.label),
+    );
+  }, [handlesLargeScaleProjects, structureInstances]);
+
+  const paymentByProductType = useMemo(() => {
+    const map = new Map<number, PaymentDetails>();
+    const payments = Array.isArray(leadData?.payments) ? leadData.payments : [];
+
+    for (const payment of payments) {
+      if (!payment?.product_type_id) continue;
+
+      const existing = map.get(payment.product_type_id);
+      const existingScore =
+        (existing?.total_amount != null ? 10 : 0) + (existing?.id ?? 0);
+      const nextScore =
+        (payment.total_amount != null ? 10 : 0) + (payment.id ?? 0);
+
+      if (!existing || nextScore >= existingScore) {
+        map.set(payment.product_type_id, payment);
+      }
+    }
+
+    return map;
+  }, [leadData?.payments]);
+
+  const billSummaryRows = useMemo(
+    () =>
+      productTypeGroups.map((group) => {
+        const payment = paymentByProductType.get(group.productTypeId);
+        return {
+          ...group,
+          basicAmount: Number(payment?.basic_amount || 0),
+          gstPercentage: Number(payment?.gst_percentage || 0),
+          gstAmount: Number(payment?.gst_amount || 0),
+          totalAmount: Number(payment?.total_amount || 0),
+          bookingAmountReceived: Number(payment?.amount || 0),
+        };
+      }),
+    [paymentByProductType, productTypeGroups],
+  );
+
+  const billSummaryTotals = useMemo(() => {
+    let totalBasicAmount = 0;
+    let totalGstAmount = 0;
+    let totalAmount = 0;
+
+    for (const row of billSummaryRows) {
+      totalBasicAmount += row.basicAmount;
+      totalGstAmount += row.gstAmount;
+      totalAmount += row.totalAmount;
+    }
+
+    return {
+      totalBasicAmount,
+      totalGstAmount,
+      totalAmount,
+    };
+  }, [billSummaryRows]);
+
+  const selectedBookingGroup = useMemo(
+    () =>
+      productTypeGroups.find(
+        (group) => group.productTypeId === selectedBookingGroupId,
+      ) ?? null,
+    [productTypeGroups, selectedBookingGroupId],
+  );
+
+  const selectedBookingGroupDocs = useMemo(() => {
+    if (!selectedBookingGroup) return [];
+    return finalDocs.filter(
+      (doc) => doc.product_type_id === selectedBookingGroup.productTypeId,
+    );
+  }, [finalDocs, selectedBookingGroup]);
+
+  const selectedBookingGroupPaymentProofs = useMemo(() => {
+    if (!selectedBookingGroup) return [];
+    return bookingPaymentDocs.filter(
+      (doc) => doc.product_type_id === selectedBookingGroup.productTypeId,
+    );
+  }, [bookingPaymentDocs, selectedBookingGroup]);
+
+  const selectedBookingGroupPayment = selectedBookingGroup
+    ? paymentByProductType.get(selectedBookingGroup.productTypeId) ?? null
+    : null;
 
   const status = leadStatus?.status;
 
@@ -873,9 +1011,14 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
       >
         <div className="space-y-6">
           {/* -------- Top Summary Cards -------- */}
-          <div className={`grid grid-cols-1 md:grid-cols-2 gap-5 pt-2 ${vendorCustomUserTypeMode ? "lg:grid-cols-3" : "lg:grid-cols-4"}`}>
+          {!handlesLargeScaleProjects && (
+          <div
+            className={`grid grid-cols-1 gap-5 pt-2 md:grid-cols-2 ${
+              vendorCustomUserTypeMode ? "lg:grid-cols-3" : "lg:grid-cols-4"
+            }`}
+          >
             {/* Site Supervisor / Assigned User — hidden for custom usertype vendors */}
-            {!vendorCustomUserTypeMode && (
+            {!vendorCustomUserTypeMode && !handlesLargeScaleProjects && (
             <div
               className="
     bg-white dark:bg-neutral-900
@@ -1115,9 +1258,123 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
               </div>
             )}
           </div>
+          )}
+
+          {handlesLargeScaleProjects && billSummaryRows.length > 0 && (
+            <>
+              <div className="rounded-2xl border border-border bg-white dark:bg-neutral-900 overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+                  <div>
+                    <h2 className="text-base font-semibold tracking-tight">
+                      Bill Summary
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                      Product-type totals captured during booking submission.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-5">
+                  <div className="overflow-hidden rounded-xl border border-border">
+                    <div className="grid grid-cols-[1.6fr_1fr_0.8fr_1fr_1fr] gap-3 border-b bg-muted/30 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <span>Item Group</span>
+                      <span>Basic Amount</span>
+                      <span>GST %</span>
+                      <span>GST Amount</span>
+                      <span>Total</span>
+                    </div>
+                    <div className="divide-y">
+                      {billSummaryRows.map((row) => (
+                        <div
+                          key={row.productTypeId}
+                          className="grid grid-cols-[1.6fr_1fr_0.8fr_1fr_1fr] gap-3 px-4 py-3 text-sm"
+                        >
+                          <span className="font-medium">{row.label}</span>
+                          <span>{formatCurrencyINR(row.basicAmount)}</span>
+                          <span>{row.gstPercentage}%</span>
+                          <span>{formatCurrencyINR(row.gstAmount)}</span>
+                          <span className="font-semibold">
+                            {formatCurrencyINR(row.totalAmount)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="ml-auto mt-4 w-full max-w-md rounded-xl border bg-muted/20 p-4">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Total Basic Amount</span>
+                      <span className="font-medium">
+                        {formatCurrencyINR(billSummaryTotals.totalBasicAmount)}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Total GST Amount</span>
+                      <span className="font-medium">
+                        {formatCurrencyINR(billSummaryTotals.totalGstAmount)}
+                      </span>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between border-t pt-3 text-base font-semibold">
+                      <span>Grand Total</span>
+                      <span>{formatCurrencyINR(billSummaryTotals.totalAmount)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-border bg-white dark:bg-neutral-900 overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+                  <div>
+                    <h2 className="text-base font-semibold tracking-tight">
+                      Product Types
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                      Open a product type to view its booking documents, received amount and payment proofs.
+                    </p>
+                  </div>
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {productTypeGroups.length}{" "}
+                    {productTypeGroups.length === 1 ? "Item Group" : "Item Groups"}
+                  </span>
+                </div>
+
+                <div className="grid gap-4 p-5 md:grid-cols-2">
+                  {billSummaryRows.map((row) => (
+                    <button
+                      key={row.productTypeId}
+                      type="button"
+                      onClick={() => setSelectedBookingGroupId(row.productTypeId)}
+                      className="group rounded-xl border bg-white/60 p-5 text-left transition-all hover:border-border/80 dark:bg-[#0a0a0a] min-w-0"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Package className="h-4 w-4" />
+                            <span className="text-xs font-medium uppercase tracking-wide">
+                              Item Group
+                            </span>
+                          </div>
+                          <p className="line-clamp-2 text-base font-semibold leading-tight break-words">
+                            {row.label}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Received: {formatCurrencyINR(row.bookingAmountReceived)}
+                          </p>
+                        </div>
+                        <div className="rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground">
+                          {formatCurrencyINR(row.totalAmount)}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
 
           {/* -------- Booking Stage – Current Site Photos -------- */}
-          {!cspLoading &&
+          {!handlesLargeScaleProjects &&
+            !cspLoading &&
             canViewBookingStageCurrentSitePhotos &&
             (bookingStagePhotos.length > 0 ||
               canUploadBookingStageCurrentSitePhotos) && (
@@ -1197,6 +1454,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
             )}
 
           {/* -------- Design Remarks -------- */}
+          {!handlesLargeScaleProjects && (
           <div className="space-y-3 mb-6">
             <h2 className="text-sm font-semibold tracking-tight">
               Design Remarks
@@ -1215,9 +1473,10 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
               {leadData?.payments?.[0].text || "N/A"}
             </div>
           </div>
+          )}
 
           {/* -------- Booking Documents Section -------- */}
-          {canViewBookingDocuments && (
+          {canViewBookingDocuments && !handlesLargeScaleProjects && (
             <div
               className="
       bg-[#fff] dark:bg-[#0a0a0a]
@@ -1302,7 +1561,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
             </div>
           )}
 
-          {canViewBookingPaymentProofs && (
+          {canViewBookingPaymentProofs && !handlesLargeScaleProjects && (
             <>
               {/* ----- Payment Proofs Card ----- */}
               <div
@@ -1370,7 +1629,8 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
             </>
           )}
           {/* -------- Consolidated Documents -------- */}
-          {(initialMeasurementDocs.length > 0 ||
+          {!handlesLargeScaleProjects &&
+            (initialMeasurementDocs.length > 0 ||
             initialCurrentSitePhotos.length > 0 ||
             bookingDoneIsmDocs.length > 0 ||
             bookingDoneIsmCurrentSite.length > 0 ||
@@ -1992,6 +2252,84 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
           </Form>
         </BaseModal>
       </motion.div>
+
+      <BaseModal
+        open={!!selectedBookingGroup}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedBookingGroupId(null);
+          }
+        }}
+        title={selectedBookingGroup?.label || "Booking Details"}
+        description="Product-type level booking details"
+        size="xxl"
+      >
+        {selectedBookingGroup && (
+          <div className="space-y-6 p-5">
+            <div className="rounded-xl border bg-muted/20 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Booking Amount Received
+              </p>
+              <p className="mt-2 text-2xl font-semibold">
+                {formatCurrencyINR(Number(selectedBookingGroupPayment?.amount || 0))}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-border overflow-hidden">
+              <div className="flex items-center gap-2 border-b border-border px-5 py-3">
+                <Images size={18} className="text-muted-foreground" />
+                <h3 className="text-base font-semibold tracking-tight">
+                  Booking Documents (Quotations + Design)
+                </h3>
+              </div>
+              <div className="p-5">
+                {selectedBookingGroupDocs.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {selectedBookingGroupDocs.map((doc) => (
+                      <DocumentCard key={doc.id} doc={doc} />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No booking documents found for this product type.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-border overflow-hidden">
+              <div className="flex items-center gap-2 border-b border-border px-5 py-3">
+                <Images size={18} className="text-muted-foreground" />
+                <h3 className="text-base font-semibold tracking-tight">
+                  Booking Payment Proofs
+                </h3>
+              </div>
+              <div className="p-5">
+                {selectedBookingGroupPaymentProofs.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {selectedBookingGroupPaymentProofs.map((doc, index) => (
+                      <ImageComponent
+                        key={doc.id}
+                        doc={{
+                          id: doc.id,
+                          doc_og_name: doc.originalName,
+                          signedUrl: doc.signedUrl,
+                        }}
+                        index={index}
+                        canDelete={false}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No booking payment proofs found for this product type.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </BaseModal>
 
       <Dialog open={reassignOpen} onOpenChange={setReassignOpen}>
         <DialogContent className="sm:max-w-md">
