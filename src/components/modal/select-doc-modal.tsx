@@ -29,6 +29,11 @@ export interface DocItem {
   created_at?: string;
 }
 
+export interface LinkedDocMeta {
+  docId: number;
+  docType: "quotation" | "design";
+}
+
 interface LinkedDocGroup {
   key: string;
   quotation?: DocItem;
@@ -480,6 +485,12 @@ const SelectDocumentModal: React.FC<Props> = ({
                   doc.doc_og_name,
                   mime
                 );
+                Object.assign(file, {
+                  __linkedDocMeta: {
+                    docId: doc.id,
+                    docType: doc.type,
+                  } satisfies LinkedDocMeta,
+                });
                 convertedFiles.push(file);
               }
 

@@ -27,6 +27,7 @@ import { CheckCircle2, CircleDashed, Loader2 } from "lucide-react";
 import {
   useMoveToBookingStage,
   useHeadSiteSupervisors,
+  useBookingLeadById,
 } from "@/hooks/booking-stage/use-booking";
 import { BookingPayload, assignTaskBooking } from "@/api/booking";
 import { LeadProductStructureInstance } from "@/api/leads";
@@ -34,6 +35,7 @@ import { createLeadChatRoom } from "@/api/lead-chats";
 import { toastManager } from "@/components/ui/toast";
 import { useISMPaymentInfo } from "@/hooks/booking-stage/use-booking";
 import SelectDocumentModal from "@/components/modal/select-doc-modal";
+import type { LinkedDocMeta } from "@/components/modal/select-doc-modal";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
@@ -44,9 +46,14 @@ import {
   useHeadSiteSupervisorFranchiseMapping,
   useFranchisesByVendorId,
 } from "@/api/franchise";
+import {
+  useDesignsDoc,
+  useQuotationDoc,
+} from "@/hooks/designing-stage/designing-leads-hooks";
 import AssignToPicker from "@/components/assign-to-picker";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { urlToFile } from "@/utils/file.utils";
 
 // ✅ Enhanced Zod schema with proper file validation
 const bookingSchema = z
@@ -152,6 +159,61 @@ type BookingProductTypeTab = {
   instanceTitles: string[];
 };
 type BookingDraftMap = Record<number, BookingFormValues>;
+type PersistedDocRef =
+  | {
+      kind: "linked-doc";
+      docId: number;
+      docType: "quotation" | "design";
+    }
+  | {
+      kind: "inline";
+      name: string;
+      mimeType: string;
+      dataUrl: string;
+    };
+type PersistedBookingDraft = Omit<
+  BookingFormValues,
+  "final_documents" | "payment_details_document"
+> & {
+  final_documents: PersistedDocRef[];
+  payment_details_document: PersistedDocRef[];
+};
+type PersistedBookingDraftMap = Record<number, PersistedBookingDraft>;
+
+const BOOKING_DRAFT_STORAGE_PREFIX = "booking-modal-drafts";
+
+const getBookingDraftStorageKey = (vendorId?: number, leadId?: number) =>
+  vendorId && leadId
+    ? `${BOOKING_DRAFT_STORAGE_PREFIX}:${vendorId}:${leadId}`
+    : null;
+
+const getMimeTypeFromFileName = (fileName: string) => {
+  const lower = fileName.toLowerCase();
+  if (lower.endsWith(".pdf")) return "application/pdf";
+  if (lower.endsWith(".png")) return "image/png";
+  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+  if (lower.endsWith(".ppt")) return "application/vnd.ms-powerpoint";
+  if (lower.endsWith(".pptx")) {
+    return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+  }
+  return "application/octet-stream";
+};
+
+const getLinkedDocMeta = (file: File): LinkedDocMeta | undefined =>
+  (file as File & { __linkedDocMeta?: LinkedDocMeta }).__linkedDocMeta;
+
+const dataUrlToFile = async (
+  dataUrl: string,
+  fileName: string,
+  mimeType: string,
+) => {
+  const response = await fetch(dataUrl);
+  const blob = await response.blob();
+  return new File([blob], fileName, {
+    type: mimeType,
+    lastModified: Date.now(),
+  });
+};
 
 interface LeadViewModalProps {
   open: boolean;
@@ -197,6 +259,9 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
     vendorId,
     open,
   );
+  const { data: quotationData } = useQuotationDoc(vendorId, leadId);
+  const { data: designData } = useDesignsDoc(vendorId ?? 0, leadId ?? 0);
+  useBookingLeadById(vendorId, leadId);
   const structureInstances: LeadProductStructureInstance[] = React.useMemo(
     () =>
       Array.isArray(structureInstancesData?.data)
@@ -299,6 +364,30 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
     [form],
   );
 
+  const linkedDocsByKey = React.useMemo(() => {
+    const map = new Map<string, { id: number; doc_og_name: string; signedUrl: string }>();
+    const quotations = quotationData?.data?.documents || [];
+    const designs = designData?.data?.documents || [];
+
+    for (const doc of quotations) {
+      map.set(`quotation:${doc.id}`, {
+        id: doc.id,
+        doc_og_name: doc.doc_og_name,
+        signedUrl: doc.signedUrl,
+      });
+    }
+
+    for (const doc of designs) {
+      map.set(`design:${doc.id}`, {
+        id: doc.id,
+        doc_og_name: doc.doc_og_name,
+        signedUrl: doc.signedUrl,
+      });
+    }
+
+    return map;
+  }, [designData?.data?.documents, quotationData?.data?.documents]);
+
   const validateBookingValues = React.useCallback(
     (values: BookingFormValues) => {
       const result = bookingSchema.safeParse(values);
@@ -347,6 +436,96 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       });
     },
     [],
+  );
+
+  const serializeFiles = React.useCallback(async (files: File[]) => {
+    const serialized = await Promise.all(
+      files.map(async (file): Promise<PersistedDocRef> => {
+        const linkedMeta = getLinkedDocMeta(file);
+        if (linkedMeta) {
+          return {
+            kind: "linked-doc",
+            docId: linkedMeta.docId,
+            docType: linkedMeta.docType,
+          };
+        }
+
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result));
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(file);
+        });
+
+        return {
+          kind: "inline",
+          name: file.name,
+          mimeType: file.type || getMimeTypeFromFileName(file.name),
+          dataUrl,
+        };
+      }),
+    );
+
+    return serialized;
+  }, []);
+
+  const persistDraftsToStorage = React.useCallback(
+    async (drafts: BookingDraftMap) => {
+      const storageKey = getBookingDraftStorageKey(vendorId, leadId);
+      if (!storageKey || typeof window === "undefined") return;
+
+      const entries = await Promise.all(
+        Object.entries(drafts).map(async ([productTypeId, values]) => [
+          productTypeId,
+          {
+            ...values,
+            final_documents: await serializeFiles(values.final_documents || []),
+            payment_details_document: await serializeFiles(
+              values.payment_details_document || [],
+            ),
+          },
+        ]),
+      );
+
+      window.localStorage.setItem(
+        storageKey,
+        JSON.stringify(Object.fromEntries(entries)),
+      );
+    },
+    [leadId, serializeFiles, vendorId],
+  );
+
+  const hydratePersistedFiles = React.useCallback(
+    async (refs: PersistedDocRef[]) => {
+      const restored = await Promise.all(
+        refs.map(async (ref) => {
+          if (ref.kind === "linked-doc") {
+            const match = linkedDocsByKey.get(`${ref.docType}:${ref.docId}`);
+            if (!match) {
+              return null;
+            }
+
+            const file = await urlToFile(
+              match.signedUrl,
+              match.doc_og_name,
+              getMimeTypeFromFileName(match.doc_og_name),
+            );
+            Object.assign(file, {
+              __linkedDocMeta: {
+                docId: ref.docId,
+                docType: ref.docType,
+              } satisfies LinkedDocMeta,
+            });
+            return file;
+          }
+
+          return dataUrlToFile(ref.dataUrl, ref.name, ref.mimeType);
+        }),
+      );
+
+      return restored.filter((file): file is File => file instanceof File);
+    },
+    [linkedDocsByKey],
   );
 
   const tabCompletion = React.useMemo(() => {
@@ -406,6 +585,71 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
         : productTypeTabs[0].productTypeId,
     );
   }, [buildDefaultBookingValues, form, open, productTypeTabs]);
+
+  React.useEffect(() => {
+    const storageKey = getBookingDraftStorageKey(vendorId, leadId);
+    if (
+      !open ||
+      !storageKey ||
+      typeof window === "undefined" ||
+      productTypeTabs.length === 0
+    ) {
+      return;
+    }
+
+    const rawDrafts = window.localStorage.getItem(storageKey);
+    if (!rawDrafts) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    const hydrateDrafts = async () => {
+      try {
+        const parsed = JSON.parse(rawDrafts) as PersistedBookingDraftMap;
+        const nextDrafts: BookingDraftMap = {};
+
+        for (const tab of productTypeTabs) {
+          const persisted = parsed[tab.productTypeId];
+          if (!persisted) continue;
+
+          nextDrafts[tab.productTypeId] = {
+            ...defaultBookingValues,
+            ...persisted,
+            final_documents: await hydratePersistedFiles(
+              persisted.final_documents || [],
+            ),
+            payment_details_document: await hydratePersistedFiles(
+              persisted.payment_details_document || [],
+            ),
+          };
+        }
+
+        if (isCancelled || Object.keys(nextDrafts).length === 0) {
+          return;
+        }
+
+        setBookingDrafts((prev) => ({
+          ...prev,
+          ...nextDrafts,
+        }));
+      } catch (error) {
+        console.error("Failed to hydrate booking drafts", error);
+      }
+    };
+
+    void hydrateDrafts();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [
+    hydratePersistedFiles,
+    leadId,
+    open,
+    productTypeTabs,
+    vendorId,
+  ]);
 
   React.useEffect(() => {
     if (!open || !activeProductTypeId || productTypeTabs.length === 0) return;
@@ -613,6 +857,11 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
         for (const tab of productTypeTabs) {
           await submitSingleBooking(mergedDrafts[tab.productTypeId], tab.productTypeId);
         }
+
+        const storageKey = getBookingDraftStorageKey(vendorId, leadId);
+        if (storageKey && typeof window !== "undefined") {
+          window.localStorage.removeItem(storageKey);
+        }
       } else {
         await submitSingleBooking(
           values,
@@ -669,6 +918,10 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       const nextValues = buildDefaultBookingValues(assignTo);
       form.reset(nextValues);
       persistDraft(activeProductTypeId, nextValues);
+      void persistDraftsToStorage({
+        ...bookingDrafts,
+        [activeProductTypeId]: nextValues,
+      });
       return;
     }
 
@@ -678,7 +931,13 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
   const handleTabChange = (nextProductTypeId: number) => {
     if (nextProductTypeId === activeProductTypeId) return;
     if (activeProductTypeId) {
-      persistDraft(activeProductTypeId, getCurrentDraft());
+      const currentDraft = getCurrentDraft();
+      const nextDrafts = {
+        ...bookingDrafts,
+        [activeProductTypeId]: currentDraft,
+      };
+      persistDraft(activeProductTypeId, currentDraft);
+      void persistDraftsToStorage(nextDrafts);
     }
     setActiveProductTypeId(nextProductTypeId);
   };
@@ -691,6 +950,10 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
 
     const values = getCurrentDraft();
     persistDraft(activeProductTypeTab.productTypeId, values);
+    await persistDraftsToStorage({
+      ...bookingDrafts,
+      [activeProductTypeTab.productTypeId]: values,
+    });
 
     const nextIncompleteTab = productTypeTabs.find(
       (tab) =>
@@ -1068,6 +1331,19 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
           form.setValue("final_documents", nextFiles, {
             shouldValidate: true,
           });
+
+          if (isMultiGroupBooking && activeProductTypeId) {
+            const nextValues = {
+              ...getCurrentDraft(),
+              final_documents: nextFiles,
+            };
+            const nextDrafts = {
+              ...bookingDrafts,
+              [activeProductTypeId]: nextValues,
+            };
+            persistDraft(activeProductTypeId, nextValues);
+            void persistDraftsToStorage(nextDrafts);
+          }
         }}
       />
     </BaseModal>
