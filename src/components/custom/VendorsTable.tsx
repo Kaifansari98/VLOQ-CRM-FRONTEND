@@ -135,6 +135,7 @@ export default function VendorsTable({
       is_crm_enabled: item.is_crm_enabled !== false,
       is_inventory_enabled: item.is_inventory_enabled === true,
       is_tracktrace_enabled: item.is_tracktrace_enabled === true,
+      is_scanpack_enabled: item.is_scanpack_enabled === true,
       createdAt: item.createdAt ?? "",
       logoUrl: item.logoUrl ?? "",
       iconUrl: item.iconUrl ?? "",
@@ -268,6 +269,29 @@ export default function VendorsTable({
         ),
         cell: ({ row }) => {
           const enabled = row.getValue("is_tracktrace_enabled") as boolean;
+          return (
+            <Badge
+              variant={enabled ? "default" : "secondary"}
+              className={cn(
+                "text-xs",
+                enabled
+                  ? "bg-violet-500/10 text-violet-600 border border-violet-200 hover:bg-violet-500/10"
+                  : "",
+              )}
+            >
+              {enabled ? "Enabled" : "Disabled"}
+            </Badge>
+          );
+        },
+        enableSorting: false,
+      },
+      {
+        accessorKey: "is_scanpack_enabled",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Scan & Pack" />
+        ),
+        cell: ({ row }) => {
+          const enabled = row.getValue("is_scanpack_enabled") as boolean;
           return (
             <Badge
               variant={enabled ? "default" : "secondary"}

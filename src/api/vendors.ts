@@ -17,6 +17,7 @@ export interface VendorListItem {
   is_crm_enabled: boolean | null;
   is_inventory_enabled: boolean | null;
   is_tracktrace_enabled: boolean | null;
+  is_scanpack_enabled: boolean | null;
   is_this_vendor_is_custom_usertype_only: boolean | null;
   createdAt: string | null;
   updatedAt: string | null;

@@ -81,6 +81,7 @@ const createVendorSchema = z.object({
   is_crm_enabled: z.boolean(),
   is_inventory_enabled: z.boolean(),
   is_tracktrace_enabled: z.boolean(),
+  is_scanpack_enabled: z.boolean(),
   status: z.enum(["active", "inactive"]),
   gst_no: z
     .string()
@@ -139,14 +140,15 @@ export default function VendorsPage() {
     is_crm_enabled: true,
     is_inventory_enabled: false,
     is_tracktrace_enabled: false,
+    is_scanpack_enabled: false,
     status: "active",
     gst_no: "",
-toll_free_no: "",
-website_link: "",
-tag_line: "",
-address: "",
-pincode: "",
-city: "",
+    toll_free_no: "",
+    website_link: "",
+    tag_line: "",
+    address: "",
+    pincode: "",
+    city: "",
   });
   const [fieldErrors, setFieldErrors] = React.useState<CreateVendorFieldErrors>({});
   const [logoFile, setLogoFile] = React.useState<File[]>([]);
@@ -181,18 +183,18 @@ city: "",
   );
 
   const handleStateChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-  const value = event.target.value;
+    const value = event.target.value;
 
-  setForm((prev) => ({
-    ...prev,
-    state_id: value ? Number(value) : null,
-  }));
+    setForm((prev) => ({
+      ...prev,
+      state_id: value ? Number(value) : null,
+    }));
 
-  setFieldErrors((prev) => ({
-    ...prev,
-    state_id: undefined,
-  }));
-};
+    setFieldErrors((prev) => ({
+      ...prev,
+      state_id: undefined,
+    }));
+  };
 
   const handleFieldChange =
     (field: keyof typeof form) =>
@@ -224,7 +226,8 @@ city: "",
         | "handlesLargeScaleProjects"
         | "is_crm_enabled"
         | "is_inventory_enabled"
-        | "is_tracktrace_enabled",
+        | "is_tracktrace_enabled"
+        | "is_scanpack_enabled",
       value: boolean,
     ) =>
       () => {
@@ -246,6 +249,7 @@ city: "",
       is_crm_enabled: true,
       is_inventory_enabled: false,
       is_tracktrace_enabled: false,
+      is_scanpack_enabled: false,
       status: "active",
       gst_no: "",
       toll_free_no: "",
@@ -268,6 +272,8 @@ city: "",
     setOpenCreateVendor(true);
   };
 
+  
+
   const handleOpenConfigureVendor = React.useCallback(
     (row: {
       id: number;
@@ -281,6 +287,7 @@ city: "",
       is_crm_enabled: boolean;
       is_inventory_enabled: boolean;
       is_tracktrace_enabled: boolean;
+      is_scanpack_enabled: boolean;
       status?: string | null;
       gst_no?: string | null;
       toll_free_no?: string | null;
@@ -303,6 +310,7 @@ city: "",
         is_crm_enabled: row.is_crm_enabled,
         is_inventory_enabled: row.is_inventory_enabled,
         is_tracktrace_enabled: row.is_tracktrace_enabled,
+        is_scanpack_enabled: row.is_scanpack_enabled,
         status: (row.status || "active").toLowerCase() as "active" | "inactive",
         gst_no: row.gst_no || "",
         toll_free_no: row.toll_free_no || "",
@@ -362,6 +370,7 @@ city: "",
         formData.append("is_crm_enabled", String(validatedForm.data.is_crm_enabled));
         formData.append("is_inventory_enabled", String(validatedForm.data.is_inventory_enabled));
         formData.append("is_tracktrace_enabled", String(validatedForm.data.is_tracktrace_enabled));
+        formData.append("is_scanpack_enabled", String(validatedForm.data.is_scanpack_enabled));
         formData.append("gst_no", validatedForm.data.gst_no || "");
         formData.append("toll_free_no", validatedForm.data.toll_free_no || "");
         formData.append("website_link", validatedForm.data.website_link || "");
@@ -404,6 +413,7 @@ city: "",
         formData.append("is_crm_enabled", String(validatedForm.data.is_crm_enabled));
         formData.append("is_inventory_enabled", String(validatedForm.data.is_inventory_enabled));
         formData.append("is_tracktrace_enabled", String(validatedForm.data.is_tracktrace_enabled));
+        formData.append("is_scanpack_enabled", String(validatedForm.data.is_scanpack_enabled));
         formData.append("gst_no", validatedForm.data.gst_no || "");
         formData.append("toll_free_no", validatedForm.data.toll_free_no || "");
         formData.append("website_link", validatedForm.data.website_link || "");
@@ -604,111 +614,111 @@ city: "",
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-  <div className="space-y-2">
-    <Label htmlFor="gst_no">GST No</Label>
-    <Input
-      id="gst_no"
-      value={form.gst_no}
-      onChange={handleFieldChange("gst_no")}
-      placeholder="27AAZFA7533R1ZC"
-      maxLength={15}
-    />
-    {fieldErrors.gst_no && (
-      <p className="text-xs text-destructive">{fieldErrors.gst_no}</p>
-    )}
-  </div>
+            <div className="space-y-2">
+              <Label htmlFor="gst_no">GST No</Label>
+              <Input
+                id="gst_no"
+                value={form.gst_no}
+                onChange={handleFieldChange("gst_no")}
+                placeholder="27AAZFA7533R1ZC"
+                maxLength={15}
+              />
+              {fieldErrors.gst_no && (
+                <p className="text-xs text-destructive">{fieldErrors.gst_no}</p>
+              )}
+            </div>
 
-  <div className="space-y-2">
-    <Label htmlFor="toll_free_no">Toll Free</Label>
-    <Input
-      id="toll_free_no"
-      value={form.toll_free_no}
-      onChange={handleFieldChange("toll_free_no")}
-      placeholder="18002674949"
-    />
-  </div>
+            <div className="space-y-2">
+              <Label htmlFor="toll_free_no">Toll Free</Label>
+              <Input
+                id="toll_free_no"
+                value={form.toll_free_no}
+                onChange={handleFieldChange("toll_free_no")}
+                placeholder="18002674949"
+              />
+            </div>
 
-  <div className="space-y-2">
-    <Label htmlFor="website_link">Website Link</Label>
-    <Input
-      id="website_link"
-      value={form.website_link}
-      onChange={handleFieldChange("website_link")}
-      placeholder="www.adarshindia.in"
-    />
-    {fieldErrors.website_link && (
-      <p className="text-xs text-destructive">{fieldErrors.website_link}</p>
-    )}
-  </div>
+            <div className="space-y-2">
+              <Label htmlFor="website_link">Website Link</Label>
+              <Input
+                id="website_link"
+                value={form.website_link}
+                onChange={handleFieldChange("website_link")}
+                placeholder="www.adarshindia.in"
+              />
+              {fieldErrors.website_link && (
+                <p className="text-xs text-destructive">{fieldErrors.website_link}</p>
+              )}
+            </div>
 
-  <div className="space-y-2">
-    <Label htmlFor="tag_line">Tag Line</Label>
-    <Input
-      id="tag_line"
-      value={form.tag_line}
-      onChange={handleFieldChange("tag_line")}
-      placeholder="Design. Build. Deliver"
-    />
-  </div>
-</div>
+            <div className="space-y-2">
+              <Label htmlFor="tag_line">Tag Line</Label>
+              <Input
+                id="tag_line"
+                value={form.tag_line}
+                onChange={handleFieldChange("tag_line")}
+                placeholder="Design. Build. Deliver"
+              />
+            </div>
+          </div>
 
-<div className="space-y-2">
-  <Label htmlFor="address">Address</Label>
-  <Input
-    id="address"
-    value={form.address}
-    onChange={handleFieldChange("address")}
-    placeholder="280 & 283, Bilavali"
-  />
-</div>
+          <div className="space-y-2">
+            <Label htmlFor="address">Address</Label>
+            <Input
+              id="address"
+              value={form.address}
+              onChange={handleFieldChange("address")}
+              placeholder="280 & 283, Bilavali"
+            />
+          </div>
 
-<div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-  <div className="space-y-2">
-    <Label htmlFor="pincode">Pincode</Label>
-    <Input
-      id="pincode"
-      value={form.pincode}
-      onChange={handleFieldChange("pincode")}
-      placeholder="421312"
-      maxLength={6}
-    />
-    {fieldErrors.pincode && (
-      <p className="text-xs text-destructive">{fieldErrors.pincode}</p>
-    )}
-  </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="pincode">Pincode</Label>
+              <Input
+                id="pincode"
+                value={form.pincode}
+                onChange={handleFieldChange("pincode")}
+                placeholder="421312"
+                maxLength={6}
+              />
+              {fieldErrors.pincode && (
+                <p className="text-xs text-destructive">{fieldErrors.pincode}</p>
+              )}
+            </div>
 
-  <div className="space-y-2">
-    <Label htmlFor="city">City</Label>
-    <Input
-      id="city"
-      value={form.city}
-      onChange={handleFieldChange("city")}
-      placeholder="Palghar"
-    />
-  </div>
+            <div className="space-y-2">
+              <Label htmlFor="city">City</Label>
+              <Input
+                id="city"
+                value={form.city}
+                onChange={handleFieldChange("city")}
+                placeholder="Palghar"
+              />
+            </div>
 
-  <div className="space-y-2">
-    <Label htmlFor="state_id">State</Label>
-   <select
-  id="state_id"
-  value={form.state_id || ""}
-  onChange={handleStateChange}
-  className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
->
-  <option value="">Select State</option>
+            <div className="space-y-2">
+              <Label htmlFor="state_id">State</Label>
+              <select
+                id="state_id"
+                value={form.state_id || ""}
+                onChange={handleStateChange}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="">Select State</option>
 
-  {states.map((state) => (
-    <option key={state.id} value={state.id}>
-      {state.name}
-    </option>
-  ))}
-</select>
+                {states.map((state) => (
+                  <option key={state.id} value={state.id}>
+                    {state.name}
+                  </option>
+                ))}
+              </select>
 
-    {fieldErrors.state_id && (
-      <p className="text-xs text-destructive">{fieldErrors.state_id}</p>
-    )}
-  </div>
-</div>
+              {fieldErrors.state_id && (
+                <p className="text-xs text-destructive">{fieldErrors.state_id}</p>
+              )}
+            </div>
+          </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
@@ -814,25 +824,50 @@ city: "",
                 ))}
               </div>
             </div>
+            <div className="grid gap-2">
+              <Label>Scan Pack Enabled</Label>
+              <div className="flex items-center gap-6 pt-1">
+                {[
+                  { label: "Yes", value: true },
+                  { label: "No", value: false },
+                ].map((option) => (
+                  <label
+                    key={`scanpack-${String(option.value)}`}
+                    className="flex items-center gap-2 cursor-pointer"
+                    htmlFor={`scanpack-${String(option.value)}`}
+                  >
+                    <Checkbox
+                      id={`scanpack-${String(option.value)}`}
+                      checked={form.is_scanpack_enabled === option.value}
+                      onCheckedChange={handleBooleanFieldChange(
+                        "is_scanpack_enabled",
+                        option.value,
+                      )}
+                    />
+                    <span className="text-sm font-medium">{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="status">Status</Label>
-              <Select
-                value={form.status}
-                onValueChange={(value: "active" | "inactive") =>
-                  setForm((prev) => ({ ...prev, status: value }))
-                }
-              >
-                <SelectTrigger id="status" className="w-full bg-background border-border">
-                  <SelectValue placeholder="Select Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="grid gap-2">
+            <Label htmlFor="status">Status</Label>
+            <Select
+              value={form.status}
+              onValueChange={(value: "active" | "inactive") =>
+                setForm((prev) => ({ ...prev, status: value }))
+              }
+            >
+              <SelectTrigger id="status" className="w-full bg-background border-border">
+                <SelectValue placeholder="Select Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
