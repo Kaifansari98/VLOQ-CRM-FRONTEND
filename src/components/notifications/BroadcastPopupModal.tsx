@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import {
   useBroadcasts,
@@ -27,9 +27,12 @@ const POPUP_DURATION_SECONDS = 15;
 
 export function BroadcastPopupModal() {
   const router = useRouter();
+  const pathname = usePathname();
   const user = useAppSelector((state) => state.auth.user);
   const userId = user?.id;
   const vendorId = user?.vendor_id;
+
+  const isBroadcastPage = pathname?.startsWith("/dashboard/broadcast") || pathname?.includes("/broadcast");
 
   const isSuperAdmin = useMemo(() => {
     if (!user) return false;
@@ -83,11 +86,22 @@ export function BroadcastPopupModal() {
 
   // Find candidate unread & undismissed published broadcast
   useEffect(() => {
-    if (isSuperAdmin || !broadcasts || broadcasts.length === 0 || !userId) return;
+    if (isSuperAdmin || isBroadcastPage || !broadcasts || broadcasts.length === 0 || !userId) {
+      if (activeBroadcast) setActiveBroadcast(null);
+      return;
+    }
 
-    const publishedBroadcasts = broadcasts.filter(
-      (b) => b.status === "published"
-    );
+    const publishedBroadcasts = broadcasts
+      .filter((b) => b.status === "published")
+      .slice()
+      .sort((a, b) => {
+        if (a.numericId && b.numericId) {
+          return a.numericId - b.numericId;
+        }
+        const timeA = new Date(a.rawPublishAt || a.updatedAt || a.publishDate || 0).getTime();
+        const timeB = new Date(b.rawPublishAt || b.updatedAt || b.publishDate || 0).getTime();
+        return timeA - timeB;
+      });
 
     const pendingBroadcast = publishedBroadcasts.find((b) => {
       const numIdStr = String(b.numericId ?? "");
@@ -108,7 +122,7 @@ export function BroadcastPopupModal() {
     } else {
       setActiveBroadcast(null);
     }
-  }, [broadcasts, readIds, dismissedIds, userId, activeBroadcast, isSuperAdmin]);
+  }, [broadcasts, readIds, dismissedIds, userId, activeBroadcast, isSuperAdmin, isBroadcastPage]);
 
   const handleDismiss = () => {
     if (!activeBroadcast || !userId) return;
@@ -127,14 +141,14 @@ export function BroadcastPopupModal() {
 
   // 15-second Countdown timer
   useEffect(() => {
-    if (isSuperAdmin || !activeBroadcast) return;
+    if (isSuperAdmin || isBroadcastPage || !activeBroadcast) return;
 
     const interval = setInterval(() => {
       setTimeLeft((prev) => prev - 1);
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [activeBroadcast, isSuperAdmin]);
+  }, [activeBroadcast, isSuperAdmin, isBroadcastPage]);
 
   // Auto-dismiss when timer reaches 0
   useEffect(() => {
@@ -158,7 +172,7 @@ export function BroadcastPopupModal() {
     router.push(`/dashboard/broadcast?id=${targetId}`);
   };
 
-  if (isSuperAdmin || !activeBroadcast || !user) return null;
+  if (isSuperAdmin || isBroadcastPage || !activeBroadcast || !user) return null;
 
   const contentSnippet = stripHtmlAndEntities(activeBroadcast.content || "");
   const timerPercentage = (timeLeft / POPUP_DURATION_SECONDS) * 100;
