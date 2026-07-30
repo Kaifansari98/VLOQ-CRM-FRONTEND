@@ -270,7 +270,7 @@ const SelectDocumentModal: React.FC<Props> = ({
           ? "Choose documents for the selected item group"
           : "Choose documents for the lead"
       }
-      size={vendorCustomUserTypeMode === true ? "lg" : "md"}
+      size={vendorCustomUserTypeMode === true ? "xl" : "md"}
     >
       <div className="p-5 space-y-6">
         {vendorCustomUserTypeMode === true ? (

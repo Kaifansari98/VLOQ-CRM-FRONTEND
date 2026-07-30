@@ -368,6 +368,7 @@ export interface DesignsDocument {
   account_id: number;
   lead_id: number;
   vendor_id: number;
+  product_type_id?: number | null;
   product_structure_instance_id?: number | null;
   signedUrl: string;
   documentType: DocumentType;
