@@ -533,21 +533,17 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
 
     for (const tab of productTypeTabs) {
       const values =
-        tab.productTypeId === activeProductTypeId
-          ? getCurrentDraft()
-          : bookingDrafts[tab.productTypeId] ||
-            buildDefaultBookingValues(form.getValues("assign_to") || "");
+        bookingDrafts[tab.productTypeId] ||
+        buildDefaultBookingValues(form.getValues("assign_to") || "");
 
       completion.set(tab.productTypeId, validateBookingValues(values));
     }
 
     return completion;
   }, [
-    activeProductTypeId,
     bookingDrafts,
     buildDefaultBookingValues,
     form,
-    getCurrentDraft,
     productTypeTabs,
     validateBookingValues,
   ]);
