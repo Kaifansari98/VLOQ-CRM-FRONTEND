@@ -10,6 +10,10 @@ export interface BookingPayload {
   product_type_id?: number;
   client_id?: number;
   bookingAmount: number;
+  basic_amount?: number;
+  gst_percentage?: number;
+  gst_amount?: number;
+  total_amount?: number;
   bookingAmountPaymentDetailsText: string;
   finalBookingAmount: number;
   siteSupervisorId?: number;
@@ -31,6 +35,18 @@ export const moveToBookingStage = async (payload: BookingPayload) => {
     formData.append("client_id", payload.client_id.toString());
   }
   formData.append("bookingAmount", payload.bookingAmount.toString());
+  if (payload.basic_amount !== undefined) {
+    formData.append("basic_amount", payload.basic_amount.toString());
+  }
+  if (payload.gst_percentage !== undefined) {
+    formData.append("gst_percentage", payload.gst_percentage.toString());
+  }
+  if (payload.gst_amount !== undefined) {
+    formData.append("gst_amount", payload.gst_amount.toString());
+  }
+  if (payload.total_amount !== undefined) {
+    formData.append("total_amount", payload.total_amount.toString());
+  }
   formData.append("mrpValue", payload.mrpValue.toString());
   formData.append(
     "bookingAmountPaymentDetailsText",

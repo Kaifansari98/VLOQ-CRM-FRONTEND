@@ -126,6 +126,11 @@ export interface SiteSuperVisor {
 
 export interface PaymentDetails {
   amount: number;
+  basic_amount?: number | null;
+  gst_percentage?: number | null;
+  gst_amount?: number | null;
+  total_amount?: number | null;
+  product_type_id?: number | null;
   payment_text: string;
   text: string;
 }
