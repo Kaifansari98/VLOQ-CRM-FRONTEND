@@ -558,6 +558,8 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
         .length,
     [productTypeTabs, tabCompletion],
   );
+  const areAllGroupsCompleted =
+    productTypeTabs.length > 0 && completedGroupCount === productTypeTabs.length;
 
   React.useEffect(() => {
     if (!open) return;
@@ -1288,31 +1290,33 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
               </Button>
               {isMultiGroupBooking && (
                 <Button
-                  type="button"
+                  type={areAllGroupsCompleted ? "submit" : "button"}
                   variant="outline"
                   className="rounded-md"
                   disabled={isPending || form.formState.isSubmitting}
-                  onClick={handleSaveCurrentGroup}
+                  onClick={
+                    areAllGroupsCompleted ? undefined : handleSaveCurrentGroup
+                  }
                 >
-                  Save This Group
+                  {areAllGroupsCompleted ? "Submit Booking" : "Save This Group"}
                 </Button>
               )}
-              <Button
-                type="submit"
-                className="rounded-md"
-                disabled={isPending || form.formState.isSubmitting}
-              >
-                {isPending ? (
-                  <span className="inline-flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Submitting...
-                  </span>
-                ) : isMultiGroupBooking ? (
-                  "Submit All Groups"
-                ) : (
-                  "Submit Booking"
-                )}
-              </Button>
+              {!isMultiGroupBooking && (
+                <Button
+                  type="submit"
+                  className="rounded-md"
+                  disabled={isPending || form.formState.isSubmitting}
+                >
+                  {isPending ? (
+                    <span className="inline-flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Submitting...
+                    </span>
+                  ) : (
+                    "Submit Booking"
+                  )}
+                </Button>
+              )}
             </div>
           </form>
         </Form>
