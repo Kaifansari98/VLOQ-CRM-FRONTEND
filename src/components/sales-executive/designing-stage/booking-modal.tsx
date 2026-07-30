@@ -54,6 +54,16 @@ import AssignToPicker from "@/components/assign-to-picker";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { urlToFile } from "@/utils/file.utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // ✅ Enhanced Zod schema with proper file validation
 const bookingSchema = z
@@ -63,7 +73,14 @@ const bookingSchema = z
       .max(20, "You can upload up to 20 documents")
       .default([]),
 
-    mrp_value: z.number().positive("MRP value must be greater than 0"),
+    mrp_value: z.number().nonnegative("MRP value cannot be negative"),
+
+    basic_amount: z
+      .number()
+      .nonnegative("Basic Amount cannot be negative")
+      .default(0),
+
+    gst_percentage: z.number().default(0),
 
     amount_received: z
       .number()
@@ -72,7 +89,7 @@ const bookingSchema = z
 
     final_booking_amount: z
       .number()
-      .positive("Booking amount must be greater than 0"),
+      .nonnegative("Booking amount cannot be negative"),
 
     payment_details_document: z
       .array(z.any())
@@ -91,7 +108,12 @@ const bookingSchema = z
     const hasPaymentInfo = hasPaymentText || hasPaymentDoc;
 
     // ✅ Rule 1
-    if (data.amount_received > data.final_booking_amount) {
+    const effectiveBookingAmount =
+      data.final_booking_amount > 0
+        ? data.final_booking_amount
+        : data.basic_amount + (data.basic_amount * data.gst_percentage) / 100;
+
+    if (data.amount_received > effectiveBookingAmount) {
       ctx.addIssue({
         code: "custom",
         path: ["amount_received"],
@@ -131,7 +153,7 @@ const bookingSchema = z
     }
 
     // ✅ Rule: Total Booking Value cannot be greater than MRP Value
-    if (data.final_booking_amount > data.mrp_value) {
+    if (data.mrp_value > 0 && data.final_booking_amount > data.mrp_value) {
       ctx.addIssue({
         code: "custom",
         path: ["final_booking_amount"],
@@ -143,6 +165,7 @@ const bookingSchema = z
 // ✅ Proper type inference from schema
 type BookingFormValues = z.infer<typeof bookingSchema>;
 const bookingResolver = zodResolver(bookingSchema) as unknown as any;
+const GST_OPTIONS = [0, 5, 12, 18, 28] as const;
 const defaultBookingValues: BookingFormValues = {
   final_documents: [],
   amount_received: 0,
@@ -151,6 +174,8 @@ const defaultBookingValues: BookingFormValues = {
   payment_text: "",
   assign_to: "",
   mrp_value: 0,
+  basic_amount: 0,
+  gst_percentage: 0,
 };
 type BookingProductTypeTab = {
   productTypeId: number;
@@ -179,6 +204,12 @@ type PersistedBookingDraft = Omit<
   payment_details_document: PersistedDocRef[];
 };
 type PersistedBookingDraftMap = Record<number, PersistedBookingDraft>;
+type ConfirmationSummary = {
+  drafts: BookingDraftMap;
+  totalBasicAmount: number;
+  totalGstAmount: number;
+  totalAmount: number;
+};
 
 const BOOKING_DRAFT_STORAGE_PREFIX = "booking-modal-drafts";
 
@@ -215,6 +246,8 @@ const dataUrlToFile = async (
   });
 };
 
+const roundCurrency = (value: number) => Math.round(value * 100) / 100;
+
 interface LeadViewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -245,6 +278,8 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
     null,
   );
   const [bookingDrafts, setBookingDrafts] = useState<BookingDraftMap>({});
+  const [confirmationSummary, setConfirmationSummary] =
+    useState<ConfirmationSummary | null>(null);
   const leadId = data?.id;
   const accountId = data?.accountId;
   const router = useRouter();
@@ -354,6 +389,8 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
   const getCurrentDraft = React.useCallback(
     (): BookingFormValues => ({
       final_documents: form.getValues("final_documents") || [],
+      basic_amount: form.getValues("basic_amount") ?? 0,
+      gst_percentage: form.getValues("gst_percentage") ?? 0,
       amount_received: form.getValues("amount_received") ?? 0,
       final_booking_amount: form.getValues("final_booking_amount") ?? 0,
       payment_details_document: form.getValues("payment_details_document") || [],
@@ -363,6 +400,20 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
     }),
     [form],
   );
+
+  const getAmountsFromValues = React.useCallback((values: BookingFormValues) => {
+    const basicAmount = roundCurrency(Number(values.basic_amount || 0));
+    const gstPercentage = Number(values.gst_percentage || 0);
+    const gstAmount = roundCurrency((basicAmount * gstPercentage) / 100);
+    const totalAmount = roundCurrency(basicAmount + gstAmount);
+
+    return {
+      basicAmount,
+      gstPercentage,
+      gstAmount,
+      totalAmount,
+    };
+  }, []);
 
   const linkedDocsByKey = React.useMemo(() => {
     const map = new Map<string, { id: number; doc_og_name: string; signedUrl: string }>();
@@ -395,6 +446,20 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
         return false;
       }
 
+      if (handlesLargeScaleProjects) {
+        const { basicAmount, totalAmount } = getAmountsFromValues(values);
+        if (basicAmount <= 0 || totalAmount <= 0) {
+          return false;
+        }
+      } else {
+        if (
+          Number(values.final_booking_amount || 0) <= 0 ||
+          Number(values.mrp_value || 0) <= 0
+        ) {
+          return false;
+        }
+      }
+
       if (
         vendorCustomUserTypeMode !== true &&
         (!values.assign_to || values.assign_to.trim() === "")
@@ -412,7 +477,69 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
 
       return true;
     },
-    [vendorCustomUserTypeMode],
+    [getAmountsFromValues, handlesLargeScaleProjects, vendorCustomUserTypeMode],
+  );
+
+  const applyBookingValidationErrors = React.useCallback(
+    (values: BookingFormValues) => {
+      let isValid = true;
+
+      if (handlesLargeScaleProjects) {
+        const { basicAmount, totalAmount } = getAmountsFromValues(values);
+
+        if (basicAmount <= 0) {
+          form.setError("basic_amount", {
+            type: "manual",
+            message: "Basic Amount is required.",
+          });
+          isValid = false;
+        } else {
+          form.clearErrors("basic_amount");
+        }
+
+        if (!GST_OPTIONS.includes(Number(values.gst_percentage || 0) as any)) {
+          form.setError("gst_percentage", {
+            type: "manual",
+            message: "Select a valid GST percentage.",
+          });
+          isValid = false;
+        } else {
+          form.clearErrors("gst_percentage");
+        }
+
+        if (values.amount_received > totalAmount) {
+          form.setError("amount_received", {
+            type: "manual",
+            message:
+              "Booking Advance Received should not be greater than Total Booking Value.",
+          });
+          isValid = false;
+        }
+      } else {
+        if (Number(values.mrp_value || 0) <= 0) {
+          form.setError("mrp_value", {
+            type: "manual",
+            message: "MRP Value is required.",
+          });
+          isValid = false;
+        } else {
+          form.clearErrors("mrp_value");
+        }
+
+        if (Number(values.final_booking_amount || 0) <= 0) {
+          form.setError("final_booking_amount", {
+            type: "manual",
+            message: "Total Booking Value is required.",
+          });
+          isValid = false;
+        } else {
+          form.clearErrors("final_booking_amount");
+        }
+      }
+
+      return isValid;
+    },
+    [form, getAmountsFromValues, handlesLargeScaleProjects],
   );
 
   const persistDraft = React.useCallback(
@@ -556,6 +683,53 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
   );
   const areAllGroupsCompleted =
     productTypeTabs.length > 0 && completedGroupCount === productTypeTabs.length;
+
+  const currentGroupAmounts = React.useMemo(
+    () => getAmountsFromValues(getCurrentDraft()),
+    [getAmountsFromValues, getCurrentDraft],
+  );
+
+  const aggregateSummary = React.useMemo(() => {
+    const draftsSource =
+      isMultiGroupBooking && activeProductTypeId
+        ? {
+            ...bookingDrafts,
+            [activeProductTypeId]: getCurrentDraft(),
+          }
+        : {
+            ...(activeProductTypeTab
+              ? { [activeProductTypeTab.productTypeId]: getCurrentDraft() }
+              : {}),
+          };
+
+    let totalBasicAmount = 0;
+    let totalGstAmount = 0;
+    let totalAmount = 0;
+
+    for (const tab of productTypeTabs) {
+      const values = draftsSource[tab.productTypeId];
+      if (!values) continue;
+
+      const amounts = getAmountsFromValues(values);
+      totalBasicAmount += amounts.basicAmount;
+      totalGstAmount += amounts.gstAmount;
+      totalAmount += amounts.totalAmount;
+    }
+
+    return {
+      totalBasicAmount: roundCurrency(totalBasicAmount),
+      totalGstAmount: roundCurrency(totalGstAmount),
+      totalAmount: roundCurrency(totalAmount),
+    };
+  }, [
+    activeProductTypeId,
+    activeProductTypeTab,
+    bookingDrafts,
+    getAmountsFromValues,
+    getCurrentDraft,
+    isMultiGroupBooking,
+    productTypeTabs,
+  ]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -742,10 +916,19 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
   ]);
 
   const submitSingleBooking = React.useCallback(
-    async (values: BookingFormValues, productTypeId?: number) => {
+    async (
+      values: BookingFormValues,
+      productTypeId?: number,
+      aggregateTotalAmount?: number,
+    ) => {
       if (!leadId || !accountId || !vendorId || !userId) {
         throw new Error("Missing booking identifiers");
       }
+
+      const effectiveAggregateTotal = roundCurrency(
+        aggregateTotalAmount ?? getAmountsFromValues(values).totalAmount,
+      );
+      const groupAmounts = getAmountsFromValues(values);
 
       const payload: BookingPayload = {
         lead_id: leadId,
@@ -754,9 +937,25 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
         created_by: userId,
         product_type_id: productTypeId,
         bookingAmount: values.amount_received,
+        basic_amount: handlesLargeScaleProjects
+          ? groupAmounts.basicAmount
+          : undefined,
+        gst_percentage: handlesLargeScaleProjects
+          ? groupAmounts.gstPercentage
+          : undefined,
+        gst_amount: handlesLargeScaleProjects
+          ? groupAmounts.gstAmount
+          : undefined,
+        total_amount: handlesLargeScaleProjects
+          ? groupAmounts.totalAmount
+          : undefined,
         bookingAmountPaymentDetailsText: values.payment_text,
-        finalBookingAmount: values.final_booking_amount,
-        mrpValue: values.mrp_value,
+        finalBookingAmount: handlesLargeScaleProjects
+          ? effectiveAggregateTotal
+          : values.final_booking_amount,
+        mrpValue: handlesLargeScaleProjects
+          ? effectiveAggregateTotal
+          : values.mrp_value,
         booking_payment_file: values.payment_details_document,
         final_documents: values.final_documents,
       };
@@ -773,6 +972,8 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
     },
     [
       accountId,
+      getAmountsFromValues,
+      handlesLargeScaleProjects,
       leadId,
       mutateAsync,
       userId,
@@ -787,7 +988,11 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       return;
     }
 
-    if (values.amount_received > values.final_booking_amount) {
+    const effectiveTotalAmount = handlesLargeScaleProjects
+      ? currentGroupAmounts.totalAmount
+      : values.final_booking_amount;
+
+    if (values.amount_received > effectiveTotalAmount) {
       toastManager.add({ title: "Booking Advance Received should not be greater than Total Booking Value", type: "error" });
       return;
     }
@@ -815,7 +1020,12 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       return;
     }
 
-    if (values.final_booking_amount > values.mrp_value) {
+    if (!applyBookingValidationErrors(values)) {
+      toastManager.add({ title: "Please complete the required booking fields.", type: "error" });
+      return;
+    }
+
+    if (!handlesLargeScaleProjects && values.final_booking_amount > values.mrp_value) {
       toastManager.add({ title: "Total Booking Value cannot be greater than MRP Value", type: "error" });
       return;
     }
@@ -852,19 +1062,26 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
           return;
         }
 
-        for (const tab of productTypeTabs) {
-          await submitSingleBooking(mergedDrafts[tab.productTypeId], tab.productTypeId);
-        }
-
-        const storageKey = getBookingDraftStorageKey(vendorId, leadId);
-        if (storageKey && typeof window !== "undefined") {
-          window.localStorage.removeItem(storageKey);
-        }
+        setConfirmationSummary({
+          drafts: mergedDrafts,
+          totalBasicAmount: aggregateSummary.totalBasicAmount,
+          totalGstAmount: aggregateSummary.totalGstAmount,
+          totalAmount: aggregateSummary.totalAmount,
+        });
+        return;
       } else {
         await submitSingleBooking(
           values,
           handlesLargeScaleProjects ? activeProductTypeTab?.productTypeId : undefined,
+          handlesLargeScaleProjects
+            ? aggregateSummary.totalAmount
+            : undefined,
         );
+      }
+
+      const storageKey = getBookingDraftStorageKey(vendorId, leadId);
+      if (storageKey && typeof window !== "undefined") {
+        window.localStorage.removeItem(storageKey);
       }
 
       toastManager.add({ title: "Booking saved successfully!", type: "success" });
@@ -947,6 +1164,9 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
     }
 
     const values = getCurrentDraft();
+    if (!applyBookingValidationErrors(values)) {
+      return;
+    }
     persistDraft(activeProductTypeTab.productTypeId, values);
     await persistDraftsToStorage({
       ...bookingDrafts,
@@ -1141,45 +1361,122 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
           {/* Amount fields */}
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-              <FormField
-                control={form.control}
-                name="mrp_value"
-                render={({ field }) => (
-                  <FormItem data-name="mrp_value">
-                    <FormLabel className="text-sm">MRP Value *</FormLabel>
-                    <FormControl>
-                      <CurrencyInput
-                        value={field.value}
-                        onChange={(val) => field.onChange(val ?? 0)}
-                        placeholder="Enter MRP Value"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {handlesLargeScaleProjects ? (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="basic_amount"
+                    render={({ field }) => (
+                      <FormItem data-name="basic_amount">
+                        <FormLabel className="text-sm">Basic Amount *</FormLabel>
+                        <FormControl>
+                          <CurrencyInput
+                            value={field.value}
+                            onChange={(val) => field.onChange(val ?? 0)}
+                            placeholder="Enter Basic Amount"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <FormField
-                control={form.control}
-                name="final_booking_amount"
-                render={({ field }) => (
-                  <FormItem data-name="final_booking_amount">
-                    <FormLabel className="text-sm">
-                      Total Booking Value *
-                    </FormLabel>
-                    <FormControl>
-                      <CurrencyInput
-                        value={field.value}
-                        onChange={
-                          (val) => field.onChange(val ?? 0) // fallback to 0 if undefined
-                        }
-                        placeholder="Enter Total Booking Value"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  <FormField
+                    control={form.control}
+                    name="gst_percentage"
+                    render={({ field }) => (
+                      <FormItem data-name="gst_percentage">
+                        <FormLabel className="text-sm">GST % *</FormLabel>
+                        <Select
+                          value={String(field.value ?? 0)}
+                          onValueChange={(value) =>
+                            field.onChange(Number(value))
+                          }
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select GST %" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {GST_OPTIONS.map((option) => (
+                              <SelectItem key={option} value={String(option)}>
+                                {option}%
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="rounded-xl border border-border/60 bg-muted/20 p-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      GST Amount
+                    </p>
+                    <p className="mt-2 text-xl font-semibold">
+                      {formatCurrencyINR(currentGroupAmounts.gstAmount)}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {currentGroupAmounts.gstPercentage}% on{" "}
+                      {formatCurrencyINR(currentGroupAmounts.basicAmount)}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Total Amount
+                    </p>
+                    <p className="mt-2 text-xl font-semibold">
+                      {formatCurrencyINR(currentGroupAmounts.totalAmount)}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Basic Amount + GST
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="mrp_value"
+                    render={({ field }) => (
+                      <FormItem data-name="mrp_value">
+                        <FormLabel className="text-sm">MRP Value *</FormLabel>
+                        <FormControl>
+                          <CurrencyInput
+                            value={field.value}
+                            onChange={(val) => field.onChange(val ?? 0)}
+                            placeholder="Enter MRP Value"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="final_booking_amount"
+                    render={({ field }) => (
+                      <FormItem data-name="final_booking_amount">
+                        <FormLabel className="text-sm">
+                          Total Booking Value *
+                        </FormLabel>
+                        <FormControl>
+                          <CurrencyInput
+                            value={field.value}
+                            onChange={(val) => field.onChange(val ?? 0)}
+                            placeholder="Enter Total Booking Value"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
 
               <FormField
                 control={form.control}
@@ -1232,6 +1529,104 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                 </span>{" "}
                 ISM amount has already been paid by the client.
               </p>
+            )}
+
+            {handlesLargeScaleProjects && productTypeTabs.length > 0 && (
+              <div className="rounded-2xl border border-border/60 bg-background/80 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold">Bill Summary</p>
+                    <p className="text-xs text-muted-foreground">
+                      Product-type totals used to calculate the lead total amount.
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="rounded-full">
+                    {completedGroupCount}/{productTypeTabs.length} groups saved
+                  </Badge>
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  {productTypeTabs.map((tab) => {
+                    const values =
+                      bookingDrafts[tab.productTypeId] ||
+                      (tab.productTypeId === activeProductTypeId
+                        ? getCurrentDraft()
+                        : null);
+                    const amounts = values
+                      ? getAmountsFromValues(values)
+                      : {
+                          basicAmount: 0,
+                          gstPercentage: 0,
+                          gstAmount: 0,
+                          totalAmount: 0,
+                        };
+
+                    return (
+                      <div
+                        key={tab.productTypeId}
+                        className="grid grid-cols-1 gap-3 rounded-xl border border-border/50 px-4 py-3 md:grid-cols-4"
+                      >
+                        <div>
+                          <p className="text-xs text-muted-foreground">
+                            Item Group
+                          </p>
+                          <p className="font-medium">{tab.label}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Basic</p>
+                          <p className="font-medium">
+                            {formatCurrencyINR(amounts.basicAmount)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">
+                            GST Amount
+                          </p>
+                          <p className="font-medium">
+                            {formatCurrencyINR(amounts.gstAmount)}{" "}
+                            <span className="text-xs text-muted-foreground">
+                              ({amounts.gstPercentage}%)
+                            </span>
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Total</p>
+                          <p className="font-semibold">
+                            {formatCurrencyINR(amounts.totalAmount)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-4 grid gap-3 rounded-xl bg-muted/20 px-4 py-3 md:grid-cols-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Total Basic Amount
+                    </p>
+                    <p className="font-semibold">
+                      {formatCurrencyINR(aggregateSummary.totalBasicAmount)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Total GST Amount
+                    </p>
+                    <p className="font-semibold">
+                      {formatCurrencyINR(aggregateSummary.totalGstAmount)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Grand Total
+                    </p>
+                    <p className="font-semibold">
+                      {formatCurrencyINR(aggregateSummary.totalAmount)}
+                    </p>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
 
@@ -1317,6 +1712,158 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
           </form>
         </Form>
       )}
+
+      <AlertDialog
+        open={!!confirmationSummary}
+        onOpenChange={(open) => {
+          if (!open) setConfirmationSummary(null);
+        }}
+      >
+        <AlertDialogContent className="max-w-3xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Booking Bill</AlertDialogTitle>
+            <AlertDialogDescription>
+              Review the final product-type bill before submitting booking.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {confirmationSummary && (
+            <div className="space-y-4">
+              <div className="overflow-hidden rounded-xl border">
+                <div className="grid grid-cols-[1.6fr_1fr_0.8fr_1fr_1fr] gap-3 border-b bg-muted/30 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <span>Item Group</span>
+                  <span>Basic Amount</span>
+                  <span>GST %</span>
+                  <span>GST Amount</span>
+                  <span>Total</span>
+                </div>
+                <div className="divide-y">
+                  {productTypeTabs.map((tab) => {
+                    const values = confirmationSummary.drafts[tab.productTypeId];
+                    const amounts = values
+                      ? getAmountsFromValues(values)
+                      : {
+                          basicAmount: 0,
+                          gstPercentage: 0,
+                          gstAmount: 0,
+                          totalAmount: 0,
+                        };
+
+                    return (
+                      <div
+                        key={tab.productTypeId}
+                        className="grid grid-cols-[1.6fr_1fr_0.8fr_1fr_1fr] gap-3 px-4 py-3 text-sm"
+                      >
+                        <span className="font-medium">{tab.label}</span>
+                        <span>{formatCurrencyINR(amounts.basicAmount)}</span>
+                        <span>{amounts.gstPercentage}%</span>
+                        <span>{formatCurrencyINR(amounts.gstAmount)}</span>
+                        <span className="font-semibold">
+                          {formatCurrencyINR(amounts.totalAmount)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="ml-auto w-full max-w-md rounded-xl border bg-muted/20 p-4">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Total Basic Amount</span>
+                  <span className="font-medium">
+                    {formatCurrencyINR(confirmationSummary.totalBasicAmount)}
+                  </span>
+                </div>
+                <div className="mt-2 flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Total GST Amount</span>
+                  <span className="font-medium">
+                    {formatCurrencyINR(confirmationSummary.totalGstAmount)}
+                  </span>
+                </div>
+                <div className="mt-3 flex items-center justify-between border-t pt-3 text-base font-semibold">
+                  <span>Grand Total</span>
+                  <span>{formatCurrencyINR(confirmationSummary.totalAmount)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isPending || !confirmationSummary}
+              onClick={async (event) => {
+                event.preventDefault();
+                if (!confirmationSummary) return;
+
+                try {
+                  for (const tab of productTypeTabs) {
+                    await submitSingleBooking(
+                      confirmationSummary.drafts[tab.productTypeId],
+                      tab.productTypeId,
+                      confirmationSummary.totalAmount,
+                    );
+                  }
+
+                  const storageKey = getBookingDraftStorageKey(vendorId, leadId);
+                  if (storageKey && typeof window !== "undefined") {
+                    window.localStorage.removeItem(storageKey);
+                  }
+
+                  setConfirmationSummary(null);
+                  toastManager.add({
+                    title: "Booking saved successfully!",
+                    type: "success",
+                  });
+
+                  createLeadChatRoom(leadId!, userId!).catch(() => {});
+
+                  const activeDraft =
+                    activeProductTypeTab
+                      ? confirmationSummary.drafts[activeProductTypeTab.productTypeId]
+                      : null;
+                  if (activeDraft?.assign_to) {
+                    const today = new Date().toISOString().split("T")[0];
+                    assignTaskBooking(leadId!, {
+                      task_type: "Assign a Site Supervisor",
+                      due_date: today,
+                      user_id: Number(activeDraft.assign_to),
+                      created_by: userId!,
+                    }).catch(() => {});
+                  }
+
+                  queryClient.invalidateQueries({
+                    queryKey: ["leadStats", vendorId, userId],
+                  });
+
+                  queryClient.invalidateQueries({
+                    queryKey: ["universal-stage-leads"],
+                    exact: false,
+                  });
+
+                  onOpenChange(false);
+                  form.reset(defaultBookingValues);
+                  setBookingDrafts({});
+                  router.push("/dashboard/leads/booking-stage");
+                } catch (err: any) {
+                  const errorMessage =
+                    err?.response?.data?.error ||
+                    err?.response?.data?.message ||
+                    err?.message ||
+                    "Something went wrong";
+
+                  toastManager.add({
+                    title: errorMessage,
+                    type: "error",
+                  });
+                }
+              }}
+            >
+              {isPending ? "Submitting..." : "Confirm & Submit"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <SelectDocumentModal
         open={openSelectDocModal}
