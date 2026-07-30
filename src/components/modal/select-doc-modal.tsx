@@ -19,6 +19,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   leadId: number;
   activeProductTypeId?: number | null;
+  activeInstanceIds?: number[];
   onSelectDocs?: (files: File[]) => void; // 👈 callback to booking modal
 }
 
@@ -29,6 +30,7 @@ export interface DocItem {
   type: "quotation" | "design";
   created_at?: string;
   product_type_id?: number | null;
+  product_structure_instance_id?: number | null;
 }
 
 export interface LinkedDocMeta {
@@ -89,6 +91,7 @@ const SelectDocumentModal: React.FC<Props> = ({
   onOpenChange,
   leadId,
   activeProductTypeId,
+  activeInstanceIds,
   onSelectDocs,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -113,6 +116,7 @@ const SelectDocumentModal: React.FC<Props> = ({
       type: "quotation" as const,
       created_at: doc.created_at,
       product_type_id: doc.product_type_id ?? null,
+      product_structure_instance_id: doc.product_structure_instance_id ?? null,
     })) || [];
 
   const designs: DocItem[] =
@@ -123,22 +127,36 @@ const SelectDocumentModal: React.FC<Props> = ({
       type: "design" as const,
       created_at: doc.created_at,
       product_type_id: doc.product_type_id ?? null,
+      product_structure_instance_id: doc.product_structure_instance_id ?? null,
     })) || [];
+
+  const activeInstanceIdSet = useMemo(
+    () => new Set((activeInstanceIds || []).map((id) => Number(id))),
+    [activeInstanceIds],
+  );
 
   const filteredQuotations = useMemo(
     () =>
-      handlesLargeScaleProjects && activeProductTypeId
-        ? quotations.filter((doc) => doc.product_type_id === activeProductTypeId)
+      handlesLargeScaleProjects && activeInstanceIdSet.size > 0
+        ? quotations.filter((doc) =>
+            doc.product_structure_instance_id != null
+              ? activeInstanceIdSet.has(Number(doc.product_structure_instance_id))
+              : false,
+          )
         : quotations,
-    [activeProductTypeId, handlesLargeScaleProjects, quotations],
+    [activeInstanceIdSet, handlesLargeScaleProjects, quotations],
   );
 
   const filteredDesigns = useMemo(
     () =>
-      handlesLargeScaleProjects && activeProductTypeId
-        ? designs.filter((doc) => doc.product_type_id === activeProductTypeId)
+      handlesLargeScaleProjects && activeInstanceIdSet.size > 0
+        ? designs.filter((doc) =>
+            doc.product_structure_instance_id != null
+              ? activeInstanceIdSet.has(Number(doc.product_structure_instance_id))
+              : false,
+          )
         : designs,
-    [activeProductTypeId, designs, handlesLargeScaleProjects],
+    [activeInstanceIdSet, designs, handlesLargeScaleProjects],
   );
 
   const sortedQuotations = useMemo(
