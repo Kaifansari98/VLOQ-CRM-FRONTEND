@@ -192,7 +192,16 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
   // Filtered Roles list
   const filteredRoles = useMemo(() => {
     return userRolesList.filter((r) => {
-      const name = (r.user_type || r.user_type_name || r.name || "").toLowerCase();
+      const name = (r.user_type || r.user_type_name || r.name || "").toLowerCase().trim();
+      if (
+        name === "master-admin" ||
+        name === "master" ||
+        name === "vloq master" ||
+        name === "masteradmin" ||
+        name === "master_admin"
+      ) {
+        return false;
+      }
       return name.includes(roleSearch.toLowerCase()) || String(r.id).includes(roleSearch);
     });
   }, [userRolesList, roleSearch]);
@@ -209,12 +218,23 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
   // Filtered Users list
   const filteredUsers = useMemo(() => {
     const query = userSearch.toLowerCase().trim();
-    if (!query) return usersList;
     return usersList.filter((u: any) => {
+      const roleName = (u.user_type?.user_type || u.user_type?.user_type_name || "").toLowerCase().trim();
+      const userName = (u.user_name || "").toLowerCase().trim();
+      if (
+        roleName === "master-admin" ||
+        roleName === "master" ||
+        roleName === "vloq master" ||
+        roleName === "masteradmin" ||
+        roleName === "master_admin" ||
+        userName.includes("vloq master")
+      ) {
+        return false;
+      }
+      if (!query) return true;
       const name = (u.user_name || "").toLowerCase();
       const email = (u.user_email || "").toLowerCase();
       const contact = (u.user_contact || "").toLowerCase();
-      const roleName = (u.user_type?.user_type || u.user_type?.user_type_name || "").toLowerCase();
       const idStr = String(u.id);
       return (
         name.includes(query) ||

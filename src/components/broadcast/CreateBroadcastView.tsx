@@ -248,19 +248,45 @@ export const CreateBroadcastView: React.FC<CreateBroadcastViewProps> = ({
   }, [franchisesData]);
 
   const roleOptions = useMemo(() => {
-    return userRolesList.map((r: any) => ({
-      id: Number(r.id),
-      label: r.user_type || r.user_type_name || r.name || `Role #${r.id}`,
-      sublabel: `Role ID: #${r.id}`,
-    }));
+    return userRolesList
+      .filter((r: any) => {
+        const name = String(r.user_type || r.user_type_name || r.name || "").toLowerCase().trim();
+        return (
+          name !== "master-admin" &&
+          name !== "master" &&
+          name !== "vloq master" &&
+          name !== "masteradmin" &&
+          name !== "master_admin"
+        );
+      })
+      .map((r: any) => ({
+        id: Number(r.id),
+        label: r.user_type || r.user_type_name || r.name || `Role #${r.id}`,
+        sublabel: `Role ID: #${r.id}`,
+      }));
   }, [userRolesList]);
 
   const userOptions = useMemo(() => {
-    return usersList.map((u: any) => ({
-      id: Number(u.id),
-      label: u.user_name || `User #${u.id}`,
-      sublabel: `${u.user_type?.user_type || u.user_type?.user_type_name || "User"} • ${u.user_email || `ID: #${u.id}`}`,
-    }));
+    return usersList
+      .filter((u: any) => {
+        const roleName = String(
+          u.user_type?.user_type || u.user_type?.user_type_name || u.user_role || ""
+        ).toLowerCase().trim();
+        const userName = String(u.user_name || "").toLowerCase().trim();
+        return (
+          roleName !== "master-admin" &&
+          roleName !== "master" &&
+          roleName !== "vloq master" &&
+          roleName !== "masteradmin" &&
+          roleName !== "master_admin" &&
+          !userName.includes("vloq master")
+        );
+      })
+      .map((u: any) => ({
+        id: Number(u.id),
+        label: u.user_name || `User #${u.id}`,
+        sublabel: `${u.user_type?.user_type || u.user_type?.user_type_name || "User"} • ${u.user_email || `ID: #${u.id}`}`,
+      }));
   }, [usersList]);
 
   const [activeTab, setActiveTab] = useState<string>("content");

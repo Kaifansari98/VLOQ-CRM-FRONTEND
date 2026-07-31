@@ -44,6 +44,22 @@ export function BroadcastPopupModal() {
     );
   }, [pathname]);
 
+  const isMasterAdmin = useMemo(() => {
+    if (!user) return false;
+    const roleName = (
+      user.user_type?.user_type ||
+      user.user_role ||
+      ""
+    ).toLowerCase().trim();
+    return (
+      roleName === "master-admin" ||
+      roleName === "masteradmin" ||
+      roleName === "master" ||
+      roleName === "vloq master" ||
+      roleName === "master_admin"
+    );
+  }, [user]);
+
   const isSuperAdmin = useMemo(() => {
     if (!user) return false;
     const roleName = (
@@ -226,7 +242,7 @@ export function BroadcastPopupModal() {
     router.push(`/dashboard/broadcast?id=${targetId}`);
   };
 
-  if (isSuperAdmin || isBroadcastPage || isNavigating || !activeBroadcast || !user) return null;
+  if (isSuperAdmin || isMasterAdmin || isBroadcastPage || isNavigating || !activeBroadcast || !user) return null;
 
   const contentSnippet = stripHtmlAndEntities(activeBroadcast.content || "");
   const timerPercentage = (timeLeft / POPUP_DURATION_SECONDS) * 100;
