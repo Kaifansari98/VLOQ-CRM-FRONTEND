@@ -136,7 +136,7 @@ export function BroadcastPopupModal() {
       const numIdStr = String(b.numericId ?? "");
       const fullIdStr = String(b.id ?? "");
 
-      const isRead = readIds.includes(numIdStr) || readIds.includes(fullIdStr);
+      const isRead = Boolean(b.isRead || readIds.includes(numIdStr) || readIds.includes(fullIdStr));
       const isDismissed =
         dismissedIds.includes(numIdStr) || dismissedIds.includes(fullIdStr);
 
