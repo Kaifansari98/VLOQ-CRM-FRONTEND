@@ -11,6 +11,7 @@ import {
   reassignSiteSupervisor,
   updateMrpValue,
   updateBasicAmount,
+  updateGstPercentage,
   updateTotalProjectAmount,
   updateBookingAmount,
   upsertLeadBillingInformation,
@@ -293,6 +294,42 @@ export const useUpdateBasicAmount = () => {
     }) =>
       updateBasicAmount(vendorId, leadId, {
         basic_amount: basicAmount,
+        updated_by: updatedBy,
+        product_type_id: productTypeId,
+      }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["bookingLead", variables.vendorId, variables.leadId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["bookingLeads", variables.vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["paymentLogs", variables.leadId, variables.vendorId],
+      });
+    },
+  });
+};
+
+export const useUpdateGstPercentage = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      vendorId,
+      leadId,
+      gstPercentage,
+      updatedBy,
+      productTypeId,
+    }: {
+      vendorId: number;
+      leadId: number;
+      gstPercentage: number;
+      updatedBy: number;
+      productTypeId: number;
+    }) =>
+      updateGstPercentage(vendorId, leadId, {
+        gst_percentage: gstPercentage,
         updated_by: updatedBy,
         product_type_id: productTypeId,
       }),

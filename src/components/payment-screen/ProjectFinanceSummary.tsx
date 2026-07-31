@@ -12,6 +12,7 @@ import {
   usePaymentLogs,
   useUpdateBasicAmount,
   useUpdateBookingAmount,
+  useUpdateGstPercentage,
 } from "@/hooks/booking-stage/use-booking";
 import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 import { useAppSelector } from "@/redux/store";
@@ -38,6 +39,8 @@ const itemVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
 };
+
+const GST_OPTIONS = [0, 5, 12, 18, 28] as const;
 
 interface ProjectFinanceSummaryProps {
   leadId: number;
@@ -69,6 +72,10 @@ type BasicAmountEditValues = {
   basic_amount: number;
 };
 
+type GstPercentageEditValues = {
+  gst_percentage: string;
+};
+
 export default function ProjectFinanceSummary({
   leadId,
   accountId,
@@ -86,6 +93,7 @@ export default function ProjectFinanceSummary({
   const isAuditor = userType?.toLowerCase() === "auditor";
   const [bookingAmountEditOpen, setBookingAmountEditOpen] = useState(false);
   const [basicAmountEditOpen, setBasicAmountEditOpen] = useState(false);
+  const [gstPercentageEditOpen, setGstPercentageEditOpen] = useState(false);
   const { data: structureInstancesData } = useLeadProductStructureInstances(
     leadId,
     vendorId,
@@ -308,6 +316,7 @@ export default function ProjectFinanceSummary({
 
   const updateBookingAmountMutation = useUpdateBookingAmount();
   const updateBasicAmountMutation = useUpdateBasicAmount();
+  const updateGstPercentageMutation = useUpdateGstPercentage();
 
   const canEditLargeScaleBookingAmount =
     isSuperAdmin && handlesLargeScaleProjects && activeProductTypeId != null;
@@ -350,6 +359,39 @@ export default function ProjectFinanceSummary({
   const watchedBasicTotalAmount = watchedBasicAmount + watchedBasicGstAmount;
   const watchedBasicPendingAmount = Math.max(
     watchedBasicTotalAmount - amountReceivedForBasicEdit,
+    0,
+  );
+  const {
+    handleSubmit: handleGstPercentageEditSubmit,
+    setValue: setGstPercentageEditValue,
+    watch: watchGstPercentageEdit,
+    reset: resetGstPercentageEdit,
+    formState: {
+      errors: gstPercentageEditErrors,
+      isSubmitting: isGstPercentageEditSubmitting,
+    },
+  } = useForm<GstPercentageEditValues>({
+    resolver: zodResolver(
+      z.object({
+        gst_percentage: z
+          .string()
+          .refine(
+            (value) =>
+              GST_OPTIONS.includes(Number(value) as (typeof GST_OPTIONS)[number]),
+            "Select a valid GST %",
+          ),
+      }),
+    ),
+    defaultValues: {
+      gst_percentage: String(scopedGstPercentage || 0),
+    },
+  });
+  const watchedGstPercentage = Number(watchGstPercentageEdit("gst_percentage") || 0);
+  const watchedGstAmount =
+    Number(scopedBasicAmount || 0) * (watchedGstPercentage / 100);
+  const watchedGstTotalAmount = Number(scopedBasicAmount || 0) + watchedGstAmount;
+  const watchedGstPendingAmount = Math.max(
+    watchedGstTotalAmount - amountReceivedForBasicEdit,
     0,
   );
 
@@ -459,6 +501,40 @@ export default function ProjectFinanceSummary({
     );
   };
 
+  const onGstPercentageEditSubmit = (values: GstPercentageEditValues) => {
+    if (activeProductTypeId == null) return;
+
+    updateGstPercentageMutation.mutate(
+      {
+        vendorId,
+        leadId,
+        gstPercentage: Number(values.gst_percentage),
+        updatedBy: userId,
+        productTypeId: activeProductTypeId,
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: "GST percentage updated successfully!",
+            type: "success",
+          });
+          resetGstPercentageEdit({ gst_percentage: values.gst_percentage });
+          setGstPercentageEditOpen(false);
+          refetch();
+        },
+        onError: (error: any) => {
+          toastManager.add({
+            title:
+              error?.response?.data?.message ||
+              error?.message ||
+              "Failed to update GST percentage",
+            type: "error",
+          });
+        },
+      },
+    );
+  };
+
   if (isLoading) {
     return (
       <motion.div
@@ -530,9 +606,27 @@ export default function ProjectFinanceSummary({
               <p className="text-muted-foreground text-sm">
                 GST Amount ({scopedGstPercentage || 0}%)
               </p>
-              <p className="font-bold text-lg">
-                {formatCurrencyINR(scopedGstAmount || 0)}
-              </p>
+              <div className="flex items-center justify-center gap-2">
+                <p className="font-bold text-lg">
+                  {formatCurrencyINR(scopedGstAmount || 0)}
+                </p>
+                {canEditLargeScaleBasicAmount && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => {
+                      resetGstPercentageEdit({
+                        gst_percentage: String(scopedGstPercentage || 0),
+                      });
+                      setGstPercentageEditOpen(true);
+                    }}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
             </div>
           )}
           {!handlesLargeScaleProjects && (
@@ -984,6 +1078,119 @@ export default function ProjectFinanceSummary({
               }
             >
               {updateBasicAmountMutation.isPending ? "Saving..." : "Save"}
+            </Button>
+          </div>
+        </form>
+      </BaseModal>
+
+      <BaseModal
+        open={gstPercentageEditOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            resetGstPercentageEdit({
+              gst_percentage: String(scopedGstPercentage || 0),
+            });
+          }
+          setGstPercentageEditOpen(open);
+        }}
+        title="Edit GST Percentage"
+        description="Select GST % to recalculate the GST amount and total project amount for this product type."
+        size="md"
+      >
+        <form
+          onSubmit={handleGstPercentageEditSubmit(onGstPercentageEditSubmit)}
+          className="space-y-4 p-5"
+        >
+          <div className="rounded-lg border bg-muted/20 p-4 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Basic Amount</span>
+              <span className="font-medium">
+                {formatCurrencyINR(scopedBasicAmount || 0)}
+              </span>
+            </div>
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-muted-foreground">Amount Received</span>
+              <span className="font-medium">
+                {formatCurrencyINR(amountReceivedForBasicEdit)}
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <Label className="mb-2">GST %</Label>
+            <Select
+              value={watchGstPercentageEdit("gst_percentage")}
+              onValueChange={(value) =>
+                setGstPercentageEditValue("gst_percentage", value, {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                })
+              }
+              disabled={updateGstPercentageMutation.isPending}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select GST %" />
+              </SelectTrigger>
+              <SelectContent>
+                {GST_OPTIONS.map((option) => (
+                  <SelectItem key={option} value={String(option)}>
+                    {option}%
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {gstPercentageEditErrors.gst_percentage && (
+              <p className="mt-1 text-xs text-red-500">
+                {gstPercentageEditErrors.gst_percentage.message}
+              </p>
+            )}
+          </div>
+
+          <div className="rounded-lg border bg-muted/20 p-4 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">
+                GST Amount ({watchedGstPercentage}%)
+              </span>
+              <span className="font-medium">
+                {formatCurrencyINR(watchedGstAmount)}
+              </span>
+            </div>
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-muted-foreground">Updated Total Project</span>
+              <span className="font-medium">
+                {formatCurrencyINR(watchedGstTotalAmount)}
+              </span>
+            </div>
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-muted-foreground">Updated Pending Amount</span>
+              <span className="font-medium text-red-500">
+                {formatCurrencyINR(watchedGstPendingAmount)}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                resetGstPercentageEdit({
+                  gst_percentage: String(scopedGstPercentage || 0),
+                });
+                setGstPercentageEditOpen(false);
+              }}
+              disabled={updateGstPercentageMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={
+                updateGstPercentageMutation.isPending ||
+                isGstPercentageEditSubmitting
+              }
+            >
+              {updateGstPercentageMutation.isPending ? "Saving..." : "Save"}
             </Button>
           </div>
         </form>

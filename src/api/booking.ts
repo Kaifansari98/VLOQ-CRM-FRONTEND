@@ -195,6 +195,22 @@ export const updateBasicAmount = async (
   return data;
 };
 
+export const updateGstPercentage = async (
+  vendorId: number,
+  leadId: number,
+  payload: {
+    gst_percentage: number;
+    updated_by: number;
+    product_type_id: number;
+  }
+) => {
+  const { data } = await apiClient.put(
+    `/leads/bookingStage/update-gst-percentage/vendor/${vendorId}/lead/${leadId}`,
+    payload
+  );
+  return data;
+};
+
 export interface UploadBookintPayload {
   lead_id: number;
   account_id: number;
