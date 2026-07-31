@@ -40,6 +40,7 @@ export interface BackendBroadcast {
   readersCount?: number;
   _count?: { readLogs?: number };
   sentCount?: number;
+  isRead?: boolean;
 }
 
 export interface AttachmentItemInput {
@@ -190,6 +191,7 @@ export const mapBackendBroadcastToFrontend = (item: BackendBroadcast): Broadcast
     fileType: (firstFile?.file_type?.toLowerCase() as any) || (isCircular ? "pdf" : "docx"),
     fileSize: formatFileSize(firstFile?.file_size),
     bookmarked: false,
+    isRead: item.isRead ?? false,
     videoLinks: youtubeLinks,
     attachments: attachmentsList,
     versionHistory: [
@@ -523,7 +525,8 @@ export const useUnreadBroadcastCount = (userId?: number, vendorId?: number, isSu
     const unread = published.filter((b) => {
       const numIdStr = String(b.numericId ?? "");
       const fullIdStr = String(b.id ?? "");
-      return !readIds.includes(numIdStr) && !readIds.includes(fullIdStr);
+      const isReadLocally = readIds.includes(numIdStr) || readIds.includes(fullIdStr);
+      return !b.isRead && !isReadLocally;
     });
     return unread.length;
   }, [broadcasts, readIds]);
