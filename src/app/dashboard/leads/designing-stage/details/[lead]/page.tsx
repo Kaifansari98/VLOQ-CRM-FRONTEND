@@ -524,7 +524,6 @@ export default function DesigningStageLead() {
           ? "You don't have permission to move this lead to booking stage"
           : "";
 
-
   const [openDelete, setOpenDelete] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);

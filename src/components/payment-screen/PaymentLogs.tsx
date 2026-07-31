@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useAppSelector } from "@/redux/store";
 import { useParams } from "next/navigation";
 import { usePaymentLogs } from "@/hooks/booking-stage/use-booking";
+import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 import {
   ExternalLink,
   Calendar,
@@ -13,6 +14,7 @@ import {
   FileText,
   IndianRupee,
   Clock,
+  Package,
 } from "lucide-react";
 
 // Format date helper
@@ -107,10 +109,30 @@ const lineVariants = {
 
 type PaymentLogsProps = {
   leadIdProps?: number;
+  activeProductTypeId?: number | null;
+  productTypePaymentLog?: {
+    id?: number;
+    amount: number;
+    payment_text?: string;
+    text?: string;
+    date?: string;
+    file?: {
+      id: number;
+      originalName: string;
+      signedUrl: string;
+    } | null;
+  } | null;
 };
-export default function PaymentLogs({ leadIdProps }: PaymentLogsProps) {
+export default function PaymentLogs({
+  leadIdProps,
+  activeProductTypeId,
+  productTypePaymentLog = null,
+}: PaymentLogsProps) {
   const { lead } = useParams();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
 
   // 1. URL param → 2. props → 3. null fallback
   const urlLeadId = lead ? Number(lead) : null;
@@ -127,6 +149,11 @@ export default function PaymentLogs({ leadIdProps }: PaymentLogsProps) {
 
   // Use finalLeadId for API
   const { data, isLoading } = usePaymentLogs(finalLeadId, vendorId);
+  const { data: structureInstancesData } = useLeadProductStructureInstances(
+    finalLeadId,
+    vendorId,
+    handlesLargeScaleProjects,
+  );
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -149,9 +176,65 @@ export default function PaymentLogs({ leadIdProps }: PaymentLogsProps) {
     );
   }
 
-  const logs = data?.payment_logs || [];
+  const productTypeLabelMap = new Map<number, string>(
+    (Array.isArray(structureInstancesData?.data) ? structureInstancesData.data : [])
+      .map((instance: any) => {
+        const productTypeId =
+          instance.product_type_id ??
+          instance.productType?.id ??
+          instance.productItemCode?.productStructure?.productType?.id;
+        const label =
+          instance.productType?.type ??
+          instance.productItemCode?.productStructure?.productType?.type;
 
-  if (!logs.length) {
+        return productTypeId && label ? [productTypeId, label] : null;
+      })
+      .filter(Boolean) as Array<[number, string]>,
+  );
+
+  const logs = data?.payment_logs || [];
+  const filteredLogs = (() => {
+    if (activeProductTypeId == null) {
+      return logs;
+    }
+
+    const scopedLogs = logs.filter(
+      (log) => log.product_type_id === activeProductTypeId,
+    );
+
+    if (scopedLogs.length > 0) {
+      return scopedLogs;
+    }
+
+    if (!productTypePaymentLog || Number(productTypePaymentLog.amount || 0) <= 0) {
+      return [];
+    }
+
+    return [
+      {
+        id: productTypePaymentLog.id ?? -activeProductTypeId,
+        amount: productTypePaymentLog.amount,
+        status_id: null,
+        status_type: "Booking Amount",
+        product_type_id: activeProductTypeId,
+        is_booking_received_amt: true,
+        payment_text:
+          productTypePaymentLog.payment_text ||
+          productTypePaymentLog.text ||
+          "",
+        payment_date: productTypePaymentLog.date || new Date().toISOString(),
+        entry_date: productTypePaymentLog.date || new Date().toISOString(),
+        entered_by_id: 0,
+        entered_by: "Booking Payment",
+        payment_file_id: productTypePaymentLog.file?.id ?? null,
+        payment_file: productTypePaymentLog.file?.signedUrl ?? null,
+      },
+    ];
+  })();
+
+  const visibleLogs = filteredLogs.filter((log) => Number(log.amount || 0) > 0);
+
+  if (!visibleLogs.length) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -167,8 +250,6 @@ export default function PaymentLogs({ leadIdProps }: PaymentLogsProps) {
       </motion.div>
     );
   }
-
-  const visibleLogs = logs.filter((log) => log.amount > 0);
 
   return (
 
@@ -293,18 +374,39 @@ export default function PaymentLogs({ leadIdProps }: PaymentLogsProps) {
                       </motion.div>
                     </div>
 
-                    <motion.div
-                      whileHover={{ x: 5 }}
-                      className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                    >
-                      <User className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                      <div>
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
-                          Entered By
-                        </p>
-                        <p className="text-sm font-medium">{log.entered_by}</p>
-                      </div>
-                    </motion.div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <motion.div
+                        whileHover={{ x: 5 }}
+                        className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                      >
+                        <User className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                            Entered By
+                          </p>
+                          <p className="text-sm font-medium">
+                            {log.entered_by}
+                          </p>
+                        </div>
+                      </motion.div>
+
+                      {handlesLargeScaleProjects && log.product_type_id && (
+                        <motion.div
+                          whileHover={{ x: 5 }}
+                          className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                        >
+                          <Package className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                              Product Type
+                            </p>
+                            <p className="text-sm font-medium">
+                              {productTypeLabelMap.get(log.product_type_id) || "N/A"}
+                            </p>
+                          </div>
+                        </motion.div>
+                      )}
+                    </div>
 
                     {log.payment_text && (
                       <motion.div
