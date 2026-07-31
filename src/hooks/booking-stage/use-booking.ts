@@ -12,6 +12,7 @@ import {
   updateMrpValue,
   updateBasicAmount,
   updateGstPercentage,
+  updatePaymentLogAmount,
   updateTotalProjectAmount,
   updateBookingAmount,
   upsertLeadBillingInformation,
@@ -330,6 +331,44 @@ export const useUpdateGstPercentage = () => {
     }) =>
       updateGstPercentage(vendorId, leadId, {
         gst_percentage: gstPercentage,
+        updated_by: updatedBy,
+        product_type_id: productTypeId,
+      }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["bookingLead", variables.vendorId, variables.leadId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["bookingLeads", variables.vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["paymentLogs", variables.leadId, variables.vendorId],
+      });
+    },
+  });
+};
+
+export const useUpdatePaymentLogAmount = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      vendorId,
+      leadId,
+      paymentId,
+      amount,
+      updatedBy,
+      productTypeId,
+    }: {
+      vendorId: number;
+      leadId: number;
+      paymentId: number;
+      amount: number;
+      updatedBy: number;
+      productTypeId: number;
+    }) =>
+      updatePaymentLogAmount(vendorId, leadId, paymentId, {
+        amount,
         updated_by: updatedBy,
         product_type_id: productTypeId,
       }),
