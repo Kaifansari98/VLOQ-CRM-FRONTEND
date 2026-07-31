@@ -166,10 +166,30 @@ export const updateTotalProjectAmount = async (
 export const updateBookingAmount = async (
   vendorId: number,
   leadId: number,
-  payload: { booking_amount: number; updated_by: number }
+  payload: {
+    booking_amount: number;
+    updated_by: number;
+    product_type_id?: number;
+  }
 ) => {
   const { data } = await apiClient.put(
     `/leads/bookingStage/update-booking-amount/vendor/${vendorId}/lead/${leadId}`,
+    payload
+  );
+  return data;
+};
+
+export const updateBasicAmount = async (
+  vendorId: number,
+  leadId: number,
+  payload: {
+    basic_amount: number;
+    updated_by: number;
+    product_type_id: number;
+  }
+) => {
+  const { data } = await apiClient.put(
+    `/leads/bookingStage/update-basic-amount/vendor/${vendorId}/lead/${leadId}`,
     payload
   );
   return data;

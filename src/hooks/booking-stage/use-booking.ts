@@ -10,6 +10,7 @@ import {
   getLeadBillingInformation,
   reassignSiteSupervisor,
   updateMrpValue,
+  updateBasicAmount,
   updateTotalProjectAmount,
   updateBookingAmount,
   upsertLeadBillingInformation,
@@ -169,7 +170,7 @@ export const useReassignSiteSupervisor = () => {
       }),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["bookingLead", variables.leadId],
+        queryKey: ["bookingLead", variables.vendorId, variables.leadId],
       });
       queryClient.invalidateQueries({
         queryKey: ["bookingLeads", variables.vendorId],
@@ -246,15 +247,18 @@ export const useUpdateBookingAmount = () => {
       leadId,
       bookingAmount,
       updatedBy,
+      productTypeId,
     }: {
       vendorId: number;
       leadId: number;
       bookingAmount: number;
       updatedBy: number;
+      productTypeId?: number;
     }) =>
       updateBookingAmount(vendorId, leadId, {
         booking_amount: bookingAmount,
         updated_by: updatedBy,
+        product_type_id: productTypeId,
       }),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
@@ -262,6 +266,45 @@ export const useUpdateBookingAmount = () => {
       });
       queryClient.invalidateQueries({
         queryKey: ["bookingLeads", variables.vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["paymentLogs", variables.leadId, variables.vendorId],
+      });
+    },
+  });
+};
+
+export const useUpdateBasicAmount = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      vendorId,
+      leadId,
+      basicAmount,
+      updatedBy,
+      productTypeId,
+    }: {
+      vendorId: number;
+      leadId: number;
+      basicAmount: number;
+      updatedBy: number;
+      productTypeId: number;
+    }) =>
+      updateBasicAmount(vendorId, leadId, {
+        basic_amount: basicAmount,
+        updated_by: updatedBy,
+        product_type_id: productTypeId,
+      }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["bookingLead", variables.vendorId, variables.leadId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["bookingLeads", variables.vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["paymentLogs", variables.leadId, variables.vendorId],
       });
     },
   });

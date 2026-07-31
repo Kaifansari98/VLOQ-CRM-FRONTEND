@@ -10,6 +10,7 @@ import { toastManager } from "@/components/ui/toast";
 import {
   useAddPayment,
   usePaymentLogs,
+  useUpdateBasicAmount,
   useUpdateBookingAmount,
 } from "@/hooks/booking-stage/use-booking";
 import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
@@ -64,6 +65,10 @@ type BookingAmountEditValues = {
   booking_amount: number;
 };
 
+type BasicAmountEditValues = {
+  basic_amount: number;
+};
+
 export default function ProjectFinanceSummary({
   leadId,
   accountId,
@@ -80,6 +85,7 @@ export default function ProjectFinanceSummary({
   const isSuperAdmin = userType?.toLowerCase() === "super-admin";
   const isAuditor = userType?.toLowerCase() === "auditor";
   const [bookingAmountEditOpen, setBookingAmountEditOpen] = useState(false);
+  const [basicAmountEditOpen, setBasicAmountEditOpen] = useState(false);
   const { data: structureInstancesData } = useLeadProductStructureInstances(
     leadId,
     vendorId,
@@ -143,6 +149,10 @@ export default function ProjectFinanceSummary({
       ? Math.max(totalProjectAmount - scopedPaidAmount, 0)
       : projectFinance?.pending_amount ?? 0;
   const mrpValue = projectFinance?.mrp_value ?? 0;
+  const overallReceivedAmount =
+    activeProductTypeId == null
+      ? Math.max(totalProjectAmount - pendingAmount, 0)
+      : null;
   const scopedBasicAmount =
     activeProductTypeId != null
       ? Number(productTypePayment?.basic_amount || 0)
@@ -297,13 +307,50 @@ export default function ProjectFinanceSummary({
   });
 
   const updateBookingAmountMutation = useUpdateBookingAmount();
+  const updateBasicAmountMutation = useUpdateBasicAmount();
 
   const canEditLargeScaleBookingAmount =
-    isSuperAdmin && handlesLargeScaleProjects && activeProductTypeId == null;
+    isSuperAdmin && handlesLargeScaleProjects && activeProductTypeId != null;
+  const canEditLargeScaleBasicAmount =
+    isSuperAdmin && handlesLargeScaleProjects && activeProductTypeId != null;
 
   const bookingAmountDelta = Math.max(
     0,
     Number(watchBookingAmountEdit("booking_amount") || 0) - bookingAmount,
+  );
+  const amountReceivedForBasicEdit =
+    activeProductTypeId != null ? scopedPaidAmount : 0;
+  const {
+    handleSubmit: handleBasicAmountEditSubmit,
+    setValue: setBasicAmountEditValue,
+    watch: watchBasicAmountEdit,
+    reset: resetBasicAmountEdit,
+    formState: {
+      errors: basicAmountEditErrors,
+      isSubmitting: isBasicAmountEditSubmitting,
+    },
+  } = useForm<BasicAmountEditValues>({
+    resolver: zodResolver(
+      z.object({
+        basic_amount: z
+          .number({ message: "Basic amount is required" })
+          .min(
+            amountReceivedForBasicEdit,
+            `Basic amount cannot be less than ₹${amountReceivedForBasicEdit.toLocaleString("en-IN")}`,
+          ),
+      }),
+    ),
+    defaultValues: {
+      basic_amount: scopedBasicAmount ?? 0,
+    },
+  });
+  const watchedBasicAmount = Number(watchBasicAmountEdit("basic_amount") || 0);
+  const watchedBasicGstAmount =
+    watchedBasicAmount * (Number(scopedGstPercentage || 0) / 100);
+  const watchedBasicTotalAmount = watchedBasicAmount + watchedBasicGstAmount;
+  const watchedBasicPendingAmount = Math.max(
+    watchedBasicTotalAmount - amountReceivedForBasicEdit,
+    0,
   );
 
   const addPaymentMutation = useAddPayment();
@@ -353,6 +400,7 @@ export default function ProjectFinanceSummary({
         leadId,
         bookingAmount: values.booking_amount,
         updatedBy: userId,
+        productTypeId: activeProductTypeId ?? undefined,
       },
       {
         onSuccess: () => {
@@ -370,6 +418,40 @@ export default function ProjectFinanceSummary({
               error?.response?.data?.message ||
               error?.message ||
               "Failed to update booking amount",
+            type: "error",
+          });
+        },
+      },
+    );
+  };
+
+  const onBasicAmountEditSubmit = (values: BasicAmountEditValues) => {
+    if (activeProductTypeId == null) return;
+
+    updateBasicAmountMutation.mutate(
+      {
+        vendorId,
+        leadId,
+        basicAmount: values.basic_amount,
+        updatedBy: userId,
+        productTypeId: activeProductTypeId,
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: "Basic amount updated successfully!",
+            type: "success",
+          });
+          resetBasicAmountEdit({ basic_amount: values.basic_amount });
+          setBasicAmountEditOpen(false);
+          refetch();
+        },
+        onError: (error: any) => {
+          toastManager.add({
+            title:
+              error?.response?.data?.message ||
+              error?.message ||
+              "Failed to update basic amount",
             type: "error",
           });
         },
@@ -404,7 +486,7 @@ export default function ProjectFinanceSummary({
               ? "grid-cols-2 md:grid-cols-3"
               : handlesLargeScaleProjects
               ? bookingAmount > 0
-                ? "grid-cols-3"
+                ? "grid-cols-4"
                 : "grid-cols-2"
               : bookingAmount > 0
                 ? "grid-cols-4"
@@ -420,9 +502,27 @@ export default function ProjectFinanceSummary({
           {activeProductTypeId != null && (
             <div className="flex flex-col justify-between h-full">
               <p className="text-muted-foreground text-sm">Basic Amount</p>
-              <p className="font-bold text-lg">
-                {formatCurrencyINR(scopedBasicAmount || 0)}
-              </p>
+              <div className="flex items-center justify-center gap-2">
+                <p className="font-bold text-lg">
+                  {formatCurrencyINR(scopedBasicAmount || 0)}
+                </p>
+                {canEditLargeScaleBasicAmount && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => {
+                      resetBasicAmountEdit({
+                        basic_amount: scopedBasicAmount || 0,
+                      });
+                      setBasicAmountEditOpen(true);
+                    }}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
             </div>
           )}
           {activeProductTypeId != null && (
@@ -443,8 +543,11 @@ export default function ProjectFinanceSummary({
           )}
           {bookingAmount > 0 && (
             <div className="flex flex-col justify-between h-full">
+              <p className="text-muted-foreground text-sm">Booking Amount</p>
               <div className="flex items-center justify-center gap-2">
-                <p className="text-muted-foreground text-sm">Booking Amount</p>
+                <p className="font-bold text-lg">
+                  {formatCurrencyINR(bookingAmount)}
+                </p>
                 {canEditLargeScaleBookingAmount && (
                   <Button
                     type="button"
@@ -462,8 +565,13 @@ export default function ProjectFinanceSummary({
                   </Button>
                 )}
               </div>
+            </div>
+          )}
+          {activeProductTypeId == null && handlesLargeScaleProjects && (
+            <div className="flex flex-col justify-between h-full">
+              <p className="text-muted-foreground text-sm">Amount Received</p>
               <p className="font-bold text-lg">
-                {formatCurrencyINR(bookingAmount)}
+                {formatCurrencyINR(overallReceivedAmount || 0)}
               </p>
             </div>
           )}
@@ -771,6 +879,111 @@ export default function ProjectFinanceSummary({
               }
             >
               {updateBookingAmountMutation.isPending ? "Saving..." : "Save"}
+            </Button>
+          </div>
+        </form>
+      </BaseModal>
+
+      <BaseModal
+        open={basicAmountEditOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            resetBasicAmountEdit({ basic_amount: scopedBasicAmount || 0 });
+          }
+          setBasicAmountEditOpen(open);
+        }}
+        title="Edit Basic Amount"
+        description="Updating basic amount will automatically recalculate GST amount, total project amount, and pending amount."
+        size="md"
+      >
+        <form
+          onSubmit={handleBasicAmountEditSubmit(onBasicAmountEditSubmit)}
+          className="space-y-4 p-5"
+        >
+          <div className="rounded-lg border bg-muted/20 p-4 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Current Basic Amount</span>
+              <span className="font-medium">
+                {formatCurrencyINR(scopedBasicAmount || 0)}
+              </span>
+            </div>
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-muted-foreground">Amount Received</span>
+              <span className="font-medium">
+                {formatCurrencyINR(amountReceivedForBasicEdit)}
+              </span>
+            </div>
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-muted-foreground">
+                Current GST Percentage
+              </span>
+              <span className="font-medium">{scopedGstPercentage || 0}%</span>
+            </div>
+          </div>
+
+          <div>
+            <Label className="mb-2">Basic Amount</Label>
+            <CurrencyInput
+              value={watchBasicAmountEdit("basic_amount")}
+              onChange={(val) =>
+                setBasicAmountEditValue("basic_amount", val ?? 0, {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                })
+              }
+              placeholder="Enter basic amount"
+              disabled={updateBasicAmountMutation.isPending}
+            />
+            {basicAmountEditErrors.basic_amount && (
+              <p className="mt-1 text-xs text-red-500">
+                {basicAmountEditErrors.basic_amount.message}
+              </p>
+            )}
+          </div>
+
+          <div className="rounded-lg border bg-muted/20 p-4 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">
+                GST Amount ({scopedGstPercentage || 0}%)
+              </span>
+              <span className="font-medium">
+                {formatCurrencyINR(watchedBasicGstAmount)}
+              </span>
+            </div>
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-muted-foreground">Updated Total Project</span>
+              <span className="font-medium">
+                {formatCurrencyINR(watchedBasicTotalAmount)}
+              </span>
+            </div>
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-muted-foreground">Updated Pending Amount</span>
+              <span className="font-medium text-red-500">
+                {formatCurrencyINR(watchedBasicPendingAmount)}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                resetBasicAmountEdit({ basic_amount: scopedBasicAmount || 0 });
+                setBasicAmountEditOpen(false);
+              }}
+              disabled={updateBasicAmountMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={
+                updateBasicAmountMutation.isPending ||
+                isBasicAmountEditSubmitting
+              }
+            >
+              {updateBasicAmountMutation.isPending ? "Saving..." : "Save"}
             </Button>
           </div>
         </form>
