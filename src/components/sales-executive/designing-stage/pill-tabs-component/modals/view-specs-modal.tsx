@@ -21,6 +21,7 @@ import { formatDate } from "@/lib/format";
 import type { LeadSpecificationEntry, LightsRemark } from "@/api/designingStageQueries";
 import AssignToPicker from "@/components/assign-to-picker";
 import { useAppSelector } from "@/redux/store";
+import { cn } from "@/lib/utils";
 import {
   useCarcassTypes,
   useCarcasMaterials,
@@ -42,6 +43,7 @@ import {
   useUpsertLeadLightCarcasUnitMapping,
   useUpsertLeadOtherAppliancesMapping,
   useUpdateLeadSpecificationLightsRemark,
+  useLeadSpecifications,
 } from "@/hooks/designing-stage/designing-leads-hooks";
 import {
   fetchCarcassMaterialFinishes,
@@ -134,6 +136,8 @@ const makeBlankOtherApplianceRow = (): OtherApplianceRow => ({
 
 const pickerClassName =
   "h-11 rounded-md border border-input bg-background px-3 text-sm";
+const clonedRowHighlightClass = "bg-blue-50/80 dark:bg-blue-950/20";
+const newRowHighlightClass = "bg-emerald-50/80 dark:bg-emerald-950/20";
 
 const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   open,
@@ -147,18 +151,25 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   const { data: carcasMaterialsData } = useCarcasMaterials();
   const { data: shutterTypesData } = useShutterTypes();
   const { data: shutterMaterialsData } = useShutterMaterials();
+  const { data: specifications = [] } = useLeadSpecifications(
+    vendorId,
+    specification?.lead_id,
+  );
   const { data: carcassMappingsData } = useLeadCarcassMaterialMappings(
     vendorId,
     specification?.lead_id,
+    specification?.id,
   );
   const { data: shutterMappingsData } = useLeadShutterMaterialMappings(
     vendorId,
     specification?.lead_id,
+    specification?.id,
   );
   const { data: carcassLegsData } = useCarcassLegs();
   const { data: hardwareMappingsData } = useLeadHardwareMappings(
     vendorId,
     specification?.lead_id,
+    specification?.id,
   );
   const { data: lightCarcasTypesData } = useLightCarcasTypes();
   const { data: lightMappingsData } = useLeadLightCarcasUnitMappings(
@@ -172,6 +183,57 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     specification?.lead_id,
     specification?.id,
   );
+  const previousSpecification = React.useMemo(() => {
+    if (!specification) return null;
+
+    const currentCreatedAt = new Date(specification.created_at).getTime();
+
+    return specifications
+      .filter((spec) => {
+        if (spec.id === specification.id) return false;
+        if ((spec.item_code_id ?? null) !== (specification.item_code_id ?? null)) {
+          return false;
+        }
+
+        const specCreatedAt = new Date(spec.created_at).getTime();
+        return (
+          specCreatedAt < currentCreatedAt ||
+          (specCreatedAt === currentCreatedAt && spec.id < specification.id)
+        );
+      })
+      .sort((a, b) => {
+        const timeDiff =
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        if (timeDiff !== 0) return timeDiff;
+        return b.id - a.id;
+      })[0] ?? null;
+  }, [specification, specifications]);
+  const { data: previousCarcassMappingsData } = useLeadCarcassMaterialMappings(
+    vendorId,
+    specification?.lead_id,
+    previousSpecification?.id,
+  );
+  const { data: previousShutterMappingsData } = useLeadShutterMaterialMappings(
+    vendorId,
+    specification?.lead_id,
+    previousSpecification?.id,
+  );
+  const { data: previousHardwareMappingsData } = useLeadHardwareMappings(
+    vendorId,
+    specification?.lead_id,
+    previousSpecification?.id,
+  );
+  const { data: previousLightMappingsData } = useLeadLightCarcasUnitMappings(
+    vendorId,
+    specification?.lead_id,
+    previousSpecification?.id,
+  );
+  const { data: previousOtherApplianceMappingsData } =
+    useLeadOtherAppliancesMappings(
+      vendorId,
+      specification?.lead_id,
+      previousSpecification?.id,
+    );
   const upsertCarcassMapping = useUpsertLeadCarcassMaterialMapping();
   const upsertShutterMapping = useUpsertLeadShutterMaterialMapping();
   const upsertHardwareMapping = useUpsertLeadHardwareMapping();
@@ -220,6 +282,37 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     () => otherApplianceMappingsData ?? [],
     [otherApplianceMappingsData],
   );
+  const previousCarcassMappings = React.useMemo(
+    () => previousCarcassMappingsData ?? [],
+    [previousCarcassMappingsData],
+  );
+  const previousShutterMappings = React.useMemo(
+    () => previousShutterMappingsData ?? [],
+    [previousShutterMappingsData],
+  );
+  const previousHardwareMappings = React.useMemo(
+    () => previousHardwareMappingsData ?? [],
+    [previousHardwareMappingsData],
+  );
+  const previousLightMappings = React.useMemo(
+    () => previousLightMappingsData ?? [],
+    [previousLightMappingsData],
+  );
+  const previousOtherApplianceMappings = React.useMemo(
+    () => previousOtherApplianceMappingsData ?? [],
+    [previousOtherApplianceMappingsData],
+  );
+  const previousOtherApplianceIdsByType = React.useMemo(() => {
+    const grouped: Record<string, string[]> = {};
+
+    previousOtherApplianceMappings.forEach((item) => {
+      const type = item.otherAppliances?.type;
+      if (!type) return;
+      (grouped[type] ??= []).push(String(item.other_appliances_master_id));
+    });
+
+    return grouped;
+  }, [previousOtherApplianceMappings]);
 
   React.useEffect(() => {
     if (!specification) {
@@ -391,6 +484,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         !vendorId ||
         !userId ||
         !specification?.lead_id ||
+        !specification?.id ||
         !row.carcass_type_id ||
         !row.carcas_material_id ||
         !row.carcass_material_finish_id
@@ -403,6 +497,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
           id: row.id,
           vendor_id: vendorId,
           lead_id: specification.lead_id,
+          specs_id: specification.id,
           carcass_type_id: Number(row.carcass_type_id),
           carcas_material_id: Number(row.carcas_material_id),
           carcass_material_finish_id: Number(row.carcass_material_finish_id),
@@ -418,7 +513,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         });
       }
     },
-    [specification?.lead_id, upsertCarcassMapping, userId, vendorId],
+    [specification?.id, specification?.lead_id, upsertCarcassMapping, userId, vendorId],
   );
 
   const updateCarcassRow = React.useCallback(
@@ -487,6 +582,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         !vendorId ||
         !userId ||
         !specification?.lead_id ||
+        !specification?.id ||
         !row.shutter_type_id ||
         !row.shutter_material_id ||
         !row.shutter_material_finish_id
@@ -499,6 +595,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
           id: row.id,
           vendor_id: vendorId,
           lead_id: specification.lead_id,
+          specs_id: specification.id,
           shutter_type_id: Number(row.shutter_type_id),
           shutter_material_id: Number(row.shutter_material_id),
           shutter_material_finish_id: Number(row.shutter_material_finish_id),
@@ -514,7 +611,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         });
       }
     },
-    [specification?.lead_id, upsertShutterMapping, userId, vendorId],
+    [specification?.id, specification?.lead_id, upsertShutterMapping, userId, vendorId],
   );
 
   const updateShutterRow = React.useCallback(
@@ -584,6 +681,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         !vendorId ||
         !userId ||
         !specification?.lead_id ||
+        !specification?.id ||
         !row.carcass_legs_id ||
         !row.skirting_carcass_legs_id ||
         (colorOptionsCount > 0 && !row.skirting_carcass_legs_color_id)
@@ -596,6 +694,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
           id: row.id,
           vendor_id: vendorId,
           lead_id: specification.lead_id,
+          specs_id: specification.id,
           carcass_legs_id: Number(row.carcass_legs_id),
           skirting_carcass_legs_id: Number(row.skirting_carcass_legs_id),
           skirting_carcass_legs_color_id: row.skirting_carcass_legs_color_id
@@ -614,7 +713,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         });
       }
     },
-    [specification?.lead_id, upsertHardwareMapping, userId, vendorId],
+    [specification?.id, specification?.lead_id, upsertHardwareMapping, userId, vendorId],
   );
 
   const isHardwareRowDuplicate = (
@@ -981,6 +1080,124 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   const isLightsEnabled =
     lightsRemark === "In our scope" || lightsRemark === "Provide only grooves";
 
+  const getCarcassRowHighlightClass = React.useCallback(
+    (row: CarcassRow, index: number) => {
+      const hasValue =
+        !!row.carcass_type_id ||
+        !!row.carcas_material_id ||
+        !!row.carcass_material_finish_id;
+      if (!hasValue) return "";
+
+      if (!row.id) return newRowHighlightClass;
+      if (!previousSpecification) return "";
+
+      const baseline = previousCarcassMappings[index];
+      if (!baseline) return newRowHighlightClass;
+
+      const changed =
+        Number(row.carcass_type_id || 0) !== baseline.carcass_type_id ||
+        Number(row.carcas_material_id || 0) !== baseline.carcas_material_id ||
+        Number(row.carcass_material_finish_id || 0) !==
+          baseline.carcass_material_finish_id;
+
+      return changed ? clonedRowHighlightClass : "";
+    },
+    [previousCarcassMappings, previousSpecification],
+  );
+
+  const getShutterRowHighlightClass = React.useCallback(
+    (row: ShutterRow, index: number) => {
+      const hasValue =
+        !!row.shutter_type_id ||
+        !!row.shutter_material_id ||
+        !!row.shutter_material_finish_id;
+      if (!hasValue) return "";
+
+      if (!row.id) return newRowHighlightClass;
+      if (!previousSpecification) return "";
+
+      const baseline = previousShutterMappings[index];
+      if (!baseline) return newRowHighlightClass;
+
+      const changed =
+        Number(row.shutter_type_id || 0) !== baseline.shutter_type_id ||
+        Number(row.shutter_material_id || 0) !== baseline.shutter_material_id ||
+        Number(row.shutter_material_finish_id || 0) !==
+          baseline.shutter_material_finish_id;
+
+      return changed ? clonedRowHighlightClass : "";
+    },
+    [previousShutterMappings, previousSpecification],
+  );
+
+  const getHardwareRowHighlightClass = React.useCallback(
+    (row: HardwareRow, index: number) => {
+      const hasValue =
+        !!row.carcass_legs_id ||
+        !!row.skirting_carcass_legs_id ||
+        !!row.skirting_carcass_legs_color_id ||
+        !!row.note;
+      if (!hasValue) return "";
+
+      if (!row.id) return newRowHighlightClass;
+      if (!previousSpecification) return "";
+
+      const baseline = previousHardwareMappings[index];
+      if (!baseline) return newRowHighlightClass;
+
+      const changed =
+        Number(row.carcass_legs_id || 0) !== baseline.carcass_legs_id ||
+        Number(row.skirting_carcass_legs_id || 0) !==
+          baseline.skirting_carcass_legs_id ||
+        Number(row.skirting_carcass_legs_color_id || 0) !==
+          Number(baseline.skirting_carcass_legs_color_id || 0) ||
+        (row.note || "") !== (baseline.note || "");
+
+      return changed ? clonedRowHighlightClass : "";
+    },
+    [previousHardwareMappings, previousSpecification],
+  );
+
+  const getLightRowHighlightClass = React.useCallback(
+    (row: LightRow, index: number) => {
+      const hasValue =
+        !!row.light_carcas_type_id || !!row.light_carcas_unit_master_id;
+      if (!hasValue) return "";
+
+      if (!row.id) return newRowHighlightClass;
+      if (!previousSpecification) return "";
+
+      const baseline = previousLightMappings[index];
+      if (!baseline) return newRowHighlightClass;
+
+      const changed =
+        Number(row.light_carcas_unit_master_id || 0) !==
+          baseline.light_carcas_unit_master_id ||
+        Number(row.light_carcas_type_id || 0) !==
+          Number(baseline.lightCarcasUnit?.light_carcas_type_id || 0);
+
+      return changed ? clonedRowHighlightClass : "";
+    },
+    [previousLightMappings, previousSpecification],
+  );
+
+  const getOtherApplianceRowHighlightClass = React.useCallback(
+    (type: string, row: OtherApplianceRow, index: number) => {
+      if (!row.other_appliances_master_id) return "";
+
+      if (!row.id) return newRowHighlightClass;
+      if (!previousSpecification) return "";
+
+      const baselineValue = previousOtherApplianceIdsByType[type]?.[index];
+      if (!baselineValue) return newRowHighlightClass;
+
+      return row.other_appliances_master_id !== baselineValue
+        ? clonedRowHighlightClass
+        : "";
+    },
+    [previousOtherApplianceIdsByType, previousSpecification],
+  );
+
   if (!specification) return null;
 
   return (
@@ -1051,7 +1268,13 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                       const finishOptions = finishQueries[index]?.data?.data ?? [];
 
 	                      return (
-	                        <tr key={row.localId} className="border-b last:border-b-0">
+	                        <tr
+                            key={row.localId}
+                            className={cn(
+                              "border-b last:border-b-0",
+                              getCarcassRowHighlightClass(row, index),
+                            )}
+                          >
 	                          <td className="px-4 py-3 align-top">
 	                            <AssignToPicker
 	                              data={carcassTypes.map((type) => ({
@@ -1171,7 +1394,13 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                         shutterFinishQueries[index]?.data?.data ?? [];
 
 	                      return (
-	                        <tr key={row.localId} className="border-b last:border-b-0">
+	                        <tr
+                            key={row.localId}
+                            className={cn(
+                              "border-b last:border-b-0",
+                              getShutterRowHighlightClass(row, index),
+                            )}
+                          >
 	                          <td className="px-4 py-3 align-top">
 	                            <AssignToPicker
 	                              data={shutterTypes.map((type) => ({
@@ -1288,7 +1517,13 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                         !!selectedSkirting && !selectedSkirting.inScope;
 
                       return (
-                        <tr key={row.localId} className="border-b last:border-b-0">
+                        <tr
+                          key={row.localId}
+                          className={cn(
+                            "border-b last:border-b-0",
+                            getHardwareRowHighlightClass(row, index),
+                          )}
+                        >
                           <td className="px-4 py-3 align-top">
                             <AssignToPicker
                               data={carcassLegs.map((legs) => ({
@@ -1453,7 +1688,13 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                         lightUnitQueries[index]?.data?.data ?? [];
 
                       return (
-                        <tr key={row.localId} className="border-b last:border-b-0">
+                        <tr
+                          key={row.localId}
+                          className={cn(
+                            "border-b last:border-b-0",
+                            getLightRowHighlightClass(row, index),
+                          )}
+                        >
                           <td className="px-4 py-3 align-top">
                             <AssignToPicker
                               data={lightCarcasTypes.map((type) => ({
@@ -1551,7 +1792,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                           </tr>
                         </thead>
                         <tbody>
-                          {rows.map((row) => {
+                          {rows.map((row, index) => {
                             const selectedEntry = options.find(
                               (option) =>
                                 String(option.id) ===
@@ -1561,7 +1802,14 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                             return (
                               <tr
                                 key={row.localId}
-                                className="border-b last:border-b-0"
+                                className={cn(
+                                  "border-b last:border-b-0",
+                                  getOtherApplianceRowHighlightClass(
+                                    type,
+                                    row,
+                                    index,
+                                  ),
+                                )}
                               >
                                 <td className="px-4 py-3 align-top">
                                   <AssignToPicker

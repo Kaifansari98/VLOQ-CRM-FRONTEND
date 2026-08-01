@@ -681,6 +681,7 @@ export interface LeadCarcassMaterialMappingEntry {
   id: number;
   vendor_id: number;
   lead_id: number;
+  specs_id: number;
   carcass_type_id: number;
   carcas_material_id: number;
   carcass_material_finish_id: number;
@@ -695,6 +696,7 @@ export interface UpsertLeadCarcassMaterialMappingPayload {
   id?: number;
   vendor_id: number;
   lead_id: number;
+  specs_id: number;
   carcass_type_id: number;
   carcas_material_id: number;
   carcass_material_finish_id: number;
@@ -704,9 +706,10 @@ export interface UpsertLeadCarcassMaterialMappingPayload {
 export const getLeadCarcassMaterialMappings = async (
   vendorId: number,
   leadId: number,
+  specsId: number,
 ): Promise<LeadCarcassMaterialMappingEntry[]> => {
   const { data } = await apiClient.get(
-    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/carcass-material-mappings`,
+    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/specs/${specsId}/carcass-material-mappings`,
   );
 
   return Array.isArray(data?.data) ? data.data : [];
@@ -726,6 +729,7 @@ export interface LeadShutterMaterialMappingEntry {
   id: number;
   vendor_id: number;
   lead_id: number;
+  specs_id: number;
   shutter_type_id: number;
   shutter_material_id: number;
   shutter_material_finish_id: number;
@@ -740,6 +744,7 @@ export interface UpsertLeadShutterMaterialMappingPayload {
   id?: number;
   vendor_id: number;
   lead_id: number;
+  specs_id: number;
   shutter_type_id: number;
   shutter_material_id: number;
   shutter_material_finish_id: number;
@@ -749,9 +754,10 @@ export interface UpsertLeadShutterMaterialMappingPayload {
 export const getLeadShutterMaterialMappings = async (
   vendorId: number,
   leadId: number,
+  specsId: number,
 ): Promise<LeadShutterMaterialMappingEntry[]> => {
   const { data } = await apiClient.get(
-    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/shutter-material-mappings`,
+    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/specs/${specsId}/shutter-material-mappings`,
   );
 
   return Array.isArray(data?.data) ? data.data : [];
@@ -771,6 +777,7 @@ export interface LeadHardwareMappingEntry {
   id: number;
   vendor_id: number;
   lead_id: number;
+  specs_id: number;
   carcass_legs_id: number;
   skirting_carcass_legs_id: number;
   skirting_carcass_legs_color_id: number | null;
@@ -786,6 +793,7 @@ export interface UpsertLeadHardwareMappingPayload {
   id?: number;
   vendor_id: number;
   lead_id: number;
+  specs_id: number;
   carcass_legs_id: number;
   skirting_carcass_legs_id: number;
   skirting_carcass_legs_color_id?: number | null;
@@ -796,9 +804,10 @@ export interface UpsertLeadHardwareMappingPayload {
 export const getLeadHardwareMappings = async (
   vendorId: number,
   leadId: number,
+  specsId: number,
 ): Promise<LeadHardwareMappingEntry[]> => {
   const { data } = await apiClient.get(
-    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/hardware-mappings`,
+    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/specs/${specsId}/hardware-mappings`,
   );
 
   return Array.isArray(data?.data) ? data.data : [];
