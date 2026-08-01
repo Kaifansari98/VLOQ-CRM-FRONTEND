@@ -25,6 +25,7 @@ import {
   useLeadProductStructureInstances,
   useUploadMoreSitePhotos,
 } from "@/hooks/useLeadsQueries";
+import { useLeadBillingInformation } from "@/hooks/booking-stage/use-booking";
 import { useAppSelector } from "@/redux/store";
 import {
   createLeadProductStructureInstance,
@@ -77,6 +78,7 @@ import {
 import { updateLeadProductType, clearLeadProductStructures } from "@/api/leads";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 import { useFranchisesByVendorId } from "@/api/franchise";
+import type { LeadBillingAddress } from "@/api/booking";
 
 type OpenLeadDetailsProps = {
   leadId: number;
@@ -132,6 +134,65 @@ const InfoRow = ({ icon: Icon, label, value }: any) => (
   </div>
 );
 
+const hasAddressData = (address?: LeadBillingAddress | null) =>
+  Boolean(
+    address?.name ||
+      address?.address ||
+      address?.map_link ||
+      address?.gst_number ||
+      address?.state_name ||
+      address?.place_of_supply,
+  );
+
+const BillingAddressView = ({
+  title,
+  address,
+}: {
+  title: string;
+  address?: LeadBillingAddress | null;
+}) => (
+  <div className="space-y-4 rounded-2xl border p-4">
+    <h3 className="text-base font-semibold">{title}</h3>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <InfoRow icon={User} label="Name" value={address?.name} />
+      <InfoRow
+        icon={MapPin}
+        label="Map Link"
+        value={
+          address?.map_link ? (
+            <a
+              href={address.map_link}
+              target="_blank"
+              rel="noreferrer"
+              className="underline hover:opacity-80"
+            >
+              View on Google Maps →
+            </a>
+          ) : (
+            "No map link provided"
+          )
+        }
+      />
+      <InfoRow icon={Building} label="GST Number" value={address?.gst_number} />
+      <InfoRow icon={Building} label="State Name" value={address?.state_name} />
+      <InfoRow
+        icon={Package}
+        label="Place of Supply"
+        value={address?.place_of_supply}
+      />
+    </div>
+    <div>
+      <div className="flex items-center gap-2 text-sm text-subtle dark:text-neutral-400">
+        <MapPin className="w-4 h-4 stroke-[1.5]" />
+        Address
+      </div>
+      <div className="text-[15px] font-medium text-heading dark:text-neutral-200 pl-6">
+        {address?.address || "—"}
+      </div>
+    </div>
+  </div>
+);
+
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg"];
 
 const isImageDocument = (fileName?: string | null) => {
@@ -161,6 +222,10 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   );
   const { data: structureInstancesData, isLoading: isStructuresLoading } =
     useLeadProductStructureInstances(leadId, vendorId);
+  const { data: billingInformation } = useLeadBillingInformation(
+    vendorId,
+    handlesLargeScaleProjects ? leadId : undefined,
+  );
   const { data: productItemCodesData, isLoading: isProductItemCodesLoading } =
     useProductItemCodes();
   const { data: productStructureTypes } = useProductStructureTypes();
@@ -593,6 +658,17 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     );
     return leadFranchise?.moduled_for_b2b ?? false;
   }, [franchisesForB2b, lead?.franchise_id]);
+  const shouldShowBillingInformationCard = useMemo(
+    () =>
+      handlesLargeScaleProjects &&
+      (hasAddressData(billingInformation?.billingAddress) ||
+        hasAddressData(billingInformation?.shippingAddress)),
+    [
+      billingInformation?.billingAddress,
+      billingInformation?.shippingAddress,
+      handlesLargeScaleProjects,
+    ],
+  );
 
   // ✅ 9. EARLY RETURNS — SARE HOOKS KE BAAD
   if (isLoading && !lead) {
@@ -1584,6 +1660,25 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                 />
                 <InfoRow icon={Magnet} label="Source" value={lead.source?.type} />
                 <InfoRow icon={Package} label="Priority" value={lead.priority} />
+              </div>
+            </SectionCard>
+          )}
+
+          {shouldShowBillingInformationCard && (
+            <SectionCard title="Billing Information">
+              <div className="grid gap-6 lg:grid-cols-2">
+                {hasAddressData(billingInformation?.billingAddress) && (
+                  <BillingAddressView
+                    title="Bill To"
+                    address={billingInformation?.billingAddress}
+                  />
+                )}
+                {hasAddressData(billingInformation?.shippingAddress) && (
+                  <BillingAddressView
+                    title="Ship To"
+                    address={billingInformation?.shippingAddress}
+                  />
+                )}
               </div>
             </SectionCard>
           )}
