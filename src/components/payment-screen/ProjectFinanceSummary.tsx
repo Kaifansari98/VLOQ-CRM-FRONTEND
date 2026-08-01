@@ -155,6 +155,14 @@ export default function ProjectFinanceSummary({
       ),
     [scopedPaymentLogs],
   );
+  const overallPaidAmountFromLogs = useMemo(
+    () =>
+      paymentLogs.reduce(
+        (sum, log) => sum + Number(log.amount || 0),
+        0,
+      ),
+    [paymentLogs],
+  );
 
   const totalProjectAmount =
     activeProductTypeId != null
@@ -181,11 +189,11 @@ export default function ProjectFinanceSummary({
   const pendingAmount =
     activeProductTypeId != null
       ? Math.max(totalProjectAmount - scopedPaidAmount, 0)
-      : projectFinance?.pending_amount ?? 0;
+      : Math.max(totalProjectAmount - overallPaidAmountFromLogs, 0);
   const mrpValue = projectFinance?.mrp_value ?? 0;
   const overallReceivedAmount =
     activeProductTypeId == null
-      ? Math.max(totalProjectAmount - pendingAmount, 0)
+      ? overallPaidAmountFromLogs
       : null;
   const scopedBasicAmount =
     activeProductTypeId != null
