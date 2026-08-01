@@ -598,6 +598,53 @@ async function parseOtherAppliancesFile(
   return { headers, rows };
 }
 
+function toCsvCell(value: string) {
+  const normalized = String(value ?? "");
+  if (
+    normalized.includes(",") ||
+    normalized.includes('"') ||
+    normalized.includes("\n") ||
+    normalized.includes("\r")
+  ) {
+    return `"${normalized.replace(/"/g, '""')}"`;
+  }
+  return normalized;
+}
+
+async function buildOtherAppliancesUploadFile(file: File): Promise<File> {
+  const { headers, rows, error } = await parseOtherAppliancesFile(file);
+
+  if (error) {
+    throw new Error(error);
+  }
+
+  const articleKey = headers.find((h) => h.includes("article"));
+  const descKey = headers.find((h) => h.includes("desc"));
+
+  if (!articleKey || !descKey) {
+    throw new Error(
+      "Required columns missing. The sheet must have Article Number and Description columns.",
+    );
+  }
+
+  const csvLines = [
+    "Article Number,Description",
+    ...rows.map((row) =>
+      [
+        toCsvCell((row[articleKey] || "").trim()),
+        toCsvCell((row[descKey] || "").trim()),
+      ].join(","),
+    ),
+  ];
+
+  const safeName = file.name.replace(/\.[^.]+$/, "");
+  return new File(
+    [csvLines.join("\n")],
+    `${safeName}.normalized.csv`,
+    { type: "text/csv" },
+  );
+}
+
 async function computeOtherAppliancesUploadPreview(
   file: File,
   existing: {
@@ -3631,6 +3678,7 @@ function OtherAppliancesTab({ type }: { type: string }) {
   const [uploadPreview, setUploadPreview] =
     React.useState<MasterUploadPreview | null>(null);
   const [isParsingPreview, setIsParsingPreview] = React.useState(false);
+  const [isPreparingUpload, setIsPreparingUpload] = React.useState(false);
 
   React.useEffect(() => {
     const file = selectedFiles[0];
@@ -3848,29 +3896,47 @@ function OtherAppliancesTab({ type }: { type: string }) {
               Cancel
             </Button>
             <Button
-              onClick={() => {
+              onClick={async () => {
                 const file = selectedFiles[0];
                 if (!file || !vendorId) return;
-                const formData = new FormData();
-                formData.append("file", file);
-                formData.append("vendorId", String(vendorId));
-                formData.append("type", type);
-                uploadMutation.mutate(formData, {
-                  onSuccess: () => {
-                    setOpenUploadModal(false);
-                    setSelectedFiles([]);
-                    setUploadPreview(null);
-                  },
-                });
+                try {
+                  setIsPreparingUpload(true);
+                  const normalizedFile = await buildOtherAppliancesUploadFile(file);
+                  const formData = new FormData();
+                  formData.append("file", normalizedFile);
+                  formData.append("vendorId", String(vendorId));
+                  formData.append("type", type);
+                  uploadMutation.mutate(formData, {
+                    onSuccess: () => {
+                      setOpenUploadModal(false);
+                      setSelectedFiles([]);
+                      setUploadPreview(null);
+                    },
+                    onSettled: () => {
+                      setIsPreparingUpload(false);
+                    },
+                  });
+                } catch (error: any) {
+                  setIsPreparingUpload(false);
+                  toastManager.add({
+                    title:
+                      error?.message ||
+                      "Could not prepare this file for import.",
+                    type: "error",
+                  });
+                }
               }}
               disabled={
                 selectedFiles.length === 0 ||
                 isParsingPreview ||
+                isPreparingUpload ||
                 !!uploadPreview?.headerError ||
                 uploadMutation.isPending
               }
             >
-              {uploadMutation.isPending ? "Uploading..." : "Upload & Import"}
+              {uploadMutation.isPending || isPreparingUpload
+                ? "Uploading..."
+                : "Upload & Import"}
             </Button>
           </div>
         </div>
