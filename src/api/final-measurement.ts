@@ -6,10 +6,11 @@ export interface FinalMeasurementPayload {
   vendor_id: number;
   created_by: number;
   critical_discussion_notes?: string; // optional
-  final_measurement_docs: File[]; // accept multiple PDF or image files
-  site_photos: File[]; // multiple images
+  final_measurement_docs?: File[]; // accept multiple PDF or image files (optional)
+  site_photos?: File[]; // multiple images (optional)
   final_measurement_doc_instance_ids?: Array<number | null>;
   site_photo_instance_ids?: Array<number | null>;
+  skip_final_measurement?: boolean;
 }
 
 export interface AssignToFinalMeasurementPayload {
@@ -100,6 +101,10 @@ export const UploadFinalMeasurement = async (
     payload.critical_discussion_notes || ""
   );
 
+  if (payload.skip_final_measurement) {
+    formData.append("skip_final_measurement", "true");
+  }
+
   if (payload.final_measurement_docs?.length) {
     payload.final_measurement_docs.forEach((file) => {
       formData.append("final_measurement_doc", file); // ✅ multiple files with same field name
@@ -112,9 +117,11 @@ export const UploadFinalMeasurement = async (
     );
   }
 
-  payload.site_photos.forEach((file) => {
-    formData.append("site_photos", file);
-  });
+  if (payload.site_photos?.length) {
+    payload.site_photos.forEach((file) => {
+      formData.append("site_photos", file);
+    });
+  }
   if (payload.site_photo_instance_ids) {
     formData.append(
       "site_photo_instance_ids",
@@ -382,4 +389,22 @@ export const getCSPBookingPhotos = async (
   );
 
   return data.data;
+};
+
+export interface SkipFinalMeasurementPayload {
+  lead_id: number;
+  account_id: number;
+  vendor_id: number;
+  created_by: number;
+  critical_discussion_notes?: string;
+}
+
+export const skipFinalMeasurementStage = async (
+  payload: SkipFinalMeasurementPayload
+) => {
+  const { data } = await apiClient.post(
+    `/leads/final-measurement/skip`,
+    payload
+  );
+  return data;
 };

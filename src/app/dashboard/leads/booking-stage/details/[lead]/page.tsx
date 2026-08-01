@@ -57,6 +57,8 @@ import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda"
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import { useDeleteLead } from "@/hooks/useDeleteLead";
 import { toastManager } from "@/components/ui/toast";
+import { useRouter } from "next/navigation";
+import { useSkipFinalMeasurement } from "@/hooks/final-measurement/use-final-measurement";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import PaymentInformation from "@/components/tabScreens/PaymentInformationScreen";
@@ -225,6 +227,67 @@ export default function BookingStageLeadsDetails() {
   const blockLeadMutation = useBlockLead();
   const unblockLeadMutation = useUnblockLead();
 
+  const router = useRouter();
+  const [skipConfirmOpen, setSkipConfirmOpen] = useState(false);
+  const skipFinalMeasurementMutation = useSkipFinalMeasurement();
+
+  const isCustomVendorFlowFromAuth = useAppSelector(
+    (state) =>
+      state.auth?.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
+  );
+  const handlesLargeScaleProjectsFromAuth = useAppSelector(
+    (state) => state.auth?.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+
+  const isCustomVendorFlow =
+    isCustomVendorFlowFromAuth ||
+    lead?.createdBy?.vendor?.is_this_vendor_is_custom_usertype_only === true ||
+    lead?.assignedTo?.vendor?.is_this_vendor_is_custom_usertype_only === true;
+  const handlesLargeScaleProjects =
+    handlesLargeScaleProjectsFromAuth ||
+    lead?.createdBy?.vendor?.handlesLargeScaleProjects === true ||
+    lead?.assignedTo?.vendor?.handlesLargeScaleProjects === true;
+
+  const showSkipButton = isCustomVendorFlow && handlesLargeScaleProjects;
+
+  const handleSkipFinalMeasurement = () => {
+    skipFinalMeasurementMutation.mutate(
+      {
+        lead_id: leadIdNum,
+        account_id: lead?.account_id ?? 0,
+        vendor_id: vendorId ?? 0,
+        created_by: userId ?? 0,
+        critical_discussion_notes: "Skipped Final Measurement Stage.",
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: "Final measurement stage skipped and moved to Client Document!",
+            type: "success",
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["leadStats", vendorId, userId],
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["universal-stage-leads"],
+            exact: false,
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["allLeadDocuments"],
+          });
+          setSkipConfirmOpen(false);
+          router.push(`/dashboard/leads/booking-stage`);
+        },
+        onError: (err: any) => {
+          toastManager.add({
+            title: err?.message || "Failed to skip final measurement stage",
+            type: "error",
+          });
+        },
+      }
+    );
+  };
+
   const isBlockActionPending =
     blockLeadMutation.isPending ||
     unblockLeadMutation.isPending;
@@ -377,6 +440,17 @@ export default function BookingStageLeadsDetails() {
             )
           )}
 
+          {showSkipButton && (
+            <Button
+              className="hidden md:block"
+              size="sm"
+              onClick={() => setSkipConfirmOpen(true)}
+              disabled={skipFinalMeasurementMutation.isPending}
+            >
+              {skipFinalMeasurementMutation.isPending ? "Skipping..." : "Skip Final Measurement"}
+            </Button>
+          )}
+
           <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
           {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
@@ -411,6 +485,17 @@ export default function BookingStageLeadsDetails() {
                   }
                   value="You don't have permission to assign Final Measurement tasks."
                 />
+              )}
+
+              {showSkipButton && (
+                <DropdownMenuItem
+                  className="flex md:hidden"
+                  onSelect={() => setSkipConfirmOpen(true)}
+                  disabled={skipFinalMeasurementMutation.isPending}
+                >
+                  <UserPlus size={20} />
+                  {skipFinalMeasurementMutation.isPending ? "Skipping..." : "Skip Final Measurement"}
+                </DropdownMenuItem>
               )}
               {/* --- NEW: Lead Status submenu (Mark On Hold / Mark As Lost) */}
               {canAccessMarkOnHold && (
@@ -771,6 +856,28 @@ export default function BookingStageLeadsDetails() {
         onSubmit={handleCancelFastProduction}
         loading={revokeFastProductionMutation.isPending}
       />
+
+      <AlertDialog open={skipConfirmOpen} onOpenChange={setSkipConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Skip Final Measurement?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to skip the Final Measurement stage and move directly to the Client Document stage?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={skipFinalMeasurementMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleSkipFinalMeasurement}
+              disabled={skipFinalMeasurementMutation.isPending}
+            >
+              {skipFinalMeasurementMutation.isPending ? "Skipping..." : "Skip"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
