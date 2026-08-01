@@ -129,6 +129,22 @@ export default function ProjectFinanceSummary({
       null,
     );
   }, [activeProductTypeId, scopedPaymentLogs]);
+  const overallBookingAmountFromLogs = useMemo(
+    () =>
+      paymentLogs.reduce((sum, log) => {
+        if (!log.is_booking_received_amt) return sum;
+        return sum + Number(log.amount || 0);
+      }, 0),
+    [paymentLogs],
+  );
+  const scopedBookingAmountFromLogs = useMemo(
+    () =>
+      scopedPaymentLogs.reduce((sum, log) => {
+        if (!log.is_booking_received_amt) return sum;
+        return sum + Number(log.amount || 0);
+      }, 0),
+    [scopedPaymentLogs],
+  );
   const scopedPaidAmount = useMemo(
     () =>
       scopedPaymentLogs.reduce(
@@ -149,9 +165,12 @@ export default function ProjectFinanceSummary({
   const bookingAmount =
     activeProductTypeId != null
       ? Number(
-          productTypePayment?.amount ?? scopedBookingPayment?.amount ?? 0,
+          scopedBookingAmountFromLogs ||
+            productTypePayment?.amount ||
+            scopedBookingPayment?.amount ||
+            0,
         )
-      : projectFinance?.booking_amount ?? 0;
+      : overallBookingAmountFromLogs || projectFinance?.booking_amount || 0;
   const pendingAmount =
     activeProductTypeId != null
       ? Math.max(totalProjectAmount - scopedPaidAmount, 0)
