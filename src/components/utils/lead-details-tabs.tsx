@@ -21,6 +21,7 @@ import ClientApprovalDetails from "../site-supervisor/client-approval/client-app
 import BookingLeadsDetails from "../sales-executive/booking-stage/view-booking-modal";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
+import { useFinalMeasurementLeadById } from "@/hooks/final-measurement/use-final-measurement";
 
 interface LeadDetailsUtilProps {
   status: string;
@@ -61,6 +62,14 @@ export default function LeadDetailsUtil({
     handlesLargeScaleProjectsFromAuth ||
     leadById?.createdBy?.vendor?.handlesLargeScaleProjects === true ||
     leadById?.assignedTo?.vendor?.handlesLargeScaleProjects === true;
+
+  const { data: finalMeasurementData } = useFinalMeasurementLeadById(
+    vendorId ?? 0,
+    leadId ?? 0,
+  );
+  const sitePhotos = finalMeasurementData?.sitePhotos ?? [];
+  const measurementDocs = finalMeasurementData?.measurementDocs ?? [];
+  const hasAtLeastOneDocUploaded = sitePhotos.length > 0 || measurementDocs.length > 0;
 
   const allTabs = [
     {
@@ -121,14 +130,13 @@ export default function LeadDetailsUtil({
       "measurement",
       "designing",
       "booking",
-      ...(handlesLargeScaleProjects && isCustomVendorFlow ? ["finalMeasurement"] : []),
     ],
     finalMeasurement: [
       "details",
       "measurement",
       "designing",
       "booking",
-      "finalMeasurement",
+      ...(hasAtLeastOneDocUploaded ? ["finalMeasurement"] : []),
     ],
     clientdocumentation: [
       "details",

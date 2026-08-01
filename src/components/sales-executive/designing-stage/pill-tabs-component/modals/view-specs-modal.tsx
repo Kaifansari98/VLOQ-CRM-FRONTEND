@@ -52,6 +52,7 @@ import {
   fetchSkirtingCarcassLegsColors,
   fetchLightCarcasUnits,
   type OtherAppliancesMasterEntry,
+  OTHER_APPLIANCE_TYPES,
 } from "@/api/typesMasterApi";
 import { useQueries } from "@tanstack/react-query";
 import { toastManager } from "@/components/ui/toast";
@@ -408,7 +409,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     }
 
     const grouped: Record<string, OtherApplianceRow[]> = {};
-    Object.keys(otherAppliancesByType).forEach((type) => {
+    OTHER_APPLIANCE_TYPES.forEach((type) => {
       const persistedRows: OtherApplianceRow[] = otherApplianceMappings
         .filter((item) => item.otherAppliances?.type === type)
         .map((item) => ({
@@ -1771,7 +1772,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
               </div>
             </div>
 
-            {Object.keys(otherAppliancesByType).map((type) => {
+            {OTHER_APPLIANCE_TYPES.map((type) => {
               const options = otherAppliancesByType[type] ?? [];
               const rows = otherApplianceRowsByType[type] ?? [];
 
