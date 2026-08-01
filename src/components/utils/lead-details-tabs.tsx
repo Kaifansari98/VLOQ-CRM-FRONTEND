@@ -19,8 +19,8 @@ import FinalMeasurementLeadDetails from "../tabScreens/FinalMeasurementDetails";
 import ClientDocumentationDetails from "../site-supervisor/client-documentation/view-client-documentation";
 import ClientApprovalDetails from "../site-supervisor/client-approval/client-approval-details";
 import BookingLeadsDetails from "../sales-executive/booking-stage/view-booking-modal";
-
-/* ---- imports unchanged ---- */
+import { useAppSelector } from "@/redux/store";
+import { useLeadById } from "@/hooks/useLeadsQueries";
 
 interface LeadDetailsUtilProps {
   status: string;
@@ -39,6 +39,28 @@ export default function LeadDetailsUtil({
   onlyThisTab,
 }: LeadDetailsUtilProps) {
   const [mobileTab, setMobileTab] = useState(defaultTab);
+
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const userId = useAppSelector((state) => state.auth.user?.id);
+  const isCustomVendorFlowFromAuth = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
+  );
+  const handlesLargeScaleProjectsFromAuth = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+
+  const { data: leadByIdResponse } = useLeadById(leadId, vendorId, userId);
+  const leadById = leadByIdResponse?.data?.lead;
+
+  const isCustomVendorFlow =
+    isCustomVendorFlowFromAuth ||
+    leadById?.createdBy?.vendor?.is_this_vendor_is_custom_usertype_only === true ||
+    leadById?.assignedTo?.vendor?.is_this_vendor_is_custom_usertype_only === true;
+  const handlesLargeScaleProjects =
+    handlesLargeScaleProjectsFromAuth ||
+    leadById?.createdBy?.vendor?.handlesLargeScaleProjects === true ||
+    leadById?.assignedTo?.vendor?.handlesLargeScaleProjects === true;
 
   const allTabs = [
     {
@@ -94,7 +116,13 @@ export default function LeadDetailsUtil({
     details: ["details"],
     measurement: ["details", "measurement"],
     designing: ["details", "measurement", "designing"],
-    booking: ["details", "measurement", "designing", "booking"],
+    booking: [
+      "details",
+      "measurement",
+      "designing",
+      "booking",
+      ...(handlesLargeScaleProjects && isCustomVendorFlow ? ["finalMeasurement"] : []),
+    ],
     finalMeasurement: [
       "details",
       "measurement",

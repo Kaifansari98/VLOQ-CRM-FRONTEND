@@ -67,6 +67,8 @@ import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda"
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import { useDeleteLead } from "@/hooks/useDeleteLead";
 import { toastManager } from "@/components/ui/toast";
+import { useRouter } from "next/navigation";
+import { useFinalMeasurement, useFinalMeasurementLeadById } from "@/hooks/final-measurement/use-final-measurement";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -106,6 +108,12 @@ export default function FinalMeasurementLeadDetails() {
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const isCustomVendorFlow = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
+  );
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
 
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
@@ -181,6 +189,61 @@ export default function FinalMeasurementLeadDetails() {
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
   const accountId = lead?.account_id;
+
+  const router = useRouter();
+  const [moveConfirmOpen, setMoveConfirmOpen] = useState(false);
+  const finalMeasurementMutation = useFinalMeasurement();
+  const { data: finalMeasurementData } = useFinalMeasurementLeadById(
+    vendorId ?? 0,
+    leadIdNum,
+  );
+  
+  const sitePhotos = finalMeasurementData?.sitePhotos ?? [];
+  const measurementDocs = finalMeasurementData?.measurementDocs ?? [];
+  const hasAtLeastOneDocUploaded = sitePhotos.length > 0 || measurementDocs.length > 0;
+  const showMoveButton = hasAtLeastOneDocUploaded && isCustomVendorFlow && handlesLargeScaleProjects;
+
+  const handleMoveToClientDocument = () => {
+    finalMeasurementMutation.mutate(
+      {
+        lead_id: leadIdNum,
+        account_id: lead?.account_id ?? 0,
+        vendor_id: vendorId ?? 0,
+        created_by: userId ?? 0,
+        critical_discussion_notes: "N/A",
+        final_measurement_docs: [],
+        site_photos: [],
+        final_measurement_doc_instance_ids: [],
+        site_photo_instance_ids: [],
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: "Lead moved to Client Document stage successfully!",
+            type: "success",
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["leadStats", vendorId, userId],
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["universal-stage-leads"],
+            exact: false,
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["allLeadDocuments"],
+          });
+          setMoveConfirmOpen(false);
+          router.push(`/dashboard/project/final-measurement`);
+        },
+        onError: (err: any) => {
+          toastManager.add({
+            title: err?.message || "Failed to move lead to Client Document stage",
+            type: "error",
+          });
+        },
+      }
+    );
+  };
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
@@ -358,6 +421,17 @@ export default function FinalMeasurementLeadDetails() {
             </Button>
           )}
 
+          {showMoveButton && (
+            <Button
+              size="sm"
+              onClick={() => setMoveConfirmOpen(true)}
+              disabled={finalMeasurementMutation.isPending}
+              className="hidden md:flex"
+            >
+              {finalMeasurementMutation.isPending ? "Moving..." : "Move to Client Document"}
+            </Button>
+          )}
+
           <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
           {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
@@ -383,6 +457,17 @@ export default function FinalMeasurementLeadDetails() {
                 <UserPlus size={20} />
                 Assign Task
               </DropdownMenuItem>
+
+              {showMoveButton && (
+                <DropdownMenuItem
+                  className="flex md:hidden"
+                  onSelect={() => setMoveConfirmOpen(true)}
+                  disabled={finalMeasurementMutation.isPending}
+                >
+                  <FileText size={20} />
+                  {finalMeasurementMutation.isPending ? "Moving..." : "Move to Client Document"}
+                </DropdownMenuItem>
+              )}
               {/* Lead block handling added for DropdownMenu action */}
               {shouldDisableBlockedActions ? (
                 <CustomeTooltip
@@ -802,6 +887,28 @@ export default function FinalMeasurementLeadDetails() {
         onOpenChange={setFastProductionDetailsOpen}
         leadId={leadIdNum}
       />
+
+      <AlertDialog open={moveConfirmOpen} onOpenChange={setMoveConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Move to Client Document stage?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to transition this lead to the Client Document stage?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={finalMeasurementMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleMoveToClientDocument}
+              disabled={finalMeasurementMutation.isPending}
+            >
+              {finalMeasurementMutation.isPending ? "Moving..." : "Move"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

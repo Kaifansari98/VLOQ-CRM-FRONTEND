@@ -16,6 +16,8 @@ import {
   uploadClientDocPayload,
   UploadClientDocumantation,
   UploadFinalMeasurement,
+  skipFinalMeasurementStage,
+  SkipFinalMeasurementPayload,
 } from "@/api/final-measurement";
 import {
   FinalMeasurementLeadDetails,
@@ -103,5 +105,12 @@ export const useAddMoreFinalMeasurementSitePhotos = () => {
   return useMutation({
     mutationFn: (payload: AddMoreFinalMeasurementSitePhotosPayload) =>
       addMoreFinalMeasurementSitePhotos(payload),
+  });
+};
+
+export const useSkipFinalMeasurement = () => {
+  return useMutation({
+    mutationFn: (payload: SkipFinalMeasurementPayload) =>
+      skipFinalMeasurementStage(payload),
   });
 };

@@ -29,6 +29,7 @@ import { FileUploadField } from "@/components/custom/file-upload";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { toastManager } from "@/components/ui/toast";
+import { useLeadById, useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 
 type Props = {
   leadId: number;
@@ -70,6 +71,35 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
   const effectiveUserType =
     userType === "admin" ? "sales-executive" : userType;
 
+  const isCustomVendorFlowFromAuth = useAppSelector(
+    (state) =>
+      state.auth?.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
+  );
+  const handlesLargeScaleProjectsFromAuth = useAppSelector(
+    (state) => state.auth?.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+
+  const { data: leadByIdResponse } = useLeadById(leadId, vendorId, userId);
+  const leadById = leadByIdResponse?.data?.lead;
+
+  const isCustomVendorFlow =
+    isCustomVendorFlowFromAuth ||
+    leadById?.createdBy?.vendor?.is_this_vendor_is_custom_usertype_only === true ||
+    leadById?.assignedTo?.vendor?.is_this_vendor_is_custom_usertype_only === true;
+  const handlesLargeScaleProjects =
+    handlesLargeScaleProjectsFromAuth ||
+    leadById?.createdBy?.vendor?.handlesLargeScaleProjects === true ||
+    leadById?.assignedTo?.vendor?.handlesLargeScaleProjects === true;
+
+  const { data: structureInstancesData } = useLeadProductStructureInstances(leadId, vendorId);
+  const structureInstances = React.useMemo(
+    () =>
+      Array.isArray(structureInstancesData?.data)
+        ? structureInstancesData.data
+        : [],
+    [structureInstancesData?.data],
+  );
+
   // 🧩 --- Data Hook ---
   const { data, isLoading, error } = useFinalMeasurementLeadById(
     vendorId,
@@ -89,6 +119,7 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
   const [addSitePhotosOpen, setAddSitePhotosOpen] = useState(false);
   const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
   const [sitePhotosToUpload, setSitePhotosToUpload] = useState<File[]>([]);
+  const [activeInstanceId, setActiveInstanceId] = useState<number | null>(null);
 
   // 🧩 --- Permissions ---
   const canDelete = effectiveUserType === "admin" || effectiveUserType === "super-admin";
@@ -250,6 +281,80 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
     }
   };
 
+  const handleAddMoreInstanceFiles = async (instanceId: number) => {
+    if (!vendorId || !userId) {
+      toastManager.add({ title: "Missing vendor, user information.", type: "error" });
+      return;
+    }
+    if (filesToUpload.length === 0) {
+      toastManager.add({ title: "Please select at least one file to upload.", type: "error" });
+      return;
+    }
+
+    try {
+      await addMoreFiles({
+        leadId,
+        vendorId,
+        createdBy: userId,
+        sitePhotos: filesToUpload,
+        productStructureInstanceId: instanceId,
+      });
+      toastManager.add({ title: "Additional files uploaded successfully.", type: "success" });
+      setFilesToUpload([]);
+      queryClient.invalidateQueries({
+        queryKey: ["finalMeasurementLead", vendorId, leadId],
+      });
+    } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to upload files.";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
+    }
+  };
+
+  const handleAddMoreInstanceSitePhotos = async (instanceId: number) => {
+    if (!vendorId || !userId) {
+      toastManager.add({ title: "Missing vendor, user information.", type: "error" });
+      return;
+    }
+    if (sitePhotosToUpload.length === 0) {
+      toastManager.add({ title: "Please select at least one site photo to upload.", type: "error" });
+      return;
+    }
+
+    try {
+      await addMoreSitePhotos({
+        leadId,
+        vendorId,
+        createdBy: userId,
+        sitePhotos: sitePhotosToUpload,
+        productStructureInstanceId: instanceId,
+      });
+      toastManager.add({ title: "Additional site photos uploaded successfully.", type: "success" });
+      setSitePhotosToUpload([]);
+      queryClient.invalidateQueries({
+        queryKey: ["finalMeasurementLead", vendorId, leadId],
+      });
+    } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to upload site photos.";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
+    }
+  };
+
   // 🧩 --- Loading & Error States ---
   if (isLoading)
     return (
@@ -282,6 +387,335 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
 
   // 🧩 --- Data Extraction ---
   const { sitePhotos = [], measurementDocs = [], final_desc_note } = data;
+
+  if (isCustomVendorFlow && handlesLargeScaleProjects) {
+    return (
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="w-full h-full py-4 space-y-6 overflow-y-auto bg-[#fff] dark:bg-[#0a0a0a]"
+      >
+        {/* Instance Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {structureInstances.map((instance: any) => {
+            const instDocs = measurementDocs.filter(
+              (doc) => doc.product_structure_instance_id === instance.id
+            );
+            const instPhotos = sitePhotos.filter(
+              (photo) => photo.product_structure_instance_id === instance.id
+            );
+
+            return (
+              <div
+                key={instance.id}
+                className="bg-white dark:bg-neutral-900 border border-border rounded-2xl p-5 space-y-4 hover:shadow-md transition-shadow flex flex-col justify-between"
+              >
+                <div className="space-y-1">
+                  <h3 className="font-semibold text-base text-card-foreground">
+                    {instance.title}
+                  </h3>
+                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                    {instance.description ||
+                      "Create a new item code and link it to a sub-item category."}
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="border border-border/60 rounded-xl p-3 bg-muted/10 space-y-2 text-[11px]">
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground font-medium">
+                        Measurement:
+                      </span>
+                      <span className="font-semibold text-foreground">
+                        {instDocs.length} uploaded
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground font-medium">
+                        Site Photos:
+                      </span>
+                      <span className="font-semibold text-foreground">
+                        {instPhotos.length} uploaded
+                      </span>
+                    </div>
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full flex items-center justify-center gap-2 text-xs font-semibold py-2"
+                    onClick={() => setActiveInstanceId(instance.id)}
+                  >
+                    <FileText size={14} />
+                    Manage Files
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* -------- Discussion Note -------- */}
+        <div
+          className="
+        bg-[#fff] dark:bg-[#0a0a0a]
+        rounded-2xl 
+        border border-border
+        overflow-hidden
+      "
+        >
+          <div
+            className="
+          px-5 py-3 
+          border-b border-border
+          bg-mutedBg/50 dark:bg-neutral-900/50
+        "
+          >
+            <h2 className="text-base font-semibold tracking-tight">
+              Discussion Note
+            </h2>
+          </div>
+
+          <div className="p-5">
+            <div
+              className="
+            bg-[#fff] dark:bg-[#0a0a0a]
+            border border-border
+            rounded-xl
+            p-4 
+            text-sm leading-relaxed 
+            min-h-[70px] 
+          "
+            >
+              {final_desc_note || "No description provided."}
+            </div>
+          </div>
+        </div>
+
+        {/* -------- Manage Files Modal -------- */}
+        <BaseModal
+          open={!!activeInstanceId}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) {
+              setActiveInstanceId(null);
+            }
+          }}
+          title={
+            structureInstances.find((i: any) => i.id === activeInstanceId)?.title ||
+            "Manage Files"
+          }
+          description="View and upload Final Measurement documents and site photos for this instance."
+          size="xl"
+        >
+          {(() => {
+            const instance = structureInstances.find((i: any) => i.id === activeInstanceId);
+            if (!instance) return null;
+
+            const instDocs = measurementDocs.filter(
+              (doc) => doc.product_structure_instance_id === instance.id
+            );
+            const instPhotos = sitePhotos.filter(
+              (photo) => photo.product_structure_instance_id === instance.id
+            );
+
+            return (
+              <div className="px-5 py-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Left Column: Site Photos */}
+                  <div className="space-y-4">
+                    <h4 className="font-semibold text-sm flex items-center gap-2 text-card-foreground">
+                      <Images size={16} /> Site Photos
+                    </h4>
+                    <FileUploadField
+                      value={sitePhotosToUpload}
+                      onChange={(files) => {
+                        const validFiles = files.filter((f) =>
+                          imageMimeTypes.includes(f.type)
+                        );
+                        if (files.length > 10) {
+                          setSitePhotosToUpload(validFiles.slice(0, 10));
+                        } else {
+                          setSitePhotosToUpload(validFiles);
+                        }
+                      }}
+                      accept={imageAccept}
+                      multiple
+                      maxFiles={10}
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSitePhotosToUpload([])}
+                        disabled={sitePhotosToUpload.length === 0 || addingSitePhotos}
+                      >
+                        Clear
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleAddMoreInstanceSitePhotos(instance.id)}
+                        disabled={sitePhotosToUpload.length === 0 || addingSitePhotos}
+                      >
+                        {addingSitePhotos ? "Uploading..." : "Upload"}
+                      </Button>
+                    </div>
+
+                    <div className="pt-2 space-y-2">
+                      <h5 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                        Saved Photos
+                      </h5>
+                      {instPhotos.length > 0 ? (
+                        <div className="grid grid-cols-1 gap-3 w-full">
+                          {instPhotos.map((photo, index) => {
+                            const fileName = photo.doc_og_name || "";
+                            const isImage = /\.(jpg|jpeg|png|gif|webp|bmp|tif|tiff|heic|heif|avif|svg|jfif)$/i.test(
+                              fileName
+                            );
+
+                            return isImage ? (
+                              <ImageComponent
+                                key={photo.id}
+                                doc={{
+                                  id: photo.id,
+                                  doc_og_name: photo.doc_og_name,
+                                  signedUrl: photo.signedUrl,
+                                  created_at: photo.created_at,
+                                }}
+                                index={index}
+                                canDelete={canDeleteCurrentSitePhotos}
+                                onDelete={(id) => setConfirmDelete(Number(id))}
+                              />
+                            ) : (
+                              <DocumentCard
+                                key={photo.id}
+                                doc={{
+                                  id: photo.id,
+                                  originalName: photo.doc_og_name,
+                                  signedUrl: photo.signedUrl,
+                                  created_at: photo.created_at,
+                                }}
+                                canDelete={canDeleteCurrentSitePhotos}
+                                onDelete={(id) => setConfirmDelete(Number(id))}
+                                alwaysShowText={true}
+                              />
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic">
+                          No photos uploaded for this instance.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right Column: Measurement Documents */}
+                  <div className="space-y-4">
+                    <h4 className="font-semibold text-sm flex items-center gap-2 text-card-foreground">
+                      <FileText size={16} /> Measurement Documents
+                    </h4>
+                    <FileUploadField
+                      value={filesToUpload}
+                      onChange={(files) => {
+                        const validFiles = files.filter((f) =>
+                          documentMimeTypes.includes(f.type)
+                        );
+                        if (files.length > 10) {
+                          setFilesToUpload(validFiles.slice(0, 10));
+                        } else {
+                          setFilesToUpload(validFiles);
+                        }
+                      }}
+                      accept={documentAccept}
+                      multiple
+                      maxFiles={10}
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setFilesToUpload([])}
+                        disabled={filesToUpload.length === 0 || addingFiles}
+                      >
+                        Clear
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleAddMoreInstanceFiles(instance.id)}
+                        disabled={filesToUpload.length === 0 || addingFiles}
+                      >
+                        {addingFiles ? "Uploading..." : "Upload"}
+                      </Button>
+                    </div>
+
+                    <div className="pt-2 space-y-2">
+                      <h5 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                        Saved Documents
+                      </h5>
+                      {instDocs.length > 0 ? (
+                        <div className="grid grid-cols-1 gap-3 w-full">
+                          {instDocs.map((doc) => (
+                            <DocumentCard
+                              key={doc.id}
+                              doc={{
+                                id: doc.id,
+                                originalName: doc.doc_og_name,
+                                created_at: doc.created_at,
+                                signedUrl: doc.signedUrl,
+                              }}
+                              canDelete={canDeleteMeasurementDocuments}
+                              onDelete={(id) => setConfirmDelete(id)}
+                              alwaysShowText={true}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic">
+                          No documents uploaded for this instance.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-6 border-t border-border/60 mt-6">
+                  <Button type="button" onClick={() => setActiveInstanceId(null)}>
+                    Close
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
+        </BaseModal>
+
+        {/* -------- Delete Confirmation Dialog -------- */}
+        <AlertDialog
+          open={!!confirmDelete}
+          onOpenChange={() => setConfirmDelete(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Document?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. The selected file will be
+                permanently removed.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </motion.div>
+    );
+  }
 
   // 🧩 --- Render ---
   return (
