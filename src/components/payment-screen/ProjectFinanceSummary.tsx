@@ -47,6 +47,7 @@ interface ProjectFinanceSummaryProps {
   accountId: number;
   activeProductTypeId?: number | null;
   hideAddPaymentForm?: boolean;
+  overallBookingAmountOverride?: number | null;
   productTypePayment?: {
     amount: number;
     basic_amount?: number | null;
@@ -81,6 +82,7 @@ export default function ProjectFinanceSummary({
   accountId,
   activeProductTypeId,
   hideAddPaymentForm = false,
+  overallBookingAmountOverride = null,
   productTypePayment = null,
 }: ProjectFinanceSummaryProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
@@ -170,7 +172,12 @@ export default function ProjectFinanceSummary({
             scopedBookingPayment?.amount ||
             0,
         )
-      : overallBookingAmountFromLogs || projectFinance?.booking_amount || 0;
+      : Number(
+          overallBookingAmountOverride ||
+            overallBookingAmountFromLogs ||
+            projectFinance?.booking_amount ||
+            0,
+        );
   const pendingAmount =
     activeProductTypeId != null
       ? Math.max(totalProjectAmount - scopedPaidAmount, 0)
