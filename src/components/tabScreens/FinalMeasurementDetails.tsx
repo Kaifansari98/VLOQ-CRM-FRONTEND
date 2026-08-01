@@ -226,7 +226,7 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
       });
       toastManager.add({ title: "Additional files uploaded successfully.", type: "success" });
       setFilesToUpload([]);
-      setAddFilesOpen(false);
+
       queryClient.invalidateQueries({
         queryKey: ["finalMeasurementLead", vendorId, leadId],
       });
@@ -263,7 +263,7 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
       });
       toastManager.add({ title: "Additional site photos uploaded successfully.", type: "success" });
       setSitePhotosToUpload([]);
-      setAddSitePhotosOpen(false);
+
       queryClient.invalidateQueries({
         queryKey: ["finalMeasurementLead", vendorId, leadId],
       });

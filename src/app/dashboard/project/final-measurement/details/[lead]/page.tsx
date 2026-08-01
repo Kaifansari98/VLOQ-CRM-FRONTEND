@@ -114,6 +114,9 @@ export default function FinalMeasurementLeadDetails() {
   const handlesLargeScaleProjects = useAppSelector(
     (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
   );
+  const isCustomDocNomenclatureEnabled = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_custom_doc_nomenclature_enabled === true,
+  );
 
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
@@ -704,9 +707,13 @@ export default function FinalMeasurementLeadDetails() {
         {/* CONTENT */}
         <TabsContent value="details">
           <LeadDetailsUtil
-            status="booking"
+            status="finalMeasurement"
             leadId={leadIdNum}
-            defaultTab="booking"
+            defaultTab={
+              isCustomDocNomenclatureEnabled && hasAtLeastOneDocUploaded
+                ? "finalMeasurement"
+                : "booking"
+            }
           />
         </TabsContent>
 
