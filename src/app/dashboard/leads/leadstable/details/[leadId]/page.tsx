@@ -691,11 +691,7 @@ export default function LeadDetails() {
                       {canMarkAsLost && (
                         <DropdownMenuItem
                           onSelect={() => {
-                            setActivityType(
-                              shouldDirectlyMarkLost
-                                ? "lost"
-                                : "lostApproval"
-                            );
+                            setActivityType("lost");
                             setActivityModalOpen(true);
                           }}
                         >
@@ -888,9 +884,7 @@ export default function LeadDetails() {
           const status =
             activityType === "onHold"
               ? "onHold"
-              : activityType === "lost"
-                ? "lost"
-                : "lostApproval";
+              : "lost";
           updateActivityStatusMutation.mutate(
             {
               leadId: leadIdNum,

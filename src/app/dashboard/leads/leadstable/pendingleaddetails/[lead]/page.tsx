@@ -359,7 +359,7 @@ export default function PendingLeadDetails() {
                   title:
                     status === "lost"
                       ? "Lead marked as Lost!"
-                      : "Lead marked as Lost Approval!",
+                      : "Lead sent for Lost Approval!",
                   type: "success",
                 });
                 setOpenMarkLost(false);

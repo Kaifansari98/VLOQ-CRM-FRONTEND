@@ -59,8 +59,8 @@ export function getUniversalTableColumns(
     // 1) Lead Code
     {
       accessorKey: "lead_code",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Lead Code" />
+      header: ({ column, table }) => (
+        <DataTableColumnHeader column={column} table={table} title="Lead Code" />
       ),
       cell: ({ row }) => {
         const isFastProduction = row.original.isFastProduction === true;

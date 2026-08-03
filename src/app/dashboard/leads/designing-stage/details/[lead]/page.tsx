@@ -684,9 +684,7 @@ export default function DesigningStageLead() {
                       {canMarkAsLost && (
                         <DropdownMenuItem
                           onSelect={() => {
-                            setActivityType(
-                              shouldDirectlyMarkLost ? "lost" : "lostApproval",
-                            );
+                            setActivityType("lost");
                             setActivityModalOpen(true);
                           }}
                         >
@@ -999,7 +997,7 @@ export default function DesigningStageLead() {
                 vendorId,
                 accountId: Number(accountId),
                 userId,
-                status: activityType,
+                status: activityType === "onHold" ? "onHold" : "lost",
                 remark,
                 createdBy: userId,
                 ...(activityType === "onHold" ? { dueDate } : {}),
