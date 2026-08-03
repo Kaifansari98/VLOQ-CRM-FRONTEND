@@ -250,7 +250,9 @@ export default function LeadDetails() {
   const isAuditor = normalizedUserType === "auditor";
   const isSuperAdmin = normalizedUserType === "super-admin";
   const shouldDirectlyMarkLost =
-    normalizedUserType === "admin" || normalizedUserType === "super-admin";
+    normalizedUserType === "admin" ||
+    normalizedUserType === "super-admin" ||
+    normalizedUserType === "sales-executive";
   const canReassign =
     normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
