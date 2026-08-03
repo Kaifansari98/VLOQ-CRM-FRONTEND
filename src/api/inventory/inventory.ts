@@ -20,6 +20,10 @@ export interface Product {
   dimension_1:        number;
   dimension_2:        number;
   dimension_3:        number;
+  length?:            number | null;
+  height?:            number | null;
+  thickness?:         number | null;
+  size?:              string | null;
   item1_weight:       string | null;
   level1_price:       string | null;
   level2_price:       string | null;
@@ -37,6 +41,24 @@ export interface Product {
   updated_at:         string;
   category: { id: number; category_name: string };
   brand:    { id: number; brand_name: string } | null;
+  finishMaster?: { id: number; finish_name: string } | null;
+  coreProduct?:  { id: number; core_product_name: string } | null;
+  grade?:        { id: number; grade_name: string } | null;
+  type?:         { id: number; type_name: string } | null;
+  primaryUnit?:  { id: number; unit_name: string; short_name: string | null } | null;
+  itemGroup?:    { id: number; group_name: string } | null;
+  grade_id?:          number | null;
+  type_id?:           number | null;
+  finish_id?:         number | null;
+  core_product_id?:   number | null;
+  hsn?: {
+    id: number;
+    hsn_code: string;
+    description: string | null;
+    cgst_rate?: string | null;
+    sgst_rate?: string | null;
+    igst_rate?: string | null;
+  } | null;
   current_stock: number|0;
 }
 

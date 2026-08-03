@@ -294,8 +294,14 @@ const data = {
       title: "Track Trace Master",
       url: "#",
       icon: FolderKanban,
-      items: [{ title: "Workstation", url: "/dashboard/track-trace/master/workstation" },
-        { title: "Category", url: "/dashboard/track-trace/master/category" }
+      items: [
+        { title: "Workstation", url: "/dashboard/track-trace/master/workstation" },
+        { title: "Category", url: "/dashboard/track-trace/master/category" },
+        { title: "Brand", url: "/dashboard/track-trace/master/brand" },
+        { title: "Grade", url: "/dashboard/track-trace/master/grade" },
+        { title: "Finish", url: "/dashboard/track-trace/master/finish" },
+        { title: "Type", url: "/dashboard/track-trace/master/type" },
+        { title: "Core Product", url: "/dashboard/track-trace/master/core-product" },
       ],
     },
     
