@@ -94,6 +94,7 @@ type LightRow = {
   id?: number;
   light_carcas_type_id: string;
   light_carcas_unit_master_id: string;
+  custom_remark: string;
 };
 
 type OtherApplianceRow = {
@@ -128,6 +129,7 @@ const makeBlankLightRow = (): LightRow => ({
   localId: `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
   light_carcas_type_id: "",
   light_carcas_unit_master_id: "",
+  custom_remark: "",
 });
 
 const makeBlankOtherApplianceRow = (): OtherApplianceRow => ({
@@ -256,6 +258,20 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   const shutterMaterials = shutterMaterialsData?.data ?? [];
   const carcassLegs = carcassLegsData?.data ?? [];
   const lightCarcasTypes = lightCarcasTypesData?.data ?? [];
+  const customLightCarcasType = React.useMemo(
+    () =>
+      lightCarcasTypes.find(
+        (type) => type.type.trim().toLowerCase() === "custom",
+      ) ?? null,
+    [lightCarcasTypes],
+  );
+  const selectableLightCarcasTypes = React.useMemo(
+    () =>
+      lightCarcasTypes.filter(
+        (type) => type.type.trim().toLowerCase() !== "custom",
+      ),
+    [lightCarcasTypes],
+  );
   const otherAppliancesByType = React.useMemo(() => {
     const grouped: Record<string, OtherAppliancesMasterEntry[]> = {};
     (otherAppliancesData?.data ?? []).forEach((item) => {
@@ -389,18 +405,44 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     const persistedRows: LightRow[] = lightMappings.map((item) => ({
       localId: `saved-${item.id}`,
       id: item.id,
-      light_carcas_type_id: item.lightCarcasUnit?.light_carcas_type_id
-        ? String(item.lightCarcasUnit.light_carcas_type_id)
+      light_carcas_type_id: item.custom_remark
+        ? String(customLightCarcasType?.id ?? "")
+        : item.lightCarcasUnit?.light_carcas_type_id
+          ? String(item.lightCarcasUnit.light_carcas_type_id)
+          : "",
+      light_carcas_unit_master_id: item.light_carcas_unit_master_id
+        ? String(item.light_carcas_unit_master_id)
         : "",
-      light_carcas_unit_master_id: String(item.light_carcas_unit_master_id),
+      custom_remark: item.custom_remark ?? "",
     }));
 
     setLightRows([...persistedRows, makeBlankLightRow()]);
-  }, [lightMappings, specification?.id]);
+  }, [customLightCarcasType?.id, lightMappings, specification?.id]);
 
   React.useEffect(() => {
     setLightsRemark(specification?.lights_remark ?? "");
   }, [specification?.id, specification?.lights_remark]);
+
+  React.useEffect(() => {
+    if (
+      lightsRemark !== "Not in our scope" ||
+      !customLightCarcasType ||
+      lightRows.length === 0
+    ) {
+      return;
+    }
+
+    setLightRows((prev) =>
+      prev.map((row) =>
+        row.light_carcas_type_id
+          ? row
+          : {
+              ...row,
+              light_carcas_type_id: String(customLightCarcasType.id),
+            },
+      ),
+    );
+  }, [customLightCarcasType, lightRows.length, lightsRemark]);
 
   React.useEffect(() => {
     if (!specification) {
@@ -474,7 +516,9 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       return {
         queryKey: ["lightCarcasUnits", typeId],
         queryFn: () => fetchLightCarcasUnits(typeId),
-        enabled: typeId > 0,
+        enabled:
+          typeId > 0 &&
+          (!customLightCarcasType || typeId !== customLightCarcasType.id),
       };
     }),
   });
@@ -866,13 +910,19 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
   const saveLightRowIfComplete = React.useCallback(
     async (row: LightRow) => {
+      const isCustomRow =
+        !!customLightCarcasType &&
+        Number(row.light_carcas_type_id) === customLightCarcasType.id;
+
       if (
         !vendorId ||
         !userId ||
         !specification?.lead_id ||
         !specification?.id ||
         !row.light_carcas_type_id ||
-        !row.light_carcas_unit_master_id
+        (isCustomRow
+          ? !row.custom_remark.trim()
+          : !row.light_carcas_unit_master_id)
       ) {
         return;
       }
@@ -883,7 +933,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
           vendor_id: vendorId,
           lead_id: specification.lead_id,
           specs_id: specification.id,
-          light_carcas_unit_master_id: Number(row.light_carcas_unit_master_id),
+          light_carcas_unit_master_id: isCustomRow
+            ? null
+            : Number(row.light_carcas_unit_master_id),
+          custom_remark: isCustomRow ? row.custom_remark.trim() : null,
           created_by: userId,
         });
       } catch (error: any) {
@@ -896,7 +949,14 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         });
       }
     },
-    [specification?.lead_id, specification?.id, upsertLightMapping, userId, vendorId],
+    [
+      customLightCarcasType,
+      specification?.lead_id,
+      specification?.id,
+      upsertLightMapping,
+      userId,
+      vendorId,
+    ],
   );
 
   const updateLightRow = React.useCallback(
@@ -915,23 +975,34 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
           const updatedRow: LightRow = { ...row, [field]: value };
           if (field === "light_carcas_type_id") {
             updatedRow.light_carcas_unit_master_id = "";
+            updatedRow.custom_remark = "";
           }
 
-          const isComplete =
-            !!updatedRow.light_carcas_type_id &&
-            !!updatedRow.light_carcas_unit_master_id;
+          const isCustomRow =
+            !!customLightCarcasType &&
+            Number(updatedRow.light_carcas_type_id) === customLightCarcasType.id;
+          const isComplete = isCustomRow
+            ? !!updatedRow.light_carcas_type_id &&
+              !!updatedRow.custom_remark.trim()
+            : !!updatedRow.light_carcas_type_id &&
+              !!updatedRow.light_carcas_unit_master_id;
 
           if (isComplete) {
             const isDuplicate = prev.some(
               (otherRow) =>
                 otherRow.localId !== localId &&
-                otherRow.light_carcas_unit_master_id ===
-                  updatedRow.light_carcas_unit_master_id,
+                (isCustomRow
+                  ? otherRow.custom_remark.trim().toLowerCase() ===
+                    updatedRow.custom_remark.trim().toLowerCase()
+                  : otherRow.light_carcas_unit_master_id ===
+                    updatedRow.light_carcas_unit_master_id),
             );
 
             if (isDuplicate) {
               duplicateMessage =
-                "This carcass type and remark combination has already been added.";
+                isCustomRow
+                  ? "This custom light remark has already been added."
+                  : "This carcass type and remark combination has already been added.";
               return row;
             }
           }
@@ -952,6 +1023,24 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       if (nextRow) {
         void saveLightRowIfComplete(nextRow);
       }
+    },
+    [customLightCarcasType, saveLightRowIfComplete],
+  );
+
+  const handleCustomLightRemarkChange = React.useCallback(
+    (localId: string, value: string) => {
+      setLightRows((prev) =>
+        prev.map((row) =>
+          row.localId === localId ? { ...row, custom_remark: value } : row,
+        ),
+      );
+    },
+    [],
+  );
+
+  const handleCustomLightRemarkBlur = React.useCallback(
+    (row: LightRow) => {
+      void saveLightRowIfComplete(row);
     },
     [saveLightRowIfComplete],
   );
@@ -1079,7 +1168,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   );
 
   const isLightsEnabled =
-    lightsRemark === "In our scope" || lightsRemark === "Provide only grooves";
+    lightsRemark === "In our scope" ||
+    lightsRemark === "Provide only grooves" ||
+    lightsRemark === "Not in our scope";
+  const isCustomLightsMode = lightsRemark === "Not in our scope";
 
   const getCarcassRowHighlightClass = React.useCallback(
     (row: CarcassRow, index: number) => {
@@ -1162,7 +1254,9 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   const getLightRowHighlightClass = React.useCallback(
     (row: LightRow, index: number) => {
       const hasValue =
-        !!row.light_carcas_type_id || !!row.light_carcas_unit_master_id;
+        !!row.light_carcas_type_id ||
+        !!row.light_carcas_unit_master_id ||
+        !!row.custom_remark.trim();
       if (!hasValue) return "";
 
       if (!row.id) return newRowHighlightClass;
@@ -1173,13 +1267,18 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
       const changed =
         Number(row.light_carcas_unit_master_id || 0) !==
-          baseline.light_carcas_unit_master_id ||
+          Number(baseline.light_carcas_unit_master_id || 0) ||
         Number(row.light_carcas_type_id || 0) !==
-          Number(baseline.lightCarcasUnit?.light_carcas_type_id || 0);
+          Number(
+            baseline.custom_remark
+              ? customLightCarcasType?.id ?? 0
+              : baseline.lightCarcasUnit?.light_carcas_type_id || 0,
+          ) ||
+        row.custom_remark.trim() !== (baseline.custom_remark ?? "").trim();
 
       return changed ? clonedRowHighlightClass : "";
     },
-    [previousLightMappings, previousSpecification],
+    [customLightCarcasType?.id, previousLightMappings, previousSpecification],
   );
 
   const getOtherApplianceRowHighlightClass = React.useCallback(
@@ -1687,6 +1786,18 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                     {lightRows.map((row, index) => {
                       const unitOptions =
                         lightUnitQueries[index]?.data?.data ?? [];
+                      const lightTypeOptions =
+                        isCustomLightsMode && customLightCarcasType
+                          ? [
+                              {
+                                id: customLightCarcasType.id,
+                                label: customLightCarcasType.type,
+                              },
+                            ]
+                          : selectableLightCarcasTypes.map((type) => ({
+                              id: type.id,
+                              label: type.type,
+                            }));
 
                       return (
                         <tr
@@ -1698,10 +1809,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                         >
                           <td className="px-4 py-3 align-top">
                             <AssignToPicker
-                              data={lightCarcasTypes.map((type) => ({
-                                id: type.id,
-                                label: type.type,
-                              }))}
+                              data={lightTypeOptions}
                               value={
                                 row.light_carcas_type_id
                                   ? Number(row.light_carcas_type_id)
@@ -1714,55 +1822,85 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                   value ? String(value) : "",
                                 )
                               }
-                              disabled={!isLightsEnabled}
+                              disabled={
+                                !isLightsEnabled ||
+                                (isCustomLightsMode && !!customLightCarcasType)
+                              }
                               placeholder={
                                 isLightsEnabled
-                                  ? "Search carcass type..."
+                                  ? isCustomLightsMode
+                                    ? "Custom"
+                                    : "Search carcass type..."
                                   : "Select lights remark first"
                               }
                               emptyLabel={
                                 isLightsEnabled
-                                  ? "Select carcass type"
+                                  ? isCustomLightsMode
+                                    ? "Custom"
+                                    : "Select carcass type"
                                   : "Select lights remark first"
                               }
                               className={pickerClassName}
                             />
                           </td>
                           <td className="px-4 py-3 align-top">
-                            <AssignToPicker
-                              data={unitOptions.map((unit) => ({
-                                id: unit.id,
-                                label: unit.type,
-                              }))}
-                              value={
-                                row.light_carcas_unit_master_id
-                                  ? Number(row.light_carcas_unit_master_id)
-                                  : undefined
-                              }
-                              onChange={(value) =>
-                                updateLightRow(
-                                  row.localId,
-                                  "light_carcas_unit_master_id",
-                                  value ? String(value) : "",
-                                )
-                              }
-                              disabled={!isLightsEnabled || !row.light_carcas_type_id}
-                              placeholder={
-                                !isLightsEnabled
-                                  ? "Select lights remark first"
-                                  : row.light_carcas_type_id
-                                    ? "Search remark..."
-                                    : "Select carcass type first"
-                              }
-                              emptyLabel={
-                                !isLightsEnabled
-                                  ? "Select lights remark first"
-                                  : row.light_carcas_type_id
-                                    ? "Select remark"
-                                    : "Select carcass type first"
-                              }
-                              className={pickerClassName}
-                            />
+                            {isCustomLightsMode ? (
+                              <textarea
+                                value={row.custom_remark}
+                                onChange={(event) =>
+                                  handleCustomLightRemarkChange(
+                                    row.localId,
+                                    event.target.value,
+                                  )
+                                }
+                                onBlur={() => handleCustomLightRemarkBlur(row)}
+                                disabled={!isLightsEnabled}
+                                placeholder={
+                                  isLightsEnabled
+                                    ? "Enter custom light remark"
+                                    : "Select lights remark first"
+                                }
+                                className={cn(
+                                  pickerClassName,
+                                  "min-h-24 w-full resize-y py-3",
+                                )}
+                              />
+                            ) : (
+                              <AssignToPicker
+                                data={unitOptions.map((unit) => ({
+                                  id: unit.id,
+                                  label: unit.type,
+                                }))}
+                                value={
+                                  row.light_carcas_unit_master_id
+                                    ? Number(row.light_carcas_unit_master_id)
+                                    : undefined
+                                }
+                                onChange={(value) =>
+                                  updateLightRow(
+                                    row.localId,
+                                    "light_carcas_unit_master_id",
+                                    value ? String(value) : "",
+                                  )
+                                }
+                                disabled={!isLightsEnabled || !row.light_carcas_type_id}
+                                placeholder={
+                                  !isLightsEnabled
+                                    ? "Select lights remark first"
+                                    : row.light_carcas_type_id
+                                      ? "Search remark..."
+                                      : "Select carcass type first"
+                                }
+                                emptyLabel={
+                                  !isLightsEnabled
+                                    ? "Select lights remark first"
+                                    : row.light_carcas_type_id
+                                      ? "Select remark"
+                                      : "Select carcass type first"
+                                }
+                                className={pickerClassName}
+                              />
+                            )}
                           </td>
                         </tr>
                       );

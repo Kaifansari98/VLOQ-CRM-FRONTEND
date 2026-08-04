@@ -833,7 +833,8 @@ export interface LeadLightCarcasUnitMappingEntry {
   vendor_id: number;
   lead_id: number;
   specs_id: number;
-  light_carcas_unit_master_id: number;
+  light_carcas_unit_master_id: number | null;
+  custom_remark?: string | null;
   created_at: string;
   created_by: number;
   lightCarcasUnit?: {
@@ -841,7 +842,7 @@ export interface LeadLightCarcasUnitMappingEntry {
     type: string;
     light_carcas_type_id: number;
     lightCarcasType?: { id: number; type: string };
-  };
+  } | null;
 }
 
 export interface UpsertLeadLightCarcasUnitMappingPayload {
@@ -849,7 +850,8 @@ export interface UpsertLeadLightCarcasUnitMappingPayload {
   vendor_id: number;
   lead_id: number;
   specs_id: number;
-  light_carcas_unit_master_id: number;
+  light_carcas_unit_master_id?: number | null;
+  custom_remark?: string | null;
   created_by: number;
 }
 
