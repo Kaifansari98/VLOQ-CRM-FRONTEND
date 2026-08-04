@@ -191,6 +191,7 @@ export const useUniversalStageLeads = (
 export interface UniversalStagePostPayload {
   userId: number;
   franchise_id?: number;
+  franchise_ids?: number[];
   tag?: string;
   page: number;
   limit: number;
@@ -285,6 +286,7 @@ export const useUniversalStageLeadsPost = (
 export interface VendorLeadsByTagPostPayload {
   userId?: number | null; // optional (for exclusion logic)
   franchise_id?: number;
+  franchise_ids?: number[];
   tag: string;
 
   page: number;

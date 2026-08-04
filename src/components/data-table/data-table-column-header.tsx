@@ -18,6 +18,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import FurnitureFilter from "./furniture-filter";
 import SalesExecutiveFilter from "./sales-executive-filter";
@@ -30,6 +35,7 @@ import AssignToFilter from "./assign-to-filter";
 import StageTypeFilter from "./stage-type-filter";
 import TaskTypeFilterPicker from "./data-table-task-filter";
 import PriorityFilter from "./priority-filter";
+import LeadCodeFranchiseFilter from "./lead-code-franchise-filter";
 
 interface DataTableColumnHeaderProps<
   TData,
@@ -45,7 +51,9 @@ export function DataTableColumnHeader<TData, TValue>({
   className,
 }: DataTableColumnHeaderProps<TData, TValue>) {
   const meta = ((column as any).table?.options?.meta ?? {}) as any;
+  const columnMeta = (column.columnDef.meta ?? {}) as Record<string, any>;
   const isFurnitureColumn = column.id === "furnitureType";
+  const isLeadCodeColumn = column.id === "lead_code" || title === "Lead Code";
   const isSalesColumn =
     column.id === "assign_to" || column.id === "assignedToName";
   const isSiteTypeColumn = column.id === "siteType";
@@ -63,15 +71,32 @@ export function DataTableColumnHeader<TData, TValue>({
   const adminTaskSalesExecutiveFilter = meta.adminTaskSalesExecutiveFilter as
     | { onClear?: () => void }
     | undefined;
+  const leadCodeFranchiseFilter = meta.leadCodeFranchiseFilter as
+    | {
+        enabled?: boolean;
+        value?: (string | number)[];
+        onClear?: () => void;
+      }
+    | undefined;
+  const useLeadCodeFranchiseFilter =
+    isLeadCodeColumn &&
+    (columnMeta.useFranchiseFilter === true ||
+      leadCodeFranchiseFilter?.enabled === true);
 
   const filterValue = column.getFilterValue();
-  const hasActiveFilter = Array.isArray(filterValue)
+  const hasColumnFilter = Array.isArray(filterValue)
     ? filterValue.length > 0
     : Boolean(filterValue);
+  const hasLeadCodeFranchiseFilter =
+    useLeadCodeFranchiseFilter &&
+    Array.isArray(leadCodeFranchiseFilter?.value) &&
+    leadCodeFranchiseFilter.value.length > 0;
+  const hasActiveFilter = hasColumnFilter || hasLeadCodeFranchiseFilter;
 
   const showHeaderIcon =
     column.getCanSort() ||
     isFurnitureColumn ||
+    useLeadCodeFranchiseFilter ||
     isSalesColumn ||
     isSiteTypeColumn ||
     isStructureColumn ||
@@ -83,6 +108,63 @@ export function DataTableColumnHeader<TData, TValue>({
 
   if (!column.getCanSort() && !column.getCanHide()) {
     return <div className={cn(className)}>{title}</div>;
+  }
+
+  if (useLeadCodeFranchiseFilter) {
+    return (
+      <div className={cn("flex items-center space-x-2", className)}>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "-ml-3 h-8 data-[state=open]:bg-accent",
+                hasActiveFilter && "text-primary",
+              )}
+              aria-label={`Open ${title} filter`}
+            >
+              <span>{title}</span>
+              <Filter className="ml-1 size-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-[22rem] p-0">
+            <LeadCodeFranchiseFilter column={column as any} />
+
+            {hasActiveFilter && (
+              <>
+                <div className="border-t" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    leadCodeFranchiseFilter?.onClear?.();
+                    column.setFilterValue([]);
+                  }}
+                  className="flex w-full items-center px-4 py-3 text-left text-sm hover:bg-accent"
+                >
+                  <X className="mr-2 size-4" />
+                  Clear Filter
+                </button>
+              </>
+            )}
+
+            {column.getCanHide() && (
+              <>
+                <div className="border-t" />
+                <button
+                  type="button"
+                  onClick={() => column.toggleVisibility(false)}
+                  className="flex w-full items-center px-4 py-3 text-left text-sm hover:bg-accent"
+                >
+                  <EyeOff className="mr-2 size-4 text-muted-foreground/70" />
+                  Hide
+                </button>
+              </>
+            )}
+          </PopoverContent>
+        </Popover>
+      </div>
+    );
   }
 
   return (
@@ -97,7 +179,9 @@ export function DataTableColumnHeader<TData, TValue>({
               hasActiveFilter && "text-primary",
             )}
             aria-label={
-              column.getCanSort()
+              useLeadCodeFranchiseFilter
+                ? `Open ${title} filter`
+                : column.getCanSort()
                 ? column.getIsSorted() === "desc"
                   ? `Sorted descending. Click to sort ascending.`
                   : column.getIsSorted() === "asc"
@@ -109,7 +193,9 @@ export function DataTableColumnHeader<TData, TValue>({
             <span>{title}</span>
 
             {showHeaderIcon &&
-              (column.getIsSorted() === "desc" ? (
+              (useLeadCodeFranchiseFilter ? (
+                <Filter className="ml-1 size-4" />
+              ) : column.getIsSorted() === "desc" ? (
                 <ChevronDown className="ml-1 size-4" />
               ) : column.getIsSorted() === "asc" ? (
                 <ChevronUp className="ml-1 size-4" />
@@ -191,7 +277,7 @@ export function DataTableColumnHeader<TData, TValue>({
               <SiteMapLinkFilter column={column as any} />
             </div>
           )}
-          {column.getCanSort() && (
+          {column.getCanSort() && !useLeadCodeFranchiseFilter && (
             <>
               <DropdownMenuItem
                 onClick={() => column.toggleSorting(false)}
@@ -236,9 +322,17 @@ export function DataTableColumnHeader<TData, TValue>({
                     adminTaskSalesExecutiveFilter?.onClear
                   ) {
                     adminTaskSalesExecutiveFilter.onClear();
+                  } else if (
+                    useLeadCodeFranchiseFilter &&
+                    leadCodeFranchiseFilter?.onClear
+                  ) {
+                    leadCodeFranchiseFilter.onClear();
+                    column.setFilterValue([]);
                   }
 
-                  column.setFilterValue([]);
+                  if (!useLeadCodeFranchiseFilter) {
+                    column.setFilterValue([]);
+                  }
                 }}
                 className="m-1"
               >
