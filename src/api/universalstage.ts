@@ -197,7 +197,7 @@ export interface UniversalStagePostPayload {
   limit: number;
 
   filter_name: string;
-  filter_lead_code: string;
+  filter_lead_code?: string;
   contact: string;
   alt_contact_no: string;
   email: string;

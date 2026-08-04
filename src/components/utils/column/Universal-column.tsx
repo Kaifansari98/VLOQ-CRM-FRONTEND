@@ -33,7 +33,6 @@ interface UniversalColumnOptions {
   showPriorityColumn?: boolean;
   showServicingColumn?: boolean;
   showDesignerColumn?: boolean;
-  showLeadCodeFranchiseFilter?: boolean;
 }
 
 function toTitleCase(value: string) {
@@ -54,7 +53,6 @@ export function getUniversalTableColumns(
     showPriorityColumn = false,
     showServicingColumn = false,
     showDesignerColumn = false,
-    showLeadCodeFranchiseFilter = false,
   } =
     options;
   const columns: ColumnDef<LeadColumn>[] = [
@@ -87,11 +85,10 @@ export function getUniversalTableColumns(
       },
       meta: {
         label: "Lead Code",
-        useFranchiseFilter: showLeadCodeFranchiseFilter,
       },
       enableSorting: true,
       enableHiding: true,
-      enableColumnFilter: true,
+      enableColumnFilter: false,
     },
 
     // 2) Name

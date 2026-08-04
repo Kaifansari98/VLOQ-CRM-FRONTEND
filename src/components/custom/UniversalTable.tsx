@@ -441,18 +441,7 @@ export function UniversalTable({
   const hideOverallToggle =
     !canSeeMyOverallTabs ||
     (normalizedType === "type 8" && normalizedUserType === "sales-executive");
-  const shouldShowLeadCodeFranchiseFilter =
-    ["type 8", "type 9", "type 10"].includes(normalizedType) &&
-    [
-      "super-admin",
-      "superadmin",
-      "backend",
-      "factory",
-      "tech-check",
-      "techcheck",
-    ].includes(
-      normalizedUserType || "",
-    );
+  const shouldShowLeadCodeFranchiseFilter = false;
 
   // -------------------- LOCAL UI STATE --------------------
 
@@ -495,18 +484,7 @@ export function UniversalTable({
   );
   const [overallColumnFilters, setOverallColumnFilters] =
     useState<ColumnFiltersState>([]);
-  const [myLeadCodeFranchiseFilter, setMyLeadCodeFranchiseFilter] = useState<
-    number[]
-  >([]);
-  const [
-    overallLeadCodeFranchiseFilter,
-    setOverallLeadCodeFranchiseFilter,
-  ] = useState<number[]>([]);
 
-  const { data: franchises = [] } = useFranchisesByVendorId(
-    vendorId,
-    shouldShowLeadCodeFranchiseFilter,
-  );
 
   const resolvedInitialProductionStatusFilter = useMemo(() => {
     const requestedValue = String(
@@ -552,18 +530,7 @@ export function UniversalTable({
   const activeSorting = effectiveViewType === "my" ? mySorting : overallSorting;
   const activeColumnFilters =
     effectiveViewType === "my" ? myColumnFilters : overallColumnFilters;
-  const activeLeadCodeFranchiseFilter =
-    effectiveViewType === "my"
-      ? myLeadCodeFranchiseFilter
-      : overallLeadCodeFranchiseFilter;
-  const leadCodeFranchiseOptions = useMemo(
-    () =>
-      franchises.map((franchise) => ({
-        id: franchise.id,
-        label: franchise.franchise_name,
-      })),
-    [franchises],
-  );
+
 
   const servicingDateRange = useMemo(() => {
     if (!showServicingColumn || !pendingServicesOnly || !servicingMonthFilter) {
@@ -614,16 +581,11 @@ export function UniversalTable({
     return {
       userId: userId!,
       franchise_id: shouldIncludeFranchise ? franchiseId! : undefined,
-      franchise_ids:
-        shouldShowLeadCodeFranchiseFilter && myLeadCodeFranchiseFilter.length > 0
-          ? myLeadCodeFranchiseFilter
-          : undefined,
       tag: type,
       page: myPagination.pageIndex + 1,
       limit: myPagination.pageSize,
       global_search: myGlobalFilter || "",
 
-      filter_lead_code: mappedFilters.filter_lead_code,
       filter_name: mappedFilters.filter_name,
       contact: mappedFilters.contact,
 
@@ -670,8 +632,6 @@ export function UniversalTable({
     normalizedType,
     pendingServicesOnly,
     servicingDateRange,
-    shouldShowLeadCodeFranchiseFilter,
-    myLeadCodeFranchiseFilter,
   ]);
 
   // -------------------- OVERALL LEADS POST PAYLOAD --------------------
@@ -695,11 +655,6 @@ export function UniversalTable({
     return {
       userId: overallUserId,
       franchise_id: shouldIncludeFranchise ? franchiseId! : undefined,
-      franchise_ids:
-        shouldShowLeadCodeFranchiseFilter &&
-        overallLeadCodeFranchiseFilter.length > 0
-          ? overallLeadCodeFranchiseFilter
-          : undefined,
       tag: type,
 
       page: overallPagination.pageIndex + 1,
@@ -707,7 +662,6 @@ export function UniversalTable({
 
       global_search: overallGlobalFilter || "",
 
-      filter_lead_code: mappedFilters.filter_lead_code,
       filter_name: mappedFilters.filter_name,
       contact: mappedFilters.contact,
 
@@ -755,8 +709,6 @@ export function UniversalTable({
     normalizedType,
     pendingServicesOnly,
     servicingDateRange,
-    shouldShowLeadCodeFranchiseFilter,
-    overallLeadCodeFranchiseFilter,
   ]);
 
   // -------------------- API CALLS --------------------
@@ -778,16 +730,10 @@ export function UniversalTable({
     return {
       userId: userId!,
       franchise_id: shouldIncludeFranchise ? franchiseId! : undefined,
-      franchise_ids:
-        shouldShowLeadCodeFranchiseFilter && myLeadCodeFranchiseFilter.length > 0
-          ? myLeadCodeFranchiseFilter
-          : undefined,
       page: myPagination.pageIndex + 1,
       limit: myPagination.pageSize,
 
       global_search: myGlobalFilter || "",
-
-      filter_lead_code: mappedFilters.filter_lead_code,
       filter_name: mappedFilters.filter_name,
       contact: mappedFilters.contact,
 
@@ -825,8 +771,6 @@ export function UniversalTable({
     myColumnFilters,
     myGlobalFilter,
     servicingDateRange,
-    shouldShowLeadCodeFranchiseFilter,
-    myLeadCodeFranchiseFilter,
   ]);
 
   const { data: miscData, isLoading: isMiscLoading } =
@@ -1297,7 +1241,6 @@ export function UniversalTable({
         showPriorityColumn,
         showServicingColumn,
         showDesignerColumn: isCustomUserTypeOnlyVendor,
-        showLeadCodeFranchiseFilter: shouldShowLeadCodeFranchiseFilter,
       }),
     [
       showStageColumn,
@@ -1305,7 +1248,6 @@ export function UniversalTable({
       showPriorityColumn,
       showServicingColumn,
       isCustomUserTypeOnlyVendor,
-      shouldShowLeadCodeFranchiseFilter,
     ],
   );
 
@@ -1344,37 +1286,6 @@ export function UniversalTable({
     getPaginationRowModel: getPaginationRowModel(),
 
     getRowId: getRowId ?? ((row) => row.rowKey ?? row.id.toString()),
-    meta: {
-      leadCodeFranchiseFilter: {
-        enabled: shouldShowLeadCodeFranchiseFilter,
-        value: activeLeadCodeFranchiseFilter,
-        options: leadCodeFranchiseOptions,
-        onChange: (values: (string | number)[]) => {
-          const normalizedValues = values
-            .map(Number)
-            .filter((value) => !Number.isNaN(value));
-
-          if (effectiveViewType === "my") {
-            setMyLeadCodeFranchiseFilter(normalizedValues);
-            setMyPagination((prev) => ({ ...prev, pageIndex: 0 }));
-            return;
-          }
-
-          setOverallLeadCodeFranchiseFilter(normalizedValues);
-          setOverallPagination((prev) => ({ ...prev, pageIndex: 0 }));
-        },
-        onClear: () => {
-          if (effectiveViewType === "my") {
-            setMyLeadCodeFranchiseFilter([]);
-            setMyPagination((prev) => ({ ...prev, pageIndex: 0 }));
-            return;
-          }
-
-          setOverallLeadCodeFranchiseFilter([]);
-          setOverallPagination((prev) => ({ ...prev, pageIndex: 0 }));
-        },
-      },
-    },
   });
 
   const priorityFilterValue = useMemo(() => {
