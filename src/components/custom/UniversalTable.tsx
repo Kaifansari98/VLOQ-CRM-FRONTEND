@@ -186,10 +186,26 @@ function extractLatestStatusLogCreatedAtForTag(lead: any, tag: string) {
   return latestMatchingLog ?? getLeadStageSortFallbackTimestamp(lead);
 }
 
-function compareType8StatusLoggedAtDesc(a?: string | null, b?: string | null) {
-  const aTime = a ? new Date(a).getTime() : Number.NEGATIVE_INFINITY;
-  const bTime = b ? new Date(b).getTime() : Number.NEGATIVE_INFINITY;
-  return bTime - aTime;
+function compareType8StatusLoggedAtDesc(aRow: any, bRow: any) {
+  const getMostRecentTimestamp = (row: any) => {
+    const logTime = row?.type8StatusLoggedAt ? new Date(row.type8StatusLoggedAt).getTime() : 0;
+    const updateTime = row?.updatedAt || row?.updated_at ? new Date(row.updatedAt || row.updated_at).getTime() : 0;
+    const createTime = row?.createdAt || row?.created_at ? new Date(row.createdAt || row.created_at).getTime() : 0;
+    return Math.max(
+      isNaN(logTime) ? 0 : logTime,
+      isNaN(updateTime) ? 0 : updateTime,
+      isNaN(createTime) ? 0 : createTime,
+      Number(row?.id || 0)
+    );
+  };
+
+  const aTime = getMostRecentTimestamp(aRow);
+  const bTime = getMostRecentTimestamp(bRow);
+
+  if (bTime !== aTime) {
+    return bTime - aTime;
+  }
+  return Number(bRow?.id || 0) - Number(aRow?.id || 0);
 }
 
 function compareCreatedAt(a?: string | number | null, b?: string | number | null) {
@@ -1081,15 +1097,24 @@ export function UniversalTable({
     let rows: LeadColumn[];
 
     if (!isType8 && !isType9 && !isType10) {
-      const baseData = shouldSortByCreatedAt
-        ? [...filteredActiveData].sort((a, b) => {
-            const comparison = compareCreatedAt(
-              a?.created_at ?? null,
-              b?.created_at ?? null,
-            );
-            return createdAtDirection === "desc" ? -comparison : comparison;
-          })
-        : filteredActiveData;
+      const isDesc = primarySort ? createdAtDirection === "desc" : true;
+      const baseData = [...filteredActiveData].sort((a, b) => {
+        const getLeadActivityTime = (lead: any) => {
+          const uTime = lead?.updated_at || lead?.updatedAt ? new Date(lead.updated_at || lead.updatedAt).getTime() : 0;
+          const cTime = lead?.created_at || lead?.createdAt ? new Date(lead.created_at || lead.createdAt).getTime() : 0;
+          return Math.max(
+            isNaN(uTime) ? 0 : uTime,
+            isNaN(cTime) ? 0 : cTime,
+            Number(lead?.id || 0)
+          );
+        };
+        const aTime = getLeadActivityTime(a);
+        const bTime = getLeadActivityTime(b);
+        if (bTime !== aTime) {
+          return isDesc ? bTime - aTime : aTime - bTime;
+        }
+        return isDesc ? Number(b?.id || 0) - Number(a?.id || 0) : Number(a?.id || 0) - Number(b?.id || 0);
+      });
 
       rows = baseData.map((item, idx) =>
         mapUniversalRow(item, idx, { rowKey: String(item.id) }),
@@ -1199,12 +1224,7 @@ export function UniversalTable({
     }
 
     if (STATUS_LOG_SORTED_STAGE_TYPES.has(normalizedType)) {
-      rows = [...rows].sort((a, b) =>
-        compareType8StatusLoggedAtDesc(
-          a.type8StatusLoggedAt,
-          b.type8StatusLoggedAt,
-        ),
-      );
+      rows = [...rows].sort((a, b) => compareType8StatusLoggedAtDesc(a, b));
     }
 
     if (isType9) {

@@ -75,7 +75,7 @@ export default function FranchisesFilter({ column, table }: Props) {
   const meta = (table?.options?.meta ?? (column as any).table?.options?.meta ?? {}) as any;
   const selectedIds: number[] = meta?.franchisesFilter ?? [];
   const setFranchisesFilter = meta?.setFranchisesFilter;
-console.log("franchises data: ", franchises)
+
   // Picker → Table (ID sync)
   const handleChange = (values: (string | number)[]) => {
     if (setFranchisesFilter) {
@@ -83,7 +83,7 @@ console.log("franchises data: ", franchises)
     }
   };
 
-  if (!isAllowed) return null;
+  if (!isAllowed || franchises.length <= 1) return null;
 
   return (
     <>
