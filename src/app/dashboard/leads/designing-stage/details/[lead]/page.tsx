@@ -684,7 +684,7 @@ export default function DesigningStageLead() {
                       {canMarkAsLost && (
                         <DropdownMenuItem
                           onSelect={() => {
-                            setActivityType("lostApproval");
+                            setActivityType("lost");
                             setActivityModalOpen(true);
                           }}
                         >
@@ -982,6 +982,8 @@ export default function DesigningStageLead() {
         open={activityModalOpen}
         onOpenChange={setActivityModalOpen}
         statusType={activityType}
+        vendorId={vendorId}
+        franchiseId={lead?.franchise_id ?? null}
         onSubmitRemark={(remark, dueDate) => {
           if (!vendorId || !userId) {
             toastManager.add({

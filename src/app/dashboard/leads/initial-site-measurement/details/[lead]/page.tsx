@@ -127,9 +127,9 @@ export default function SiteMeasurementLead() {
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
-  const [activityType, setActivityType] = useState<"onHold" | "lostApproval">(
-    "onHold",
-  );
+  const [activityType, setActivityType] = useState<
+    "onHold" | "lostApproval" | "lost"
+  >("onHold");
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
@@ -539,7 +539,7 @@ export default function SiteMeasurementLead() {
                       {canMarkAsLost && (
                         <DropdownMenuItem
                           onSelect={() => {
-                            setActivityType("lostApproval");
+                            setActivityType("lost");
                             setActivityModalOpen(true);
                           }}
                         >
@@ -746,6 +746,8 @@ export default function SiteMeasurementLead() {
         open={activityModalOpen}
         onOpenChange={setActivityModalOpen}
         statusType={activityType}
+        vendorId={vendorId}
+        franchiseId={lead?.franchise_id ?? null}
         onSubmitRemark={(remark, dueDate) => {
           if (!vendorId || !userId || !accountId) return;
           updateStatusMutation.mutate(
@@ -755,16 +757,22 @@ export default function SiteMeasurementLead() {
                 vendorId,
                 accountId,
                 userId,
-                status: activityType,
+                status: activityType === "onHold" ? "onHold" : "lost",
                 remark,
                 createdBy: userId,
                 ...(activityType === "onHold" ? { dueDate } : {}),
               },
             },
             {
-              onSuccess: () => {
+              onSuccess: (res: any) => {
+                const finalStatus = res?.data?.activity_status;
                 toastManager.add({
-                  title: "Lead status updated successfully!",
+                  title:
+                    activityType === "onHold"
+                      ? "Lead marked as On Hold!"
+                      : finalStatus === "lostApproval"
+                        ? "Lead sent for Lost Approval!"
+                        : "Lead marked as Lost!",
                   type: "success",
                 });
                 queryClient.invalidateQueries({

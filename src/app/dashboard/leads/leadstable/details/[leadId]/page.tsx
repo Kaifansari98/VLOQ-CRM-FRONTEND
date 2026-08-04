@@ -693,7 +693,7 @@ export default function LeadDetails() {
                       {canMarkAsLost && (
                         <DropdownMenuItem
                           onSelect={() => {
-                            setActivityType("lostApproval");
+                            setActivityType("lost");
                             setActivityModalOpen(true);
                           }}
                         >
@@ -875,6 +875,8 @@ export default function LeadDetails() {
         open={activityModalOpen}
         onOpenChange={setActivityModalOpen}
         statusType={activityType}
+        vendorId={vendorId}
+        franchiseId={lead?.franchise_id ?? franchiseId}
         onSubmitRemark={(remark, dueDate) => {
           if (!vendorId || !userId) {
             toastManager.add({
