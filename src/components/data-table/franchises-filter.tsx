@@ -53,15 +53,12 @@ export default function FranchisesFilter({ column, table }: Props) {
       "factory",
       "backend",
       "tech-check",
-      "techcheck",
       "head-site-supervisor",
       "super-admin",
-      "superadmin",
-      "admin",
       "site-supervisor",
-      "ho",
-      "ho-user",
-      "head-office",
+      "order-login",
+      "pre-prod",
+    
     ];
     return allowedRoles.includes(cleanRole);
   }, [isHOUser, userType]);
