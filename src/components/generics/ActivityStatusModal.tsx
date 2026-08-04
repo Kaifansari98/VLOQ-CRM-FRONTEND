@@ -18,6 +18,7 @@ import {
 import TextAreaInput from "@/components/origin-text-area";
 import { Button } from "@/components/ui/button";
 import CustomeDatePicker from "../date-picker";
+import { useAppSelector } from "@/redux/store";
 
 interface Props {
   open: boolean;
@@ -49,6 +50,20 @@ const ActivityStatusModal: React.FC<Props> = ({
   franchiseId,
   hasAdmin,
 }) => {
+  const currentUserType = useAppSelector((state) => {
+    const u = state.auth.user as any;
+    const role =
+      u?.user_type?.user_type ||
+      u?.user_type ||
+      u?.user_role ||
+      u?.role ||
+      "";
+    return String(role).toLowerCase().trim();
+  });
+
+  const isCurrentAdmin =
+    currentUserType === "admin" || currentUserType === "super-admin";
+
   const { data: storeAdminExists = false } = useQuery({
     queryKey: ["franchise-admin-check", vendorId, franchiseId],
     queryFn: async () => {
@@ -70,13 +85,15 @@ const ActivityStatusModal: React.FC<Props> = ({
     },
     enabled:
       open &&
+      !isCurrentAdmin &&
       !!vendorId &&
       !!franchiseId &&
       (statusType === "lost" || statusType === "lostApproval"),
   });
 
-  const requiresApproval =
-    hasAdmin !== undefined
+  const requiresApproval = isCurrentAdmin
+    ? false
+    : hasAdmin !== undefined
       ? hasAdmin
       : statusType === "lostApproval" || (statusType === "lost" && storeAdminExists);
 

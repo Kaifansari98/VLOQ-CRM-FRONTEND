@@ -31,10 +31,17 @@ export default function FieldMastersPage() {
   const sessionVendorAllowsLargeScale = useAppSelector(
     (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
   );
+  const sessionVendorAllowsBroadcast = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_broadcast_enabled === true,
+  );
   const { data: vendorResponse } = useVendorById(vendorIdOverride);
   const showArchitectureMaster = vendorIdOverride
     ? vendorResponse?.data?.handlesLargeScaleProjects === true
     : sessionVendorAllowsLargeScale;
+  const showBroadcastMaster = vendorIdOverride
+    ? (vendorResponse?.data as any)?.is_broadcast_enabled === true
+    : sessionVendorAllowsBroadcast;
+
   const rawTabItems = [
     {
       id: "site-master",
@@ -78,12 +85,16 @@ export default function FieldMastersPage() {
       color: "bg-black hover:bg-black",
       cardContent: <CompanyVendorMastersTable vendorIdOverride={vendorIdOverride} />,
     },
-    {
-      id: "broadcast-category-master",
-      title: "Broadcast Category Master",
-      color: "bg-black hover:bg-black",
-      cardContent: <BroadcastCategoryMastersTable vendorIdOverride={vendorIdOverride} />,
-    },
+    ...(showBroadcastMaster
+      ? [
+          {
+            id: "broadcast-category-master",
+            title: "Broadcast Category Master",
+            color: "bg-black hover:bg-black",
+            cardContent: <BroadcastCategoryMastersTable vendorIdOverride={vendorIdOverride} />,
+          },
+        ]
+      : []),
     ...(showArchitectureMaster
       ? [
         {
