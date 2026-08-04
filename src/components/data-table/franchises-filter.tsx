@@ -52,7 +52,6 @@ export default function FranchisesFilter({ column, table }: Props) {
       "head-site-supervisor",
       "super-admin",
       "site-supervisor",
-      "order-login",
       "pre-prod",
     ];
     return allowedRoles.includes(cleanRole);
