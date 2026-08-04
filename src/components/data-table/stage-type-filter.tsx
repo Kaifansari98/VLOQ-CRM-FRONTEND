@@ -18,17 +18,20 @@ type Option = {
   label: string;
 };
 
+import type { Table } from "@tanstack/react-table";
+
 interface Props {
   column: Column<LeadColumn, unknown>;
+  table?: Table<LeadColumn>;
 }
 
 /* ===========================
    COMPONENT
 =========================== */
 
-export default function StageTypeFilter({ column }: Props) {
-  const adminTaskStatusFilter = ((column as any).table?.options?.meta as any)
-    ?.adminTaskStatusFilter as
+export default function StageTypeFilter({ column, table }: Props) {
+  const meta = (table?.options?.meta ?? (column as any).table?.options?.meta) as any;
+  const adminTaskStatusFilter = meta?.adminTaskStatusFilter as
     | {
         value: (string | number)[];
         onChange: (values: (string | number)[]) => void;

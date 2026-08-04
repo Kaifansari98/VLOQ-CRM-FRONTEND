@@ -420,7 +420,26 @@ export function UniversalTable({
     (s) => s.auth.franchise_id ?? s.auth.user?.franchise_id,
   );
   const userId = useAppSelector((s) => s.auth.user?.id);
-  const userType = useAppSelector((s) => s.auth.user?.user_type.user_type);
+  const isHOUser = useAppSelector(
+    (s) => s.auth.is_ho_user ?? s.auth.user?.is_ho_user ?? false,
+  );
+  const userType = useAppSelector((s) => {
+    const u = s.auth.user as any;
+    if (!u) return "";
+    if (typeof u.user_type === "string") return u.user_type;
+    if (typeof u.user_role === "string") return u.user_role;
+    if (typeof u.role === "string") return u.role;
+    return (
+      u.user_type?.user_type ||
+      u.user_type?.user_type_name ||
+      u.user_type?.name ||
+      u.user_type?.title ||
+      u.user_type?.role ||
+      u.user_role ||
+      u.role ||
+      ""
+    );
+  });
 
   const router = useRouter();
   const normalizedUserType = normalizeRole(userType);
@@ -485,6 +504,9 @@ export function UniversalTable({
   const [overallColumnFilters, setOverallColumnFilters] =
     useState<ColumnFiltersState>([]);
 
+  // ✅ SEPARATE FRANCHISES FILTER FOR BOTH VIEWS
+  const [myFranchisesFilter, setMyFranchisesFilter] = useState<number[]>([]);
+  const [overallFranchisesFilter, setOverallFranchisesFilter] = useState<number[]>([]);
 
   const resolvedInitialProductionStatusFilter = useMemo(() => {
     const requestedValue = String(
@@ -530,6 +552,35 @@ export function UniversalTable({
   const activeSorting = effectiveViewType === "my" ? mySorting : overallSorting;
   const activeColumnFilters =
     effectiveViewType === "my" ? myColumnFilters : overallColumnFilters;
+  const activeFranchisesFilter =
+    effectiveViewType === "my" ? myFranchisesFilter : overallFranchisesFilter;
+
+  const setActiveFranchisesFilter = (val: number[]) => {
+    if (effectiveViewType === "my") {
+      setMyFranchisesFilter(val);
+      setMyPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    } else {
+      setOverallFranchisesFilter(val);
+      setOverallPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    }
+  };
+
+  const showFranchiseFilter = useMemo(() => {
+    if (isHOUser) return true;
+    const cleanRole = (userType || "")
+      .toLowerCase()
+      .trim()
+      .replace(/[\s_]+/g, "-");
+    const allowedRoles = [
+      "factory",
+      "backend",
+      "tech-check",
+      "head-site-supervisor",
+      "super-admin",
+      "site-supervisor",
+    ];
+    return allowedRoles.includes(cleanRole);
+  }, [isHOUser, userType]);
 
 
   const servicingDateRange = useMemo(() => {
@@ -617,6 +668,7 @@ export function UniversalTable({
           ? productionStatusFilter
           : undefined,
       pending_services: pendingServicesOnly || undefined,
+      franchises: myFranchisesFilter.length > 0 ? myFranchisesFilter : undefined,
     };
   }, [
     userId,
@@ -632,6 +684,7 @@ export function UniversalTable({
     normalizedType,
     pendingServicesOnly,
     servicingDateRange,
+    myFranchisesFilter,
   ]);
 
   // -------------------- OVERALL LEADS POST PAYLOAD --------------------
@@ -693,6 +746,7 @@ export function UniversalTable({
           ? productionStatusFilter
           : undefined,
       pending_services: pendingServicesOnly || undefined,
+      franchises: overallFranchisesFilter.length > 0 ? overallFranchisesFilter : undefined,
     };
   }, [
     userId,
@@ -709,6 +763,7 @@ export function UniversalTable({
     normalizedType,
     pendingServicesOnly,
     servicingDateRange,
+    overallFranchisesFilter,
   ]);
 
   // -------------------- API CALLS --------------------
@@ -1268,6 +1323,11 @@ export function UniversalTable({
       globalFilter: activeGlobalFilter,
       columnVisibility,
       rowSelection,
+    },
+    meta: {
+      showFranchiseFilter,
+      franchisesFilter: activeFranchisesFilter,
+      setFranchisesFilter: setActiveFranchisesFilter,
     },
 
     onPaginationChange:

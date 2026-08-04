@@ -104,7 +104,8 @@ export function ReportCards() {
     user?.vendor?.["vendor-report-code"] ||
     user?.vendor?.vendor_code ||
     `VENDOR_${vendorId}`;
-  const isSuperAdmin = user?.user_type?.user_type?.toLowerCase() === "super-admin";
+  const userType = user?.user_type?.user_type?.toLowerCase()?.trim();
+  const isSuperAdmin = userType === "super-admin" || userType === "auditor";
   const adminFranchiseId = reduxFranchiseId ?? user?.franchise_id ?? null;
 
   const { data: franchises = [] } = useFranchisesByVendorId(vendorId, true);

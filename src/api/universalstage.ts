@@ -222,6 +222,7 @@ export interface UniversalStagePostPayload {
   };
   production_status?: string;
   pending_services?: boolean;
+  franchises?: number[];
 }
 
 export const postUniversalStageLeads = async (
@@ -321,6 +322,7 @@ export interface VendorLeadsByTagPostPayload {
   activity_status?: string;
   production_status?: string;
   pending_services?: boolean;
+  franchises?: number[];
 }
 
 export const postVendorLeadsByTag = async (
