@@ -1808,40 +1808,46 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                           )}
                         >
                           <td className="px-4 py-3 align-top">
-                            <AssignToPicker
-                              data={lightTypeOptions}
-                              value={
-                                row.light_carcas_type_id
-                                  ? Number(row.light_carcas_type_id)
-                                  : undefined
-                              }
-                              onChange={(value) =>
-                                updateLightRow(
-                                  row.localId,
-                                  "light_carcas_type_id",
-                                  value ? String(value) : "",
-                                )
-                              }
-                              disabled={
-                                !isLightsEnabled ||
-                                (isCustomLightsMode && !!customLightCarcasType)
-                              }
-                              placeholder={
-                                isLightsEnabled
-                                  ? isCustomLightsMode
-                                    ? "Custom"
-                                    : "Search carcass type..."
-                                  : "Select lights remark first"
-                              }
-                              emptyLabel={
-                                isLightsEnabled
-                                  ? isCustomLightsMode
-                                    ? "Custom"
-                                    : "Select carcass type"
-                                  : "Select lights remark first"
-                              }
-                              className={pickerClassName}
-                            />
+                            {isCustomLightsMode ? (
+                              <input
+                                type="text"
+                                value={customLightCarcasType?.type || "Custom"}
+                                readOnly
+                                disabled
+                                className={cn(
+                                  pickerClassName,
+                                  "w-full text-muted-foreground",
+                                )}
+                              />
+                            ) : (
+                              <AssignToPicker
+                                data={lightTypeOptions}
+                                value={
+                                  row.light_carcas_type_id
+                                    ? Number(row.light_carcas_type_id)
+                                    : undefined
+                                }
+                                onChange={(value) =>
+                                  updateLightRow(
+                                    row.localId,
+                                    "light_carcas_type_id",
+                                    value ? String(value) : "",
+                                  )
+                                }
+                                disabled={!isLightsEnabled}
+                                placeholder={
+                                  isLightsEnabled
+                                    ? "Search carcass type..."
+                                    : "Select lights remark first"
+                                }
+                                emptyLabel={
+                                  isLightsEnabled
+                                    ? "Select carcass type"
+                                    : "Select lights remark first"
+                                }
+                                className={pickerClassName}
+                              />
+                            )}
                           </td>
                           <td className="px-4 py-3 align-top">
                             {isCustomLightsMode ? (
