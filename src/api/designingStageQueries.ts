@@ -176,6 +176,7 @@ export interface SubmitDesignPayload {
   userId: number;
   designType?: "2D" | "3D" | "2D + 3D";
   productStructureInstanceIds?: number[] | string[];
+  specificationId?: number | null;
 }
 
 export const submitDesigns = async (payload: SubmitDesignPayload) => {
@@ -195,6 +196,10 @@ export const submitDesigns = async (payload: SubmitDesignPayload) => {
   payload.productStructureInstanceIds?.forEach((instanceId) => {
     formData.append("product_structure_instance_ids", String(instanceId));
   });
+
+  if (payload.specificationId) {
+    formData.append("specification_id", payload.specificationId.toString());
+  }
 
   const { data } = await apiClient.post(
     "/leads/designing-stage/upload-designs",

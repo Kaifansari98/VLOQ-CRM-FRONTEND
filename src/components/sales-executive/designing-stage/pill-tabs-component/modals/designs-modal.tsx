@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import BaseModal from "@/components/utils/baseModal";
 import {
   Form,
@@ -21,6 +21,10 @@ import { useAppSelector } from "@/redux/store";
 import { useSubmitDesigns } from "@/api/designingStageQueries";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLeadUniqueProductTypes, useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
+import {
+  useDesignsDoc,
+  useLeadSpecifications,
+} from "@/hooks/designing-stage/designing-leads-hooks";
 
 import {
   Select,
@@ -33,6 +37,7 @@ import {
 const designsSchema = z.object({
   design_type: z.enum(["2D", "3D", "2D + 3D"]).optional(),
   product_type: z.string().optional(),
+  specification_id: z.string().optional(),
   upload_pdf: z
     .any()
     .refine((files) => files && files.length > 0, {
@@ -64,6 +69,7 @@ interface DesignsModalProps {
 const getDefaultDesignValues = (): DesignsFormValues => ({
   design_type: undefined,
   product_type: "",
+  specification_id: "",
   upload_pdf: [],
 });
 
@@ -74,6 +80,9 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
   const isAuditor = userType?.trim().toLowerCase() === "auditor";
   const isCustomVendor = useAppSelector((s) => s.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only);
+  const handlesLargeScaleProjects = useAppSelector(
+    (s) => s.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
 
   const queryClient = useQueryClient();
   const form = useForm<DesignsFormValues>({
@@ -91,17 +100,78 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
 
   const { data: uniqueProductTypes } = useLeadUniqueProductTypes(leadId, vendorId, open);
   const { data: structureInstancesData } = useLeadProductStructureInstances(leadId, vendorId, open);
+  const { data: specifications = [] } = useLeadSpecifications(vendorId, leadId);
+  const { data: designDocsResponse } = useDesignsDoc(vendorId, leadId);
 
+  const productTypes = uniqueProductTypes?.data ?? [];
+  const shouldRenderProductTypeField =
+    isCustomVendor || handlesLargeScaleProjects;
   const showProductTypeSelect =
-    !uniqueProductTypes?.data || uniqueProductTypes.data.length > 1;
+    shouldRenderProductTypeField &&
+    (!productTypes || productTypes.length > 1);
+  const selectedProductType = form.watch("product_type");
+  const structureInstances = Array.isArray(structureInstancesData?.data)
+    ? structureInstancesData.data
+    : [];
+  const linkedSpecificationIds = useMemo(
+    () =>
+      new Set(
+        (designDocsResponse?.data?.documents ?? [])
+          .map((doc) => doc.specification?.id)
+          .filter((id): id is number => typeof id === "number"),
+      ),
+    [designDocsResponse?.data?.documents],
+  );
+
+  const filteredSpecifications = useMemo(() => {
+    if (!handlesLargeScaleProjects || !selectedProductType) {
+      return [];
+    }
+
+    const normalizedProductType = selectedProductType.trim().toLowerCase();
+    const eligibleItemCodeIds = new Set<number>();
+
+    for (const instance of structureInstances) {
+      const productTypeName =
+        instance.productType?.type ||
+        instance.productItemCode?.productStructure?.productType?.type;
+      const itemCodeId = instance.productItemCode?.id;
+
+      if (
+        itemCodeId &&
+        typeof productTypeName === "string" &&
+        productTypeName.trim().toLowerCase() === normalizedProductType
+      ) {
+        eligibleItemCodeIds.add(itemCodeId);
+      }
+    }
+
+    return specifications.filter((spec) => {
+      if (!spec.item_code_id || linkedSpecificationIds.has(spec.id)) {
+        return false;
+      }
+
+      return eligibleItemCodeIds.has(spec.item_code_id);
+    });
+  }, [
+    handlesLargeScaleProjects,
+    linkedSpecificationIds,
+    selectedProductType,
+    specifications,
+    structureInstances,
+  ]);
 
   React.useEffect(() => {
-    if (uniqueProductTypes?.data && uniqueProductTypes.data.length === 1) {
-      form.setValue("product_type", uniqueProductTypes.data[0].type, {
+    if (productTypes && productTypes.length === 1) {
+      form.setValue("product_type", productTypes[0].type, {
         shouldValidate: true,
       });
     }
-  }, [uniqueProductTypes?.data, form]);
+  }, [form, productTypes]);
+
+  React.useEffect(() => {
+    form.setValue("specification_id", "");
+  }, [form, selectedProductType]);
 
   const onSubmit = async (data: DesignsFormValues) => {
     if (isCustomVendor && !data.design_type) {
@@ -122,11 +192,14 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
 
     try {
       let productStructureInstanceIds: number[] = [];
+      const specificationId =
+        data.specification_id && data.specification_id !== "none"
+          ? Number(data.specification_id)
+          : null;
 
       if (data.product_type) {
-        const instancesList = structureInstancesData?.data;
-        if (instancesList && Array.isArray(instancesList)) {
-          productStructureInstanceIds = instancesList
+        if (structureInstances.length > 0) {
+          productStructureInstanceIds = structureInstances
             .filter((inst: any) => {
               const type1 = inst.productType?.type;
               const type2 = inst.productItemCode?.productStructure?.productType?.type;
@@ -143,6 +216,7 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
         userId,
         designType: data.design_type,
         productStructureInstanceIds,
+        specificationId,
       });
 
       toastManager.add({ title: "Design files uploaded successfully!", type: "success" });
@@ -185,36 +259,44 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-5">
-          {isCustomVendor && (
-            <div className={showProductTypeSelect ? "grid grid-cols-2 gap-4" : "grid grid-cols-1 gap-4"}>
-              <FormField
-                control={form.control}
-                name="design_type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Design Type *</FormLabel>
-                    <Select
-                      value={field.value}
-                      onValueChange={(value) => {
-                        field.onChange(value);
-                        form.clearErrors("design_type");
-                      }}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select design type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="2D">2D Design</SelectItem>
-                        <SelectItem value="3D">3D Design</SelectItem>
-                        <SelectItem value="2D + 3D">2D + 3D Design</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          {(isCustomVendor || shouldRenderProductTypeField) && (
+            <div
+              className={
+                isCustomVendor && showProductTypeSelect
+                  ? "grid grid-cols-2 gap-4"
+                  : "grid grid-cols-1 gap-4"
+              }
+            >
+              {isCustomVendor && (
+                <FormField
+                  control={form.control}
+                  name="design_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Design Type *</FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          form.clearErrors("design_type");
+                        }}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select design type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="2D">2D Design</SelectItem>
+                          <SelectItem value="3D">3D Design</SelectItem>
+                          <SelectItem value="2D + 3D">2D + 3D Design</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               {showProductTypeSelect && (
                 <FormField
@@ -222,22 +304,24 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
                   name="product_type"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Product Type *</FormLabel>
+                      <FormLabel>
+                        Product Type {isCustomVendor ? "*" : ""}
+                      </FormLabel>
                       <Select
-                      value={field.value || ""}
-                      onValueChange={(value) => {
-                        field.onChange(value);
-                        form.clearErrors("product_type");
-                      }}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select product type" />
-                        </SelectTrigger>
+                        value={field.value || ""}
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          form.clearErrors("product_type");
+                        }}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select product type" />
+                          </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {uniqueProductTypes?.data && uniqueProductTypes.data.length > 0 ? (
-                            uniqueProductTypes.data.map((pt: any) => (
+                          {productTypes.length > 0 ? (
+                            productTypes.map((pt: any) => (
                               <SelectItem key={pt.id} value={pt.type}>
                                 {pt.type}
                               </SelectItem>
@@ -256,6 +340,37 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
               )}
             </div>
           )}
+
+          {handlesLargeScaleProjects && selectedProductType ? (
+            <FormField
+              control={form.control}
+              name="specification_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Specification (Optional)</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value || "none"}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select specification" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {filteredSpecifications.map((spec) => (
+                        <SelectItem key={spec.id} value={String(spec.id)}>
+                          {spec.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ) : null}
 
           <FormField
             control={form.control}
