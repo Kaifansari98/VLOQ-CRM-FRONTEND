@@ -1039,10 +1039,12 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   );
 
   const handleCustomLightRemarkBlur = React.useCallback(
-    (row: LightRow) => {
+    (localId: string) => {
+      const row = lightRows.find((item) => item.localId === localId);
+      if (!row) return;
       void saveLightRowIfComplete(row);
     },
-    [saveLightRowIfComplete],
+    [lightRows, saveLightRowIfComplete],
   );
 
   const saveOtherApplianceRowIfComplete = React.useCallback(
@@ -1859,7 +1861,9 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                     event.target.value,
                                   )
                                 }
-                                onBlur={() => handleCustomLightRemarkBlur(row)}
+                                onBlur={() =>
+                                  handleCustomLightRemarkBlur(row.localId)
+                                }
                                 disabled={!isLightsEnabled}
                                 placeholder={
                                   isLightsEnabled
