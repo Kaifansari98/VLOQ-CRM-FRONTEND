@@ -765,7 +765,7 @@ export default function SiteMeasurementLead() {
             },
             {
               onSuccess: (res: any) => {
-                const finalStatus = res?.data?.activity_status;
+                const finalStatus = res?.data?.activity_status ?? res?.data?.lead?.activity_status;
                 toastManager.add({
                   title:
                     activityType === "onHold"

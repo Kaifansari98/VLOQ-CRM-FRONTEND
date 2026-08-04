@@ -1007,12 +1007,12 @@ export default function DesigningStageLead() {
             },
             {
               onSuccess: (res: any) => {
-                const finalStatus = res?.data?.activity_status;
+                const finalStatus = res?.data?.activity_status ?? res?.data?.lead?.activity_status;
                 toastManager.add({
                   title:
                     activityType === "onHold"
                       ? "Lead marked as On Hold!"
-                      : finalStatus === "lostApproval" || activityType === "lostApproval"
+                      : finalStatus === "lostApproval"
                         ? "Lead sent for Lost Approval!"
                         : "Lead marked as Lost!",
                   type: "success",
