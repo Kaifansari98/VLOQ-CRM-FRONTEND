@@ -5,6 +5,8 @@ import BaseModal from "@/components/utils/baseModal";
 import z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "@/lib/apiClient";
 import {
   Form,
   FormControl,
@@ -25,6 +27,9 @@ interface Props {
   loading?: boolean;
   existingRemark?: string;
   existingRemarkLabel?: string;
+  vendorId?: number;
+  franchiseId?: number | null;
+  hasAdmin?: boolean;
 }
 
 const formSchema = z.object({
@@ -40,7 +45,48 @@ const ActivityStatusModal: React.FC<Props> = ({
   loading = false,
   existingRemark,
   existingRemarkLabel = "Sales executive remark",
+  vendorId,
+  franchiseId,
+  hasAdmin,
 }) => {
+  const { data: storeAdminExists = false } = useQuery({
+    queryKey: ["franchise-admin-check", vendorId, franchiseId],
+    queryFn: async () => {
+      if (!vendorId || !franchiseId) return false;
+      const res = await apiClient.get(`/users/vendor/${vendorId}`, {
+        params: { page: 1, limit: 100, franchise_id: franchiseId },
+      });
+      const users = Array.isArray(res.data?.data) ? res.data.data : [];
+      return users.some((u: any) => {
+        const uType = (
+          u.user_type?.user_type ||
+          u.user_type ||
+          u.user_role ||
+          u.role ||
+          ""
+        ).toLowerCase();
+        return u.status === "active" && uType === "admin";
+      });
+    },
+    enabled:
+      open &&
+      !!vendorId &&
+      !!franchiseId &&
+      (statusType === "lost" || statusType === "lostApproval"),
+  });
+
+  const requiresApproval =
+    hasAdmin !== undefined
+      ? hasAdmin
+      : statusType === "lostApproval" || (statusType === "lost" && storeAdminExists);
+
+  const modalStatusType: Props["statusType"] =
+    statusType === "onHold"
+      ? "onHold"
+      : requiresApproval
+        ? "lostApproval"
+        : "lost";
+
   const defaultLostRemark = statusType === "lost" && existingRemark ? "N/A" : "";
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -90,8 +136,8 @@ const ActivityStatusModal: React.FC<Props> = ({
     <BaseModal
       open={open}
       onOpenChange={onOpenChange}
-      title={titles[statusType]}
-      description={descriptions[statusType]}
+      title={titles[modalStatusType]}
+      description={descriptions[modalStatusType]}
       size="md"
     >
       <div className="p-6 flex flex-col gap-4">
@@ -161,7 +207,7 @@ const ActivityStatusModal: React.FC<Props> = ({
                 Cancel
               </Button>
               <Button type="submit" className="text-sm" disabled={loading}>
-                {buttonText[statusType]}
+                {buttonText[modalStatusType]}
               </Button>
             </div>
           </form>
