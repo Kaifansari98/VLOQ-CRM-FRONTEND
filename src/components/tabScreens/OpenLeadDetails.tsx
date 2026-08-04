@@ -200,12 +200,63 @@ const isImageDocument = (fileName?: string | null) => {
   return !!ext && IMAGE_EXTENSIONS.includes(ext);
 };
 
+const formatFileDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const sanitizeFileSegment = (value: string) =>
+  value
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const getFileExtension = (fileName: string) => {
+  const lastDotIndex = fileName.lastIndexOf(".");
+  return lastDotIndex >= 0 ? fileName.slice(lastDotIndex) : "";
+};
+
+const renameLeadSitePhotoFiles = ({
+  files,
+  clientName,
+  targetLabel,
+  uploadDate,
+}: {
+  files: File[];
+  clientName: string;
+  targetLabel: string;
+  uploadDate: string;
+}) => {
+  const safeClientName = sanitizeFileSegment(clientName || "Client");
+  const safeTargetLabel = sanitizeFileSegment(targetLabel || "Furniture Type");
+
+  return files.map(
+    (file, index) =>
+      new File(
+        [file],
+        `CSP${index + 1}-${safeClientName}-${safeTargetLabel}-${uploadDate}${getFileExtension(
+          file.name,
+        )}`,
+        {
+          type: file.type,
+          lastModified: file.lastModified,
+        },
+      ),
+  );
+};
+
 export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   // ✅ 1. REDUX STATE
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const handlesLargeScaleProjects = useAppSelector(
     (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const isCustomDocNomenclatureEnabled = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_custom_doc_nomenclature_enabled === true,
   );
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
@@ -979,11 +1030,20 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       return;
     }
     try {
+      const preparedFiles = isCustomDocNomenclatureEnabled
+        ? renameLeadSitePhotoFiles({
+          files: uploadFiles,
+          clientName: `${lead?.firstname || ""} ${lead?.lastname || ""}`.trim(),
+          targetLabel: currentProductTypeLabel || "Furniture Type",
+          uploadDate: formatFileDate(new Date()),
+        })
+        : uploadFiles;
+
       await uploadMoreSitePhotos({
         vendorId,
         leadId,
         createdBy: userId,
-        files: uploadFiles,
+        files: preparedFiles,
       });
 
       toastManager.add({
