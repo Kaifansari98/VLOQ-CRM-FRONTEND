@@ -3,6 +3,8 @@
 import React from "react";
 import MultipleSelector, { Option } from "@/components/ui/multiselect";
 
+import { cn } from "@/lib/utils";
+
 export type ClientDocsSelectionOption = Option & {
   group?: string;
 };
@@ -13,6 +15,8 @@ interface ClientDocsSelectionMultiSelectProps {
   options: ClientDocsSelectionOption[];
   placeholder: string;
   disabled?: boolean;
+  isError?: boolean;
+  className?: string;
 }
 
 const normalize = (s: string | null | undefined): string =>
@@ -24,6 +28,8 @@ export default function ClientDocsSelectionMultiSelect({
   options,
   placeholder,
   disabled = false,
+  isError = false,
+  className,
 }: ClientDocsSelectionMultiSelectProps) {
   const selectedOptions = React.useMemo(() => {
     // value may contain option.value IDs (e.g. "carcass-5") OR legacy label strings
@@ -58,6 +64,10 @@ export default function ClientDocsSelectionMultiSelect({
       showSelectedOptionsInDropdown
       showSelectedCheckIcon
       groupBy="group"
+      className={cn(
+        isError && "border-red-500 ring-1 ring-red-500/20",
+        className
+      )}
     />
   );
 }
