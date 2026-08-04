@@ -684,7 +684,7 @@ export default function DesigningStageLead() {
                       {canMarkAsLost && (
                         <DropdownMenuItem
                           onSelect={() => {
-                            setActivityType("lost");
+                            setActivityType("lostApproval");
                             setActivityModalOpen(true);
                           }}
                         >
@@ -1004,14 +1004,15 @@ export default function DesigningStageLead() {
               },
             },
             {
-              onSuccess: () => {
+              onSuccess: (res: any) => {
+                const finalStatus = res?.data?.activity_status;
                 toastManager.add({
                   title:
                     activityType === "onHold"
                       ? "Lead marked as On Hold!"
-                      : activityType === "lost"
-                        ? "Lead marked as Lost!"
-                        : "Lead sent for Lost Approval!",
+                      : finalStatus === "lostApproval" || activityType === "lostApproval"
+                        ? "Lead sent for Lost Approval!"
+                        : "Lead marked as Lost!",
                   type: "success",
                 });
                 setActivityModalOpen(false);
