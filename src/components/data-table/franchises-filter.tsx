@@ -22,9 +22,6 @@ interface Props {
 }
 
 export default function FranchisesFilter({ column, table }: Props) {
-  const isHOUser = useAppSelector(
-    (s) => s.auth.is_ho_user ?? s.auth.user?.is_ho_user ?? false,
-  );
   const userType = useAppSelector((s) => {
     const u = s.auth.user as any;
     if (!u) return "";
@@ -44,7 +41,6 @@ export default function FranchisesFilter({ column, table }: Props) {
   });
 
   const isAllowed = useMemo(() => {
-    if (isHOUser) return true;
     const cleanRole = (userType || "")
       .toLowerCase()
       .trim()
@@ -58,10 +54,9 @@ export default function FranchisesFilter({ column, table }: Props) {
       "site-supervisor",
       "order-login",
       "pre-prod",
-    
     ];
     return allowedRoles.includes(cleanRole);
-  }, [isHOUser, userType]);
+  }, [userType]);
 
   const vendorId = useAppSelector(
     (s) => s.auth.user?.vendor_id ?? s.auth.user?.vendor?.id
