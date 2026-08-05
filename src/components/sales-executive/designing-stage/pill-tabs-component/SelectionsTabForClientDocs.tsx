@@ -6,12 +6,16 @@ import {
   useEditSelectionData,
   useGetCHSManufacturingDaysByInstance,
   useGetCHSSelectionTypeMappings,
+  useLeadSpecifications,
   useLeadStatus,
   useSelectionData,
   useSubmitSelection,
   useUpsertCHSSelectionTypeMapping,
 } from "@/hooks/designing-stage/designing-leads-hooks";
-import type { CHSMappingItem } from "@/api/designingStageQueries";
+import type {
+  CHSMappingItem,
+  LeadSpecificationEntry,
+} from "@/api/designingStageQueries";
 import { useAppSelector } from "@/redux/store";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -83,6 +87,7 @@ import ClientDocsSelectionMultiSelect, {
   ClientDocsSelectionOption,
 } from "./ClientDocsSelectionMultiSelect";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import ViewSpecsModal from "./modals/view-specs-modal";
 
 interface Props {
   leadId: number;
@@ -209,6 +214,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const { data: handleTypesData, isLoading: isHandleTypesLoading } =
     useHandleTypes();
   const { data: leadData } = useLeadStatus(leadId, vendorId);
+  const { data: specifications = [] } = useLeadSpecifications(vendorId, leadId);
   
   const { data: leadDataById } = useLeadById(leadId, vendorId, userId);
   const lead = leadDataById?.data?.lead;
@@ -513,6 +519,8 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const [activeInstance, setActiveInstance] =
     React.useState<LeadProductStructureInstance | null>(null);
   const [confirmDelete, setConfirmDelete] = React.useState<null | number>(null);
+  const [selectedSpec, setSelectedSpec] =
+    React.useState<LeadSpecificationEntry | null>(null);
   const activeDisplayGroup = React.useMemo(() => {
     if (!activeInstance) return null;
 
@@ -531,6 +539,64 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         "Item Group",
     };
   }, [activeInstance, handlesLargeScaleProjects]);
+  const itemCodeGroupMap = React.useMemo(
+    () =>
+      new Map<number, string>(
+        structureInstances
+          .filter((instance) => instance.productItemCode)
+          .map((instance) => [
+            instance.productItemCode!.id,
+            instance.productType?.type ||
+              instance.productItemCode?.productStructure?.productType?.type ||
+              "Other Specifications",
+          ]),
+      ),
+    [structureInstances],
+  );
+  const latestSpecificationByGroup = React.useMemo(() => {
+    const groups = new Map<string, LeadSpecificationEntry>();
+
+    for (const spec of specifications) {
+      const title =
+        (spec.item_code_id ? itemCodeGroupMap.get(spec.item_code_id) : null) ||
+        "Other Specifications";
+      const key = title.trim().toLowerCase();
+      const existing = groups.get(key);
+
+      if (!existing) {
+        groups.set(key, spec);
+        continue;
+      }
+
+      const existingTime = new Date(existing.created_at).getTime();
+      const currentTime = new Date(spec.created_at).getTime();
+
+      if (
+        currentTime > existingTime ||
+        (currentTime === existingTime && spec.id > existing.id)
+      ) {
+        groups.set(key, spec);
+      }
+    }
+
+    return groups;
+  }, [itemCodeGroupMap, specifications]);
+  const activeSpecificationGroupKey = React.useMemo(() => {
+    if (!handlesLargeScaleProjects || !activeInstance) return null;
+
+    const title =
+      activeInstance.productType?.type ||
+      activeInstance.productItemCode?.productStructure?.productType?.type ||
+      activeInstance.productItemCode?.item_code ||
+      activeInstance.title ||
+      "Other Specifications";
+
+    return title.trim().toLowerCase();
+  }, [activeInstance, handlesLargeScaleProjects]);
+  const activeLatestSpecification = React.useMemo(() => {
+    if (!activeSpecificationGroupKey) return null;
+    return latestSpecificationByGroup.get(activeSpecificationGroupKey) ?? null;
+  }, [activeSpecificationGroupKey, latestSpecificationByGroup]);
   const lastNotifiedInstanceIdRef = React.useRef<number | null | undefined>(
     undefined,
   );
@@ -1319,6 +1385,62 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
 
     return (
       <div className="flex-1 space-y-6 py-4 px-5">
+        {handlesLargeScaleProjects && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h4 className="text-sm font-semibold">Latest Specification</h4>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Latest specs for this item group.
+                </p>
+              </div>
+              {activeLatestSpecification && (
+                <Badge variant="outline">Latest</Badge>
+              )}
+            </div>
+
+            {activeLatestSpecification ? (
+              <button
+                type="button"
+                onClick={() => setSelectedSpec(activeLatestSpecification)}
+                className="w-full rounded-2xl border bg-card p-4 text-left transition-colors hover:bg-accent/40"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold truncate">
+                      {activeLatestSpecification.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {activeDisplayGroup?.title || "Item Group"}
+                    </p>
+                  </div>
+                  <Badge variant="secondary">Open</Badge>
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                  <span>Specification</span>
+                  <span>
+                    {new Date(activeLatestSpecification.created_at).toLocaleDateString(
+                      "en-IN",
+                      {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      },
+                    )}
+                  </span>
+                </div>
+              </button>
+            ) : (
+              <div className="rounded-2xl border border-dashed bg-muted/20 p-4">
+                <p className="text-sm font-medium">No specification found</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Create a spec for this item group to show it here.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {!handlesLargeScaleProjects && (
         <div className="space-y-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between w-full gap-4">
@@ -2072,6 +2194,14 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
           </BaseModal>
         )}
       </AnimatePresence>
+
+      <ViewSpecsModal
+        open={!!selectedSpec}
+        onOpenChange={(open) => {
+          if (!open) setSelectedSpec(null);
+        }}
+        specification={selectedSpec}
+      />
 
       {/* Delete Confirmation */}
       <AlertDialog
