@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import SmoothTab from "@/components/kokonutui/smooth-tab";
 import {
   DropdownMenu,
@@ -19,8 +19,9 @@ import FinalMeasurementLeadDetails from "../tabScreens/FinalMeasurementDetails";
 import ClientDocumentationDetails from "../site-supervisor/client-documentation/view-client-documentation";
 import ClientApprovalDetails from "../site-supervisor/client-approval/client-approval-details";
 import BookingLeadsDetails from "../sales-executive/booking-stage/view-booking-modal";
-
-/* ---- imports unchanged ---- */
+import { useAppSelector } from "@/redux/store";
+import { useLeadById } from "@/hooks/useLeadsQueries";
+import { useFinalMeasurementLeadById } from "@/hooks/final-measurement/use-final-measurement";
 
 interface LeadDetailsUtilProps {
   status: string;
@@ -39,6 +40,40 @@ export default function LeadDetailsUtil({
   onlyThisTab,
 }: LeadDetailsUtilProps) {
   const [mobileTab, setMobileTab] = useState(defaultTab);
+
+  useEffect(() => {
+    setMobileTab(defaultTab);
+  }, [defaultTab]);
+
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const userId = useAppSelector((state) => state.auth.user?.id);
+  const isCustomVendorFlowFromAuth = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
+  );
+  const handlesLargeScaleProjectsFromAuth = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+
+  const { data: leadByIdResponse } = useLeadById(leadId, vendorId, userId);
+  const leadById = leadByIdResponse?.data?.lead;
+
+  const isCustomVendorFlow =
+    isCustomVendorFlowFromAuth ||
+    leadById?.createdBy?.vendor?.is_this_vendor_is_custom_usertype_only === true ||
+    leadById?.assignedTo?.vendor?.is_this_vendor_is_custom_usertype_only === true;
+  const handlesLargeScaleProjects =
+    handlesLargeScaleProjectsFromAuth ||
+    leadById?.createdBy?.vendor?.handlesLargeScaleProjects === true ||
+    leadById?.assignedTo?.vendor?.handlesLargeScaleProjects === true;
+
+  const { data: finalMeasurementData } = useFinalMeasurementLeadById(
+    vendorId ?? 0,
+    leadId ?? 0,
+  );
+  const sitePhotos = finalMeasurementData?.sitePhotos ?? [];
+  const measurementDocs = finalMeasurementData?.measurementDocs ?? [];
+  const hasAtLeastOneDocUploaded = sitePhotos.length > 0 || measurementDocs.length > 0;
 
   const allTabs = [
     {
@@ -94,13 +129,18 @@ export default function LeadDetailsUtil({
     details: ["details"],
     measurement: ["details", "measurement"],
     designing: ["details", "measurement", "designing"],
-    booking: ["details", "measurement", "designing", "booking"],
+    booking: [
+      "details",
+      "measurement",
+      "designing",
+      "booking",
+    ],
     finalMeasurement: [
       "details",
       "measurement",
       "designing",
       "booking",
-      "finalMeasurement",
+      ...(hasAtLeastOneDocUploaded ? ["finalMeasurement"] : []),
     ],
     clientdocumentation: [
       "details",
@@ -129,7 +169,8 @@ export default function LeadDetailsUtil({
     ? visibleTabs.filter((t) => t.id === onlyThisTab)
     : visibleTabs;
 
-  const selectedTab = finalTabs.find((t) => t.id === mobileTab);
+  const selectedTab =
+    finalTabs.find((t) => t.id === mobileTab) ?? finalTabs[0];
 
   /* ---------------- MOBILE GROUPING ---------------- */
   const leadTabs = ["details", "measurement", "designing", "booking"];
@@ -219,7 +260,11 @@ export default function LeadDetailsUtil({
       </div>
       {/* ================= DESKTOP TABS ================= */}
       <div className="hidden md:block">
-        <SmoothTab items={finalTabs} defaultTabId={defaultTab} />
+        <SmoothTab
+          items={finalTabs}
+          defaultTabId={selectedTab?.id}
+          onChange={setMobileTab}
+        />
       </div>
 
       {/* ================= MOBILE CONTENT ================= */}

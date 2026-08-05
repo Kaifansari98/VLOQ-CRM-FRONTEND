@@ -5,7 +5,11 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAppSelector } from "@/redux/store";
 import { useParams } from "next/navigation";
-import { usePaymentLogs } from "@/hooks/booking-stage/use-booking";
+import {
+  usePaymentLogs,
+  useUpdatePaymentLogAmount,
+} from "@/hooks/booking-stage/use-booking";
+import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 import {
   ExternalLink,
   Calendar,
@@ -13,7 +17,18 @@ import {
   FileText,
   IndianRupee,
   Clock,
+  Package,
+  Pencil,
 } from "lucide-react";
+import BaseModal from "@/components/utils/baseModal";
+import CurrencyInput from "../custom/CurrencyInput";
+import { Label } from "../ui/label";
+import { toastManager } from "@/components/ui/toast";
+import { useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import type { PaymentLog } from "@/api/booking";
 
 // Format date helper
 const formatDate = (dateString: string) => {
@@ -107,16 +122,158 @@ const lineVariants = {
 
 type PaymentLogsProps = {
   leadIdProps?: number;
+  activeProductTypeId?: number | null;
+  productTypePaymentLog?: {
+    id?: number;
+    amount: number;
+    total_amount?: number | null;
+    payment_text?: string;
+    text?: string;
+    date?: string;
+    file?: {
+      id: number;
+      originalName: string;
+      signedUrl: string;
+    } | null;
+  } | null;
 };
-export default function PaymentLogs({ leadIdProps }: PaymentLogsProps) {
+export default function PaymentLogs({
+  leadIdProps,
+  activeProductTypeId,
+  productTypePaymentLog = null,
+}: PaymentLogsProps) {
   const { lead } = useParams();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
+  const userId = useAppSelector((state) => state.auth.user?.id) || 0;
+  const userType = useAppSelector((state) => state.auth.user?.user_type?.user_type);
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const isSuperAdmin = userType?.toLowerCase() === "super-admin";
+  const [editingLog, setEditingLog] = useState<PaymentLog | null>(null);
 
   // 1. URL param → 2. props → 3. null fallback
   const urlLeadId = lead ? Number(lead) : null;
-  const finalLeadId = urlLeadId || leadIdProps;
+  const finalLeadId = urlLeadId || leadIdProps || 0;
 
-  // If still null → show fallback UI
+  // Use finalLeadId for API
+  const { data, isLoading } = usePaymentLogs(finalLeadId, vendorId);
+  const updatePaymentLogAmountMutation = useUpdatePaymentLogAmount();
+  const { data: structureInstancesData } = useLeadProductStructureInstances(
+    finalLeadId,
+    vendorId,
+    handlesLargeScaleProjects,
+  );
+
+  const productTypeLabelMap = new Map<number, string>(
+    (Array.isArray(structureInstancesData?.data) ? structureInstancesData.data : [])
+      .map((instance: any) => {
+        const productTypeId =
+          instance.product_type_id ??
+          instance.productType?.id ??
+          instance.productItemCode?.productStructure?.productType?.id;
+        const label =
+          instance.productType?.type ??
+          instance.productItemCode?.productStructure?.productType?.type;
+
+        return productTypeId && label ? [productTypeId, label] : null;
+      })
+      .filter(Boolean) as Array<[number, string]>,
+  );
+
+  const logs = data?.payment_logs || [];
+  const filteredLogs = (() => {
+    if (activeProductTypeId == null) {
+      return logs;
+    }
+
+    const scopedLogs = logs.filter(
+      (log) => log.product_type_id === activeProductTypeId,
+    );
+
+    if (scopedLogs.length > 0) {
+      return scopedLogs;
+    }
+
+    if (!productTypePaymentLog || Number(productTypePaymentLog.amount || 0) <= 0) {
+      return [];
+    }
+
+    return [
+      {
+        id: productTypePaymentLog.id ?? -activeProductTypeId,
+        amount: productTypePaymentLog.amount,
+        status_id: null,
+        status_type: "Booking Amount",
+        product_type_id: activeProductTypeId,
+        is_booking_received_amt: true,
+        payment_text:
+          productTypePaymentLog.payment_text ||
+          productTypePaymentLog.text ||
+          "",
+        total_amount: productTypePaymentLog.total_amount ?? null,
+        payment_date: productTypePaymentLog.date || new Date().toISOString(),
+        entry_date: productTypePaymentLog.date || new Date().toISOString(),
+        entered_by_id: 0,
+        entered_by: "Booking Payment",
+        payment_file_id: productTypePaymentLog.file?.id ?? null,
+        payment_file: productTypePaymentLog.file?.signedUrl ?? null,
+      },
+    ];
+  })();
+
+  const visibleLogs = filteredLogs.filter((log) => Number(log.amount || 0) > 0);
+  const scopedTotalProjectAmount = useMemo(() => {
+    if (activeProductTypeId == null) return 0;
+
+    const bookingLog = filteredLogs.find((log) => log.is_booking_received_amt);
+    return Number(
+      bookingLog?.total_amount ??
+        productTypePaymentLog?.total_amount ??
+        0,
+    );
+  }, [activeProductTypeId, filteredLogs, productTypePaymentLog?.total_amount]);
+  const scopedReceivedAmount = useMemo(
+    () => visibleLogs.reduce((sum, log) => sum + Number(log.amount || 0), 0),
+    [visibleLogs],
+  );
+  const editEnabled = isSuperAdmin && handlesLargeScaleProjects && activeProductTypeId != null;
+  const maxEditableAmount =
+    editingLog == null
+      ? 0
+      : Number(editingLog.amount || 0) +
+        Math.max(scopedTotalProjectAmount - scopedReceivedAmount, 0);
+  const paymentAmountEditSchema = useMemo(
+    () =>
+      z.object({
+        amount: z
+          .number({ message: "Amount is required" })
+          .min(1, "Amount must be at least ₹1")
+          .max(
+            maxEditableAmount,
+            `Amount cannot exceed ₹${maxEditableAmount.toLocaleString("en-IN")}`,
+          ),
+      }),
+    [maxEditableAmount],
+  );
+  const {
+    handleSubmit,
+    watch,
+    setValue,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<{ amount: number }>({
+    resolver: zodResolver(paymentAmountEditSchema),
+    defaultValues: {
+      amount: 0,
+    },
+  });
+
+  useEffect(() => {
+    if (!editingLog) return;
+    reset({ amount: Number(editingLog.amount || 0) });
+  }, [editingLog, reset]);
+
   if (!finalLeadId) {
     return (
       <div className="flex items-center justify-center min-h-[200px] text-muted-foreground">
@@ -125,8 +282,6 @@ export default function PaymentLogs({ leadIdProps }: PaymentLogsProps) {
     );
   }
 
-  // Use finalLeadId for API
-  const { data, isLoading } = usePaymentLogs(finalLeadId, vendorId);
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -149,9 +304,7 @@ export default function PaymentLogs({ leadIdProps }: PaymentLogsProps) {
     );
   }
 
-  const logs = data?.payment_logs || [];
-
-  if (!logs.length) {
+  if (!visibleLogs.length) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -168,10 +321,47 @@ export default function PaymentLogs({ leadIdProps }: PaymentLogsProps) {
     );
   }
 
-  const visibleLogs = logs.filter((log) => log.amount > 0);
+  const watchedAmount = Number(watch("amount") || 0);
+  const updatedPendingAmount = Math.max(
+    scopedTotalProjectAmount - (scopedReceivedAmount - Number(editingLog?.amount || 0) + watchedAmount),
+    0,
+  );
+
+  const handlePaymentAmountUpdate = (values: { amount: number }) => {
+    if (!editingLog || activeProductTypeId == null) return;
+
+    updatePaymentLogAmountMutation.mutate(
+      {
+        vendorId,
+        leadId: finalLeadId,
+        paymentId: editingLog.id,
+        amount: values.amount,
+        updatedBy: userId,
+        productTypeId: activeProductTypeId,
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: "Amount received updated successfully!",
+            type: "success",
+          });
+          setEditingLog(null);
+        },
+        onError: (error: any) => {
+          toastManager.add({
+            title:
+              error?.response?.data?.message ||
+              error?.message ||
+              "Failed to update amount received",
+            type: "error",
+          });
+        },
+      },
+    );
+  };
 
   return (
-
+    <>
       <motion.div
         variants={containerVariants}
         initial="hidden"
@@ -232,6 +422,17 @@ export default function PaymentLogs({ leadIdProps }: PaymentLogsProps) {
                           <span className="text-2xl font-bold text-primary">
                             ₹{log.amount.toLocaleString("en-IN")}
                           </span>
+                          {editEnabled && log.id > 0 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => setEditingLog(log)}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                         </div>
                         {formattedStatus && (
                           <p className="mt-2 text-sm font-medium text-muted-foreground">
@@ -293,18 +494,39 @@ export default function PaymentLogs({ leadIdProps }: PaymentLogsProps) {
                       </motion.div>
                     </div>
 
-                    <motion.div
-                      whileHover={{ x: 5 }}
-                      className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                    >
-                      <User className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                      <div>
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
-                          Entered By
-                        </p>
-                        <p className="text-sm font-medium">{log.entered_by}</p>
-                      </div>
-                    </motion.div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <motion.div
+                        whileHover={{ x: 5 }}
+                        className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                      >
+                        <User className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                            Entered By
+                          </p>
+                          <p className="text-sm font-medium">
+                            {log.entered_by}
+                          </p>
+                        </div>
+                      </motion.div>
+
+                      {handlesLargeScaleProjects && log.product_type_id && (
+                        <motion.div
+                          whileHover={{ x: 5 }}
+                          className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                        >
+                          <Package className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                              Product Type
+                            </p>
+                            <p className="text-sm font-medium">
+                              {productTypeLabelMap.get(log.product_type_id) || "N/A"}
+                            </p>
+                          </div>
+                        </motion.div>
+                      )}
+                    </div>
 
                     {log.payment_text && (
                       <motion.div
@@ -330,5 +552,93 @@ export default function PaymentLogs({ leadIdProps }: PaymentLogsProps) {
         })}
       </motion.div>
 
+      <BaseModal
+        open={editingLog != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingLog(null);
+            reset({ amount: 0 });
+          }
+        }}
+        title="Edit Amount Received"
+        description="Update the received amount for this payment entry."
+        size="md"
+      >
+        <form
+          onSubmit={handleSubmit(handlePaymentAmountUpdate)}
+          className="space-y-4 p-5"
+        >
+          <div className="rounded-lg border bg-muted/20 p-4 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Current Amount</span>
+              <span className="font-medium">
+                ₹{Number(editingLog?.amount || 0).toLocaleString("en-IN")}
+              </span>
+            </div>
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-muted-foreground">Max Allowed</span>
+              <span className="font-medium">
+                ₹{maxEditableAmount.toLocaleString("en-IN")}
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <Label className="mb-2">Amount Received</Label>
+            <CurrencyInput
+              value={watch("amount")}
+              onChange={(value) =>
+                setValue("amount", value ?? 0, {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                })
+              }
+              placeholder="Enter amount received"
+              disabled={updatePaymentLogAmountMutation.isPending}
+            />
+            {errors.amount && (
+              <p className="mt-1 text-xs text-red-500">{errors.amount.message}</p>
+            )}
+          </div>
+
+          <div className="rounded-lg border bg-muted/20 p-4 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Product Total</span>
+              <span className="font-medium">
+                ₹{scopedTotalProjectAmount.toLocaleString("en-IN")}
+              </span>
+            </div>
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-muted-foreground">Updated Pending Amount</span>
+              <span className="font-medium text-red-500">
+                ₹{updatedPendingAmount.toLocaleString("en-IN")}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setEditingLog(null);
+                reset({ amount: 0 });
+              }}
+              disabled={updatePaymentLogAmountMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={
+                updatePaymentLogAmountMutation.isPending || isSubmitting
+              }
+            >
+              {updatePaymentLogAmountMutation.isPending ? "Saving..." : "Save"}
+            </Button>
+          </div>
+        </form>
+      </BaseModal>
+    </>
   );
 }

@@ -352,19 +352,13 @@ export const BroadcastDetailView: React.FC<BroadcastDetailViewProps> = ({
             )}
           </div>
 
-          <div className="overflow-y-auto max-h-[480px] pr-3 text-xs sm:text-sm leading-relaxed text-foreground space-y-3 rich-text-container bg-muted/10 p-4 sm:p-5 rounded-xl border border-border/30">
+          <div className="overflow-y-auto max-h-[480px] pr-3 text-xs sm:text-sm leading-relaxed text-foreground rich-text-container bg-muted/10 p-4 sm:p-5 rounded-xl border border-border/30">
             <div dangerouslySetInnerHTML={{ __html: item.content }} />
             <style dangerouslySetInnerHTML={{ __html: `
               .rich-text-container * {
                 max-width: 100% !important;
-                word-break: break-word !important;
-              }
-              .rich-text-container p {
-                margin-bottom: 0.5rem;
-                line-height: 1.6;
-              }
-              .rich-text-container p:last-child {
-                margin-bottom: 0;
+                overflow-wrap: break-word !important;
+                word-break: normal !important;
               }
               .rich-text-container u {
                 text-decoration: underline;

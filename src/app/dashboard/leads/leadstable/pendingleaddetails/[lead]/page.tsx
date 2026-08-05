@@ -332,14 +332,12 @@ export default function PendingLeadDetails() {
       <ActivityStatusModal
         open={openMarkLost}
         onOpenChange={setOpenMarkLost}
-        statusType={shouldDirectlyMarkLost ? "lost" : "lostApproval"}
+        statusType="lost"
         onSubmitRemark={(remark) => {
           if (!vendorId || !userId) {
             toastManager.add({ title: "Missing vendor/user info", type: "error" });
             return;
           }
-
-          const status = shouldDirectlyMarkLost ? "lost" : "lostApproval";
 
           markAsLostMutation.mutate(
             {
@@ -348,18 +346,19 @@ export default function PendingLeadDetails() {
                 vendorId,
                 accountId: Number(accountId),
                 userId,
-                status,
+                status: "lost",
                 remark,
                 createdBy: userId,
               },
             },
             {
-              onSuccess: () => {
+              onSuccess: (res: any) => {
+                const finalStatus = res?.data?.activity_status;
                 toastManager.add({
                   title:
-                    status === "lost"
-                      ? "Lead marked as Lost!"
-                      : "Lead marked as Lost Approval!",
+                    finalStatus === "lostApproval"
+                      ? "Lead sent for Lost Approval!"
+                      : "Lead marked as Lost!",
                   type: "success",
                 });
                 setOpenMarkLost(false);
@@ -367,9 +366,7 @@ export default function PendingLeadDetails() {
                 // ✅ Refresh related data
                 queryClient.invalidateQueries({ queryKey: ["onHoldLeads"] });
                 queryClient.invalidateQueries({ queryKey: ["lostLeads"] });
-                if (status === "lostApproval") {
-                  queryClient.invalidateQueries({ queryKey: ["lostApprovalLeads"] });
-                }
+                queryClient.invalidateQueries({ queryKey: ["lostApprovalLeads"] });
 
                 // ✅ Redirect back to Pending Leads On Hold tab
                 router.push("/dashboard/leads/leadstable");

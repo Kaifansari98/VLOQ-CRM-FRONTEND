@@ -912,7 +912,7 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
         <FormField
           control={form.control}
           name={categoryName}
-          render={({ field }) => (
+          render={({ field, fieldState }) => (
             <FormItem>
               <FormControl>
                 <ClientDocsSelectionMultiSelect
@@ -921,6 +921,7 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
                   options={options}
                   placeholder={placeholder}
                   disabled={isSelectionMastersLoading}
+                  isError={Boolean(fieldState.error)}
                 />
               </FormControl>
               <FormMessage />
@@ -931,7 +932,7 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
         <FormField
           control={form.control}
           name={descriptionName}
-          render={({ field }) => (
+          render={({ field, fieldState }) => (
             <FormItem>
               <FormControl>
                 <TextAreaInput
@@ -940,9 +941,10 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
                   placeholder={descriptionPlaceholder}
                   className="h-24"
                   maxLength={1000}
+                  isError={Boolean(fieldState.error)}
+                  errorMessage={fieldState.error?.message}
                 />
               </FormControl>
-              <FormMessage />
             </FormItem>
           )}
         />

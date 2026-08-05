@@ -12,6 +12,8 @@ interface TextAreaInputProps {
   readOnly?: boolean;
   disabled?: boolean;
   className?: string;
+  isError?: boolean;
+  errorMessage?: string;
 }
 
 export default function TextAreaInput({
@@ -22,12 +24,14 @@ export default function TextAreaInput({
   readOnly = false,
   disabled = false,
   className,
+  isError = false,
+  errorMessage,
 }: TextAreaInputProps) {
   const id = useId();
   const characterCount = value?.length || 0;
 
   return (
-    <div className="*:not-first:mt-2">
+    <div>
       <Textarea
         id={id}
         value={value}
@@ -38,17 +42,26 @@ export default function TextAreaInput({
         rows={2}
         readOnly={readOnly}
         disabled={disabled}
-        className={cn("", className)}
+        className={cn(
+          isError && "border-red-500 focus-visible:ring-red-500 focus-visible:border-red-500 ring-1 ring-red-500/20",
+          className
+        )}
       />
-      <p
+      <div
         id={`${id}-description`}
-        className="text-muted-foreground mt-2 text-right text-xs"
+        className="flex items-center justify-between mt-1.5"
         role="status"
         aria-live="polite"
       >
-        <span className="tabular-nums">{maxLength - characterCount}</span>{" "}
-        characters left
-      </p>
+        {errorMessage ? (
+          <p className="text-xs font-medium text-red-500">{errorMessage}</p>
+        ) : (
+          <span />
+        )}
+        <p className="text-muted-foreground text-xs tabular-nums">
+          {maxLength - characterCount} characters left
+        </p>
+      </div>
     </div>
   );
 }

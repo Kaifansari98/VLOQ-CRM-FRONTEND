@@ -11,8 +11,15 @@ import AddMeetingsModal from "./pill-tabs-component/modals/add-meetings-modal";
 import BookingModal from "./booking-modal";
 import { useAppSelector } from "@/redux/store";
 import { useDetails } from "./pill-tabs-component/details-context";
-import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
-import { useLeadById } from "@/hooks/useLeadsQueries";
+import {
+  useDesignsDoc,
+  useLeadStatus,
+  useQuotationDoc,
+} from "@/hooks/designing-stage/designing-leads-hooks";
+import {
+  useLeadById,
+  useLeadProductStructureInstances,
+} from "@/hooks/useLeadsQueries";
 import AssignDesignerModal from "./assign-designer-modal";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -61,11 +68,21 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
         state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only ===
         true,
     );
+    const handlesLargeScaleProjects = useAppSelector(
+      (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+    );
     const customPrivilegeCodes = useAppSelector(
       (state) => state.customPrivileges.codes,
     );
     const { data: leadStatus } = useLeadStatus(leadId, vendorId);
     const { data: leadDetailsData } = useLeadById(leadId, vendorId, userId);
+    const { data: designDocsData } = useDesignsDoc(vendorId!, leadId);
+    const { data: quotationDocsData } = useQuotationDoc(vendorId, leadId);
+    const { data: structureInstancesData } = useLeadProductStructureInstances(
+      leadId,
+      vendorId,
+      handlesLargeScaleProjects,
+    );
     const {
       blockedTooltip,
       shouldDisableBlockedActions,
@@ -91,6 +108,11 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
 
     const leadCurrentStatus = leadStatus?.status_tag;
     const lead = leadDetailsData?.data?.lead;
+    const designDocs = designDocsData?.data?.documents || [];
+    const quotationDocs = quotationDocsData?.data?.documents || [];
+    const structureInstances: any[] = Array.isArray(structureInstancesData?.data)
+      ? structureInstancesData.data
+      : [];
     const assignedDesigners: Array<{
       user_id: number;
       user_name: string | null;
@@ -129,6 +151,107 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
         customPrivilegeCodes.includes(
           "leads.open_leads.details_of_lead.add_lead",
         ));
+
+    const largeScaleBookingDocValidation = React.useMemo(() => {
+      if (!handlesLargeScaleProjects) {
+        return {
+          isReady: true,
+          tooltip: "",
+        };
+      }
+
+      const productTypeGroups = new Map<
+        number,
+        { label: string; instanceIds: number[] }
+      >();
+
+      for (const instance of structureInstances) {
+        const productTypeId =
+          instance.productType?.id ??
+          instance.productItemCode?.productStructure?.productType?.id;
+        const productTypeLabel =
+          instance.productType?.type ||
+          instance.productItemCode?.productStructure?.productType?.type;
+
+        if (!productTypeId || !productTypeLabel) continue;
+
+        const existing = productTypeGroups.get(productTypeId);
+        if (existing) {
+          existing.instanceIds.push(instance.id);
+          continue;
+        }
+
+        productTypeGroups.set(productTypeId, {
+          label: productTypeLabel,
+          instanceIds: [instance.id],
+        });
+      }
+
+      const missingGroups: string[] = [];
+
+      for (const [productTypeId, group] of productTypeGroups.entries()) {
+        const hasDesign = designDocs.some((doc: any) => {
+          const instanceId = doc.product_structure_instance_id;
+          const docProductTypeId = doc.product_type_id;
+
+          return (
+            (instanceId != null && group.instanceIds.includes(Number(instanceId))) ||
+            (docProductTypeId != null && Number(docProductTypeId) === productTypeId)
+          );
+        });
+
+        const hasQuotation = quotationDocs.some((doc: any) => {
+          const instanceId = doc.product_structure_instance_id;
+          const docProductTypeId = doc.product_type_id;
+
+          return (
+            (instanceId != null && group.instanceIds.includes(Number(instanceId))) ||
+            (docProductTypeId != null && Number(docProductTypeId) === productTypeId)
+          );
+        });
+
+        if (!hasDesign || !hasQuotation) {
+          const missingParts = [
+            !hasDesign ? "design" : null,
+            !hasQuotation ? "quotation" : null,
+          ]
+            .filter(Boolean)
+            .join(" and ");
+
+          missingGroups.push(`${group.label}: missing ${missingParts}`);
+        }
+      }
+
+      if (missingGroups.length === 0) {
+        return {
+          isReady: true,
+          tooltip: "",
+        };
+      }
+
+      return {
+        isReady: false,
+        tooltip: `Upload at least one design and one quotation for each Item Group before moving to booking. ${missingGroups.join("; ")}`,
+      };
+    }, [
+      designDocs,
+      handlesLargeScaleProjects,
+      quotationDocs,
+      structureInstances,
+    ]);
+
+    const bookingButtonTooltip = shouldDisableBlockedActions
+      ? blockedTooltip
+      : !canBook
+        ? "Complete the required prerequisites before moving to booking."
+        : !largeScaleBookingDocValidation.isReady
+          ? largeScaleBookingDocValidation.tooltip
+          : "";
+
+    const isBookingButtonDisabled =
+      shouldDisableBlockedActions ||
+      !canBook ||
+      !largeScaleBookingDocValidation.isReady;
 
     const handleClick = (id: string) => {
       setActiveTab(id);
@@ -336,15 +459,29 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
                   </>
                 )}
                 {bookingBtn && (
-                  <Button
-                    size="sm"
-                    className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
-                    disabled={!canBook}
-                    onClick={() => setOpenBookingModal(true)}
-                  >
-                    <Plus size={16} />
-                    <span>Booking Done</span>
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex">
+                        <Button
+                          size="sm"
+                          className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap"
+                          disabled={isBookingButtonDisabled}
+                          onClick={() => {
+                            if (isBookingButtonDisabled) return;
+                            setOpenBookingModal(true);
+                          }}
+                        >
+                          <Plus size={16} />
+                          <span>Booking Done</span>
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    {bookingButtonTooltip && (
+                      <TooltipContent side="top" className="max-w-80 text-center">
+                        {bookingButtonTooltip}
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
                 )}
               </>
             )}

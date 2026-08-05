@@ -36,7 +36,7 @@ import {
   useVendorLeadsByTagPost,
   VendorLeadsByTagPostPayload,
 } from "@/api/universalstage";
-import { useVendorOverallLeads } from "@/hooks/useLeadsQueries";
+import { useFranchisesByVendorId } from "@/api/franchise";
 
 import { getUniversalTableColumns } from "../utils/column/Universal-column";
 import { LeadColumn } from "../utils/column/column-type";
@@ -113,6 +113,13 @@ function toTitleCase(value: string) {
     .join(" ");
 }
 
+function normalizeRole(value?: string | null) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, "-");
+}
+
 function getProductionStatusFromInstance(instance: any) {
   if (instance?.is_production_completed) return "Completed";
   if (instance?.is_post_production) return "Post Production";
@@ -186,10 +193,26 @@ function extractLatestStatusLogCreatedAtForTag(lead: any, tag: string) {
   return latestMatchingLog ?? getLeadStageSortFallbackTimestamp(lead);
 }
 
-function compareType8StatusLoggedAtDesc(a?: string | null, b?: string | null) {
-  const aTime = a ? new Date(a).getTime() : Number.NEGATIVE_INFINITY;
-  const bTime = b ? new Date(b).getTime() : Number.NEGATIVE_INFINITY;
-  return bTime - aTime;
+function compareType8StatusLoggedAtDesc(aRow: any, bRow: any) {
+  const getMostRecentTimestamp = (row: any) => {
+    const logTime = row?.type8StatusLoggedAt ? new Date(row.type8StatusLoggedAt).getTime() : 0;
+    const updateTime = row?.updatedAt || row?.updated_at ? new Date(row.updatedAt || row.updated_at).getTime() : 0;
+    const createTime = row?.createdAt || row?.created_at ? new Date(row.createdAt || row.created_at).getTime() : 0;
+    return Math.max(
+      isNaN(logTime) ? 0 : logTime,
+      isNaN(updateTime) ? 0 : updateTime,
+      isNaN(createTime) ? 0 : createTime,
+      Number(row?.id || 0)
+    );
+  };
+
+  const aTime = getMostRecentTimestamp(aRow);
+  const bTime = getMostRecentTimestamp(bRow);
+
+  if (bTime !== aTime) {
+    return bTime - aTime;
+  }
+  return Number(bRow?.id || 0) - Number(aRow?.id || 0);
 }
 
 function compareCreatedAt(a?: string | number | null, b?: string | number | null) {
@@ -413,10 +436,29 @@ export function UniversalTable({
     (s) => s.auth.franchise_id ?? s.auth.user?.franchise_id,
   );
   const userId = useAppSelector((s) => s.auth.user?.id);
-  const userType = useAppSelector((s) => s.auth.user?.user_type.user_type);
+  const isHOUser = useAppSelector(
+    (s) => s.auth.is_ho_user ?? s.auth.user?.is_ho_user ?? false,
+  );
+  const userType = useAppSelector((s) => {
+    const u = s.auth.user as any;
+    if (!u) return "";
+    if (typeof u.user_type === "string") return u.user_type;
+    if (typeof u.user_role === "string") return u.user_role;
+    if (typeof u.role === "string") return u.role;
+    return (
+      u.user_type?.user_type ||
+      u.user_type?.user_type_name ||
+      u.user_type?.name ||
+      u.user_type?.title ||
+      u.user_type?.role ||
+      u.user_role ||
+      u.role ||
+      ""
+    );
+  });
 
   const router = useRouter();
-  const normalizedUserType = userType?.toLowerCase();
+  const normalizedUserType = normalizeRole(userType);
   const isAdmin =
     normalizedUserType === "admin" ||
     normalizedUserType === "super-admin" ||
@@ -434,6 +476,7 @@ export function UniversalTable({
   const hideOverallToggle =
     !canSeeMyOverallTabs ||
     (normalizedType === "type 8" && normalizedUserType === "sales-executive");
+  const shouldShowLeadCodeFranchiseFilter = false;
 
   // -------------------- LOCAL UI STATE --------------------
 
@@ -476,6 +519,10 @@ export function UniversalTable({
   );
   const [overallColumnFilters, setOverallColumnFilters] =
     useState<ColumnFiltersState>([]);
+
+  // ✅ SEPARATE FRANCHISES FILTER FOR BOTH VIEWS
+  const [myFranchisesFilter, setMyFranchisesFilter] = useState<number[]>([]);
+  const [overallFranchisesFilter, setOverallFranchisesFilter] = useState<number[]>([]);
 
   const resolvedInitialProductionStatusFilter = useMemo(() => {
     const requestedValue = String(
@@ -521,6 +568,36 @@ export function UniversalTable({
   const activeSorting = effectiveViewType === "my" ? mySorting : overallSorting;
   const activeColumnFilters =
     effectiveViewType === "my" ? myColumnFilters : overallColumnFilters;
+  const activeFranchisesFilter =
+    effectiveViewType === "my" ? myFranchisesFilter : overallFranchisesFilter;
+
+  const setActiveFranchisesFilter = (val: number[]) => {
+    if (effectiveViewType === "my") {
+      setMyFranchisesFilter(val);
+      setMyPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    } else {
+      setOverallFranchisesFilter(val);
+      setOverallPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    }
+  };
+
+  const showFranchiseFilter = useMemo(() => {
+    if (isHOUser) return true;
+    const cleanRole = (userType || "")
+      .toLowerCase()
+      .trim()
+      .replace(/[\s_]+/g, "-");
+    const allowedRoles = [
+      "factory",
+      "backend",
+      "tech-check",
+      "head-site-supervisor",
+      "super-admin",
+      "site-supervisor",
+    ];
+    return allowedRoles.includes(cleanRole);
+  }, [isHOUser, userType]);
+
 
   const servicingDateRange = useMemo(() => {
     if (!showServicingColumn || !pendingServicesOnly || !servicingMonthFilter) {
@@ -576,7 +653,6 @@ export function UniversalTable({
       limit: myPagination.pageSize,
       global_search: myGlobalFilter || "",
 
-      filter_lead_code: mappedFilters.filter_lead_code,
       filter_name: mappedFilters.filter_name,
       contact: mappedFilters.contact,
 
@@ -608,6 +684,7 @@ export function UniversalTable({
           ? productionStatusFilter
           : undefined,
       pending_services: pendingServicesOnly || undefined,
+      franchises: myFranchisesFilter.length > 0 ? myFranchisesFilter : undefined,
     };
   }, [
     userId,
@@ -623,6 +700,7 @@ export function UniversalTable({
     normalizedType,
     pendingServicesOnly,
     servicingDateRange,
+    myFranchisesFilter,
   ]);
 
   // -------------------- OVERALL LEADS POST PAYLOAD --------------------
@@ -653,7 +731,6 @@ export function UniversalTable({
 
       global_search: overallGlobalFilter || "",
 
-      filter_lead_code: mappedFilters.filter_lead_code,
       filter_name: mappedFilters.filter_name,
       contact: mappedFilters.contact,
 
@@ -685,6 +762,7 @@ export function UniversalTable({
           ? productionStatusFilter
           : undefined,
       pending_services: pendingServicesOnly || undefined,
+      franchises: overallFranchisesFilter.length > 0 ? overallFranchisesFilter : undefined,
     };
   }, [
     userId,
@@ -701,6 +779,7 @@ export function UniversalTable({
     normalizedType,
     pendingServicesOnly,
     servicingDateRange,
+    overallFranchisesFilter,
   ]);
 
   // -------------------- API CALLS --------------------
@@ -726,8 +805,6 @@ export function UniversalTable({
       limit: myPagination.pageSize,
 
       global_search: myGlobalFilter || "",
-
-      filter_lead_code: mappedFilters.filter_lead_code,
       filter_name: mappedFilters.filter_name,
       contact: mappedFilters.contact,
 
@@ -1025,19 +1102,37 @@ export function UniversalTable({
     let rows: LeadColumn[];
 
     if (!isType8 && !isType9 && !isType10) {
-      const baseData = shouldSortByCreatedAt
-        ? [...filteredActiveData].sort((a, b) => {
-            const comparison = compareCreatedAt(
-              a?.created_at ?? null,
-              b?.created_at ?? null,
-            );
-            return createdAtDirection === "desc" ? -comparison : comparison;
-          })
-        : filteredActiveData;
+      const isDesc = primarySort ? createdAtDirection === "desc" : true;
+      const baseData = [...filteredActiveData].sort((a, b) => {
+        const getLeadActivityTime = (lead: any) => {
+          const uTime = lead?.updated_at || lead?.updatedAt ? new Date(lead.updated_at || lead.updatedAt).getTime() : 0;
+          const cTime = lead?.created_at || lead?.createdAt ? new Date(lead.created_at || lead.createdAt).getTime() : 0;
+          return Math.max(
+            isNaN(uTime) ? 0 : uTime,
+            isNaN(cTime) ? 0 : cTime,
+            Number(lead?.id || 0)
+          );
+        };
+        const aTime = getLeadActivityTime(a);
+        const bTime = getLeadActivityTime(b);
+        if (bTime !== aTime) {
+          return isDesc ? bTime - aTime : aTime - bTime;
+        }
+        return isDesc ? Number(b?.id || 0) - Number(a?.id || 0) : Number(a?.id || 0) - Number(b?.id || 0);
+      });
 
-      rows = baseData.map((item, idx) =>
-        mapUniversalRow(item, idx, { rowKey: String(item.id) }),
-      );
+      rows = baseData.map((item, idx) => {
+        const type8StatusLoggedAt = STATUS_LOG_SORTED_STAGE_TYPES.has(
+          normalizedType,
+        )
+          ? extractLatestStatusLogCreatedAtForTag(item, type)
+          : null;
+
+        return mapUniversalRow(item, idx, {
+          rowKey: String(item.id),
+          type8StatusLoggedAt,
+        });
+      });
     } else {
       const expanded: LeadColumn[] = [];
 
@@ -1143,12 +1238,7 @@ export function UniversalTable({
     }
 
     if (STATUS_LOG_SORTED_STAGE_TYPES.has(normalizedType)) {
-      rows = [...rows].sort((a, b) =>
-        compareType8StatusLoggedAtDesc(
-          a.type8StatusLoggedAt,
-          b.type8StatusLoggedAt,
-        ),
-      );
+      rows = [...rows].sort((a, b) => compareType8StatusLoggedAtDesc(a, b));
     }
 
     if (isType9) {
@@ -1262,6 +1352,11 @@ export function UniversalTable({
       globalFilter: activeGlobalFilter,
       columnVisibility,
       rowSelection,
+    },
+    meta: {
+      showFranchiseFilter,
+      franchisesFilter: activeFranchisesFilter,
+      setFranchisesFilter: setActiveFranchisesFilter,
     },
 
     onPaginationChange:

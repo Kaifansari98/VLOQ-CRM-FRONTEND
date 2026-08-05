@@ -846,6 +846,32 @@ export default function LeadsGenerationForm({
     ? designerUsers.data 
     : (designerUsers?.data?.sales_executives || []);
 
+  const invalidateLeadTableQueries = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ["leadStats", vendorId, userId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["activityStatusCounts"],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["universal-stage-leads"],
+        exact: false,
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["vendorOverallLeads"],
+        exact: false,
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["vendorUserLeads", vendorId, userId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["vendorUserLeadsOpen"],
+        exact: false,
+      }),
+    ]);
+  }, [queryClient, userId, vendorId]);
+
   const createLeadMutation = useMutation({
     mutationFn: ({
       payload,
@@ -874,9 +900,7 @@ export default function LeadsGenerationForm({
       }
 
       toastManager.add({ title: "Lead created successfully!", type: "success" });
-      queryClient.invalidateQueries({ queryKey: ["leadStats", vendorId, userId] });
-      queryClient.invalidateQueries({ queryKey: ["universal-stage-leads"] });
-      queryClient.invalidateQueries({ queryKey: ["vendorUserLeads", vendorId, userId] });
+      await invalidateLeadTableQueries();
       form.reset();
       setFiles([]);
       onClose();
@@ -912,16 +936,7 @@ export default function LeadsGenerationForm({
       }
 
       toastManager.add({ title: "Lead saved as draft!", type: "success" });
-      queryClient.invalidateQueries({
-        queryKey: ["leadStats", vendorId, userId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["universal-stage-leads"],
-        exact: false,
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["vendorUserLeads", vendorId, userId],
-      });
+      await invalidateLeadTableQueries();
       queryClient.invalidateQueries({
         queryKey: ["draft-lead-table-data"],
       });
@@ -1228,9 +1243,7 @@ export default function LeadsGenerationForm({
       { payload, files: buildRenamedSitePhotoFiles() },
       {
         onSuccess: async () => {
-          queryClient.invalidateQueries({
-            queryKey: ["leadStats", vendorId, userId],
-          });
+          await invalidateLeadTableQueries();
           router.push("/dashboard/leads/leadstable");
         },
       }

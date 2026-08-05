@@ -33,7 +33,7 @@ import {
 import { LeadProductStructureInstance } from "@/api/leads";
 import { Card, CardContent } from "@/components/ui/card";
 import { FinalMeasurementDoc } from "@/types/final-measurement";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { CheckCircle2, Loader2, Layers, Image as ImageIcon, FileText } from "lucide-react";
 import DocumentCard from "@/components/utils/documentCard";
 import { ImageComponent } from "@/components/utils/ImageCard";
 
@@ -149,6 +149,9 @@ const FinalMeasurementModal = ({
     (state) =>
       state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
   );
+  const handlesLargeScaleProjectsFromAuth = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
   const isCustomDocNomenclatureEnabled = useAppSelector(
     (state) =>
       state.auth.user?.vendor?.is_custom_doc_nomenclature_enabled === true,
@@ -177,6 +180,10 @@ const FinalMeasurementModal = ({
     isCustomVendorFlowFromAuth ||
     leadById?.createdBy?.vendor?.is_this_vendor_is_custom_usertype_only === true ||
     leadById?.assignedTo?.vendor?.is_this_vendor_is_custom_usertype_only === true;
+  const handlesLargeScaleProjects =
+    handlesLargeScaleProjectsFromAuth ||
+    leadById?.createdBy?.vendor?.handlesLargeScaleProjects === true ||
+    leadById?.assignedTo?.vendor?.handlesLargeScaleProjects === true;
   const {
     data: structureInstancesData,
     isLoading: isStructureInstancesLoading,
@@ -189,8 +196,12 @@ const FinalMeasurementModal = ({
     [structureInstancesData?.data],
   );
   const isMultiInstanceUploadFlow =
+    handlesLargeScaleProjects &&
     structureInstances.length > 1 &&
     (isCustomVendorFlow || isCustomDocNomenclatureEnabled);
+  const isBoxesFlow =
+    handlesLargeScaleProjects && isCustomVendorFlow && structureInstances.length > 0;
+  const [uploadModalInstanceId, setUploadModalInstanceId] = React.useState<number | null>(null);
   const existingFinalMeasurementDocs = React.useMemo(
     () => finalMeasurementDetails?.measurementDocs ?? [],
     [finalMeasurementDetails?.measurementDocs],
@@ -308,7 +319,19 @@ const FinalMeasurementModal = ({
       instanceId: number | null;
     }> = [];
 
-    if (isMultiInstanceUploadFlow) {
+    if (isBoxesFlow) {
+      const totalDocsUploaded = structureInstances.reduce((sum, instance) => {
+        return sum + getExistingFinalMeasurementDocsByInstance(instance.id).length;
+      }, 0);
+
+      if (totalDocsUploaded === 0) {
+        toastManager.add({
+          title: "At least one Final Measurement document is required",
+          type: "error",
+        });
+        return;
+      }
+    } else if (isMultiInstanceUploadFlow) {
       for (const instance of structureInstances) {
         const uploads = instanceUploads[instance.id] ?? {
           finalMeasurementDocs: [],
@@ -329,37 +352,7 @@ const FinalMeasurementModal = ({
         });
       }
 
-      const missingDocs = structureInstances.filter((instance) => {
-        const hasLocalDocs =
-          (instanceUploads[instance.id]?.finalMeasurementDocs.length ?? 0) > 0;
-        const hasExistingDocs =
-          getExistingFinalMeasurementDocsByInstance(instance.id).length > 0;
 
-        return !(hasLocalDocs || hasExistingDocs);
-      });
-      if (missingDocs.length > 0) {
-        toastManager.add({
-          title: `Please upload Final Measurement Document for ${missingDocs[0].title}.`,
-          type: "error",
-        });
-        return;
-      }
-
-      const missingSitePhotos = structureInstances.filter((instance) => {
-        const hasLocalSitePhotos =
-          (instanceUploads[instance.id]?.currentSitePhotos.length ?? 0) > 0;
-        const hasExistingSitePhotos =
-          getExistingSitePhotosByInstance(instance.id).length > 0;
-
-        return !(hasLocalSitePhotos || hasExistingSitePhotos);
-      });
-      if (missingSitePhotos.length > 0) {
-        toastManager.add({
-          title: `Please upload Current Site Photos for ${missingSitePhotos[0].title}.`,
-          type: "error",
-        });
-        return;
-      }
     } else {
       values.finalMeasurementDocs.forEach((file) => {
         flattenedFinalMeasurementDocs.push({ file, instanceId: null });
@@ -389,14 +382,17 @@ const FinalMeasurementModal = ({
       isMultiInstanceUploadFlow &&
       flattenedFinalMeasurementDocs.length === 0 &&
       flattenedSitePhotos.length === 0 &&
-      isCustomVendorFlowFromAuth &&
       !allInstancesAlreadyHaveRequiredUploads
     ) {
-      toastManager.add({
-        title: "Please upload all required Final Measurement files for every instance.",
-        type: "error",
-      });
-      return;
+      // Check if at least one document exists
+      const hasAnyDoc = existingFinalMeasurementDocs.length > 0 || existingSitePhotos.length > 0;
+      if (!hasAnyDoc) {
+        toastManager.add({
+          title: "Please upload at least one Final Measurement document or site photo.",
+          type: "error",
+        });
+        return;
+      }
     }
 
     const clientName =
@@ -562,7 +558,7 @@ const FinalMeasurementModal = ({
   );
 
   const handleInstanceUpload = React.useCallback(
-    async (instance: LeadProductStructureInstance) => {
+    async (instance: LeadProductStructureInstance, type: "ALL" | "FMD" | "CSP" = "ALL") => {
       if (!leadId || !vendorId || !userId) {
         toastManager.add({
           title: "Lead or user context is missing.",
@@ -578,37 +574,50 @@ const FinalMeasurementModal = ({
       const existingDocs = getExistingFinalMeasurementDocsByInstance(instance.id);
       const existingPhotos = getExistingSitePhotosByInstance(instance.id);
 
-      if (
-        uploads.finalMeasurementDocs.length === 0 &&
-        existingDocs.length === 0
-      ) {
-        toastManager.add({
-          title: `Please upload Final Measurement Document for ${instance.title}.`,
-          type: "error",
-        });
-        return;
+      if (type === "ALL" || type === "FMD") {
+        if (!isCustomDocNomenclatureEnabled && uploads.finalMeasurementDocs.length === 0 && existingDocs.length === 0) {
+          toastManager.add({
+            title: `Please upload Final Measurement Document for ${instance.title}.`,
+            type: "error",
+          });
+          return;
+        }
       }
 
-      if (
-        uploads.currentSitePhotos.length === 0 &&
-        existingPhotos.length === 0
-      ) {
-        toastManager.add({
-          title: `Please upload Current Site Photos for ${instance.title}.`,
-          type: "error",
-        });
-        return;
+      if (type === "ALL" || type === "CSP") {
+        if (!isCustomDocNomenclatureEnabled && uploads.currentSitePhotos.length === 0 && existingPhotos.length === 0) {
+          toastManager.add({
+            title: `Please upload Current Site Photos for ${instance.title}.`,
+            type: "error",
+          });
+          return;
+        }
       }
 
-      if (
-        uploads.finalMeasurementDocs.length === 0 &&
-        uploads.currentSitePhotos.length === 0
-      ) {
-        toastManager.add({
-          title: "No new files selected for this instance.",
-          type: "error",
-        });
-        return;
+      if (type === "ALL") {
+        if (uploads.finalMeasurementDocs.length === 0 && uploads.currentSitePhotos.length === 0) {
+          toastManager.add({
+            title: "No new files selected for this instance.",
+            type: "error",
+          });
+          return;
+        }
+      } else if (type === "FMD") {
+        if (uploads.finalMeasurementDocs.length === 0) {
+          toastManager.add({
+            title: "No new Final Measurement Documents selected.",
+            type: "error",
+          });
+          return;
+        }
+      } else if (type === "CSP") {
+        if (uploads.currentSitePhotos.length === 0) {
+          toastManager.add({
+            title: "No new Current Site Photos selected.",
+            type: "error",
+          });
+          return;
+        }
       }
 
       try {
@@ -654,6 +663,7 @@ const FinalMeasurementModal = ({
         queryClient.invalidateQueries({
           queryKey: ["allLeadDocuments"],
         });
+
       } catch (error: any) {
         toastManager.add({
           title:
@@ -676,6 +686,7 @@ const FinalMeasurementModal = ({
       queryClient,
       userId,
       vendorId,
+      setUploadModalInstanceId,
     ],
   );
 
@@ -700,7 +711,8 @@ const FinalMeasurementModal = ({
   ]);
 
   return (
-    <BaseModal
+    <>
+      <BaseModal
       open={open}
       onOpenChange={handleModalChange}
       title={`Final Measurement for ${data?.name || "Customer"}`}
@@ -709,11 +721,88 @@ const FinalMeasurementModal = ({
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5  p-5">
-          {(isCustomVendorFlow || isCustomDocNomenclatureEnabled) &&
+          {/* Top Boxes: Product Structure Instances */}
+          {isBoxesFlow && (
+            <div className="space-y-3 border-b pb-5">
+              <div className="flex items-center gap-2">
+                <Layers className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold">Product Instances ({structureInstances.length})</h3>
+              </div>
+              {isStructureInstancesLoading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-16 rounded-xl border border-muted bg-muted/20 animate-pulse" />
+                  ))}
+                </div>
+              ) : structureInstances.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {structureInstances.map((instance) => {
+                    const existingDocs = getExistingFinalMeasurementDocsByInstance(instance.id);
+                    const existingPhotos = getExistingSitePhotosByInstance(instance.id);
+                    
+                    return (
+                      <div
+                        key={instance.id}
+                        onClick={() => setUploadModalInstanceId(instance.id)}
+                        className="group relative flex flex-col justify-between rounded-xl border border-border/80 bg-card p-3.5 cursor-pointer transition-all duration-200 hover:border-primary/50 hover:bg-muted/5 hover:shadow-sm"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="space-y-0.5 min-w-0">
+                            <h4 className="font-semibold text-sm text-card-foreground group-hover:text-primary transition-colors truncate">
+                              {instance.title}
+                            </h4>
+                            {instance.productType?.type && (
+                              <p className="text-xs font-medium text-muted-foreground truncate">
+                                {instance.productType.type}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex flex-col items-end gap-1 shrink-0">
+                            {instance.quantity && (
+                              <span className="text-[10px] font-semibold bg-secondary text-secondary-foreground px-2 py-0.5 rounded-full">
+                                Qty: {instance.quantity}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="mt-3 flex items-center justify-between text-[11px] border-t border-muted/65 pt-2">
+                          <span className="text-muted-foreground font-medium">
+                            Docs: {existingDocs.length + existingPhotos.length}
+                          </span>
+                          
+                          <div className="shrink-0">
+                            {existingDocs.length > 0 || existingPhotos.length > 0 ? (
+                              <span className="inline-flex items-center justify-center border border-primary/30 bg-primary/5 text-primary hover:bg-primary hover:text-white px-3.5 py-1 rounded-md text-[11px] font-semibold transition-all">
+                                View
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center justify-center border border-border bg-background text-muted-foreground hover:border-primary hover:text-primary px-3.5 py-1 rounded-md text-[11px] font-semibold transition-all">
+                                Upload
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-xs text-muted-foreground rounded-lg border border-dashed p-4 text-center">
+                  No product instances found for this lead.
+                </div>
+              )}
+            </div>
+          )}
+
+          {handlesLargeScaleProjects &&
+          (isCustomVendorFlow || isCustomDocNomenclatureEnabled) &&
           isStructureInstancesLoading ? (
             <div className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">
               Loading product instances...
             </div>
+          ) : isBoxesFlow ? (
+            null
           ) : isMultiInstanceUploadFlow ? (
             <div className="space-y-4">
               <div>
@@ -858,28 +947,71 @@ const FinalMeasurementModal = ({
                           </div>
                         )}
 
-                        <div className="flex justify-end">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => handleInstanceUpload(instance)}
-                            disabled={
-                              uploadingInstanceId === instance.id &&
+                        <div className="flex justify-end gap-2">
+                          {isCustomDocNomenclatureEnabled ? (
+                            <>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => handleInstanceUpload(instance, "FMD")}
+                                disabled={
+                                  uploadingInstanceId === instance.id &&
+                                  addMoreFinalMeasurementDocsMutation.isPending
+                                }
+                              >
+                                {uploadingInstanceId === instance.id &&
+                                addMoreFinalMeasurementDocsMutation.isPending ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Uploading...
+                                  </>
+                                ) : (
+                                  "Upload Documents"
+                                )}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => handleInstanceUpload(instance, "CSP")}
+                                disabled={
+                                  uploadingInstanceId === instance.id &&
+                                  addMoreFinalMeasurementSitePhotosMutation.isPending
+                                }
+                              >
+                                {uploadingInstanceId === instance.id &&
+                                addMoreFinalMeasurementSitePhotosMutation.isPending ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Uploading...
+                                  </>
+                                ) : (
+                                  "Upload Photos"
+                                )}
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => handleInstanceUpload(instance, "ALL")}
+                              disabled={
+                                uploadingInstanceId === instance.id &&
+                                (addMoreFinalMeasurementDocsMutation.isPending ||
+                                  addMoreFinalMeasurementSitePhotosMutation.isPending)
+                              }
+                            >
+                              {uploadingInstanceId === instance.id &&
                               (addMoreFinalMeasurementDocsMutation.isPending ||
-                                addMoreFinalMeasurementSitePhotosMutation.isPending)
-                            }
-                          >
-                            {uploadingInstanceId === instance.id &&
-                            (addMoreFinalMeasurementDocsMutation.isPending ||
-                              addMoreFinalMeasurementSitePhotosMutation.isPending) ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Uploading...
-                              </>
-                            ) : (
-                              "Upload This Instance"
-                            )}
-                          </Button>
+                                addMoreFinalMeasurementSitePhotosMutation.isPending) ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Uploading...
+                                </>
+                              ) : (
+                                "Upload This Instance"
+                              )}
+                            </Button>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
@@ -944,6 +1076,7 @@ const FinalMeasurementModal = ({
                   </FormItem>
                 )}
               />
+
             </>
           )}
 
@@ -974,12 +1107,219 @@ const FinalMeasurementModal = ({
               Reset
             </Button>
             <Button type="submit" disabled={finalMeasurementMutation.isPending}>
-              {finalMeasurementMutation.isPending ? "Submitting..." : "Submit"}
+              {finalMeasurementMutation.isPending
+                ? "Submitting..."
+                : (existingFinalMeasurementDocs.length > 0 || existingSitePhotos.length > 0)
+                  ? "Move to Client Document"
+                  : "Submit"}
             </Button>
           </div>
         </form>
       </Form>
     </BaseModal>
+
+      {/* Instance Upload Modal */}
+      <BaseModal
+        open={!!uploadModalInstanceId}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setUploadModalInstanceId(null);
+          }
+        }}
+        title={structureInstances.find(i => i.id === uploadModalInstanceId)?.title || "Upload Instance Documents"}
+        description="Upload current site photos and Final Measurement documents for this instance."
+        size="xl"
+      >
+        {(() => {
+          const instance = structureInstances.find(i => i.id === uploadModalInstanceId);
+          if (!instance) return null;
+          
+          const uploads = instanceUploads[instance.id] ?? {
+            finalMeasurementDocs: [],
+            currentSitePhotos: [],
+          };
+          const existingInstanceDocs = getExistingFinalMeasurementDocsByInstance(instance.id);
+          const existingInstanceSitePhotos = getExistingSitePhotosByInstance(instance.id);
+
+          return (
+            <div className="p-0">
+              <div className="grid md:grid-cols-2 border-b">
+                {/* Left Column: Site Photos */}
+                <div className="p-5 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <ImageIcon className="h-5w-5" />
+                    <h3 className="font-semibold text-sm">Site Photos</h3>
+                  </div>
+
+                  <div className="space-y-4">
+                    <FileUploadField
+                      value={uploads.currentSitePhotos}
+                      onChange={(files) =>
+                        setInstanceFiles(
+                          instance.id,
+                          "currentSitePhotos",
+                          files.filter((file) =>
+                            imageMimeTypes.includes(file.type),
+                          ),
+                        )
+                      }
+                      accept={imageAccept}
+                      multiple
+                      maxFiles={MAX_FINAL_MEASUREMENT_FILES}
+                    />
+
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() =>
+                          setInstanceFiles(instance.id, "currentSitePhotos", [])
+                        }
+                        disabled={uploads.currentSitePhotos.length === 0}
+                      >
+                        Clear
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={() => handleInstanceUpload(instance, "CSP")}
+                        disabled={
+                          (uploadingInstanceId === instance.id &&
+                            addMoreFinalMeasurementSitePhotosMutation.isPending) ||
+                          uploads.currentSitePhotos.length === 0
+                        }
+                      >
+                        {uploadingInstanceId === instance.id &&
+                        addMoreFinalMeasurementSitePhotosMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          "Upload"
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {existingInstanceSitePhotos.length > 0 && (
+                    <div className="space-y-3 pt-2">
+                      <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                        Saved Photos
+                      </h4>
+                      <div className="grid gap-3 ">
+                        {existingInstanceSitePhotos.map((doc, index) => (
+                          <div key={doc.id} className="w-full min-w-0">
+                            <ImageComponent
+                              doc={{
+                                id: doc.id,
+                                doc_og_name: doc.doc_og_name,
+                                signedUrl: doc.signedUrl,
+                                created_at: doc.created_at,
+                              }}
+                              index={index}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Column: Measurement Docs */}
+                <div className="p-5 space-y-2 bg-muted/5">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    <h3 className="font-semibold text-sm">Final Measurement Documents</h3>
+                  </div>
+
+                  <div className="space-y-4">
+                    <FileUploadField
+                      value={uploads.finalMeasurementDocs}
+                      onChange={(files) =>
+                        setInstanceFiles(
+                          instance.id,
+                          "finalMeasurementDocs",
+                          files.filter((file) =>
+                            documentMimeTypes.includes(file.type),
+                          ),
+                        )
+                      }
+                      accept={documentAccept}
+                      multiple
+                      maxFiles={MAX_FINAL_MEASUREMENT_FILES}
+                    />
+
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() =>
+                          setInstanceFiles(instance.id, "finalMeasurementDocs", [])
+                        }
+                        disabled={uploads.finalMeasurementDocs.length === 0}
+                      >
+                        Clear
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={() => handleInstanceUpload(instance, "FMD")}
+                        disabled={
+                          (uploadingInstanceId === instance.id &&
+                            addMoreFinalMeasurementDocsMutation.isPending) ||
+                          uploads.finalMeasurementDocs.length === 0
+                        }
+                      >
+                        {uploadingInstanceId === instance.id &&
+                        addMoreFinalMeasurementDocsMutation.isPending ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          "Upload"
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {existingInstanceDocs.length > 0 && (
+                    <div className="space-y-3 pt-2">
+                      <h4 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                        Saved Documents
+                      </h4>
+                      <div className="grid gap-3">
+                        {existingInstanceDocs.map((doc) => (
+                          <div key={doc.id} className="w-full min-w-0">
+                            <DocumentCard
+                              doc={{
+                                id: doc.id,
+                                originalName: doc.doc_og_name,
+                                signedUrl: doc.signedUrl,
+                                created_at: doc.created_at,
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end p-4">
+                <Button
+                  type="button"
+                  onClick={() => setUploadModalInstanceId(null)}
+                  className="bg-zinc-900 hover:bg-zinc-800 text-white w-24"
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          );
+        })()}
+      </BaseModal>
+    </>
   );
 };
 

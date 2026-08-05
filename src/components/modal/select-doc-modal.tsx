@@ -18,6 +18,8 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   leadId: number;
+  activeProductTypeId?: number | null;
+  activeInstanceIds?: number[];
   onSelectDocs?: (files: File[]) => void; // 👈 callback to booking modal
 }
 
@@ -27,6 +29,13 @@ export interface DocItem {
   signedUrl: string;
   type: "quotation" | "design";
   created_at?: string;
+  product_type_id?: number | null;
+  product_structure_instance_id?: number | null;
+}
+
+export interface LinkedDocMeta {
+  docId: number;
+  docType: "quotation" | "design";
 }
 
 interface LinkedDocGroup {
@@ -38,15 +47,31 @@ interface LinkedDocGroup {
 
 const getDocKey = (doc: DocItem) => `${doc.type}-${doc.id}`;
 
+const stripDocPrefix = (fileName: string) =>
+  fileName.replace(/\.[^/.]+$/, "").replace(/^\[.*?\]\s*/, "");
+
 const getLinkedRevisionKey = (fileName: string, prefix: "Q" | "D" | "R") => {
-  const parsedName = fileName.replace(/\.[^/.]+$/, "");
-  const match = parsedName.match(
+  const parsedName = stripDocPrefix(fileName);
+
+  const underscoreMatch = parsedName.match(
+    new RegExp(
+      `^${prefix}(\\d+)_(?:(2D|3D)_)?(.+)_\\d{4}-\\d{2}-\\d{2}$`,
+      "i",
+    ),
+  );
+
+  if (underscoreMatch) {
+    const [, revision, , baseSegment] = underscoreMatch;
+    return `${revision}-${baseSegment.toLowerCase()}`;
+  }
+
+  const hyphenMatch = parsedName.match(
     new RegExp(`^${prefix}(\\d+)-(.+)-\\d{4}-\\d{2}-\\d{2}$`, "i"),
   );
 
-  if (!match) return null;
+  if (!hyphenMatch) return null;
 
-  return `${match[1]}-${match[2].toLowerCase()}`;
+  return `${hyphenMatch[1]}-${hyphenMatch[2].toLowerCase()}`;
 };
 
 const getDesignRevisionKey = (fileName: string) =>
@@ -65,11 +90,16 @@ const SelectDocumentModal: React.FC<Props> = ({
   open,
   onOpenChange,
   leadId,
+  activeProductTypeId,
+  activeInstanceIds,
   onSelectDocs,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const vendorCustomUserTypeMode = useAppSelector(
     (state) => state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only
+  );
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
   );
 
   const { data: quotationData } = useQuotationDoc(vendorId!, leadId);
@@ -85,6 +115,8 @@ const SelectDocumentModal: React.FC<Props> = ({
       signedUrl: doc.signedUrl,
       type: "quotation" as const,
       created_at: doc.created_at,
+      product_type_id: doc.product_type_id ?? null,
+      product_structure_instance_id: doc.product_structure_instance_id ?? null,
     })) || [];
 
   const designs: DocItem[] =
@@ -94,10 +126,51 @@ const SelectDocumentModal: React.FC<Props> = ({
       signedUrl: doc.signedUrl,
       type: "design" as const,
       created_at: doc.created_at,
+      product_type_id: doc.product_type_id ?? null,
+      product_structure_instance_id: doc.product_structure_instance_id ?? null,
     })) || [];
 
-  const sortedQuotations = useMemo(() => sortLatestFirst(quotations), [quotations]);
-  const sortedDesigns = useMemo(() => sortLatestFirst(designs), [designs]);
+  const activeInstanceIdSet = useMemo(
+    () => new Set((activeInstanceIds || []).map((id) => Number(id))),
+    [activeInstanceIds],
+  );
+
+  const filteredQuotations = useMemo(
+    () =>
+      handlesLargeScaleProjects && activeInstanceIdSet.size > 0
+        ? quotations.filter((doc) =>
+            doc.product_structure_instance_id != null
+              ? activeInstanceIdSet.has(Number(doc.product_structure_instance_id))
+              : false,
+          )
+        : quotations,
+    [activeInstanceIdSet, handlesLargeScaleProjects, quotations],
+  );
+
+  const filteredDesigns = useMemo(
+    () =>
+      handlesLargeScaleProjects && activeInstanceIdSet.size > 0
+        ? designs.filter((doc) =>
+            doc.product_structure_instance_id != null
+              ? activeInstanceIdSet.has(Number(doc.product_structure_instance_id))
+              : false,
+          )
+        : designs,
+    [activeInstanceIdSet, designs, handlesLargeScaleProjects],
+  );
+
+  const sortedQuotations = useMemo(
+    () => sortLatestFirst(filteredQuotations),
+    [filteredQuotations],
+  );
+  const sortedDesigns = useMemo(
+    () => sortLatestFirst(filteredDesigns),
+    [filteredDesigns],
+  );
+
+  React.useEffect(() => {
+    setSelectedDocs([]);
+  }, [activeProductTypeId, open]);
 
   const linkedDocGroups = useMemo<LinkedDocGroup[]>(() => {
     const grouped = new Map<string, LinkedDocGroup>();
@@ -192,8 +265,12 @@ const SelectDocumentModal: React.FC<Props> = ({
       open={open}
       onOpenChange={onOpenChange}
       title="Select Documents"
-      description="Choose documents for the lead"
-      size={vendorCustomUserTypeMode === true ? "lg" : "md"}
+      description={
+        handlesLargeScaleProjects && activeProductTypeId
+          ? "Choose documents for the selected item group"
+          : "Choose documents for the lead"
+      }
+      size={vendorCustomUserTypeMode === true ? "xl" : "md"}
     >
       <div className="p-5 space-y-6">
         {vendorCustomUserTypeMode === true ? (
@@ -321,7 +398,9 @@ const SelectDocumentModal: React.FC<Props> = ({
                 })
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  No quotation or design documents available
+                  {handlesLargeScaleProjects && activeProductTypeId
+                    ? "No quotation or design documents available for this item group"
+                    : "No quotation or design documents available"}
                 </p>
               )}
             </div>
@@ -373,7 +452,9 @@ const SelectDocumentModal: React.FC<Props> = ({
                   ))
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    No quotation documents available
+                    {handlesLargeScaleProjects && activeProductTypeId
+                      ? "No quotation documents available for this item group"
+                      : "No quotation documents available"}
                   </p>
                 )}
               </div>
@@ -425,7 +506,9 @@ const SelectDocumentModal: React.FC<Props> = ({
                   ))
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    No design documents available
+                    {handlesLargeScaleProjects && activeProductTypeId
+                      ? "No design documents available for this item group"
+                      : "No design documents available"}
                   </p>
                 )}
               </div>
@@ -464,6 +547,12 @@ const SelectDocumentModal: React.FC<Props> = ({
                   doc.doc_og_name,
                   mime
                 );
+                Object.assign(file, {
+                  __linkedDocMeta: {
+                    docId: doc.id,
+                    docType: doc.type,
+                  } satisfies LinkedDocMeta,
+                });
                 convertedFiles.push(file);
               }
 

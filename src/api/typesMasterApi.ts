@@ -288,6 +288,8 @@ export interface LightCarcasUnitMasterResponse {
   data: LightCarcasUnitMasterEntry[];
 }
 
+export const OTHER_APPLIANCE_TYPES = ["Appliances", "Stone", "Sinks", "Faucets"] as const;
+
 export interface OtherAppliancesMasterEntry {
   id: number;
   vendor_id: number;

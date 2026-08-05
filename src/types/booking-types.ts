@@ -57,6 +57,8 @@ export interface DocumentBooking {
   s3Key: string;
   signedUrl: string;
   type: string;
+  product_type_id?: number | null;
+  product_structure_instance_id?: number | null;
   created_at?: string;
 }
 
@@ -125,7 +127,19 @@ export interface SiteSuperVisor {
 }
 
 export interface PaymentDetails {
+  id?: number;
   amount: number;
+  basic_amount?: number | null;
+  gst_percentage?: number | null;
+  gst_amount?: number | null;
+  total_amount?: number | null;
+  product_type_id?: number | null;
+  date?: string;
+  file?: {
+    id: number;
+    originalName: string;
+    signedUrl: string;
+  } | null;
   payment_text: string;
   text: string;
 }
