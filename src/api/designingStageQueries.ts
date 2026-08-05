@@ -631,12 +631,23 @@ export type LightsRemark =
   | "Not in our scope"
   | "Provide only grooves";
 
+export type SpecificationSectionRemark = LightsRemark;
+export type SpecificationSectionType =
+  | "appliances"
+  | "stone"
+  | "sinks"
+  | "faucets";
+
 export interface LeadSpecificationEntry {
   id: number;
   vendor_id: number;
   lead_id: number;
   name: string;
   lights_remark: LightsRemark | null;
+  appliances_remark: SpecificationSectionRemark | null;
+  stone_remark: SpecificationSectionRemark | null;
+  sinks_remark: SpecificationSectionRemark | null;
+  faucets_remark: SpecificationSectionRemark | null;
   item_code_id: number | null;
   productItemCode?: { id: number; item_code: string } | null;
   created_at: string;
@@ -677,6 +688,19 @@ export const updateLeadSpecificationLightsRemark = async (
   const { data } = await apiClient.put(
     `/leads/designing-stage/specifications/${specsId}/lights-remark`,
     { lights_remark: lightsRemark },
+  );
+
+  return data?.data;
+};
+
+export const updateLeadSpecificationSectionRemark = async (
+  specsId: number,
+  section: SpecificationSectionType,
+  remark: SpecificationSectionRemark,
+): Promise<LeadSpecificationEntry> => {
+  const { data } = await apiClient.put(
+    `/leads/designing-stage/specifications/${specsId}/section-remark`,
+    { section, remark },
   );
 
   return data?.data;
@@ -882,7 +906,9 @@ export interface LeadOtherAppliancesMappingEntry {
   vendor_id: number;
   lead_id: number;
   specs_id: number;
-  other_appliances_master_id: number;
+  other_appliance_type?: string | null;
+  other_appliances_master_id: number | null;
+  custom_remark?: string | null;
   created_at: string;
   created_by: number;
   otherAppliances?: {
@@ -890,7 +916,7 @@ export interface LeadOtherAppliancesMappingEntry {
     type: string;
     article_number: string;
     description: string;
-  };
+  } | null;
 }
 
 export interface UpsertLeadOtherAppliancesMappingPayload {
@@ -898,7 +924,9 @@ export interface UpsertLeadOtherAppliancesMappingPayload {
   vendor_id: number;
   lead_id: number;
   specs_id: number;
-  other_appliances_master_id: number;
+  other_appliance_type?: string | null;
+  other_appliances_master_id?: number | null;
+  custom_remark?: string | null;
   created_by: number;
 }
 

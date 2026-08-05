@@ -12,7 +12,10 @@ import {
   getLeadSpecifications,
   createLeadSpecification,
   updateLeadSpecificationLightsRemark,
+  updateLeadSpecificationSectionRemark,
   type LightsRemark,
+  type SpecificationSectionRemark,
+  type SpecificationSectionType,
   getLeadCarcassMaterialMappings,
   getLeadShutterMaterialMappings,
   getLeadHardwareMappings,
@@ -211,6 +214,29 @@ export const useUpdateLeadSpecificationLightsRemark = () => {
       vendorId: number;
       leadId: number;
     }) => updateLeadSpecificationLightsRemark(specsId, lightsRemark),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["leadSpecifications", variables.vendorId, variables.leadId],
+      });
+    },
+  });
+};
+
+export const useUpdateLeadSpecificationSectionRemark = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      specsId,
+      section,
+      remark,
+    }: {
+      specsId: number;
+      section: SpecificationSectionType;
+      remark: SpecificationSectionRemark;
+      vendorId: number;
+      leadId: number;
+    }) => updateLeadSpecificationSectionRemark(specsId, section, remark),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ["leadSpecifications", variables.vendorId, variables.leadId],

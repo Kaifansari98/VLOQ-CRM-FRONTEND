@@ -18,7 +18,12 @@ import {
 } from "@/components/ui/select";
 import { Box, PanelsTopLeft, Sparkles, Wrench } from "lucide-react";
 import { formatDate } from "@/lib/format";
-import type { LeadSpecificationEntry, LightsRemark } from "@/api/designingStageQueries";
+import type {
+  LeadSpecificationEntry,
+  LightsRemark,
+  SpecificationSectionRemark,
+  SpecificationSectionType,
+} from "@/api/designingStageQueries";
 import AssignToPicker from "@/components/assign-to-picker";
 import { useAppSelector } from "@/redux/store";
 import { cn } from "@/lib/utils";
@@ -43,6 +48,7 @@ import {
   useUpsertLeadLightCarcasUnitMapping,
   useUpsertLeadOtherAppliancesMapping,
   useUpdateLeadSpecificationLightsRemark,
+  useUpdateLeadSpecificationSectionRemark,
   useLeadSpecifications,
 } from "@/hooks/designing-stage/designing-leads-hooks";
 import {
@@ -100,7 +106,9 @@ type LightRow = {
 type OtherApplianceRow = {
   localId: string;
   id?: number;
+  type: string;
   other_appliances_master_id: string;
+  custom_remark: string;
 };
 
 const makeBlankCarcassRow = (): CarcassRow => ({
@@ -132,15 +140,22 @@ const makeBlankLightRow = (): LightRow => ({
   custom_remark: "",
 });
 
-const makeBlankOtherApplianceRow = (): OtherApplianceRow => ({
+const makeBlankOtherApplianceRow = (type: string = ""): OtherApplianceRow => ({
   localId: `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  type,
   other_appliances_master_id: "",
+  custom_remark: "",
 });
 
 const pickerClassName =
   "h-11 rounded-md border border-input bg-background px-3 text-sm";
 const clonedRowHighlightClass = "bg-blue-50/80 dark:bg-blue-950/20";
 const newRowHighlightClass = "bg-emerald-50/80 dark:bg-emerald-950/20";
+const specificationSectionOptions: SpecificationSectionRemark[] = [
+  "In our scope",
+  "Not in our scope",
+  "Provide only grooves",
+];
 
 const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   open,
@@ -243,11 +258,20 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   const upsertLightMapping = useUpsertLeadLightCarcasUnitMapping();
   const upsertOtherApplianceMapping = useUpsertLeadOtherAppliancesMapping();
   const updateLightsRemark = useUpdateLeadSpecificationLightsRemark();
+  const updateSectionRemark = useUpdateLeadSpecificationSectionRemark();
   const [carcassRows, setCarcassRows] = React.useState<CarcassRow[]>([]);
   const [shutterRows, setShutterRows] = React.useState<ShutterRow[]>([]);
   const [hardwareRows, setHardwareRows] = React.useState<HardwareRow[]>([]);
   const [lightsRemark, setLightsRemark] = React.useState<LightsRemark | "">("");
   const [lightRows, setLightRows] = React.useState<LightRow[]>([]);
+  const [otherApplianceRemarks, setOtherApplianceRemarks] = React.useState<
+    Record<SpecificationSectionType, SpecificationSectionRemark | "">
+  >({
+    appliances: "",
+    stone: "",
+    sinks: "",
+    faucets: "",
+  });
   const [otherApplianceRowsByType, setOtherApplianceRowsByType] = React.useState<
     Record<string, OtherApplianceRow[]>
   >({});
@@ -319,13 +343,21 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     () => previousOtherApplianceMappingsData ?? [],
     [previousOtherApplianceMappingsData],
   );
-  const previousOtherApplianceIdsByType = React.useMemo(() => {
-    const grouped: Record<string, string[]> = {};
+  const previousOtherApplianceRowsByType = React.useMemo(() => {
+    const grouped: Record<
+      string,
+      { other_appliances_master_id: string; custom_remark: string }[]
+    > = {};
 
     previousOtherApplianceMappings.forEach((item) => {
-      const type = item.otherAppliances?.type;
+      const type = item.otherAppliances?.type ?? item.other_appliance_type ?? undefined;
       if (!type) return;
-      (grouped[type] ??= []).push(String(item.other_appliances_master_id));
+      (grouped[type] ??= []).push({
+        other_appliances_master_id: item.other_appliances_master_id
+          ? String(item.other_appliances_master_id)
+          : "",
+        custom_remark: item.custom_remark ?? "",
+      });
     });
 
     return grouped;
@@ -424,6 +456,21 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   }, [specification?.id, specification?.lights_remark]);
 
   React.useEffect(() => {
+    setOtherApplianceRemarks({
+      appliances: specification?.appliances_remark ?? "",
+      stone: specification?.stone_remark ?? "",
+      sinks: specification?.sinks_remark ?? "",
+      faucets: specification?.faucets_remark ?? "",
+    });
+  }, [
+    specification?.appliances_remark,
+    specification?.faucets_remark,
+    specification?.id,
+    specification?.sinks_remark,
+    specification?.stone_remark,
+  ]);
+
+  React.useEffect(() => {
     if (
       lightsRemark !== "Not in our scope" ||
       !customLightCarcasType ||
@@ -453,14 +500,22 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     const grouped: Record<string, OtherApplianceRow[]> = {};
     OTHER_APPLIANCE_TYPES.forEach((type) => {
       const persistedRows: OtherApplianceRow[] = otherApplianceMappings
-        .filter((item) => item.otherAppliances?.type === type)
+        .filter(
+          (item) =>
+            item.otherAppliances?.type === type ||
+            item.other_appliance_type === type,
+        )
         .map((item) => ({
           localId: `saved-${item.id}`,
           id: item.id,
-          other_appliances_master_id: String(item.other_appliances_master_id),
+          type,
+          other_appliances_master_id: item.other_appliances_master_id
+            ? String(item.other_appliances_master_id)
+            : "",
+          custom_remark: item.custom_remark ?? "",
         }));
 
-      grouped[type] = [...persistedRows, makeBlankOtherApplianceRow()];
+      grouped[type] = [...persistedRows, makeBlankOtherApplianceRow(type)];
     });
 
     setOtherApplianceRowsByType(grouped);
@@ -910,24 +965,20 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
   const saveLightRowIfComplete = React.useCallback(
     async (row: LightRow) => {
-      const effectiveLightTypeId =
-        row.light_carcas_type_id ||
-        (row.custom_remark.trim() && customLightCarcasType
-          ? String(customLightCarcasType.id)
-          : "");
+      const trimmedCustomRemark = row.custom_remark.trim();
       const isCustomRow =
-        !!customLightCarcasType &&
-        Number(effectiveLightTypeId) === customLightCarcasType.id;
+        !!trimmedCustomRemark ||
+        (!!customLightCarcasType &&
+          Number(row.light_carcas_type_id) === customLightCarcasType.id);
 
       if (
         !vendorId ||
         !userId ||
         !specification?.lead_id ||
         !specification?.id ||
-        !effectiveLightTypeId ||
         (isCustomRow
-          ? !row.custom_remark.trim()
-          : !row.light_carcas_unit_master_id)
+          ? !trimmedCustomRemark
+          : !row.light_carcas_type_id || !row.light_carcas_unit_master_id)
       ) {
         return;
       }
@@ -941,7 +992,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
           light_carcas_unit_master_id: isCustomRow
             ? null
             : Number(row.light_carcas_unit_master_id),
-          custom_remark: isCustomRow ? row.custom_remark.trim() : null,
+          custom_remark: isCustomRow ? trimmedCustomRemark : null,
           created_by: userId,
         });
       } catch (error: any) {
@@ -1039,11 +1090,9 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
           row.localId === localId
             ? {
                 ...row,
-                light_carcas_type_id:
-                  row.light_carcas_type_id ||
-                  (customLightCarcasType
-                    ? String(customLightCarcasType.id)
-                    : ""),
+                light_carcas_type_id: customLightCarcasType
+                  ? String(customLightCarcasType.id)
+                  : row.light_carcas_type_id,
                 custom_remark: value,
               }
             : row,
@@ -1059,20 +1108,28 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       if (!row) return;
       void saveLightRowIfComplete({
         ...row,
+        light_carcas_type_id: customLightCarcasType
+          ? String(customLightCarcasType.id)
+          : row.light_carcas_type_id,
         custom_remark: value,
       });
     },
-    [lightRows, saveLightRowIfComplete],
+    [customLightCarcasType, lightRows, saveLightRowIfComplete],
   );
 
   const saveOtherApplianceRowIfComplete = React.useCallback(
     async (row: OtherApplianceRow) => {
+      const trimmedCustomRemark = row.custom_remark.trim();
+      const isCustomRow = !!trimmedCustomRemark;
+
       if (
         !vendorId ||
         !userId ||
         !specification?.lead_id ||
         !specification?.id ||
-        !row.other_appliances_master_id
+        (isCustomRow
+          ? !trimmedCustomRemark
+          : !row.other_appliances_master_id)
       ) {
         return;
       }
@@ -1083,7 +1140,11 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
           vendor_id: vendorId,
           lead_id: specification.lead_id,
           specs_id: specification.id,
-          other_appliances_master_id: Number(row.other_appliances_master_id),
+          other_appliance_type: row.type || null,
+          other_appliances_master_id: isCustomRow
+            ? null
+            : Number(row.other_appliances_master_id),
+          custom_remark: isCustomRow ? trimmedCustomRemark : null,
           created_by: userId,
         });
       } catch (error: any) {
@@ -1118,7 +1179,9 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
           const updatedRow: OtherApplianceRow = {
             ...row,
+            type,
             other_appliances_master_id: value,
+            custom_remark: "",
           };
 
           if (value) {
@@ -1156,6 +1219,41 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     [saveOtherApplianceRowIfComplete],
   );
 
+  const handleCustomOtherApplianceRemarkChange = React.useCallback(
+    (type: string, localId: string, value: string) => {
+      setOtherApplianceRowsByType((prev) => ({
+        ...prev,
+        [type]: (prev[type] ?? []).map((row) =>
+          row.localId === localId
+            ? {
+                ...row,
+                type,
+                other_appliances_master_id: "",
+                custom_remark: value,
+              }
+            : row,
+        ),
+      }));
+    },
+    [],
+  );
+
+  const handleCustomOtherApplianceRemarkBlur = React.useCallback(
+    (type: string, localId: string, value: string) => {
+      const row = (otherApplianceRowsByType[type] ?? []).find(
+        (item) => item.localId === localId,
+      );
+      if (!row) return;
+      void saveOtherApplianceRowIfComplete({
+        ...row,
+        type,
+        other_appliances_master_id: "",
+        custom_remark: value,
+      });
+    },
+    [otherApplianceRowsByType, saveOtherApplianceRowIfComplete],
+  );
+
   const handleLightsRemarkChange = React.useCallback(
     (value: LightsRemark) => {
       if (!vendorId || !specification?.lead_id || !specification?.id) return;
@@ -1187,11 +1285,70 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     [lightsRemark, specification?.id, specification?.lead_id, updateLightsRemark, vendorId],
   );
 
+  const handleOtherApplianceRemarkChange = React.useCallback(
+    (section: SpecificationSectionType, value: SpecificationSectionRemark) => {
+      if (!vendorId || !specification?.lead_id || !specification?.id) return;
+
+      const previousValue = otherApplianceRemarks[section];
+      setOtherApplianceRemarks((prev) => ({ ...prev, [section]: value }));
+
+      updateSectionRemark.mutate(
+        {
+          specsId: specification.id,
+          section,
+          remark: value,
+          vendorId,
+          leadId: specification.lead_id,
+        },
+        {
+          onError: (error: any) => {
+            setOtherApplianceRemarks((prev) => ({
+              ...prev,
+              [section]: previousValue,
+            }));
+            toastManager.add({
+              title:
+                error?.response?.data?.message ||
+                error?.message ||
+                "Failed to update section remark.",
+              type: "error",
+            });
+          },
+        },
+      );
+    },
+    [
+      otherApplianceRemarks,
+      specification?.id,
+      specification?.lead_id,
+      updateSectionRemark,
+      vendorId,
+    ],
+  );
+
   const isLightsEnabled =
     lightsRemark === "In our scope" ||
     lightsRemark === "Provide only grooves" ||
     lightsRemark === "Not in our scope";
   const isCustomLightsMode = lightsRemark === "Not in our scope";
+
+  const isOtherApplianceSectionEnabled = React.useCallback(
+    (section: SpecificationSectionType) => {
+      const remark = otherApplianceRemarks[section];
+      return (
+        remark === "In our scope" ||
+        remark === "Provide only grooves" ||
+        remark === "Not in our scope"
+      );
+    },
+    [otherApplianceRemarks],
+  );
+
+  const isCustomOtherApplianceSectionMode = React.useCallback(
+    (section: SpecificationSectionType) =>
+      otherApplianceRemarks[section] === "Not in our scope",
+    [otherApplianceRemarks],
+  );
 
   const getCarcassRowHighlightClass = React.useCallback(
     (row: CarcassRow, index: number) => {
@@ -1303,19 +1460,20 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
   const getOtherApplianceRowHighlightClass = React.useCallback(
     (type: string, row: OtherApplianceRow, index: number) => {
-      if (!row.other_appliances_master_id) return "";
+      if (!row.other_appliances_master_id && !row.custom_remark.trim()) return "";
 
       if (!row.id) return newRowHighlightClass;
       if (!previousSpecification) return "";
 
-      const baselineValue = previousOtherApplianceIdsByType[type]?.[index];
-      if (!baselineValue) return newRowHighlightClass;
+      const baseline = previousOtherApplianceRowsByType[type]?.[index];
+      if (!baseline) return newRowHighlightClass;
 
-      return row.other_appliances_master_id !== baselineValue
+      return row.other_appliances_master_id !== baseline.other_appliances_master_id ||
+        row.custom_remark.trim() !== baseline.custom_remark.trim()
         ? clonedRowHighlightClass
         : "";
     },
-    [previousOtherApplianceIdsByType, previousSpecification],
+    [previousOtherApplianceRowsByType, previousSpecification],
   );
 
   const handleDialogOpenChange = React.useCallback(
@@ -1331,9 +1489,31 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         });
       }
 
+      if (!nextOpen) {
+        OTHER_APPLIANCE_TYPES.forEach((type) => {
+          if (!isCustomOtherApplianceSectionMode(type.toLowerCase() as SpecificationSectionType)) {
+            return;
+          }
+
+          (otherApplianceRowsByType[type] ?? []).forEach((row) => {
+            if (row.custom_remark.trim()) {
+              void saveOtherApplianceRowIfComplete(row);
+            }
+          });
+        });
+      }
+
       onOpenChange(nextOpen);
     },
-    [isCustomLightsMode, lightRows, onOpenChange, saveLightRowIfComplete],
+    [
+      isCustomLightsMode,
+      isCustomOtherApplianceSectionMode,
+      lightRows,
+      onOpenChange,
+      otherApplianceRowsByType,
+      saveLightRowIfComplete,
+      saveOtherApplianceRowIfComplete,
+    ],
   );
 
   if (!specification) return null;
@@ -1962,17 +2142,44 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
             {OTHER_APPLIANCE_TYPES.map((type) => {
               const options = otherAppliancesByType[type] ?? [];
               const rows = otherApplianceRowsByType[type] ?? [];
+              const section = type.toLowerCase() as SpecificationSectionType;
+              const sectionRemark = otherApplianceRemarks[section];
+              const isSectionEnabled = isOtherApplianceSectionEnabled(section);
+              const isCustomSectionMode =
+                isCustomOtherApplianceSectionMode(section);
 
               return (
                 <div key={type}>
-                  <h3 className="text-sm font-semibold mb-2 mt-6">{type}</h3>
+                  <div className="flex items-center justify-between gap-3 mb-2 mt-6">
+                    <h3 className="text-sm font-semibold">{type}</h3>
+                    <Select
+                      value={sectionRemark || undefined}
+                      onValueChange={(value) =>
+                        handleOtherApplianceRemarkChange(
+                          section,
+                          value as SpecificationSectionRemark,
+                        )
+                      }
+                    >
+                      <SelectTrigger className="w-64">
+                        <SelectValue placeholder={`Select ${type} remark`} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {specificationSectionOptions.map((option) => (
+                          <SelectItem key={option} value={option}>
+                            {option}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="rounded-xl border border-border overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead className="bg-zinc-700">
                           <tr className="border-b">
                             <th className="px-4 py-3 text-left font-bold text-white">
-                              Article Code
+                              {isCustomSectionMode ? "Type" : "Article Code"}
                             </th>
                             <th className="px-4 py-3 text-left font-bold text-white">
                               Description
@@ -2000,37 +2207,89 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                 )}
                               >
                                 <td className="px-4 py-3 align-top">
-                                  <AssignToPicker
-                                    data={options.map((option) => ({
-                                      id: option.id,
-                                      label: option.article_number,
-                                    }))}
-                                    value={
-                                      row.other_appliances_master_id
-                                        ? Number(row.other_appliances_master_id)
-                                        : undefined
-                                    }
-                                    onChange={(value) =>
-                                      updateOtherApplianceRow(
-                                        type,
-                                        row.localId,
-                                        value ? String(value) : "",
-                                      )
-                                    }
-                                    placeholder="Search article code..."
-                                    emptyLabel="Select article code"
-                                    className={pickerClassName}
-                                  />
+                                  {isCustomSectionMode ? (
+                                    <input
+                                      type="text"
+                                      value="Custom"
+                                      readOnly
+                                      disabled
+                                      className={cn(
+                                        pickerClassName,
+                                        "w-full text-muted-foreground",
+                                      )}
+                                    />
+                                  ) : (
+                                    <AssignToPicker
+                                      data={options.map((option) => ({
+                                        id: option.id,
+                                        label: option.article_number,
+                                      }))}
+                                      value={
+                                        row.other_appliances_master_id
+                                          ? Number(row.other_appliances_master_id)
+                                          : undefined
+                                      }
+                                      onChange={(value) =>
+                                        updateOtherApplianceRow(
+                                          type,
+                                          row.localId,
+                                          value ? String(value) : "",
+                                        )
+                                      }
+                                      disabled={!isSectionEnabled}
+                                      placeholder={
+                                        isSectionEnabled
+                                          ? "Search article code..."
+                                          : `Select ${type} remark first`
+                                      }
+                                      emptyLabel={
+                                        isSectionEnabled
+                                          ? "Select article code"
+                                          : `Select ${type} remark first`
+                                      }
+                                      className={pickerClassName}
+                                    />
+                                  )}
                                 </td>
                                 <td className="px-4 py-3 align-top">
-                                  <input
-                                    type="text"
-                                    value={selectedEntry?.description ?? ""}
-                                    readOnly
-                                    disabled
-                                    placeholder="Select article code first"
-                                    className={`${pickerClassName} w-full text-muted-foreground`}
-                                  />
+                                  {isCustomSectionMode ? (
+                                    <textarea
+                                      value={row.custom_remark}
+                                      onChange={(event) =>
+                                        handleCustomOtherApplianceRemarkChange(
+                                          type,
+                                          row.localId,
+                                          event.target.value,
+                                        )
+                                      }
+                                      onBlur={(event) =>
+                                        handleCustomOtherApplianceRemarkBlur(
+                                          type,
+                                          row.localId,
+                                          event.target.value,
+                                        )
+                                      }
+                                      disabled={!isSectionEnabled}
+                                      placeholder={
+                                        isSectionEnabled
+                                          ? `Enter custom ${type.toLowerCase()} remark`
+                                          : `Select ${type} remark first`
+                                      }
+                                      className={cn(
+                                        pickerClassName,
+                                        "min-h-24 w-full resize-y py-3",
+                                      )}
+                                    />
+                                  ) : (
+                                    <input
+                                      type="text"
+                                      value={selectedEntry?.description ?? ""}
+                                      readOnly
+                                      disabled
+                                      placeholder="Select article code first"
+                                      className={`${pickerClassName} w-full text-muted-foreground`}
+                                    />
+                                  )}
                                 </td>
                               </tr>
                             );
