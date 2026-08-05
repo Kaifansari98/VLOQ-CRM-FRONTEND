@@ -455,8 +455,24 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       if (action === "approve") {
         return "bg-emerald-50 dark:bg-emerald-950/20";
       }
+      if (action === "delete") {
+        return "bg-red-50 dark:bg-red-950/20";
+      }
       return "";
     },
+    [getReviewAction],
+  );
+
+  const isReviewDeleted = React.useCallback(
+    (
+      section: string,
+      row: { id?: number; localId: string },
+      fallback?: {
+        is_approved?: boolean;
+        is_amended?: boolean;
+        is_deleted_item?: boolean;
+      },
+    ) => getReviewAction(section, row, fallback) === "delete",
     [getReviewAction],
   );
 
@@ -1974,6 +1990,14 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                   <tbody>
                     {carcassRows.map((row, index) => {
                       const finishOptions = finishQueries[index]?.data?.data ?? [];
+                      const persistedRow = row.id
+                        ? carcassMappings.find((item) => item.id === row.id)
+                        : undefined;
+                      const isDeletedRow = isReviewDeleted(
+                        "carcass",
+                        row,
+                        persistedRow,
+                      );
 
 	                      return (
 	                        <tr
@@ -2000,7 +2024,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                              placeholder="Search carcass type..."
 	                              emptyLabel="Select carcass type"
 	                              disabled={mappingsLocked}
-	                              className={pickerClassName}
+	                              className={cn(
+                                  pickerClassName,
+                                  isDeletedRow && "line-through text-red-600",
+                                )}
 	                            />
 	                          </td>
 	                          <td className="px-4 py-3 align-top">
@@ -2024,7 +2051,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                              placeholder="Search carcass material..."
 	                              emptyLabel="Select carcass material"
 	                              disabled={mappingsLocked}
-	                              className={pickerClassName}
+	                              className={cn(
+                                  pickerClassName,
+                                  isDeletedRow && "line-through text-red-600",
+                                )}
 	                            />
 	                          </td>
 	                          <td className="px-4 py-3 align-top">
@@ -2056,7 +2086,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                                  ? "Select carcass material finish"
 	                                  : "Select material first"
 	                              }
-	                              className={pickerClassName}
+	                              className={cn(
+                                  pickerClassName,
+                                  isDeletedRow && "line-through text-red-600",
+                                )}
 	                            />
 	                          </td>
                             {showReviewColumns &&
@@ -2077,9 +2110,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                       ),
                                     }
                                   : null,
-                                row.id
-                                  ? carcassMappings.find((item) => item.id === row.id)
-                                  : undefined,
+                                persistedRow,
                               )}
 	                        </tr>
 	                      );
@@ -2137,6 +2168,14 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                     {shutterRows.map((row, index) => {
                       const finishOptions =
                         shutterFinishQueries[index]?.data?.data ?? [];
+                      const persistedRow = row.id
+                        ? shutterMappings.find((item) => item.id === row.id)
+                        : undefined;
+                      const isDeletedRow = isReviewDeleted(
+                        "shutter",
+                        row,
+                        persistedRow,
+                      );
 
 	                      return (
 	                        <tr
@@ -2163,7 +2202,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                              placeholder="Search shutter type..."
 	                              emptyLabel="Select shutter type"
 	                              disabled={mappingsLocked}
-	                              className={pickerClassName}
+	                              className={cn(
+                                  pickerClassName,
+                                  isDeletedRow && "line-through text-red-600",
+                                )}
 	                            />
 	                          </td>
 	                          <td className="px-4 py-3 align-top">
@@ -2187,7 +2229,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                              placeholder="Search shutter material..."
 	                              emptyLabel="Select shutter material"
 	                              disabled={mappingsLocked}
-	                              className={pickerClassName}
+	                              className={cn(
+                                  pickerClassName,
+                                  isDeletedRow && "line-through text-red-600",
+                                )}
 	                            />
 	                          </td>
 	                          <td className="px-4 py-3 align-top">
@@ -2219,7 +2264,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                                  ? "Select shutter material finish"
 	                                  : "Select material first"
 	                              }
-	                              className={pickerClassName}
+	                              className={cn(
+                                  pickerClassName,
+                                  isDeletedRow && "line-through text-red-600",
+                                )}
 	                            />
 	                          </td>
                             {showReviewColumns &&
@@ -2240,9 +2288,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                       ),
                                     }
                                   : null,
-                                row.id
-                                  ? shutterMappings.find((item) => item.id === row.id)
-                                  : undefined,
+                                persistedRow,
                               )}
 	                        </tr>
 	                      );
@@ -2295,6 +2341,14 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                         (option) =>
                           String(option.id) === row.skirting_carcass_legs_id,
                       );
+                      const persistedRow = row.id
+                        ? hardwareMappings.find((item) => item.id === row.id)
+                        : undefined;
+                      const isDeletedRow = isReviewDeleted(
+                        "hardware",
+                        row,
+                        persistedRow,
+                      );
                       const isOutOfScope =
                         !!selectedSkirting && !selectedSkirting.inScope;
 
@@ -2326,7 +2380,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                               placeholder="Search carcass legs..."
                               emptyLabel="Select carcass legs"
                               disabled={mappingsLocked}
-                              className={pickerClassName}
+                              className={cn(
+                                pickerClassName,
+                                isDeletedRow && "line-through text-red-600",
+                              )}
                             />
                           </td>
                           <td className="px-4 py-3 align-top">
@@ -2358,7 +2415,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                   ? "Select skirting"
                                   : "Select carcass legs first"
                               }
-                              className={pickerClassName}
+                              className={cn(
+                                pickerClassName,
+                                isDeletedRow && "line-through text-red-600",
+                              )}
                             />
                           </td>
                           <td className="px-4 py-3 align-top">
@@ -2398,7 +2458,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                     ? "No colors available"
                                     : "Select color"
                               }
-                              className={pickerClassName}
+                              className={cn(
+                                pickerClassName,
+                                isDeletedRow && "line-through text-red-600",
+                              )}
                             />
                           </td>
                           <td className="px-4 py-3 align-top">
@@ -2418,7 +2481,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                               }
                               className={`${pickerClassName} w-full ${
                                 isOutOfScope ? "text-muted-foreground" : ""
-                              }`}
+                              } ${isDeletedRow ? "line-through text-red-600" : ""}`}
                             />
                           </td>
                           {showReviewColumns &&
@@ -2443,9 +2506,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                     note: row.note || null,
                                   }
                                 : null,
-                              row.id
-                                ? hardwareMappings.find((item) => item.id === row.id)
-                                : undefined,
+                              persistedRow,
                             )}
                         </tr>
                       );
@@ -2521,6 +2582,14 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                               id: type.id,
                               label: type.type,
                             }));
+                      const persistedRow = row.id
+                        ? lightMappings.find((item) => item.id === row.id)
+                        : undefined;
+                      const isDeletedRow = isReviewDeleted(
+                        "lights",
+                        row,
+                        persistedRow,
+                      );
 
                       return (
                         <tr
@@ -2540,6 +2609,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                 className={cn(
                                   pickerClassName,
                                   "w-full text-muted-foreground",
+                                  isDeletedRow && "line-through text-red-600",
                                 )}
                               />
                             ) : (
@@ -2568,7 +2638,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                     ? "Select carcass type"
                                     : "Select lights remark first"
                                 }
-                                className={pickerClassName}
+                                className={cn(
+                                  pickerClassName,
+                                  isDeletedRow && "line-through text-red-600",
+                                )}
                               />
                             )}
                           </td>
@@ -2597,6 +2670,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                 className={cn(
                                   pickerClassName,
                                   "min-h-24 w-full resize-y py-3",
+                                  isDeletedRow && "line-through text-red-600",
                                 )}
                               />
                             ) : (
@@ -2636,7 +2710,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                       ? "Select remark"
                                       : "Select carcass type first"
                                 }
-                                className={pickerClassName}
+                                className={cn(
+                                  pickerClassName,
+                                  isDeletedRow && "line-through text-red-600",
+                                )}
                               />
                             )}
                           </td>
@@ -2658,9 +2735,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                     custom_remark: row.custom_remark.trim() || null,
                                   }
                                 : null,
-                              row.id
-                                ? lightMappings.find((item) => item.id === row.id)
-                                : undefined,
+                              persistedRow,
                             )}
                         </tr>
                       );
@@ -2737,6 +2812,14 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                 String(option.id) ===
                                 row.other_appliances_master_id,
                             );
+                            const persistedRow = row.id
+                              ? otherApplianceMappings.find((item) => item.id === row.id)
+                              : undefined;
+                            const isDeletedRow = isReviewDeleted(
+                              `other-${type}`,
+                              row,
+                              persistedRow,
+                            );
 
                             return (
                               <tr
@@ -2760,6 +2843,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                       className={cn(
                                         pickerClassName,
                                         "w-full text-muted-foreground",
+                                        isDeletedRow && "line-through text-red-600",
                                       )}
                                     />
                                   ) : (
@@ -2791,7 +2875,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                           ? "Select article code"
                                           : `Select ${type} remark first`
                                       }
-                                      className={pickerClassName}
+                                      className={cn(
+                                        pickerClassName,
+                                        isDeletedRow && "line-through text-red-600",
+                                      )}
                                     />
                                   )}
                                 </td>
@@ -2822,6 +2909,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                       className={cn(
                                         pickerClassName,
                                         "min-h-24 w-full resize-y py-3",
+                                        isDeletedRow && "line-through text-red-600",
                                       )}
                                     />
                                   ) : (
@@ -2831,7 +2919,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                       readOnly
                                       disabled
                                       placeholder="Select article code first"
-                                      className={`${pickerClassName} w-full text-muted-foreground`}
+                                      className={cn(
+                                        `${pickerClassName} w-full text-muted-foreground`,
+                                        isDeletedRow && "line-through text-red-600",
+                                      )}
                                     />
                                   )}
                                 </td>
@@ -2855,11 +2946,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                             row.custom_remark.trim() || null,
                                         }
                                       : null,
-                                    row.id
-                                      ? otherApplianceMappings.find(
-                                          (item) => item.id === row.id,
-                                        )
-                                      : undefined,
+                                    persistedRow,
                                   )}
                               </tr>
                             );
