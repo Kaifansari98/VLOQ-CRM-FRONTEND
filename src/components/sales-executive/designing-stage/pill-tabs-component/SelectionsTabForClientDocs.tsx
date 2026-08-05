@@ -359,6 +359,55 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         : [],
     [structureInstancesData?.data],
   );
+  const displayGroups = React.useMemo(() => {
+    if (!handlesLargeScaleProjects) {
+      return structureInstances.map((instance) => ({
+        key: `instance-${instance.id}`,
+        title: instance.title,
+        subtitle: instance.productStructure?.type || "Product Structure",
+        instance,
+      }));
+    }
+
+    const grouped = new Map<
+      string,
+      {
+        key: string;
+        title: string;
+        subtitle: string;
+        instance: LeadProductStructureInstance;
+      }
+    >();
+
+    structureInstances.forEach((instance) => {
+      const title =
+        instance.productType?.type ||
+        instance.productItemCode?.productStructure?.productType?.type ||
+        instance.productItemCode?.item_code ||
+        instance.title ||
+        "Item Group";
+      const subtitle =
+        instance.productItemCode?.item_code ||
+        instance.productStructure?.type ||
+        "Product Type";
+      const key = String(
+        instance.productType?.id ||
+          instance.productItemCode?.productStructure?.productType?.id ||
+          title,
+      );
+
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          key,
+          title,
+          subtitle,
+          instance,
+        });
+      }
+    });
+
+    return Array.from(grouped.values());
+  }, [handlesLargeScaleProjects, structureInstances]);
 
   const carcassOptions = React.useMemo<ClientDocsSelectionOption[]>(
     () =>
@@ -464,6 +513,24 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const [activeInstance, setActiveInstance] =
     React.useState<LeadProductStructureInstance | null>(null);
   const [confirmDelete, setConfirmDelete] = React.useState<null | number>(null);
+  const activeDisplayGroup = React.useMemo(() => {
+    if (!activeInstance) return null;
+
+    if (!handlesLargeScaleProjects) {
+      return {
+        title: activeInstance.title,
+      };
+    }
+
+    return {
+      title:
+        activeInstance.productType?.type ||
+        activeInstance.productItemCode?.productStructure?.productType?.type ||
+        activeInstance.productItemCode?.item_code ||
+        activeInstance.title ||
+        "Item Group",
+    };
+  }, [activeInstance, handlesLargeScaleProjects]);
   const lastNotifiedInstanceIdRef = React.useRef<number | null | undefined>(
     undefined,
   );
@@ -1252,6 +1319,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
 
     return (
       <div className="flex-1 space-y-6 py-4 px-5">
+        {!handlesLargeScaleProjects && (
         <div className="space-y-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between w-full gap-4">
             <div>
@@ -1480,6 +1548,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
             </form>
           </Form>
         </div>
+        )}
 
         {/* ✅ Upload section — disabled when blocked */}
         {(canUploadProjectFiles || canUploadDesignFiles) && (
@@ -1790,26 +1859,29 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
               Design Selections & Instance Documents
             </h2>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Open each product instance card to upload docs and save design
-              selections
+              {handlesLargeScaleProjects
+                ? "Open each item group card to upload docs and save design selections"
+                : "Open each product instance card to upload docs and save design selections"}
             </p>
           </div>
         </div>
       )}
 
       {/* Product Instances Cards */}
-      {canViewSelectionInstances && structureInstances.length > 1 && (
+      {canViewSelectionInstances && displayGroups.length > 1 && (
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold">Product Instances</h3>
+          <h3 className="text-sm font-semibold">
+            {handlesLargeScaleProjects ? "Item Groups" : "Product Instances"}
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5">
-            {structureInstances.map((instance, index) => {
-              const counts = getCounts(instance.id);
+            {displayGroups.map((group, index) => {
+              const counts = getCounts(group.instance.id);
               const isUploaded = counts.ppt > 0 && counts.pytha > 0;
               const totalDocs = counts.ppt + counts.pytha;
 
               return (
                 <motion.div
-                  key={instance.id}
+                  key={group.key}
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.25, delay: index * 0.05 }}
@@ -1818,7 +1890,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                     className="h-full rounded-2xl border bg-white dark:bg-neutral-900 
                     hover:shadow-[0_8px_25px_-4px_rgba(0,0,0,0.12)]
                     transition-all duration-200 cursor-pointer group"
-                    onClick={() => handleOpenUploadModal(instance)}
+                    onClick={() => handleOpenUploadModal(group.instance)}
                   >
                     <CardContent className="px-6">
                       <div className="flex items-start justify-between gap-2">
@@ -1832,11 +1904,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
 
                           <div className="flex-1 min-w-0">
                             <h3 className="font-semibold text-sm truncate">
-                              {instance.title}
+                              {group.title}
                             </h3>
                             <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                              {instance.productStructure?.type ||
-                                "Product Structure"}
+                              {group.subtitle}
                             </p>
                           </div>
                         </div>
@@ -1847,7 +1918,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                           className="text-xs text-muted-foreground hover:text-foreground"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleOpenUploadModal(instance);
+                            handleOpenUploadModal(group.instance);
                           }}
                         >
                           {totalDocs === 0 ? "Upload" : "View"}
@@ -1984,8 +2055,12 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
           <BaseModal
             open={uploadModalOpen}
             onOpenChange={setUploadModalOpen}
-            title={activeInstance.title}
-            description="Upload and manage files for this product instance"
+            title={activeDisplayGroup?.title || activeInstance.title}
+            description={
+              handlesLargeScaleProjects
+                ? "Upload and manage files for this Item Group"
+                : "Upload and manage files for this product instance"
+            }
             icon={
               <div className="p-2.5 rounded-lg bg-primary/10 text-primary">
                 <FolderOpen className="size-6" />
