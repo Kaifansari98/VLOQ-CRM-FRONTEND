@@ -261,6 +261,16 @@ export interface AdminTotalRevenue {
   thisYearTotal: number;
   lastSixMonthsAvg: number;
   overall: number;
+  usesBasicCollected?: boolean;
+  basicThisWeekArray?: number[];
+  basicThisMonthArray?: number[];
+  basicThisYearArray?: number[];
+  basicThisWeekTotal?: number;
+  basicThisMonthTotal?: number;
+  basicThisYearTotal?: number;
+  basicLastSixMonthsAvg?: number;
+  basicOverall?: number;
+  gstOverall?: number;
 }
 
 export const getAdminTotalRevenue = async (

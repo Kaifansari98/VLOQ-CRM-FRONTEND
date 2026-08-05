@@ -18,6 +18,12 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+  Tooltip as UiTooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -137,6 +143,8 @@ interface StatCardProps {
   dot: string;
   isLoading?: boolean;
   onClick?: () => void;
+  iconTooltip?: React.ReactNode;
+  valueTooltip?: React.ReactNode;
 }
 
 function StatCard({
@@ -149,7 +157,22 @@ function StatCard({
   dot,
   isLoading,
   onClick,
+  iconTooltip,
+  valueTooltip,
 }: StatCardProps) {
+  const iconNode = (
+    <span
+      className={`flex items-center justify-center h-8 w-8 rounded-full border ${accent} bg-muted/40`}
+    >
+      <Icon className="h-4 w-4" />
+    </span>
+  );
+  const valueNode = isLoading ? (
+    <div className="h-8 w-24 bg-muted animate-pulse rounded" />
+  ) : (
+    <div className="text-3xl font-semibold">{value}</div>
+  );
+
   return (
     <div
       className={`border rounded-2xl py-4 px-5 flex flex-col justify-between gap-3 bg-background ${onClick ? "cursor-pointer hover:shadow-md hover:border-foreground/20 transition-all duration-200" : ""}`}
@@ -157,17 +180,29 @@ function StatCard({
     >
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-foreground">{title}</span>
-        <span
-          className={`flex items-center justify-center h-8 w-8 rounded-full border ${accent} bg-muted/40`}
-        >
-          <Icon className="h-4 w-4" />
-        </span>
+        {iconTooltip ? (
+          <TooltipProvider>
+            <UiTooltip>
+              <TooltipTrigger asChild>{iconNode}</TooltipTrigger>
+              <TooltipContent>{iconTooltip}</TooltipContent>
+            </UiTooltip>
+          </TooltipProvider>
+        ) : (
+          iconNode
+        )}
       </div>
       <div>
-        {isLoading ? (
-          <div className="h-8 w-24 bg-muted animate-pulse rounded" />
+        {valueTooltip && !isLoading ? (
+          <TooltipProvider>
+            <UiTooltip>
+              <TooltipTrigger asChild>
+                <div className="inline-flex">{valueNode}</div>
+              </TooltipTrigger>
+              <TooltipContent>{valueTooltip}</TooltipContent>
+            </UiTooltip>
+          </TooltipProvider>
         ) : (
-          <div className="text-3xl font-semibold">{value}</div>
+          valueNode
         )}
         <div className="flex items-center gap-1.5 mt-1">
           <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
@@ -1746,6 +1781,9 @@ function OverdueAlertsCard({
 export default function SuperAdminDashboard() {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const franchiseId = useAppSelector((s) => s.auth.franchise_id) ?? undefined;
+  const handlesLargeScaleProjects = useAppSelector(
+    (s) => s.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
   const [showOverdueModal, setShowOverdueModal] = useState(false);
   const [showOverdueProductionModal, setShowOverdueProductionModal] =
     useState(false);
@@ -1770,15 +1808,26 @@ export default function SuperAdminDashboard() {
     useFranchisePerformance(vendorId);
   const { data: franchisesData } = useFranchisesByVendorId(vendorId);
 
-  const revenueValue = revenueData ? formatRevenue(revenueData.overall) : "—";
+  const revenueValue = revenueData
+    ? formatRevenue(
+        handlesLargeScaleProjects
+          ? Number(revenueData.basicOverall ?? 0)
+          : revenueData.overall,
+      )
+    : "—";
 
   const revenueMoM = useMemo(() => {
     if (!revenueData) return null;
-    const { thisMonthTotal, lastSixMonthsAvg } = revenueData;
+    const thisMonthTotal = handlesLargeScaleProjects
+      ? Number(revenueData.basicThisMonthTotal ?? 0)
+      : revenueData.thisMonthTotal;
+    const lastSixMonthsAvg = handlesLargeScaleProjects
+      ? Number(revenueData.basicLastSixMonthsAvg ?? 0)
+      : revenueData.lastSixMonthsAvg;
     if (!lastSixMonthsAvg) return null;
     const pct = ((thisMonthTotal - lastSixMonthsAvg) / lastSixMonthsAvg) * 100;
     return { pct: Math.abs(pct).toFixed(1), up: pct >= 0 };
-  }, [revenueData]);
+  }, [handlesLargeScaleProjects, revenueData]);
 
   return (
     <div className="flex flex-col gap-4 p-4 px-6">
@@ -1799,6 +1848,18 @@ export default function SuperAdminDashboard() {
           accent="text-emerald-500"
           dot="bg-emerald-500"
           isLoading={revenueLoading}
+          iconTooltip={
+            handlesLargeScaleProjects
+              ? "Basic amount collected from booking entries"
+              : undefined
+          }
+          valueTooltip={
+            handlesLargeScaleProjects && revenueData
+              ? `Total GST collected: ${formatRevenue(
+                  Number(revenueData.gstOverall ?? 0),
+                )}`
+              : undefined
+          }
         />
         <StatCard
           title="Active Franchisees"
