@@ -910,16 +910,21 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
   const saveLightRowIfComplete = React.useCallback(
     async (row: LightRow) => {
+      const effectiveLightTypeId =
+        row.light_carcas_type_id ||
+        (row.custom_remark.trim() && customLightCarcasType
+          ? String(customLightCarcasType.id)
+          : "");
       const isCustomRow =
         !!customLightCarcasType &&
-        Number(row.light_carcas_type_id) === customLightCarcasType.id;
+        Number(effectiveLightTypeId) === customLightCarcasType.id;
 
       if (
         !vendorId ||
         !userId ||
         !specification?.lead_id ||
         !specification?.id ||
-        !row.light_carcas_type_id ||
+        !effectiveLightTypeId ||
         (isCustomRow
           ? !row.custom_remark.trim()
           : !row.light_carcas_unit_master_id)
@@ -1031,18 +1036,31 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     (localId: string, value: string) => {
       setLightRows((prev) =>
         prev.map((row) =>
-          row.localId === localId ? { ...row, custom_remark: value } : row,
+          row.localId === localId
+            ? {
+                ...row,
+                light_carcas_type_id:
+                  row.light_carcas_type_id ||
+                  (customLightCarcasType
+                    ? String(customLightCarcasType.id)
+                    : ""),
+                custom_remark: value,
+              }
+            : row,
         ),
       );
     },
-    [],
+    [customLightCarcasType],
   );
 
   const handleCustomLightRemarkBlur = React.useCallback(
-    (localId: string) => {
+    (localId: string, value: string) => {
       const row = lightRows.find((item) => item.localId === localId);
       if (!row) return;
-      void saveLightRowIfComplete(row);
+      void saveLightRowIfComplete({
+        ...row,
+        custom_remark: value,
+      });
     },
     [lightRows, saveLightRowIfComplete],
   );
@@ -1300,10 +1318,28 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     [previousOtherApplianceIdsByType, previousSpecification],
   );
 
+  const handleDialogOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen && isCustomLightsMode) {
+        lightRows.forEach((row) => {
+          if (
+            row.light_carcas_type_id &&
+            row.custom_remark.trim()
+          ) {
+            void saveLightRowIfComplete(row);
+          }
+        });
+      }
+
+      onOpenChange(nextOpen);
+    },
+    [isCustomLightsMode, lightRows, onOpenChange, saveLightRowIfComplete],
+  );
+
   if (!specification) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="min-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader className="">
           <DialogTitle className="text-lg font-semibold tracking-tight">
@@ -1861,8 +1897,11 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                     event.target.value,
                                   )
                                 }
-                                onBlur={() =>
-                                  handleCustomLightRemarkBlur(row.localId)
+                                onBlur={(event) =>
+                                  handleCustomLightRemarkBlur(
+                                    row.localId,
+                                    event.target.value,
+                                  )
                                 }
                                 disabled={!isLightsEnabled}
                                 placeholder={

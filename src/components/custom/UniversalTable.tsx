@@ -1121,9 +1121,18 @@ export function UniversalTable({
         return isDesc ? Number(b?.id || 0) - Number(a?.id || 0) : Number(a?.id || 0) - Number(b?.id || 0);
       });
 
-      rows = baseData.map((item, idx) =>
-        mapUniversalRow(item, idx, { rowKey: String(item.id) }),
-      );
+      rows = baseData.map((item, idx) => {
+        const type8StatusLoggedAt = STATUS_LOG_SORTED_STAGE_TYPES.has(
+          normalizedType,
+        )
+          ? extractLatestStatusLogCreatedAtForTag(item, type)
+          : null;
+
+        return mapUniversalRow(item, idx, {
+          rowKey: String(item.id),
+          type8StatusLoggedAt,
+        });
+      });
     } else {
       const expanded: LeadColumn[] = [];
 
