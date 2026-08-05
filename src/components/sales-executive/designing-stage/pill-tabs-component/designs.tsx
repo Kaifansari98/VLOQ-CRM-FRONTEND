@@ -356,6 +356,10 @@ const DesigningTab = () => {
                                 created_by: Number(userId),
                                 created_at: doc.created_at,
                                 lights_remark: null,
+                                appliances_remark: null,
+                                stone_remark: null,
+                                sinks_remark: null,
+                                faucets_remark: null,
                                 item_code_id: null,
                               })
                             }
