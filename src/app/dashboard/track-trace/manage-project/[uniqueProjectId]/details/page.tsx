@@ -24,6 +24,7 @@ import {
   TruckIcon, User, Layers, ChevronRight, X,
   Download,
   Loader2,
+  Printer,
 
 } from "lucide-react";
 import { useParams } from "next/navigation";
@@ -204,7 +205,7 @@ function BoxCard({
           {downloading ? (
             <Loader2 size={15} className="animate-spin" />
           ) : (
-            <Download size={15} />
+            <Printer size={15} />
           )}
         </button>
 
@@ -589,52 +590,72 @@ export default function ProjectDetailPage() {
     ? data.machines.map(m => ({ id: m.machine_id, name: m.machine_name }))
     : [];
 
-  const handleDownloadBoxPdf = async (box: ProjectDetailData["boxes"][0]) => {
-    if (!vendorId || !uniqueProjectId) return;
+const handleDownloadBoxPdf = async (box: ProjectDetailData["boxes"][0]) => {
+  if (!vendorId || !uniqueProjectId) return;
 
-    try {
-      setDownloadingBoxId(box.id);
+  let printWindow: Window | null = null;
 
-      const response = await downloadBoxPdf(
-        box.id,
-        String(uniqueProjectId),
-        Number(vendorId)
-      );
+  try {
+    setDownloadingBoxId(box.id);
 
-      if (!response?.status && !response?.success) {
-        throw new Error(response?.message || "Failed to generate PDF");
-      }
+    // Open immediately on user click to avoid popup blocker
+    printWindow = window.open("", "_blank", "width=420,height=700");
 
-      const pdfUrl =
-        response?.data?.download_url ||
-        response?.data?.pdf_url ||
-        response?.download_url ||
-        response?.pdf_url;
-
-      if (!pdfUrl) {
-        throw new Error("PDF URL not found in response");
-      }
-
-      const link = document.createElement("a");
-      link.href = pdfUrl;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.download = `${box.box_name || "box"}.pdf`;
-
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      toastManager.add({
-        title: "Box PDF generated successfully",
-        type: "success",
-      });
-    } catch (error: any) {
-      console.error("Download box PDF error:", error);
-      alert(error?.message || "Failed to download box PDF");
-    } finally {
-      setDownloadingBoxId(null);
+    if (!printWindow) {
+      throw new Error("Please allow popup to print box label");
     }
-  };
+
+    printWindow.document.open();
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Preparing Print...</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; padding: 20px;">
+          Preparing label for print...
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+
+    const response = await downloadBoxPdf(
+      box.id,
+      String(uniqueProjectId),
+      Number(vendorId)
+    );
+
+    if (!response?.status && !response?.success) {
+      throw new Error(response?.message || "Failed to generate print");
+    }
+
+    const printHtml =
+      response?.data?.print_html ||
+      response?.print_html;
+
+    if (!printHtml) {
+      throw new Error("Print HTML not found in response");
+    }
+
+    printWindow.document.open();
+    printWindow.document.write(printHtml);
+    printWindow.document.close();
+
+    toastManager.add({
+      title: "Box label print opened successfully",
+      type: "success",
+    });
+  } catch (error: any) {
+    console.error("Print box error:", error);
+
+    if (printWindow && !printWindow.closed) {
+      printWindow.close();
+    }
+
+    alert(error?.message || "Failed to print box label");
+  } finally {
+    setDownloadingBoxId(null);
+  }
+};
 
 
   const handleDownloadAllBoxes = async () => {
