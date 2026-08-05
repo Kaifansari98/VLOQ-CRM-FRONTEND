@@ -16,7 +16,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Box, PanelsTopLeft, Sparkles, Wrench } from "lucide-react";
+import {
+  Box,
+  Check,
+  PanelsTopLeft,
+  Pencil,
+  Sparkles,
+  Trash2,
+  Wrench,
+} from "lucide-react";
 import { formatDate } from "@/lib/format";
 import type {
   LeadSpecificationEntry,
@@ -68,6 +76,8 @@ interface ViewSpecsModalProps {
   onOpenChange: (open: boolean) => void;
   specification: LeadSpecificationEntry | null;
   readOnly?: boolean;
+  showReviewColumns?: boolean;
+  contentClassName?: string;
 }
 
 type CarcassRow = {
@@ -110,6 +120,8 @@ type OtherApplianceRow = {
   other_appliances_master_id: string;
   custom_remark: string;
 };
+
+type ReviewAction = "approve" | "amend" | "delete" | null;
 
 const makeBlankCarcassRow = (): CarcassRow => ({
   localId: `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -157,12 +169,36 @@ const specificationSectionOptions: SpecificationSectionRemark[] = [
   "Provide only grooves",
 ];
 
+const renderReviewState = (active: boolean, timestamp?: string | null) => (
+  <div className="flex min-w-[108px] flex-col items-center justify-center gap-1 text-center">
+    <span
+      className={cn(
+        "rounded-full px-2 py-0.5 text-[11px] font-medium",
+        active
+          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
+          : "bg-zinc-100 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400",
+      )}
+    >
+      {active ? "Yes" : "No"}
+    </span>
+    <span className="text-[10px] text-muted-foreground">
+      {timestamp ? formatDate(timestamp) : "—"}
+    </span>
+  </div>
+);
+
+const reviewCellButtonClass =
+  "flex w-full min-w-[88px] items-center justify-center rounded-md px-2 py-2 transition-colors";
+
 const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   open,
   onOpenChange,
   specification,
   readOnly = false,
+  showReviewColumns = false,
+  contentClassName,
 }) => {
+  const mappingsLocked = showReviewColumns;
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const { data: carcassTypesData } = useCarcassTypes();
@@ -275,6 +311,9 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   const [otherApplianceRowsByType, setOtherApplianceRowsByType] = React.useState<
     Record<string, OtherApplianceRow[]>
   >({});
+  const [reviewStates, setReviewStates] = React.useState<
+    Record<string, ReviewAction>
+  >({});
 
   const carcassTypes = carcassTypesData?.data ?? [];
   const carcasMaterials = carcasMaterialsData?.data ?? [];
@@ -363,10 +402,302 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     return grouped;
   }, [previousOtherApplianceMappings]);
 
+  const getReviewStateKey = React.useCallback(
+    (section: string, rowKey: string | number) => `${section}:${rowKey}`,
+    [],
+  );
+
+  const setReviewAction = React.useCallback(
+    (section: string, rowKey: string | number, action: Exclude<ReviewAction, null>) => {
+      const reviewKey = getReviewStateKey(section, rowKey);
+      setReviewStates((prev) => ({
+        ...prev,
+        [reviewKey]: prev[reviewKey] === action ? null : action,
+      }));
+    },
+    [getReviewStateKey],
+  );
+
+  const getReviewAction = React.useCallback(
+    (
+      section: string,
+      row: { id?: number; localId: string },
+      fallback?: {
+        is_approved?: boolean;
+        is_amended?: boolean;
+        is_deleted_item?: boolean;
+      },
+    ): ReviewAction => {
+      const reviewKey = getReviewStateKey(section, row.id ?? row.localId);
+      const localState = reviewStates[reviewKey];
+      if (typeof localState !== "undefined") {
+        return localState;
+      }
+      if (fallback?.is_approved) return "approve";
+      if (fallback?.is_amended) return "amend";
+      if (fallback?.is_deleted_item) return "delete";
+      return null;
+    },
+    [getReviewStateKey, reviewStates],
+  );
+
+  const getReviewRowClass = React.useCallback(
+    (
+      section: string,
+      row: { id?: number; localId: string },
+      fallback?: {
+        is_approved?: boolean;
+        is_amended?: boolean;
+        is_deleted_item?: boolean;
+      },
+    ) => {
+      const action = getReviewAction(section, row, fallback);
+      if (action === "approve") {
+        return "bg-emerald-50 dark:bg-emerald-950/20";
+      }
+      return "";
+    },
+    [getReviewAction],
+  );
+
+  const renderReviewActionCells = React.useCallback(
+    (
+      section: string,
+      row: { id?: number; localId: string },
+      persistPayload:
+        | {
+            id: number;
+            vendor_id: number;
+            lead_id: number;
+            specs_id: number;
+            created_by: number;
+            carcass_type_id: number;
+            carcas_material_id: number;
+            carcass_material_finish_id: number;
+          }
+        | {
+            id: number;
+            vendor_id: number;
+            lead_id: number;
+            specs_id: number;
+            created_by: number;
+            shutter_type_id: number;
+            shutter_material_id: number;
+            shutter_material_finish_id: number;
+          }
+        | {
+            id: number;
+            vendor_id: number;
+            lead_id: number;
+            specs_id: number;
+            created_by: number;
+            carcass_legs_id: number;
+            skirting_carcass_legs_id: number;
+            skirting_carcass_legs_color_id: number | null;
+            note: string | null;
+          }
+        | {
+            id: number;
+            vendor_id: number;
+            lead_id: number;
+            specs_id: number;
+            created_by: number;
+            light_carcas_unit_master_id: number | null;
+            custom_remark: string | null;
+          }
+        | {
+            id: number;
+            vendor_id: number;
+            lead_id: number;
+            specs_id: number;
+            created_by: number;
+            other_appliance_type: string | null;
+            other_appliances_master_id: number | null;
+            custom_remark: string | null;
+          }
+        | null,
+      fallback?: {
+        is_approved?: boolean;
+        approved_at?: string | null;
+        is_amended?: boolean;
+        amended_at?: string | null;
+        is_deleted_item?: boolean;
+        deleted_item_at?: string | null;
+      },
+    ) => {
+      const action = getReviewAction(section, row, fallback);
+      const isPersistable = !!persistPayload;
+
+      const handleActionClick = async (nextAction: Exclude<ReviewAction, null>) => {
+        if (!isPersistable || !persistPayload) {
+          toastManager.add({
+            title: "Save this row first before marking review status.",
+            type: "error",
+          });
+          return;
+        }
+
+        setReviewAction(section, row.id ?? row.localId, nextAction);
+
+        try {
+          await persistReviewAction(
+            section as "carcass" | "shutter" | "hardware" | "lights" | "other",
+            nextAction,
+            persistPayload,
+          );
+        } catch (error: any) {
+          setReviewStates((prev) => ({
+            ...prev,
+            [getReviewStateKey(section, row.id ?? row.localId)]: action,
+          }));
+          toastManager.add({
+            title:
+              error?.response?.data?.message ||
+              error?.message ||
+              "Failed to update review status.",
+            type: "error",
+          });
+        }
+      };
+
+      return (
+        <>
+          <td className="px-4 py-3 align-top">
+            <button
+              type="button"
+              onClick={() => void handleActionClick("approve")}
+              className={cn(
+                reviewCellButtonClass,
+                action === "approve"
+                  ? "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-900"
+                  : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/10 dark:text-emerald-400",
+              )}
+              disabled={!isPersistable}
+            >
+              <Check className="h-4 w-4" />
+            </button>
+          </td>
+          <td className="px-4 py-3 align-top">
+            <button
+              type="button"
+              onClick={() => void handleActionClick("amend")}
+              className={cn(
+                reviewCellButtonClass,
+                action === "amend"
+                  ? "bg-amber-100 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:ring-amber-900"
+                  : "bg-amber-50 text-amber-600 dark:bg-amber-950/10 dark:text-amber-400",
+              )}
+              disabled={!isPersistable}
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+          </td>
+          <td className="px-4 py-3 align-top">
+            <button
+              type="button"
+              onClick={() => void handleActionClick("delete")}
+              className={cn(
+                reviewCellButtonClass,
+                action === "delete"
+                  ? "bg-red-100 text-red-700 ring-1 ring-red-200 dark:bg-red-950/30 dark:text-red-300 dark:ring-red-900"
+                  : "bg-red-50 text-red-600 dark:bg-red-950/10 dark:text-red-400",
+              )}
+              disabled={!isPersistable}
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </td>
+        </>
+      );
+    },
+    [
+      getReviewAction,
+      getReviewStateKey,
+      persistReviewAction,
+      setReviewAction,
+    ],
+  );
+
+  async function persistReviewAction(
+    section: "carcass" | "shutter" | "hardware" | "lights" | "other",
+    action: Exclude<ReviewAction, null>,
+    payload:
+      | {
+          id: number;
+          vendor_id: number;
+          lead_id: number;
+          specs_id: number;
+          created_by: number;
+          carcass_type_id: number;
+          carcas_material_id: number;
+          carcass_material_finish_id: number;
+        }
+      | {
+          id: number;
+          vendor_id: number;
+          lead_id: number;
+          specs_id: number;
+          created_by: number;
+          shutter_type_id: number;
+          shutter_material_id: number;
+          shutter_material_finish_id: number;
+        }
+      | {
+          id: number;
+          vendor_id: number;
+          lead_id: number;
+          specs_id: number;
+          created_by: number;
+          carcass_legs_id: number;
+          skirting_carcass_legs_id: number;
+          skirting_carcass_legs_color_id: number | null;
+          note: string | null;
+        }
+      | {
+          id: number;
+          vendor_id: number;
+          lead_id: number;
+          specs_id: number;
+          created_by: number;
+          light_carcas_unit_master_id: number | null;
+          custom_remark: string | null;
+        }
+      | {
+          id: number;
+          vendor_id: number;
+          lead_id: number;
+          specs_id: number;
+          created_by: number;
+          other_appliance_type: string | null;
+          other_appliances_master_id: number | null;
+          custom_remark: string | null;
+        },
+  ) {
+    const reviewPayload = {
+      ...payload,
+      is_approved: action === "approve",
+      is_amended: action === "amend",
+      is_deleted_item: action === "delete",
+    };
+
+    if (section === "carcass") {
+      await upsertCarcassMapping.mutateAsync(reviewPayload as any);
+    } else if (section === "shutter") {
+      await upsertShutterMapping.mutateAsync(reviewPayload as any);
+    } else if (section === "hardware") {
+      await upsertHardwareMapping.mutateAsync(reviewPayload as any);
+    } else if (section === "lights") {
+      await upsertLightMapping.mutateAsync(reviewPayload as any);
+    } else {
+      await upsertOtherApplianceMapping.mutateAsync(reviewPayload as any);
+    }
+  }
+
   React.useEffect(() => {
     if (!specification) {
       setCarcassRows([]);
       setShutterRows([]);
+      setReviewStates({});
       return;
     }
 
@@ -1352,6 +1683,12 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
   const getCarcassRowHighlightClass = React.useCallback(
     (row: CarcassRow, index: number) => {
+      const persistedRow = row.id
+        ? carcassMappings.find((item) => item.id === row.id)
+        : undefined;
+      const reviewClass = getReviewRowClass("carcass", row, persistedRow);
+      if (reviewClass) return reviewClass;
+
       const hasValue =
         !!row.carcass_type_id ||
         !!row.carcas_material_id ||
@@ -1372,11 +1709,17 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
       return changed ? clonedRowHighlightClass : "";
     },
-    [previousCarcassMappings, previousSpecification],
+    [carcassMappings, getReviewRowClass, previousCarcassMappings, previousSpecification],
   );
 
   const getShutterRowHighlightClass = React.useCallback(
     (row: ShutterRow, index: number) => {
+      const persistedRow = row.id
+        ? shutterMappings.find((item) => item.id === row.id)
+        : undefined;
+      const reviewClass = getReviewRowClass("shutter", row, persistedRow);
+      if (reviewClass) return reviewClass;
+
       const hasValue =
         !!row.shutter_type_id ||
         !!row.shutter_material_id ||
@@ -1397,11 +1740,17 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
       return changed ? clonedRowHighlightClass : "";
     },
-    [previousShutterMappings, previousSpecification],
+    [getReviewRowClass, previousShutterMappings, previousSpecification, shutterMappings],
   );
 
   const getHardwareRowHighlightClass = React.useCallback(
     (row: HardwareRow, index: number) => {
+      const persistedRow = row.id
+        ? hardwareMappings.find((item) => item.id === row.id)
+        : undefined;
+      const reviewClass = getReviewRowClass("hardware", row, persistedRow);
+      if (reviewClass) return reviewClass;
+
       const hasValue =
         !!row.carcass_legs_id ||
         !!row.skirting_carcass_legs_id ||
@@ -1425,11 +1774,17 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
       return changed ? clonedRowHighlightClass : "";
     },
-    [previousHardwareMappings, previousSpecification],
+    [getReviewRowClass, hardwareMappings, previousHardwareMappings, previousSpecification],
   );
 
   const getLightRowHighlightClass = React.useCallback(
     (row: LightRow, index: number) => {
+      const persistedRow = row.id
+        ? lightMappings.find((item) => item.id === row.id)
+        : undefined;
+      const reviewClass = getReviewRowClass("lights", row, persistedRow);
+      if (reviewClass) return reviewClass;
+
       const hasValue =
         !!row.light_carcas_type_id ||
         !!row.light_carcas_unit_master_id ||
@@ -1455,11 +1810,23 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
       return changed ? clonedRowHighlightClass : "";
     },
-    [customLightCarcasType?.id, previousLightMappings, previousSpecification],
+    [
+      customLightCarcasType?.id,
+      getReviewRowClass,
+      lightMappings,
+      previousLightMappings,
+      previousSpecification,
+    ],
   );
 
   const getOtherApplianceRowHighlightClass = React.useCallback(
     (type: string, row: OtherApplianceRow, index: number) => {
+      const persistedRow = row.id
+        ? otherApplianceMappings.find((item) => item.id === row.id)
+        : undefined;
+      const reviewClass = getReviewRowClass(`other-${type}`, row, persistedRow);
+      if (reviewClass) return reviewClass;
+
       if (!row.other_appliances_master_id && !row.custom_remark.trim()) return "";
 
       if (!row.id) return newRowHighlightClass;
@@ -1473,7 +1840,12 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         ? clonedRowHighlightClass
         : "";
     },
-    [previousOtherApplianceRowsByType, previousSpecification],
+    [
+      getReviewRowClass,
+      otherApplianceMappings,
+      previousOtherApplianceRowsByType,
+      previousSpecification,
+    ],
   );
 
   const handleDialogOpenChange = React.useCallback(
@@ -1520,7 +1892,12 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
-      <DialogContent className="min-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent
+        className={cn(
+          "min-w-5xl max-h-[90vh] overflow-hidden flex flex-col",
+          contentClassName,
+        )}
+      >
         <DialogHeader className="">
           <DialogTitle className="text-lg font-semibold tracking-tight">
             {specification.name}
@@ -1551,7 +1928,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
           </TabsList>
 
           <TabsContent value="carcass" className="flex-1 overflow-y-auto">
-            <div className={`rounded-xl border border-border overflow-hidden mt-3 ${readOnly ? "pointer-events-none select-none opacity-90" : ""}`}>
+            <div className={`rounded-xl border border-border overflow-hidden mt-3 ${readOnly ? "select-none opacity-90" : ""}`}>
               {/* <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
                 <h3 className="text-sm font-semibold">Carcass Specifications</h3>
                 <Button
@@ -1579,6 +1956,19 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                       <th className="px-4 py-3 text-center font-bold text-white">
                         Carcass Material Finish
                       </th>
+                      {showReviewColumns && (
+                        <>
+                          <th className="px-4 py-3 text-center font-bold text-white">
+                            Approve
+                          </th>
+                          <th className="px-4 py-3 text-center font-bold text-white">
+                            Amend
+                          </th>
+                          <th className="px-4 py-3 text-center font-bold text-white">
+                            Delete
+                          </th>
+                        </>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -1609,6 +1999,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                              }
 	                              placeholder="Search carcass type..."
 	                              emptyLabel="Select carcass type"
+	                              disabled={mappingsLocked}
 	                              className={pickerClassName}
 	                            />
 	                          </td>
@@ -1632,6 +2023,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                              }
 	                              placeholder="Search carcass material..."
 	                              emptyLabel="Select carcass material"
+	                              disabled={mappingsLocked}
 	                              className={pickerClassName}
 	                            />
 	                          </td>
@@ -1653,7 +2045,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                                  value ? String(value) : "",
 	                                )
 	                              }
-	                              disabled={!row.carcas_material_id}
+	                              disabled={mappingsLocked || !row.carcas_material_id}
 	                              placeholder={
 	                                row.carcas_material_id
 	                                  ? "Search carcass material finish..."
@@ -1667,6 +2059,28 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                              className={pickerClassName}
 	                            />
 	                          </td>
+                            {showReviewColumns &&
+                              renderReviewActionCells(
+                                "carcass",
+                                row,
+                                row.id && vendorId && userId && specification
+                                  ? {
+                                      id: row.id,
+                                      vendor_id: vendorId,
+                                      lead_id: specification.lead_id,
+                                      specs_id: specification.id,
+                                      created_by: userId,
+                                      carcass_type_id: Number(row.carcass_type_id),
+                                      carcas_material_id: Number(row.carcas_material_id),
+                                      carcass_material_finish_id: Number(
+                                        row.carcass_material_finish_id,
+                                      ),
+                                    }
+                                  : null,
+                                row.id
+                                  ? carcassMappings.find((item) => item.id === row.id)
+                                  : undefined,
+                              )}
 	                        </tr>
 	                      );
                     })}
@@ -1676,7 +2090,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
             </div>
           </TabsContent>
           <TabsContent value="shutter" className="flex-1 overflow-y-auto">
-            <div className={`rounded-xl border border-border overflow-hidden mt-3 ${readOnly ? "pointer-events-none select-none opacity-90" : ""}`}>
+            <div className={`rounded-xl border border-border overflow-hidden mt-3 ${readOnly ? "select-none opacity-90" : ""}`}>
               {/* <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
                 <h3 className="text-sm font-semibold">Shutter Specifications</h3>
                 <Button
@@ -1704,6 +2118,19 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                       <th className="px-4 py-3 text-left font-bold text-white">
                         Shutter Material Finish
                       </th>
+                      {showReviewColumns && (
+                        <>
+                          <th className="px-4 py-3 text-center font-bold text-white">
+                            Approve
+                          </th>
+                          <th className="px-4 py-3 text-center font-bold text-white">
+                            Amend
+                          </th>
+                          <th className="px-4 py-3 text-center font-bold text-white">
+                            Delete
+                          </th>
+                        </>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -1735,6 +2162,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                              }
 	                              placeholder="Search shutter type..."
 	                              emptyLabel="Select shutter type"
+	                              disabled={mappingsLocked}
 	                              className={pickerClassName}
 	                            />
 	                          </td>
@@ -1758,6 +2186,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                              }
 	                              placeholder="Search shutter material..."
 	                              emptyLabel="Select shutter material"
+	                              disabled={mappingsLocked}
 	                              className={pickerClassName}
 	                            />
 	                          </td>
@@ -1779,7 +2208,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                                  value ? String(value) : "",
 	                                )
 	                              }
-	                              disabled={!row.shutter_material_id}
+	                              disabled={mappingsLocked || !row.shutter_material_id}
 	                              placeholder={
 	                                row.shutter_material_id
 	                                  ? "Search shutter material finish..."
@@ -1793,6 +2222,28 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                              className={pickerClassName}
 	                            />
 	                          </td>
+                            {showReviewColumns &&
+                              renderReviewActionCells(
+                                "shutter",
+                                row,
+                                row.id && vendorId && userId && specification
+                                  ? {
+                                      id: row.id,
+                                      vendor_id: vendorId,
+                                      lead_id: specification.lead_id,
+                                      specs_id: specification.id,
+                                      created_by: userId,
+                                      shutter_type_id: Number(row.shutter_type_id),
+                                      shutter_material_id: Number(row.shutter_material_id),
+                                      shutter_material_finish_id: Number(
+                                        row.shutter_material_finish_id,
+                                      ),
+                                    }
+                                  : null,
+                                row.id
+                                  ? shutterMappings.find((item) => item.id === row.id)
+                                  : undefined,
+                              )}
 	                        </tr>
 	                      );
                     })}
@@ -1802,7 +2253,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
             </div>
           </TabsContent>
           <TabsContent value="hardware" className="flex-1 overflow-y-auto">
-            <div className={`rounded-xl border border-border overflow-hidden mt-3 ${readOnly ? "pointer-events-none select-none opacity-90" : ""}`}>
+            <div className={`rounded-xl border border-border overflow-hidden mt-3 ${readOnly ? "select-none opacity-90" : ""}`}>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-zinc-700">
@@ -1819,6 +2270,19 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                       <th className="px-4 py-3 text-left font-bold text-white">
                         Note
                       </th>
+                      {showReviewColumns && (
+                        <>
+                          <th className="px-4 py-3 text-center font-bold text-white">
+                            Approve
+                          </th>
+                          <th className="px-4 py-3 text-center font-bold text-white">
+                            Amend
+                          </th>
+                          <th className="px-4 py-3 text-center font-bold text-white">
+                            Delete
+                          </th>
+                        </>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -1861,6 +2325,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                               }
                               placeholder="Search carcass legs..."
                               emptyLabel="Select carcass legs"
+                              disabled={mappingsLocked}
                               className={pickerClassName}
                             />
                           </td>
@@ -1882,7 +2347,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                   skirtingOptions,
                                 )
                               }
-                              disabled={!row.carcass_legs_id}
+                              disabled={mappingsLocked || !row.carcass_legs_id}
                               placeholder={
                                 row.carcass_legs_id
                                   ? "Search skirting..."
@@ -1915,6 +2380,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                 )
                               }
                               disabled={
+                                mappingsLocked ||
                                 !row.skirting_carcass_legs_id ||
                                 colorOptions.length === 0
                               }
@@ -1945,8 +2411,8 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                               onBlur={() =>
                                 handleNoteBlur(row, colorOptions.length)
                               }
-                              readOnly={isOutOfScope}
-                              disabled={isOutOfScope}
+                              readOnly={mappingsLocked || isOutOfScope}
+                              disabled={mappingsLocked || isOutOfScope}
                               placeholder={
                                 isOutOfScope ? "" : "Add a note (optional)"
                               }
@@ -1955,6 +2421,32 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                               }`}
                             />
                           </td>
+                          {showReviewColumns &&
+                            renderReviewActionCells(
+                              "hardware",
+                              row,
+                              row.id && vendorId && userId && specification
+                                ? {
+                                    id: row.id,
+                                    vendor_id: vendorId,
+                                    lead_id: specification.lead_id,
+                                    specs_id: specification.id,
+                                    created_by: userId,
+                                    carcass_legs_id: Number(row.carcass_legs_id),
+                                    skirting_carcass_legs_id: Number(
+                                      row.skirting_carcass_legs_id,
+                                    ),
+                                    skirting_carcass_legs_color_id:
+                                      row.skirting_carcass_legs_color_id
+                                        ? Number(row.skirting_carcass_legs_color_id)
+                                        : null,
+                                    note: row.note || null,
+                                  }
+                                : null,
+                              row.id
+                                ? hardwareMappings.find((item) => item.id === row.id)
+                                : undefined,
+                            )}
                         </tr>
                       );
                     })}
@@ -1964,7 +2456,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
             </div>
           </TabsContent>
           <TabsContent value="others" className="flex-1 overflow-y-auto">
-            <div className={readOnly ? "pointer-events-none select-none opacity-90" : ""}>
+            <div className={readOnly ? "select-none opacity-90" : ""}>
               <div className="flex items-center justify-between gap-3 mb-2 mt-3">
               <h3 className="text-sm font-semibold">Lights</h3>
               <Select
@@ -1998,6 +2490,19 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                       <th className="px-4 py-3 text-left font-bold text-white">
                         Remark
                       </th>
+                      {showReviewColumns && (
+                        <>
+                          <th className="px-4 py-3 text-center font-bold text-white">
+                            Approve
+                          </th>
+                          <th className="px-4 py-3 text-center font-bold text-white">
+                            Amend
+                          </th>
+                          <th className="px-4 py-3 text-center font-bold text-white">
+                            Delete
+                          </th>
+                        </>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -2052,7 +2557,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                     value ? String(value) : "",
                                   )
                                 }
-                                disabled={!isLightsEnabled}
+                                disabled={mappingsLocked || !isLightsEnabled}
                                 placeholder={
                                   isLightsEnabled
                                     ? "Search carcass type..."
@@ -2083,7 +2588,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                     event.target.value,
                                   )
                                 }
-                                disabled={!isLightsEnabled}
+                                disabled={mappingsLocked || !isLightsEnabled}
                                 placeholder={
                                   isLightsEnabled
                                     ? "Enter custom light remark"
@@ -2112,7 +2617,11 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                     value ? String(value) : "",
                                   )
                                 }
-                                disabled={!isLightsEnabled || !row.light_carcas_type_id}
+                                disabled={
+                                  mappingsLocked ||
+                                  !isLightsEnabled ||
+                                  !row.light_carcas_type_id
+                                }
                                 placeholder={
                                   !isLightsEnabled
                                     ? "Select lights remark first"
@@ -2131,6 +2640,28 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                               />
                             )}
                           </td>
+                          {showReviewColumns &&
+                            renderReviewActionCells(
+                              "lights",
+                              row,
+                              row.id && vendorId && userId && specification
+                                ? {
+                                    id: row.id,
+                                    vendor_id: vendorId,
+                                    lead_id: specification.lead_id,
+                                    specs_id: specification.id,
+                                    created_by: userId,
+                                    light_carcas_unit_master_id:
+                                      row.light_carcas_unit_master_id
+                                        ? Number(row.light_carcas_unit_master_id)
+                                        : null,
+                                    custom_remark: row.custom_remark.trim() || null,
+                                  }
+                                : null,
+                              row.id
+                                ? lightMappings.find((item) => item.id === row.id)
+                                : undefined,
+                            )}
                         </tr>
                       );
                     })}
@@ -2184,6 +2715,19 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                             <th className="px-4 py-3 text-left font-bold text-white">
                               Description
                             </th>
+                            {showReviewColumns && (
+                              <>
+                                <th className="px-4 py-3 text-center font-bold text-white">
+                                  Approve
+                                </th>
+                                <th className="px-4 py-3 text-center font-bold text-white">
+                                  Amend
+                                </th>
+                                <th className="px-4 py-3 text-center font-bold text-white">
+                                  Delete
+                                </th>
+                              </>
+                            )}
                           </tr>
                         </thead>
                         <tbody>
@@ -2236,7 +2780,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                           value ? String(value) : "",
                                         )
                                       }
-                                      disabled={!isSectionEnabled}
+                                      disabled={mappingsLocked || !isSectionEnabled}
                                       placeholder={
                                         isSectionEnabled
                                           ? "Search article code..."
@@ -2269,7 +2813,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                           event.target.value,
                                         )
                                       }
-                                      disabled={!isSectionEnabled}
+                                      disabled={mappingsLocked || !isSectionEnabled}
                                       placeholder={
                                         isSectionEnabled
                                           ? `Enter custom ${type.toLowerCase()} remark`
@@ -2291,6 +2835,32 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                     />
                                   )}
                                 </td>
+                                {showReviewColumns &&
+                                  renderReviewActionCells(
+                                    `other-${type}`,
+                                    row,
+                                    row.id && vendorId && userId && specification
+                                      ? {
+                                          id: row.id,
+                                          vendor_id: vendorId,
+                                          lead_id: specification.lead_id,
+                                          specs_id: specification.id,
+                                          created_by: userId,
+                                          other_appliance_type: row.type || null,
+                                          other_appliances_master_id:
+                                            row.other_appliances_master_id
+                                              ? Number(row.other_appliances_master_id)
+                                              : null,
+                                          custom_remark:
+                                            row.custom_remark.trim() || null,
+                                        }
+                                      : null,
+                                    row.id
+                                      ? otherApplianceMappings.find(
+                                          (item) => item.id === row.id,
+                                        )
+                                      : undefined,
+                                  )}
                               </tr>
                             );
                           })}
