@@ -18,6 +18,7 @@ import {
   Search,
   Check,
   X,
+  ExternalLink,
 } from "lucide-react";
 import { formatDateTime } from "../utils/privileges";
 import {
@@ -79,6 +80,7 @@ import { updateLeadProductType, clearLeadProductStructures } from "@/api/leads";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 import { useFranchisesByVendorId } from "@/api/franchise";
 import type { LeadBillingAddress } from "@/api/booking";
+import Link from "next/link";
 
 type OpenLeadDetailsProps = {
   leadId: number;
@@ -1329,19 +1331,31 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
             <SectionCard
               title="Bill of Quantity"
               action={
-                canEditBoqItems && boqInstances.length > 0 ? (
-                  <Button
-                    type="button"
-                    className="gap-2"
-                    onClick={() => {
-                      if (shouldDisableBlockedActions) return;
-                      setBoqModalOpen(true);
-                    }}
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add BOQ Items
-                  </Button>
-                ) : null
+                <div className="flex items-center gap-2">
+                  {userType === "super-admin" && (
+                    <Link
+                      href="/dashboard/masters-management/boq-items-master"
+                      target="_blank"
+                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      Create BOQ Items
+                    </Link>
+                  )}
+                  {canEditBoqItems && boqInstances.length > 0 ? (
+                    <Button
+                      type="button"
+                      className="gap-2"
+                      onClick={() => {
+                        if (shouldDisableBlockedActions) return;
+                        setBoqModalOpen(true);
+                      }}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add BOQ Items
+                    </Button>
+                  ) : null}
+                </div>
               }
             >
               {boqInstances.length === 0 ? (
