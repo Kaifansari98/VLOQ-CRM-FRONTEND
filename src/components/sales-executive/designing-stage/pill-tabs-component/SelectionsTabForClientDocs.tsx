@@ -90,16 +90,50 @@ interface Props {
   onInstanceChange?: (instance: LeadProductStructureInstance | null) => void;
 }
 
-const getFormSchema = (isSmallOrder: boolean, isFastProduction: boolean) => z.object({
-  carcas: z.array(z.string()).min(1, "Select at least one carcass type"),
-  carcas_remark: z.string().optional(),
-  shutter: (isFastProduction || isSmallOrder)
-    ? z.array(z.string()).optional()
-    : z.array(z.string()).min(1, "Select at least one shutter type"),
-  shutter_remark: z.string().optional(),
-  handles: z.array(z.string()).optional(),
-  handles_remark: z.string().optional(),
-});
+const getFormSchema = (
+  isSmallOrder: boolean,
+  isFastProduction: boolean,
+  handlesLargeScaleProjects: boolean,
+) =>
+  z
+    .object({
+      carcas: z.array(z.string()).min(1, "Select at least one carcass type"),
+      carcas_remark: z.string().optional(),
+      shutter:
+        isFastProduction || isSmallOrder
+          ? z.array(z.string()).optional()
+          : z.array(z.string()).min(1, "Select at least one shutter type"),
+      shutter_remark: z.string().optional(),
+      handles: z.array(z.string()).optional(),
+      handles_remark: z.string().optional(),
+    })
+    .superRefine((data, ctx) => {
+      if (!handlesLargeScaleProjects) {
+        if (!data.carcas_remark || !data.carcas_remark.trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Field is required",
+            path: ["carcas_remark"],
+          });
+        }
+        const shutterIsRequired = !(isFastProduction || isSmallOrder);
+        if (shutterIsRequired && (!data.shutter_remark || !data.shutter_remark.trim())) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Field is required",
+            path: ["shutter_remark"],
+          });
+        }
+        const handlesHasSelections = Array.isArray(data.handles) && data.handles.length > 0;
+        if (handlesHasSelections && (!data.handles_remark || !data.handles_remark.trim())) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Field is required",
+            path: ["handles_remark"],
+          });
+        }
+      }
+    });
 
 const instanceUploadSchema = z.object({
   pptDocuments: z
@@ -181,7 +215,18 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const furniture_type = lead?.productMappings?.map((pm: any) => pm.productType?.type).filter(Boolean).join(", ") || "N/A";
   const isSmallOrder = furniture_type.toLowerCase().includes("small order");
   const isFastProduction = lead?.is_fast_production === true;
-  const dynamicFormSchema = React.useMemo(() => getFormSchema(isSmallOrder, isFastProduction), [isSmallOrder, isFastProduction]);
+  const handlesLargeScaleProjectsFromAuth = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const handlesLargeScaleProjects =
+    handlesLargeScaleProjectsFromAuth ||
+    lead?.createdBy?.vendor?.handlesLargeScaleProjects === true ||
+    lead?.assignedTo?.vendor?.handlesLargeScaleProjects === true;
+  const defaultRemark = handlesLargeScaleProjects ? DEFAULT_REMARK : "";
+  const dynamicFormSchema = React.useMemo(
+    () => getFormSchema(isSmallOrder, isFastProduction, handlesLargeScaleProjects),
+    [isSmallOrder, isFastProduction, handlesLargeScaleProjects],
+  );
 
   const { data: fastProductionDetailsResponse } = useGetFastProductionDetailsForLead(
     vendorId,
@@ -396,11 +441,11 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     resolver: zodResolver(dynamicFormSchema) as any,
     defaultValues: {
       carcas: [],
-      carcas_remark: DEFAULT_REMARK,
+      carcas_remark: defaultRemark,
       shutter: [],
-      shutter_remark: DEFAULT_REMARK,
+      shutter_remark: defaultRemark,
       handles: [],
-      handles_remark: DEFAULT_REMARK,
+      handles_remark: defaultRemark,
     },
     mode: "onBlur",
   });
@@ -487,7 +532,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       existingCarcas?.id,
       "Carcas",
     );
-    const existingCarcassRemark = existingCarcas?.desc || DEFAULT_REMARK;
+    let existingCarcassRemark = existingCarcas?.desc || defaultRemark;
+    if (!handlesLargeScaleProjects && existingCarcassRemark === DEFAULT_REMARK) {
+      existingCarcassRemark = "";
+    }
 
     const fastProdReq = fastProductionDetails?.requests?.find(
       (r: any) => r.instance_id === currentInstanceId,
@@ -503,7 +551,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         fastProdCarcass.finish_category,
         carcassOptions,
       );
-      const carcassRemark = fastProdCarcass.finish_description || DEFAULT_REMARK;
+      let carcassRemark = fastProdCarcass.finish_description || defaultRemark;
+      if (!handlesLargeScaleProjects && carcassRemark === DEFAULT_REMARK) {
+        carcassRemark = "";
+      }
       return {
         value: carcassValues,
         remark: carcassRemark,
@@ -524,7 +575,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       existingShutter?.id,
       "Shutter",
     );
-    const existingShutterRemark = existingShutter?.desc || DEFAULT_REMARK;
+    let existingShutterRemark = existingShutter?.desc || defaultRemark;
+    if (!handlesLargeScaleProjects && existingShutterRemark === DEFAULT_REMARK) {
+      existingShutterRemark = "";
+    }
 
     const fastProdReq = fastProductionDetails?.requests?.find(
       (r: any) => r.instance_id === currentInstanceId,
@@ -540,7 +594,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         fastProdShutter.finish_category,
         shutterOptions,
       );
-      const shutterRemark = fastProdShutter.finish_description || DEFAULT_REMARK;
+      let shutterRemark = fastProdShutter.finish_description || defaultRemark;
+      if (!handlesLargeScaleProjects && shutterRemark === DEFAULT_REMARK) {
+        shutterRemark = "";
+      }
       return {
         value: shutterValues,
         remark: shutterRemark,
@@ -561,7 +618,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       existingHandles?.id,
       "Handles",
     );
-    const existingHandlesRemark = existingHandles?.desc || DEFAULT_REMARK;
+    let existingHandlesRemark = existingHandles?.desc || defaultRemark;
+    if (!handlesLargeScaleProjects && existingHandlesRemark === DEFAULT_REMARK) {
+      existingHandlesRemark = "";
+    }
 
     const fastProdReq = fastProductionDetails?.requests?.find(
       (r: any) => r.instance_id === currentInstanceId,
@@ -577,7 +637,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         fastProdHandle.finish_category,
         handleOptions,
       );
-      const handleRemark = fastProdHandle.finish_description || DEFAULT_REMARK;
+      let handleRemark = fastProdHandle.finish_description || defaultRemark;
+      if (!handlesLargeScaleProjects && handleRemark === DEFAULT_REMARK) {
+        handleRemark = "";
+      }
       return {
         value: handleValues,
         remark: handleRemark,
@@ -691,7 +754,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   };
 
   const normalizeValue = (_values?: string[], remark?: string) => {
-    return remark?.trim() || DEFAULT_REMARK;
+    const trimmed = remark?.trim();
+    if (trimmed) return trimmed;
+    return handlesLargeScaleProjects ? DEFAULT_REMARK : "";
   };
 
   const parseOptionValueToCHSItem = (
@@ -1277,7 +1342,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                 <FormField
                   control={selectionForm.control}
                   name="carcas"
-                  render={({ field }) => (
+                  render={({ field, fieldState }) => (
                     <FormItem className="space-y-2">
                       <FormLabel className="font-medium">Carcas *</FormLabel>
                       <FormControl>
@@ -1291,25 +1356,27 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                             !effectiveCanEditSelections ||
                             isSelectionMastersLoading
                           }
+                          isError={Boolean(fieldState.error)}
                         />
                       </FormControl>
                       <FormField
                         control={selectionForm.control}
                         name="carcas_remark"
-                        render={({ field: remarkField }) => (
+                        render={({ field: remarkField, fieldState: remarkState }) => (
                           <FormItem className="">
                             <FormControl>
                               <TextAreaInput
-                                value={remarkField.value ?? DEFAULT_REMARK}
+                                value={remarkField.value ?? defaultRemark}
                                 onChange={remarkField.onChange}
                                 placeholder="Enter carcas remark..."
                                 disabled={
                                   isPending || !effectiveCanEditSelections
                                 }
                                 className="h-24"
+                                isError={Boolean(remarkState.error)}
+                                errorMessage={remarkState.error?.message}
                               />
                             </FormControl>
-                            <FormMessage />
                           </FormItem>
                         )}
                       />
@@ -1321,7 +1388,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                 <FormField
                   control={selectionForm.control}
                   name="handles"
-                  render={({ field }) => (
+                  render={({ field, fieldState }) => (
                     <FormItem className="space-y-2">
                       <FormLabel className="font-medium">Handles</FormLabel>
                       <FormControl>
@@ -1335,25 +1402,27 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                             !effectiveCanEditSelections ||
                             isSelectionMastersLoading
                           }
+                          isError={Boolean(fieldState.error)}
                         />
                       </FormControl>
                       <FormField
                         control={selectionForm.control}
                         name="handles_remark"
-                        render={({ field: remarkField }) => (
+                        render={({ field: remarkField, fieldState: remarkState }) => (
                           <FormItem>
                             <FormControl>
                               <TextAreaInput
-                                value={remarkField.value ?? DEFAULT_REMARK}
+                                value={remarkField.value ?? defaultRemark}
                                 onChange={remarkField.onChange}
                                 placeholder="Enter handles remark..."
                                 disabled={
                                   isPending || !effectiveCanEditSelections
                                 }
                                 className="h-24"
+                                isError={Boolean(remarkState.error)}
+                                errorMessage={remarkState.error?.message}
                               />
                             </FormControl>
-                            <FormMessage />
                           </FormItem>
                         )}
                       />
@@ -1365,7 +1434,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                 <FormField
                   control={selectionForm.control}
                   name="shutter"
-                  render={({ field }) => (
+                  render={({ field, fieldState }) => (
                     <FormItem className="space-y-2 md:col-span-2">
                       <FormLabel className="font-medium">Shutter {!(isFastProduction || isSmallOrder) && " *"}</FormLabel>
                       <FormControl>
@@ -1379,25 +1448,27 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                             !effectiveCanEditSelections ||
                             isSelectionMastersLoading
                           }
+                          isError={Boolean(fieldState.error)}
                         />
                       </FormControl>
                       <FormField
                         control={selectionForm.control}
                         name="shutter_remark"
-                        render={({ field: remarkField }) => (
+                        render={({ field: remarkField, fieldState: remarkState }) => (
                           <FormItem>
                             <FormControl>
                               <TextAreaInput
-                                value={remarkField.value ?? DEFAULT_REMARK}
+                                value={remarkField.value ?? defaultRemark}
                                 onChange={remarkField.onChange}
                                 placeholder="Enter shutter remark..."
                                 disabled={
                                   isPending || !effectiveCanEditSelections
                                 }
                                 className="h-24"
+                                isError={Boolean(remarkState.error)}
+                                errorMessage={remarkState.error?.message}
                               />
                             </FormControl>
-                            <FormMessage />
                           </FormItem>
                         )}
                       />

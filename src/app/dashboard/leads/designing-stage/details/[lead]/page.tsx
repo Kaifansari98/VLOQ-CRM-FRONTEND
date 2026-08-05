@@ -13,7 +13,7 @@ import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
 import AssignTaskSiteMeasurementForm from "@/components/sales-executive/Lead/assign-task-site-measurement-form";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -69,7 +69,11 @@ import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import BookingModal from "@/components/sales-executive/designing-stage/booking-modal";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { useDesigningStageCounts } from "@/hooks/designing-stage/designing-leads-hooks";
+import {
+  useDesigningStageCounts,
+  useDesignsDoc,
+  useQuotationDoc,
+} from "@/hooks/designing-stage/designing-leads-hooks";
 import CustomeTooltip from "@/components/custom-tooltip";
 import {
   canMoveToBookingStage,
@@ -95,6 +99,7 @@ import {
   useBlockLead,
   useUnblockLead,
   useRevokeFastProductionRequest,
+  useLeadProductStructureInstances,
 } from "@/hooks/useLeadsQueries";
 import CancelFastProductionModal from "@/components/generics/CancelFastProductionModal";
 
@@ -231,6 +236,9 @@ export default function DesigningStageLead() {
   const eligibleBookingDaysValue = useAppSelector(
     (state) => state.auth.user?.vendor?.eligible_booking_days ?? null,
   );
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
@@ -255,8 +263,14 @@ export default function DesigningStageLead() {
       ? (canUploadQuotation || canUploadMeetings || canUploadDesigns)
       : canAccessDessingTodoTab(userType);
 
-  const canMoveToBooking =
-    countsData?.QuotationDoc > 0 && countsData?.DesignsDoc > 0;
+  const { data: designDocsData } = useDesignsDoc(vendorId!, leadIdNum);
+  const { data: quotationDocsData } = useQuotationDoc(vendorId, leadIdNum);
+  const { data: structureInstancesData } = useLeadProductStructureInstances(
+    leadIdNum,
+    vendorId,
+    handlesLargeScaleProjects,
+  );
+
   const canViewSiteHistory =
     isAuditor ||
     (userType?.toLowerCase() === "custom"
@@ -286,6 +300,11 @@ export default function DesigningStageLead() {
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
+  const designDocs = designDocsData?.data?.documents || [];
+  const quotationDocs = quotationDocsData?.data?.documents || [];
+  const structureInstances: any[] = Array.isArray(structureInstancesData?.data)
+    ? structureInstancesData.data
+    : [];
   const isChatNotification = useIsChatNotification();
   const normalizedUserType = userType?.toLowerCase() ?? "";
   const isSuperAdmin = normalizedUserType === "super-admin";
@@ -332,32 +351,6 @@ export default function DesigningStageLead() {
     lead,
   });
 
-  const canOpenBookingModal =
-    canMoveToBooking &&
-    canPerformMoveToBooking &&
-    !isBookingLockedByEligibleDays &&
-    !isLeadBlocked &&
-    !invalidPhoneReason;
-
-  useEffect(() => {
-    if (isLoading || isLeadBlockStatusLoading || isChatNotification) return;
-
-    // Auto-open only when booking is actually allowed for this user.
-    if (
-      canOpenBookingModal &&
-      normalizedUserType !== "admin" &&
-      normalizedUserType !== "super-admin"
-    ) {
-      setBookingOpenLead(true);
-    }
-  }, [
-    isLoading,
-    isLeadBlockStatusLoading,
-    isChatNotification,
-    normalizedUserType,
-    canOpenBookingModal,
-  ]);
-
 
 
   const canReassign =
@@ -396,6 +389,124 @@ export default function DesigningStageLead() {
       )
       : true;
 
+  const largeScaleBookingDocValidation = useMemo(() => {
+    if (!handlesLargeScaleProjects) {
+      return {
+        isReady: true,
+        tooltip: "",
+      };
+    }
+
+    const productTypeGroups = new Map<
+      number,
+      { label: string; instanceIds: number[] }
+    >();
+
+    for (const instance of structureInstances) {
+      const productTypeId =
+        instance.productType?.id ??
+        instance.productItemCode?.productStructure?.productType?.id;
+      const productTypeLabel =
+        instance.productType?.type ||
+        instance.productItemCode?.productStructure?.productType?.type;
+
+      if (!productTypeId || !productTypeLabel) continue;
+
+      const existing = productTypeGroups.get(productTypeId);
+      if (existing) {
+        existing.instanceIds.push(instance.id);
+        continue;
+      }
+
+      productTypeGroups.set(productTypeId, {
+        label: productTypeLabel,
+        instanceIds: [instance.id],
+      });
+    }
+
+    const missingGroups: string[] = [];
+
+    for (const [productTypeId, group] of productTypeGroups.entries()) {
+      const hasDesign = designDocs.some((doc: any) => {
+        const instanceId = doc.product_structure_instance_id;
+        const docProductTypeId = doc.product_type_id;
+
+        return (
+          (instanceId != null && group.instanceIds.includes(Number(instanceId))) ||
+          (docProductTypeId != null && Number(docProductTypeId) === productTypeId)
+        );
+      });
+
+      const hasQuotation = quotationDocs.some((doc: any) => {
+        const instanceId = doc.product_structure_instance_id;
+        const docProductTypeId = doc.product_type_id;
+
+        return (
+          (instanceId != null && group.instanceIds.includes(Number(instanceId))) ||
+          (docProductTypeId != null && Number(docProductTypeId) === productTypeId)
+        );
+      });
+
+      if (!hasDesign || !hasQuotation) {
+        const missingParts = [
+          !hasDesign ? "design" : null,
+          !hasQuotation ? "quotation" : null,
+        ]
+          .filter(Boolean)
+          .join(" and ");
+
+        missingGroups.push(`${group.label}: missing ${missingParts}`);
+      }
+    }
+
+    if (missingGroups.length === 0) {
+      return {
+        isReady: true,
+        tooltip: "",
+      };
+    }
+
+    return {
+      isReady: false,
+      tooltip: `Upload at least one design and one quotation for each Item Group before moving to booking. ${missingGroups.join("; ")}`,
+    };
+  }, [
+    designDocs,
+    handlesLargeScaleProjects,
+    quotationDocs,
+    structureInstances,
+  ]);
+
+  const canMoveToBooking = handlesLargeScaleProjects
+    ? largeScaleBookingDocValidation.isReady
+    : countsData?.QuotationDoc > 0 && countsData?.DesignsDoc > 0;
+
+  const canOpenBookingModal =
+    canMoveToBooking &&
+    canPerformMoveToBooking &&
+    !isBookingLockedByEligibleDays &&
+    !isLeadBlocked &&
+    !invalidPhoneReason;
+
+  useEffect(() => {
+    if (isLoading || isLeadBlockStatusLoading || isChatNotification) return;
+
+    // Auto-open only when booking is actually allowed for this user.
+    if (
+      canOpenBookingModal &&
+      normalizedUserType !== "admin" &&
+      normalizedUserType !== "super-admin"
+    ) {
+      setBookingOpenLead(true);
+    }
+  }, [
+    isLoading,
+    isLeadBlockStatusLoading,
+    isChatNotification,
+    normalizedUserType,
+    canOpenBookingModal,
+  ]);
+
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
 
@@ -404,13 +515,14 @@ export default function DesigningStageLead() {
   const moveToBookingTooltip = isLeadBlocked
     ? blockedTooltip
     : !canMoveToBooking
-      ? "Requires at least 1 Quotation and 1 Design"
+      ? handlesLargeScaleProjects
+        ? largeScaleBookingDocValidation.tooltip
+        : "Requires at least 1 Quotation and 1 Design"
       : isBookingLockedByEligibleDays
         ? bookingLockTooltip
         : !canPerformMoveToBooking
           ? "You don't have permission to move this lead to booking stage"
           : "";
-
 
   const [openDelete, setOpenDelete] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
@@ -684,9 +796,7 @@ export default function DesigningStageLead() {
                       {canMarkAsLost && (
                         <DropdownMenuItem
                           onSelect={() => {
-                            setActivityType(
-                              shouldDirectlyMarkLost ? "lost" : "lostApproval",
-                            );
+                            setActivityType("lost");
                             setActivityModalOpen(true);
                           }}
                         >
@@ -984,6 +1094,8 @@ export default function DesigningStageLead() {
         open={activityModalOpen}
         onOpenChange={setActivityModalOpen}
         statusType={activityType}
+        vendorId={vendorId}
+        franchiseId={lead?.franchise_id ?? null}
         onSubmitRemark={(remark, dueDate) => {
           if (!vendorId || !userId) {
             toastManager.add({
@@ -999,21 +1111,22 @@ export default function DesigningStageLead() {
                 vendorId,
                 accountId: Number(accountId),
                 userId,
-                status: activityType,
+                status: activityType === "onHold" ? "onHold" : "lost",
                 remark,
                 createdBy: userId,
                 ...(activityType === "onHold" ? { dueDate } : {}),
               },
             },
             {
-              onSuccess: () => {
+              onSuccess: (res: any) => {
+                const finalStatus = res?.data?.activity_status ?? res?.data?.lead?.activity_status;
                 toastManager.add({
                   title:
                     activityType === "onHold"
                       ? "Lead marked as On Hold!"
-                      : activityType === "lost"
-                        ? "Lead marked as Lost!"
-                        : "Lead sent for Lost Approval!",
+                      : finalStatus === "lostApproval"
+                        ? "Lead sent for Lost Approval!"
+                        : "Lead marked as Lost!",
                   type: "success",
                 });
                 setActivityModalOpen(false);

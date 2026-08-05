@@ -389,7 +389,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const isScanPackEnabled = user?.vendor?.is_scanpack_enabled === true;
   const canSeeOverallLeads = userType === "admin" || userType === "super-admin" || userType === "auditor";
   const isSuperAdmin = userType === "super-admin" || userType === "auditor";
-  const isMasterAdmin = userType === "master-admin";
+  const isMasterAdmin =
+    userType === "master-admin" ||
+    userType === "master" ||
+    userType === "vloq master" ||
+    userType === "masteradmin" ||
+    userType === "master_admin";
   const shouldBootstrapFranchise =
     userType === "admin" || userType === "super-admin" || userType === "auditor";
   const canSeeMiscLeads =
@@ -680,7 +685,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ? data.b2bNavMain
         : finalNavItemsSource;
 
-    const finalNavItems = isBroadcastEnabled
+    const finalNavItems = (isBroadcastEnabled && !isMasterAdmin)
       ? initialNavItems
       : initialNavItems.filter((item) => item.title !== "Broadcast");
 

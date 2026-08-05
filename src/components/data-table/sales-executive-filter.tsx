@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { Column } from "@tanstack/react-table";
+import { Column, Table } from "@tanstack/react-table";
 
 import { LeadColumn } from "../utils/column/column-type";
 import FilterPicker from "./filter-picker";
@@ -31,15 +31,16 @@ type FilterOption = {
 
 interface Props {
   column: Column<LeadColumn, unknown>;
+  table?: Table<LeadColumn>;
 }
 
 /* ===========================
    COMPONENT
 =========================== */
 
-export default function SalesExecutiveFilter({ column }: Props) {
-  const adminTaskSalesExecutiveFilter = ((column as any).table?.options?.meta as any)
-    ?.adminTaskSalesExecutiveFilter as
+export default function SalesExecutiveFilter({ column, table }: Props) {
+  const meta = (table?.options?.meta ?? (column as any).table?.options?.meta) as any;
+  const adminTaskSalesExecutiveFilter = meta?.adminTaskSalesExecutiveFilter as
     | {
         value: (string | number)[];
         onChange: (values: (string | number)[]) => void;

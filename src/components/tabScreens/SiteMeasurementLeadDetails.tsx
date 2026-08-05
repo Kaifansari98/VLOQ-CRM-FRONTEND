@@ -89,6 +89,9 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
   const isCustomVendor = useAppSelector(
     (state) => state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true
   );
+  const isCustomDocNomenclatureEnabled = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_custom_doc_nomenclature_enabled === true
+  );
 
   // 🧩 --- Hooks ---
   const { data } = useSiteMeasurementLeadById(leadId);
@@ -109,7 +112,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
   );
   const { data: leadData, isLoading, error } = useLeadStatus(leadId, vendorId);
   const { data: bookingDoneIsm } = useBookingDoneIsmDetails(leadId, vendorId);
-  const { mutate: deleteDocument, isPending: deleting } =
+  const { mutateAsync: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
   const { mutateAsync: replacePdf, isPending: replacingPdf } =
     useReplaceInitialSiteMeasurementPdf();
@@ -185,11 +188,23 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
         leadStatus === "initial-site-measurement");
 
   // 🧩 --- Handlers ---
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (shouldDisableBlockedActions) return;
     if (!confirmDelete) return;
-    setReplaceDocId(confirmDelete);
-    setConfirmDelete(null);
+
+    if (isCustomDocNomenclatureEnabled) {
+      if (vendorId && userId) {
+        await deleteDocument({
+          vendorId,
+          documentId: confirmDelete,
+          deleted_by: userId,
+        });
+      }
+      setConfirmDelete(null);
+    } else {
+      setReplaceDocId(confirmDelete);
+      setConfirmDelete(null);
+    }
   };
 
   const handleReplaceFilesChange = (files: File[]) => {

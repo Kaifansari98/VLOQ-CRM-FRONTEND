@@ -18,6 +18,7 @@ import {
   Search,
   Check,
   X,
+  ExternalLink,
 } from "lucide-react";
 import { formatDateTime } from "../utils/privileges";
 import {
@@ -25,6 +26,7 @@ import {
   useLeadProductStructureInstances,
   useUploadMoreSitePhotos,
 } from "@/hooks/useLeadsQueries";
+import { useLeadBillingInformation } from "@/hooks/booking-stage/use-booking";
 import { useAppSelector } from "@/redux/store";
 import {
   createLeadProductStructureInstance,
@@ -77,6 +79,8 @@ import {
 import { updateLeadProductType, clearLeadProductStructures } from "@/api/leads";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 import { useFranchisesByVendorId } from "@/api/franchise";
+import type { LeadBillingAddress } from "@/api/booking";
+import Link from "next/link";
 
 type OpenLeadDetailsProps = {
   leadId: number;
@@ -132,11 +136,117 @@ const InfoRow = ({ icon: Icon, label, value }: any) => (
   </div>
 );
 
+const hasAddressData = (address?: LeadBillingAddress | null) =>
+  Boolean(
+    address?.name ||
+      address?.address ||
+      address?.map_link ||
+      address?.gst_number ||
+      address?.state_name ||
+      address?.place_of_supply,
+  );
+
+const BillingAddressView = ({
+  title,
+  address,
+}: {
+  title: string;
+  address?: LeadBillingAddress | null;
+}) => (
+  <div className="space-y-4 rounded-2xl border p-4">
+    <h3 className="text-base font-semibold">{title}</h3>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <InfoRow icon={User} label="Name" value={address?.name} />
+      <InfoRow
+        icon={MapPin}
+        label="Map Link"
+        value={
+          address?.map_link ? (
+            <a
+              href={address.map_link}
+              target="_blank"
+              rel="noreferrer"
+              className="underline hover:opacity-80"
+            >
+              View on Google Maps →
+            </a>
+          ) : (
+            "No map link provided"
+          )
+        }
+      />
+      <InfoRow icon={Building} label="GST Number" value={address?.gst_number} />
+      <InfoRow icon={Building} label="State Name" value={address?.state_name} />
+      <InfoRow
+        icon={Package}
+        label="Place of Supply"
+        value={address?.place_of_supply}
+      />
+    </div>
+    <div>
+      <div className="flex items-center gap-2 text-sm text-subtle dark:text-neutral-400">
+        <MapPin className="w-4 h-4 stroke-[1.5]" />
+        Address
+      </div>
+      <div className="text-[15px] font-medium text-heading dark:text-neutral-200 pl-6">
+        {address?.address || "—"}
+      </div>
+    </div>
+  </div>
+);
+
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg"];
 
 const isImageDocument = (fileName?: string | null) => {
   const ext = fileName?.split(".").pop()?.toLowerCase();
   return !!ext && IMAGE_EXTENSIONS.includes(ext);
+};
+
+const formatFileDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const sanitizeFileSegment = (value: string) =>
+  value
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const getFileExtension = (fileName: string) => {
+  const lastDotIndex = fileName.lastIndexOf(".");
+  return lastDotIndex >= 0 ? fileName.slice(lastDotIndex) : "";
+};
+
+const renameLeadSitePhotoFiles = ({
+  files,
+  clientName,
+  targetLabel,
+  uploadDate,
+}: {
+  files: File[];
+  clientName: string;
+  targetLabel: string;
+  uploadDate: string;
+}) => {
+  const safeClientName = sanitizeFileSegment(clientName || "Client");
+  const safeTargetLabel = sanitizeFileSegment(targetLabel || "Furniture Type");
+
+  return files.map(
+    (file, index) =>
+      new File(
+        [file],
+        `CSP${index + 1}-${safeClientName}-${safeTargetLabel}-${uploadDate}${getFileExtension(
+          file.name,
+        )}`,
+        {
+          type: file.type,
+          lastModified: file.lastModified,
+        },
+      ),
+  );
 };
 
 export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
@@ -145,6 +255,10 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const userId = useAppSelector((state) => state.auth.user?.id);
   const handlesLargeScaleProjects = useAppSelector(
     (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const isCustomDocNomenclatureEnabled = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_custom_doc_nomenclature_enabled === true,
   );
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
@@ -161,6 +275,10 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   );
   const { data: structureInstancesData, isLoading: isStructuresLoading } =
     useLeadProductStructureInstances(leadId, vendorId);
+  const { data: billingInformation } = useLeadBillingInformation(
+    vendorId,
+    handlesLargeScaleProjects ? leadId : undefined,
+  );
   const { data: productItemCodesData, isLoading: isProductItemCodesLoading } =
     useProductItemCodes();
   const { data: productStructureTypes } = useProductStructureTypes();
@@ -593,6 +711,17 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     );
     return leadFranchise?.moduled_for_b2b ?? false;
   }, [franchisesForB2b, lead?.franchise_id]);
+  const shouldShowBillingInformationCard = useMemo(
+    () =>
+      handlesLargeScaleProjects &&
+      (hasAddressData(billingInformation?.billingAddress) ||
+        hasAddressData(billingInformation?.shippingAddress)),
+    [
+      billingInformation?.billingAddress,
+      billingInformation?.shippingAddress,
+      handlesLargeScaleProjects,
+    ],
+  );
 
   // ✅ 9. EARLY RETURNS — SARE HOOKS KE BAAD
   if (isLoading && !lead) {
@@ -903,11 +1032,20 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       return;
     }
     try {
+      const preparedFiles = isCustomDocNomenclatureEnabled
+        ? renameLeadSitePhotoFiles({
+          files: uploadFiles,
+          clientName: `${lead?.firstname || ""} ${lead?.lastname || ""}`.trim(),
+          targetLabel: currentProductTypeLabel || "Furniture Type",
+          uploadDate: formatFileDate(new Date()),
+        })
+        : uploadFiles;
+
       await uploadMoreSitePhotos({
         vendorId,
         leadId,
         createdBy: userId,
-        files: uploadFiles,
+        files: preparedFiles,
       });
 
       toastManager.add({
@@ -1193,19 +1331,31 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
             <SectionCard
               title="Bill of Quantity"
               action={
-                canEditBoqItems && boqInstances.length > 0 ? (
-                  <Button
-                    type="button"
-                    className="gap-2"
-                    onClick={() => {
-                      if (shouldDisableBlockedActions) return;
-                      setBoqModalOpen(true);
-                    }}
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add BOQ Items
-                  </Button>
-                ) : null
+                <div className="flex items-center gap-2">
+                  {userType === "super-admin" && (
+                    <Link
+                      href="/dashboard/masters-management/boq-items-master"
+                      target="_blank"
+                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      Create BOQ Items
+                    </Link>
+                  )}
+                  {canEditBoqItems && boqInstances.length > 0 ? (
+                    <Button
+                      type="button"
+                      className="gap-2"
+                      onClick={() => {
+                        if (shouldDisableBlockedActions) return;
+                        setBoqModalOpen(true);
+                      }}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add BOQ Items
+                    </Button>
+                  ) : null}
+                </div>
               }
             >
               {boqInstances.length === 0 ? (
@@ -1584,6 +1734,25 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                 />
                 <InfoRow icon={Magnet} label="Source" value={lead.source?.type} />
                 <InfoRow icon={Package} label="Priority" value={lead.priority} />
+              </div>
+            </SectionCard>
+          )}
+
+          {shouldShowBillingInformationCard && (
+            <SectionCard title="Billing Information">
+              <div className="grid gap-6 lg:grid-cols-2">
+                {hasAddressData(billingInformation?.billingAddress) && (
+                  <BillingAddressView
+                    title="Bill To"
+                    address={billingInformation?.billingAddress}
+                  />
+                )}
+                {hasAddressData(billingInformation?.shippingAddress) && (
+                  <BillingAddressView
+                    title="Ship To"
+                    address={billingInformation?.shippingAddress}
+                  />
+                )}
               </div>
             </SectionCard>
           )}

@@ -1,23 +1,10 @@
 "use client";
 
-import { useId } from "react";
-import { CheckIcon } from "lucide-react";
+import { useId, useState, useMemo } from "react";
+import { CheckIcon, SearchIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "../ui/scroll-area";
-
-/* ================================
-   FLEXIBLE TYPES (NUMBER + STRING)
-================================ */
 
 type IDType = number | string;
 
@@ -36,12 +23,8 @@ interface Props {
   multiple?: boolean;
 }
 
-/* ================================
-   COMPONENT
-================================ */
-
 export default function FilterPickerInline({
-  data,
+  data = [],
   value = [],
   onChange,
   placeholder = "Search...",
@@ -50,6 +33,16 @@ export default function FilterPickerInline({
   multiple = false,
 }: Props) {
   const uid = useId();
+  const [search, setSearch] = useState("");
+
+  const filteredData = useMemo(() => {
+    if (!search.trim()) return data;
+    return data.filter((item) =>
+      item.label.toLowerCase().includes(search.toLowerCase().trim())
+    );
+  }, [data, search]);
+
+  const isItemEqual = (a: IDType, b: IDType) => String(a) === String(b);
 
   const handleSelect = (itemId: IDType) => {
     if (!multiple) {
@@ -57,8 +50,9 @@ export default function FilterPickerInline({
       return;
     }
 
-    const updated = value.includes(itemId)
-      ? value.filter((id) => id !== itemId)
+    const exists = value.some((v) => isItemEqual(v, itemId));
+    const updated = exists
+      ? value.filter((v) => !isItemEqual(v, itemId))
       : [...value, itemId];
 
     onChange?.(updated);
@@ -67,61 +61,69 @@ export default function FilterPickerInline({
   return (
     <div
       id={uid}
-      className={cn("w-full", disabled && "opacity-60 pointer-events-none")}
+      className={cn("w-full p-2", disabled && "opacity-60 pointer-events-none")}
+      onClick={(e) => e.stopPropagation()}
     >
-      <Command className="border-none">
-        <CommandInput placeholder={placeholder} className="h-9 text-sm" />
+      <div className="relative mb-2">
+        <SearchIcon className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+        <Input
+          placeholder={placeholder}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="h-8 pl-8 text-xs"
+          onClick={(e) => e.stopPropagation()}
+        />
+      </div>
 
-        <CommandList>
-          <ScrollArea className="h-[120px]">
-            <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
-              No options found.
-            </CommandEmpty>
+      <ScrollArea className="h-[140px] pr-1">
+        {filteredData.length === 0 ? (
+          <div className="py-4 text-center text-xs text-muted-foreground">
+            No options found.
+          </div>
+        ) : (
+          <div className="space-y-0.5">
+            {filteredData.map((item) => {
+              const isSelected = value.some((v) => isItemEqual(v, item.id));
 
-            <CommandGroup>
-              {data.map((item) => {
-                const isSelected = value.includes(item.id);
+              return (
+                <div
+                  key={String(item.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSelect(item.id);
+                  }}
+                  className={cn(
+                    "flex items-center rounded-sm px-2 py-1.5 text-xs cursor-pointer hover:bg-accent hover:text-accent-foreground select-none",
+                    isSelected && "bg-primary/10 font-medium text-primary"
+                  )}
+                >
+                  {multiple && (
+                    <div
+                      className={cn(
+                        "mr-2 flex h-4 w-4 shrink-0 items-center justify-center rounded border",
+                        isSelected
+                          ? "bg-primary border-primary text-primary-foreground"
+                          : "border-input"
+                      )}
+                    >
+                      <CheckIcon
+                        size={12}
+                        className={cn(isSelected ? "opacity-100" : "opacity-0")}
+                      />
+                    </div>
+                  )}
 
-                return (
-                  <CommandItem
-                    key={String(item.id)}
-                    value={item.label.toLowerCase()}
-                    onSelect={() => handleSelect(item.id)}
-                    className={cn(
-                      "cursor-pointer",
-                      isSelected && "bg-primary/5",
-                    )}
-                  >
-                    {multiple && (
-                      <div
-                        className={cn(
-                          "mr-2 flex h-4 w-4 items-center justify-center rounded border",
-                          isSelected
-                            ? "bg-primary border-primary text-primary-foreground"
-                            : "border-input",
-                        )}
-                      >
-                        <CheckIcon
-                          size={12}
-                          className={cn(
-                            isSelected ? "opacity-100" : "opacity-0",
-                          )}
-                        />
-                      </div>
-                    )}
+                  <span className="flex-1 truncate">{item.label}</span>
 
-                    <span className="flex-1 text-xs">{item.label}</span>
-
-                    {!multiple && isSelected && (
-                      <CheckIcon size={16} className="ml-auto text-primary" />
-                    )}
-                  </CommandItem>
-                );
-              })}
-            </CommandGroup>
-          </ScrollArea>
-        </CommandList>
-      </Command>
+                  {!multiple && isSelected && (
+                    <CheckIcon size={14} className="ml-auto text-primary" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </ScrollArea>
     </div>
   );
 }

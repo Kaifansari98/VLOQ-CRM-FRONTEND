@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import {
   useBroadcasts,
@@ -27,9 +27,38 @@ const POPUP_DURATION_SECONDS = 15;
 
 export function BroadcastPopupModal() {
   const router = useRouter();
+  const pathname = usePathname();
   const user = useAppSelector((state) => state.auth.user);
   const userId = user?.id;
   const vendorId = user?.vendor_id;
+
+  const isBroadcastPage = useMemo(() => {
+    if (typeof window !== "undefined") {
+      const currentPath = window.location.pathname;
+      if (currentPath.startsWith("/dashboard/broadcast") || currentPath.includes("/broadcast")) {
+        return true;
+      }
+    }
+    return Boolean(
+      pathname?.startsWith("/dashboard/broadcast") || pathname?.includes("/broadcast")
+    );
+  }, [pathname]);
+
+  const isMasterAdmin = useMemo(() => {
+    if (!user) return false;
+    const roleName = (
+      user.user_type?.user_type ||
+      user.user_role ||
+      ""
+    ).toLowerCase().trim();
+    return (
+      roleName === "master-admin" ||
+      roleName === "masteradmin" ||
+      roleName === "master" ||
+      roleName === "vloq master" ||
+      roleName === "master_admin"
+    );
+  }, [user]);
 
   const isSuperAdmin = useMemo(() => {
     if (!user) return false;
@@ -56,6 +85,7 @@ export function BroadcastPopupModal() {
   const [readIds, setReadIds] = useState<string[]>([]);
   const [activeBroadcast, setActiveBroadcast] = useState<BroadcastItem | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(POPUP_DURATION_SECONDS);
+  const [isNavigating, setIsNavigating] = useState<boolean>(false);
 
   // Sync read and dismissed IDs from localStorage
   useEffect(() => {
@@ -81,19 +111,48 @@ export function BroadcastPopupModal() {
     };
   }, [userId, isSuperAdmin]);
 
+  // Reset navigation state on any route change
+  useEffect(() => {
+    setIsNavigating(false);
+  }, [pathname]);
+
   // Find candidate unread & undismissed published broadcast
   useEffect(() => {
-    if (isSuperAdmin || !broadcasts || broadcasts.length === 0 || !userId) return;
+    const currentIsBroadcastPage =
+      (typeof window !== "undefined" &&
+        (window.location.pathname.startsWith("/dashboard/broadcast") ||
+         window.location.pathname.includes("/broadcast"))) ||
+      isBroadcastPage;
 
-    const publishedBroadcasts = broadcasts.filter(
-      (b) => b.status === "published"
-    );
+    if (
+      isSuperAdmin ||
+      currentIsBroadcastPage ||
+      isNavigating ||
+      !broadcasts ||
+      broadcasts.length === 0 ||
+      !userId
+    ) {
+      if (activeBroadcast) setActiveBroadcast(null);
+      return;
+    }
+
+    const publishedBroadcasts = broadcasts
+      .filter((b) => b.status === "published")
+      .slice()
+      .sort((a, b) => {
+        if (a.numericId && b.numericId) {
+          return a.numericId - b.numericId;
+        }
+        const timeA = new Date(a.rawPublishAt || a.updatedAt || a.publishDate || 0).getTime();
+        const timeB = new Date(b.rawPublishAt || b.updatedAt || b.publishDate || 0).getTime();
+        return timeA - timeB;
+      });
 
     const pendingBroadcast = publishedBroadcasts.find((b) => {
       const numIdStr = String(b.numericId ?? "");
       const fullIdStr = String(b.id ?? "");
 
-      const isRead = readIds.includes(numIdStr) || readIds.includes(fullIdStr);
+      const isRead = Boolean(b.isRead || readIds.includes(numIdStr) || readIds.includes(fullIdStr));
       const isDismissed =
         dismissedIds.includes(numIdStr) || dismissedIds.includes(fullIdStr);
 
@@ -108,7 +167,16 @@ export function BroadcastPopupModal() {
     } else {
       setActiveBroadcast(null);
     }
-  }, [broadcasts, readIds, dismissedIds, userId, activeBroadcast, isSuperAdmin]);
+  }, [
+    broadcasts,
+    readIds,
+    dismissedIds,
+    userId,
+    activeBroadcast,
+    isSuperAdmin,
+    isBroadcastPage,
+    isNavigating,
+  ]);
 
   const handleDismiss = () => {
     if (!activeBroadcast || !userId) return;
@@ -127,14 +195,14 @@ export function BroadcastPopupModal() {
 
   // 15-second Countdown timer
   useEffect(() => {
-    if (isSuperAdmin || !activeBroadcast) return;
+    if (isSuperAdmin || isBroadcastPage || isNavigating || !activeBroadcast) return;
 
     const interval = setInterval(() => {
       setTimeLeft((prev) => prev - 1);
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [activeBroadcast, isSuperAdmin]);
+  }, [activeBroadcast, isSuperAdmin, isBroadcastPage, isNavigating]);
 
   // Auto-dismiss when timer reaches 0
   useEffect(() => {
@@ -145,20 +213,36 @@ export function BroadcastPopupModal() {
   }, [timeLeft, activeBroadcast]);
 
   const handleViewBroadcast = () => {
-    if (!activeBroadcast) return;
+    if (!activeBroadcast || !userId) return;
 
     const targetId = activeBroadcast.id;
     const numericId = activeBroadcast.numericId || activeBroadcast.id;
+    const numIdStr = String(numericId);
 
-    // Mark as read & dismiss popup
+    // Suppress further popup triggers during navigation
+    setIsNavigating(true);
+
+    // Mark as read locally (both numeric and string ID)
     markBroadcastAsReadLocal(numericId, userId);
-    handleDismiss();
+    markBroadcastAsReadLocal(targetId, userId);
+
+    // Update dismissed IDs in state and localStorage
+    const updated = Array.from(new Set([...dismissedIds, numIdStr, targetId]));
+    setDismissedIds(updated);
+    try {
+      localStorage.setItem(`dismissed_popup_ids_${userId}`, JSON.stringify(updated));
+    } catch (e) {
+      // ignore
+    }
+
+    // Immediately close current modal
+    setActiveBroadcast(null);
 
     // Navigate directly to broadcast page with target ID query param
     router.push(`/dashboard/broadcast?id=${targetId}`);
   };
 
-  if (isSuperAdmin || !activeBroadcast || !user) return null;
+  if (isSuperAdmin || isMasterAdmin || isBroadcastPage || isNavigating || !activeBroadcast || !user) return null;
 
   const contentSnippet = stripHtmlAndEntities(activeBroadcast.content || "");
   const timerPercentage = (timeLeft / POPUP_DURATION_SECONDS) * 100;

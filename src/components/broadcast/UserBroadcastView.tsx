@@ -272,7 +272,7 @@ export const UserBroadcastView: React.FC<UserBroadcastViewProps> = ({
           <TableBody>
             {paginatedData.length > 0 ? (
               paginatedData.map((item) => {
-                const isRead = readIds.includes(String(item.numericId || item.id));
+                const isRead = Boolean(item.isRead || readIds.includes(String(item.numericId || item.id)) || readIds.includes(String(item.id)));
                 return (
                   <TableRow
                     key={item.id}

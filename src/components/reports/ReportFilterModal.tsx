@@ -91,8 +91,8 @@ export function ReportFilterModal({
   const reduxFranchiseId = useAppSelector((state) => state.auth.franchise_id);
 
   const vendorId = user?.vendor_id ?? 0;
-  const userType = user?.user_type?.user_type?.toLowerCase();
-  const isSuperAdmin = userType === "super-admin";
+  const userType = user?.user_type?.user_type?.toLowerCase()?.trim();
+  const isSuperAdmin = userType === "super-admin" || userType === "auditor";
   const isAdmin = userType === "admin";
 
   const adminFranchiseId = reduxFranchiseId ?? user?.franchise_id ?? null;

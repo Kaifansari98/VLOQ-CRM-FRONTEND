@@ -192,7 +192,16 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
   // Filtered Roles list
   const filteredRoles = useMemo(() => {
     return userRolesList.filter((r) => {
-      const name = (r.user_type || r.user_type_name || r.name || "").toLowerCase();
+      const name = (r.user_type || r.user_type_name || r.name || "").toLowerCase().trim();
+      if (
+        name === "master-admin" ||
+        name === "master" ||
+        name === "vloq master" ||
+        name === "masteradmin" ||
+        name === "master_admin"
+      ) {
+        return false;
+      }
       return name.includes(roleSearch.toLowerCase()) || String(r.id).includes(roleSearch);
     });
   }, [userRolesList, roleSearch]);
@@ -209,12 +218,23 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
   // Filtered Users list
   const filteredUsers = useMemo(() => {
     const query = userSearch.toLowerCase().trim();
-    if (!query) return usersList;
     return usersList.filter((u: any) => {
+      const roleName = (u.user_type?.user_type || u.user_type?.user_type_name || "").toLowerCase().trim();
+      const userName = (u.user_name || "").toLowerCase().trim();
+      if (
+        roleName === "master-admin" ||
+        roleName === "master" ||
+        roleName === "vloq master" ||
+        roleName === "masteradmin" ||
+        roleName === "master_admin" ||
+        userName.includes("vloq master")
+      ) {
+        return false;
+      }
+      if (!query) return true;
       const name = (u.user_name || "").toLowerCase();
       const email = (u.user_email || "").toLowerCase();
       const contact = (u.user_contact || "").toLowerCase();
-      const roleName = (u.user_type?.user_type || u.user_type?.user_type_name || "").toLowerCase();
       const idStr = String(u.id);
       return (
         name.includes(query) ||
@@ -970,8 +990,35 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
                   </div>
                 )}
 
-                <div className="text-xs space-y-3 leading-relaxed p-4 rounded-xl border bg-muted/10 rich-text-container break-words w-full max-h-[250px] overflow-y-auto min-h-[100px]">
+                <div className="text-sm leading-relaxed p-4 rounded-xl border bg-muted/10 rich-text-container break-words w-full max-h-[250px] overflow-y-auto min-h-[100px]">
                   <div dangerouslySetInnerHTML={{ __html: content || "<p className='text-muted-foreground'>Broadcast body preview...</p>" }} />
+                  <style dangerouslySetInnerHTML={{ __html: `
+                    .rich-text-container * {
+                      max-width: 100% !important;
+                      overflow-wrap: break-word !important;
+                      word-break: normal !important;
+                    }
+                    .rich-text-container u {
+                      text-decoration: underline;
+                    }
+                    .rich-text-container s, .rich-text-container strike {
+                      text-decoration: line-through;
+                    }
+                    .rich-text-container strong, .rich-text-container b {
+                      font-weight: 700;
+                    }
+                    .rich-text-container em, .rich-text-container i {
+                      font-style: italic;
+                    }
+                    .rich-text-container ol {
+                      list-style-type: decimal;
+                      padding-left: 1.25rem;
+                    }
+                    .rich-text-container ul {
+                      list-style-type: disc;
+                      padding-left: 1.25rem;
+                    }
+                  `}} />
                 </div>
 
                 {videoLinks && videoLinks.length > 0 && (
