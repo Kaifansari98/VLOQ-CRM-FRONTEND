@@ -2203,7 +2203,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         specification={selectedSpec}
         showReviewColumns
         stackSections
-        contentClassName="min-w-[92vw] max-w-[92vw] xl:min-w-[1680px] xl:max-w-[1680px]"
+        contentClassName="w-[min(94vw,1720px)] max-w-[min(94vw,1720px)]"
       />
 
       {/* Delete Confirmation */}
