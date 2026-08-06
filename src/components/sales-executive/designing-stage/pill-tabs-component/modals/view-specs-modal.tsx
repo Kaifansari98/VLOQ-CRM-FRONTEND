@@ -2298,7 +2298,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent
         className={cn(
-          "min-w-5xl max-h-[90vh] overflow-hidden flex flex-col",
+          "w-[95vw] max-w-[95vw] sm:w-[90vw] sm:max-w-[90vw] lg:max-w-5xl xl:max-w-6xl max-h-[90vh] overflow-hidden flex flex-col",
           contentClassName,
         )}
       >
