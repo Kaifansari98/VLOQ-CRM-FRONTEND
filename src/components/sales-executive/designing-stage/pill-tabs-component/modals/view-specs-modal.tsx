@@ -1955,7 +1955,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
           <TabsContent
             value="carcass"
-            forceMount={stackSections}
+            forceMount={stackSections ? true : undefined}
             className={cn(
               "flex-1 overflow-y-auto",
               stackSections && "flex-none overflow-visible [&[hidden]]:block mt-0",
@@ -2144,7 +2144,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
           </TabsContent>
           <TabsContent
             value="shutter"
-            forceMount={stackSections}
+            forceMount={stackSections ? true : undefined}
             className={cn(
               "flex-1 overflow-y-auto",
               stackSections && "flex-none overflow-visible [&[hidden]]:block mt-0",
@@ -2334,7 +2334,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
           </TabsContent>
           <TabsContent
             value="hardware"
-            forceMount={stackSections}
+            forceMount={stackSections ? true : undefined}
             className={cn(
               "flex-1 overflow-y-auto",
               stackSections && "flex-none overflow-visible [&[hidden]]:block mt-0",
@@ -2564,7 +2564,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
           </TabsContent>
           <TabsContent
             value="others"
-            forceMount={stackSections}
+            forceMount={stackSections ? true : undefined}
             className={cn(
               "flex-1 overflow-y-auto",
               stackSections && "flex-none overflow-visible [&[hidden]]:block mt-0",
