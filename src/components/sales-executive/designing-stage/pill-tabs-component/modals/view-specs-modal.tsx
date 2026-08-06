@@ -4,6 +4,7 @@ import React from "react";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogDescription,
@@ -70,6 +71,12 @@ import {
 } from "@/api/typesMasterApi";
 import { useQueries } from "@tanstack/react-query";
 import { toastManager } from "@/components/ui/toast";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface ViewSpecsModalProps {
   open: boolean;
@@ -123,6 +130,60 @@ type OtherApplianceRow = {
 };
 
 type ReviewAction = "approve" | "amend" | "delete" | null;
+
+type ReviewSection = "carcass" | "shutter" | "hardware" | "lights" | "other";
+
+type ReviewPersistPayload =
+  | {
+      id: number;
+      vendor_id: number;
+      lead_id: number;
+      specs_id: number;
+      created_by: number;
+      carcass_type_id: number;
+      carcas_material_id: number;
+      carcass_material_finish_id: number;
+    }
+  | {
+      id: number;
+      vendor_id: number;
+      lead_id: number;
+      specs_id: number;
+      created_by: number;
+      shutter_type_id: number;
+      shutter_material_id: number;
+      shutter_material_finish_id: number;
+    }
+  | {
+      id: number;
+      vendor_id: number;
+      lead_id: number;
+      specs_id: number;
+      created_by: number;
+      carcass_legs_id: number;
+      skirting_carcass_legs_id: number;
+      skirting_carcass_legs_color_id: number | null;
+      note: string | null;
+    }
+  | {
+      id: number;
+      vendor_id: number;
+      lead_id: number;
+      specs_id: number;
+      created_by: number;
+      light_carcas_unit_master_id: number | null;
+      custom_remark: string | null;
+    }
+  | {
+      id: number;
+      vendor_id: number;
+      lead_id: number;
+      specs_id: number;
+      created_by: number;
+      other_appliance_type: string | null;
+      other_appliances_master_id: number | null;
+      custom_remark: string | null;
+    };
 
 const makeBlankCarcassRow = (): CarcassRow => ({
   localId: `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -200,7 +261,6 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   contentClassName,
   stackSections = false,
 }) => {
-  const mappingsLocked = showReviewColumns;
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const { data: carcassTypesData } = useCarcassTypes();
@@ -316,6 +376,35 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   const [reviewStates, setReviewStates] = React.useState<
     Record<string, ReviewAction>
   >({});
+  const [amendEditingRows, setAmendEditingRows] = React.useState<
+    Record<string, boolean>
+  >({});
+  const [amendedReviewRemarks, setAmendedReviewRemarks] = React.useState<
+    Record<string, string>
+  >({});
+  const [deletedReviewRemarks, setDeletedReviewRemarks] = React.useState<
+    Record<string, string>
+  >({});
+  const [amendRemarkDialog, setAmendRemarkDialog] = React.useState<{
+    open: boolean;
+    section: ReviewSection;
+    rowKey: string;
+    editKey: string;
+    payload: ReviewPersistPayload;
+  } | null>(null);
+  const [amendRemarkInput, setAmendRemarkInput] = React.useState("");
+  const [isSubmittingAmendRemark, setIsSubmittingAmendRemark] =
+    React.useState(false);
+  const [deleteRemarkDialog, setDeleteRemarkDialog] = React.useState<{
+    open: boolean;
+    section: ReviewSection;
+    rowKey: string;
+    payload: ReviewPersistPayload;
+    existingRemark: string;
+  } | null>(null);
+  const [deleteRemarkInput, setDeleteRemarkInput] = React.useState("");
+  const [isSubmittingDeleteRemark, setIsSubmittingDeleteRemark] =
+    React.useState(false);
 
   const carcassTypes = carcassTypesData?.data ?? [];
   const carcasMaterials = carcasMaterialsData?.data ?? [];
@@ -409,6 +498,11 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     [],
   );
 
+  const getReviewEditKey = React.useCallback(
+    (section: string, localId: string) => `${section}:edit:${localId}`,
+    [],
+  );
+
   const setReviewAction = React.useCallback(
     (section: string, rowKey: string | number, action: Exclude<ReviewAction, null>) => {
       const reviewKey = getReviewStateKey(section, rowKey);
@@ -457,6 +551,9 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       if (action === "approve") {
         return "bg-emerald-50 dark:bg-emerald-950/20";
       }
+      if (action === "amend") {
+        return "bg-amber-50 dark:bg-amber-950/20";
+      }
       if (action === "delete") {
         return "bg-red-50 dark:bg-red-950/20";
       }
@@ -478,73 +575,186 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     [getReviewAction],
   );
 
+  const getDeletedRemark = React.useCallback(
+    (
+      section: string,
+      row: { id?: number; localId: string },
+      fallback?: {
+        deleted_remark?: string | null;
+      },
+    ) => {
+      const reviewKey = getReviewStateKey(section, row.id ?? row.localId);
+      return deletedReviewRemarks[reviewKey] ?? fallback?.deleted_remark ?? "";
+    },
+    [deletedReviewRemarks, getReviewStateKey],
+  );
+
+  const getAmendedRemark = React.useCallback(
+    (
+      section: string,
+      row: { id?: number; localId: string },
+      fallback?: {
+        amended_remark?: string | null;
+      },
+    ) => {
+      const reviewKey = getReviewStateKey(section, row.id ?? row.localId);
+      return amendedReviewRemarks[reviewKey] ?? fallback?.amended_remark ?? "";
+    },
+    [amendedReviewRemarks, getReviewStateKey],
+  );
+
+  const getReviewTooltipRemark = React.useCallback(
+    (
+      section: string,
+      row: { id?: number; localId: string },
+      fallback?: {
+        is_amended?: boolean;
+        amended_remark?: string | null;
+        is_deleted_item?: boolean;
+        deleted_remark?: string | null;
+      },
+    ) => {
+      const action = getReviewAction(section, row, fallback);
+      if (action === "amend") {
+        return getAmendedRemark(section, row, fallback);
+      }
+      if (action === "delete") {
+        return getDeletedRemark(section, row, fallback);
+      }
+      return "";
+    },
+    [getAmendedRemark, getDeletedRemark, getReviewAction],
+  );
+
+  const getPersistReviewSection = React.useCallback(
+    (section: string): ReviewSection =>
+      section.startsWith("other-") ? "other" : (section as ReviewSection),
+    [],
+  );
+
+  const withReviewRemarkTooltip = React.useCallback(
+    (content: React.ReactNode, remark?: string) => {
+      if (!remark) {
+        return content;
+      }
+
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="w-full">{content}</div>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-sm whitespace-pre-wrap break-words">
+            {remark}
+          </TooltipContent>
+        </Tooltip>
+      );
+    },
+    [],
+  );
+
+  const withDeletedRemarkTooltip = withReviewRemarkTooltip;
+
+  const isRowInAmendEditMode = React.useCallback(
+    (section: string, row: { localId: string }) =>
+      !!amendEditingRows[getReviewEditKey(section, row.localId)],
+    [amendEditingRows, getReviewEditKey],
+  );
+
+  const isRowLocked = React.useCallback(
+    (section: string, row: { localId: string }) =>
+      showReviewColumns && !isRowInAmendEditMode(section, row),
+    [isRowInAmendEditMode, showReviewColumns],
+  );
+
+  const isReviewPayloadComplete = React.useCallback(
+    (section: ReviewSection, payload: ReviewPersistPayload) => {
+      if (
+        section === "carcass" &&
+        "carcass_type_id" in payload &&
+        "carcas_material_id" in payload &&
+        "carcass_material_finish_id" in payload
+      ) {
+        return (
+          payload.carcass_type_id > 0 &&
+          payload.carcas_material_id > 0 &&
+          payload.carcass_material_finish_id > 0
+        );
+      }
+
+      if (
+        section === "shutter" &&
+        "shutter_type_id" in payload &&
+        "shutter_material_id" in payload &&
+        "shutter_material_finish_id" in payload
+      ) {
+        return (
+          payload.shutter_type_id > 0 &&
+          payload.shutter_material_id > 0 &&
+          payload.shutter_material_finish_id > 0
+        );
+      }
+
+      if (
+        section === "hardware" &&
+        "carcass_legs_id" in payload &&
+        "skirting_carcass_legs_id" in payload &&
+        "skirting_carcass_legs_color_id" in payload
+      ) {
+        return (
+          payload.carcass_legs_id > 0 &&
+          payload.skirting_carcass_legs_id > 0 &&
+          (payload.skirting_carcass_legs_color_id === null ||
+            payload.skirting_carcass_legs_color_id > 0)
+        );
+      }
+
+      if (
+        section === "lights" &&
+        "light_carcas_unit_master_id" in payload &&
+        "custom_remark" in payload
+      ) {
+        return (
+          payload.light_carcas_unit_master_id !== null ||
+          !!payload.custom_remark?.trim()
+        );
+      }
+
+      if (
+        "other_appliances_master_id" in payload &&
+        "custom_remark" in payload
+      ) {
+        return (
+          payload.other_appliances_master_id !== null ||
+          !!payload.custom_remark?.trim()
+        );
+      }
+
+      return false;
+    },
+    [],
+  );
+
   const renderReviewActionCells = React.useCallback(
     (
       section: string,
       row: { id?: number; localId: string },
-      persistPayload:
-        | {
-            id: number;
-            vendor_id: number;
-            lead_id: number;
-            specs_id: number;
-            created_by: number;
-            carcass_type_id: number;
-            carcas_material_id: number;
-            carcass_material_finish_id: number;
-          }
-        | {
-            id: number;
-            vendor_id: number;
-            lead_id: number;
-            specs_id: number;
-            created_by: number;
-            shutter_type_id: number;
-            shutter_material_id: number;
-            shutter_material_finish_id: number;
-          }
-        | {
-            id: number;
-            vendor_id: number;
-            lead_id: number;
-            specs_id: number;
-            created_by: number;
-            carcass_legs_id: number;
-            skirting_carcass_legs_id: number;
-            skirting_carcass_legs_color_id: number | null;
-            note: string | null;
-          }
-        | {
-            id: number;
-            vendor_id: number;
-            lead_id: number;
-            specs_id: number;
-            created_by: number;
-            light_carcas_unit_master_id: number | null;
-            custom_remark: string | null;
-          }
-        | {
-            id: number;
-            vendor_id: number;
-            lead_id: number;
-            specs_id: number;
-            created_by: number;
-            other_appliance_type: string | null;
-            other_appliances_master_id: number | null;
-            custom_remark: string | null;
-          }
-        | null,
+      persistPayload: ReviewPersistPayload | null,
       fallback?: {
         is_approved?: boolean;
         approved_at?: string | null;
         is_amended?: boolean;
         amended_at?: string | null;
+        amended_remark?: string | null;
         is_deleted_item?: boolean;
         deleted_item_at?: string | null;
+        deleted_remark?: string | null;
       },
     ) => {
       const action = getReviewAction(section, row, fallback);
       const isPersistable = !!persistPayload;
+      const editKey = getReviewEditKey(section, row.localId);
+      const isAmendEditing = !!amendEditingRows[editKey];
+      const persistSection = getPersistReviewSection(section);
 
       const handleActionClick = async (nextAction: Exclude<ReviewAction, null>) => {
         if (!isPersistable || !persistPayload) {
@@ -555,11 +765,63 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
           return;
         }
 
+        if (nextAction === "amend") {
+          if (!isAmendEditing) {
+            setAmendEditingRows((prev) => ({
+              ...prev,
+              [editKey]: true,
+            }));
+            return;
+          }
+
+          if (!isReviewPayloadComplete(persistSection, persistPayload)) {
+            toastManager.add({
+              title: "Complete the row before saving amended changes.",
+              type: "error",
+            });
+            return;
+          }
+
+          const rowKey = getReviewStateKey(section, row.id ?? row.localId);
+          const existingRemark =
+            amendedReviewRemarks[rowKey] ?? fallback?.amended_remark ?? "";
+          setAmendRemarkInput(existingRemark);
+          setAmendRemarkDialog({
+            open: true,
+            section: persistSection,
+            rowKey,
+            editKey,
+            payload: persistPayload,
+          });
+          return;
+        }
+
+        if (nextAction === "delete") {
+          const rowKey = getReviewStateKey(section, row.id ?? row.localId);
+          const existingRemark =
+            deletedReviewRemarks[rowKey] ?? fallback?.deleted_remark ?? "";
+          setDeleteRemarkInput(existingRemark);
+          setDeleteRemarkDialog({
+            open: true,
+            section: getPersistReviewSection(section),
+            rowKey,
+            payload: persistPayload,
+            existingRemark,
+          });
+          return;
+        }
+
         setReviewAction(section, row.id ?? row.localId, nextAction);
+        setAmendEditingRows((prev) => {
+          if (!prev[editKey]) return prev;
+          const next = { ...prev };
+          delete next[editKey];
+          return next;
+        });
 
         try {
           await persistReviewAction(
-            section as "carcass" | "shutter" | "hardware" | "lights" | "other",
+            persistSection,
             nextAction,
             persistPayload,
           );
@@ -601,13 +863,17 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
               onClick={() => void handleActionClick("amend")}
               className={cn(
                 reviewCellButtonClass,
-                action === "amend"
+                (action === "amend" || isAmendEditing)
                   ? "bg-amber-100 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:ring-amber-900"
                   : "bg-amber-50 text-amber-600 dark:bg-amber-950/10 dark:text-amber-400",
               )}
               disabled={!isPersistable}
             >
-              <Pencil className="h-4 w-4" />
+              {isAmendEditing ? (
+                <span className="text-xs font-semibold">Save changes</span>
+              ) : (
+                <Pencil className="h-4 w-4" />
+              )}
             </button>
           </td>
           <td className="px-4 py-3 align-top">
@@ -629,73 +895,36 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       );
     },
     [
+      amendEditingRows,
+      amendedReviewRemarks,
+      deletedReviewRemarks,
       getReviewAction,
+      getReviewEditKey,
+      getPersistReviewSection,
       getReviewStateKey,
+      isReviewPayloadComplete,
       persistReviewAction,
       setReviewAction,
     ],
   );
 
   async function persistReviewAction(
-    section: "carcass" | "shutter" | "hardware" | "lights" | "other",
+    section: ReviewSection,
     action: Exclude<ReviewAction, null>,
-    payload:
-      | {
-          id: number;
-          vendor_id: number;
-          lead_id: number;
-          specs_id: number;
-          created_by: number;
-          carcass_type_id: number;
-          carcas_material_id: number;
-          carcass_material_finish_id: number;
-        }
-      | {
-          id: number;
-          vendor_id: number;
-          lead_id: number;
-          specs_id: number;
-          created_by: number;
-          shutter_type_id: number;
-          shutter_material_id: number;
-          shutter_material_finish_id: number;
-        }
-      | {
-          id: number;
-          vendor_id: number;
-          lead_id: number;
-          specs_id: number;
-          created_by: number;
-          carcass_legs_id: number;
-          skirting_carcass_legs_id: number;
-          skirting_carcass_legs_color_id: number | null;
-          note: string | null;
-        }
-      | {
-          id: number;
-          vendor_id: number;
-          lead_id: number;
-          specs_id: number;
-          created_by: number;
-          light_carcas_unit_master_id: number | null;
-          custom_remark: string | null;
-        }
-      | {
-          id: number;
-          vendor_id: number;
-          lead_id: number;
-          specs_id: number;
-          created_by: number;
-          other_appliance_type: string | null;
-          other_appliances_master_id: number | null;
-          custom_remark: string | null;
-        },
+    payload: ReviewPersistPayload,
+    remarks?: {
+      amended_remark?: string | null;
+      deleted_remark?: string | null;
+    },
   ) {
     const reviewPayload = {
       ...payload,
       is_approved: action === "approve",
       is_amended: action === "amend",
+      amended_remark: action === "amend" ? remarks?.amended_remark ?? null : null,
       is_deleted_item: action === "delete",
+      deleted_remark:
+        action === "delete" ? remarks?.deleted_remark ?? null : null,
     };
 
     if (section === "carcass") {
@@ -711,11 +940,126 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     }
   }
 
+  const submitDeleteRemark = React.useCallback(async () => {
+    if (!deleteRemarkDialog) return;
+
+    const trimmedRemark = deleteRemarkInput.trim();
+    if (!trimmedRemark) {
+      toastManager.add({
+        title: "Deletion remark is required.",
+        type: "error",
+      });
+      return;
+    }
+
+    const previousAction = reviewStates[deleteRemarkDialog.rowKey] ?? null;
+    setIsSubmittingDeleteRemark(true);
+    setReviewStates((prev) => ({
+      ...prev,
+      [deleteRemarkDialog.rowKey]: "delete",
+    }));
+
+    try {
+      await persistReviewAction(
+        deleteRemarkDialog.section,
+        "delete",
+        deleteRemarkDialog.payload,
+        { deleted_remark: trimmedRemark },
+      );
+      setDeletedReviewRemarks((prev) => ({
+        ...prev,
+        [deleteRemarkDialog.rowKey]: trimmedRemark,
+      }));
+      setDeleteRemarkDialog(null);
+      setDeleteRemarkInput("");
+    } catch (error: any) {
+      setReviewStates((prev) => ({
+        ...prev,
+        [deleteRemarkDialog.rowKey]: previousAction,
+      }));
+      toastManager.add({
+        title:
+          error?.response?.data?.message ||
+          error?.message ||
+          "Failed to update review status.",
+        type: "error",
+      });
+    } finally {
+      setIsSubmittingDeleteRemark(false);
+    }
+  }, [
+    deleteRemarkDialog,
+    deleteRemarkInput,
+    persistReviewAction,
+    reviewStates,
+  ]);
+
+  const submitAmendRemark = React.useCallback(async () => {
+    if (!amendRemarkDialog) return;
+
+    const trimmedRemark = amendRemarkInput.trim();
+    if (!trimmedRemark) {
+      toastManager.add({
+        title: "Amend remark is required.",
+        type: "error",
+      });
+      return;
+    }
+
+    const previousAction = reviewStates[amendRemarkDialog.rowKey] ?? null;
+    setIsSubmittingAmendRemark(true);
+    setReviewStates((prev) => ({
+      ...prev,
+      [amendRemarkDialog.rowKey]: "amend",
+    }));
+
+    try {
+      await persistReviewAction(
+        amendRemarkDialog.section,
+        "amend",
+        amendRemarkDialog.payload,
+        { amended_remark: trimmedRemark },
+      );
+      setAmendedReviewRemarks((prev) => ({
+        ...prev,
+        [amendRemarkDialog.rowKey]: trimmedRemark,
+      }));
+      setAmendEditingRows((prev) => {
+        const next = { ...prev };
+        delete next[amendRemarkDialog.editKey];
+        return next;
+      });
+      setAmendRemarkDialog(null);
+      setAmendRemarkInput("");
+    } catch (error: any) {
+      setReviewStates((prev) => ({
+        ...prev,
+        [amendRemarkDialog.rowKey]: previousAction,
+      }));
+      toastManager.add({
+        title:
+          error?.response?.data?.message ||
+          error?.message ||
+          "Failed to save amended changes.",
+        type: "error",
+      });
+    } finally {
+      setIsSubmittingAmendRemark(false);
+    }
+  }, [amendRemarkDialog, amendRemarkInput, persistReviewAction, reviewStates]);
+
   React.useEffect(() => {
     if (!specification) {
       setCarcassRows([]);
       setShutterRows([]);
       setReviewStates({});
+      setAmendEditingRows({});
+      setAmendedReviewRemarks({});
+      setDeletedReviewRemarks({});
+      setAmendRemarkDialog(null);
+      setAmendRemarkInput("");
+      setDeleteRemarkDialog(null);
+      setDeleteRemarkInput("");
       return;
     }
 
@@ -1019,10 +1363,12 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       }
 
       if (nextRow) {
-        void saveCarcassRowIfComplete(nextRow);
+        if (!showReviewColumns || !amendEditingRows[getReviewEditKey("carcass", localId)]) {
+          void saveCarcassRowIfComplete(nextRow);
+        }
       }
     },
-    [saveCarcassRowIfComplete],
+    [amendEditingRows, getReviewEditKey, saveCarcassRowIfComplete, showReviewColumns],
   );
 
   const saveShutterRowIfComplete = React.useCallback(
@@ -1118,10 +1464,12 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       }
 
       if (nextRow) {
-        void saveShutterRowIfComplete(nextRow);
+        if (!showReviewColumns || !amendEditingRows[getReviewEditKey("shutter", localId)]) {
+          void saveShutterRowIfComplete(nextRow);
+        }
       }
     },
-    [saveShutterRowIfComplete],
+    [amendEditingRows, getReviewEditKey, saveShutterRowIfComplete, showReviewColumns],
   );
 
   const saveHardwareRowIfComplete = React.useCallback(
@@ -1246,7 +1594,9 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       if (!nextRow) return;
 
       if (selectedSkirting && !selectedSkirting.inScope) {
-        void saveHardwareRowIfComplete(nextRow, 0);
+        if (!showReviewColumns || !amendEditingRows[getReviewEditKey("hardware", localId)]) {
+          void saveHardwareRowIfComplete(nextRow, 0);
+        }
         return;
       }
 
@@ -1254,10 +1604,12 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         const colorsResult = await fetchSkirtingCarcassLegsColors(
           Number(value),
         );
-        void saveHardwareRowIfComplete(nextRow, colorsResult.data.length);
+        if (!showReviewColumns || !amendEditingRows[getReviewEditKey("hardware", localId)]) {
+          void saveHardwareRowIfComplete(nextRow, colorsResult.data.length);
+        }
       }
     },
-    [saveHardwareRowIfComplete],
+    [amendEditingRows, getReviewEditKey, saveHardwareRowIfComplete, showReviewColumns],
   );
 
   const handleColorChange = React.useCallback(
@@ -1291,10 +1643,12 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       }
 
       if (nextRow) {
-        void saveHardwareRowIfComplete(nextRow, colorOptionsCount);
+        if (!showReviewColumns || !amendEditingRows[getReviewEditKey("hardware", localId)]) {
+          void saveHardwareRowIfComplete(nextRow, colorOptionsCount);
+        }
       }
     },
-    [saveHardwareRowIfComplete],
+    [amendEditingRows, getReviewEditKey, saveHardwareRowIfComplete, showReviewColumns],
   );
 
   const handleNoteChange = React.useCallback((localId: string, value: string) => {
@@ -1307,9 +1661,12 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
   const handleNoteBlur = React.useCallback(
     (row: HardwareRow, colorOptionsCount: number) => {
+      if (showReviewColumns && amendEditingRows[getReviewEditKey("hardware", row.localId)]) {
+        return;
+      }
       void saveHardwareRowIfComplete(row, colorOptionsCount);
     },
-    [saveHardwareRowIfComplete],
+    [amendEditingRows, getReviewEditKey, saveHardwareRowIfComplete, showReviewColumns],
   );
 
   const saveLightRowIfComplete = React.useCallback(
@@ -1426,10 +1783,18 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       }
 
       if (nextRow) {
-        void saveLightRowIfComplete(nextRow);
+        if (!showReviewColumns || !amendEditingRows[getReviewEditKey("lights", localId)]) {
+          void saveLightRowIfComplete(nextRow);
+        }
       }
     },
-    [customLightCarcasType, saveLightRowIfComplete],
+    [
+      amendEditingRows,
+      customLightCarcasType,
+      getReviewEditKey,
+      saveLightRowIfComplete,
+      showReviewColumns,
+    ],
   );
 
   const handleCustomLightRemarkChange = React.useCallback(
@@ -1453,6 +1818,9 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
   const handleCustomLightRemarkBlur = React.useCallback(
     (localId: string, value: string) => {
+      if (showReviewColumns && amendEditingRows[getReviewEditKey("lights", localId)]) {
+        return;
+      }
       const row = lightRows.find((item) => item.localId === localId);
       if (!row) return;
       void saveLightRowIfComplete({
@@ -1463,7 +1831,14 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         custom_remark: value,
       });
     },
-    [customLightCarcasType, lightRows, saveLightRowIfComplete],
+    [
+      amendEditingRows,
+      customLightCarcasType,
+      getReviewEditKey,
+      lightRows,
+      saveLightRowIfComplete,
+      showReviewColumns,
+    ],
   );
 
   const saveOtherApplianceRowIfComplete = React.useCallback(
@@ -1562,10 +1937,12 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       }
 
       if (nextRow) {
-        void saveOtherApplianceRowIfComplete(nextRow);
+        if (!showReviewColumns || !amendEditingRows[getReviewEditKey(`other-${type}`, localId)]) {
+          void saveOtherApplianceRowIfComplete(nextRow);
+        }
       }
     },
-    [saveOtherApplianceRowIfComplete],
+    [amendEditingRows, getReviewEditKey, saveOtherApplianceRowIfComplete, showReviewColumns],
   );
 
   const handleCustomOtherApplianceRemarkChange = React.useCallback(
@@ -1589,6 +1966,9 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
   const handleCustomOtherApplianceRemarkBlur = React.useCallback(
     (type: string, localId: string, value: string) => {
+      if (showReviewColumns && amendEditingRows[getReviewEditKey(`other-${type}`, localId)]) {
+        return;
+      }
       const row = (otherApplianceRowsByType[type] ?? []).find(
         (item) => item.localId === localId,
       );
@@ -1600,7 +1980,13 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         custom_remark: value,
       });
     },
-    [otherApplianceRowsByType, saveOtherApplianceRowIfComplete],
+    [
+      amendEditingRows,
+      getReviewEditKey,
+      otherApplianceRowsByType,
+      saveOtherApplianceRowIfComplete,
+      showReviewColumns,
+    ],
   );
 
   const handleLightsRemarkChange = React.useCallback(
@@ -2020,6 +2406,12 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                         row,
                         persistedRow,
                       );
+                      const reviewTooltipRemark = getReviewTooltipRemark(
+                        "carcass",
+                        row,
+                        persistedRow,
+                      );
+                      const rowLocked = isRowLocked("carcass", row);
 
 	                      return (
 	                        <tr
@@ -2027,10 +2419,11 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                             className={cn(
                               "border-b last:border-b-0",
                               getCarcassRowHighlightClass(row, index),
+                              getReviewRowClass("carcass", row, persistedRow),
                             )}
                           >
 	                          <td className="px-4 py-3 align-top">
-	                            <AssignToPicker
+	                            {withDeletedRemarkTooltip(<AssignToPicker
 	                              data={carcassTypes.map((type) => ({
 	                                id: type.id,
 	                                label: type.name,
@@ -2045,15 +2438,15 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                              }
 	                              placeholder="Search carcass type..."
 	                              emptyLabel="Select carcass type"
-	                              disabled={mappingsLocked}
+	                              disabled={rowLocked}
 	                              className={cn(
                                   pickerClassName,
                                   isDeletedRow && "line-through text-red-600",
                                 )}
-	                            />
+	                            />, reviewTooltipRemark || undefined)}
 	                          </td>
 	                          <td className="px-4 py-3 align-top">
-	                            <AssignToPicker
+	                            {withDeletedRemarkTooltip(<AssignToPicker
 	                              data={carcasMaterials.map((material) => ({
 	                                id: material.id,
 	                                label: material.name,
@@ -2072,15 +2465,15 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                              }
 	                              placeholder="Search carcass material..."
 	                              emptyLabel="Select carcass material"
-	                              disabled={mappingsLocked}
+	                              disabled={rowLocked}
 	                              className={cn(
                                   pickerClassName,
                                   isDeletedRow && "line-through text-red-600",
                                 )}
-	                            />
+	                            />, reviewTooltipRemark || undefined)}
 	                          </td>
 	                          <td className="px-4 py-3 align-top">
-	                            <AssignToPicker
+	                            {withDeletedRemarkTooltip(<AssignToPicker
 	                              data={finishOptions.map((finish) => ({
 	                                id: finish.id,
 	                                label: finish.name,
@@ -2097,7 +2490,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                                  value ? String(value) : "",
 	                                )
 	                              }
-	                              disabled={mappingsLocked || !row.carcas_material_id}
+	                              disabled={rowLocked || !row.carcas_material_id}
 	                              placeholder={
 	                                row.carcas_material_id
 	                                  ? "Search carcass material finish..."
@@ -2112,7 +2505,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                   pickerClassName,
                                   isDeletedRow && "line-through text-red-600",
                                 )}
-	                            />
+	                            />, reviewTooltipRemark || undefined)}
 	                          </td>
                             {showReviewColumns &&
                               renderReviewActionCells(
@@ -2210,6 +2603,12 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                         row,
                         persistedRow,
                       );
+                      const reviewTooltipRemark = getReviewTooltipRemark(
+                        "shutter",
+                        row,
+                        persistedRow,
+                      );
+                      const rowLocked = isRowLocked("shutter", row);
 
 	                      return (
 	                        <tr
@@ -2217,10 +2616,11 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                             className={cn(
                               "border-b last:border-b-0",
                               getShutterRowHighlightClass(row, index),
+                              getReviewRowClass("shutter", row, persistedRow),
                             )}
                           >
 	                          <td className="px-4 py-3 align-top">
-	                            <AssignToPicker
+	                            {withDeletedRemarkTooltip(<AssignToPicker
 	                              data={shutterTypes.map((type) => ({
 	                                id: type.id,
 	                                label: type.name,
@@ -2235,15 +2635,15 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                              }
 	                              placeholder="Search shutter type..."
 	                              emptyLabel="Select shutter type"
-	                              disabled={mappingsLocked}
+	                              disabled={rowLocked}
 	                              className={cn(
                                   pickerClassName,
                                   isDeletedRow && "line-through text-red-600",
                                 )}
-	                            />
+	                            />, reviewTooltipRemark || undefined)}
 	                          </td>
 	                          <td className="px-4 py-3 align-top">
-	                            <AssignToPicker
+	                            {withDeletedRemarkTooltip(<AssignToPicker
 	                              data={shutterMaterials.map((material) => ({
 	                                id: material.id,
 	                                label: material.name,
@@ -2262,15 +2662,15 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                              }
 	                              placeholder="Search shutter material..."
 	                              emptyLabel="Select shutter material"
-	                              disabled={mappingsLocked}
+	                              disabled={rowLocked}
 	                              className={cn(
                                   pickerClassName,
                                   isDeletedRow && "line-through text-red-600",
                                 )}
-	                            />
+	                            />, reviewTooltipRemark || undefined)}
 	                          </td>
 	                          <td className="px-4 py-3 align-top">
-	                            <AssignToPicker
+	                            {withDeletedRemarkTooltip(<AssignToPicker
 	                              data={finishOptions.map((finish) => ({
 	                                id: finish.id,
 	                                label: finish.name,
@@ -2287,7 +2687,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 	                                  value ? String(value) : "",
 	                                )
 	                              }
-	                              disabled={mappingsLocked || !row.shutter_material_id}
+	                              disabled={rowLocked || !row.shutter_material_id}
 	                              placeholder={
 	                                row.shutter_material_id
 	                                  ? "Search shutter material finish..."
@@ -2302,7 +2702,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                   pickerClassName,
                                   isDeletedRow && "line-through text-red-600",
                                 )}
-	                            />
+	                            />, reviewTooltipRemark || undefined)}
 	                          </td>
                             {showReviewColumns &&
                               renderReviewActionCells(
@@ -2395,8 +2795,14 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                         row,
                         persistedRow,
                       );
+                      const reviewTooltipRemark = getReviewTooltipRemark(
+                        "hardware",
+                        row,
+                        persistedRow,
+                      );
                       const isOutOfScope =
                         !!selectedSkirting && !selectedSkirting.inScope;
+                      const rowLocked = isRowLocked("hardware", row);
 
                       return (
                         <tr
@@ -2404,10 +2810,11 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                           className={cn(
                             "border-b last:border-b-0",
                             getHardwareRowHighlightClass(row, index),
+                            getReviewRowClass("hardware", row, persistedRow),
                           )}
                         >
                           <td className="px-4 py-3 align-top">
-                            <AssignToPicker
+                            {withDeletedRemarkTooltip(<AssignToPicker
                               data={carcassLegs.map((legs) => ({
                                 id: legs.id,
                                 label: legs.name,
@@ -2424,16 +2831,16 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                 )
                               }
                               placeholder="Search carcass legs..."
-                              emptyLabel="Select carcass legs"
-                              disabled={mappingsLocked}
+	                              emptyLabel="Select carcass legs"
+                              disabled={rowLocked}
                               className={cn(
                                 pickerClassName,
                                 isDeletedRow && "line-through text-red-600",
                               )}
-                            />
+                            />, reviewTooltipRemark || undefined)}
                           </td>
                           <td className="px-4 py-3 align-top">
-                            <AssignToPicker
+                            {withDeletedRemarkTooltip(<AssignToPicker
                               data={skirtingOptions.map((option) => ({
                                 id: option.id,
                                 label: option.name,
@@ -2450,7 +2857,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                   skirtingOptions,
                                 )
                               }
-                              disabled={mappingsLocked || !row.carcass_legs_id}
+                              disabled={rowLocked || !row.carcass_legs_id}
                               placeholder={
                                 row.carcass_legs_id
                                   ? "Search skirting..."
@@ -2465,10 +2872,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                 pickerClassName,
                                 isDeletedRow && "line-through text-red-600",
                               )}
-                            />
+                            />, reviewTooltipRemark || undefined)}
                           </td>
                           <td className="px-4 py-3 align-top">
-                            <AssignToPicker
+                            {withDeletedRemarkTooltip(<AssignToPicker
                               data={colorOptions.map((color) => ({
                                 id: color.id,
                                 label: color.color,
@@ -2486,7 +2893,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                 )
                               }
                               disabled={
-                                mappingsLocked ||
+                                rowLocked ||
                                 !row.skirting_carcass_legs_id ||
                                 colorOptions.length === 0
                               }
@@ -2508,10 +2915,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                 pickerClassName,
                                 isDeletedRow && "line-through text-red-600",
                               )}
-                            />
+                            />, reviewTooltipRemark || undefined)}
                           </td>
                           <td className="px-4 py-3 align-top">
-                            <input
+                            {withDeletedRemarkTooltip(<input
                               type="text"
                               value={isOutOfScope ? "Not in our scope" : row.note}
                               onChange={(event) =>
@@ -2520,15 +2927,15 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                               onBlur={() =>
                                 handleNoteBlur(row, colorOptions.length)
                               }
-                              readOnly={mappingsLocked || isOutOfScope}
-                              disabled={mappingsLocked || isOutOfScope}
+                              readOnly={rowLocked || isOutOfScope}
+                              disabled={rowLocked || isOutOfScope}
                               placeholder={
                                 isOutOfScope ? "" : "Add a note (optional)"
                               }
                               className={`${pickerClassName} w-full ${
                                 isOutOfScope ? "text-muted-foreground" : ""
                               } ${isDeletedRow ? "line-through text-red-600" : ""}`}
-                            />
+                            />, reviewTooltipRemark || undefined)}
                           </td>
                           {showReviewColumns &&
                             renderReviewActionCells(
@@ -2648,6 +3055,12 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                         row,
                         persistedRow,
                       );
+                      const reviewTooltipRemark = getReviewTooltipRemark(
+                        "lights",
+                        row,
+                        persistedRow,
+                      );
+                      const rowLocked = isRowLocked("lights", row);
 
                       return (
                         <tr
@@ -2655,11 +3068,12 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                           className={cn(
                             "border-b last:border-b-0",
                             getLightRowHighlightClass(row, index),
+                            getReviewRowClass("lights", row, persistedRow),
                           )}
                         >
                           <td className="px-4 py-3 align-top">
                             {isCustomLightsMode ? (
-                              <input
+                              withDeletedRemarkTooltip(<input
                                 type="text"
                                 value={customLightCarcasType?.type || "Custom"}
                                 readOnly
@@ -2669,7 +3083,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                   "w-full text-muted-foreground",
                                   isDeletedRow && "line-through text-red-600",
                                 )}
-                              />
+                              />, reviewTooltipRemark || undefined)
                             ) : (
                               <AssignToPicker
                                 data={lightTypeOptions}
@@ -2685,7 +3099,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                     value ? String(value) : "",
                                   )
                                 }
-                                disabled={mappingsLocked || !isLightsEnabled}
+                                disabled={rowLocked || !isLightsEnabled}
                                 placeholder={
                                   isLightsEnabled
                                     ? "Search carcass type..."
@@ -2696,6 +3110,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                     ? "Select carcass type"
                                     : "Select lights remark first"
                                 }
+                                tooltipContent={reviewTooltipRemark || undefined}
                                 className={cn(
                                   pickerClassName,
                                   isDeletedRow && "line-through text-red-600",
@@ -2705,7 +3120,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                           </td>
                           <td className="px-4 py-3 align-top">
                             {isCustomLightsMode ? (
-                              <textarea
+                              withDeletedRemarkTooltip(<textarea
                                 value={row.custom_remark}
                                 onChange={(event) =>
                                   handleCustomLightRemarkChange(
@@ -2719,7 +3134,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                     event.target.value,
                                   )
                                 }
-                                disabled={mappingsLocked || !isLightsEnabled}
+                                disabled={rowLocked || !isLightsEnabled}
                                 placeholder={
                                   isLightsEnabled
                                     ? "Enter custom light remark"
@@ -2730,7 +3145,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                   "min-h-24 w-full resize-y py-3",
                                   isDeletedRow && "line-through text-red-600",
                                 )}
-                              />
+                              />, reviewTooltipRemark || undefined)
                             ) : (
                               <AssignToPicker
                                 data={unitOptions.map((unit) => ({
@@ -2750,7 +3165,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                   )
                                 }
                                 disabled={
-                                  mappingsLocked ||
+                                  rowLocked ||
                                   !isLightsEnabled ||
                                   !row.light_carcas_type_id
                                 }
@@ -2768,6 +3183,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                       ? "Select remark"
                                       : "Select carcass type first"
                                 }
+                                tooltipContent={reviewTooltipRemark || undefined}
                                 className={cn(
                                   pickerClassName,
                                   isDeletedRow && "line-through text-red-600",
@@ -2878,6 +3294,12 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                               row,
                               persistedRow,
                             );
+                            const reviewTooltipRemark = getReviewTooltipRemark(
+                              `other-${type}`,
+                              row,
+                              persistedRow,
+                            );
+                            const rowLocked = isRowLocked(`other-${type}`, row);
 
                             return (
                               <tr
@@ -2889,11 +3311,12 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                     row,
                                     index,
                                   ),
+                                  getReviewRowClass(`other-${type}`, row, persistedRow),
                                 )}
                               >
                                 <td className="px-4 py-3 align-top">
                                   {isCustomSectionMode ? (
-                                    <input
+                                    withDeletedRemarkTooltip(<input
                                       type="text"
                                       value="Custom"
                                       readOnly
@@ -2903,7 +3326,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                         "w-full text-muted-foreground",
                                         isDeletedRow && "line-through text-red-600",
                                       )}
-                                    />
+                                    />, reviewTooltipRemark || undefined)
                                   ) : (
                                     <AssignToPicker
                                       data={options.map((option) => ({
@@ -2922,7 +3345,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                           value ? String(value) : "",
                                         )
                                       }
-                                      disabled={mappingsLocked || !isSectionEnabled}
+                                      disabled={rowLocked || !isSectionEnabled}
                                       placeholder={
                                         isSectionEnabled
                                           ? "Search article code..."
@@ -2933,6 +3356,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                           ? "Select article code"
                                           : `Select ${type} remark first`
                                       }
+                                      tooltipContent={reviewTooltipRemark || undefined}
                                       className={cn(
                                         pickerClassName,
                                         isDeletedRow && "line-through text-red-600",
@@ -2942,7 +3366,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                 </td>
                                 <td className="px-4 py-3 align-top">
                                   {isCustomSectionMode ? (
-                                    <textarea
+                                    withDeletedRemarkTooltip(<textarea
                                       value={row.custom_remark}
                                       onChange={(event) =>
                                         handleCustomOtherApplianceRemarkChange(
@@ -2958,7 +3382,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                           event.target.value,
                                         )
                                       }
-                                      disabled={mappingsLocked || !isSectionEnabled}
+                                      disabled={rowLocked || !isSectionEnabled}
                                       placeholder={
                                         isSectionEnabled
                                           ? `Enter custom ${type.toLowerCase()} remark`
@@ -2969,9 +3393,9 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                         "min-h-24 w-full resize-y py-3",
                                         isDeletedRow && "line-through text-red-600",
                                       )}
-                                    />
+                                    />, reviewTooltipRemark || undefined)
                                   ) : (
-                                    <input
+                                    withDeletedRemarkTooltip(<input
                                       type="text"
                                       value={selectedEntry?.description ?? ""}
                                       readOnly
@@ -2981,7 +3405,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                         `${pickerClassName} w-full text-muted-foreground`,
                                         isDeletedRow && "line-through text-red-600",
                                       )}
-                                    />
+                                    />, reviewTooltipRemark || undefined)
                                   )}
                                 </td>
                                 {showReviewColumns &&
@@ -3019,6 +3443,117 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
             </div>
           </TabsContent>
         </Tabs>
+        <Dialog
+          open={!!amendRemarkDialog?.open}
+          onOpenChange={(nextOpen) => {
+            if (isSubmittingAmendRemark) return;
+            if (!nextOpen) {
+              setAmendRemarkDialog(null);
+              setAmendRemarkInput("");
+            }
+          }}
+        >
+          <DialogContent className="max-w-lg" showCloseButton={!isSubmittingAmendRemark}>
+            <DialogHeader>
+              <DialogTitle>Amend Row</DialogTitle>
+              <DialogDescription>
+                Add a mandatory remark before saving the amended specification row.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <label
+                htmlFor="spec-amend-remark"
+                className="text-sm font-medium text-foreground"
+              >
+                Amend remark
+              </label>
+              <textarea
+                id="spec-amend-remark"
+                value={amendRemarkInput}
+                onChange={(event) => setAmendRemarkInput(event.target.value)}
+                placeholder="Enter amend remark"
+                className="min-h-28 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                disabled={isSubmittingAmendRemark}
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setAmendRemarkDialog(null);
+                  setAmendRemarkInput("");
+                }}
+                disabled={isSubmittingAmendRemark}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => void submitAmendRemark()}
+                disabled={isSubmittingAmendRemark}
+              >
+                {isSubmittingAmendRemark ? "Saving..." : "Save amended row"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <Dialog
+          open={!!deleteRemarkDialog?.open}
+          onOpenChange={(nextOpen) => {
+            if (isSubmittingDeleteRemark) return;
+            if (!nextOpen) {
+              setDeleteRemarkDialog(null);
+              setDeleteRemarkInput("");
+            }
+          }}
+        >
+          <DialogContent className="max-w-lg" showCloseButton={!isSubmittingDeleteRemark}>
+            <DialogHeader>
+              <DialogTitle>Delete Row</DialogTitle>
+              <DialogDescription>
+                Add a mandatory remark before marking this specification row as deleted.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <label
+                htmlFor="spec-delete-remark"
+                className="text-sm font-medium text-foreground"
+              >
+                Deletion remark
+              </label>
+              <textarea
+                id="spec-delete-remark"
+                value={deleteRemarkInput}
+                onChange={(event) => setDeleteRemarkInput(event.target.value)}
+                placeholder="Enter deletion remark"
+                className="min-h-28 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                disabled={isSubmittingDeleteRemark}
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setDeleteRemarkDialog(null);
+                  setDeleteRemarkInput("");
+                }}
+                disabled={isSubmittingDeleteRemark}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => void submitDeleteRemark()}
+                disabled={isSubmittingDeleteRemark}
+              >
+                {isSubmittingDeleteRemark ? "Saving..." : "Mark as Delete"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </DialogContent>
     </Dialog>
   );

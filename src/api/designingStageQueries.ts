@@ -718,8 +718,10 @@ export interface LeadCarcassMaterialMappingEntry {
   approved_at: string | null;
   is_amended: boolean;
   amended_at: string | null;
+  amended_remark?: string | null;
   is_deleted_item: boolean;
   deleted_item_at: string | null;
+  deleted_remark?: string | null;
   created_at: string;
   created_by: number;
   carcassType?: { id: number; name: string };
@@ -738,7 +740,9 @@ export interface UpsertLeadCarcassMaterialMappingPayload {
   created_by: number;
   is_approved?: boolean;
   is_amended?: boolean;
+  amended_remark?: string | null;
   is_deleted_item?: boolean;
+  deleted_remark?: string | null;
 }
 
 export const getLeadCarcassMaterialMappings = async (
@@ -775,8 +779,10 @@ export interface LeadShutterMaterialMappingEntry {
   approved_at: string | null;
   is_amended: boolean;
   amended_at: string | null;
+  amended_remark?: string | null;
   is_deleted_item: boolean;
   deleted_item_at: string | null;
+  deleted_remark?: string | null;
   created_at: string;
   created_by: number;
   shutterType?: { id: number; name: string };
@@ -795,7 +801,9 @@ export interface UpsertLeadShutterMaterialMappingPayload {
   created_by: number;
   is_approved?: boolean;
   is_amended?: boolean;
+  amended_remark?: string | null;
   is_deleted_item?: boolean;
+  deleted_remark?: string | null;
 }
 
 export const getLeadShutterMaterialMappings = async (
@@ -833,8 +841,10 @@ export interface LeadHardwareMappingEntry {
   approved_at: string | null;
   is_amended: boolean;
   amended_at: string | null;
+  amended_remark?: string | null;
   is_deleted_item: boolean;
   deleted_item_at: string | null;
+  deleted_remark?: string | null;
   created_at: string;
   created_by: number;
   carcassLegs?: { id: number; name: string };
@@ -854,7 +864,9 @@ export interface UpsertLeadHardwareMappingPayload {
   created_by: number;
   is_approved?: boolean;
   is_amended?: boolean;
+  amended_remark?: string | null;
   is_deleted_item?: boolean;
+  deleted_remark?: string | null;
 }
 
 export const getLeadHardwareMappings = async (
@@ -890,8 +902,10 @@ export interface LeadLightCarcasUnitMappingEntry {
   approved_at: string | null;
   is_amended: boolean;
   amended_at: string | null;
+  amended_remark?: string | null;
   is_deleted_item: boolean;
   deleted_item_at: string | null;
+  deleted_remark?: string | null;
   created_at: string;
   created_by: number;
   lightCarcasUnit?: {
@@ -912,7 +926,9 @@ export interface UpsertLeadLightCarcasUnitMappingPayload {
   created_by: number;
   is_approved?: boolean;
   is_amended?: boolean;
+  amended_remark?: string | null;
   is_deleted_item?: boolean;
+  deleted_remark?: string | null;
 }
 
 export const getLeadLightCarcasUnitMappings = async (
@@ -949,8 +965,10 @@ export interface LeadOtherAppliancesMappingEntry {
   approved_at: string | null;
   is_amended: boolean;
   amended_at: string | null;
+  amended_remark?: string | null;
   is_deleted_item: boolean;
   deleted_item_at: string | null;
+  deleted_remark?: string | null;
   created_at: string;
   created_by: number;
   otherAppliances?: {
@@ -972,7 +990,9 @@ export interface UpsertLeadOtherAppliancesMappingPayload {
   created_by: number;
   is_approved?: boolean;
   is_amended?: boolean;
+  amended_remark?: string | null;
   is_deleted_item?: boolean;
+  deleted_remark?: string | null;
 }
 
 export const getLeadOtherAppliancesMappings = async (
