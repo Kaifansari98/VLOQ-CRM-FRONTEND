@@ -78,6 +78,7 @@ interface ViewSpecsModalProps {
   readOnly?: boolean;
   showReviewColumns?: boolean;
   contentClassName?: string;
+  stackSections?: boolean;
 }
 
 type CarcassRow = {
@@ -197,6 +198,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   readOnly = false,
   showReviewColumns = false,
   contentClassName,
+  stackSections = false,
 }) => {
   const mappingsLocked = showReviewColumns;
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -1923,27 +1925,47 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="carcass" className="flex-1 min-h-0 flex flex-col">
-          <TabsList className="h-auto gap-2 px-1.5 py-1.5">
-            <TabsTrigger value="carcass">
-              <Box size={16} className="mr-1 opacity-60" />
-              Carcass
-            </TabsTrigger>
-            <TabsTrigger value="shutter">
-              <PanelsTopLeft size={16} className="mr-1 opacity-60" />
-              Shutter
-            </TabsTrigger>
-            <TabsTrigger value="hardware">
-              <Wrench size={16} className="mr-1 opacity-60" />
-              Hardware
-            </TabsTrigger>
-            <TabsTrigger value="others">
-              <Sparkles size={16} className="mr-1 opacity-60" />
-              Others
-            </TabsTrigger>
-          </TabsList>
+        <Tabs
+          defaultValue="carcass"
+          className={cn(
+            "flex-1 min-h-0 flex flex-col",
+            stackSections && "overflow-y-auto pr-1",
+          )}
+        >
+          {!stackSections && (
+            <TabsList className="h-auto gap-2 px-1.5 py-1.5">
+              <TabsTrigger value="carcass">
+                <Box size={16} className="mr-1 opacity-60" />
+                Carcass
+              </TabsTrigger>
+              <TabsTrigger value="shutter">
+                <PanelsTopLeft size={16} className="mr-1 opacity-60" />
+                Shutter
+              </TabsTrigger>
+              <TabsTrigger value="hardware">
+                <Wrench size={16} className="mr-1 opacity-60" />
+                Hardware
+              </TabsTrigger>
+              <TabsTrigger value="others">
+                <Sparkles size={16} className="mr-1 opacity-60" />
+                Others
+              </TabsTrigger>
+            </TabsList>
+          )}
 
-          <TabsContent value="carcass" className="flex-1 overflow-y-auto">
+          <TabsContent
+            value="carcass"
+            forceMount={stackSections}
+            className={cn(
+              "flex-1 overflow-y-auto",
+              stackSections && "flex-none overflow-visible [&[hidden]]:block mt-0",
+            )}
+          >
+            {stackSections && (
+              <div className="pt-2">
+                <h3 className="text-base font-semibold">Carcass</h3>
+              </div>
+            )}
             <div className={`rounded-xl border border-border overflow-hidden mt-3 ${readOnly ? "select-none opacity-90" : ""}`}>
               {/* <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
                 <h3 className="text-sm font-semibold">Carcass Specifications</h3>
@@ -2120,7 +2142,19 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
               </div>
             </div>
           </TabsContent>
-          <TabsContent value="shutter" className="flex-1 overflow-y-auto">
+          <TabsContent
+            value="shutter"
+            forceMount={stackSections}
+            className={cn(
+              "flex-1 overflow-y-auto",
+              stackSections && "flex-none overflow-visible [&[hidden]]:block mt-0",
+            )}
+          >
+            {stackSections && (
+              <div className="pt-6">
+                <h3 className="text-base font-semibold">Shutter</h3>
+              </div>
+            )}
             <div className={`rounded-xl border border-border overflow-hidden mt-3 ${readOnly ? "select-none opacity-90" : ""}`}>
               {/* <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
                 <h3 className="text-sm font-semibold">Shutter Specifications</h3>
@@ -2298,7 +2332,19 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
               </div>
             </div>
           </TabsContent>
-          <TabsContent value="hardware" className="flex-1 overflow-y-auto">
+          <TabsContent
+            value="hardware"
+            forceMount={stackSections}
+            className={cn(
+              "flex-1 overflow-y-auto",
+              stackSections && "flex-none overflow-visible [&[hidden]]:block mt-0",
+            )}
+          >
+            {stackSections && (
+              <div className="pt-6">
+                <h3 className="text-base font-semibold">Hardware</h3>
+              </div>
+            )}
             <div className={`rounded-xl border border-border overflow-hidden mt-3 ${readOnly ? "select-none opacity-90" : ""}`}>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -2516,7 +2562,19 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
               </div>
             </div>
           </TabsContent>
-          <TabsContent value="others" className="flex-1 overflow-y-auto">
+          <TabsContent
+            value="others"
+            forceMount={stackSections}
+            className={cn(
+              "flex-1 overflow-y-auto",
+              stackSections && "flex-none overflow-visible [&[hidden]]:block mt-0",
+            )}
+          >
+            {stackSections && (
+              <div className="pt-6">
+                <h3 className="text-base font-semibold">Others</h3>
+              </div>
+            )}
             <div className={readOnly ? "select-none opacity-90" : ""}>
               <div className="flex items-center justify-between gap-3 mb-2 mt-3">
               <h3 className="text-sm font-semibold">Lights</h3>
