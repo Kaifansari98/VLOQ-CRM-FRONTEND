@@ -20,6 +20,8 @@ import {
 import {
   Box,
   Check,
+  CheckCircle2,
+  Loader2,
   PanelsTopLeft,
   Pencil,
   Sparkles,
@@ -34,6 +36,7 @@ import type {
   SpecificationSectionType,
 } from "@/api/designingStageQueries";
 import AssignToPicker from "@/components/assign-to-picker";
+import { Badge } from "@/components/ui/badge";
 import { useAppSelector } from "@/redux/store";
 import { cn } from "@/lib/utils";
 import {
@@ -58,6 +61,7 @@ import {
   useUpsertLeadOtherAppliancesMapping,
   useUpdateLeadSpecificationLightsRemark,
   useUpdateLeadSpecificationSectionRemark,
+  useMarkLeadSpecificationCompleted,
   useLeadSpecifications,
 } from "@/hooks/designing-stage/designing-leads-hooks";
 import {
@@ -357,6 +361,12 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   const upsertOtherApplianceMapping = useUpsertLeadOtherAppliancesMapping();
   const updateLightsRemark = useUpdateLeadSpecificationLightsRemark();
   const updateSectionRemark = useUpdateLeadSpecificationSectionRemark();
+  const markSpecificationCompleted = useMarkLeadSpecificationCompleted();
+  const [completedOverride, setCompletedOverride] = React.useState(false);
+  React.useEffect(() => {
+    setCompletedOverride(false);
+  }, [specification?.id]);
+  const isSpecCompleted = completedOverride || !!specification?.is_completed;
   const [carcassRows, setCarcassRows] = React.useState<CarcassRow[]>([]);
   const [shutterRows, setShutterRows] = React.useState<ShutterRow[]>([]);
   const [hardwareRows, setHardwareRows] = React.useState<HardwareRow[]>([]);
@@ -453,6 +463,24 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     () => otherApplianceMappingsData ?? [],
     [otherApplianceMappingsData],
   );
+  const allSpecMappingsReviewed = React.useMemo(() => {
+    const allMappings = [
+      ...carcassMappings,
+      ...shutterMappings,
+      ...hardwareMappings,
+      ...lightMappings,
+      ...otherApplianceMappings,
+    ];
+    return allMappings.every(
+      (item) => item.is_approved || item.is_amended || item.is_deleted_item,
+    );
+  }, [
+    carcassMappings,
+    shutterMappings,
+    hardwareMappings,
+    lightMappings,
+    otherApplianceMappings,
+  ]);
   const previousCarcassMappings = React.useMemo(
     () => previousCarcassMappingsData ?? [],
     [previousCarcassMappingsData],
@@ -755,6 +783,16 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       const editKey = getReviewEditKey(section, row.localId);
       const isAmendEditing = !!amendEditingRows[editKey];
       const persistSection = getPersistReviewSection(section);
+
+      if (!isPersistable) {
+        return (
+          <>
+            <td className="px-4 py-3 align-top" />
+            <td className="px-4 py-3 align-top" />
+            <td className="px-4 py-3 align-top" />
+          </>
+        );
+      }
 
       const handleActionClick = async (nextAction: Exclude<ReviewAction, null>) => {
         if (!isPersistable || !persistPayload) {
@@ -2292,6 +2330,36 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     ],
   );
 
+  const handleMarkCompleted = () => {
+    if (!specification) return;
+
+    markSpecificationCompleted.mutate(
+      {
+        specsId: specification.id,
+        vendorId: vendorId!,
+        leadId: specification.lead_id,
+      },
+      {
+        onSuccess: () => {
+          setCompletedOverride(true);
+          toastManager.add({
+            title: "Specification marked as completed",
+            type: "success",
+          });
+        },
+        onError: (error: any) => {
+          toastManager.add({
+            title:
+              error?.response?.data?.message ||
+              error?.message ||
+              "Failed to mark specification as completed.",
+            type: "error",
+          });
+        },
+      },
+    );
+  };
+
   if (!specification) return null;
 
   return (
@@ -2302,13 +2370,57 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
           contentClassName,
         )}
       >
-        <DialogHeader className="">
-          <DialogTitle className="text-lg font-semibold tracking-tight">
-            {specification.name}
-          </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
-            Created on {formatDate(specification.created_at)}
-          </DialogDescription>
+        <DialogHeader className="flex-row items-start justify-between gap-4 space-y-0 pr-8">
+          <div className="min-w-0">
+            <DialogTitle className="text-lg font-semibold tracking-tight">
+              {specification.name}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Created on {formatDate(specification.created_at)}
+            </DialogDescription>
+          </div>
+          {showReviewColumns && (
+            <div className="shrink-0">
+              {isSpecCompleted ? (
+                <Badge
+                  variant="outline"
+                  className="border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300"
+                >
+                  <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+                  Completed
+                </Badge>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-block">
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={
+                          !allSpecMappingsReviewed ||
+                          markSpecificationCompleted.isPending
+                        }
+                        onClick={handleMarkCompleted}
+                      >
+                        {markSpecificationCompleted.isPending ? (
+                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
+                        )}
+                        Mark as Completed
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {!allSpecMappingsReviewed && (
+                    <TooltipContent>
+                      Approve, amend, or delete every item in this
+                      specification before marking it as completed.
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              )}
+            </div>
+          )}
         </DialogHeader>
 
         <Tabs
@@ -2380,7 +2492,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                       <th className="px-4 py-3 text-center font-bold text-white">
                         Carcass Material Finish
                       </th>
-                      {showReviewColumns && (
+                      {showReviewColumns && !isSpecCompleted && (
                         <>
                           <th className="px-4 py-3 text-center font-bold text-white">
                             Approve
@@ -2507,7 +2619,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                 )}
 	                            />, reviewTooltipRemark || undefined)}
 	                          </td>
-                            {showReviewColumns &&
+                            {showReviewColumns && !isSpecCompleted &&
                               renderReviewActionCells(
                                 "carcass",
                                 row,
@@ -2576,7 +2688,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                       <th className="px-4 py-3 text-left font-bold text-white">
                         Shutter Material Finish
                       </th>
-                      {showReviewColumns && (
+                      {showReviewColumns && !isSpecCompleted && (
                         <>
                           <th className="px-4 py-3 text-center font-bold text-white">
                             Approve
@@ -2704,7 +2816,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                 )}
 	                            />, reviewTooltipRemark || undefined)}
 	                          </td>
-                            {showReviewColumns &&
+                            {showReviewColumns && !isSpecCompleted &&
                               renderReviewActionCells(
                                 "shutter",
                                 row,
@@ -2762,7 +2874,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                       <th className="px-4 py-3 text-left font-bold text-white">
                         Note
                       </th>
-                      {showReviewColumns && (
+                      {showReviewColumns && !isSpecCompleted && (
                         <>
                           <th className="px-4 py-3 text-center font-bold text-white">
                             Approve
@@ -2937,7 +3049,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                               } ${isDeletedRow ? "line-through text-red-600" : ""}`}
                             />, reviewTooltipRemark || undefined)}
                           </td>
-                          {showReviewColumns &&
+                          {showReviewColumns && !isSpecCompleted &&
                             renderReviewActionCells(
                               "hardware",
                               row,
@@ -3016,7 +3128,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                       <th className="px-4 py-3 text-left font-bold text-white">
                         Remark
                       </th>
-                      {showReviewColumns && (
+                      {showReviewColumns && !isSpecCompleted && (
                         <>
                           <th className="px-4 py-3 text-center font-bold text-white">
                             Approve
@@ -3191,7 +3303,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                               />
                             )}
                           </td>
-                          {showReviewColumns &&
+                          {showReviewColumns && !isSpecCompleted &&
                             renderReviewActionCells(
                               "lights",
                               row,
@@ -3264,7 +3376,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                             <th className="px-4 py-3 text-left font-bold text-white">
                               Description
                             </th>
-                            {showReviewColumns && (
+                            {showReviewColumns && !isSpecCompleted && (
                               <>
                                 <th className="px-4 py-3 text-center font-bold text-white">
                                   Approve
@@ -3408,7 +3520,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                                     />, reviewTooltipRemark || undefined)
                                   )}
                                 </td>
-                                {showReviewColumns &&
+                                {showReviewColumns && !isSpecCompleted &&
                                   renderReviewActionCells(
                                     `other-${type}`,
                                     row,

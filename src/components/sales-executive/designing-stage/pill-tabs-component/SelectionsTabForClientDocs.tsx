@@ -10,12 +10,19 @@ import {
   useLeadStatus,
   useSelectionData,
   useSubmitSelection,
+  useSubmitQuotation,
   useUpsertCHSSelectionTypeMapping,
+  useLeadCarcassMaterialMappings,
+  useLeadShutterMaterialMappings,
+  useLeadHardwareMappings,
+  useLeadLightCarcasUnitMappings,
+  useLeadOtherAppliancesMappings,
 } from "@/hooks/designing-stage/designing-leads-hooks";
 import type {
   CHSMappingItem,
   LeadSpecificationEntry,
 } from "@/api/designingStageQueries";
+import { useSubmitDesigns } from "@/api/designingStageQueries";
 import { useAppSelector } from "@/redux/store";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -147,6 +154,8 @@ const instanceUploadSchema = z.object({
   pythaDocuments: z
     .array(z.instanceof(File))
     .min(1, "Please upload at least one Pytha file"),
+  designFiles: z.array(z.instanceof(File)).default([]),
+  quotationFiles: z.array(z.instanceof(File)).default([]),
 });
 
 type FormValues = {
@@ -157,7 +166,12 @@ type FormValues = {
   handles: string[] | undefined;
   handles_remark?: string;
 };
-type InstanceUploadValues = z.infer<typeof instanceUploadSchema>;
+type InstanceUploadValues = {
+  pptDocuments: File[];
+  pythaDocuments: File[];
+  designFiles: File[];
+  quotationFiles: File[];
+};
 
 const DEFAULT_REMARK = "N/A";
 
@@ -506,8 +520,13 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   });
 
   const uploadForm = useForm<InstanceUploadValues>({
-    resolver: zodResolver(instanceUploadSchema),
-    defaultValues: { pptDocuments: [], pythaDocuments: [] },
+    resolver: zodResolver(instanceUploadSchema) as any,
+    defaultValues: {
+      pptDocuments: [],
+      pythaDocuments: [],
+      designFiles: [],
+      quotationFiles: [],
+    },
   });
 
   const [existingSelections, setExistingSelections] = React.useState<{
@@ -597,6 +616,60 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     if (!activeSpecificationGroupKey) return null;
     return latestSpecificationByGroup.get(activeSpecificationGroupKey) ?? null;
   }, [activeSpecificationGroupKey, latestSpecificationByGroup]);
+
+  const { data: activeSpecCarcassMappings } = useLeadCarcassMaterialMappings(
+    vendorId,
+    leadId,
+    activeLatestSpecification?.id,
+  );
+  const { data: activeSpecShutterMappings } = useLeadShutterMaterialMappings(
+    vendorId,
+    leadId,
+    activeLatestSpecification?.id,
+  );
+  const { data: activeSpecHardwareMappings } = useLeadHardwareMappings(
+    vendorId,
+    leadId,
+    activeLatestSpecification?.id,
+  );
+  const { data: activeSpecLightMappings } = useLeadLightCarcasUnitMappings(
+    vendorId,
+    leadId,
+    activeLatestSpecification?.id,
+  );
+  const { data: activeSpecOtherApplianceMappings } =
+    useLeadOtherAppliancesMappings(
+      vendorId,
+      leadId,
+      activeLatestSpecification?.id,
+    );
+
+  const activeSpecRequiresAdditionalUploads = React.useMemo(() => {
+    if (!activeLatestSpecification?.is_completed) return false;
+
+    const allMappings = [
+      ...(activeSpecCarcassMappings ?? []),
+      ...(activeSpecShutterMappings ?? []),
+      ...(activeSpecHardwareMappings ?? []),
+      ...(activeSpecLightMappings ?? []),
+      ...(activeSpecOtherApplianceMappings ?? []),
+    ];
+
+    return allMappings.some(
+      (item: any) => item.is_amended || item.is_deleted_item,
+    );
+  }, [
+    activeLatestSpecification?.is_completed,
+    activeSpecCarcassMappings,
+    activeSpecShutterMappings,
+    activeSpecHardwareMappings,
+    activeSpecLightMappings,
+    activeSpecOtherApplianceMappings,
+  ]);
+
+  const submitDesignsMutation = useSubmitDesigns();
+  const uploadQuotationMutation = useSubmitQuotation();
+
   const lastNotifiedInstanceIdRef = React.useRef<number | null | undefined>(
     undefined,
   );

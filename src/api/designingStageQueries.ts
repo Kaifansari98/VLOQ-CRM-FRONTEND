@@ -654,6 +654,8 @@ export interface LeadSpecificationEntry {
   created_by: number;
   is_latest_for_item_code?: boolean;
   is_editable?: boolean;
+  is_completed?: boolean;
+  completed_marked_at?: string | null;
 }
 
 export const getLeadSpecifications = async (
@@ -701,6 +703,17 @@ export const updateLeadSpecificationSectionRemark = async (
   const { data } = await apiClient.put(
     `/leads/designing-stage/specifications/${specsId}/section-remark`,
     { section, remark },
+  );
+
+  return data?.data;
+};
+
+export const markLeadSpecificationCompleted = async (
+  specsId: number,
+): Promise<LeadSpecificationEntry> => {
+  const { data } = await apiClient.put(
+    `/leads/designing-stage/specifications/${specsId}/mark-completed`,
+    {},
   );
 
   return data?.data;
