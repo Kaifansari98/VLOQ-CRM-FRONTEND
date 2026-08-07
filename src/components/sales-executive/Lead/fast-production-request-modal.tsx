@@ -786,6 +786,10 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
         .map((selectedValue) => labelMap.get(selectedValue) ?? selectedValue)
         .filter(Boolean);
 
+    const sanitizedCarcassValues = values.carcass_finish_category.filter(
+      (selectedValue) => availableCarcassValues.has(selectedValue),
+    );
+
     const wasAlreadySaved = savedInstanceIds.includes(currentInstance.id);
     const nextSavedIds = wasAlreadySaved
       ? savedInstanceIds
@@ -799,7 +803,7 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
         createdBy: userId,
         instanceId: currentInstance.id,
         carcassFinishCategory: toLabels(
-          values.carcass_finish_category,
+          sanitizedCarcassValues,
           carcassOptionLabelMap,
         ),
         carcassFinishDescription: values.carcass_finish_description,
@@ -943,7 +947,13 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
             <FormItem>
               <FormControl>
                 <ClientDocsSelectionMultiSelect
-                  value={field.value || []}
+                  value={
+                    categoryName === "carcass_finish_category"
+                      ? (field.value || []).filter((selectedValue) =>
+                          options.some((option) => option.value === selectedValue),
+                        )
+                      : field.value || []
+                  }
                   onChange={field.onChange}
                   options={options}
                   placeholder={placeholder}
