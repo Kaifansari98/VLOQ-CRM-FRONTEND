@@ -43,7 +43,7 @@ export const useCreateClient = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreateClientDTO) => createClient(data),
+    mutationFn: (data: CreateClientDTO | FormData) => createClient(data),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: clientKeys.lists() });
       toastManager.add({ title: res.message || "Client created successfully.", type: "success" });
@@ -58,7 +58,7 @@ export const useUpdateClient = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateClientDTO }) => updateClient(id, data),
+    mutationFn: ({ id, data }: { id: number; data: UpdateClientDTO | FormData }) => updateClient(id, data),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: clientKeys.lists() });
       queryClient.invalidateQueries({ queryKey: clientKeys.details() });

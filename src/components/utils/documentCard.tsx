@@ -116,17 +116,10 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({ url, fileName, fileE
           return;
         }
 
-        if (fileExt === "pdf") {
-          const response = await fetch(url);
-          if (!response.ok) {
-            throw new Error("Unable to load PDF preview.");
-          }
-
-          const blob = await response.blob();
-          objectUrl = URL.createObjectURL(blob);
-
+        const isPdf = fileExt === "pdf" || fileName?.toLowerCase().endsWith(".pdf") || url.toLowerCase().includes(".pdf");
+        if (isPdf) {
           if (!cancelled) {
-            setPreviewUrl(objectUrl);
+            setPreviewUrl(url);
           }
           return;
         }

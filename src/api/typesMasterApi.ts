@@ -1238,6 +1238,27 @@ export const fetchProductTypes = async (vendorId: number) => {
   return res.data
 }
 
+export const fetchProcessBriefs = async (vendorId: number) => {
+  const res = await apiClient.get(`/leads/get-all-process-briefs/${vendorId}`)
+  return res.data
+}
+
+export const saveLeadProcessBriefsApi = async (payload: {
+  lead_id: number;
+  vendor_id: number;
+  mappings?: { product_type_id: number; process_brief_id: number }[];
+  process_brief_ids?: number[];
+  created_by?: number;
+}) => {
+  const res = await apiClient.post("/leads/save-lead-process-briefs", payload);
+  return res.data;
+};
+
+export const fetchLeadProcessBriefsApi = async (leadId: number, vendorId: number) => {
+  const res = await apiClient.get(`/leads/get-lead-process-briefs/${leadId}?vendor_id=${vendorId}`);
+  return res.data;
+};
+
 export const createProductType = async (
   payload: CreateProductTypeMasterPayload,
 ) => {
