@@ -17,6 +17,8 @@ import {
   useLeadHardwareMappings,
   useLeadLightCarcasUnitMappings,
   useLeadOtherAppliancesMappings,
+  useDesignsDoc,
+  useQuotationDoc,
 } from "@/hooks/designing-stage/designing-leads-hooks";
 import type {
   CHSMappingItem,
@@ -31,7 +33,6 @@ import { toastManager } from "@/components/ui/toast";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -62,6 +63,8 @@ import {
   FolderOpen,
   FileText,
   Loader2,
+  PenTool,
+  ScrollText,
   Upload,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
@@ -147,17 +150,6 @@ const getFormSchema = (
       }
     });
 
-const instanceUploadSchema = z.object({
-  pptDocuments: z
-    .array(z.instanceof(File))
-    .min(1, "Please upload at least one Project file"),
-  pythaDocuments: z
-    .array(z.instanceof(File))
-    .min(1, "Please upload at least one Pytha file"),
-  designFiles: z.array(z.instanceof(File)).default([]),
-  quotationFiles: z.array(z.instanceof(File)).default([]),
-});
-
 type FormValues = {
   carcas: string[];
   carcas_remark?: string;
@@ -166,12 +158,19 @@ type FormValues = {
   handles: string[] | undefined;
   handles_remark?: string;
 };
-type InstanceUploadValues = {
-  pptDocuments: File[];
-  pythaDocuments: File[];
-  designFiles: File[];
-  quotationFiles: File[];
-};
+
+interface UploadSectionConfig {
+  id: "project" | "pytha" | "design" | "quotation";
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  accept?: string;
+  docs: any[];
+  canView: boolean;
+  canUpload: boolean;
+  canDelete: boolean;
+  required?: boolean;
+}
 
 const DEFAULT_REMARK = "N/A";
 
@@ -519,15 +518,11 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     mode: "onBlur",
   });
 
-  const uploadForm = useForm<InstanceUploadValues>({
-    resolver: zodResolver(instanceUploadSchema) as any,
-    defaultValues: {
-      pptDocuments: [],
-      pythaDocuments: [],
-      designFiles: [],
-      quotationFiles: [],
-    },
-  });
+  const [activeUploadSection, setActiveUploadSection] =
+    React.useState<UploadSectionConfig | null>(null);
+  const [sectionSelectedFiles, setSectionSelectedFiles] = React.useState<
+    File[]
+  >([]);
 
   const [existingSelections, setExistingSelections] = React.useState<{
     carcas?: DesignSelection;
@@ -669,6 +664,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
 
   const submitDesignsMutation = useSubmitDesigns();
   const uploadQuotationMutation = useSubmitQuotation();
+  const { data: designDocsResponse } = useDesignsDoc(vendorId!, leadId);
+  const { data: quotationDocsResponse } = useQuotationDoc(vendorId, leadId);
+  const designDocs: any[] = designDocsResponse?.data?.documents ?? [];
+  const quotationDocs: any[] = quotationDocsResponse?.data?.documents ?? [];
 
   const lastNotifiedInstanceIdRef = React.useRef<number | null | undefined>(
     undefined,
@@ -1280,51 +1279,77 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const handleOpenUploadModal = (instance: LeadProductStructureInstance) => {
     setActiveInstance(instance);
     onInstanceChange?.(instance);
-    uploadForm.reset({ pptDocuments: [], pythaDocuments: [] });
+    setActiveUploadSection(null);
+    setSectionSelectedFiles([]);
     setUploadModalOpen(true);
   };
 
-  const handleUploadForInstance = async (values: InstanceUploadValues) => {
-    if (!vendorId || !userId) {
+  const isSectionUploading =
+    activeUploadSection?.id === "project" || activeUploadSection?.id === "pytha"
+      ? isUploadingDocs
+      : activeUploadSection?.id === "design"
+        ? submitDesignsMutation.isPending
+        : uploadQuotationMutation.isPending;
+
+  const handleSectionUpload = async () => {
+    if (!activeUploadSection || !vendorId || !userId || !activeInstance) {
       toastManager.add({
         title: "Missing vendorId or userId for upload",
         type: "error",
       });
       return;
     }
-    if (!activeInstance && structureInstances.length > 0) {
-      toastManager.add({
-        title: "Please select product instance",
-        type: "error",
-      });
-      return;
-    }
+    if (sectionSelectedFiles.length === 0) return;
 
     try {
-      await uploadClientDocs({
-        leadId,
-        accountId,
-        vendorId,
-        createdBy: userId,
-        productStructureInstanceId: activeInstance?.id,
-        pptDocuments: values.pptDocuments,
-        pythaDocuments: values.pythaDocuments,
-      });
-      toastManager.add({
-        title: activeInstance
-          ? `Files uploaded for ${activeInstance.title}`
-          : "Files uploaded",
-        type: "success",
-      });
-      setUploadModalOpen(false);
-      uploadForm.reset({ pptDocuments: [], pythaDocuments: [] });
-      await queryClient.invalidateQueries({
-        queryKey: ["clientDocumentationDetails", vendorId, leadId],
-        exact: false,
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["getSelectionData", vendorId, leadId],
-      });
+      if (activeUploadSection.id === "project" || activeUploadSection.id === "pytha") {
+        await uploadClientDocs({
+          leadId,
+          accountId,
+          vendorId,
+          createdBy: userId,
+          productStructureInstanceId: activeInstance.id,
+          pptDocuments:
+            activeUploadSection.id === "project" ? sectionSelectedFiles : [],
+          pythaDocuments:
+            activeUploadSection.id === "pytha" ? sectionSelectedFiles : [],
+        });
+        await queryClient.invalidateQueries({
+          queryKey: ["clientDocumentationDetails", vendorId, leadId],
+          exact: false,
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["getSelectionData", vendorId, leadId],
+        });
+      } else if (activeUploadSection.id === "design") {
+        await submitDesignsMutation.mutateAsync({
+          files: sectionSelectedFiles,
+          vendorId,
+          leadId,
+          userId,
+          productStructureInstanceIds: [activeInstance.id],
+          specificationId: activeLatestSpecification?.id ?? null,
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["getDesignsDoc", vendorId, leadId],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["designingStageCounts", vendorId, leadId],
+        });
+      } else {
+        await new Promise<void>((resolve, reject) => {
+          uploadQuotationMutation.mutate(
+            { files: sectionSelectedFiles, vendorId, leadId, userId },
+            {
+              onSuccess: () => resolve(),
+              onError: (err) => reject(err),
+            },
+          );
+        });
+      }
+
+      toastManager.add({ title: "Files uploaded successfully!", type: "success" });
+      setSectionSelectedFiles([]);
       queryClient.invalidateQueries({ queryKey: ["allLeadDocuments"] });
     } catch (e: any) {
       const errorMessage =
@@ -1745,277 +1770,192 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         </div>
         )}
 
-        {/* ✅ Upload section — disabled when blocked */}
-        {(canUploadProjectFiles || canUploadDesignFiles) && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-4"
-          >
-            <Form {...uploadForm}>
-              <form
-                onSubmit={uploadForm.handleSubmit(handleUploadForInstance)}
-                className="flex w-full items-end gap-4 flex-col-reverse"
-              >
-                <div className="grid md:grid-cols-2 w-full gap-4">
-                  <div className="w-full">
-                    <FormField
-                      control={uploadForm.control}
-                      name="pptDocuments"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm">
-                            {projectFilesLabel} *
-                          </FormLabel>
-                          <FormControl>
-                            <FileUploadField
-                              value={field.value}
-                              onChange={field.onChange}
-                              accept=".ppt,.pptx,.pdf,.jpg,.jpeg,.png,.doc,.docx"
-                              disabled={!effectiveCanUploadProjectFiles}
-                            />
-                          </FormControl>
-                          {isCustomVendorFlow && (
-                            <FormDescription className="text-xs">
-                              Files are auto-renamed to the `CD...-Document`
-                              format based on client and instance or furniture
-                              type.
-                            </FormDescription>
-                          )}
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+        {(() => {
+          const docs = getDocs(instance_id);
+          const instanceDesignDocs = designDocs.filter(
+            (doc: any) =>
+              (doc.product_structure_instance_id ?? null) === instance_id,
+          );
+          const instanceQuotationDocs = quotationDocs.filter(
+            (doc: any) =>
+              (doc.product_structure_instance_id ?? null) === instance_id,
+          );
 
-                  <div className="w-full">
-                    <FormField
-                      control={uploadForm.control}
-                      name="pythaDocuments"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm">
-                            {designFilesLabel} *
-                          </FormLabel>
-                          <FormControl>
-                            <FileUploadField
-                              value={field.value}
-                              onChange={field.onChange}
-                              accept=".pdf,.zip,.pytha,.pyo"
-                              disabled={!effectiveCanUploadDesignFiles}
-                            />
-                          </FormControl>
-                          {isCustomVendorFlow && (
-                            <FormDescription className="text-xs">
-                              Files are auto-renamed to the `CD...-Design`
-                              format based on client and instance or furniture
-                              type.
-                            </FormDescription>
-                          )}
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
+          const documentSections: UploadSectionConfig[] = [
+            {
+              id: "project",
+              title: projectFilesLabel,
+              description: isCustomVendorFlow
+                ? "Presentation files shared with the client"
+                : "Project files for this item group",
+              icon: <FileText className="w-5 h-5" />,
+              accept: ".ppt,.pptx,.pdf,.jpg,.jpeg,.png,.doc,.docx",
+              docs: docs.ppt,
+              canView: canViewProjectFiles,
+              canUpload: effectiveCanUploadProjectFiles,
+              canDelete: effectiveCanDeleteProjectFiles,
+              required: true,
+            },
+            {
+              id: "pytha",
+              title: designFilesLabel,
+              description: "Pytha design files for manufacturing",
+              icon: <FileText className="w-5 h-5" />,
+              accept: ".pdf,.zip,.pytha,.pyo",
+              docs: docs.pytha,
+              canView: canViewDesignFiles,
+              canUpload: effectiveCanUploadDesignFiles,
+              canDelete: effectiveCanDeleteDesignFiles,
+              required: true,
+            },
+          ];
 
-                <div className="w-full flex flex-col md:flex-row md:items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    {(uploadForm.watch("pptDocuments").length > 0 ||
-                      uploadForm.watch("pythaDocuments").length > 0) && (
-                      <Badge variant="secondary">
-                        {uploadForm.watch("pptDocuments").length +
-                          uploadForm.watch("pythaDocuments").length}{" "}
-                        selected
-                      </Badge>
-                    )}
-                  </div>
-
-                  {(uploadForm.watch("pptDocuments").length > 0 ||
-                    uploadForm.watch("pythaDocuments").length > 0) && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      className="flex justify-end"
-                    >
-                      {/* ✅ Upload button — disabled + tooltip when blocked */}
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="inline-block">
-                              <Button
-                                type="submit"
-                                disabled={
-                                  isUploadingDocs ||
-                                  (!effectiveCanUploadProjectFiles &&
-                                    !effectiveCanUploadDesignFiles)
-                                }
-                                className="gap-2"
-                              >
-                                {isUploadingDocs ? (
-                                  <>
-                                    <Loader2 className="animate-spin w-4 h-4" />
-                                    Uploading...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Upload className="w-4 h-4" />
-                                    Click Here To Upload Files
-                                  </>
-                                )}
-                              </Button>
-                            </span>
-                          </TooltipTrigger>
-                          {shouldDisableBlockedActions && (
-                            <TooltipContent>{blockedTooltip}</TooltipContent>
-                          )}
-                        </Tooltip>
-                      </TooltipProvider>
-                    </motion.div>
-                  )}
-                </div>
-              </form>
-            </Form>
-          </motion.div>
-        )}
-
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-semibold">Uploaded Files</h4>
-            {(() => {
-              const docs = getDocs(instance_id);
-              const totalDocs = docs.pptCount + docs.pythaCount;
-              return <Badge variant="outline">{totalDocs} total</Badge>;
-            })()}
-          </div>
-
-          {(() => {
-            const docs = getDocs(instance_id);
-            const totalDocs = docs.ppt.length + docs.pytha.length;
-
-            if (
-              totalDocs === 0 ||
-              ((!canViewProjectFiles || docs.ppt.length === 0) &&
-                (!canViewDesignFiles || docs.pytha.length === 0))
-            ) {
-              return (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="p-12 border border-dashed rounded-lg flex flex-col items-center justify-center text-center bg-muted/30"
-                >
-                  <FolderOpen className="w-12 h-12 text-muted-foreground mb-3" />
-                  <p className="text-sm font-medium text-muted-foreground">
-                    No files uploaded yet
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Upload your first file to get started
-                  </p>
-                </motion.div>
-              );
-            }
-
-            return (
-              <ScrollArea className="max-h-[400px]">
-                <div className="space-y-6">
-                  {canViewProjectFiles && docs.ppt.length > 0 && (
-                    <div className="space-y-3">
-                      <h5 className="text-sm font-medium">
-                        {projectFilesLabel}
-                      </h5>
-                      <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-2 gap-3">
-                        {(() => {
-                          const { images, nonImages } = separateImageAndDocs(
-                            docs.ppt,
-                          );
-                          return (
-                            <>
-                              {images.map((doc: any, index: number) => (
-                                <motion.div
-                                  key={doc.id}
-                                  initial={{ opacity: 0, scale: 0.9 }}
-                                  animate={{ opacity: 1, scale: 1 }}
-                                  transition={{ delay: index * 0.05 }}
-                                >
-                                  <ImageComponent
-                                    doc={{
-                                      id: doc.id,
-                                      doc_og_name: doc.doc_og_name,
-                                      signedUrl: doc.signed_url,
-                                      created_at: doc.created_at,
-                                    }}
-                                    index={index}
-                                    // ✅ delete disabled when blocked
-                                    canDelete={effectiveCanDeleteProjectFiles}
-                                    onDelete={(id) =>
-                                      setConfirmDelete(Number(id))
-                                    }
-                                  />
-                                </motion.div>
-                              ))}
-                              {nonImages.map((doc: any, index: number) => (
-                                <motion.div
-                                  key={doc.id}
-                                  initial={{ opacity: 0, scale: 0.9 }}
-                                  animate={{ opacity: 1, scale: 1 }}
-                                  transition={{
-                                    delay: (images.length + index) * 0.05,
-                                  }}
-                                >
-                                  <DocumentCard
-                                    doc={{
-                                      id: doc.id,
-                                      originalName: doc.doc_og_name,
-                                      signedUrl: doc.signed_url,
-                                      created_at: doc.created_at,
-                                    }}
-                                    // ✅ delete disabled when blocked
-                                    canDelete={effectiveCanDeleteProjectFiles}
-                                    onDelete={(id) => setConfirmDelete(id)}
-                                  />
-                                </motion.div>
-                              ))}
-                            </>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                  )}
-
-                  {canViewDesignFiles && docs.pytha.length > 0 && (
-                    <div className="space-y-3">
-                      <h5 className="text-sm font-medium">
-                        Client Documentation - Pytha Design Files
-                      </h5>
-                      <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-2 gap-3">
-                        {docs.pytha.map((doc: any, index: number) => (
-                          <motion.div
-                            key={doc.id}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: index * 0.05 }}
-                          >
-                            <DocumentCard
-                              doc={{
-                                id: doc.id,
-                                originalName: doc.doc_og_name,
-                                signedUrl: doc.signed_url,
-                                created_at: doc.created_at,
-                              }}
-                              // ✅ delete disabled when blocked
-                              canDelete={effectiveCanDeleteDesignFiles}
-                              onDelete={(id) => setConfirmDelete(id)}
-                            />
-                          </motion.div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
+          if (activeSpecRequiresAdditionalUploads) {
+            documentSections.push(
+              {
+                id: "design",
+                title: "Design Files",
+                description: "Updated design after specification review",
+                icon: <PenTool className="w-5 h-5" />,
+                accept:
+                  ".pdf,.pyo,.pytha,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip",
+                docs: instanceDesignDocs,
+                canView: true,
+                canUpload: !shouldDisableBlockedActions,
+                canDelete: !shouldDisableBlockedActions,
+                required: true,
+              },
+              {
+                id: "quotation",
+                title: "Quotation",
+                description: "Updated quotation after specification review",
+                icon: <ScrollText className="w-5 h-5" />,
+                docs: instanceQuotationDocs,
+                canView: true,
+                canUpload: !shouldDisableBlockedActions,
+                canDelete: !shouldDisableBlockedActions,
+                required: true,
+              },
             );
-          })()}
-        </div>
+          }
+
+          return (
+            <div className="space-y-4">
+              {activeSpecRequiresAdditionalUploads && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-300">
+                  This specification was completed with amended or deleted
+                  items — please upload the updated design and quotation
+                  files below.
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {documentSections
+                  .filter((section) => section.canView)
+                  .map((section) => {
+                    const count = section.docs.length;
+                    const isMissingRequired =
+                      !!section.required && count === 0;
+
+                    return (
+                      <Card
+                        key={section.id}
+                        className="h-full rounded-2xl border bg-white dark:bg-neutral-900 hover:shadow-[0_8px_25px_-4px_rgba(0,0,0,0.12)] transition-all duration-200 cursor-pointer group"
+                        onClick={() => {
+                          setActiveUploadSection(section);
+                          setSectionSelectedFiles([]);
+                        }}
+                      >
+                        <CardContent className="px-6 py-5">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-12 h-12 rounded-xl flex items-center justify-center border bg-neutral-50 dark:bg-neutral-800 text-primary">
+                                {section.icon}
+                              </div>
+                              <div>
+                                <h3 className="font-semibold text-sm flex items-center gap-1.5">
+                                  {section.title}
+                                  {isMissingRequired && (
+                                    <span className="text-destructive">
+                                      *
+                                    </span>
+                                  )}
+                                </h3>
+                                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                                  {section.description}
+                                </p>
+                              </div>
+                            </div>
+
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-xs text-muted-foreground hover:text-foreground"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveUploadSection(section);
+                                setSectionSelectedFiles([]);
+                              }}
+                            >
+                              {count === 0
+                                ? section.canUpload
+                                  ? "Upload"
+                                  : "View"
+                                : "View"}
+                            </Button>
+                          </div>
+
+                          <div className="my-4 border-t" />
+
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2 text-sm">
+                              <FolderOpen className="w-4 h-4 text-muted-foreground" />
+                              <span className="font-medium">
+                                {count} file{count !== 1 ? "s" : ""}
+                              </span>
+                            </div>
+                            {isMissingRequired && (
+                              <Badge
+                                variant="outline"
+                                className="border-destructive/40 text-destructive"
+                              >
+                                Required
+                              </Badge>
+                            )}
+                          </div>
+
+                          {count > 0 ? (
+                            <div className="flex -space-x-2">
+                              {section.docs
+                                .slice(0, 4)
+                                .map((doc: any, idx: number) => (
+                                  <div
+                                    key={doc.id}
+                                    className="w-10 h-10 rounded-lg border bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center"
+                                    style={{ zIndex: 4 - idx }}
+                                  >
+                                    <FileText className="w-4 h-4 text-muted-foreground" />
+                                  </div>
+                                ))}
+                              {count > 4 && (
+                                <div className="w-10 h-10 rounded-lg bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center text-xs font-medium text-muted-foreground">
+                                  +{count - 4}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground mt-2">
+                              No files uploaded yet
+                            </p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+              </div>
+            </div>
+          );
+        })()}
       </div>
     );
   };
@@ -2264,6 +2204,189 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
             size="xl"
           >
             {renderInstanceEditorContent(activeInstance.id)}
+          </BaseModal>
+        )}
+      </AnimatePresence>
+
+      {/* Section Upload Modal */}
+      <AnimatePresence>
+        {activeUploadSection && (
+          <BaseModal
+            open={!!activeUploadSection}
+            onOpenChange={(open) => {
+              if (!open) {
+                setActiveUploadSection(null);
+                setSectionSelectedFiles([]);
+              }
+            }}
+            title={activeUploadSection.title}
+            description={activeUploadSection.description}
+            icon={
+              <div className="p-2.5 rounded-lg bg-primary/10 text-primary">
+                {activeUploadSection.icon}
+              </div>
+            }
+            size="lg"
+          >
+            <div className="flex-1 space-y-6 py-4 px-5">
+              {activeUploadSection.canUpload && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold">
+                      Upload New Files
+                    </h4>
+                    {sectionSelectedFiles.length > 0 && (
+                      <Badge variant="secondary">
+                        {sectionSelectedFiles.length} selected
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div
+                    className={
+                      shouldDisableBlockedActions
+                        ? "pointer-events-none opacity-60"
+                        : ""
+                    }
+                  >
+                    <FileUploadField
+                      value={sectionSelectedFiles}
+                      onChange={setSectionSelectedFiles}
+                      accept={activeUploadSection.accept}
+                    />
+                  </div>
+
+                  {sectionSelectedFiles.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      className="flex justify-end"
+                    >
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-block">
+                              <Button
+                                onClick={handleSectionUpload}
+                                disabled={
+                                  isSectionUploading ||
+                                  shouldDisableBlockedActions
+                                }
+                                className="gap-2"
+                              >
+                                {isSectionUploading ? (
+                                  <>
+                                    <Loader2 className="animate-spin w-4 h-4" />
+                                    Uploading...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Upload className="w-4 h-4" />
+                                    Upload {sectionSelectedFiles.length} File
+                                    {sectionSelectedFiles.length > 1
+                                      ? "s"
+                                      : ""}
+                                  </>
+                                )}
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          {shouldDisableBlockedActions && (
+                            <TooltipContent>{blockedTooltip}</TooltipContent>
+                          )}
+                        </Tooltip>
+                      </TooltipProvider>
+                    </motion.div>
+                  )}
+                </motion.div>
+              )}
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold">Uploaded Files</h4>
+                  <Badge variant="outline">
+                    {activeUploadSection.docs.length} total
+                  </Badge>
+                </div>
+
+                {activeUploadSection.docs.length === 0 ? (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="p-12 border border-dashed rounded-lg flex flex-col items-center justify-center text-center bg-muted/30"
+                  >
+                    <FolderOpen className="w-12 h-12 text-muted-foreground mb-3" />
+                    <p className="text-sm font-medium text-muted-foreground">
+                      No files uploaded yet
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Upload your first file to get started
+                    </p>
+                  </motion.div>
+                ) : (
+                  <ScrollArea className="max-h-[400px]">
+                    <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-2 gap-3">
+                      {(() => {
+                        const { images, nonImages } = separateImageAndDocs(
+                          activeUploadSection.docs,
+                        );
+                        return (
+                          <>
+                            {images.map((doc: any, index: number) => (
+                              <motion.div
+                                key={doc.id}
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: index * 0.05 }}
+                              >
+                                <ImageComponent
+                                  doc={{
+                                    id: doc.id,
+                                    doc_og_name: doc.doc_og_name,
+                                    signedUrl: doc.signedUrl ?? doc.signed_url,
+                                    created_at: doc.created_at,
+                                  }}
+                                  index={index}
+                                  canDelete={activeUploadSection.canDelete}
+                                  onDelete={(id) =>
+                                    setConfirmDelete(Number(id))
+                                  }
+                                />
+                              </motion.div>
+                            ))}
+                            {nonImages.map((doc: any, index: number) => (
+                              <motion.div
+                                key={doc.id}
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{
+                                  delay: (images.length + index) * 0.05,
+                                }}
+                              >
+                                <DocumentCard
+                                  doc={{
+                                    id: doc.id,
+                                    originalName: doc.doc_og_name,
+                                    signedUrl: doc.signedUrl ?? doc.signed_url,
+                                    created_at: doc.created_at,
+                                  }}
+                                  canDelete={activeUploadSection.canDelete}
+                                  onDelete={(id) => setConfirmDelete(id)}
+                                />
+                              </motion.div>
+                            ))}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </ScrollArea>
+                )}
+              </div>
+            </div>
           </BaseModal>
         )}
       </AnimatePresence>
