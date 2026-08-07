@@ -153,7 +153,7 @@ type FastProductionTimelineRule = {
   shutter_id: number | null;
   kitchen_manufacturing_days_for_fast_production: number | null;
   other_manufacturing_days_for_fast_production: number | null;
-  carcass: { id: number; name: string };
+  carcass: { id: number; name: string; can_do_fast_production?: boolean };
   shutter: {
     id: number;
     name: string;
@@ -245,7 +245,12 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
   );
 
   const eligibleFastProductionRules = React.useMemo(
-    () => fastProductionRules.filter(hasFastProductionTimeline),
+    () =>
+      fastProductionRules.filter(
+        (rule) =>
+          hasFastProductionTimeline(rule) &&
+          rule.carcass?.can_do_fast_production === true,
+      ),
     [fastProductionRules],
   );
 

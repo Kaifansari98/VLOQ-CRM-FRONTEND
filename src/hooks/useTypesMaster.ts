@@ -485,11 +485,11 @@ export const useProductItemCodes = () => {
   })
 }
 
-export const useCarcassTypes = () => {
+export const useCarcassTypes = (onlyFastProduction: boolean = false) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   return useQuery({
-    queryKey: getCarcassTypesQueryKey(vendorId),
-    queryFn: () => fetchCarcassTypes(vendorId!),
+    queryKey: [...getCarcassTypesQueryKey(vendorId), onlyFastProduction ? "fast-production-only" : "all"],
+    queryFn: () => fetchCarcassTypes(vendorId!, onlyFastProduction),
     enabled: !!vendorId,
     retry: false,
     refetchOnWindowFocus: false,

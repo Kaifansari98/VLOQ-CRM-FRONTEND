@@ -220,20 +220,20 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     isError,
     refetch,
   } = useSelectionData(vendorId!, leadId!);
-  const { data: carcassTypesData, isLoading: isCarcassTypesLoading } =
-    useCarcassTypes();
-  const { data: shutterTypesData, isLoading: isShutterTypesLoading } =
-    useShutterTypes();
-  const { data: handleTypesData, isLoading: isHandleTypesLoading } =
-    useHandleTypes();
+
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const { data: specifications = [] } = useLeadSpecifications(vendorId, leadId);
-  
   const { data: leadDataById } = useLeadById(leadId, vendorId, userId);
   const lead = leadDataById?.data?.lead;
   const furniture_type = lead?.productMappings?.map((pm: any) => pm.productType?.type).filter(Boolean).join(", ") || "N/A";
   const isSmallOrder = furniture_type.toLowerCase().includes("small order");
   const isFastProduction = lead?.is_fast_production === true;
+  const { data: carcassTypesData, isLoading: isCarcassTypesLoading } =
+    useCarcassTypes(isFastProduction);
+  const { data: shutterTypesData, isLoading: isShutterTypesLoading } =
+    useShutterTypes();
+  const { data: handleTypesData, isLoading: isHandleTypesLoading } =
+    useHandleTypes();
   const handlesLargeScaleProjectsFromAuth = useAppSelector(
     (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
   );

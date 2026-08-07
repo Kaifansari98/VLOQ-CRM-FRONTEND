@@ -145,6 +145,7 @@ export interface CarcassTypeMasterEntry {
   id: number;
   name: string;
   vendor_id: number;
+  can_do_fast_production?: boolean;
 }
 
 export interface CarcassTypeMasterResponse {
@@ -608,9 +609,15 @@ export const fetchProductItemCodes = async (vendorId: number) => {
   return res.data;
 }
 
-export const fetchCarcassTypes = async (vendorId: number) => {
+export const fetchCarcassTypes = async (
+  vendorId: number,
+  onlyFastProduction: boolean = false,
+) => {
   const res = await apiClient.get<CarcassTypeMasterResponse>(
     `/leads/get-all-carcass-types/${vendorId}`,
+    {
+      params: onlyFastProduction ? { only_fast_production: true } : undefined,
+    },
   );
   return {
     success: Boolean(res.data?.success),
@@ -1532,4 +1539,3 @@ export const deleteDetailedCompanyVendor = async (id: number, vendorId: number, 
   );
   return res.data;
 };
-
