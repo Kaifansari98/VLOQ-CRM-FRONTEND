@@ -46,8 +46,11 @@ export default function ClientDocsSelectionMultiSelect({
     return value
       .map((item) => item.trim())
       .filter(Boolean)
-      .map((item) => byValue.get(item) || byLabel.get(normalize(item)) || null)
-      .filter((item): item is ClientDocsSelectionOption => item != null);
+      .map(
+        (item) =>
+          byValue.get(item) ||
+          byLabel.get(normalize(item)) || { value: item, label: item },
+      );
   }, [options, value]);
 
   return (
