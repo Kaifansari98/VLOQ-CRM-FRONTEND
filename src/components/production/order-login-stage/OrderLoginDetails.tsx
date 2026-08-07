@@ -184,6 +184,8 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
           leadId={leadId}
           accountId={accountId}
           instanceId={scopedInstanceId}
+          orderLoginApprovalPending={isOrderLoginLocked}
+          orderLoginApprovalPendingTooltip={lockedTabsTooltip}
         />
       ),
     },
@@ -200,6 +202,8 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
           leadId={leadId}
           accountId={accountId}
           instanceId={scopedInstanceId}
+          orderLoginApprovalPending={isOrderLoginLocked}
+          orderLoginApprovalPendingTooltip={lockedTabsTooltip}
         />
       ),
     },
