@@ -11,8 +11,11 @@ import { useTechCheckInstanceStatus } from "@/api/tech-check";
 import { useAppSelector } from "@/redux/store";
 import { useClientDocumentationDetails } from "@/hooks/client-documentation/use-clientdocumentation";
 import { useLeadById, useLeadSuperAdminApprovalLockIns } from "@/hooks/useLeadsQueries";
+import { useUpdateSoValueReceivedStatus } from "@/api/production/order-login";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
+import { Checkbox } from "@/components/ui/checkbox";
+import { toastManager } from "@/components/ui/toast";
 
 interface OrderLoginDetailsProps {
   leadId: number;
@@ -48,6 +51,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
+  const updateSoValueReceived = useUpdateSoValueReceivedStatus(vendorId, leadId);
   const {
     data: orderLoginLockIns = [],
     isLoading: orderLoginLockInsLoading,
@@ -209,6 +213,50 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     },
   ];
 
+  const lead = leadResponse?.data?.lead;
+  const isSoValueReceived = lead?.is_so_value_received === true;
+  const soValueReceivedAt = lead?.so_value_received_at ?? null;
+  const formatSoValueReceivedAt = (value: string | null) => {
+    if (!value) return "";
+
+    return new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    })
+      .format(new Date(value))
+      .replace(", ", " - ");
+  };
+
+  const handleSoValueToggle = async (checked: boolean) => {
+    if (!userId) return;
+
+    try {
+      await updateSoValueReceived.mutateAsync({
+        is_so_value_received: checked,
+        updated_by: userId,
+      });
+      toastManager.add({
+        title: checked
+          ? "SO value marked as sent."
+          : "SO value marked as not sent.",
+        type: "success",
+      });
+    } catch (error: any) {
+      toastManager.add({
+        title:
+          error?.response?.data?.message ||
+          error?.message ||
+          "Failed to update SO value status.",
+        type: "error",
+      });
+    }
+  };
+
   return (
     <div className="space-y-6 bg-[#fff] dark:bg-[#0a0a0a]">
       <motion.div
@@ -273,12 +321,33 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
           </motion.div>
         )}
 
-      <SmoothTab
-        key={`${leadId}-${scopedInstanceId ?? "all"}-${resolvedDefaultTab}-${isOrderLoginLocked ? "locked" : "open"}-${isSmallOrderRequestLead ? "small-order" : "standard"}`}
-        defaultTabId={resolvedDefaultTab}
-        className="-mt-3"
-        items={tabItems}
-      />
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <SmoothTab
+          key={`${leadId}-${scopedInstanceId ?? "all"}-${resolvedDefaultTab}-${isOrderLoginLocked ? "locked" : "open"}-${isSmallOrderRequestLead ? "small-order" : "standard"}`}
+          defaultTabId={resolvedDefaultTab}
+          className="-mt-3"
+          items={tabItems}
+        />
+
+        <div className="flex items-start gap-3 xl:shrink-0 xl:pt-1">
+          <Checkbox
+            checked={isSoValueReceived}
+            disabled={updateSoValueReceived.isPending || !userId}
+            onCheckedChange={(checked) => handleSoValueToggle(checked === true)}
+            className="mt-1 data-[state=checked]:bg-[#8F8F8F] data-[state=checked]:border-[#8F8F8F]"
+          />
+          <div className="space-y-1">
+            <p className="text-[15px] font-medium text-foreground">
+              SO Value Sent
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {isSoValueReceived && soValueReceivedAt
+                ? formatSoValueReceivedAt(soValueReceivedAt)
+                : "Currently SO value is considered as not sent."}
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

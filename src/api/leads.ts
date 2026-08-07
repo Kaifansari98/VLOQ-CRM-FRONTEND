@@ -59,6 +59,8 @@ export interface Lead {
   lead_code?: string;
   is_draft?: boolean;
   is_small_order_request?: boolean;
+  is_so_value_received?: boolean;
+  so_value_received_at?: string | null;
   is_blocked?: boolean;
   lead_blocked_at?: string | null;
   firstname: string;
