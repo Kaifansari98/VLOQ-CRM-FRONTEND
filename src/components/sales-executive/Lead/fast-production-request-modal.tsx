@@ -331,7 +331,10 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
     const handles = byType("Handles");
 
     if (carcas) {
-      defaultValues.carcass_finish_category = chsMappingToOptionValues(carcas.id, "Carcas");
+      defaultValues.carcass_finish_category = chsMappingToOptionValues(
+        carcas.id,
+        "Carcas",
+      );
       defaultValues.carcass_finish_description = carcas.desc || "";
     }
     if (shutter) {
@@ -389,6 +392,10 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
       );
     },
     [eligibleFastProductionRules],
+  );
+  const availableCarcassValues = React.useMemo(
+    () => new Set(carcassOptions.map((item) => item.value)),
+    [carcassOptions],
   );
 
   const shutterOptions = React.useMemo<ClientDocsSelectionOption[]>(
@@ -541,8 +548,8 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
           const match = carcassOptions.find(
             (opt) => opt.label.toLowerCase() === lbl.toLowerCase(),
           );
-          return match ? match.value : lbl;
-        });
+          return match ? match.value : "";
+        }).filter(Boolean);
 
         const shutterValues = shutterLabels.map((lbl: string) => {
           const match = shutterOptions.find(
@@ -694,6 +701,21 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
       : minFastProductionDays == null
         ? "No fast production timeline is available for the selected carcass / shutter combination."
         : undefined;
+
+  React.useEffect(() => {
+    const currentCarcassValues = form.getValues("carcass_finish_category") ?? [];
+    if (currentCarcassValues.length === 0) return;
+
+    const nextValues = currentCarcassValues.filter((value) =>
+      availableCarcassValues.has(value),
+    );
+
+    if (nextValues.length !== currentCarcassValues.length) {
+      form.setValue("carcass_finish_category", nextValues, {
+        shouldValidate: true,
+      });
+    }
+  }, [availableCarcassValues, form]);
 
   React.useEffect(() => {
     const currentShutterValues = form.getValues("shutter_finish_category") ?? [];

@@ -438,6 +438,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       ),
     [carcassTypesData?.data],
   );
+  const availableCarcassValues = React.useMemo(
+    () => new Set(carcassOptions.map((item) => item.value)),
+    [carcassOptions],
+  );
 
   const shutterOptions = React.useMemo<ClientDocsSelectionOption[]>(
     () =>
@@ -736,7 +740,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     const existingCarcassValues = chsMappingToOptionValues(
       existingCarcas?.id,
       "Carcas",
-    );
+    ).filter((value) => availableCarcassValues.has(value));
     let existingCarcassRemark = existingCarcas?.desc || defaultRemark;
     if (!handlesLargeScaleProjects && existingCarcassRemark === DEFAULT_REMARK) {
       existingCarcassRemark = "";
@@ -857,6 +861,21 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       remark: existingHandlesRemark,
     };
   };
+
+  useEffect(() => {
+    const currentCarcassValues = selectionForm.getValues("carcas") ?? [];
+    if (currentCarcassValues.length === 0) return;
+
+    const nextValues = currentCarcassValues.filter((value) =>
+      availableCarcassValues.has(value),
+    );
+
+    if (nextValues.length !== currentCarcassValues.length) {
+      selectionForm.setValue("carcas", nextValues, {
+        shouldValidate: true,
+      });
+    }
+  }, [availableCarcassValues, selectionForm]);
 
   useEffect(() => {
     const rows = Array.isArray(selectionsData?.data) ? selectionsData.data : [];
