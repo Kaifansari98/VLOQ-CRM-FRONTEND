@@ -63,6 +63,7 @@ import {
   fetchSiteTypes,
   fetchSiteTypesForMaster,
   fetchProductTypes,
+  fetchB2BRequirementTypes,
   fetchProcessBriefs,
   fetchSmallOrderRequestTypes,
   updateCompanyVendor,
@@ -1603,6 +1604,16 @@ export const useProductTypes = () => {
   return useQuery({
     queryKey: ["productTypes", vendorId],
     queryFn: () => fetchProductTypes(vendorId!),
+    enabled: !!vendorId,
+  })
+}
+
+export const useB2BRequirementTypes = (vendorIdOverride?: number) => {
+  const authVendorId = useAppSelector((state) => state.auth.user?.vendor_id)
+  const vendorId = vendorIdOverride ?? authVendorId
+  return useQuery({
+    queryKey: ["b2bRequirementTypes", vendorId],
+    queryFn: () => fetchB2BRequirementTypes(vendorId!),
     enabled: !!vendorId,
   })
 }

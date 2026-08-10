@@ -23,7 +23,7 @@ export const clientTypeKeys = {
   list: (vendorId: number) => [...clientTypeKeys.all, "list", vendorId] as const,
 };
 
-export const useClients = (params: { vendor_id?: number; page?: number; limit?: number; search?: string }) => {
+export const useClients = (params: { vendor_id?: number; page?: number; limit?: number; search?: string; activeOnly?: boolean }) => {
   return useQuery({
     queryKey: clientKeys.list(params),
     queryFn: () => getClients({ ...params, vendor_id: params.vendor_id! }),
