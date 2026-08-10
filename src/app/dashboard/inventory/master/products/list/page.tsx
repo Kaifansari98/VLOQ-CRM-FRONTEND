@@ -46,8 +46,34 @@ const fmt = (v: string | number | null, prefix = "") =>
 const fmtPrice = (v: string | null) =>
   v ? `₹${parseFloat(v).toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : "—";
 
-const fmtDim = (l: number, w: number, t: number) =>
-  l || w || t ? `${l}×${w}×${t}` : "—";
+const fmtDim = (l: number, w: number, t: number) => {
+  if (!l && !w && !t) return "—";
+  return t ? `${l}×${w}×${t}` : `${l}×${w}`;
+};
+
+const getEffectiveDimensions = (product: Product) => {
+  const d1 = Number(product.dimension_1 ?? 0);
+  const d2 = Number(product.dimension_2 ?? 0);
+  const d3 = Number(product.dimension_3 ?? 0);
+
+  if (d1 === 0 && d2 === 0 && d3 === 0) {
+    const len = Number(product.length ?? 0);
+    const hgt = Number(product.height ?? 0);
+    const thk = Number(product.thickness ?? 0);
+    return {
+      d1: len,
+      d2: hgt,
+      d3: thk,
+      hasDim: len !== 0 || hgt !== 0 || thk !== 0,
+    };
+  }
+  return {
+    d1,
+    d2,
+    d3,
+    hasDim: d1 !== 0 || d2 !== 0 || d3 !== 0,
+  };
+};
 
 // ─── Pagination ───────────────────────────────────────────────────────────────
 
@@ -140,28 +166,42 @@ function ProductDetailDialog({ product, onClose }: { product: Product; onClose: 
             <Field label="Item ID" value={fmt(product.item_id)} />
             <Field label="Article Code" value={fmt(product.article_code)} />
             <Field label="Vendor Code" value={fmt(product.vendor_code)} />
-            <Field label="HSN Code" value={fmt(product.hsn_code)} />
-            <Field label="Group" value={fmt(product.group)} />
+            <Field label="HSN Code" value={fmt(product.hsn?.hsn_code ?? product.hsn_code)} />
+            <Field label="Group" value={fmt((product as any).itemGroup?.group_name ?? product.group)} />
             <Field label="Procurement" value={fmt(product.procurement)} />
           </Section>
 
           <Separator />
 
           <Section title="Material & Finish">
-            <Field label="Core Material" value={fmt(product.core_material)} />
-            <Field label="Finish" value={fmt(product.finish)} />
+            <Field label="Core Material" value={fmt(
+              product.core_material === null || product.core_material === undefined || product.core_material === ""
+                ? (product.coreProduct?.core_product_name ?? product.core_product_id ?? null)
+                : product.core_material
+            )} />
+            <Field label="Finish" value={fmt(
+              product.finish === null || product.finish === undefined || product.finish === ""
+                ? (product.finishMaster?.finish_name ?? product.finish_id ?? null)
+                : product.finish
+            )} />
             <Field label="Edge Banding Color" value={fmt(product.edge_banding_color)} />
           </Section>
 
           <Separator />
 
           <Section title="Dimensions & Units">
-            <Field label="Board (L×W)" value={`${product.board_length} × ${product.board_width}`} />
-            <Field label="Dim 1×2×3" value={fmtDim(product.dimension_1, product.dimension_2, product.dimension_3)} />
+            {product.size ? (
+              <Field label="Size" value={product.size} />
+            ) : (
+              <>
+                <Field label="Board (L×W)" value={`${product.board_length} × ${product.board_width}`} />
+                <Field label="Dim 1×2×3" value={(() => { const { d1, d2, d3 } = getEffectiveDimensions(product); return fmtDim(d1, d2, d3); })()} />
+              </>
+            )}
             <Field label="Pre-Mill Width" value={fmt(product.pre_mill_width)} />
             <Field label="Drill Holes" value={fmt(product.no_of_drill_holes)} />
             <Field label="Rotation" value={fmt(product.rotation)} />
-            <Field label="Unit of Measure" value={fmt(product.unit_of_measure)} />
+            <Field label="Unit of Measure" value={fmt(product.primaryUnit?.unit_name ?? product.unit_of_measure)} />
             <Field label="Alt UOM" value={fmt(product.alt_uom_text)} />
             <Field label="Alt Conv Factor" value={fmt(product.alt_conv_factor)} />
             <Field label="Weight" value={product.item1_weight ? `${product.item1_weight} kg` : "—"} />
@@ -1143,10 +1183,19 @@ export default function ProductMasterPage() {
     if (!vendorId) return;
     setLoading(true);
     getProducts(Number(vendorId), { page, ...filters })
-      .then(setData).catch(console.error).finally(() => setLoading(false));
+      .then((res) => {
+        console.log("Fetched Products data in frontend:", res);
+        setData(res);
+      }).catch(console.error).finally(() => setLoading(false));
   }, [vendorId, page, filters]);
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
+
+  useEffect(() => {
+    if (data?.products) {
+      console.log("Current page products in UI state:", data.products);
+    }
+  }, [data]);
 
   const handleSync = async () => {
     if (!vendorId || syncing) return;
@@ -1283,6 +1332,7 @@ export default function ProductMasterPage() {
                   <TableHead className="text-xs font-black uppercase">Core Material</TableHead>
                   <TableHead className="text-xs font-black uppercase">UOM</TableHead>
                   <TableHead className="text-xs font-black uppercase text-center">Dimensions</TableHead>
+                  <TableHead className="text-xs font-black uppercase text-center">Size</TableHead>
                   <TableHead className="text-xs font-black uppercase text-right">Stock</TableHead>
                   <TableHead className="text-xs font-black uppercase text-center">Status</TableHead>
                   <TableHead className="text-xs font-black uppercase text-center">
@@ -1294,14 +1344,14 @@ export default function ProductMasterPage() {
                 {loading ? (
                   Array.from({ length: 10 }).map((_, i) => (
                     <TableRow key={i}>
-                      {Array.from({ length: 14 }).map((_, j) => (
+                      {Array.from({ length: 15 }).map((_, j) => (
                         <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                       ))}
                     </TableRow>
                   ))
                 ) : !data || data.products.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={14} className="text-center py-16 text-muted-foreground">
+                    <TableCell colSpan={15} className="text-center py-16 text-muted-foreground">
                       <div className="flex flex-col items-center gap-2">
                         <Package size={32} className="text-muted-foreground/40" />
                         <p className="text-sm">No products found</p>
@@ -1323,8 +1373,8 @@ export default function ProductMasterPage() {
                       <TableCell>
                         <div>
                           <p className="font-semibold text-sm leading-tight">{product.product_name}</p>
-                          {product.hsn_code && (
-                            <p className="text-[10px] text-muted-foreground font-mono">HSN {product.hsn_code}</p>
+                          {(product.hsn?.hsn_code || product.hsn_code) && (
+                            <p className="text-[10px] text-muted-foreground font-mono">HSN {product.hsn?.hsn_code || product.hsn_code}</p>
                           )}
                         </div>
                       </TableCell>
@@ -1332,16 +1382,35 @@ export default function ProductMasterPage() {
                       <TableCell className="text-xs">{product.brand?.brand_name ?? "—"}</TableCell>
                       <TableCell className="text-xs font-mono">{fmt(product.article_code)}</TableCell>
                       <TableCell className="text-xs font-mono">{fmt(product.vendor_code)}</TableCell>
-                      <TableCell className="text-xs">{fmt(product.group)}</TableCell>
-                      <TableCell className="text-xs">{fmt(product.finish)}</TableCell>
-                      <TableCell className="text-xs">{fmt(product.core_material)}</TableCell>
-                      <TableCell className="text-xs">{fmt(product.unit_of_measure)}</TableCell>
+                      <TableCell className="text-xs">{fmt((product as any).itemGroup?.group_name ?? product.group)}</TableCell>
+                      <TableCell className="text-xs">
+                        {fmt(
+                          product.finish === null || product.finish === undefined || product.finish === ""
+                            ? (product.finishMaster?.finish_name ?? product.finish_id ?? null)
+                            : product.finish
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {fmt(
+                          product.core_material === null || product.core_material === undefined || product.core_material === ""
+                            ? (product.coreProduct?.core_product_name ?? product.core_product_id ?? null)
+                            : product.core_material
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs">{fmt(product.primaryUnit?.unit_name ?? product.unit_of_measure)}</TableCell>
                       <TableCell className="text-xs text-center font-mono text-muted-foreground">
-                        {product.dimension_1 || product.dimension_2 || product.dimension_3
-                          ? `${product.dimension_1}×${product.dimension_2}×${product.dimension_3}`
-                          : product.board_length || product.board_width
+                        {(() => {
+                          const { d1, d2, d3, hasDim } = getEffectiveDimensions(product);
+                          if (hasDim) {
+                            return d3 ? `${d1}×${d2}×${d3}` : `${d1}×${d2}`;
+                          }
+                          return product.board_length || product.board_width
                             ? `${product.board_length}×${product.board_width}`
-                            : "—"}
+                            : "—";
+                        })()}
+                      </TableCell>
+                      <TableCell className="text-xs text-center font-mono text-muted-foreground">
+                        {fmt(product.size ?? null)}
                       </TableCell>
                       <TableCell className="text-xs text-right font-mono">
                         <span className={cn("font-semibold",

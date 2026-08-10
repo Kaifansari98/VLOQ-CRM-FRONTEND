@@ -28,13 +28,19 @@ export const getClientById = async (vendor_id: number, id: number) => {
   return response.data;
 };
 
-export const createClient = async (data: CreateClientDTO) => {
-  const response = await apiClient.post<ClientResponse>(`${BASE_URL}/create-client`, data);
+export const createClient = async (data: CreateClientDTO | FormData) => {
+  const isFormData = data instanceof FormData;
+  const response = await apiClient.post<ClientResponse>(`${BASE_URL}/create-client`, data, {
+    headers: isFormData ? { "Content-Type": "multipart/form-data" } : undefined,
+  });
   return response.data;
 };
 
-export const updateClient = async (id: number, data: UpdateClientDTO) => {
-  const response = await apiClient.put<ClientResponse>(`${BASE_URL}/update-client/${id}`, data);
+export const updateClient = async (id: number, data: UpdateClientDTO | FormData) => {
+  const isFormData = data instanceof FormData;
+  const response = await apiClient.put<ClientResponse>(`${BASE_URL}/update-client/${id}`, data, {
+    headers: isFormData ? { "Content-Type": "multipart/form-data" } : undefined,
+  });
   return response.data;
 };
 

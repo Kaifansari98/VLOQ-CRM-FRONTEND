@@ -806,17 +806,31 @@ export const updateLead = async (
 export const updateLeadProductType = async (
   leadId: number,
   userId: number,
-  payload: { productTypeId?: number; productType?: string },
+  payload: { productTypeId?: number; productTypeIds?: number[]; productType?: string },
 ) => {
   const response = await apiClient.put(
     `/leads/update-product-type/${leadId}/userId/${userId}`,
     {
+      ...(payload.productTypeIds && payload.productTypeIds.length > 0
+        ? { product_type_ids: payload.productTypeIds }
+        : {}),
       ...(payload.productTypeId
         ? { product_type_id: payload.productTypeId }
         : {}),
       ...(payload.productType ? { product_type: payload.productType } : {}),
     },
   );
+  return response.data;
+};
+
+export const updateRequirementMetaApi = async (payload: {
+  lead_id: number;
+  vendor_id: number;
+  product_type_id: number;
+  approximate_budget?: number | null;
+  project_status?: string | null;
+}) => {
+  const response = await apiClient.post("/leads/update-requirement-meta", payload);
   return response.data;
 };
 

@@ -63,6 +63,7 @@ import {
   fetchSiteTypes,
   fetchSiteTypesForMaster,
   fetchProductTypes,
+  fetchProcessBriefs,
   fetchSmallOrderRequestTypes,
   updateCompanyVendor,
   updateCompanyVendorStatus,
@@ -1602,6 +1603,15 @@ export const useProductTypes = () => {
   return useQuery({
     queryKey: ["productTypes", vendorId],
     queryFn: () => fetchProductTypes(vendorId!),
+    enabled: !!vendorId,
+  })
+}
+
+export const useProcessBriefs = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id)
+  return useQuery({
+    queryKey: ["processBriefs", vendorId],
+    queryFn: () => fetchProcessBriefs(vendorId!),
     enabled: !!vendorId,
   })
 }

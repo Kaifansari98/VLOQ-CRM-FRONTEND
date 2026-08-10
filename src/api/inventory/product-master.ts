@@ -7,12 +7,17 @@ export interface ProductPayload {
   user_id?: number;
 
   category_id: number;
+  sub_category_id?: number | null;
   product_name: string;
   article_code: string;
+  item_code?: string;
+  barcode?: string | null;
 
+  brand_id?: number | null;
   item_group_id?: number | null;
 
   primary_unit_id?: number | null;
+  purchase_unit_id?: number | null;
   stock_unit_id?: number | null;
   consumption_unit_id?: number | null;
 
@@ -35,10 +40,21 @@ export interface ProductPayload {
 
   hsn_id?: number | null;
   item_type: "CapitalGoods" | "Goods" | "Services";
+  item_type_master_id?: number | null;
 
+  core_product_id?: number | null;
+  grade_id?: number | null;
+  type_id?: number | null;
+  finish_id?: number | null;
+ 
+  length?: number | null;
+  height?: number | null;
+  thickness?: number | null;
+  size?: string | null;
+ 
   suppliers?: ProductSupplierPayload[];
 }
-
+ 
 export interface ProductSupplierPayload {
   company_vendor_id: number;
   supplier_item_code?: string | null;
@@ -46,14 +62,19 @@ export interface ProductSupplierPayload {
   procurement_expense_amount?: number | null;
   procurement_expense_pct?: number | null;
   procurement_expense_total?: number | null;
-
+ 
   final_amount?: number | null;
-
 }
-
+ 
 export interface ProductMastersResponse {
-  categories: { id: number; category_name: string }[];
-  units: { id: number; unit_name: string }[];
+  categories: { id: number; category_name: string; parent_id?: number | null }[];
+  brands: { id: number; brand_name: string; brand_short_name?: string | null; logo?: string | null }[];
+  grades: { id: number; grade_name: string }[];
+  finishes: { id: number; finish_name: string }[];
+  types: { id: number; type_name: string }[];
+  coreProducts: { id: number; core_product_name: string }[];
+  itemTypeMasters: { id: number; item_type_name: string }[];
+  units: { id: number; unit_name: string; short_name?: string | null; decimal_allowed?: boolean }[];
   itemGroups: { id: number; group_name: string }[];
   hsns: {
     id: number;
@@ -71,6 +92,7 @@ export interface ProductMastersResponse {
   costingMethods: ("FIFO" | "MANUAL")[];
   itemTypes: ("CapitalGoods" | "Goods" | "Services")[];
 }
+
 
 export const fetchProductMasters = async (vendorId: number) => {
   const { data } = await apiClient.get(

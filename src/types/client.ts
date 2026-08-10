@@ -6,6 +6,21 @@ export interface ClientType {
   created_at: string;
 }
 
+export interface ClientBankAccount {
+  id?: number;
+  client_id?: number;
+  bank_name: string;
+  holder_name: string;
+  account_no: string;
+  ifsc: string;
+  swift?: string;
+  branch: string;
+  cancelled_cheque_path?: string;
+  cancelled_cheque_name?: string;
+  cancelled_cheque_url?: string;
+  is_default?: boolean;
+}
+
 export interface Client {
   id: number;
   vendor_id: number;
@@ -24,6 +39,7 @@ export interface Client {
   client_type_id?: number | null;
   clientType?: ClientType | null;
   is_active: boolean;
+  bankAccounts?: ClientBankAccount[];
   created_at: string;
   updated_at: string;
 }
@@ -44,9 +60,12 @@ export interface CreateClientDTO {
   company_name?: string;
   client_type_id?: number;
   is_active?: boolean;
+  bankAccounts?: ClientBankAccount[];
 }
 
-export interface UpdateClientDTO extends Partial<Omit<CreateClientDTO, "vendor_id">> {}
+export interface UpdateClientDTO extends Partial<Omit<CreateClientDTO, "vendor_id">> {
+  bankAccounts?: ClientBankAccount[];
+}
 
 export interface ClientListResponse {
   success: boolean;

@@ -11,7 +11,10 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { Plus } from "lucide-react";
+import { Plus, Trash2, FileText, Upload, Eye, ExternalLink } from "lucide-react";
+import DocumentPreview from "@/components/utils/file-preview";
+import { toast } from "sonner";
+import { z } from "zod";
 
 import { cn } from "@/lib/utils";
 import {
@@ -67,7 +70,24 @@ type ClientRow = {
   client_type_name: string;
   is_active: boolean;
   status: "active" | "inactive";
+  bankAccounts: any[];
 };
+
+const bankSchema = z.object({
+  bank_name: z.string().min(1, "Bank Name is required"),
+  holder_name: z
+    .string()
+    .regex(/^[a-zA-Z\s.]+$/, "Only letters, spaces, and dots allowed")
+    .min(1, "Account Holder Name is required"),
+  account_no: z.string().regex(/^\d{9,18}$/, "Account number must be 9–18 digits"),
+  ifsc: z.string().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC format (e.g. SBIN0001234)"),
+  branch: z.string().min(1, "Branch Name is required"),
+  swift: z
+    .string()
+    .regex(/^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/, "Invalid SWIFT code format")
+    .or(z.literal(""))
+    .optional(),
+});
 
 const toRow = (item: Client, index: number): ClientRow => ({
   srNo: index + 1,
@@ -88,6 +108,7 @@ const toRow = (item: Client, index: number): ClientRow => ({
   client_type_name: item.clientType?.type || "",
   is_active: item.is_active,
   status: item.is_active ? "active" : "inactive",
+  bankAccounts: item.bankAccounts || [],
 });
 
 const getClientColumns = ({
@@ -208,6 +229,7 @@ const defaultForm = {
 
 export default function ClientMastersTable({ vendorIdOverride }: ClientMastersTableProps) {
   const sessionVendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const userId = useAppSelector((state) => state.auth.user?.id);
   const vendorId = vendorIdOverride ?? sessionVendorId;
 
   const [globalFilter, setGlobalFilter] = React.useState("");
@@ -223,6 +245,38 @@ export default function ClientMastersTable({ vendorIdOverride }: ClientMastersTa
   const [isAltContactValid, setIsAltContactValid] = React.useState(true);
   const [showAddType, setShowAddType] = React.useState(false);
   const [newTypeName, setNewTypeName] = React.useState("");
+  const [banks, setBanks] = React.useState<any[]>([]);
+
+  const handleAddBank = () => {
+    setBanks([...banks, {
+      bank_name: "",
+      holder_name: "",
+      account_no: "",
+      ifsc: "",
+      branch: "",
+      swift: "",
+      cancelled_cheque_path: "",
+      cancelled_cheque_name: "",
+      cancelled_cheque_file: null,
+      is_default: banks.length === 0
+    }]);
+  };
+
+  const handleBankChange = (index: number, field: string | Record<string, any>, value?: any) => {
+    setBanks((prev) => {
+      const newBanks = [...prev];
+      if (typeof field === "object") {
+        newBanks[index] = { ...newBanks[index], ...field };
+      } else {
+        newBanks[index] = { ...newBanks[index], [field]: value };
+      }
+      return newBanks;
+    });
+  };
+
+  const handleRemoveBank = (index: number) => {
+    setBanks((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const { data, isLoading, isError, error, refetch } = useClients({
     vendor_id: vendorId,
@@ -264,6 +318,7 @@ export default function ClientMastersTable({ vendorIdOverride }: ClientMastersTa
         });
         setIsContactValid(true);
         setIsAltContactValid(true);
+        setBanks(row.bankAccounts || []);
         setOpenEditModal(true);
       },
     }),
@@ -290,6 +345,7 @@ export default function ClientMastersTable({ vendorIdOverride }: ClientMastersTa
     setIsAltContactValid(true);
     setShowAddType(false);
     setNewTypeName("");
+    setBanks([]);
   };
 
   const validateForm = (): boolean => {
@@ -319,6 +375,39 @@ export default function ClientMastersTable({ vendorIdOverride }: ClientMastersTa
     if (!form.country.trim()) newErrors.country = "Country is required";
     if (!form.pincode.trim()) newErrors.pincode = "Pincode is required";
 
+    const seenAccounts = new Set<string>();
+    banks.forEach((bank, index) => {
+      const accNo = bank.account_no?.trim();
+      if (accNo) {
+        if (seenAccounts.has(accNo)) {
+          newErrors[`bank_${index}_account_no`] = "Duplicate account number in form";
+        } else {
+          seenAccounts.add(accNo);
+        }
+      }
+
+      const result = bankSchema.safeParse({
+        bank_name: bank.bank_name || "",
+        holder_name: bank.holder_name || "",
+        account_no: bank.account_no || "",
+        ifsc: bank.ifsc || "",
+        branch: bank.branch || "",
+        swift: bank.swift || "",
+      });
+
+      if (!result.success) {
+        const fieldErrors = result.error.format();
+        if (fieldErrors.bank_name?._errors?.[0]) newErrors[`bank_${index}_bank_name`] = fieldErrors.bank_name._errors[0];
+        if (fieldErrors.holder_name?._errors?.[0]) newErrors[`bank_${index}_holder_name`] = fieldErrors.holder_name._errors[0];
+        if (fieldErrors.account_no?._errors?.[0] && !newErrors[`bank_${index}_account_no`]) {
+          newErrors[`bank_${index}_account_no`] = fieldErrors.account_no._errors[0];
+        }
+        if (fieldErrors.ifsc?._errors?.[0]) newErrors[`bank_${index}_ifsc`] = fieldErrors.ifsc._errors[0];
+        if (fieldErrors.branch?._errors?.[0]) newErrors[`bank_${index}_branch`] = fieldErrors.branch._errors[0];
+        if (fieldErrors.swift?._errors?.[0]) newErrors[`bank_${index}_swift`] = fieldErrors.swift._errors[0];
+      }
+    });
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -342,12 +431,49 @@ export default function ClientMastersTable({ vendorIdOverride }: ClientMastersTa
     state: form.state.trim(),
     country: form.country.trim(),
     pincode: form.pincode.trim(),
+    bankAccounts: banks.map(b => ({
+      id: b.id,
+      bank_name: b.bank_name,
+      holder_name: b.holder_name,
+      account_no: b.account_no,
+      ifsc: b.ifsc,
+      swift: b.swift,
+      branch: b.branch,
+      cancelled_cheque_path: b.cancelled_cheque_file ? "" : (b.cancelled_cheque_path || ""),
+      cancelled_cheque_name: b.cancelled_cheque_file?.name || b.cancelled_cheque_name || "",
+      is_default: b.is_default
+    }))
   });
+
+  const buildFormDataPayload = (extraFields: Record<string, any> = {}) => {
+    const formData = new FormData();
+    const payload: any = { ...buildPayload(), ...extraFields };
+
+    Object.entries(payload).forEach(([key, val]) => {
+      if (key !== "bankAccounts" && val !== undefined && val !== null) {
+        formData.append(key, String(val));
+      }
+    });
+
+    const bankAccountsJson = payload.bankAccounts.map((b: any, index: number) => {
+      const bankItem = { ...b };
+      delete bankItem.cancelled_cheque_file;
+      delete bankItem.cancelled_cheque_url;
+      if (banks[index]?.cancelled_cheque_file) {
+        formData.append(`cancelled_cheque_${index}`, banks[index].cancelled_cheque_file);
+      }
+      return bankItem;
+    });
+
+    formData.append("bankAccounts", JSON.stringify(bankAccountsJson));
+    return formData;
+  };
 
   const handleCreate = () => {
     if (!validateForm() || !vendorId) return;
+    const formData = buildFormDataPayload({ vendor_id: Number(vendorId), created_by: userId });
     createMutation.mutate(
-      { vendor_id: Number(vendorId), ...buildPayload() },
+      formData,
       {
         onSuccess: () => {
           refetch();
@@ -360,8 +486,9 @@ export default function ClientMastersTable({ vendorIdOverride }: ClientMastersTa
 
   const handleEdit = () => {
     if (!editingRow || !validateForm()) return;
+    const formData = buildFormDataPayload({ is_active: form.is_active, updated_by: userId });
     updateMutation.mutate(
-      { id: editingRow.id, data: { ...buildPayload(), is_active: form.is_active } },
+      { id: editingRow.id, data: formData },
       {
         onSuccess: () => {
           refetch();
@@ -622,6 +749,182 @@ export default function ClientMastersTable({ vendorIdOverride }: ClientMastersTa
           />
           {errors.pincode && <p className="text-xs text-destructive">{errors.pincode}</p>}
         </div>
+      </div>
+
+      <div className="space-y-4 pt-4 border-t">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Bank Details</h3>
+          <Button type="button" variant="outline" size="sm" onClick={handleAddBank}>
+            <Plus className="mr-2 h-4 w-4" /> Add Bank
+          </Button>
+        </div>
+        {banks.map((bank, index) => (
+          <div key={index} className="p-4 border rounded-md space-y-4 relative">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="absolute top-2 right-2 h-8 w-8 p-0 text-destructive"
+              onClick={() => handleRemoveBank(index)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Bank Name <span className="text-red-500">*</span></Label>
+                <Input
+                  value={bank.bank_name}
+                  onChange={(e) => handleBankChange(index, "bank_name", e.target.value)}
+                  placeholder="e.g. HDFC Bank"
+                />
+                {errors[`bank_${index}_bank_name`] && <p className="text-xs text-destructive">{errors[`bank_${index}_bank_name`]}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label>Account Holder Name <span className="text-red-500">*</span></Label>
+                <Input
+                  value={bank.holder_name}
+                  onChange={(e) => handleBankChange(index, "holder_name", e.target.value)}
+                  placeholder="Account holder's name"
+                />
+                {errors[`bank_${index}_holder_name`] && <p className="text-xs text-destructive">{errors[`bank_${index}_holder_name`]}</p>}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Account Number <span className="text-red-500">*</span></Label>
+                <Input
+                  value={bank.account_no}
+                  onChange={(e) => handleBankChange(index, "account_no", e.target.value.replace(/\D/g, ''))}
+                  placeholder="9 to 18 digit account number"
+                />
+                {errors[`bank_${index}_account_no`] && <p className="text-xs text-destructive">{errors[`bank_${index}_account_no`]}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label>IFSC Code <span className="text-red-500">*</span></Label>
+                <Input
+                  value={bank.ifsc}
+                  onChange={(e) => handleBankChange(index, "ifsc", e.target.value.toUpperCase().slice(0, 11))}
+                  placeholder="e.g. SBIN0001234"
+                />
+                {errors[`bank_${index}_ifsc`] && <p className="text-xs text-destructive">{errors[`bank_${index}_ifsc`]}</p>}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Branch Name <span className="text-red-500">*</span></Label>
+                <Input
+                  value={bank.branch}
+                  onChange={(e) => handleBankChange(index, "branch", e.target.value)}
+                  placeholder="e.g. Andheri East Branch"
+                />
+                {errors[`bank_${index}_branch`] && <p className="text-xs text-destructive">{errors[`bank_${index}_branch`]}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label>SWIFT Code (Optional)</Label>
+                <Input
+                  value={bank.swift || ""}
+                  onChange={(e) => handleBankChange(index, "swift", e.target.value.toUpperCase())}
+                  placeholder="e.g. BARCINBB or BARCINBB123"
+                />
+                {errors[`bank_${index}_swift`] && <p className="text-xs text-destructive">{errors[`bank_${index}_swift`]}</p>}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Upload Cancelled Cheque (Optional)</Label>
+              {bank.cancelled_cheque_file || bank.cancelled_cheque_path || bank.cancelled_cheque_url ? (
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 border rounded-lg p-3 bg-muted/30">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate">
+                        {bank.cancelled_cheque_file?.name ||
+                          bank.cancelled_cheque_name ||
+                          (bank.cancelled_cheque_path
+                            ? bank.cancelled_cheque_path.split("/").pop()
+                            : "Cheque document")}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {bank.cancelled_cheque_file ? `${(bank.cancelled_cheque_file.size / 1024).toFixed(1)} KB` : "Uploaded cheque"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-1.5 text-xs"
+                      onClick={() => {
+                        let targetUrl = "";
+                        if (bank.cancelled_cheque_file) {
+                          try {
+                            targetUrl = URL.createObjectURL(bank.cancelled_cheque_file);
+                          } catch (e) {
+                            console.error("Failed to create blob URL:", e);
+                          }
+                        }
+                        
+                        if (!targetUrl && bank.cancelled_cheque_url && /^https?:\/\//i.test(bank.cancelled_cheque_url)) {
+                          targetUrl = bank.cancelled_cheque_url;
+                        } else if (!targetUrl && bank.cancelled_cheque_path && /^https?:\/\//i.test(bank.cancelled_cheque_path)) {
+                          targetUrl = bank.cancelled_cheque_path;
+                        }
+
+                        if (targetUrl) {
+                          window.open(targetUrl, "_blank", "noopener,noreferrer");
+                        } else {
+                          toast.error("Preview is unavailable for this file. Please re-upload or save the client.");
+                        }
+                      }}
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      Preview
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                      onClick={() => {
+                        handleBankChange(index, {
+                          cancelled_cheque_file: null,
+                          cancelled_cheque_path: "",
+                          cancelled_cheque_name: "",
+                          cancelled_cheque_url: "",
+                        });
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="relative border-2 border-dashed rounded-lg p-4 flex flex-col items-center justify-center bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer group">
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        handleBankChange(index, "cancelled_cheque_file", file);
+                        handleBankChange(index, "cancelled_cheque_path", "");
+                      }
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  />
+                  <Upload className="h-5 w-5 text-muted-foreground mb-1 group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-medium text-foreground">
+                    Drag & Drop or Click to Select File
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    Supports PDF, JPG, JPEG, PNG (max 10MB)
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
 
       {editingRow && (

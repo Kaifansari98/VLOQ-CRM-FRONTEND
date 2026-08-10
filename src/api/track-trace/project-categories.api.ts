@@ -15,6 +15,8 @@ export interface CategoryMapping {
 export interface ProjectCategory {
   id: number;
   category_name: string;
+  parent_id?: number | null;
+  parent?: { id: number; category_name: string } | null;
   status: "Yes" | "No";
   created_at: string;
   projectCategoriesMasterVendorMapping: CategoryMapping[];
@@ -23,18 +25,20 @@ export interface ProjectCategory {
 export interface CreateCategoryPayload {
   vendor_id: number;
   category_name: string;
+  parent_id?: number | null;
   type_ids: number[];
-  created_by:number;
+  created_by: number;
 }
 
 export interface UpdateCategoryPayload {
   id: number;
   vendor_id: number;
   category_name: string;
+  parent_id?: number | null;
   status: "Yes" | "No";
   type_ids: number[];
-  created_by:number;
-  updated_by:number;
+  created_by: number;
+  updated_by: number;
 }
 
 export const getProjectCategories = async (vendorId: number) => {

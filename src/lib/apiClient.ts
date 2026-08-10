@@ -2,7 +2,7 @@ import axios from "axios";
 import { clearClientSessionStorage } from "@/lib/sessionCleanup";
 
 const environment = (
-  process.env.NEXT_PUBLIC_ENVIRONMENT ?? "PRODUCTION"
+  process.env.NEXT_PUBLIC_ENVIRONMENT ?? "LOCAL"
 ).toUpperCase() as keyof typeof API_URLS;
 
 const API_URLS = {
