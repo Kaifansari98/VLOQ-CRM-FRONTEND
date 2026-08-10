@@ -63,7 +63,7 @@ export interface Product {
 
   // Added relation and price fields
   barcode?: string | null;
-  subCategory?: { id: number; name: string } | null;
+  subCategory?: { id: number; name?: string; category_name?: string } | null;
   productType?: { id: number; type: string; tag: string } | null;
   sizeMaster?: { id: number; name: string } | null;
   product_as_per_vendor_invoice?: string | null;
@@ -127,4 +127,3 @@ export const syncCadBidProducts = async (vendorId: number) => {
   const { data } = await apiClient.post(`/inventory/sync-cadbid-products`, { vendor_id: vendorId });
   return data as { success: boolean; message: string; data: SyncResult };
 };
-
