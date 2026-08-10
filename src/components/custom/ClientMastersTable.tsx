@@ -248,6 +248,34 @@ export default function ClientMastersTable({ vendorIdOverride }: ClientMastersTa
   const [banks, setBanks] = React.useState<any[]>([]);
 
   const handleAddBank = () => {
+    if (banks.length > 0) {
+      const lastBank = banks[banks.length - 1];
+      const result = bankSchema.safeParse({
+        bank_name: lastBank.bank_name || "",
+        holder_name: lastBank.holder_name || "",
+        account_no: lastBank.account_no || "",
+        ifsc: lastBank.ifsc || "",
+        branch: lastBank.branch || "",
+        swift: lastBank.swift || "",
+      });
+
+      if (!result.success) {
+        const fieldErrors = result.error.format();
+        const index = banks.length - 1;
+        const newErrors = { ...errors };
+        
+        if (fieldErrors.bank_name?._errors?.[0]) newErrors[`bank_${index}_bank_name`] = fieldErrors.bank_name._errors[0];
+        if (fieldErrors.holder_name?._errors?.[0]) newErrors[`bank_${index}_holder_name`] = fieldErrors.holder_name._errors[0];
+        if (fieldErrors.account_no?._errors?.[0]) newErrors[`bank_${index}_account_no`] = fieldErrors.account_no._errors[0];
+        if (fieldErrors.ifsc?._errors?.[0]) newErrors[`bank_${index}_ifsc`] = fieldErrors.ifsc._errors[0];
+        if (fieldErrors.branch?._errors?.[0]) newErrors[`bank_${index}_branch`] = fieldErrors.branch._errors[0];
+        
+        setErrors(newErrors);
+        toast.error("Please fill all mandatory fields of the bank account before adding another.");
+        return;
+      }
+    }
+
     setBanks([...banks, {
       bank_name: "",
       holder_name: "",
@@ -374,6 +402,13 @@ export default function ClientMastersTable({ vendorIdOverride }: ClientMastersTa
     if (!form.state.trim()) newErrors.state = "State is required";
     if (!form.country.trim()) newErrors.country = "Country is required";
     if (!form.pincode.trim()) newErrors.pincode = "Pincode is required";
+
+    if (form.gst_number && form.gst_number.trim()) {
+      const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+      if (!gstRegex.test(form.gst_number.trim())) {
+        newErrors.gst_number = "Enter a valid 15-character GSTIN (e.g. 27AAAAA1111A1Z1)";
+      }
+    }
 
     const seenAccounts = new Set<string>();
     banks.forEach((bank, index) => {
@@ -602,9 +637,13 @@ export default function ClientMastersTable({ vendorIdOverride }: ClientMastersTa
           <Input
             id="client-gst"
             value={form.gst_number}
-            onChange={(e) => setForm((prev) => ({ ...prev, gst_number: e.target.value }))}
+            onChange={(e) => {
+              setForm((prev) => ({ ...prev, gst_number: e.target.value.toUpperCase() }));
+              if (errors.gst_number) setErrors((prev) => ({ ...prev, gst_number: "" }));
+            }}
             placeholder="Enter GST number"
           />
+          {errors.gst_number && <p className="text-xs text-destructive">{errors.gst_number}</p>}
         </div>
       </div>
 

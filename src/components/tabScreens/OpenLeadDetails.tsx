@@ -84,6 +84,7 @@ import {
   useProductItemCodes,
   useProductStructureTypes,
   useProductTypes,
+  useB2BRequirementTypes,
   useProcessBriefs,
 } from "@/hooks/useTypesMaster";
 import { updateLeadProductType, clearLeadProductStructures } from "@/api/leads";
@@ -294,6 +295,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     useProductItemCodes();
   const { data: productStructureTypes } = useProductStructureTypes();
   const { data: productTypes } = useProductTypes();
+  const { data: b2bReqTypesData } = useB2BRequirementTypes(vendorId);
   const { data: processBriefsData } = useProcessBriefs();
   const processBriefs = useMemo(() => processBriefsData?.data || [], [processBriefsData]);
 
@@ -475,7 +477,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     useMutation({
       mutationFn: async (typeIds: number[]) => {
         const primaryTypeId = typeIds[0];
-        const nextTypeLabel = productTypes?.data?.find(
+        const nextTypeLabel = (b2bReqTypesData?.data || productTypes?.data)?.find(
           (t: any) => t.id === primaryTypeId,
         )?.type;
         
@@ -729,11 +731,8 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   );
 
   const b2bProductTypes = useMemo(() => {
-    return (productTypes?.data || []).filter((t: any) => {
-      if (!t.tag) return true;
-      return !/^Type\s*\d+$/i.test(t.tag);
-    });
-  }, [productTypes?.data]);
+    return b2bReqTypesData?.data || [];
+  }, [b2bReqTypesData?.data]);
 
   const filteredBriefsForModal = useMemo(() => {
     if (!briefModalTypeId) return [];
@@ -1475,28 +1474,25 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   </div>
 
                   <div className="flex flex-wrap gap-3">
-                    {b2bProductTypes.map((pt: any) => {
-                      const isSelected = selectedProductTypeIds.includes(pt.id);
-                      return (
-                        <button
-                          key={pt.id}
-                          type="button"
-                          onClick={() => toggleRequirementType(pt.id)}
-                          className={`flex items-center gap-3 px-4 py-2 rounded-xl border-2 transition-all text-xs font-semibold select-none ${
-                            isSelected
-                              ? "border-emerald-600 bg-emerald-50/40 text-emerald-950 dark:border-emerald-500 dark:bg-emerald-950/20 dark:text-emerald-200"
-                              : "border-border/60 bg-background text-muted-foreground hover:border-border"
-                          }`}
-                        >
-                          <span>{pt.type}</span>
-                          <span className={`flex h-5 w-5 items-center justify-center rounded-md transition-all ${
-                            isSelected ? "bg-emerald-600 text-white" : "border border-muted-foreground/30 bg-muted/20"
-                          }`}>
-                            {isSelected && <Check className="h-3.5 w-3.5 stroke-[3]" />}
-                          </span>
-                        </button>
-                      );
-                    })}
+                    {b2bProductTypes
+                      .filter((pt: any) => selectedProductTypeIds.includes(pt.id))
+                      .map((pt: any) => {
+                        const isSelected = selectedProductTypeIds.includes(pt.id);
+                        return (
+                          <div
+                            key={pt.id}
+                            className="flex items-center gap-3 px-4 py-2 rounded-xl border-2 border-emerald-600 bg-emerald-50/40 text-emerald-950 dark:border-emerald-500 dark:bg-emerald-950/20 dark:text-emerald-200 text-xs font-semibold select-none"
+                          >
+                            <span>{pt.type}</span>
+                            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-emerald-600 text-white">
+                              <Check className="h-3.5 w-3.5 stroke-[3]" />
+                            </span>
+                          </div>
+                        );
+                      })}
+                    {b2bProductTypes.filter((pt: any) => selectedProductTypeIds.includes(pt.id)).length === 0 && (
+                      <p className="text-xs text-muted-foreground italic">No requirement types selected. Click "+ Add Requirement Type" to select.</p>
+                    )}
                   </div>
                 </div>
 
@@ -1504,9 +1500,9 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                 {selectedProductTypeIds.length > 0 && (
                   <div className="space-y-3 pt-2 border-t">
                     {selectedProductTypeIds.map((typeId) => {
-                      const typeObj = productTypes?.data?.find((t: any) => t.id === typeId);
+                      const typeObj = b2bReqTypesData?.data?.find((t: any) => t.id === typeId);
                       const selectedBriefs = selectedProcessBriefIds[typeId] || [];
-                      const typeMaterials = reqMaterials.filter((m: any) => m.product_type_id === typeId);
+                      const typeMaterials = reqMaterials.filter((m: any) => (m.b2b_requirement_type_id || m.product_type_id) === typeId);
 
                       return (
                         <div
@@ -1544,19 +1540,31 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                                 Select Process Briefs
                               </Button>
 
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setEditingMaterialItem(null);
-                                  setMaterialModalTypeId(typeId);
-                                }}
-                                className="text-xs gap-1.5 bg-background shadow-2xs hover:bg-muted text-emerald-700 dark:text-emerald-400 border-emerald-600/30"
-                              >
-                                <Plus className="h-3.5 w-3.5" />
-                                Add Material & Quantity
-                              </Button>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-block">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        setEditingMaterialItem(null);
+                                        setMaterialModalTypeId(typeId);
+                                      }}
+                                      disabled={selectedBriefs.length === 0}
+                                      className="text-xs gap-1.5 bg-background shadow-2xs hover:bg-muted text-emerald-700 dark:text-emerald-400 border-emerald-600/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                      <Plus className="h-3.5 w-3.5" />
+                                      Add Material & Quantity
+                                    </Button>
+                                  </span>
+                                </TooltipTrigger>
+                                {selectedBriefs.length === 0 && (
+                                  <TooltipContent side="top">
+                                    Please select at least one process brief first
+                                  </TooltipContent>
+                                )}
+                              </Tooltip>
                             </div>
                           </div>
 
@@ -2630,58 +2638,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                 </div>
               </div>
 
-              {selectedProductTypeIds.length > 0 && (
-                <div className="space-y-3 pt-2 border-t">
-                  <label className="text-xs font-semibold text-foreground">
-                    Process Briefs (Dependent on Requirement Types)
-                  </label>
 
-                  {selectedProductTypeIds.map((typeId) => {
-                    const typeObj = productTypes?.data?.find((t: any) => t.id === typeId);
-                    const briefOptions = processBriefs.filter((b: any) => b.product_type_id === typeId);
-                    const selectedBriefs = selectedProcessBriefIds[typeId] || [];
-
-                    return (
-                      <div key={typeId} className="border rounded-lg p-3 bg-muted/20 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                            <Package className="h-3.5 w-3.5 text-primary" />
-                            {typeObj?.type || "Requirement"}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground font-medium">
-                            {selectedBriefs.length} brief(s) selected
-                          </span>
-                        </div>
-
-                        {briefOptions.length === 0 ? (
-                          <p className="text-[11px] text-muted-foreground italic">
-                            No process briefs configured for {typeObj?.type}.
-                          </p>
-                        ) : (
-                          <div className="flex flex-wrap gap-1.5 pt-1">
-                            {briefOptions.map((brief: any) => {
-                              const isBriefSelected = selectedBriefs.includes(brief.id);
-                              return (
-                                <Badge
-                                  key={brief.id}
-                                  variant={isBriefSelected ? "secondary" : "outline"}
-                                  className={`cursor-pointer py-1 px-2.5 text-xs flex items-center gap-1.5 transition-all select-none ${
-                                    isBriefSelected ? "bg-secondary text-secondary-foreground font-medium" : "hover:bg-muted"
-                                  }`}
-                                  onClick={() => toggleProcessBrief(typeId, brief.id)}
-                                >
-                                  <Checkbox checked={isBriefSelected} className="h-3.5 w-3.5 pointer-events-none" />
-                                  <span>{brief.name}</span>
-                                </Badge>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
 
               <div className="flex justify-end gap-2 pt-3 border-t">
                 <Button
@@ -2710,12 +2667,20 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>
-                  {currentProductTypeId
+                  {isB2b
+                    ? currentProductTypeId
+                      ? "Confirm Requirement Type Change?"
+                      : "Set Requirement Type?"
+                    : currentProductTypeId
                     ? "Confirm Product Type Change?"
                     : "Set Product Type?"}
                 </AlertDialogTitle>
                 <AlertDialogDescription>
-                  {currentProductTypeId
+                  {isB2b
+                    ? currentProductTypeId
+                      ? "This will update the requirement type for this lead."
+                      : "This will set the requirement type for this lead."
+                    : currentProductTypeId
                     ? "This will update the product type for this lead."
                     : "This will set the product type for this lead."}
                 </AlertDialogDescription>
@@ -2988,7 +2953,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
               leadId={leadId}
               productTypeId={materialModalTypeId}
               productTypeName={
-                productTypes?.data?.find((t: any) => t.id === materialModalTypeId)?.type || "Requirement"
+                (b2bReqTypesData?.data || productTypes?.data)?.find((t: any) => t.id === materialModalTypeId)?.type || "Requirement"
               }
               userId={userId || 0}
               editingItem={editingMaterialItem}

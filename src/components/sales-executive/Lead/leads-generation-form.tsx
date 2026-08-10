@@ -507,6 +507,7 @@ export default function LeadsGenerationForm({
   const { data: clientsData, isLoading: isClientsLoading } = useClients({
     vendor_id: vendorId,
     limit: 200,
+    activeOnly: true,
   });
   const clientsList = clientsData?.data?.data ?? [];
   const { data: sourceTypes, isLoading: isSourceTypesLoading } =

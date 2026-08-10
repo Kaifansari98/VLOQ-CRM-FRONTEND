@@ -1245,6 +1245,32 @@ export const fetchProductTypes = async (vendorId: number) => {
   return res.data
 }
 
+export const fetchB2BRequirementTypes = async (vendorId: number) => {
+  const res = await apiClient.get(`/leads/get-all-b2b-requirement-types/${vendorId}`)
+  return res.data
+}
+
+export const createB2BRequirementTypeApi = async (payload: { vendor_id: number; type: string }) => {
+  const res = await apiClient.post("/leads/create-b2b-requirement-type", payload)
+  return res.data
+}
+
+export const saveLeadB2BRequirementMappingsApi = async (payload: {
+  lead_id: number;
+  vendor_id: number;
+  b2b_requirement_type_ids: number[];
+  approximate_budget?: number;
+  project_status?: string;
+}) => {
+  const res = await apiClient.post("/leads/save-lead-b2b-requirement-mappings", payload);
+  return res.data;
+};
+
+export const fetchLeadB2BRequirementMappingsApi = async (leadId: number, vendorId: number) => {
+  const res = await apiClient.get(`/leads/get-lead-b2b-requirement-mappings/${leadId}?vendor_id=${vendorId}`);
+  return res.data;
+};
+
 export const fetchProcessBriefs = async (vendorId: number) => {
   const res = await apiClient.get(`/leads/get-all-process-briefs/${vendorId}`)
   return res.data

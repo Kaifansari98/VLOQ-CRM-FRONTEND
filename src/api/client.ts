@@ -16,6 +16,7 @@ export const getClients = async (params: {
   page?: number;
   limit?: number;
   search?: string;
+  activeOnly?: boolean;
 }) => {
   const response = await apiClient.get<ClientListResponse>(`${BASE_URL}/list-clients`, { params });
   return response.data;
