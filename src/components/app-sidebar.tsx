@@ -69,6 +69,11 @@ const data = {
       showCount: "total_my_tasks" as const,
     },
     {
+      title: "Online Leads",
+      url: "/dashboard/online-leads",
+      icon: NotebookPen,
+    },
+    {
       title: "Overall Leads",
       url: "/dashboard/overall-leads",
       icon: Users,
@@ -220,6 +225,11 @@ const data = {
       url: "/dashboard/my-tasks",
       icon: ClipboardList,
       showCount: "total_my_tasks" as const,
+    },
+    {
+      title: "Online Leads",
+      url: "/dashboard/online-leads",
+      icon: NotebookPen,
     },
     {
       title: "Overall Leads",
@@ -487,7 +497,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       userType === "tech-check" ||
       userType === "backend" ||
       userType === "factory" ||
-      userType === "pre-prod";
+      userType === "pre-prod" ||
+      userType === "telecaller" ||
+      userType === "telecaller-team-lead" ||
+      userType === "store-manager";
 
     const baseItems = hideSectionsForRole
       ? withoutOverall.filter(

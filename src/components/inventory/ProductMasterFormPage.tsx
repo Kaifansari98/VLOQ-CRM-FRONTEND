@@ -7,7 +7,21 @@ import {
   ProductMastersResponse,
   ProductPayload,
   updateProductMasterApi,
-  createHSNApi
+  createHSNApi,
+  createSubCategoryApi,
+  createCoreProductApi,
+  createGradeApi,
+  createFinishApi,
+  createSizeApi,
+  deleteSubCategoryApi,
+  deleteCoreProductApi,
+  deleteGradeApi,
+  deleteFinishApi,
+  deleteSizeApi,
+  createBrandApi,
+  deleteBrandApi,
+  createProductTypeApi,
+  deleteProductTypeApi
 } from "@/api/inventory/product-master";
 import {
   Breadcrumb,
@@ -23,21 +37,28 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toastManager } from "@/components/ui/toast";
 import { useAppSelector } from "@/redux/store";
+import { AppSelect } from "@/components/ui/app-select";
+import { cn } from "@/lib/utils";
 import {
   ArrowLeft,
   Loader2,
   PackagePlus,
   Save,
   Plus,
+  PlusCircle,
   Trash2,
   Building2,
-  PlusCircle,
   X,
+  Tag,
+  Layers,
+  Gauge,
+  Coins,
+  Package,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-const PRODUCT_MASTER_BASE = "/dashboard/inventory/product-master";
+const PRODUCT_MASTER_BASE = "/dashboard/inventory/master/products/list";
 
 const emptyForm: ProductPayload = {
   category_id: 0,
@@ -69,6 +90,31 @@ const emptyForm: ProductPayload = {
 
   hsn_id: null,
   item_type: "Goods",
+
+  barcode: "",
+  sub_category_id: null,
+  core_product_id: null,
+  grade_id: null,
+  product_type_id: null,
+  finish_id: null,
+  size_id: null,
+  brand_id: null,
+
+  product_as_per_vendor_invoice: "",
+  p_code: "",
+  color_name: "",
+  thickness_mm: null,
+  cost_price: null,
+  b2c_selling_price: null,
+  b2b_selling_price: null,
+
+  board_length: null,
+  board_width: null,
+  dimension_1: null,
+  dimension_2: null,
+  dimension_3: null,
+  mrp: null,
+  vendor_code: "",
 };
 
 
@@ -139,6 +185,7 @@ export function ProductMasterFormPage({
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [dimOrSize, setDimOrSize] = useState<"dimensions" | "size">("dimensions");
 
 
   const [hsnModalOpen, setHsnModalOpen] = useState(false);
@@ -149,6 +196,198 @@ export function ProductMasterFormPage({
     description: "",
     igst_rate: "",
   });
+
+  const [genericModal, setGenericModal] = useState<{
+    open: boolean;
+    type: "subcategory" | "coreproduct" | "grade" | "finish" | "size" | "brand" | "producttype" | "";
+    title: string;
+    inputValue: string;
+  }>({
+    open: false,
+    type: "",
+    title: "",
+    inputValue: "",
+  });
+
+  const saveGenericMaster = async () => {
+    if (!vendorId) return;
+    const name = genericModal.inputValue.trim();
+    if (!name) {
+      toastManager.add({ title: "Name is required", type: "error" });
+      return;
+    }
+
+    try {
+      if (genericModal.type === "subcategory") {
+        if (!form.category_id) {
+          toastManager.add({ title: "Please select category first", type: "error" });
+          return;
+        }
+        const res = await createSubCategoryApi(vendorId, { categoryId: form.category_id, name });
+        if (res.status === 1) {
+          toastManager.add({ title: "Subcategory added", type: "success" });
+          setMasters(prev => prev ? { ...prev, subCategories: [...prev.subCategories, res.data] } : prev);
+          set("sub_category_id", res.data.id);
+        } else {
+          toastManager.add({ title: res.message || "Failed to add", type: "error" });
+        }
+      } else if (genericModal.type === "coreproduct") {
+        const res = await createCoreProductApi(vendorId, { name });
+        if (res.status === 1) {
+          toastManager.add({ title: "Core product added", type: "success" });
+          setMasters(prev => prev ? { ...prev, coreProducts: [...prev.coreProducts, res.data] } : prev);
+          set("core_product_id", res.data.id);
+        } else {
+          toastManager.add({ title: res.message || "Failed to add", type: "error" });
+        }
+      } else if (genericModal.type === "grade") {
+        const res = await createGradeApi(vendorId, { name });
+        if (res.status === 1) {
+          toastManager.add({ title: "Grade added", type: "success" });
+          setMasters(prev => prev ? { ...prev, grades: [...prev.grades, res.data] } : prev);
+          set("grade_id", res.data.id);
+        } else {
+          toastManager.add({ title: res.message || "Failed to add", type: "error" });
+        }
+      } else if (genericModal.type === "finish") {
+        const res = await createFinishApi(vendorId, { name });
+        if (res.status === 1) {
+          toastManager.add({ title: "Finish added", type: "success" });
+          setMasters(prev => prev ? { ...prev, finishes: [...prev.finishes, res.data] } : prev);
+          set("finish_id", res.data.id);
+        } else {
+          toastManager.add({ title: res.message || "Failed to add", type: "error" });
+        }
+      } else if (genericModal.type === "size") {
+        const res = await createSizeApi(vendorId, { name });
+        if (res.status === 1) {
+          toastManager.add({ title: "Size added", type: "success" });
+          setMasters(prev => prev ? { ...prev, sizes: [...prev.sizes, res.data] } : prev);
+          set("size_id", res.data.id);
+        } else {
+          toastManager.add({ title: res.message || "Failed to add", type: "error" });
+        }
+      } else if (genericModal.type === "brand") {
+        const res = await createBrandApi(vendorId, { brand_name: name });
+        if (res.status === 1) {
+          toastManager.add({ title: "Brand added", type: "success" });
+          setMasters(prev => prev ? { ...prev, brands: [...prev.brands, res.data] } : prev);
+          set("brand_id", res.data.id);
+        } else {
+          toastManager.add({ title: res.message || "Failed to add brand", type: "error" });
+        }
+      } else if (genericModal.type === "producttype") {
+        const res = await createProductTypeApi(vendorId, { name });
+        if (res.status === 1) {
+          toastManager.add({ title: "Product type added", type: "success" });
+          setMasters(prev => prev ? { ...prev, productTypes: [...prev.productTypes, res.data] } : prev);
+          set("product_type_id", res.data.id);
+        } else {
+          toastManager.add({ title: res.message || "Failed to add product type", type: "error" });
+        }
+      }
+      setGenericModal({ open: false, type: "", title: "", inputValue: "" });
+    } catch (err: any) {
+      toastManager.add({ title: err?.message || "Failed to add", type: "error" });
+    }
+  };
+
+  const deleteGenericMaster = async (id: number | null | undefined, type: "subcategory" | "coreproduct" | "grade" | "finish" | "size" | "brand" | "producttype") => {
+    if (!vendorId || !id) return;
+    
+    const confirmed = window.confirm("Are you sure you want to delete this master item?");
+    if (!confirmed) return;
+
+    try {
+      if (type === "subcategory") {
+        const res = await deleteSubCategoryApi(vendorId, id);
+        if (res.status === 1) {
+          toastManager.add({ title: "Subcategory deleted", type: "success" });
+          setMasters(prev => prev ? {
+            ...prev,
+            subCategories: prev.subCategories.filter(sc => sc.id !== id)
+          } : prev);
+          set("sub_category_id", null);
+        } else {
+          toastManager.add({ title: res.message || "Failed to delete", type: "error" });
+        }
+      } else if (type === "coreproduct") {
+        const res = await deleteCoreProductApi(vendorId, id);
+        if (res.status === 1) {
+          toastManager.add({ title: "Core product deleted", type: "success" });
+          setMasters(prev => prev ? {
+            ...prev,
+            coreProducts: prev.coreProducts.filter(cp => cp.id !== id)
+          } : prev);
+          set("core_product_id", null);
+        } else {
+          toastManager.add({ title: res.message || "Failed to delete", type: "error" });
+        }
+      } else if (type === "grade") {
+        const res = await deleteGradeApi(vendorId, id);
+        if (res.status === 1) {
+          toastManager.add({ title: "Grade deleted", type: "success" });
+          setMasters(prev => prev ? {
+            ...prev,
+            grades: prev.grades.filter(g => g.id !== id)
+          } : prev);
+          set("grade_id", null);
+        } else {
+          toastManager.add({ title: res.message || "Failed to delete", type: "error" });
+        }
+      } else if (type === "finish") {
+        const res = await deleteFinishApi(vendorId, id);
+        if (res.status === 1) {
+          toastManager.add({ title: "Finish deleted", type: "success" });
+          setMasters(prev => prev ? {
+            ...prev,
+            finishes: prev.finishes.filter(f => f.id !== id)
+          } : prev);
+          set("finish_id", null);
+        } else {
+          toastManager.add({ title: res.message || "Failed to delete", type: "error" });
+        }
+      } else if (type === "size") {
+        const res = await deleteSizeApi(vendorId, id);
+        if (res.status === 1) {
+          toastManager.add({ title: "Size deleted", type: "success" });
+          setMasters(prev => prev ? {
+            ...prev,
+            sizes: prev.sizes.filter(s => s.id !== id)
+          } : prev);
+          set("size_id", null);
+        } else {
+          toastManager.add({ title: res.message || "Failed to delete", type: "error" });
+        }
+      } else if (type === "brand") {
+        const res = await deleteBrandApi(vendorId, id);
+        if (res.status === 1) {
+          toastManager.add({ title: "Brand deleted", type: "success" });
+          setMasters(prev => prev ? {
+            ...prev,
+            brands: prev.brands.filter(b => b.id !== id)
+          } : prev);
+          set("brand_id", null);
+        } else {
+          toastManager.add({ title: res.message || "Failed to delete brand", type: "error" });
+        }
+      } else if (type === "producttype") {
+        const res = await deleteProductTypeApi(vendorId, id);
+        if (res.status === 1) {
+          toastManager.add({ title: "Product type deleted", type: "success" });
+          setMasters(prev => prev ? {
+            ...prev,
+            productTypes: prev.productTypes.filter(pt => pt.id !== id)
+          } : prev);
+          set("product_type_id", null);
+        } else {
+          toastManager.add({ title: res.message || "Failed to delete product type", type: "error" });
+        }
+      }
+    } catch (err: any) {
+      toastManager.add({ title: err?.message || "Failed to delete", type: "error" });
+    }
+  };
   const saveHSN = async () => {
     if (!vendorId) {
       toastManager.add({
@@ -295,7 +534,40 @@ export function ProductMasterFormPage({
             hsn_id: product.hsn_id || null,
             item_type: product.item_type || "Goods",
 
+            barcode: product.barcode || "",
+            sub_category_id: product.sub_category_id || null,
+            core_product_id: product.core_product_id || null,
+            grade_id: product.grade_id || null,
+            product_type_id: product.product_type_id || null,
+            finish_id: product.finish_id || null,
+            size_id: product.size_id || null,
+            brand_id: product.brand_id || null,
+
+            product_as_per_vendor_invoice: product.product_as_per_vendor_invoice || "",
+            p_code: product.p_code || "",
+            color_name: product.color_name || "",
+            thickness_mm: product.thickness_mm ? Number(product.thickness_mm) : null,
+            cost_price: product.cost_price ? Number(product.cost_price) : null,
+            b2c_selling_price: product.b2c_selling_price ? Number(product.b2c_selling_price) : null,
+            b2b_selling_price: product.b2b_selling_price ? Number(product.b2b_selling_price) : null,
+            mrp: product.mrp ? Number(product.mrp) : null,
+
+            board_length: product.board_length ? Number(product.board_length) : null,
+            board_width: product.board_width ? Number(product.board_width) : null,
+            dimension_1: product.dimension_1 ? Number(product.dimension_1) : null,
+            dimension_2: product.dimension_2 ? Number(product.dimension_2) : null,
+            dimension_3: product.dimension_3 ? Number(product.dimension_3) : null,
+            vendor_code: product.vendor_code || "",
           });
+
+          const hasDimensions = !!(
+            product.board_length ||
+            product.board_width ||
+            product.dimension_1 ||
+            product.dimension_2 ||
+            product.dimension_3
+          );
+          setDimOrSize(hasDimensions ? "dimensions" : "size");
           setSupplierRows(
             (product.supplierMappings ?? []).map((row: any) =>
               recalcSupplierRow({
@@ -445,6 +717,33 @@ export function ProductMasterFormPage({
     reorder_batch_unit_id: toNumOrNull(form.reorder_batch_unit_id),
 
     hsn_id: toNumOrNull(form.hsn_id),
+    
+    barcode: form.barcode?.trim() || null,
+    sub_category_id: toNumOrNull(form.sub_category_id),
+    core_product_id: toNumOrNull(form.core_product_id),
+    grade_id: toNumOrNull(form.grade_id),
+    product_type_id: toNumOrNull(form.product_type_id),
+    finish_id: toNumOrNull(form.finish_id),
+    size_id: dimOrSize === "size" ? toNumOrNull(form.size_id) : null,
+    brand_id: toNumOrNull(form.brand_id),
+
+    product_as_per_vendor_invoice: form.product_as_per_vendor_invoice?.trim() || null,
+    p_code: form.p_code?.trim() || null,
+    color_name: form.color_name?.trim() || null,
+    thickness_mm: toNumOrNull(form.thickness_mm),
+    cost_price: toNumOrNull(form.cost_price),
+    b2c_selling_price: toNumOrNull(form.b2c_selling_price),
+    b2b_selling_price: toNumOrNull(form.b2b_selling_price),
+    mrp: toNumOrNull(form.mrp),
+
+    board_length: dimOrSize === "dimensions" ? toNumOrNull(form.board_length) : 0,
+    board_width: dimOrSize === "dimensions" ? toNumOrNull(form.board_width) : 0,
+    dimension_1: dimOrSize === "dimensions" ? toNumOrNull(form.dimension_1) : 0,
+    dimension_2: dimOrSize === "dimensions" ? toNumOrNull(form.dimension_2) : 0,
+    dimension_3: dimOrSize === "dimensions" ? toNumOrNull(form.dimension_3) : 0,
+
+    vendor_code: form.vendor_code?.trim() || null,
+
     suppliers: supplierRows
       .filter((row) => row.company_vendor_id)
       .map((row) => ({
@@ -636,184 +935,398 @@ export function ProductMasterFormPage({
             </div>
 
             <div className="p-6">
-              <div className="grid gap-4 md:grid-cols-3">
-                <Field label="Item Category *">
-                  <select
-                    value={form.category_id || ""}
-                    onChange={(e) => set("category_id", Number(e.target.value))}
-                    className="input"
-                  >
-                    <option value="">Select category</option>
-                    {masters.categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.category_name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
+              <div className="grid gap-6 md:grid-cols-2">
 
-                <Field label="Item Name *">
-                  <input
-                    value={form.product_name}
-                    onChange={(e) => set("product_name", e.target.value)}
-                    className="input"
-                    placeholder="Enter item name"
-                  />
-                </Field>
-
-                <Field label="Item Code *">
-                  <input
-                    value={form.article_code}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      set("article_code", value);
-
-                      setSupplierRows((prev) =>
-                        prev.map((row) =>
-                          row.same_as_product_code
-                            ? {
-                              ...row,
-                              supplier_item_code: value,
-                            }
-                            : row
-                        )
-                      );
-                    }}
-                    className="input"
-                    placeholder="Unique item code"
-                  />
-                </Field>
-
-                <Field label="Item Group">
-                  <select
-                    value={form.item_group_id || ""}
-                    onChange={(e) => set("item_group_id", e.target.value)}
-                    className="input"
-                  >
-                    <option value="">Select group</option>
-                    {masters.itemGroups.map((g) => (
-                      <option key={g.id} value={g.id}>
-                        {g.group_name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-
-                <Field label="Primary Unit / Purchase Unit">
-                  <select
-                    value={form.primary_unit_id || ""}
-                    onChange={(e) => set("primary_unit_id", e.target.value)}
-                    className="input"
-                  >
-                    <option value="">Select unit</option>
-                    {masters.units.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.unit_name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-
-                <Field label="Stock Unit">
-                  <select
-                    value={form.stock_unit_id || ""}
-                    onChange={(e) => set("stock_unit_id", e.target.value)}
-                    className="input"
-                  >
-                    <option value="">Select unit</option>
-                    {masters.units.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.unit_name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-
-                <Field label="Consumption Unit">
-                  <select
-                    value={form.consumption_unit_id || ""}
-                    onChange={(e) => set("consumption_unit_id", e.target.value)}
-                    className="input"
-                  >
-                    <option value="">Select unit</option>
-                    {masters.units.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.unit_name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-
-                <Field label="Shelf Life Days">
-                  <input
-                    type="number"
-                    min="0"
-                    value={form.shelf_life_days ?? ""}
-                    onChange={(e) => set("shelf_life_days", e.target.value)}
-                    className="input"
-                    placeholder="Number in days"
-                  />
-                </Field>
-                <Field label="Costing Method">
-                  <select
-                    value={form.costing_method}
-                    onChange={(e) => set("costing_method", e.target.value)}
-                    className="input"
-                  >
-                    <option value="FIFO">FIFO</option>
-                    <option value="MANUAL">Manual Value Entry</option>
-                  </select>
-                </Field>
-                <Field label="Purchase Rate">
-                  <input
-                    type="number"
-                    min="0"
-                    value={form.level1_price ?? ""}
-                    onChange={(e) => set("level1_price", e.target.value)}
-                    className="input"
-                    placeholder="0.00"
-                  />
-                </Field>
-
-                <Field label="HSN">
-                  <div className="flex gap-2">
-                    <select
-                      value={form.hsn_id || ""}
-                      onChange={(e) => set("hsn_id", e.target.value)}
-                      className="input"
-                    >
-                      <option value="">Select HSN</option>
-                      {masters.hsns.map((h: any) => (
-                        <option key={h.id} value={h.id}>
-                          {h.hsn_code}
-                          {h.description ? ` - ${h.description}` : ""}
-                        </option>
-                      ))}
-                    </select>
-
-                    <button
-                      type="button"
-                      onClick={() => setHsnModalOpen(true)}
-                      className="add-hsn-btn"
-                      title="Add HSN"
-                    >
-                      <PlusCircle size={16} />
-                      Add
-                    </button>
+                {/* CARD 1: Basic Details */}
+                <div className="rounded-2xl border bg-background p-5 shadow-sm hover:border-indigo-200 transition-all">
+                  <div className="flex items-center gap-2 mb-4 pb-3 border-b">
+                    <div className="rounded-lg bg-indigo-50 p-2 text-indigo-600"><Tag size={16} /></div>
+                    <span className="font-bold text-sm">Basic Details</span>
                   </div>
-                </Field>
+                  <div className="space-y-4">
 
-                <Field label="Item Type">
-                  <select
-                    value={form.item_type}
-                    onChange={(e) => set("item_type", e.target.value)}
-                    className="input"
-                  >
-                    <option value="CapitalGoods">Capital Goods</option>
-                    <option value="Goods">Goods</option>
-                    <option value="Services">Services</option>
-                  </select>
-                </Field>
+                    <Field label="Item Category *">
+                      <AppSelect
+                        options={masters.categories.map((c) => ({ id: c.id, name: c.category_name }))}
+                        value={form.category_id ?? null}
+                        onChange={(val) => {
+                          const cid = val ? Number(val) : 0;
+                          setForm((prev) => ({ ...prev, category_id: cid, sub_category_id: null }));
+                        }}
+                        placeholder="Select category"
+                        loading={!masters}
+                        type="category"
+                      />
+                    </Field>
+
+                    <Field label="Sub Category">
+                      <div className="flex gap-2 w-full">
+                        <div className="flex-1">
+                          <AppSelect
+                            options={masters.subCategories
+                              .filter((sc) => !form.category_id || sc.categoryId === Number(form.category_id))
+                              .map((sc) => ({ id: sc.id, name: sc.name }))}
+                            value={form.sub_category_id ?? null}
+                            onChange={(val) => set("sub_category_id", val ? Number(val) : null)}
+                            placeholder="Select sub category"
+                            loading={!masters}
+                            disabled={!form.category_id}
+                            type="subcategory"
+                          />
+                        </div>
+                        <Button type="button" variant="outline" size="icon" disabled={!form.category_id} onClick={() => setGenericModal({ open: true, type: "subcategory", title: "Add Sub Category", inputValue: "" })} className="h-11 w-11 shrink-0 rounded-xl text-indigo-600 border-indigo-100 hover:bg-indigo-50/50"><Plus size={18} /></Button>
+                        {form.sub_category_id && (<Button type="button" variant="ghost" size="icon" onClick={() => deleteGenericMaster(form.sub_category_id, "subcategory")} className="h-11 w-11 shrink-0 rounded-xl text-rose-500 hover:bg-rose-50"><Trash2 size={16} /></Button>)}
+                      </div>
+                    </Field>
+
+                    <Field label="Item Name *">
+                      <input value={form.product_name} onChange={(e) => set("product_name", e.target.value)} className="input" placeholder="Enter item name" />
+                    </Field>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <Field label="Item Code *">
+                        <input value={form.article_code} onChange={(e) => { const value = e.target.value; set("article_code", value); setSupplierRows((prev) => prev.map((row) => row.same_as_product_code ? { ...row, supplier_item_code: value } : row)); }} className="input w-full" placeholder="Unique item code" />
+                      </Field>
+                      <Field label="Vendor Code">
+                        <input value={form.vendor_code || ""} onChange={(e) => set("vendor_code", e.target.value)} className="input w-full" placeholder="Enter vendor code" />
+                      </Field>
+                    </div>
+
+                    <Field label="Barcode">
+                      <input value={form.barcode || ""} onChange={(e) => set("barcode", e.target.value)} className="input" placeholder="Enter barcode" />
+                    </Field>
+
+                    <Field label="Brand">
+                      <div className="flex gap-2 w-full">
+                        <div className="flex-1">
+                          <AppSelect
+                            options={masters.brands.map((b) => ({
+                              id: b.id,
+                              name: `${b.brand_name}${b.brand_short_name ? ` (${b.brand_short_name})` : ""}`,
+                            }))}
+                            value={form.brand_id ?? null}
+                            onChange={(val) => set("brand_id", val ? Number(val) : null)}
+                            placeholder="Select brand"
+                            loading={!masters}
+                            type="brand"
+                          />
+                        </div>
+                        <Button type="button" variant="outline" size="icon" onClick={() => setGenericModal({ open: true, type: "brand", title: "Add Brand", inputValue: "" })} className="h-11 w-11 shrink-0 rounded-xl text-indigo-600 border-indigo-100 hover:bg-indigo-50/50"><Plus size={18} /></Button>
+                        {form.brand_id && (<Button type="button" variant="ghost" size="icon" onClick={() => deleteGenericMaster(form.brand_id, "brand")} className="h-11 w-11 shrink-0 rounded-xl text-rose-500 hover:bg-rose-50"><Trash2 size={16} /></Button>)}
+                      </div>
+                    </Field>
+
+                    <Field label="Core Product">
+                      <div className="flex gap-2 w-full">
+                        <div className="flex-1">
+                          <AppSelect
+                            options={masters.coreProducts.map((cp) => ({ id: cp.id, name: cp.name }))}
+                            value={form.core_product_id ?? null}
+                            onChange={(val) => set("core_product_id", val ? Number(val) : null)}
+                            placeholder="Select core product"
+                            loading={!masters}
+                            type="coreproduct"
+                          />
+                        </div>
+                        <Button type="button" variant="outline" size="icon" onClick={() => setGenericModal({ open: true, type: "coreproduct", title: "Add Core Product", inputValue: "" })} className="h-11 w-11 shrink-0 rounded-xl text-indigo-600 border-indigo-100 hover:bg-indigo-50/50"><Plus size={18} /></Button>
+                        {form.core_product_id && (<Button type="button" variant="ghost" size="icon" onClick={() => deleteGenericMaster(form.core_product_id, "coreproduct")} className="h-11 w-11 shrink-0 rounded-xl text-rose-500 hover:bg-rose-50"><Trash2 size={16} /></Button>)}
+                      </div>
+                    </Field>
+
+                    <Field label="Product As Per Vendor Invoice">
+                      <input value={form.product_as_per_vendor_invoice || ""} onChange={(e) => set("product_as_per_vendor_invoice", e.target.value)} className="input" placeholder="Invoice name" />
+                    </Field>
+
+                  </div>
+                </div>
+
+                {/* CARD 2: Specification Master */}
+                <div className="rounded-2xl border bg-background p-5 shadow-sm hover:border-indigo-200 transition-all">
+                  <div className="flex items-center gap-2 mb-4 pb-3 border-b">
+                    <div className="rounded-lg bg-indigo-50 p-2 text-indigo-600"><Layers size={16} /></div>
+                    <span className="font-bold text-sm">Specification Master</span>
+                  </div>
+                  <div className="space-y-4">
+
+                    <Field label="Grade">
+                      <div className="flex gap-2 w-full">
+                        <div className="flex-1">
+                          <AppSelect
+                            options={masters.grades.map((g) => ({ id: g.id, name: g.name }))}
+                            value={form.grade_id ?? null}
+                            onChange={(val) => set("grade_id", val ? Number(val) : null)}
+                            placeholder="Select grade"
+                            loading={!masters}
+                            type="grade"
+                          />
+                        </div>
+                        <Button type="button" variant="outline" size="icon" onClick={() => setGenericModal({ open: true, type: "grade", title: "Add Grade", inputValue: "" })} className="h-11 w-11 shrink-0 rounded-xl text-indigo-600 border-indigo-100 hover:bg-indigo-50/50"><Plus size={18} /></Button>
+                        {form.grade_id && (<Button type="button" variant="ghost" size="icon" onClick={() => deleteGenericMaster(form.grade_id, "grade")} className="h-11 w-11 shrink-0 rounded-xl text-rose-500 hover:bg-rose-50"><Trash2 size={16} /></Button>)}
+                      </div>
+                    </Field>
+
+                    <Field label="Finish">
+                      <div className="flex gap-2 w-full">
+                        <div className="flex-1">
+                          <AppSelect
+                            options={masters.finishes.map((f) => ({ id: f.id, name: f.name }))}
+                            value={form.finish_id ?? null}
+                            onChange={(val) => set("finish_id", val ? Number(val) : null)}
+                            placeholder="Select finish"
+                            loading={!masters}
+                            type="finish"
+                          />
+                        </div>
+                        <Button type="button" variant="outline" size="icon" onClick={() => setGenericModal({ open: true, type: "finish", title: "Add Finish", inputValue: "" })} className="h-11 w-11 shrink-0 rounded-xl text-indigo-600 border-indigo-100 hover:bg-indigo-50/50"><Plus size={18} /></Button>
+                        {form.finish_id && (<Button type="button" variant="ghost" size="icon" onClick={() => deleteGenericMaster(form.finish_id, "finish")} className="h-11 w-11 shrink-0 rounded-xl text-rose-500 hover:bg-rose-50"><Trash2 size={16} /></Button>)}
+                      </div>
+                    </Field>
+
+                    <Field label="P. Code">
+                      <input value={form.p_code || ""} onChange={(e) => set("p_code", e.target.value)} className="input" placeholder="Enter P. Code" />
+                    </Field>
+
+                    <Field label="Color Name">
+                      <input value={form.color_name || ""} onChange={(e) => set("color_name", e.target.value)} className="input" placeholder="Enter color name" />
+                    </Field>
+
+                    <Field label="Thickness (MM)">
+                      <input type="number" step="0.01" min="0" value={form.thickness_mm ?? ""} onChange={(e) => set("thickness_mm", e.target.value)} className="input" placeholder="0.00" />
+                    </Field>
+
+                    <div className="flex rounded-xl bg-muted/60 p-1 mb-2">
+                      <button
+                        type="button"
+                        onClick={() => setDimOrSize("dimensions")}
+                        className={cn(
+                          "flex-1 rounded-lg py-2 text-xs font-bold transition-all",
+                          dimOrSize === "dimensions"
+                            ? "bg-background text-indigo-600 shadow-sm border border-black/5"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        Use Dimensions
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDimOrSize("size")}
+                        className={cn(
+                          "flex-1 rounded-lg py-2 text-xs font-bold transition-all",
+                          dimOrSize === "size"
+                            ? "bg-background text-indigo-600 shadow-sm border border-black/5"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        Use Size
+                      </button>
+                    </div>
+
+                    {dimOrSize === "dimensions" ? (
+                      <>
+                        <div className="grid grid-cols-2 gap-4">
+                          <Field label="Board Length">
+                            <input type="number" step="0.01" min="0" value={form.board_length ?? ""} onChange={(e) => set("board_length", e.target.value)} className="input" placeholder="0.00" />
+                          </Field>
+                          <Field label="Board Width (Breadth)">
+                            <input type="number" step="0.01" min="0" value={form.board_width ?? ""} onChange={(e) => set("board_width", e.target.value)} className="input" placeholder="0.00" />
+                          </Field>
+                        </div>
+
+                        <div className="rounded-xl border bg-muted/20 p-3 space-y-3">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Dimensions (3D)</p>
+                          <div className="grid grid-cols-3 gap-2">
+                            <Field label="Dim 1 (L)">
+                              <input type="number" step="0.01" min="0" value={form.dimension_1 ?? ""} onChange={(e) => set("dimension_1", e.target.value)} className="input text-xs" placeholder="L" />
+                            </Field>
+                            <Field label="Dim 2 (W)">
+                              <input type="number" step="0.01" min="0" value={form.dimension_2 ?? ""} onChange={(e) => set("dimension_2", e.target.value)} className="input text-xs" placeholder="W" />
+                            </Field>
+                            <Field label="Dim 3 (H)">
+                              <input type="number" step="0.01" min="0" value={form.dimension_3 ?? ""} onChange={(e) => set("dimension_3", e.target.value)} className="input text-xs" placeholder="H" />
+                            </Field>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <Field label="Size">
+                        <div className="flex gap-2 w-full">
+                          <div className="flex-1">
+                            <AppSelect
+                              options={masters.sizes.map((s) => ({ id: s.id, name: s.name }))}
+                              value={form.size_id ?? null}
+                              onChange={(val) => set("size_id", val ? Number(val) : null)}
+                              placeholder="Select size"
+                              loading={!masters}
+                              type="size"
+                            />
+                          </div>
+                          <Button type="button" variant="outline" size="icon" onClick={() => setGenericModal({ open: true, type: "size", title: "Add Size", inputValue: "" })} className="h-11 w-11 shrink-0 rounded-xl text-indigo-600 border-indigo-100 hover:bg-indigo-50/50"><Plus size={18} /></Button>
+                          {form.size_id && (<Button type="button" variant="ghost" size="icon" onClick={() => deleteGenericMaster(form.size_id, "size")} className="h-11 w-11 shrink-0 rounded-xl text-rose-500 hover:bg-rose-50"><Trash2 size={16} /></Button>)}
+                        </div>
+                      </Field>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <Field label="UOM *">
+                        <AppSelect
+                          options={masters.units
+                            .filter((u) => ['PCS', 'KG', 'LTR', 'SQFT', 'RMT', 'NOS', 'SET', 'BOX', 'ROLL'].includes(u.unit_name.toUpperCase()))
+                            .map((u) => ({ id: u.id, name: u.unit_name }))}
+                          value={form.primary_unit_id ?? null}
+                          onChange={(val) => set("primary_unit_id", val ? Number(val) : null)}
+                          placeholder="Select unit"
+                          loading={!masters}
+                          type="unit"
+                        />
+                      </Field>
+
+                      <Field label="Product Type">
+                        <div className="flex gap-2 w-full">
+                          <div className="flex-1">
+                            <AppSelect
+                              options={masters.productTypes.map((pt) => ({ id: pt.id, name: `${pt.type} (${pt.tag})` }))}
+                              value={form.product_type_id ?? null}
+                              onChange={(val) => set("product_type_id", val ? Number(val) : null)}
+                              placeholder="Select type"
+                              loading={!masters}
+                              type="producttype"
+                            />
+                          </div>
+                          <Button type="button" variant="outline" size="icon" onClick={() => setGenericModal({ open: true, type: "producttype", title: "Add Product Type", inputValue: "" })} className="h-11 w-11 shrink-0 rounded-xl text-indigo-600 border-indigo-100 hover:bg-indigo-50/50"><Plus size={18} /></Button>
+                          {form.product_type_id && (<Button type="button" variant="ghost" size="icon" onClick={() => deleteGenericMaster(form.product_type_id, "producttype")} className="h-11 w-11 shrink-0 rounded-xl text-rose-500 hover:bg-rose-50"><Trash2 size={16} /></Button>)}
+                        </div>
+                      </Field>
+                    </div>
+
+                  </div>
+                </div>
+
+                {/* CARD 3: Units & Inventory Settings */}
+                <div className="rounded-2xl border bg-background p-5 shadow-sm hover:border-indigo-200 transition-all">
+                  <div className="flex items-center gap-2 mb-4 pb-3 border-b">
+                    <div className="rounded-lg bg-indigo-50 p-2 text-indigo-600"><Gauge size={16} /></div>
+                    <span className="font-bold text-sm">Units & Inventory Settings</span>
+                  </div>
+                  <div className="space-y-4">
+
+                    <Field label="Item Group">
+                      <AppSelect
+                        options={masters.itemGroups.map((g) => ({ id: g.id, name: g.group_name }))}
+                        value={form.item_group_id}
+                        onChange={(val) => set("item_group_id", val)}
+                        placeholder="Select group"
+                        loading={!masters}
+                        type="itemgroup"
+                      />
+                    </Field>
+
+
+                    <Field label="Stock Unit">
+                      <AppSelect
+                        options={masters.units.map((u) => ({ id: u.id, name: u.unit_name }))}
+                        value={form.stock_unit_id}
+                        onChange={(val) => set("stock_unit_id", val)}
+                        placeholder="Select unit"
+                        loading={!masters}
+                        type="unit"
+                      />
+                    </Field>
+
+                    <Field label="Consumption Unit">
+                      <AppSelect
+                        options={masters.units.map((u) => ({ id: u.id, name: u.unit_name }))}
+                        value={form.consumption_unit_id}
+                        onChange={(val) => set("consumption_unit_id", val)}
+                        placeholder="Select unit"
+                        loading={!masters}
+                        type="unit"
+                      />
+                    </Field>
+
+                    <Field label="Shelf Life Days">
+                      <input type="number" min="0" value={form.shelf_life_days ?? ""} onChange={(e) => set("shelf_life_days", e.target.value)} className="input" placeholder="Number in days" />
+                    </Field>
+
+                    <Field label="Costing Method">
+                      <AppSelect
+                        options={[
+                          { id: "FIFO", name: "FIFO" },
+                          { id: "MANUAL", name: "Manual Value Entry" }
+                        ]}
+                        value={form.costing_method}
+                        onChange={(val) => set("costing_method", val)}
+                        placeholder="Select costing method"
+                        type="costing"
+                      />
+                    </Field>
+
+                    <Field label="Item Type">
+                      <AppSelect
+                        options={[
+                          { id: "CapitalGoods", name: "Capital Goods" },
+                          { id: "Goods", name: "Goods" },
+                          { id: "Services", name: "Services" }
+                        ]}
+                        value={form.item_type}
+                        onChange={(val) => set("item_type", val)}
+                        placeholder="Select item type"
+                        type="itemtype"
+                      />
+                    </Field>
+
+                  </div>
+                </div>
+
+                {/* CARD 4: Pricing Settings */}
+                <div className="rounded-2xl border bg-background p-5 shadow-sm hover:border-indigo-200 transition-all">
+                  <div className="flex items-center gap-2 mb-4 pb-3 border-b">
+                    <div className="rounded-lg bg-indigo-50 p-2 text-indigo-600"><Coins size={16} /></div>
+                    <span className="font-bold text-sm">Pricing Settings</span>
+                  </div>
+                  <div className="space-y-4">
+
+                    <Field label="Purchase Rate">
+                      <input type="number" min="0" value={form.level1_price ?? ""} onChange={(e) => set("level1_price", e.target.value)} className="input" placeholder="0.00" />
+                    </Field>
+
+                    <Field label="Cost Price">
+                      <input type="number" min="0" value={form.cost_price ?? ""} onChange={(e) => set("cost_price", e.target.value)} className="input" placeholder="0.00" />
+                    </Field>
+
+                    <Field label="B2C Selling Price">
+                      <input type="number" min="0" value={form.b2c_selling_price ?? ""} onChange={(e) => set("b2c_selling_price", e.target.value)} className="input" placeholder="0.00" />
+                    </Field>
+
+                    <Field label="B2B Selling Price">
+                      <input type="number" min="0" value={form.b2b_selling_price ?? ""} onChange={(e) => set("b2b_selling_price", e.target.value)} className="input" placeholder="0.00" />
+                    </Field>
+
+                    <Field label="MRP">
+                      <input type="number" min="0" value={form.mrp ?? ""} onChange={(e) => set("mrp", e.target.value)} className="input" placeholder="0.00" />
+                    </Field>
+
+                    <Field label="HSN">
+                      <div className="flex gap-2 w-full">
+                        <div className="flex-1">
+                          <AppSelect
+                            options={masters.hsns.map((h: any) => ({
+                              id: h.id,
+                              name: `${h.hsn_code}${h.description ? ` - ${h.description}` : ""}`,
+                            }))}
+                            value={form.hsn_id}
+                            onChange={(val) => set("hsn_id", val)}
+                            placeholder="Select HSN"
+                            loading={!masters}
+                            type="hsn"
+                          />
+                        </div>
+                        <Button type="button" variant="outline" size="icon" onClick={() => setHsnModalOpen(true)} className="h-11 w-11 shrink-0 rounded-xl text-indigo-600 border-indigo-100 hover:bg-indigo-50/50"><Plus size={18} /></Button>
+                      </div>
+                    </Field>
+
+                  </div>
+                </div>
+
               </div>
 
               <div className="mt-6 grid gap-4 md:grid-cols-2">
@@ -1091,6 +1604,27 @@ export function ProductMasterFormPage({
                 )}
                 {isEdit ? "Update Product" : "Create Product"}
               </Button>
+            </div>
+          </div>
+        )}
+
+        {genericModal.open && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" onMouseDown={() => setGenericModal((p) => ({ ...p, open: false }))}>
+            <div className="w-full max-w-sm overflow-hidden rounded-3xl border bg-background shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between border-b px-6 py-4">
+                <p className="text-base font-black">{genericModal.title}</p>
+                <button type="button" onClick={() => setGenericModal((p) => ({ ...p, open: false }))} className="rounded-full p-1 hover:bg-muted"><X size={18} /></button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Name</label>
+                  <input autoFocus value={genericModal.inputValue} onChange={(e) => setGenericModal((p) => ({ ...p, inputValue: e.target.value }))} className="input w-full" placeholder={`Enter ${genericModal.title.replace("Add ", "").toLowerCase()} name`} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); saveGenericMaster(); }}} />
+                </div>
+                <div className="flex gap-3 justify-end">
+                  <Button type="button" variant="outline" onClick={() => setGenericModal((p) => ({ ...p, open: false }))}>Cancel</Button>
+                  <Button type="button" onClick={saveGenericMaster} disabled={!genericModal.inputValue.trim()}>Save</Button>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -1612,18 +2146,13 @@ function StockPair({
           placeholder="Qty"
         />
 
-        <select
-          value={unitId || ""}
-          onChange={(e) => onUnit(e.target.value)}
-          className="input"
-        >
-          <option value="">Unit</option>
-          {units.map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.unit_name}
-            </option>
-          ))}
-        </select>
+        <AppSelect
+          options={units.map((u) => ({ id: u.id, name: u.unit_name }))}
+          value={unitId}
+          onChange={(val) => onUnit(val ? String(val) : "")}
+          placeholder="Unit"
+          type="unit"
+        />
       </div>
     </div>
   );

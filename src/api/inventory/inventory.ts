@@ -38,6 +38,24 @@ export interface Product {
   category: { id: number; category_name: string };
   brand:    { id: number; brand_name: string } | null;
   current_stock: number|0;
+
+  // Added relation and price fields
+  barcode?: string | null;
+  subCategory?: { id: number; name: string } | null;
+  coreProduct?: { id: number; name: string } | null;
+  grade?: { id: number; name: string } | null;
+  productType?: { id: number; type: string; tag: string } | null;
+  finishMaster?: { id: number; name: string } | null;
+  sizeMaster?: { id: number; name: string } | null;
+  primaryUnit?: { id: number; unit_name: string } | null;
+  product_as_per_vendor_invoice?: string | null;
+  p_code?: string | null;
+  color_name?: string | null;
+  thickness_mm?: number | null;
+  cost_price?: string | number | null;
+  b2c_selling_price?: string | number | null;
+  b2b_selling_price?: string | number | null;
+  mrp?: string | number | null;
 }
 
 export interface ProductListResponse {

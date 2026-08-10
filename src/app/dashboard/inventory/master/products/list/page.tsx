@@ -49,6 +49,10 @@ const fmtPrice = (v: string | null) =>
 const fmtDim = (l: number, w: number, t: number) =>
   l || w || t ? `${l}×${w}×${t}` : "—";
 
+
+
+
+
 // ─── Pagination ───────────────────────────────────────────────────────────────
 
 function Pagination({ page, totalPages, total, pageSize, onChange }: {
@@ -140,17 +144,24 @@ function ProductDetailDialog({ product, onClose }: { product: Product; onClose: 
             <Field label="Item ID" value={fmt(product.item_id)} />
             <Field label="Article Code" value={fmt(product.article_code)} />
             <Field label="Vendor Code" value={fmt(product.vendor_code)} />
+            <Field label="Barcode" value={fmt(product.barcode ?? null)} />
             <Field label="HSN Code" value={fmt(product.hsn_code)} />
             <Field label="Group" value={fmt(product.group)} />
             <Field label="Procurement" value={fmt(product.procurement)} />
+            <Field label="Product Type" value={product.productType ? `${product.productType.type} (${product.productType.tag})` : "—"} />
           </Section>
 
           <Separator />
 
           <Section title="Material & Finish">
-            <Field label="Core Material" value={fmt(product.core_material)} />
-            <Field label="Finish" value={fmt(product.finish)} />
-            <Field label="Edge Banding Color" value={fmt(product.edge_banding_color)} />
+            <Field label="Core Material" value={product.coreProduct?.name || fmt(product.core_material)} />
+            <Field label="Sub Category" value={fmt(product.subCategory?.name ?? null)} />
+            <Field label="Finish" value={product.finishMaster?.name || fmt(product.finish)} />
+            <Field label="Edge Banding Color" value={fmt(product.edge_banding_color ?? null)} />
+            <Field label="Grade" value={fmt(product.grade?.name ?? null)} />
+            <Field label="Color Name" value={fmt(product.color_name ?? null)} />
+            <Field label="Thickness" value={product.thickness_mm ? `${product.thickness_mm} mm` : "—"} />
+            <Field label="P. Code" value={fmt(product.p_code ?? null)} />
           </Section>
 
           <Separator />
@@ -158,10 +169,11 @@ function ProductDetailDialog({ product, onClose }: { product: Product; onClose: 
           <Section title="Dimensions & Units">
             <Field label="Board (L×W)" value={`${product.board_length} × ${product.board_width}`} />
             <Field label="Dim 1×2×3" value={fmtDim(product.dimension_1, product.dimension_2, product.dimension_3)} />
+            <Field label="Size Master" value={fmt(product.sizeMaster?.name ?? null)} />
             <Field label="Pre-Mill Width" value={fmt(product.pre_mill_width)} />
             <Field label="Drill Holes" value={fmt(product.no_of_drill_holes)} />
             <Field label="Rotation" value={fmt(product.rotation)} />
-            <Field label="Unit of Measure" value={fmt(product.unit_of_measure)} />
+            <Field label="Unit of Measure" value={fmt(product.unit_of_measure || product.primaryUnit?.unit_name || null)} />
             <Field label="Alt UOM" value={fmt(product.alt_uom_text)} />
             <Field label="Alt Conv Factor" value={fmt(product.alt_conv_factor)} />
             <Field label="Weight" value={product.item1_weight ? `${product.item1_weight} kg` : "—"} />
@@ -170,7 +182,12 @@ function ProductDetailDialog({ product, onClose }: { product: Product; onClose: 
           <Separator />
 
           <Section title="Pricing">
-            <Field label="Level 1 Price" value={fmtPrice(product.level1_price)} />
+            <Field label="Purchase Rate" value={fmtPrice(product.level1_price)} />
+            <Field label="Cost Price" value={fmtPrice(product.cost_price ? String(product.cost_price) : null)} />
+            <Field label="B2C Selling" value={fmtPrice(product.b2c_selling_price ? String(product.b2c_selling_price) : null)} />
+            <Field label="B2B Selling" value={fmtPrice(product.b2b_selling_price ? String(product.b2b_selling_price) : null)} />
+            <Field label="MRP" value={fmtPrice(product.mrp ? String(product.mrp) : null)} />
+            <Field label="Vendor Invoice Name" value={fmt(product.product_as_per_vendor_invoice ?? null)} />
             <Field label="Level 2 Price" value={fmtPrice(product.level2_price)} />
             <Field label="Level 3 Price" value={fmtPrice(product.level3_price)} />
             <Field label="Installation" value={fmtPrice(product.installation_charges)} />
@@ -572,8 +589,8 @@ function StockHistoryPanel({ product, vendorId, onClose }: {
                 ? "text-emerald-600" : "text-muted-foreground")}>
               {fmtN(product.current_stock ?? 0)}
             </p>
-            {product.unit_of_measure && (
-              <span className="text-xs text-muted-foreground">{product.unit_of_measure}</span>
+            {(product.unit_of_measure || product.primaryUnit?.unit_name) && (
+              <span className="text-xs text-muted-foreground">{product.unit_of_measure || product.primaryUnit?.unit_name}</span>
             )}
           </div>
         </div>
@@ -1272,20 +1289,19 @@ export default function ProductMasterPage() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50 hover:bg-muted/50">
-                  <TableHead className="text-xs font-black uppercase w-10">#</TableHead>
-                  <TableHead className="text-xs font-black uppercase min-w-52">Product Name</TableHead>
-                  <TableHead className="text-xs font-black uppercase">Category</TableHead>
-                  <TableHead className="text-xs font-black uppercase">Brand</TableHead>
-                  <TableHead className="text-xs font-black uppercase">Article Code</TableHead>
-                  <TableHead className="text-xs font-black uppercase">Vendor Code</TableHead>
-                  <TableHead className="text-xs font-black uppercase">Group</TableHead>
-                  <TableHead className="text-xs font-black uppercase">Finish</TableHead>
-                  <TableHead className="text-xs font-black uppercase">Core Material</TableHead>
-                  <TableHead className="text-xs font-black uppercase">UOM</TableHead>
-                  <TableHead className="text-xs font-black uppercase text-center">Dimensions</TableHead>
-                  <TableHead className="text-xs font-black uppercase text-right">Stock</TableHead>
-                  <TableHead className="text-xs font-black uppercase text-center">Status</TableHead>
-                  <TableHead className="text-xs font-black uppercase text-center">
+                  <TableHead className="text-xs font-black uppercase w-12 text-left py-4 px-4">#</TableHead>
+                  <TableHead className="text-xs font-black uppercase min-w-[14rem] py-4 px-4">Product Name</TableHead>
+                  <TableHead className="text-xs font-black uppercase min-w-[11rem] py-4 px-4">Category / Sub</TableHead>
+                  <TableHead className="text-xs font-black uppercase min-w-[9rem] py-4 px-4">Brand / Group</TableHead>
+                  <TableHead className="text-xs font-black uppercase min-w-[8.5rem] py-4 px-4">Article Code</TableHead>
+                  <TableHead className="text-xs font-black uppercase text-center min-w-[8.5rem] py-4 px-4">Vendor Code</TableHead>
+                  <TableHead className="text-xs font-black uppercase min-w-[11rem] py-4 px-4">Material & Finish</TableHead>
+                  <TableHead className="text-xs font-black uppercase min-w-[5rem] py-4 px-4">UOM</TableHead>
+                  <TableHead className="text-xs font-black uppercase text-center min-w-[8rem] py-4 px-4">Dimensions</TableHead>
+                  <TableHead className="text-xs font-black uppercase text-center min-w-[6rem] py-4 px-4">Size</TableHead>
+                  <TableHead className="text-xs font-black uppercase text-center min-w-[6rem] py-4 px-4">Stock</TableHead>
+                  <TableHead className="text-xs font-black uppercase text-center min-w-[7.5rem] py-4 px-4">Status</TableHead>
+                  <TableHead className="text-xs font-black uppercase text-center min-w-[6rem] py-4 px-4">
                     Actions
                   </TableHead>
                 </TableRow>
@@ -1294,14 +1310,14 @@ export default function ProductMasterPage() {
                 {loading ? (
                   Array.from({ length: 10 }).map((_, i) => (
                     <TableRow key={i}>
-                      {Array.from({ length: 14 }).map((_, j) => (
+                      {Array.from({ length: 13 }).map((_, j) => (
                         <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                       ))}
                     </TableRow>
                   ))
                 ) : !data || data.products.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={14} className="text-center py-16 text-muted-foreground">
+                    <TableCell colSpan={13} className="text-center py-16 text-muted-foreground">
                       <div className="flex flex-col items-center gap-2">
                         <Package size={32} className="text-muted-foreground/40" />
                         <p className="text-sm">No products found</p>
@@ -1317,33 +1333,61 @@ export default function ProductMasterPage() {
                       className={cn("cursor-pointer hover:bg-primary/5 transition-colors",
                         idx % 2 === 1 && "bg-muted/20")}
                       onClick={() => setSelected(product)}>
-                      <TableCell className="text-xs font-mono text-muted-foreground">
+                      <TableCell className="text-xs font-mono text-muted-foreground py-3.5 px-4">
                         {(page - 1) * 20 + idx + 1}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="py-3.5 px-4">
                         <div>
-                          <p className="font-semibold text-sm leading-tight">{product.product_name}</p>
+                          <p className="font-semibold text-sm leading-tight text-foreground">{product.product_name}</p>
                           {product.hsn_code && (
-                            <p className="text-[10px] text-muted-foreground font-mono">HSN {product.hsn_code}</p>
+                            <p className="text-[10px] text-muted-foreground font-mono mt-0.5">HSN {product.hsn_code}</p>
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs">{product.category.category_name}</TableCell>
-                      <TableCell className="text-xs">{product.brand?.brand_name ?? "—"}</TableCell>
-                      <TableCell className="text-xs font-mono">{fmt(product.article_code)}</TableCell>
-                      <TableCell className="text-xs font-mono">{fmt(product.vendor_code)}</TableCell>
-                      <TableCell className="text-xs">{fmt(product.group)}</TableCell>
-                      <TableCell className="text-xs">{fmt(product.finish)}</TableCell>
-                      <TableCell className="text-xs">{fmt(product.core_material)}</TableCell>
-                      <TableCell className="text-xs">{fmt(product.unit_of_measure)}</TableCell>
-                      <TableCell className="text-xs text-center font-mono text-muted-foreground">
-                        {product.dimension_1 || product.dimension_2 || product.dimension_3
-                          ? `${product.dimension_1}×${product.dimension_2}×${product.dimension_3}`
-                          : product.board_length || product.board_width
-                            ? `${product.board_length}×${product.board_width}`
-                            : "—"}
+                      <TableCell className="text-xs leading-normal py-3.5 px-4">
+                        <div className="font-semibold text-foreground">{product.category.category_name}</div>
+                        {product.subCategory?.name && (
+                          <div className="text-[10px] text-muted-foreground mt-0.5">{product.subCategory.name}</div>
+                        )}
                       </TableCell>
-                      <TableCell className="text-xs text-right font-mono">
+                      <TableCell className="text-xs leading-normal py-3.5 px-4">
+                        <div className="font-semibold text-foreground">{product.brand?.brand_name ?? "—"}</div>
+                        {product.group && (
+                          <div className="text-[10px] text-muted-foreground mt-0.5">{product.group}</div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs font-mono font-semibold text-foreground py-3.5 px-4">
+                        {fmt(product.article_code)}
+                      </TableCell>
+                      <TableCell className="text-xs font-mono text-center text-muted-foreground py-3.5 px-4">
+                        {fmt(product.vendor_code)}
+                      </TableCell>
+                      <TableCell className="text-xs leading-normal py-3.5 px-4">
+                        <div className="font-semibold text-foreground">{product.coreProduct?.name || fmt(product.core_material)}</div>
+                        {product.finishMaster?.name || fmt(product.finish)}
+                      </TableCell>
+                      <TableCell className="text-xs py-3.5 px-4">{fmt(product.unit_of_measure || product.primaryUnit?.unit_name || null)}</TableCell>
+                      <TableCell className="text-xs text-center font-mono py-3.5 px-4">
+                        {product.dimension_1 || product.dimension_2 || product.dimension_3 || product.board_length || product.board_width ? (
+                          <span className="inline-flex items-center rounded-lg bg-indigo-50/50 px-2 py-0.5 text-indigo-700 font-semibold text-[11px] border border-indigo-100/50">
+                            {product.dimension_1 || product.dimension_2 || product.dimension_3
+                              ? `${product.dimension_1}×${product.dimension_2}×${product.dimension_3}`
+                              : `${product.board_length}×${product.board_width}`}
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs text-center font-mono py-3.5 px-4">
+                        {product.sizeMaster?.name && !(product.dimension_1 || product.dimension_2 || product.dimension_3 || product.board_length || product.board_width) ? (
+                          <span className="inline-flex items-center rounded-lg bg-purple-50/50 px-2 py-0.5 text-purple-700 font-semibold text-[11px] border border-purple-100/50">
+                            {product.sizeMaster.name}
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs text-center font-mono py-3.5 px-4">
                         <span className={cn("font-semibold",
                           (product.current_stock ?? 0) > 0 ? "text-emerald-600" : "text-muted-foreground")}>
                           {product.current_stock != null
@@ -1351,7 +1395,7 @@ export default function ProductMasterPage() {
                             : "—"}
                         </span>
                       </TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="text-center py-3.5 px-4">
                         <div className="flex items-center justify-center gap-1.5">
                           <Badge className={cn("text-[10px] border-0",
                             product.active === "Yes"

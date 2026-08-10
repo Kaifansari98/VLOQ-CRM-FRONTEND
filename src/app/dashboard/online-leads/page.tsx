@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { useAppSelector } from "@/redux/store";
 import { apiClient } from "@/lib/apiClient";
 import {
@@ -54,6 +54,10 @@ interface OnlineLead {
     id: number;
     user_name: string;
   } | null;
+  finalAssignedLeads?: {
+    id: number;
+    user_name: string;
+  } | null;
   franchise?: {
     id: number;
     franchise_name: string;
@@ -95,6 +99,7 @@ export default function OnlineLeadsPage() {
   const [telecallers, setTelecallers] = useState<Telecaller[]>([]);
   
   const [activeTab, setActiveTab] = useState<"pool" | "my" | "overall">("my");
+  const requestIdRef = useRef(0);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [storeFilter, setStoreFilter] = useState("");
@@ -164,6 +169,7 @@ export default function OnlineLeadsPage() {
   // Fetch leads based on active tab & filters
   const fetchLeadsData = async () => {
     if (!vendorId) return;
+    const currentRequestId = ++requestIdRef.current;
     setLoading(true);
     try {
       let url = `/online-leads?vendor_id=${vendorId}&tab=${activeTab}`;
@@ -173,13 +179,17 @@ export default function OnlineLeadsPage() {
       if (storeFilter) url += `&store_id=${storeFilter}`;
 
       const res = await apiClient.get(url);
-      if (res.data?.success) {
+      if (currentRequestId === requestIdRef.current && res.data?.success) {
         setLeads(res.data.data);
       }
     } catch (err) {
-      console.error("Failed to fetch online leads:", err);
+      if (currentRequestId === requestIdRef.current) {
+        console.error("Failed to fetch online leads:", err);
+      }
     } finally {
-      setLoading(false);
+      if (currentRequestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -512,6 +522,15 @@ export default function OnlineLeadsPage() {
                               Active Caller
                             </span>
                           </div>
+                        ) : lead.finalAssignedLeads ? (
+                          <div>
+                            <span className="font-semibold text-foreground text-xs block">
+                              {lead.finalAssignedLeads.user_name}
+                            </span>
+                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                              Active Caller
+                            </span>
+                          </div>
                         ) : (
                           <span className="text-xs text-muted-foreground italic">Unassigned</span>
                         )}
@@ -531,13 +550,15 @@ export default function OnlineLeadsPage() {
                                 setSelectedLeadId(lead.id);
                                 if (lead.assign_to) {
                                   setAssigneeId(lead.assign_to.toString());
+                                } else if (lead.final_assigned_leads) {
+                                  setAssigneeId(lead.final_assigned_leads.toString());
                                 }
                                 setIsAssignOpen(true);
                               }}
                               size="sm"
                               className="h-8 text-xs bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950"
                             >
-                              <UserPlus className="w-3.5 h-3.5 mr-1" /> Allocate
+                              <UserPlus className="w-3.5 h-3.5 mr-1" /> {lead.assign_to || lead.final_assigned_leads ? "Reallocate" : "Allocate"}
                             </Button>
                           )}
                         </div>
