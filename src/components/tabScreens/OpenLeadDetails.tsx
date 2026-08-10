@@ -477,7 +477,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     useMutation({
       mutationFn: async (typeIds: number[]) => {
         const primaryTypeId = typeIds[0];
-        const nextTypeLabel = productTypes?.data?.find(
+        const nextTypeLabel = (b2bReqTypesData?.data || productTypes?.data)?.find(
           (t: any) => t.id === primaryTypeId,
         )?.type;
         
