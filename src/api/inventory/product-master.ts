@@ -55,14 +55,8 @@ export interface ProductPayload {
   suppliers?: ProductSupplierPayload[];
 
   // New fields
-  barcode?: string | null;
-  sub_category_id?: number | null;
-  core_product_id?: number | null;
-  grade_id?: number | null;
   product_type_id?: number | null;
-  finish_id?: number | null;
   size_id?: number | null;
-  brand_id?: number | null;
 
   product_as_per_vendor_invoice?: string | null;
   p_code?: string | null;
@@ -96,10 +90,10 @@ export interface ProductSupplierPayload {
 export interface ProductMastersResponse {
   categories: { id: number; category_name: string; parent_id?: number | null }[];
   brands: { id: number; brand_name: string; brand_short_name?: string | null; logo?: string | null }[];
-  grades: { id: number; grade_name: string }[];
-  finishes: { id: number; finish_name: string }[];
+  grades: { id: number; grade_name?: string; name?: string }[];
+  finishes: { id: number; finish_name?: string; name?: string }[];
   types: { id: number; type_name: string }[];
-  coreProducts: { id: number; core_product_name: string }[];
+  coreProducts: { id: number; core_product_name?: string; name?: string }[];
   itemTypeMasters: { id: number; item_type_name: string }[];
   units: { id: number; unit_name: string; short_name?: string | null; decimal_allowed?: boolean }[];
   itemGroups: { id: number; group_name: string }[];
@@ -117,11 +111,7 @@ export interface ProductMastersResponse {
     vendor_code: string;
   }[];
   subCategories: { id: number; categoryId: number; name: string }[];
-  coreProducts: { id: number; name: string }[];
-  grades: { id: number; name: string }[];
-  finishes: { id: number; name: string }[];
   sizes: { id: number; name: string }[];
-  brands: { id: number; brand_name: string; brand_short_name: string | null }[];
   productTypes: { id: number; type: string; tag: string }[];
   costingMethods: ("FIFO" | "MANUAL")[];
   itemTypes: ("CapitalGoods" | "Goods" | "Services")[];
