@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
+import "react-quill-new/dist/quill.snow.css";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AppProviders } from "@/redux/provider";
