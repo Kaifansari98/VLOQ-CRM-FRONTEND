@@ -396,6 +396,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const isBroadcastEnabled = user?.vendor?.is_broadcast_enabled === true;
   const isInventoryEnabled = user?.vendor?.is_inventory_enabled === true;
   const isTrackTraceEnabled = user?.vendor?.is_tracktrace_enabled === true;
+  const isOnlineLeadFeatureEnabled = user?.vendor?.is_online_lead_feature_enabled === true;
   const canSeeOverallLeads = userType === "admin" || userType === "super-admin" || userType === "auditor";
   const isSuperAdmin = userType === "super-admin" || userType === "auditor";
   const isMasterAdmin = userType === "master-admin";
@@ -716,8 +717,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         }))
       : [];
 
+    const resolvedNavItems = isOnlineLeadFeatureEnabled
+      ? finalNavItems
+      : finalNavItems.filter((item) => item.title !== "Online Leads");
+
     return {
-      navItems: finalNavItems,
+      navItems: resolvedNavItems,
       trackTraceItems: finalTrackTraceItems,
       inventoryItems: finalInventoryItems,
       mastersItems: finalMastersItems,
@@ -735,6 +740,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     isBroadcastEnabled,
     isInventoryEnabled,
     isTrackTraceEnabled,
+    isOnlineLeadFeatureEnabled,
     customPrivilegeCodes,
     isActiveFranchiseB2b,
   ]);
