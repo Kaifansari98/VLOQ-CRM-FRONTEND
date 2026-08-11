@@ -19,10 +19,13 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 export type PendingLeadRow = ProcessedLead & { accountId?: number };
 
 // ✅ Columns for Pending Leads (OnHold + Lost)
-export function getPendingLeadsColumns({}: {
+export function getPendingLeadsColumns({
+  isB2b = false,
+}: {
   tab: "onHold" | "lostApproval" | "lost";
   onRevert: (lead: PendingLeadRow) => void;
   onMarkAsLost: (lead: PendingLeadRow) => void;
+  isB2b?: boolean;
 }): ColumnDef<PendingLeadRow>[] {
   return [
     {
@@ -211,10 +214,13 @@ export function getPendingLeadsColumns({}: {
       accessorKey: "furnitureType",
       filterFn: tableMultiValueFilter,
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Furniture Type" />
+        <DataTableColumnHeader
+          column={column}
+          title={isB2b ? "Requirement Type" : "Furniture Type"}
+        />
       ),
       meta: {
-        label: "Furniture Type",
+        label: isB2b ? "Requirement Type" : "Furniture Type",
       },
       enableSorting: false,
       enableHiding: true,
@@ -225,11 +231,14 @@ export function getPendingLeadsColumns({}: {
       filterFn: tableMultiValueFilter,
 
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Furniture Structures" />
+        <DataTableColumnHeader
+          column={column}
+          title={isB2b ? "Process Brief" : "Furniture Structures"}
+        />
       ),
 
       meta: {
-        label: "Furniture Structures",
+        label: isB2b ? "Process Brief" : "Furniture Structures",
       },
 
       enableSorting: false,

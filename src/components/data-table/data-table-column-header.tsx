@@ -55,6 +55,7 @@ export function DataTableColumnHeader<TData, TValue>({
   className,
 }: DataTableColumnHeaderProps<TData, TValue>) {
   const meta = (table?.options?.meta ?? (column as any).table?.options?.meta ?? {}) as any;
+  const isB2b = meta.isB2b ?? false;
   const isFurnitureColumn = column.id === "furnitureType";
   const isLeadCodeColumn =
     column.id === "lead_code" || column.id === "leadCode" || title === "Lead Code";
@@ -145,7 +146,7 @@ export function DataTableColumnHeader<TData, TValue>({
           {/* FURNITURE FILTER */}
           {isFurnitureColumn && (
             <div onClick={(e) => e.stopPropagation()}>
-              <FurnitureFilter column={column as any} />
+              <FurnitureFilter column={column as any} isB2b={isB2b} />
             </div>
           )}
 
@@ -182,7 +183,7 @@ export function DataTableColumnHeader<TData, TValue>({
           )}
           {isStructureColumn && (
             <div onClick={(e) => e.stopPropagation()}>
-              <ProductStructureFilter column={column as any} />
+              <ProductStructureFilter column={column as any} isB2b={isB2b} />
             </div>
           )}
 

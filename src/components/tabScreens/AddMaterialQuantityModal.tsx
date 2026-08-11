@@ -50,7 +50,7 @@ export const AddMaterialQuantityModal: React.FC<AddMaterialQuantityModalProps> =
   const [unitName, setUnitName] = useState<string>("");
   const [unitId, setUnitId] = useState<number | null>(null);
   
-  const [suppliedBy, setSuppliedBy] = useState<MaterialSupplyType>("Frankvin");
+  const [suppliedBy, setSuppliedBy] = useState<MaterialSupplyType | "">("");
   const [clientPercentage, setClientPercentage] = useState<number>(40);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [openUnitDropdown, setOpenUnitDropdown] = useState(false);
@@ -114,7 +114,7 @@ export const AddMaterialQuantityModal: React.FC<AddMaterialQuantityModalProps> =
         setQuantity(String(editingItem.quantity));
         setUnitName(editingItem.unit_name || editingItem.product?.unit_of_measure || "");
         setUnitId(editingItem.unit_id || null);
-        setSuppliedBy(editingItem.supplied_by || "Frankvin");
+        setSuppliedBy(editingItem.supplied_by || "");
         setClientPercentage(editingItem.client_percentage ?? 40);
       } else {
         setSelectedProductIds([]);
@@ -123,7 +123,7 @@ export const AddMaterialQuantityModal: React.FC<AddMaterialQuantityModalProps> =
         setQuantity("");
         setUnitName("");
         setUnitId(null);
-        setSuppliedBy("Frankvin");
+        setSuppliedBy("");
         setClientPercentage(40);
       }
     }
@@ -206,6 +206,11 @@ export const AddMaterialQuantityModal: React.FC<AddMaterialQuantityModalProps> =
     const qtyNum = parseFloat(quantity);
     if (isNaN(qtyNum) || qtyNum <= 0) {
       toastManager.add({ title: "Please enter a valid quantity greater than 0", type: "error" });
+      return;
+    }
+
+    if (!suppliedBy) {
+      toastManager.add({ title: "Please select who supplies the material", type: "error" });
       return;
     }
 

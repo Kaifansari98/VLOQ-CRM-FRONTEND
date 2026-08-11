@@ -28,6 +28,23 @@ export interface ProductStructureMapping {
   productStructure: ProductStructure;
 }
 
+export interface B2BRequirementType {
+  id: number;
+  type: string;
+}
+
+export interface LeadB2BRequirementMapping {
+  b2bRequirementType: B2BRequirementType;
+}
+
+export interface LeadProcessBriefMapping {
+  processBrief: {
+    id: number;
+    name: string;
+  };
+  b2bRequirementType?: B2BRequirementType | null;
+}
+
 export interface ProductStructureInstance {
   id: number;
   title: string;
@@ -122,6 +139,8 @@ export interface UniversalStageLead {
   } | null;
 
   productMappings: ProductMapping[];
+  leadB2BReqMappings?: LeadB2BRequirementMapping[];
+  leadProcessBriefs?: LeadProcessBriefMapping[];
   leadProductStructureMapping: ProductStructureMapping[];
   productStructureInstances?: ProductStructureInstance[];
 }

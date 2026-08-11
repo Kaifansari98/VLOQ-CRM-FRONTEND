@@ -88,7 +88,7 @@ import {
   useProcessBriefs,
 } from "@/hooks/useTypesMaster";
 import { updateLeadProductType, clearLeadProductStructures } from "@/api/leads";
-import { saveLeadProcessBriefsApi, fetchLeadProcessBriefsApi } from "@/api/typesMasterApi";
+import { saveLeadProcessBriefsApi, fetchLeadProcessBriefsApi, saveLeadB2BRequirementMappingsApi } from "@/api/typesMasterApi";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 import { useFranchisesByVendorId } from "@/api/franchise";
 import type { LeadBillingAddress } from "@/api/booking";
@@ -473,23 +473,40 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         });
       },
     });
+  // ✅ 6. DERIVED VALUES (non-hook)
+  const lead = data?.data?.lead;
+  const isB2b = useMemo(() => {
+    const leadFranchise = franchisesForB2b.find(
+      (franchise: any) => franchise.id === lead?.franchise_id,
+    );
+    return leadFranchise?.moduled_for_b2b ?? false;
+  }, [franchisesForB2b, lead?.franchise_id]);
+
   const { mutate: updateLeadProductTypeMutation, isPending: updatingLeadType } =
     useMutation({
       mutationFn: async (typeIds: number[]) => {
-        const primaryTypeId = typeIds[0];
-        const nextTypeLabel = (b2bReqTypesData?.data || productTypes?.data)?.find(
-          (t: any) => t.id === primaryTypeId,
-        )?.type;
-        
-        return updateLeadProductType(leadId, userId || 0, {
-          productTypeIds: typeIds,
-          productTypeId: primaryTypeId,
-          productType: nextTypeLabel,
-        });
+        if (isB2b) {
+          return saveLeadB2BRequirementMappingsApi({
+            lead_id: leadId,
+            vendor_id: vendorId!,
+            b2b_requirement_type_ids: typeIds,
+          });
+        } else {
+          const primaryTypeId = typeIds[0];
+          const nextTypeLabel = productTypes?.data?.find(
+            (t: any) => t.id === primaryTypeId,
+          )?.type;
+          
+          return updateLeadProductType(leadId, userId || 0, {
+            productTypeIds: typeIds,
+            productTypeId: primaryTypeId,
+            productType: nextTypeLabel,
+          });
+        }
       },
       onSuccess: async () => {
         toastManager.add({
-          title: "Product type updated successfully.",
+          title: isB2b ? "Requirement types updated successfully." : "Product type updated successfully.",
           type: "success",
         });
         setEditProductTypeOpen(false);
@@ -499,20 +516,23 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         await queryClient.invalidateQueries({
           queryKey: ["lead-product-structure-instances", leadId, vendorId],
         });
+        await queryClient.invalidateQueries({
+          queryKey: ["leads"],
+        });
+        await queryClient.invalidateQueries({
+          queryKey: ["universal-table"],
+        });
       },
       onError: (error: any) => {
         toastManager.add({
           title:
-            error?.response?.data?.message || "Failed to update product type.",
+            error?.response?.data?.message || "Failed to update requirement types.",
           type: "error",
         });
       },
     });
   const { mutateAsync: uploadMoreSitePhotos, isPending: uploading } =
     useUploadMoreSitePhotos();
-
-  // ✅ 6. DERIVED VALUES (non-hook)
-  const lead = data?.data?.lead;
   const structureInstances = structureInstancesData?.data || [];
   const productItemCodes = productItemCodesData?.data || [];
   const leadDocuments = lead?.documents || [];
@@ -730,9 +750,41 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     [addParentFilter, productStructureTypes?.data],
   );
 
-  const b2bProductTypes = useMemo(() => {
-    return b2bReqTypesData?.data || [];
-  }, [b2bReqTypesData?.data]);
+  const displayedTypesInModal = useMemo(() => {
+    if (isB2b) {
+      return b2bReqTypesData?.data || [];
+    }
+    return productTypes?.data || [];
+  }, [isB2b, b2bReqTypesData?.data, productTypes?.data]);
+
+  useEffect(() => {
+    if (!lead) return;
+    if (isB2b) {
+      const b2bIds = (lead as any)?.leadB2BReqMappings
+        ?.map((m: any) => m.b2b_requirement_type_id || m.b2bRequirementType?.id)
+        ?.filter(Boolean) || [];
+      const briefTypeIds = (lead as any)?.leadProcessBriefs
+        ?.map((m: any) => m.b2b_requirement_type_id || m.b2bRequirementType?.id)
+        ?.filter(Boolean) || [];
+      const combinedIds = Array.from(new Set([...b2bIds, ...briefTypeIds]));
+      if (combinedIds.length > 0) {
+        setSelectedProductTypeIds(combinedIds);
+        if (!selectedProductTypeId) {
+          setSelectedProductTypeId(combinedIds[0]);
+        }
+      }
+    } else {
+      const standardIds = lead?.productMappings
+        ?.map((pm: any) => pm.product_type_id || pm.productType?.id)
+        ?.filter(Boolean) || [];
+      if (standardIds.length > 0) {
+        setSelectedProductTypeIds(standardIds);
+        if (!selectedProductTypeId) {
+          setSelectedProductTypeId(standardIds[0]);
+        }
+      }
+    }
+  }, [lead, isB2b]);
 
   const filteredBriefsForModal = useMemo(() => {
     if (!briefModalTypeId) return [];
@@ -750,18 +802,35 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         if (res?.success && Array.isArray(res?.data)) {
           const mappingObj: Record<number, number[]> = {};
           res.data.forEach((item: any) => {
-            const tId = item.product_type_id;
+            const tId = item.b2b_requirement_type_id || item.product_type_id || item.b2bRequirementType?.id;
             const bId = item.process_brief_id;
-            if (!mappingObj[tId]) mappingObj[tId] = [];
-            if (!mappingObj[tId].includes(bId)) mappingObj[tId].push(bId);
+            if (tId && bId) {
+              if (!mappingObj[tId]) mappingObj[tId] = [];
+              if (!mappingObj[tId].includes(bId)) mappingObj[tId].push(bId);
+            }
           });
-          setSelectedProcessBriefIds(mappingObj);
+          setSelectedProcessBriefIds((prev) => ({ ...mappingObj, ...prev }));
         }
       })
       .catch((err) => {
         console.error("[ERROR] Failed to fetch lead process briefs:", err);
       });
   }, [leadId, vendorId]);
+
+  useEffect(() => {
+    if (lead?.leadProcessBriefs && Array.isArray(lead.leadProcessBriefs)) {
+      const mappingObj: Record<number, number[]> = {};
+      lead.leadProcessBriefs.forEach((item: any) => {
+        const tId = item.b2b_requirement_type_id || item.product_type_id || item.b2bRequirementType?.id;
+        const bId = item.process_brief_id || item.processBrief?.id;
+        if (tId && bId) {
+          if (!mappingObj[tId]) mappingObj[tId] = [];
+          if (!mappingObj[tId].includes(bId)) mappingObj[tId].push(bId);
+        }
+      });
+      setSelectedProcessBriefIds((prev) => ({ ...mappingObj, ...prev }));
+    }
+  }, [lead?.leadProcessBriefs]);
 
   useEffect(() => {
     if (lead?.productMappings && Array.isArray(lead.productMappings)) {
@@ -801,7 +870,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 
     try {
       setSavingProcessBriefs(true);
-      const mappingsList: { product_type_id: number; process_brief_id: number }[] = [];
+      const mappingsList: { product_type_id: number; b2b_requirement_type_id?: number; process_brief_id: number }[] = [];
 
       Object.entries(selectedProcessBriefIds).forEach(([typeIdStr, briefIds]) => {
         const typeId = Number(typeIdStr);
@@ -809,6 +878,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
           briefIds.forEach((bId) => {
             mappingsList.push({
               product_type_id: typeId,
+              b2b_requirement_type_id: typeId,
               process_brief_id: bId,
             });
           });
@@ -828,6 +898,9 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       });
 
       setBriefModalTypeId(null);
+      await queryClient.invalidateQueries({ queryKey: ["lead", leadId, vendorId, userId] });
+      await queryClient.invalidateQueries({ queryKey: ["leads"] });
+      await queryClient.invalidateQueries({ queryKey: ["universal-table"] });
     } catch (error: any) {
       console.error("[ERROR] Error saving lead process briefs:", error);
       toastManager.add({
@@ -839,12 +912,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     }
   };
 
-  const isB2b = useMemo(() => {
-    const leadFranchise = franchisesForB2b.find(
-      (franchise: any) => franchise.id === lead?.franchise_id,
-    );
-    return leadFranchise?.moduled_for_b2b ?? false;
-  }, [franchisesForB2b, lead?.franchise_id]);
+
   const shouldShowBillingInformationCard = useMemo(
     () =>
       handlesLargeScaleProjects &&
@@ -944,9 +1012,23 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   };
 
   const handleOpenProductTypeEdit = () => {
-    const currentIds = lead?.productMappings
-      ?.map((pm: any) => pm.product_type_id || pm.productType?.id)
-      ?.filter(Boolean) || (currentProductTypeId ? [currentProductTypeId] : []);
+    let currentIds: number[] = [];
+    if (isB2b) {
+      const b2bIds = (lead as any)?.leadB2BReqMappings
+        ?.map((m: any) => m.b2b_requirement_type_id || m.b2bRequirementType?.id)
+        ?.filter(Boolean) || [];
+      const briefTypeIds = (lead as any)?.leadProcessBriefs
+        ?.map((m: any) => m.b2b_requirement_type_id || m.b2bRequirementType?.id)
+        ?.filter(Boolean) || [];
+      currentIds = Array.from(new Set([...b2bIds, ...briefTypeIds]));
+      if (currentIds.length === 0) {
+        currentIds = selectedProductTypeIds;
+      }
+    } else {
+      currentIds = lead?.productMappings
+        ?.map((pm: any) => pm.product_type_id || pm.productType?.id)
+        ?.filter(Boolean) || (currentProductTypeId ? [currentProductTypeId] : []);
+    }
     setSelectedProductTypeIds(currentIds);
     setSelectedProductTypeId(currentIds[0] || currentProductTypeId);
     setEditProductTypeOpen(true);
@@ -1695,7 +1777,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   </div>
 
                   <div className="flex flex-wrap gap-3">
-                    {b2bProductTypes
+                    {(b2bReqTypesData?.data || [])
                       .filter((pt: any) => selectedProductTypeIds.includes(pt.id))
                       .map((pt: any) => {
                         const isSelected = selectedProductTypeIds.includes(pt.id);
@@ -1711,7 +1793,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                           </div>
                         );
                       })}
-                    {b2bProductTypes.filter((pt: any) => selectedProductTypeIds.includes(pt.id)).length === 0 && (
+                    {(b2bReqTypesData?.data || []).filter((pt: any) => selectedProductTypeIds.includes(pt.id)).length === 0 && (
                       <p className="text-xs text-muted-foreground italic">No requirement types selected. Click "+ Add Requirement Type" to select.</p>
                     )}
                   </div>
@@ -2836,10 +2918,12 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   </span>
                 </label>
                 <div className="flex flex-wrap gap-2 mt-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-muted/10">
-                  {b2bProductTypes.length === 0 ? (
-                    <p className="text-xs text-muted-foreground italic p-2">No B2B requirement types found.</p>
+                  {displayedTypesInModal.length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic p-2">
+                      {isB2b ? "No B2B requirement types found." : "No product types found."}
+                    </p>
                   ) : (
-                    b2bProductTypes.map((t: any) => {
+                    displayedTypesInModal.map((t: any) => {
                       const isSelected = selectedProductTypeIds.includes(t.id);
                       return (
                         <Badge
