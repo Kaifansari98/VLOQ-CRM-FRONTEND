@@ -882,7 +882,7 @@ export default function ClientApprovalLeadDetails() {
         onOpenChange={setActivityModalOpen}
         statusType="onHold"
         loading={updateStatusMutation.isPending}
-        onSubmitRemark={(remark, dueDate) => {
+        onSubmitRemark={(remark, dueDate, selection) => {
           if (!vendorId || !userId) {
             toastManager.add({
               title: "Vendor or User info missing!",
@@ -910,11 +910,7 @@ export default function ClientApprovalLeadDetails() {
                   title: "Lead marked On Hold",
                   type: "success",
                 });
-                setActivityModalOpen(false);
-
-                queryClient.invalidateQueries({
-                  queryKey: ["leadById", leadIdNum],
-                });
+                window.location.assign("/dashboard/leads/leadstable?tab=onHold");
               },
               onError: (err) =>
                 toastManager.add({

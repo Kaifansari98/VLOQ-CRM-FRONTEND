@@ -369,7 +369,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const effectiveCanDeleteDesignFiles =
     canDeleteDesignFiles && !shouldDisableBlockedActions;
   const effectiveCanMoveToClientApproval =
-    canMoveToClientApproval && !shouldDisableBlockedActions && !pathname?.includes("/client-approval");
+    canMoveToClientApproval && !pathname?.includes("/client-approval");
 
   const structureInstances: LeadProductStructureInstance[] = React.useMemo(
     () =>
@@ -599,6 +599,32 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
 
     return groups;
   }, [itemCodeGroupMap, specifications]);
+  const largeScaleSpecificationStatus = React.useMemo(() => {
+    if (!handlesLargeScaleProjects) {
+      return {
+        allReviewed: true,
+        missingGroups: [] as string[],
+      };
+    }
+
+    const missingGroups = displayGroups
+      .filter((group) => {
+        const latestSpec = latestSpecificationByGroup.get(
+          group.title.trim().toLowerCase(),
+        );
+        return !latestSpec?.is_completed;
+      })
+      .map((group) => group.title);
+
+    return {
+      allReviewed: missingGroups.length === 0,
+      missingGroups,
+    };
+  }, [
+    displayGroups,
+    handlesLargeScaleProjects,
+    latestSpecificationByGroup,
+  ]);
   const activeSpecificationGroupKey = React.useMemo(() => {
     if (!handlesLargeScaleProjects || !activeInstance) return null;
 
@@ -1289,6 +1315,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const canMoveStage =
     allInstancesDocsReady &&
     allInstancesSelectionsReady &&
+    largeScaleSpecificationStatus.allReviewed &&
     !selectionForm.formState.isDirty &&
     !isMovingStage &&
     !shouldDisableBlockedActions;
@@ -2147,6 +2174,19 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
             const missing: string[] = [];
             if (shouldDisableBlockedActions)
               missing.push(blockedTooltip || "Lead is blocked");
+            if (handlesLargeScaleProjects) {
+              if (largeScaleSpecificationStatus.missingGroups.length > 0) {
+                const prefix =
+                  largeScaleSpecificationStatus.missingGroups.length === 1
+                    ? "Complete specification review for"
+                    : "Complete specification review for all item groups:";
+                const suffix =
+                  largeScaleSpecificationStatus.missingGroups.length === 1
+                    ? `${largeScaleSpecificationStatus.missingGroups[0]}. Approve, amend, or delete every row and mark the specification as completed.`
+                    : `${largeScaleSpecificationStatus.missingGroups.join(", ")}. Approve, amend, or delete every row and mark each latest specification as completed.`;
+                missing.push(`${prefix} ${suffix}`);
+              }
+            }
             if (!allInstancesSelectionsReady) {
               if (isFastProduction) {
                 missing.push("Save Carcas for all instances");

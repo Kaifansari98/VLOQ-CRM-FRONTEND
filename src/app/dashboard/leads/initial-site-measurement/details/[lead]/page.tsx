@@ -748,7 +748,7 @@ export default function SiteMeasurementLead() {
         statusType={activityType}
         vendorId={vendorId}
         franchiseId={lead?.franchise_id ?? null}
-        onSubmitRemark={(remark, dueDate) => {
+        onSubmitRemark={(remark, dueDate, selection) => {
           if (!vendorId || !userId || !accountId) return;
           updateStatusMutation.mutate(
             {
@@ -760,7 +760,7 @@ export default function SiteMeasurementLead() {
                 status: activityType === "onHold" ? "onHold" : "lost",
                 remark,
                 createdBy: userId,
-                ...(activityType === "onHold" ? { dueDate } : {}),
+                ...((activityType === "onHold") ? { dueDate, ...(selection ?? {}) } : {}),
               },
             },
             {
@@ -775,6 +775,10 @@ export default function SiteMeasurementLead() {
                         : "Lead marked as Lost!",
                   type: "success",
                 });
+                if (activityType === "onHold") {
+                  window.location.assign("/dashboard/leads/leadstable?tab=onHold");
+                  return;
+                }
                 queryClient.invalidateQueries({
                   queryKey: ["universal-stage-leads"],
                 });

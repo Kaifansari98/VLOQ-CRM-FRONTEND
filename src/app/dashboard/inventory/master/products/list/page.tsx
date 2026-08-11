@@ -166,6 +166,7 @@ function ProductDetailDialog({ product, onClose }: { product: Product; onClose: 
             <Field label="Item ID" value={fmt(product.item_id)} />
             <Field label="Article Code" value={fmt(product.article_code)} />
             <Field label="Vendor Code" value={fmt(product.vendor_code)} />
+            <Field label="Barcode" value={fmt(product.barcode ?? null)} />
             <Field label="HSN Code" value={fmt(product.hsn?.hsn_code ?? product.hsn_code)} />
             <Field label="Group" value={fmt((product as any).itemGroup?.group_name ?? product.group)} />
             <Field label="Procurement" value={fmt(product.procurement)} />
@@ -176,15 +177,41 @@ function ProductDetailDialog({ product, onClose }: { product: Product; onClose: 
           <Section title="Material & Finish">
             <Field label="Core Material" value={fmt(
               product.core_material === null || product.core_material === undefined || product.core_material === ""
-                ? (product.coreProduct?.core_product_name ?? product.core_product_id ?? null)
+                ? (
+                    product.coreProduct?.core_product_name ??
+                    product.coreProduct?.name ??
+                    product.core_product_id ??
+                    null
+                  )
                 : product.core_material
+            )} />
+            <Field label="Sub Category" value={fmt(
+              product.subCategory?.category_name ??
+              product.subCategory?.name ??
+              null
             )} />
             <Field label="Finish" value={fmt(
               product.finish === null || product.finish === undefined || product.finish === ""
-                ? (product.finishMaster?.finish_name ?? product.finish_id ?? null)
+                ? (
+                    product.finishMaster?.finish_name ??
+                    product.finishMaster?.name ??
+                    product.finish_id ??
+                    null
+                  )
                 : product.finish
             )} />
             <Field label="Edge Banding Color" value={fmt(product.edge_banding_color)} />
+            <Field label="Grade" value={fmt(
+              product.grade?.grade_name ??
+              product.grade?.name ??
+              null
+            )} />
+            <Field label="Color Name" value={fmt(product.color_name ?? null)} />
+            <Field
+              label="Thickness"
+              value={product.thickness_mm ? `${product.thickness_mm} mm` : "—"}
+            />
+            <Field label="P. Code" value={fmt(product.p_code ?? null)} />
           </Section>
 
           <Separator />
@@ -198,6 +225,7 @@ function ProductDetailDialog({ product, onClose }: { product: Product; onClose: 
                 <Field label="Dim 1×2×3" value={(() => { const { d1, d2, d3 } = getEffectiveDimensions(product); return fmtDim(d1, d2, d3); })()} />
               </>
             )}
+            <Field label="Size Master" value={fmt(product.sizeMaster?.name ?? null)} />
             <Field label="Pre-Mill Width" value={fmt(product.pre_mill_width)} />
             <Field label="Drill Holes" value={fmt(product.no_of_drill_holes)} />
             <Field label="Rotation" value={fmt(product.rotation)} />
@@ -210,7 +238,12 @@ function ProductDetailDialog({ product, onClose }: { product: Product; onClose: 
           <Separator />
 
           <Section title="Pricing">
-            <Field label="Level 1 Price" value={fmtPrice(product.level1_price)} />
+            <Field label="Purchase Rate" value={fmtPrice(product.level1_price)} />
+            <Field label="Cost Price" value={fmtPrice(product.cost_price ? String(product.cost_price) : null)} />
+            <Field label="B2C Selling" value={fmtPrice(product.b2c_selling_price ? String(product.b2c_selling_price) : null)} />
+            <Field label="B2B Selling" value={fmtPrice(product.b2b_selling_price ? String(product.b2b_selling_price) : null)} />
+            <Field label="MRP" value={fmtPrice(product.mrp ? String(product.mrp) : null)} />
+            <Field label="Vendor Invoice Name" value={fmt(product.product_as_per_vendor_invoice ?? null)} />
             <Field label="Level 2 Price" value={fmtPrice(product.level2_price)} />
             <Field label="Level 3 Price" value={fmtPrice(product.level3_price)} />
             <Field label="Installation" value={fmtPrice(product.installation_charges)} />

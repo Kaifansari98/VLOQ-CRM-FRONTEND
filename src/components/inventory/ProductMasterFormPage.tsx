@@ -1033,7 +1033,10 @@ export function ProductMasterFormPage({
                             title: "Core Product",
                             fieldKey: "core_product_id",
                             nameKey: "coreProducts",
-                            items: (masters.coreProducts || []).map(cp => ({ id: cp.id, name: cp.core_product_name })),
+                            items: (masters.coreProducts || []).map(cp => ({
+                              id: cp.id,
+                              name: cp.core_product_name ?? cp.name ?? "",
+                            })),
                             placeholder: "e.g. Carcass",
                             endpoint: "/track-trace/core-products",
                             payloadKey: "core_product_name",
@@ -1046,7 +1049,10 @@ export function ProductMasterFormPage({
                     }
                   >
                     <AssignToPicker
-                      data={masters.coreProducts?.map((cp) => ({ id: cp.id, label: cp.core_product_name })) || []}
+                      data={masters.coreProducts?.map((cp) => ({
+                        id: cp.id,
+                        label: cp.core_product_name ?? cp.name ?? "",
+                      })) || []}
                       value={form.core_product_id || undefined}
                       onChange={(val) => set("core_product_id", val)}
                       placeholder="Search core product..."
@@ -1066,7 +1072,10 @@ export function ProductMasterFormPage({
                             title: "Grade",
                             fieldKey: "grade_id",
                             nameKey: "grades",
-                            items: (masters.grades || []).map(g => ({ id: g.id, name: g.grade_name })),
+                            items: (masters.grades || []).map(g => ({
+                              id: g.id,
+                              name: g.grade_name ?? g.name ?? "",
+                            })),
                             placeholder: "e.g. MDF 18mm",
                             endpoint: "/track-trace/grades",
                             payloadKey: "grade_name",
@@ -1079,7 +1088,10 @@ export function ProductMasterFormPage({
                     }
                   >
                     <AssignToPicker
-                      data={masters.grades?.map((g) => ({ id: g.id, label: g.grade_name })) || []}
+                      data={masters.grades?.map((g) => ({
+                        id: g.id,
+                        label: g.grade_name ?? g.name ?? "",
+                      })) || []}
                       value={form.grade_id || undefined}
                       onChange={(val) => set("grade_id", val)}
                       placeholder="Search grade..."
@@ -1132,7 +1144,10 @@ export function ProductMasterFormPage({
                             title: "Finish",
                             fieldKey: "finish_id",
                             nameKey: "finishes",
-                            items: (masters.finishes || []).map(f => ({ id: f.id, name: f.finish_name })),
+                            items: (masters.finishes || []).map(f => ({
+                              id: f.id,
+                              name: f.finish_name ?? f.name ?? "",
+                            })),
                             placeholder: "e.g. Matte Finish",
                             endpoint: "/track-trace/finishes",
                             payloadKey: "finish_name",
@@ -1145,7 +1160,10 @@ export function ProductMasterFormPage({
                     }
                   >
                     <AssignToPicker
-                      data={masters.finishes?.map((f) => ({ id: f.id, label: f.finish_name })) || []}
+                      data={masters.finishes?.map((f) => ({
+                        id: f.id,
+                        label: f.finish_name ?? f.name ?? "",
+                      })) || []}
                       value={form.finish_id || undefined}
                       onChange={(val) => set("finish_id", val)}
                       placeholder="Search finish..."

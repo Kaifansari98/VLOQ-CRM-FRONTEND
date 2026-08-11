@@ -679,46 +679,48 @@ export function ReportFilterModal({
         )}
 
         {/* Date Filter */}
-        <div className="space-y-1">
-          <Label className="text-xs">Date Filter</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className="group h-9 w-full justify-between border-input bg-background px-3 text-xs font-normal hover:bg-background"
-              >
-                <span
-                  className={cn(
-                    "truncate text-left",
-                    !selectedDateRange?.from && "text-muted-foreground",
-                  )}
+        {reportTitle !== "Lead Servicing Report" && (
+          <div className="space-y-1">
+            <Label className="text-xs">Date Filter</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="group h-9 w-full justify-between border-input bg-background px-3 text-xs font-normal hover:bg-background"
                 >
-                  {selectedDateRange?.from ? (
-                    selectedDateRange.to ? (
-                      `${format(selectedDateRange.from, "LLL dd, y")} - ${format(selectedDateRange.to, "LLL dd, y")}`
+                  <span
+                    className={cn(
+                      "truncate text-left",
+                      !selectedDateRange?.from && "text-muted-foreground",
+                    )}
+                  >
+                    {selectedDateRange?.from ? (
+                      selectedDateRange.to ? (
+                        `${format(selectedDateRange.from, "LLL dd, y")} - ${format(selectedDateRange.to, "LLL dd, y")}`
+                      ) : (
+                        format(selectedDateRange.from, "LLL dd, y")
+                      )
                     ) : (
-                      format(selectedDateRange.from, "LLL dd, y")
-                    )
-                  ) : (
-                    "Pick a date range"
-                  )}
-                </span>
-                <CalendarIcon
-                  aria-hidden="true"
-                  className="size-4 shrink-0 text-muted-foreground/80 transition-colors group-hover:text-foreground"
+                      "Pick a date range"
+                    )}
+                  </span>
+                  <CalendarIcon
+                    aria-hidden="true"
+                    className="size-4 shrink-0 text-muted-foreground/80 transition-colors group-hover:text-foreground"
+                  />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-auto p-2">
+                <Calendar
+                  mode="range"
+                  selected={selectedDateRange}
+                  onSelect={handleDateRangeChange}
+                  numberOfMonths={2}
                 />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-auto p-2">
-              <Calendar
-                mode="range"
-                selected={selectedDateRange}
-                onSelect={handleDateRangeChange}
-                numberOfMonths={2}
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
       </div>
 
       {/* Footer */}
