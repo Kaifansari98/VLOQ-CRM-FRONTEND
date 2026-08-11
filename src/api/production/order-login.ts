@@ -253,6 +253,39 @@ export const useProductionFiles = (
     enabled: !!vendorId && !!leadId,
   });
 
+export const updateSoValueReceivedStatus = async (
+  vendorId: number,
+  leadId: number,
+  payload: {
+    is_so_value_received: boolean;
+    updated_by: number;
+  },
+) => {
+  const { data } = await apiClient.put(
+    `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/so-value-received`,
+    payload,
+  );
+  return data?.data;
+};
+
+export const useUpdateSoValueReceivedStatus = (
+  vendorId: number | undefined,
+  leadId: number | undefined,
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: { is_so_value_received: boolean; updated_by: number }) =>
+      updateSoValueReceivedStatus(vendorId!, leadId!, payload),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["lead", leadId, vendorId] }),
+        queryClient.invalidateQueries({ queryKey: ["orderLoginByLead", vendorId, leadId] }),
+      ]);
+    },
+  });
+};
+
 // ✅ --- Upload Order Login PO Files ---
 export const uploadOrderLoginPoFiles = async (
   vendorId: number,

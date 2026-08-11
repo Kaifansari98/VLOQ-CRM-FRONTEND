@@ -6,12 +6,25 @@ import {
   useEditSelectionData,
   useGetCHSManufacturingDaysByInstance,
   useGetCHSSelectionTypeMappings,
+  useLeadSpecifications,
   useLeadStatus,
   useSelectionData,
   useSubmitSelection,
+  useSubmitQuotation,
   useUpsertCHSSelectionTypeMapping,
+  useLeadCarcassMaterialMappings,
+  useLeadShutterMaterialMappings,
+  useLeadHardwareMappings,
+  useLeadLightCarcasUnitMappings,
+  useLeadOtherAppliancesMappings,
+  useDesignsDoc,
+  useQuotationDoc,
 } from "@/hooks/designing-stage/designing-leads-hooks";
-import type { CHSMappingItem } from "@/api/designingStageQueries";
+import type {
+  CHSMappingItem,
+  LeadSpecificationEntry,
+} from "@/api/designingStageQueries";
+import { useSubmitDesigns } from "@/api/designingStageQueries";
 import { useAppSelector } from "@/redux/store";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,7 +33,6 @@ import { toastManager } from "@/components/ui/toast";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -51,6 +63,8 @@ import {
   FolderOpen,
   FileText,
   Loader2,
+  PenTool,
+  ScrollText,
   Upload,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
@@ -83,6 +97,7 @@ import ClientDocsSelectionMultiSelect, {
   ClientDocsSelectionOption,
 } from "./ClientDocsSelectionMultiSelect";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import ViewSpecsModal from "./modals/view-specs-modal";
 
 interface Props {
   leadId: number;
@@ -135,15 +150,6 @@ const getFormSchema = (
       }
     });
 
-const instanceUploadSchema = z.object({
-  pptDocuments: z
-    .array(z.instanceof(File))
-    .min(1, "Please upload at least one Project file"),
-  pythaDocuments: z
-    .array(z.instanceof(File))
-    .min(1, "Please upload at least one Pytha file"),
-});
-
 type FormValues = {
   carcas: string[];
   carcas_remark?: string;
@@ -152,7 +158,19 @@ type FormValues = {
   handles: string[] | undefined;
   handles_remark?: string;
 };
-type InstanceUploadValues = z.infer<typeof instanceUploadSchema>;
+
+interface UploadSectionConfig {
+  id: "project" | "pytha" | "design" | "quotation";
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  accept?: string;
+  docs: any[];
+  canView: boolean;
+  canUpload: boolean;
+  canDelete: boolean;
+  required?: boolean;
+}
 
 const DEFAULT_REMARK = "N/A";
 
@@ -202,19 +220,20 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     isError,
     refetch,
   } = useSelectionData(vendorId!, leadId!);
-  const { data: carcassTypesData, isLoading: isCarcassTypesLoading } =
-    useCarcassTypes();
-  const { data: shutterTypesData, isLoading: isShutterTypesLoading } =
-    useShutterTypes();
-  const { data: handleTypesData, isLoading: isHandleTypesLoading } =
-    useHandleTypes();
+
   const { data: leadData } = useLeadStatus(leadId, vendorId);
-  
+  const { data: specifications = [] } = useLeadSpecifications(vendorId, leadId);
   const { data: leadDataById } = useLeadById(leadId, vendorId, userId);
   const lead = leadDataById?.data?.lead;
   const furniture_type = lead?.productMappings?.map((pm: any) => pm.productType?.type).filter(Boolean).join(", ") || "N/A";
   const isSmallOrder = furniture_type.toLowerCase().includes("small order");
   const isFastProduction = lead?.is_fast_production === true;
+  const { data: carcassTypesData, isLoading: isCarcassTypesLoading } =
+    useCarcassTypes(isFastProduction);
+  const { data: shutterTypesData, isLoading: isShutterTypesLoading } =
+    useShutterTypes();
+  const { data: handleTypesData, isLoading: isHandleTypesLoading } =
+    useHandleTypes();
   const handlesLargeScaleProjectsFromAuth = useAppSelector(
     (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
   );
@@ -350,7 +369,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const effectiveCanDeleteDesignFiles =
     canDeleteDesignFiles && !shouldDisableBlockedActions;
   const effectiveCanMoveToClientApproval =
-    canMoveToClientApproval && !shouldDisableBlockedActions && !pathname?.includes("/client-approval");
+    canMoveToClientApproval && !pathname?.includes("/client-approval");
 
   const structureInstances: LeadProductStructureInstance[] = React.useMemo(
     () =>
@@ -359,6 +378,55 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         : [],
     [structureInstancesData?.data],
   );
+  const displayGroups = React.useMemo(() => {
+    if (!handlesLargeScaleProjects) {
+      return structureInstances.map((instance) => ({
+        key: `instance-${instance.id}`,
+        title: instance.title,
+        subtitle: instance.productStructure?.type || "Product Structure",
+        instance,
+      }));
+    }
+
+    const grouped = new Map<
+      string,
+      {
+        key: string;
+        title: string;
+        subtitle: string;
+        instance: LeadProductStructureInstance;
+      }
+    >();
+
+    structureInstances.forEach((instance) => {
+      const title =
+        instance.productType?.type ||
+        instance.productItemCode?.productStructure?.productType?.type ||
+        instance.productItemCode?.item_code ||
+        instance.title ||
+        "Item Group";
+      const subtitle =
+        instance.productItemCode?.item_code ||
+        instance.productStructure?.type ||
+        "Product Type";
+      const key = String(
+        instance.productType?.id ||
+          instance.productItemCode?.productStructure?.productType?.id ||
+          title,
+      );
+
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          key,
+          title,
+          subtitle,
+          instance,
+        });
+      }
+    });
+
+    return Array.from(grouped.values());
+  }, [handlesLargeScaleProjects, structureInstances]);
 
   const carcassOptions = React.useMemo<ClientDocsSelectionOption[]>(
     () =>
@@ -369,6 +437,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         }),
       ),
     [carcassTypesData?.data],
+  );
+  const availableCarcassValues = React.useMemo(
+    () => new Set(carcassOptions.map((item) => item.value)),
+    [carcassOptions],
   );
 
   const shutterOptions = React.useMemo<ClientDocsSelectionOption[]>(
@@ -450,10 +522,11 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     mode: "onBlur",
   });
 
-  const uploadForm = useForm<InstanceUploadValues>({
-    resolver: zodResolver(instanceUploadSchema),
-    defaultValues: { pptDocuments: [], pythaDocuments: [] },
-  });
+  const [activeUploadSection, setActiveUploadSection] =
+    React.useState<UploadSectionConfig | null>(null);
+  const [sectionSelectedFiles, setSectionSelectedFiles] = React.useState<
+    File[]
+  >([]);
 
   const [existingSelections, setExistingSelections] = React.useState<{
     carcas?: DesignSelection;
@@ -464,6 +537,168 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const [activeInstance, setActiveInstance] =
     React.useState<LeadProductStructureInstance | null>(null);
   const [confirmDelete, setConfirmDelete] = React.useState<null | number>(null);
+  const [selectedSpec, setSelectedSpec] =
+    React.useState<LeadSpecificationEntry | null>(null);
+  const activeDisplayGroup = React.useMemo(() => {
+    if (!activeInstance) return null;
+
+    if (!handlesLargeScaleProjects) {
+      return {
+        title: activeInstance.title,
+      };
+    }
+
+    return {
+      title:
+        activeInstance.productType?.type ||
+        activeInstance.productItemCode?.productStructure?.productType?.type ||
+        activeInstance.productItemCode?.item_code ||
+        activeInstance.title ||
+        "Item Group",
+    };
+  }, [activeInstance, handlesLargeScaleProjects]);
+  const itemCodeGroupMap = React.useMemo(
+    () =>
+      new Map<number, string>(
+        structureInstances
+          .filter((instance) => instance.productItemCode)
+          .map((instance) => [
+            instance.productItemCode!.id,
+            instance.productType?.type ||
+              instance.productItemCode?.productStructure?.productType?.type ||
+              "Other Specifications",
+          ]),
+      ),
+    [structureInstances],
+  );
+  const latestSpecificationByGroup = React.useMemo(() => {
+    const groups = new Map<string, LeadSpecificationEntry>();
+
+    for (const spec of specifications) {
+      const title =
+        (spec.item_code_id ? itemCodeGroupMap.get(spec.item_code_id) : null) ||
+        "Other Specifications";
+      const key = title.trim().toLowerCase();
+      const existing = groups.get(key);
+
+      if (!existing) {
+        groups.set(key, spec);
+        continue;
+      }
+
+      const existingTime = new Date(existing.created_at).getTime();
+      const currentTime = new Date(spec.created_at).getTime();
+
+      if (
+        currentTime > existingTime ||
+        (currentTime === existingTime && spec.id > existing.id)
+      ) {
+        groups.set(key, spec);
+      }
+    }
+
+    return groups;
+  }, [itemCodeGroupMap, specifications]);
+  const largeScaleSpecificationStatus = React.useMemo(() => {
+    if (!handlesLargeScaleProjects) {
+      return {
+        allReviewed: true,
+        missingGroups: [] as string[],
+      };
+    }
+
+    const missingGroups = displayGroups
+      .filter((group) => {
+        const latestSpec = latestSpecificationByGroup.get(
+          group.title.trim().toLowerCase(),
+        );
+        return !latestSpec?.is_completed;
+      })
+      .map((group) => group.title);
+
+    return {
+      allReviewed: missingGroups.length === 0,
+      missingGroups,
+    };
+  }, [
+    displayGroups,
+    handlesLargeScaleProjects,
+    latestSpecificationByGroup,
+  ]);
+  const activeSpecificationGroupKey = React.useMemo(() => {
+    if (!handlesLargeScaleProjects || !activeInstance) return null;
+
+    const title =
+      activeInstance.productType?.type ||
+      activeInstance.productItemCode?.productStructure?.productType?.type ||
+      activeInstance.productItemCode?.item_code ||
+      activeInstance.title ||
+      "Other Specifications";
+
+    return title.trim().toLowerCase();
+  }, [activeInstance, handlesLargeScaleProjects]);
+  const activeLatestSpecification = React.useMemo(() => {
+    if (!activeSpecificationGroupKey) return null;
+    return latestSpecificationByGroup.get(activeSpecificationGroupKey) ?? null;
+  }, [activeSpecificationGroupKey, latestSpecificationByGroup]);
+
+  const { data: activeSpecCarcassMappings } = useLeadCarcassMaterialMappings(
+    vendorId,
+    leadId,
+    activeLatestSpecification?.id,
+  );
+  const { data: activeSpecShutterMappings } = useLeadShutterMaterialMappings(
+    vendorId,
+    leadId,
+    activeLatestSpecification?.id,
+  );
+  const { data: activeSpecHardwareMappings } = useLeadHardwareMappings(
+    vendorId,
+    leadId,
+    activeLatestSpecification?.id,
+  );
+  const { data: activeSpecLightMappings } = useLeadLightCarcasUnitMappings(
+    vendorId,
+    leadId,
+    activeLatestSpecification?.id,
+  );
+  const { data: activeSpecOtherApplianceMappings } =
+    useLeadOtherAppliancesMappings(
+      vendorId,
+      leadId,
+      activeLatestSpecification?.id,
+    );
+
+  const activeSpecRequiresAdditionalUploads = React.useMemo(() => {
+    if (!activeLatestSpecification?.is_completed) return false;
+
+    const allMappings = [
+      ...(activeSpecCarcassMappings ?? []),
+      ...(activeSpecShutterMappings ?? []),
+      ...(activeSpecHardwareMappings ?? []),
+      ...(activeSpecLightMappings ?? []),
+      ...(activeSpecOtherApplianceMappings ?? []),
+    ];
+
+    return allMappings.some(
+      (item: any) => item.is_amended || item.is_deleted_item,
+    );
+  }, [
+    activeLatestSpecification?.is_completed,
+    activeSpecCarcassMappings,
+    activeSpecShutterMappings,
+    activeSpecHardwareMappings,
+    activeSpecLightMappings,
+    activeSpecOtherApplianceMappings,
+  ]);
+
+  const submitDesignsMutation = useSubmitDesigns();
+  const uploadQuotationMutation = useSubmitQuotation();
+  const { data: designDocsResponse } = useDesignsDoc(vendorId!, leadId);
+  const { data: quotationDocsResponse } = useQuotationDoc(vendorId, leadId);
+  const designDocs: any[] = designDocsResponse?.data?.documents ?? [];
+  const quotationDocs: any[] = quotationDocsResponse?.data?.documents ?? [];
+
   const lastNotifiedInstanceIdRef = React.useRef<number | null | undefined>(
     undefined,
   );
@@ -531,7 +766,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     const existingCarcassValues = chsMappingToOptionValues(
       existingCarcas?.id,
       "Carcas",
-    );
+    ).filter((value) => availableCarcassValues.has(value));
     let existingCarcassRemark = existingCarcas?.desc || defaultRemark;
     if (!handlesLargeScaleProjects && existingCarcassRemark === DEFAULT_REMARK) {
       existingCarcassRemark = "";
@@ -652,6 +887,21 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       remark: existingHandlesRemark,
     };
   };
+
+  useEffect(() => {
+    const currentCarcassValues = selectionForm.getValues("carcas") ?? [];
+    if (currentCarcassValues.length === 0) return;
+
+    const nextValues = currentCarcassValues.filter((value) =>
+      availableCarcassValues.has(value),
+    );
+
+    if (nextValues.length !== currentCarcassValues.length) {
+      selectionForm.setValue("carcas", nextValues, {
+        shouldValidate: true,
+      });
+    }
+  }, [availableCarcassValues, selectionForm]);
 
   useEffect(() => {
     const rows = Array.isArray(selectionsData?.data) ? selectionsData.data : [];
@@ -1065,6 +1315,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const canMoveStage =
     allInstancesDocsReady &&
     allInstancesSelectionsReady &&
+    largeScaleSpecificationStatus.allReviewed &&
     !selectionForm.formState.isDirty &&
     !isMovingStage &&
     !shouldDisableBlockedActions;
@@ -1074,51 +1325,77 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const handleOpenUploadModal = (instance: LeadProductStructureInstance) => {
     setActiveInstance(instance);
     onInstanceChange?.(instance);
-    uploadForm.reset({ pptDocuments: [], pythaDocuments: [] });
+    setActiveUploadSection(null);
+    setSectionSelectedFiles([]);
     setUploadModalOpen(true);
   };
 
-  const handleUploadForInstance = async (values: InstanceUploadValues) => {
-    if (!vendorId || !userId) {
+  const isSectionUploading =
+    activeUploadSection?.id === "project" || activeUploadSection?.id === "pytha"
+      ? isUploadingDocs
+      : activeUploadSection?.id === "design"
+        ? submitDesignsMutation.isPending
+        : uploadQuotationMutation.isPending;
+
+  const handleSectionUpload = async () => {
+    if (!activeUploadSection || !vendorId || !userId || !activeInstance) {
       toastManager.add({
         title: "Missing vendorId or userId for upload",
         type: "error",
       });
       return;
     }
-    if (!activeInstance && structureInstances.length > 0) {
-      toastManager.add({
-        title: "Please select product instance",
-        type: "error",
-      });
-      return;
-    }
+    if (sectionSelectedFiles.length === 0) return;
 
     try {
-      await uploadClientDocs({
-        leadId,
-        accountId,
-        vendorId,
-        createdBy: userId,
-        productStructureInstanceId: activeInstance?.id,
-        pptDocuments: values.pptDocuments,
-        pythaDocuments: values.pythaDocuments,
-      });
-      toastManager.add({
-        title: activeInstance
-          ? `Files uploaded for ${activeInstance.title}`
-          : "Files uploaded",
-        type: "success",
-      });
-      setUploadModalOpen(false);
-      uploadForm.reset({ pptDocuments: [], pythaDocuments: [] });
-      await queryClient.invalidateQueries({
-        queryKey: ["clientDocumentationDetails", vendorId, leadId],
-        exact: false,
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["getSelectionData", vendorId, leadId],
-      });
+      if (activeUploadSection.id === "project" || activeUploadSection.id === "pytha") {
+        await uploadClientDocs({
+          leadId,
+          accountId,
+          vendorId,
+          createdBy: userId,
+          productStructureInstanceId: activeInstance.id,
+          pptDocuments:
+            activeUploadSection.id === "project" ? sectionSelectedFiles : [],
+          pythaDocuments:
+            activeUploadSection.id === "pytha" ? sectionSelectedFiles : [],
+        });
+        await queryClient.invalidateQueries({
+          queryKey: ["clientDocumentationDetails", vendorId, leadId],
+          exact: false,
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["getSelectionData", vendorId, leadId],
+        });
+      } else if (activeUploadSection.id === "design") {
+        await submitDesignsMutation.mutateAsync({
+          files: sectionSelectedFiles,
+          vendorId,
+          leadId,
+          userId,
+          productStructureInstanceIds: [activeInstance.id],
+          specificationId: activeLatestSpecification?.id ?? null,
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["getDesignsDoc", vendorId, leadId],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["designingStageCounts", vendorId, leadId],
+        });
+      } else {
+        await new Promise<void>((resolve, reject) => {
+          uploadQuotationMutation.mutate(
+            { files: sectionSelectedFiles, vendorId, leadId, userId },
+            {
+              onSuccess: () => resolve(),
+              onError: (err) => reject(err),
+            },
+          );
+        });
+      }
+
+      toastManager.add({ title: "Files uploaded successfully!", type: "success" });
+      setSectionSelectedFiles([]);
       queryClient.invalidateQueries({ queryKey: ["allLeadDocuments"] });
     } catch (e: any) {
       const errorMessage =
@@ -1252,6 +1529,63 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
 
     return (
       <div className="flex-1 space-y-6 py-4 px-5">
+        {handlesLargeScaleProjects && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h4 className="text-sm font-semibold">Latest Specification</h4>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Latest specs for this item group.
+                </p>
+              </div>
+              {activeLatestSpecification && (
+                <Badge variant="outline">Latest</Badge>
+              )}
+            </div>
+
+            {activeLatestSpecification ? (
+              <button
+                type="button"
+                onClick={() => setSelectedSpec(activeLatestSpecification)}
+                className="w-full rounded-2xl border bg-card p-4 text-left transition-colors hover:bg-accent/40"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold truncate">
+                      {activeLatestSpecification.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {activeDisplayGroup?.title || "Item Group"}
+                    </p>
+                  </div>
+                  <Badge variant="secondary">Open</Badge>
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                  <span>Specification</span>
+                  <span>
+                    {new Date(activeLatestSpecification.created_at).toLocaleDateString(
+                      "en-IN",
+                      {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      },
+                    )}
+                  </span>
+                </div>
+              </button>
+            ) : (
+              <div className="rounded-2xl border border-dashed bg-muted/20 p-4">
+                <p className="text-sm font-medium">No specification found</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Create a spec for this item group to show it here.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {!handlesLargeScaleProjects && (
         <div className="space-y-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between w-full gap-4">
             <div>
@@ -1480,278 +1814,194 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
             </form>
           </Form>
         </div>
-
-        {/* ✅ Upload section — disabled when blocked */}
-        {(canUploadProjectFiles || canUploadDesignFiles) && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-4"
-          >
-            <Form {...uploadForm}>
-              <form
-                onSubmit={uploadForm.handleSubmit(handleUploadForInstance)}
-                className="flex w-full items-end gap-4 flex-col-reverse"
-              >
-                <div className="grid md:grid-cols-2 w-full gap-4">
-                  <div className="w-full">
-                    <FormField
-                      control={uploadForm.control}
-                      name="pptDocuments"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm">
-                            {projectFilesLabel} *
-                          </FormLabel>
-                          <FormControl>
-                            <FileUploadField
-                              value={field.value}
-                              onChange={field.onChange}
-                              accept=".ppt,.pptx,.pdf,.jpg,.jpeg,.png,.doc,.docx"
-                              disabled={!effectiveCanUploadProjectFiles}
-                            />
-                          </FormControl>
-                          {isCustomVendorFlow && (
-                            <FormDescription className="text-xs">
-                              Files are auto-renamed to the `CD...-Document`
-                              format based on client and instance or furniture
-                              type.
-                            </FormDescription>
-                          )}
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="w-full">
-                    <FormField
-                      control={uploadForm.control}
-                      name="pythaDocuments"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm">
-                            {designFilesLabel} *
-                          </FormLabel>
-                          <FormControl>
-                            <FileUploadField
-                              value={field.value}
-                              onChange={field.onChange}
-                              accept=".pdf,.zip,.pytha,.pyo"
-                              disabled={!effectiveCanUploadDesignFiles}
-                            />
-                          </FormControl>
-                          {isCustomVendorFlow && (
-                            <FormDescription className="text-xs">
-                              Files are auto-renamed to the `CD...-Design`
-                              format based on client and instance or furniture
-                              type.
-                            </FormDescription>
-                          )}
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-
-                <div className="w-full flex flex-col md:flex-row md:items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    {(uploadForm.watch("pptDocuments").length > 0 ||
-                      uploadForm.watch("pythaDocuments").length > 0) && (
-                      <Badge variant="secondary">
-                        {uploadForm.watch("pptDocuments").length +
-                          uploadForm.watch("pythaDocuments").length}{" "}
-                        selected
-                      </Badge>
-                    )}
-                  </div>
-
-                  {(uploadForm.watch("pptDocuments").length > 0 ||
-                    uploadForm.watch("pythaDocuments").length > 0) && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      className="flex justify-end"
-                    >
-                      {/* ✅ Upload button — disabled + tooltip when blocked */}
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="inline-block">
-                              <Button
-                                type="submit"
-                                disabled={
-                                  isUploadingDocs ||
-                                  (!effectiveCanUploadProjectFiles &&
-                                    !effectiveCanUploadDesignFiles)
-                                }
-                                className="gap-2"
-                              >
-                                {isUploadingDocs ? (
-                                  <>
-                                    <Loader2 className="animate-spin w-4 h-4" />
-                                    Uploading...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Upload className="w-4 h-4" />
-                                    Click Here To Upload Files
-                                  </>
-                                )}
-                              </Button>
-                            </span>
-                          </TooltipTrigger>
-                          {shouldDisableBlockedActions && (
-                            <TooltipContent>{blockedTooltip}</TooltipContent>
-                          )}
-                        </Tooltip>
-                      </TooltipProvider>
-                    </motion.div>
-                  )}
-                </div>
-              </form>
-            </Form>
-          </motion.div>
         )}
 
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-semibold">Uploaded Files</h4>
-            {(() => {
-              const docs = getDocs(instance_id);
-              const totalDocs = docs.pptCount + docs.pythaCount;
-              return <Badge variant="outline">{totalDocs} total</Badge>;
-            })()}
-          </div>
+        {(() => {
+          const docs = getDocs(instance_id);
+          const instanceDesignDocs = designDocs.filter(
+            (doc: any) =>
+              (doc.product_structure_instance_id ?? null) === instance_id,
+          );
+          const instanceQuotationDocs = quotationDocs.filter(
+            (doc: any) =>
+              (doc.product_structure_instance_id ?? null) === instance_id,
+          );
 
-          {(() => {
-            const docs = getDocs(instance_id);
-            const totalDocs = docs.ppt.length + docs.pytha.length;
+          const documentSections: UploadSectionConfig[] = [
+            {
+              id: "project",
+              title: projectFilesLabel,
+              description: isCustomVendorFlow
+                ? "Presentation files shared with the client"
+                : "Project files for this item group",
+              icon: <FileText className="w-5 h-5" />,
+              accept: ".ppt,.pptx,.pdf,.jpg,.jpeg,.png,.doc,.docx",
+              docs: docs.ppt,
+              canView: canViewProjectFiles,
+              canUpload: effectiveCanUploadProjectFiles,
+              canDelete: effectiveCanDeleteProjectFiles,
+              required: true,
+            },
+            {
+              id: "pytha",
+              title: designFilesLabel,
+              description: "Pytha design files for manufacturing",
+              icon: <FileText className="w-5 h-5" />,
+              accept: ".pdf,.zip,.pytha,.pyo",
+              docs: docs.pytha,
+              canView: canViewDesignFiles,
+              canUpload: effectiveCanUploadDesignFiles,
+              canDelete: effectiveCanDeleteDesignFiles,
+              required: true,
+            },
+          ];
 
-            if (
-              totalDocs === 0 ||
-              ((!canViewProjectFiles || docs.ppt.length === 0) &&
-                (!canViewDesignFiles || docs.pytha.length === 0))
-            ) {
-              return (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="p-12 border border-dashed rounded-lg flex flex-col items-center justify-center text-center bg-muted/30"
-                >
-                  <FolderOpen className="w-12 h-12 text-muted-foreground mb-3" />
-                  <p className="text-sm font-medium text-muted-foreground">
-                    No files uploaded yet
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Upload your first file to get started
-                  </p>
-                </motion.div>
-              );
-            }
-
-            return (
-              <ScrollArea className="max-h-[400px]">
-                <div className="space-y-6">
-                  {canViewProjectFiles && docs.ppt.length > 0 && (
-                    <div className="space-y-3">
-                      <h5 className="text-sm font-medium">
-                        {projectFilesLabel}
-                      </h5>
-                      <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-2 gap-3">
-                        {(() => {
-                          const { images, nonImages } = separateImageAndDocs(
-                            docs.ppt,
-                          );
-                          return (
-                            <>
-                              {images.map((doc: any, index: number) => (
-                                <motion.div
-                                  key={doc.id}
-                                  initial={{ opacity: 0, scale: 0.9 }}
-                                  animate={{ opacity: 1, scale: 1 }}
-                                  transition={{ delay: index * 0.05 }}
-                                >
-                                  <ImageComponent
-                                    doc={{
-                                      id: doc.id,
-                                      doc_og_name: doc.doc_og_name,
-                                      signedUrl: doc.signed_url,
-                                      created_at: doc.created_at,
-                                    }}
-                                    index={index}
-                                    // ✅ delete disabled when blocked
-                                    canDelete={effectiveCanDeleteProjectFiles}
-                                    onDelete={(id) =>
-                                      setConfirmDelete(Number(id))
-                                    }
-                                  />
-                                </motion.div>
-                              ))}
-                              {nonImages.map((doc: any, index: number) => (
-                                <motion.div
-                                  key={doc.id}
-                                  initial={{ opacity: 0, scale: 0.9 }}
-                                  animate={{ opacity: 1, scale: 1 }}
-                                  transition={{
-                                    delay: (images.length + index) * 0.05,
-                                  }}
-                                >
-                                  <DocumentCard
-                                    doc={{
-                                      id: doc.id,
-                                      originalName: doc.doc_og_name,
-                                      signedUrl: doc.signed_url,
-                                      created_at: doc.created_at,
-                                    }}
-                                    // ✅ delete disabled when blocked
-                                    canDelete={effectiveCanDeleteProjectFiles}
-                                    onDelete={(id) => setConfirmDelete(id)}
-                                  />
-                                </motion.div>
-                              ))}
-                            </>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                  )}
-
-                  {canViewDesignFiles && docs.pytha.length > 0 && (
-                    <div className="space-y-3">
-                      <h5 className="text-sm font-medium">
-                        Client Documentation - Pytha Design Files
-                      </h5>
-                      <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-2 gap-3">
-                        {docs.pytha.map((doc: any, index: number) => (
-                          <motion.div
-                            key={doc.id}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: index * 0.05 }}
-                          >
-                            <DocumentCard
-                              doc={{
-                                id: doc.id,
-                                originalName: doc.doc_og_name,
-                                signedUrl: doc.signed_url,
-                                created_at: doc.created_at,
-                              }}
-                              // ✅ delete disabled when blocked
-                              canDelete={effectiveCanDeleteDesignFiles}
-                              onDelete={(id) => setConfirmDelete(id)}
-                            />
-                          </motion.div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
+          if (activeSpecRequiresAdditionalUploads) {
+            documentSections.push(
+              {
+                id: "design",
+                title: "Design Files",
+                description: "Updated design after specification review",
+                icon: <PenTool className="w-5 h-5" />,
+                accept:
+                  ".pdf,.pyo,.pytha,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip",
+                docs: instanceDesignDocs,
+                canView: true,
+                canUpload: !shouldDisableBlockedActions,
+                canDelete: !shouldDisableBlockedActions,
+                required: true,
+              },
+              {
+                id: "quotation",
+                title: "Quotation",
+                description: "Updated quotation after specification review",
+                icon: <ScrollText className="w-5 h-5" />,
+                docs: instanceQuotationDocs,
+                canView: true,
+                canUpload: !shouldDisableBlockedActions,
+                canDelete: !shouldDisableBlockedActions,
+                required: true,
+              },
             );
-          })()}
-        </div>
+          }
+
+          return (
+            <div className="space-y-4">
+              {activeSpecRequiresAdditionalUploads && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-300">
+                  This specification was completed with amended or deleted
+                  items — please upload the updated design and quotation
+                  files below.
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {documentSections
+                  .filter((section) => section.canView)
+                  .map((section) => {
+                    const count = section.docs.length;
+                    const isMissingRequired =
+                      !!section.required && count === 0;
+
+                    return (
+                      <Card
+                        key={section.id}
+                        className="h-full rounded-2xl border bg-white dark:bg-neutral-900 hover:shadow-[0_8px_25px_-4px_rgba(0,0,0,0.12)] transition-all duration-200 cursor-pointer group"
+                        onClick={() => {
+                          setActiveUploadSection(section);
+                          setSectionSelectedFiles([]);
+                        }}
+                      >
+                        <CardContent className="px-6 py-5">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-12 h-12 rounded-xl flex items-center justify-center border bg-neutral-50 dark:bg-neutral-800 text-primary">
+                                {section.icon}
+                              </div>
+                              <div>
+                                <h3 className="font-semibold text-sm flex items-center gap-1.5">
+                                  {section.title}
+                                  {isMissingRequired && (
+                                    <span className="text-destructive">
+                                      *
+                                    </span>
+                                  )}
+                                </h3>
+                                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                                  {section.description}
+                                </p>
+                              </div>
+                            </div>
+
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-xs text-muted-foreground hover:text-foreground"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveUploadSection(section);
+                                setSectionSelectedFiles([]);
+                              }}
+                            >
+                              {count === 0
+                                ? section.canUpload
+                                  ? "Upload"
+                                  : "View"
+                                : "View"}
+                            </Button>
+                          </div>
+
+                          <div className="my-4 border-t" />
+
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2 text-sm">
+                              <FolderOpen className="w-4 h-4 text-muted-foreground" />
+                              <span className="font-medium">
+                                {count} file{count !== 1 ? "s" : ""}
+                              </span>
+                            </div>
+                            {isMissingRequired && (
+                              <Badge
+                                variant="outline"
+                                className="border-destructive/40 text-destructive"
+                              >
+                                Required
+                              </Badge>
+                            )}
+                          </div>
+
+                          {count > 0 ? (
+                            <div className="flex -space-x-2">
+                              {section.docs
+                                .slice(0, 4)
+                                .map((doc: any, idx: number) => (
+                                  <div
+                                    key={doc.id}
+                                    className="w-10 h-10 rounded-lg border bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center"
+                                    style={{ zIndex: 4 - idx }}
+                                  >
+                                    <FileText className="w-4 h-4 text-muted-foreground" />
+                                  </div>
+                                ))}
+                              {count > 4 && (
+                                <div className="w-10 h-10 rounded-lg bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center text-xs font-medium text-muted-foreground">
+                                  +{count - 4}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground mt-2">
+                              No files uploaded yet
+                            </p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+              </div>
+            </div>
+          );
+        })()}
       </div>
     );
   };
@@ -1790,26 +2040,29 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
               Design Selections & Instance Documents
             </h2>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Open each product instance card to upload docs and save design
-              selections
+              {handlesLargeScaleProjects
+                ? "Open each item group card to upload docs and save design selections"
+                : "Open each product instance card to upload docs and save design selections"}
             </p>
           </div>
         </div>
       )}
 
       {/* Product Instances Cards */}
-      {canViewSelectionInstances && structureInstances.length > 1 && (
+      {canViewSelectionInstances && displayGroups.length > 1 && (
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold">Product Instances</h3>
+          <h3 className="text-sm font-semibold">
+            {handlesLargeScaleProjects ? "Item Groups" : "Product Instances"}
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5">
-            {structureInstances.map((instance, index) => {
-              const counts = getCounts(instance.id);
+            {displayGroups.map((group, index) => {
+              const counts = getCounts(group.instance.id);
               const isUploaded = counts.ppt > 0 && counts.pytha > 0;
               const totalDocs = counts.ppt + counts.pytha;
 
               return (
                 <motion.div
-                  key={instance.id}
+                  key={group.key}
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.25, delay: index * 0.05 }}
@@ -1818,7 +2071,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                     className="h-full rounded-2xl border bg-white dark:bg-neutral-900 
                     hover:shadow-[0_8px_25px_-4px_rgba(0,0,0,0.12)]
                     transition-all duration-200 cursor-pointer group"
-                    onClick={() => handleOpenUploadModal(instance)}
+                    onClick={() => handleOpenUploadModal(group.instance)}
                   >
                     <CardContent className="px-6">
                       <div className="flex items-start justify-between gap-2">
@@ -1832,11 +2085,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
 
                           <div className="flex-1 min-w-0">
                             <h3 className="font-semibold text-sm truncate">
-                              {instance.title}
+                              {group.title}
                             </h3>
                             <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                              {instance.productStructure?.type ||
-                                "Product Structure"}
+                              {group.subtitle}
                             </p>
                           </div>
                         </div>
@@ -1847,7 +2099,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                           className="text-xs text-muted-foreground hover:text-foreground"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleOpenUploadModal(instance);
+                            handleOpenUploadModal(group.instance);
                           }}
                         >
                           {totalDocs === 0 ? "Upload" : "View"}
@@ -1922,6 +2174,19 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
             const missing: string[] = [];
             if (shouldDisableBlockedActions)
               missing.push(blockedTooltip || "Lead is blocked");
+            if (handlesLargeScaleProjects) {
+              if (largeScaleSpecificationStatus.missingGroups.length > 0) {
+                const prefix =
+                  largeScaleSpecificationStatus.missingGroups.length === 1
+                    ? "Complete specification review for"
+                    : "Complete specification review for all item groups:";
+                const suffix =
+                  largeScaleSpecificationStatus.missingGroups.length === 1
+                    ? `${largeScaleSpecificationStatus.missingGroups[0]}. Approve, amend, or delete every row and mark the specification as completed.`
+                    : `${largeScaleSpecificationStatus.missingGroups.join(", ")}. Approve, amend, or delete every row and mark each latest specification as completed.`;
+                missing.push(`${prefix} ${suffix}`);
+              }
+            }
             if (!allInstancesSelectionsReady) {
               if (isFastProduction) {
                 missing.push("Save Carcas for all instances");
@@ -1984,8 +2249,12 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
           <BaseModal
             open={uploadModalOpen}
             onOpenChange={setUploadModalOpen}
-            title={activeInstance.title}
-            description="Upload and manage files for this product instance"
+            title={activeDisplayGroup?.title || activeInstance.title}
+            description={
+              handlesLargeScaleProjects
+                ? "Upload and manage files for this Item Group"
+                : "Upload and manage files for this product instance"
+            }
             icon={
               <div className="p-2.5 rounded-lg bg-primary/10 text-primary">
                 <FolderOpen className="size-6" />
@@ -1997,6 +2266,200 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
           </BaseModal>
         )}
       </AnimatePresence>
+
+      {/* Section Upload Modal */}
+      <AnimatePresence>
+        {activeUploadSection && (
+          <BaseModal
+            open={!!activeUploadSection}
+            onOpenChange={(open) => {
+              if (!open) {
+                setActiveUploadSection(null);
+                setSectionSelectedFiles([]);
+              }
+            }}
+            title={activeUploadSection.title}
+            description={activeUploadSection.description}
+            icon={
+              <div className="p-2.5 rounded-lg bg-primary/10 text-primary">
+                {activeUploadSection.icon}
+              </div>
+            }
+            size="lg"
+          >
+            <div className="flex-1 space-y-6 py-4 px-5">
+              {activeUploadSection.canUpload && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold">
+                      Upload New Files
+                    </h4>
+                    {sectionSelectedFiles.length > 0 && (
+                      <Badge variant="secondary">
+                        {sectionSelectedFiles.length} selected
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div
+                    className={
+                      shouldDisableBlockedActions
+                        ? "pointer-events-none opacity-60"
+                        : ""
+                    }
+                  >
+                    <FileUploadField
+                      value={sectionSelectedFiles}
+                      onChange={setSectionSelectedFiles}
+                      accept={activeUploadSection.accept}
+                    />
+                  </div>
+
+                  {sectionSelectedFiles.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      className="flex justify-end"
+                    >
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-block">
+                              <Button
+                                onClick={handleSectionUpload}
+                                disabled={
+                                  isSectionUploading ||
+                                  shouldDisableBlockedActions
+                                }
+                                className="gap-2"
+                              >
+                                {isSectionUploading ? (
+                                  <>
+                                    <Loader2 className="animate-spin w-4 h-4" />
+                                    Uploading...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Upload className="w-4 h-4" />
+                                    Upload {sectionSelectedFiles.length} File
+                                    {sectionSelectedFiles.length > 1
+                                      ? "s"
+                                      : ""}
+                                  </>
+                                )}
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          {shouldDisableBlockedActions && (
+                            <TooltipContent>{blockedTooltip}</TooltipContent>
+                          )}
+                        </Tooltip>
+                      </TooltipProvider>
+                    </motion.div>
+                  )}
+                </motion.div>
+              )}
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold">Uploaded Files</h4>
+                  <Badge variant="outline">
+                    {activeUploadSection.docs.length} total
+                  </Badge>
+                </div>
+
+                {activeUploadSection.docs.length === 0 ? (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="p-12 border border-dashed rounded-lg flex flex-col items-center justify-center text-center bg-muted/30"
+                  >
+                    <FolderOpen className="w-12 h-12 text-muted-foreground mb-3" />
+                    <p className="text-sm font-medium text-muted-foreground">
+                      No files uploaded yet
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Upload your first file to get started
+                    </p>
+                  </motion.div>
+                ) : (
+                  <ScrollArea className="max-h-[400px]">
+                    <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-2 gap-3">
+                      {(() => {
+                        const { images, nonImages } = separateImageAndDocs(
+                          activeUploadSection.docs,
+                        );
+                        return (
+                          <>
+                            {images.map((doc: any, index: number) => (
+                              <motion.div
+                                key={doc.id}
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: index * 0.05 }}
+                              >
+                                <ImageComponent
+                                  doc={{
+                                    id: doc.id,
+                                    doc_og_name: doc.doc_og_name,
+                                    signedUrl: doc.signedUrl ?? doc.signed_url,
+                                    created_at: doc.created_at,
+                                  }}
+                                  index={index}
+                                  canDelete={activeUploadSection.canDelete}
+                                  onDelete={(id) =>
+                                    setConfirmDelete(Number(id))
+                                  }
+                                />
+                              </motion.div>
+                            ))}
+                            {nonImages.map((doc: any, index: number) => (
+                              <motion.div
+                                key={doc.id}
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{
+                                  delay: (images.length + index) * 0.05,
+                                }}
+                              >
+                                <DocumentCard
+                                  doc={{
+                                    id: doc.id,
+                                    originalName: doc.doc_og_name,
+                                    signedUrl: doc.signedUrl ?? doc.signed_url,
+                                    created_at: doc.created_at,
+                                  }}
+                                  canDelete={activeUploadSection.canDelete}
+                                  onDelete={(id) => setConfirmDelete(id)}
+                                />
+                              </motion.div>
+                            ))}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </ScrollArea>
+                )}
+              </div>
+            </div>
+          </BaseModal>
+        )}
+      </AnimatePresence>
+
+      <ViewSpecsModal
+        open={!!selectedSpec}
+        onOpenChange={(open) => {
+          if (!open) setSelectedSpec(null);
+        }}
+        specification={selectedSpec}
+        showReviewColumns
+        stackSections
+        contentClassName="w-[95vw] max-w-[95vw] sm:w-[92vw] sm:max-w-[92vw] xl:max-w-[1680px]"
+      />
 
       {/* Delete Confirmation */}
       <AlertDialog

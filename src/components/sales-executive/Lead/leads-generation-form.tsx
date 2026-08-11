@@ -507,6 +507,7 @@ export default function LeadsGenerationForm({
   const { data: clientsData, isLoading: isClientsLoading } = useClients({
     vendor_id: vendorId,
     limit: 200,
+    activeOnly: true,
   });
   const clientsList = clientsData?.data?.data ?? [];
   const { data: sourceTypes, isLoading: isSourceTypesLoading } =
@@ -1739,7 +1740,7 @@ export default function LeadsGenerationForm({
           )}
         </div>
 
-        {(showReferredByField || canReassingLead(userType)) && (
+        {(showReferredByField || canReassingLead(userType) || isB2b) && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
             {showReferredByField && (
               <FormField
@@ -1789,6 +1790,36 @@ export default function LeadsGenerationForm({
                         disabled={isVendorUsersLoading}
                       />
 
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+            )}
+
+            {isB2b && (
+              <FormField
+                control={form.control}
+                name="designer_id"
+                render={({ field }) => {
+                  const pickerData = designersList.map((d: any) => ({
+                    id: d.id,
+                    label: d.user_name || "",
+                    subLabel: d.user_email || d.email || "",
+                  }));
+                  return (
+                    <FormItem data-name={field?.name || ""} >
+                      <FormLabel className="text-sm">Assign Designer</FormLabel>
+                      <AssignToPicker
+                        data={pickerData}
+                        textClassName="text-sm font-medium"
+                        value={field.value ? Number(field.value) : undefined}
+                        onChange={(selectedId) => {
+                          field.onChange(selectedId ? String(selectedId) : "");
+                        }}
+                        placeholder="Select Designer..."
+                        disabled={isDesignersLoading}
+                      />
                       <FormMessage />
                     </FormItem>
                   );

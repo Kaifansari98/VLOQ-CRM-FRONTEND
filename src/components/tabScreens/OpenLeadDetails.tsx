@@ -17,10 +17,13 @@ import {
   Magnet,
   Search,
   Check,
+  ChevronDown,
   X,
   ExternalLink,
+  FileText,
 } from "lucide-react";
 import { formatDateTime } from "../utils/privileges";
+import RequirementDocUpload from "./RequirementDocUpload";
 import {
   useLeadById,
   useLeadProductStructureInstances,
@@ -32,8 +35,14 @@ import {
   createLeadProductStructureInstance,
   deleteLeadProductStructureInstance,
   updateLeadProductStructureInstance,
+  updateRequirementMetaApi,
   useDeleteDocument,
 } from "@/api/leads";
+import { AddMaterialQuantityModal } from "./AddMaterialQuantityModal";
+import {
+  fetchLeadRequirementMaterialsApi,
+  deleteLeadRequirementMaterialApi,
+} from "@/api/leadRequirementMaterial";
 
 import {
   AlertDialog,
@@ -69,14 +78,17 @@ import {
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toastManager } from "@/components/ui/toast";
 import {
   useProductItemCodes,
   useProductStructureTypes,
   useProductTypes,
+  useB2BRequirementTypes,
+  useProcessBriefs,
 } from "@/hooks/useTypesMaster";
 import { updateLeadProductType, clearLeadProductStructures } from "@/api/leads";
+import { saveLeadProcessBriefsApi, fetchLeadProcessBriefsApi } from "@/api/typesMasterApi";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 import { useFranchisesByVendorId } from "@/api/franchise";
 import type { LeadBillingAddress } from "@/api/booking";
@@ -283,6 +295,16 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     useProductItemCodes();
   const { data: productStructureTypes } = useProductStructureTypes();
   const { data: productTypes } = useProductTypes();
+  const { data: b2bReqTypesData } = useB2BRequirementTypes(vendorId);
+  const { data: processBriefsData } = useProcessBriefs();
+  const processBriefs = useMemo(() => processBriefsData?.data || [], [processBriefsData]);
+
+  const { data: reqMaterialsData, refetch: refetchReqMaterials } = useQuery({
+    queryKey: ["lead-requirement-materials", leadId, vendorId],
+    queryFn: () => fetchLeadRequirementMaterialsApi(leadId, vendorId!),
+    enabled: !!leadId && !!vendorId,
+  });
+  const reqMaterials = useMemo(() => reqMaterialsData?.data || [], [reqMaterialsData]);
   const { data: franchisesForB2b = [] } = useFranchisesByVendorId(
     vendorId,
     !!vendorId,
@@ -313,6 +335,16 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const [selectedProductTypeId, setSelectedProductTypeId] = useState<
     number | null
   >(null);
+  const [selectedProductTypeIds, setSelectedProductTypeIds] = useState<number[]>([]);
+  const [reqBudgets, setReqBudgets] = useState<Record<number, string>>({});
+  const [reqStatuses, setReqStatuses] = useState<Record<number, string>>({});
+  const [openGlobalStatusDropdown, setOpenGlobalStatusDropdown] = useState(false);
+  const [selectedProcessBriefIds, setSelectedProcessBriefIds] = useState<Record<number, number[]>>({});
+  const [briefModalTypeId, setBriefModalTypeId] = useState<number | null>(null);
+  const [materialModalTypeId, setMaterialModalTypeId] = useState<number | null>(null);
+  const [editingMaterialItem, setEditingMaterialItem] = useState<any | null>(null);
+  const [briefSearchQuery, setBriefSearchQuery] = useState("");
+  const [savingProcessBriefs, setSavingProcessBriefs] = useState(false);
   const [confirmProductTypeSave, setConfirmProductTypeSave] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
@@ -443,22 +475,15 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     });
   const { mutate: updateLeadProductTypeMutation, isPending: updatingLeadType } =
     useMutation({
-      mutationFn: async (nextProductTypeId: number) => {
-        const nextTypeLabel = productTypes?.data?.find(
-          (t: any) => t.id === nextProductTypeId,
+      mutationFn: async (typeIds: number[]) => {
+        const primaryTypeId = typeIds[0];
+        const nextTypeLabel = (b2bReqTypesData?.data || productTypes?.data)?.find(
+          (t: any) => t.id === primaryTypeId,
         )?.type;
         
-        const _currentProductTypeId =
-          lead?.productMappings?.[0]?.product_type_id ||
-          lead?.productMappings?.[0]?.productType?.id ||
-          lead?.productMappings?.[0]?.product_type?.id ||
-          null;
-
-        if (_currentProductTypeId && _currentProductTypeId !== nextProductTypeId) {
-           await clearLeadProductStructures(vendorId!, leadId, userId || 0);
-        }
-
         return updateLeadProductType(leadId, userId || 0, {
+          productTypeIds: typeIds,
+          productTypeId: primaryTypeId,
           productType: nextTypeLabel,
         });
       },
@@ -705,6 +730,115 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     [addParentFilter, productStructureTypes?.data],
   );
 
+  const b2bProductTypes = useMemo(() => {
+    return b2bReqTypesData?.data || [];
+  }, [b2bReqTypesData?.data]);
+
+  const filteredBriefsForModal = useMemo(() => {
+    if (!briefModalTypeId) return [];
+    if (!briefSearchQuery.trim()) return processBriefs;
+    return processBriefs.filter((b: any) =>
+      String(b.name).toLowerCase().includes(briefSearchQuery.trim().toLowerCase())
+    );
+  }, [briefModalTypeId, processBriefs, briefSearchQuery]);
+
+  useEffect(() => {
+    if (!leadId || !vendorId) return;
+
+    fetchLeadProcessBriefsApi(leadId, vendorId)
+      .then((res: any) => {
+        if (res?.success && Array.isArray(res?.data)) {
+          const mappingObj: Record<number, number[]> = {};
+          res.data.forEach((item: any) => {
+            const tId = item.product_type_id;
+            const bId = item.process_brief_id;
+            if (!mappingObj[tId]) mappingObj[tId] = [];
+            if (!mappingObj[tId].includes(bId)) mappingObj[tId].push(bId);
+          });
+          setSelectedProcessBriefIds(mappingObj);
+        }
+      })
+      .catch((err) => {
+        console.error("[ERROR] Failed to fetch lead process briefs:", err);
+      });
+  }, [leadId, vendorId]);
+
+  useEffect(() => {
+    if (lead?.productMappings && Array.isArray(lead.productMappings)) {
+      const budgetMap: Record<number, string> = {};
+      const statusMap: Record<number, string> = {};
+      lead.productMappings.forEach((m: any) => {
+        const typeId = m.product_type_id || m.productType?.id;
+        if (typeId) {
+          if (m.approximate_budget != null) {
+            budgetMap[typeId] = String(m.approximate_budget);
+          }
+          if (m.project_status) {
+            statusMap[typeId] = m.project_status;
+          }
+        }
+      });
+      setReqBudgets((prev) => ({ ...budgetMap, ...prev }));
+      setReqStatuses((prev) => ({ ...statusMap, ...prev }));
+    }
+  }, [lead?.productMappings]);
+
+  const totalApproximateBudget = useMemo(() => {
+    return selectedProductTypeIds.reduce((sum, typeId) => {
+      const rawVal = reqBudgets[typeId];
+      const num = rawVal ? parseFloat(rawVal) : 0;
+      return sum + (isNaN(num) ? 0 : num);
+    }, 0);
+  }, [selectedProductTypeIds, reqBudgets]);
+
+  const overallProjectStatus = useMemo(() => {
+    const values = Object.values(reqStatuses);
+    return values.includes("Order") ? "Order" : "Estimate";
+  }, [reqStatuses]);
+
+  const handleSaveProcessBriefs = async () => {
+    if (!leadId || !vendorId) return;
+
+    try {
+      setSavingProcessBriefs(true);
+      const mappingsList: { product_type_id: number; process_brief_id: number }[] = [];
+
+      Object.entries(selectedProcessBriefIds).forEach(([typeIdStr, briefIds]) => {
+        const typeId = Number(typeIdStr);
+        if (typeId > 0 && Array.isArray(briefIds)) {
+          briefIds.forEach((bId) => {
+            mappingsList.push({
+              product_type_id: typeId,
+              process_brief_id: bId,
+            });
+          });
+        }
+      });
+
+      await saveLeadProcessBriefsApi({
+        lead_id: leadId,
+        vendor_id: vendorId,
+        mappings: mappingsList,
+        created_by: userId || 1,
+      });
+
+      toastManager.add({
+        title: "Process Briefs saved successfully!",
+        type: "success",
+      });
+
+      setBriefModalTypeId(null);
+    } catch (error: any) {
+      console.error("[ERROR] Error saving lead process briefs:", error);
+      toastManager.add({
+        title: "Failed to save process briefs: " + (error?.message || "Unknown error"),
+        type: "error",
+      });
+    } finally {
+      setSavingProcessBriefs(false);
+    }
+  };
+
   const isB2b = useMemo(() => {
     const leadFranchise = franchisesForB2b.find(
       (franchise: any) => franchise.id === lead?.franchise_id,
@@ -751,25 +885,98 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       (userType === "sales-executive" && leadStage === "open"));
 
   // ✅ 11. EVENT HANDLERS
+  const toggleRequirementType = (id: number) => {
+    if (isB2b) {
+      setSelectedProductTypeIds((prev) => {
+        const next = prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id];
+        if (next.length > 0 && (!selectedProductTypeId || !next.includes(selectedProductTypeId))) {
+          setSelectedProductTypeId(next[0]);
+        }
+        return next;
+      });
+    } else {
+      setSelectedProductTypeIds([id]);
+      setSelectedProductTypeId(id);
+    }
+  };
+
+  const toggleProcessBrief = (typeId: number, briefId: number) => {
+    setSelectedProcessBriefIds((prev) => {
+      const current = prev[typeId] || [];
+      const next = current.includes(briefId)
+        ? current.filter((b) => b !== briefId)
+        : [...current, briefId];
+      return { ...prev, [typeId]: next };
+    });
+  };
+
+  const handleSaveRequirementMeta = async (productTypeId: number, overrideBudget?: string, overrideStatus?: string) => {
+    if (!leadId || !vendorId) return;
+    try {
+      const bVal = overrideBudget !== undefined ? overrideBudget : reqBudgets[productTypeId];
+      const sVal = overrideStatus !== undefined ? overrideStatus : reqStatuses[productTypeId];
+
+      await updateRequirementMetaApi({
+        lead_id: leadId,
+        vendor_id: vendorId,
+        product_type_id: productTypeId,
+        approximate_budget: bVal ? Number(bVal) : null,
+        project_status: sVal || null,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["lead", leadId, vendorId, userId] });
+    } catch (err: any) {
+      console.error("Failed to update requirement metadata", err);
+    }
+  };
+
+  const handleSaveGlobalProjectStatus = async (newStatus: string) => {
+    selectedProductTypeIds.forEach((typeId) => {
+      handleSaveRequirementMeta(typeId, undefined, newStatus);
+    });
+    setReqStatuses((prev) => {
+      const next = { ...prev };
+      selectedProductTypeIds.forEach((id) => {
+        next[id] = newStatus;
+      });
+      return next;
+    });
+  };
+
   const handleOpenProductTypeEdit = () => {
-    setSelectedProductTypeId(currentProductTypeId);
+    const currentIds = lead?.productMappings
+      ?.map((pm: any) => pm.product_type_id || pm.productType?.id)
+      ?.filter(Boolean) || (currentProductTypeId ? [currentProductTypeId] : []);
+    setSelectedProductTypeIds(currentIds);
+    setSelectedProductTypeId(currentIds[0] || currentProductTypeId);
     setEditProductTypeOpen(true);
   };
 
   const handleSaveProductType = () => {
-    if (!selectedProductTypeId) {
+    if (selectedProductTypeIds.length === 0 && !selectedProductTypeId) {
       toastManager.add({
-        title: "Please select a product type.",
+        title: "Please select at least one requirement type.",
         type: "error",
       });
       return;
     }
-    if (selectedProductTypeId === currentProductTypeId) {
-      toastManager.add({ title: "No changes to update.", type: "info" });
-      setEditProductTypeOpen(false);
-      return;
-    }
     setConfirmProductTypeSave(true);
+  };
+
+  const handleDeleteMaterial = async (id: number) => {
+    try {
+      await deleteLeadRequirementMaterialApi(id, vendorId!);
+      toastManager.add({
+        title: "Material deleted successfully",
+        type: "success",
+      });
+      refetchReqMaterials();
+    } catch (err: any) {
+      toastManager.add({
+        title: err?.response?.data?.message || "Failed to delete material",
+        type: "error",
+      });
+    }
   };
 
   const handleConfirmDelete = () => {
@@ -1106,224 +1313,357 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         </div>
 
         <div className="py-4 space-y-4">
-          {/* PRODUCT INFORMATION */}
+          {/* SELECT PROCESS BRIEFS MODAL */}
+          <BaseModal
+            open={!!briefModalTypeId}
+            onOpenChange={(open) => {
+              if (!open) {
+                setBriefModalTypeId(null);
+                setBriefSearchQuery("");
+              }
+            }}
+            title={`Select Process Briefs - ${
+              productTypes?.data?.find((t: any) => t.id === briefModalTypeId)?.type || ""
+            }`}
+            description="Select process briefs for this requirement type."
+            size="md"
+          >
+            <div className="space-y-4 p-5">
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  value={briefSearchQuery}
+                  onChange={(e) => setBriefSearchQuery(e.target.value)}
+                  placeholder="Search briefs..."
+                  className="pl-9 text-xs"
+                />
+              </div>
+
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                {filteredBriefsForModal.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic p-4 text-center border border-dashed rounded-lg">
+                    No process briefs available for this type.
+                  </p>
+                ) : (
+                  filteredBriefsForModal.map((brief: any) => {
+                    const selectedList = selectedProcessBriefIds[briefModalTypeId!] || [];
+                    const isChecked = selectedList.includes(brief.id);
+                    return (
+                      <div
+                        key={brief.id}
+                        onClick={() => toggleProcessBrief(briefModalTypeId!, brief.id)}
+                        className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer select-none ${
+                          isChecked
+                            ? "bg-muted/30 border-emerald-600/40 font-medium"
+                            : "bg-background border-border/60 hover:bg-muted/20"
+                        }`}
+                      >
+                        <Checkbox checked={isChecked} className="h-4 w-4 pointer-events-none" />
+                        <span className="text-xs text-foreground">{brief.name}</span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setBriefModalTypeId(null)}
+                  disabled={savingProcessBriefs}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleSaveProcessBriefs}
+                  disabled={savingProcessBriefs}
+                >
+                  {savingProcessBriefs ? "Saving..." : "Save"}
+                </Button>
+              </div>
+            </div>
+          </BaseModal>
+
+          {/* REQUIREMENT TYPES EDIT MODAL */}
           {!handlesLargeScaleProjects && (
             <SectionCard
-              title="Product Information"
+              title="Requirement Details"
               action={
-                canEditStructures && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="w-auto">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="w-auto">
-                              <Button
-                                onClick={() => {
-                                  if (shouldDisableBlockedActions) return;
-                                  handleAddOpen();
-                                }}
-                                className={
-                                  shouldDisableBlockedActions
-                                    ? "opacity-50 cursor-not-allowed"
-                                    : ""
-                                }
-                              >
-                                <Plus className="h-5 w-5 sm:h-4 sm:w-4 sm:mr-2" />
-                                <span className="hidden sm:inline">Add Furniture Structure</span>
-                              </Button>
-                            </div>
-                          </TooltipTrigger>
-
-                          {shouldDisableBlockedActions && (
-                            <TooltipContent>
-                              <p>{blockedTooltip}</p>
-                            </TooltipContent>
-                          )}
-                        </Tooltip>
-                      </div>
-                    </TooltipTrigger>
-
-                    {shouldDisableBlockedActions && (
-                      <TooltipContent>
-                        {blockedTooltip}
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
+                canEditProductType && (
+                  <Button
+                    onClick={() => {
+                      if (shouldDisableBlockedActions) return;
+                      handleOpenProductTypeEdit();
+                    }}
+                    className="bg-black hover:bg-neutral-800 text-white dark:bg-white dark:text-black dark:hover:bg-neutral-200 shadow-xs text-xs"
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1.5" />
+                    <span>Add Requirement Type</span>
+                  </Button>
                 )
               }
             >
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center w-full justify-between gap-3 items-start">
-                <InfoRow
-                  icon={Package}
-                  label={
-                    <span className="inline-flex items-center gap-2">
-                      <span>Product Types</span>
-                      {canEditProductType && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (shouldDisableBlockedActions) return;
+              <div className="space-y-6 p-1">
+                <p className="text-xs text-muted-foreground -mt-2">
+                  Select requirement types and define process briefs along with materials & quantity.
+                </p>
 
-                                handleOpenProductTypeEdit();
-                              }}
-                              className="
-        text-muted-foreground/70
-        hover:text-foreground
-        inline-flex size-7 items-center justify-center
-        rounded-md
-        transition
-        disabled:pointer-events-none
-      "
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </button>
-                          </TooltipTrigger>
+                {/* 1. Select Requirement Types (Multi-select) */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <h4 className="text-xs font-bold tracking-tight text-foreground">
+                      1. Select Requirement Types {isB2b ? "(Multi-select)" : "(Single-select)"}
+                    </h4>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {/* Global Project Status Dropdown */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground font-semibold">Project Status:</span>
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setOpenGlobalStatusDropdown((prev) => !prev)}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border bg-background text-foreground text-xs font-semibold shadow-2xs hover:bg-muted/40 transition-colors"
+                          >
+                            <span>{overallProjectStatus}</span>
+                            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          </button>
 
-                          {shouldDisableBlockedActions && (
-                            <TooltipContent>
-                              {blockedTooltip}
-                            </TooltipContent>
+                          {openGlobalStatusDropdown && (
+                            <>
+                              <div
+                                className="fixed inset-0 z-40"
+                                onClick={() => setOpenGlobalStatusDropdown(false)}
+                              />
+                              
+                              <div className="absolute right-0 mt-1 w-36 p-1 rounded-xl border bg-background text-foreground shadow-lg z-50 space-y-0.5 border-border">
+                                {["Estimate", "Order"].map((statusOpt) => {
+                                  const isActive = overallProjectStatus === statusOpt;
+                                  return (
+                                    <button
+                                      key={statusOpt}
+                                      type="button"
+                                      onClick={() => {
+                                        handleSaveGlobalProjectStatus(statusOpt);
+                                        setOpenGlobalStatusDropdown(false);
+                                      }}
+                                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
+                                        isActive
+                                          ? "bg-muted text-foreground font-semibold"
+                                          : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                                      }`}
+                                    >
+                                      <span>{statusOpt}</span>
+                                      {isActive && <Check className="h-3.5 w-3.5 text-foreground" />}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </>
                           )}
-                        </Tooltip>
-                      )}
-                    </span>
-                  }
-                  value={lead.productMappings
-                    ?.map((pm: any) => pm.productType?.type)
-                    ?.filter(Boolean)
-                    ?.join(", ")}
-                />
-                {(structureSummary.total > 0 ||
-                  structureSummary.uniqueStructures > 0) && (
-                    <div className="flex flex-wrap items-center gap-2">
-                      {structureSummary.total > 0 && (
-                        <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60">
-                          <span className="flex h-1.5 w-1.5 rounded-full bg-current opacity-60"></span>
-                          {structureSummary.total} Instance
-                          {structureSummary.total === 1 ? "" : "s"}
-                        </span>
-                      )}
-                      {structureSummary.uniqueStructures > 0 && (
-                        <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60">
-                          <span className="flex h-1.5 w-1.5 rounded-full bg-current opacity-60"></span>
-                          {structureSummary.uniqueStructures} Structure
-                          {structureSummary.uniqueStructures === 1 ? "" : "s"}
-                        </span>
-                      )}
-                    </div>
-                  )}
-              </div>
-
-              {isStructuresLoading ? (
-                <div className="flex items-center gap-2 rounded-lg border border-dashed bg-muted/20 p-4 text-sm text-muted-foreground">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-                  Loading product information...
-                </div>
-              ) : structureInstances.length === 0 ? (
-                <InfoRow
-                  icon={Package}
-                  label="Product Structures"
-                  value={lead.leadProductStructureMapping
-                    ?.map((ps: any) => ps.productStructure?.type)
-                    ?.filter(Boolean)
-                    ?.join(", ")}
-                />
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2">
-                  {structureInstances.map((item: any) => (
-                    <div
-                      key={`${item.product_structure_id}-${item.quantity_index}`}
-                      className="group rounded-xl border bg-white/60 p-5 transition-all hover:border-border/80 dark:bg-[#0a0a0a] min-w-0"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="min-w-0 flex-1 space-y-1">
-                          <div className="flex items-start justify-between gap-3">
-                            <p className="flex-1 min-w-0 line-clamp-2 text-base font-semibold leading-tight text-heading transition-colors group-hover:text-foreground dark:text-neutral-200 text-wrap break-words">
-                              {item.title || item.productStructure?.type || "—"}
-                            </p>
-                            <div className="flex items-center gap-1 shrink-0">
-                              {canEditStructures && (
-                                <>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <button
-                                        type="button"
-                                        className="text-muted-foreground/70 hover:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 inline-flex size-7 items-center justify-center rounded-md border border-transparent transition-[color,box-shadow] outline-none focus-visible:ring-[3px]"
-                                        onClick={() => {
-                                          if (shouldDisableBlockedActions) return;
-
-                                          handleEditOpen(item);
-                                        }}
-                                        aria-label="Edit"
-                                      >
-                                        <Pencil className="h-4 w-4" />
-                                      </button>
-                                    </TooltipTrigger>
-
-                                    {shouldDisableBlockedActions && (
-                                      <TooltipContent>
-                                        {blockedTooltip}
-                                      </TooltipContent>
-                                    )}
-                                  </Tooltip>
-                                  {structureInstances.length > 1 && (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            if (shouldDisableBlockedActions) return;
-
-                                            setConfirmStructureDelete({
-                                              id: item.id,
-                                              title:
-                                                item.title ||
-                                                item.productStructure?.type ||
-                                                "this item",
-                                            });
-                                          }}
-                                          className="
-        text-muted-foreground/70
-        hover:text-destructive
-        inline-flex size-7 items-center justify-center
-        rounded-md
-      "
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                        </button>
-                                      </TooltipTrigger>
-
-                                      {shouldDisableBlockedActions && (
-                                        <TooltipContent>
-                                          {blockedTooltip}
-                                        </TooltipContent>
-                                      )}
-                                    </Tooltip>
-                                  )}
-                                </>
-                              )}
-                            </div>
-                          </div>
-                          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
-                            {item.productStructure?.type || "—"}
-                          </p>
                         </div>
                       </div>
 
-                      {item.description && (
-                        <div className="mt-4 rounded-lg border border-dashed border-border/60 bg-muted/30 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground transition-colors group-hover:bg-muted/40">
-                          {item.description}
-                        </div>
+                      {totalApproximateBudget > 0 && (
+                        <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-muted border text-foreground">
+                          Total Approx. Budget: ₹{totalApproximateBudget.toLocaleString("en-IN")}
+                        </span>
                       )}
                     </div>
-                  ))}
+                  </div>
+
+                  <div className="flex flex-wrap gap-3">
+                    {b2bProductTypes
+                      .filter((pt: any) => selectedProductTypeIds.includes(pt.id))
+                      .map((pt: any) => {
+                        const isSelected = selectedProductTypeIds.includes(pt.id);
+                        return (
+                          <div
+                            key={pt.id}
+                            className="flex items-center gap-3 px-4 py-2 rounded-xl border-2 border-emerald-600 bg-emerald-50/40 text-emerald-950 dark:border-emerald-500 dark:bg-emerald-950/20 dark:text-emerald-200 text-xs font-semibold select-none"
+                          >
+                            <span>{pt.type}</span>
+                            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-emerald-600 text-white">
+                              <Check className="h-3.5 w-3.5 stroke-[3]" />
+                            </span>
+                          </div>
+                        );
+                      })}
+                    {b2bProductTypes.filter((pt: any) => selectedProductTypeIds.includes(pt.id)).length === 0 && (
+                      <p className="text-xs text-muted-foreground italic">No requirement types selected. Click "+ Add Requirement Type" to select.</p>
+                    )}
+                  </div>
                 </div>
-              )}
-            </div>
+
+                {/* Requirement Types Cards with Process Brief counts & Materials */}
+                {selectedProductTypeIds.length > 0 && (
+                  <div className="space-y-3 pt-2 border-t">
+                    {selectedProductTypeIds.map((typeId) => {
+                      const typeObj = b2bReqTypesData?.data?.find((t: any) => t.id === typeId);
+                      const selectedBriefs = selectedProcessBriefIds[typeId] || [];
+                      const typeMaterials = reqMaterials.filter((m: any) => (m.b2b_requirement_type_id || m.product_type_id) === typeId);
+
+                      return (
+                        <div
+                          key={typeId}
+                          className="p-4 rounded-xl border bg-muted/10 hover:bg-muted/20 transition-all border-border/70 space-y-3"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shrink-0" />
+                              <div>
+                                <h4 className="text-sm font-semibold text-foreground">{typeObj?.type}</h4>
+                                <p className="text-xs text-muted-foreground font-medium mt-0.5">
+                                  {selectedBriefs.length} Process Brief{selectedBriefs.length === 1 ? "" : "s"}
+                                  {selectedBriefs.length > 0 && (
+                                    <span className="ml-1 text-foreground font-normal">
+                                      ({selectedBriefs.map(bId => processBriefs.find((b: any) => b.id === bId)?.name).filter(Boolean).join(", ")})
+                                    </span>
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setBriefModalTypeId(typeId);
+                                  setBriefSearchQuery("");
+                                }}
+                                className="text-xs gap-1.5 bg-background shadow-2xs hover:bg-muted"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                                Select Process Briefs
+                              </Button>
+
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-block">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        setEditingMaterialItem(null);
+                                        setMaterialModalTypeId(typeId);
+                                      }}
+                                      disabled={selectedBriefs.length === 0}
+                                      className="text-xs gap-1.5 bg-background shadow-2xs hover:bg-muted text-emerald-700 dark:text-emerald-400 border-emerald-600/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                      <Plus className="h-3.5 w-3.5" />
+                                      Add Material & Quantity
+                                    </Button>
+                                  </span>
+                                </TooltipTrigger>
+                                {selectedBriefs.length === 0 && (
+                                  <TooltipContent side="top">
+                                    Please select at least one process brief first
+                                  </TooltipContent>
+                                )}
+                              </Tooltip>
+                            </div>
+                          </div>
+
+                          {/* Saved Requirement Materials - Compact Scrollable List */}
+                          {typeMaterials.length > 0 && (
+                            <div className="pt-2 border-t space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <h5 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                                  Materials & Quantity ({typeMaterials.length})
+                                </h5>
+                              </div>
+
+                              <div className="max-h-44 overflow-y-auto border rounded-lg divide-y bg-background text-xs shadow-2xs">
+                                {typeMaterials.map((mat: any) => (
+                                  <div
+                                    key={mat.id}
+                                    className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 hover:bg-muted/30 transition-colors"
+                                  >
+                                    <div className="flex items-center gap-3 min-w-0 flex-1 flex-wrap">
+                                      <span className="font-semibold text-foreground truncate min-w-[120px] max-w-[220px]">
+                                        {mat.product?.product_name || "Material"}
+                                      </span>
+                                      <span className="text-muted-foreground shrink-0 text-[11px]">
+                                        Qty: <strong className="text-foreground font-semibold">{mat.quantity}</strong> {mat.unit_name || mat.product?.unit_of_measure || ""}
+                                      </span>
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted border shrink-0">
+                                        {mat.supplied_by === "Frankvin"
+                                          ? "Frankvin (100%)"
+                                          : mat.supplied_by === "Client"
+                                          ? "Client (100%)"
+                                          : `Shared (Client: ${mat.client_percentage}% / Frankvin: ${mat.frankvin_percentage}%)`}
+                                      </span>
+                                    </div>
+
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => {
+                                          setEditingMaterialItem(mat);
+                                          setMaterialModalTypeId(typeId);
+                                        }}
+                                        className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted shrink-0"
+                                        title="Edit Material & Quantity"
+                                      >
+                                        <Pencil className="h-3 w-3" />
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => handleDeleteMaterial(mat.id)}
+                                        className="h-6 w-6 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 shrink-0"
+                                        title="Delete Material"
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Approx. Budget Row */}
+                          <div className="pt-2.5 border-t flex flex-wrap items-center justify-end gap-3 text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className="text-muted-foreground font-medium">Approx. Budget:</span>
+                              <div className="relative flex items-center">
+                                <span className="absolute left-2.5 text-xs text-muted-foreground font-semibold">₹</span>
+                                <Input
+                                  type="number"
+                                  step="any"
+                                  placeholder="0"
+                                  value={reqBudgets[typeId] ?? ""}
+                                  onChange={(e) => setReqBudgets((prev) => ({ ...prev, [typeId]: e.target.value }))}
+                                  onBlur={(e) => handleSaveRequirementMeta(typeId, e.target.value)}
+                                  className="pl-6 pr-2 py-1 h-8 w-32 text-xs font-semibold shadow-2xs"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Requirement Document Upload Section (B2B Vendors) */}
+                          {isB2b && leadId && vendorId && (
+                            <RequirementDocUpload
+                              leadId={leadId}
+                              vendorId={vendorId}
+                              productTypeId={typeId}
+                              userId={userId}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </SectionCard>
           )}
 
@@ -2260,35 +2600,47 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
             onOpenChange={(open) => {
               if (!open) {
                 setEditProductTypeOpen(false);
-                setSelectedProductTypeId(currentProductTypeId);
               }
             }}
-            title={
-              currentProductTypeId ? "Edit Product Type" : "Set Product Type"
-            }
-            description="Select the product type for this lead."
-            size="sm"
+            title="Requirement Details"
+            description="Select requirement types and dependent process briefs."
+            size="md"
           >
-            <div className="space-y-4 p-5">
+            <div className="space-y-5 p-5 max-h-[75vh] overflow-y-auto">
               <div>
-                <label className="text-xs font-medium text-muted-foreground">
-                  Product Type <span className="text-red-500">*</span>
+                <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                  <span>Requirement Types {isB2b ? "(Multi-Select)" : "(Single-Select)"} <span className="text-red-500">*</span></span>
+                  <span className="text-[11px] text-muted-foreground font-normal">
+                    {selectedProductTypeIds.length} selected
+                  </span>
                 </label>
-                <div className="mt-2">
-                  <AssignToPicker
-                    data={
-                      productTypes?.data?.map((t: any) => ({
-                        id: t.id,
-                        label: t.type,
-                      })) ?? []
-                    }
-                    value={selectedProductTypeId ?? undefined}
-                    onChange={(id) => setSelectedProductTypeId(id)}
-                    placeholder="Search product type..."
-                  />
+                <div className="flex flex-wrap gap-2 mt-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-muted/10">
+                  {b2bProductTypes.length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic p-2">No B2B requirement types found.</p>
+                  ) : (
+                    b2bProductTypes.map((t: any) => {
+                      const isSelected = selectedProductTypeIds.includes(t.id);
+                      return (
+                        <Badge
+                          key={t.id}
+                          variant={isSelected ? "default" : "outline"}
+                          className={`cursor-pointer py-1.5 px-3 text-xs flex items-center gap-1.5 transition-all select-none ${
+                            isSelected ? "bg-primary text-primary-foreground shadow-sm" : "hover:bg-muted"
+                          }`}
+                          onClick={() => toggleRequirementType(t.id)}
+                        >
+                          <Checkbox checked={isSelected} className="h-3.5 w-3.5 pointer-events-none" />
+                          <span>{t.type}</span>
+                        </Badge>
+                      );
+                    })
+                  )}
                 </div>
               </div>
-              <div className="flex justify-end gap-2">
+
+
+
+              <div className="flex justify-end gap-2 pt-3 border-t">
                 <Button
                   type="button"
                   variant="outline"
@@ -2315,12 +2667,20 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>
-                  {currentProductTypeId
+                  {isB2b
+                    ? currentProductTypeId
+                      ? "Confirm Requirement Type Change?"
+                      : "Set Requirement Type?"
+                    : currentProductTypeId
                     ? "Confirm Product Type Change?"
                     : "Set Product Type?"}
                 </AlertDialogTitle>
                 <AlertDialogDescription>
-                  {currentProductTypeId
+                  {isB2b
+                    ? currentProductTypeId
+                      ? "This will update the requirement type for this lead."
+                      : "This will set the requirement type for this lead."
+                    : currentProductTypeId
                     ? "This will update the product type for this lead."
                     : "This will set the product type for this lead."}
                 </AlertDialogDescription>
@@ -2332,8 +2692,8 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                 <AlertDialogAction
                   onClick={() => {
                     setConfirmProductTypeSave(false);
-                    if (selectedProductTypeId) {
-                      updateLeadProductTypeMutation(selectedProductTypeId);
+                    if (selectedProductTypeIds.length > 0) {
+                      updateLeadProductTypeMutation(selectedProductTypeIds);
                     }
                   }}
                   disabled={updatingLeadType}
@@ -2579,6 +2939,27 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
               </div>
             </div>
           </BaseModal>
+
+          {materialModalTypeId && vendorId && (
+            <AddMaterialQuantityModal
+              open={!!materialModalTypeId}
+              onOpenChange={(open) => {
+                if (!open) {
+                  setMaterialModalTypeId(null);
+                  setEditingMaterialItem(null);
+                }
+              }}
+              vendorId={vendorId}
+              leadId={leadId}
+              productTypeId={materialModalTypeId}
+              productTypeName={
+                (b2bReqTypesData?.data || productTypes?.data)?.find((t: any) => t.id === materialModalTypeId)?.type || "Requirement"
+              }
+              userId={userId || 0}
+              editingItem={editingMaterialItem}
+              onSuccess={() => refetchReqMaterials()}
+            />
+          )}
         </div>
       </motion.div>
     </>

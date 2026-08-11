@@ -42,8 +42,10 @@ import {
   Search,
   ToggleLeft,
   ToggleRight,
+  Trash2,
+  GitBranch,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   useCheckExternalToken,
   useCreateProjectCategory,
@@ -56,6 +58,13 @@ import {
 import { ProjectCategory } from "@/api/track-trace/project-categories.api";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+
+// ─── Sub Category Entry ───────────────────────────────────────────────────────
+
+interface SubCategoryEntry {
+  name: string;
+  type_ids: number[];
+}
 
 // ─── Category Form Dialog ─────────────────────────────────────────────────────
 
@@ -76,6 +85,9 @@ function CategoryFormDialog({ open, onClose, editData, vendorId, userId }: Categ
   const [selectedTypeIds, setSelectedTypeIds] = useState<number[]>([]);
   const [error, setError] = useState("");
 
+  // Sub-categories (only for create mode)
+  const [subCategories, setSubCategories] = useState<SubCategoryEntry[]>([]);
+
   const isEdit = !!editData;
   const isPending = createMutation.isPending || updateMutation.isPending;
 
@@ -89,6 +101,7 @@ function CategoryFormDialog({ open, onClose, editData, vendorId, userId }: Categ
       setCategoryName("");
       setSelectedTypeIds([]);
     }
+    setSubCategories([]);
     setError("");
   }, [editData, open]);
 
@@ -96,22 +109,75 @@ function CategoryFormDialog({ open, onClose, editData, vendorId, userId }: Categ
     setSelectedTypeIds((prev) => prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]);
   };
 
+  // ── Sub-category helpers ──
+  const addSubCategory = () => {
+    setSubCategories((prev) => [...prev, { name: "", type_ids: [] }]);
+  };
+
+  const removeSubCategory = (index: number) => {
+    setSubCategories((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updateSubCategoryName = (index: number, name: string) => {
+    setSubCategories((prev) => prev.map((s, i) => i === index ? { ...s, name } : s));
+  };
+
+  const toggleSubType = (index: number, typeId: number) => {
+    setSubCategories((prev) =>
+      prev.map((s, i) =>
+        i === index
+          ? { ...s, type_ids: s.type_ids.includes(typeId) ? s.type_ids.filter((t) => t !== typeId) : [...s.type_ids, typeId] }
+          : s
+      )
+    );
+  };
+
   const handleSubmit = async () => {
     if (!categoryName.trim()) { setError("Category name is required"); return; }
+
+    // Validate sub-categories
+    for (let i = 0; i < subCategories.length; i++) {
+      if (!subCategories[i].name.trim()) {
+        setError(`Sub-category #${i + 1} name is required`);
+        return;
+      }
+    }
+
     if (isEdit && editData) {
       await updateMutation.mutateAsync({
         id: editData.id, vendor_id: vendorId, category_name: categoryName.trim(),
-        status: editData.status, type_ids: selectedTypeIds, created_by: userId, updated_by: userId,
+        status: editData.status, type_ids: selectedTypeIds,
+        created_by: userId, updated_by: userId,
       });
     } else {
-      await createMutation.mutateAsync({ vendor_id: vendorId, category_name: categoryName.trim(), type_ids: selectedTypeIds,created_by:userId });
+      // Create main category first
+      const result = await createMutation.mutateAsync({
+        vendor_id: vendorId, category_name: categoryName.trim(),
+        type_ids: selectedTypeIds, created_by: userId,
+      });
+
+      // Create sub-categories sequentially under the new parent
+      const parentId = result?.data?.category?.id ?? result?.data?.id ?? result?.category?.id ?? result?.id;
+      if (parentId && subCategories.length > 0) {
+        for (const sub of subCategories) {
+          if (sub.name.trim()) {
+            await createMutation.mutateAsync({
+              vendor_id: vendorId,
+              category_name: sub.name.trim(),
+              parent_id: parentId,
+              type_ids: sub.type_ids,
+              created_by: userId,
+            });
+          }
+        }
+      }
     }
     onClose();
   };
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FolderOpen className="size-5 text-primary" />
@@ -120,18 +186,21 @@ function CategoryFormDialog({ open, onClose, editData, vendorId, userId }: Categ
         </DialogHeader>
 
         <div className="flex flex-col gap-5 py-2">
+
+          {/* ── Category Name ── */}
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="category_name">Category Name</Label>
+            <Label htmlFor="category_name">Category Name *</Label>
             <Input
               id="category_name"
               placeholder="e.g. Shutter Finish"
               value={categoryName}
               onChange={(e) => { setCategoryName(e.target.value); if (error) setError(""); }}
-              className={cn(error && "border-destructive")}
+              className={cn(error && !error.startsWith("Sub") && "border-destructive")}
             />
-            {error && <p className="text-xs text-destructive">{error}</p>}
+            {error && !error.startsWith("Sub") && <p className="text-xs text-destructive">{error}</p>}
           </div>
 
+          {/* ── Modules ── */}
           <div className="flex flex-col gap-2">
             <Label>Assign to Modules</Label>
             {typesLoading ? (
@@ -141,7 +210,7 @@ function CategoryFormDialog({ open, onClose, editData, vendorId, userId }: Categ
             ) : types.length === 0 ? (
               <p className="text-sm text-muted-foreground">No modules configured</p>
             ) : (
-              <div className="flex flex-col gap-1 rounded-lg border p-3 max-h-52 overflow-y-auto">
+              <div className="flex flex-col gap-1 rounded-lg border p-3 max-h-40 overflow-y-auto">
                 {types.map((type) => (
                   <label key={type.id} className="flex items-center gap-3 rounded-md px-2 py-2 cursor-pointer hover:bg-muted/60 transition-colors">
                     <Checkbox checked={selectedTypeIds.includes(type.id)} onCheckedChange={() => toggleType(type.id)} />
@@ -156,12 +225,74 @@ function CategoryFormDialog({ open, onClose, editData, vendorId, userId }: Categ
               </p>
             )}
           </div>
+
+          {/* ── Sub Categories (create mode only) ── */}
+          {!isEdit && (
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <GitBranch className="size-4 text-muted-foreground" />
+                  <Label className="text-sm font-semibold">Sub Categories</Label>
+                  {subCategories.length > 0 && (
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{subCategories.length}</Badge>
+                  )}
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={addSubCategory} className="h-7 gap-1 text-xs">
+                  <Plus className="size-3" /> Add Sub Category
+                </Button>
+              </div>
+
+              {subCategories.length === 0 ? (
+                <div
+                  onClick={addSubCategory}
+                  className="rounded-lg border border-dashed border-muted-foreground/30 px-4 py-4 text-center cursor-pointer hover:border-primary/50 hover:bg-muted/30 transition-colors"
+                >
+                  <p className="text-xs text-muted-foreground">Click <span className="font-semibold text-foreground">Add Sub Category</span> to create sub categories under this category</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {subCategories.map((sub, index) => (
+                    <div key={index} className="rounded-lg border bg-muted/20 p-3 flex flex-col gap-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Sub Category {index + 1}</span>
+                        <Button
+                          type="button" variant="ghost" size="sm"
+                          onClick={() => removeSubCategory(index)}
+                          className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="size-3" />
+                        </Button>
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <Input
+                          placeholder="e.g. PVC Edgeband Tape"
+                          value={sub.name}
+                          onChange={(e) => { updateSubCategoryName(index, e.target.value); if (error) setError(""); }}
+                          className={cn("h-8 text-sm", error.startsWith("Sub") && !sub.name.trim() && "border-destructive")}
+                        />
+                        {error.startsWith("Sub") && !sub.name.trim() && index === Number(error.match(/\d+/)?.[0] ?? -1) - 1 && (
+                          <p className="text-xs text-destructive">{error}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onClose} disabled={isPending}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={isPending}>
-            {isPending ? "Saving..." : isEdit ? "Save Changes" : "Create Category"}
+            {isPending
+              ? "Saving..."
+              : isEdit
+                ? "Save Changes"
+                : subCategories.length > 0
+                  ? `Create Category + ${subCategories.length} Sub${subCategories.length > 1 ? "s" : ""}`
+                  : "Create Category"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -230,7 +361,6 @@ export default function ProjectCategoriesPage() {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Sync button — only when CadBid token is active */}
             {hasToken && (
               <Button
                 variant="outline"
@@ -333,24 +463,39 @@ export default function ProjectCategoriesPage() {
                 filtered.map((category, idx) => {
                   const isActive = category.status === "Yes";
                   const assignedModules = category.projectCategoriesMasterVendorMapping;
+                  const isSubCategory = !!category.parent_id;
 
                   return (
                     <TableRow
                       key={category.id}
-                      className={cn("group transition-colors hover:bg-primary/5", idx % 2 === 0 ? "bg-background" : "bg-muted/20")}
+                      className={cn(
+                        "group transition-colors hover:bg-primary/5",
+                        idx % 2 === 0 ? "bg-background" : "bg-muted/20",
+                        isSubCategory && "border-l-2 border-l-indigo-500/30"
+                      )}
                     >
                       <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
 
                       <TableCell>
                         <div className="flex items-center gap-2">
+                          {isSubCategory && <GitBranch className="size-3 text-indigo-500/60 shrink-0" />}
                           <span className="font-semibold text-sm text-foreground">{category.category_name}</span>
-                          {/* CadBid badge for synced categories */}
+                          {isSubCategory && (
+                            <Badge variant="secondary" className="text-[10px] font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20 px-2 py-0">
+                              Sub
+                            </Badge>
+                          )}
                           {(category as any).external_category_id && (
                             <Badge variant="outline" className="text-[9px] font-mono px-1.5 py-0 text-muted-foreground border-muted-foreground/30">
                               CadBid
                             </Badge>
                           )}
                         </div>
+                        {category.parent && (
+                          <p className="text-[11px] text-muted-foreground mt-0.5 pl-5">
+                            Under: <span className="font-medium text-foreground">{category.parent.category_name}</span>
+                          </p>
+                        )}
                       </TableCell>
 
                       <TableCell>

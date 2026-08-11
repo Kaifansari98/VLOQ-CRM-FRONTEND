@@ -263,6 +263,7 @@ interface SmoothTabProps {
   onChange?: (tabId: string) => void;
   contentHeightClass?: string;
   pinTabsToBottom?: boolean;
+  headerRight?: React.ReactNode;
 }
 
 const slideVariants = {
@@ -302,6 +303,7 @@ export default function SmoothTab({
   onChange,
   contentHeightClass,
   pinTabsToBottom = true,
+  headerRight,
 }: SmoothTabProps) {
   const [selected, setSelected] = React.useState<string>(defaultTabId);
   const [direction, setDirection] = React.useState(0);
@@ -387,74 +389,92 @@ export default function SmoothTab({
 
   return (
     <div className="flex flex-col h-full gap-3">
-      {/* Bottom Toolbar */}
-      <div
-        ref={containerRef}
-        role="tablist"
-        aria-label="Smooth tabs"
-        className={cn(
-          "flex items-center justify-start sm:justify-between gap-1 py-1 relative",
-          pinTabsToBottom && "mt-auto",
-          "bg-background w-full sm:w-fit max-w-full",
-          "border rounded-xl overflow-x-auto no-scrollbar",
-          "transition-all duration-200",
-          className
-        )}
-      >
-        {/* Sliding Background */}
-        <motion.div
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+        <div
+          ref={containerRef}
+          role="tablist"
+          aria-label="Smooth tabs"
           className={cn(
-            "absolute rounded-lg z-[1]",
-            selectedItem?.color || activeColor
+            "flex items-center justify-start sm:justify-between gap-1 py-1 relative",
+            pinTabsToBottom && "mt-auto",
+            "bg-background w-full sm:w-fit max-w-full",
+            "border rounded-xl overflow-x-auto no-scrollbar",
+            "transition-all duration-200",
+            className
           )}
-          initial={false}
-          animate={{
-            width: dimensions.width - 8,
-            x: dimensions.left + 4,
-            opacity: 1,
-          }}
-          transition={{
-            type: "spring",
-            stiffness: 400,
-            damping: 30,
-          }}
-          style={{ height: "calc(100% - 8px)", top: "4px" }}
-        />
+        >
+          <motion.div
+            className={cn(
+              "absolute rounded-lg z-[1]",
+              selectedItem?.color || activeColor
+            )}
+            initial={false}
+            animate={{
+              width: dimensions.width - 8,
+              x: dimensions.left + 4,
+              opacity: 1,
+            }}
+            transition={{
+              type: "spring",
+              stiffness: 400,
+              damping: 30,
+            }}
+            style={{ height: "calc(100% - 8px)", top: "4px" }}
+          />
 
-        <div className="flex w-full gap-1 relative z-[2] dark:px-1">
-          {items.map((item) => {
-            const isSelected = selected === item.id;
-            const isOrderLoginTab = item.id === "orderLogin";
-            const isDisabled =
-              item.disabled || (isOrderLoginTab && !canOrderLogin(userType));
+          <div className="flex w-full gap-1 relative z-[2] dark:px-1">
+            {items.map((item) => {
+              const isSelected = selected === item.id;
+              const isOrderLoginTab = item.id === "orderLogin";
+              const isDisabled =
+                item.disabled || (isOrderLoginTab && !canOrderLogin(userType));
 
-            const button = (
-              <motion.button
-                type="button"
-                role="tab"
-                aria-selected={isSelected}
-                aria-controls={`panel-${item.id}`}
-                id={`tab-${item.id}`}
-                tabIndex={isSelected ? 0 : -1}
-                onClick={() => !isDisabled && handleTabClick(item.id)}
-                onKeyDown={(e) => !isDisabled && handleKeyDown(e, item.id)}
-                className={cn(
-                  "relative flex items-center justify-center gap-0.5 rounded-lg px-2 py-1.5",
-                  "text-xs font-medium transition-all duration-300 focus-visible:outline-none",
-                  "px-4 truncate select-none",
-                  isSelected
-                    ? "text-white dark:bg-[#262626]"
-                    : isDisabled
-                    ? "text-muted-foreground opacity-50 cursor-not-allowed"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                )}
-              >
-                <span className="truncate">{item.title}</span>
-              </motion.button>
-            );
+              const button = (
+                <motion.button
+                  type="button"
+                  role="tab"
+                  aria-selected={isSelected}
+                  aria-controls={`panel-${item.id}`}
+                  id={`tab-${item.id}`}
+                  tabIndex={isSelected ? 0 : -1}
+                  onClick={() => !isDisabled && handleTabClick(item.id)}
+                  onKeyDown={(e) => !isDisabled && handleKeyDown(e, item.id)}
+                  className={cn(
+                    "relative flex items-center justify-center gap-0.5 rounded-lg px-2 py-1.5",
+                    "text-xs font-medium transition-all duration-300 focus-visible:outline-none",
+                    "px-4 truncate select-none",
+                    isSelected
+                      ? "text-white dark:bg-[#262626]"
+                      : isDisabled
+                      ? "text-muted-foreground opacity-50 cursor-not-allowed"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <span className="truncate">{item.title}</span>
+                </motion.button>
+              );
 
-            // Wrap Order Login with tooltip if disabled
-            if (isDisabled) {
+              if (isDisabled) {
+                return (
+                  <span
+                    key={item.id}
+                    ref={(el) => {
+                      if (el) tabRefs.current.set(item.id, el);
+                      else tabRefs.current.delete(item.id);
+                    }}
+                    className="relative inline-flex"
+                  >
+                    <CustomeTooltip
+                      truncateValue={button}
+                      value={
+                        item.disabledReason ||
+                        "🚫 You don’t have permission or this section is locked."
+                      }
+                    />
+                  </span>
+                );
+              }
+
               return (
                 <span
                   key={item.id}
@@ -464,31 +484,14 @@ export default function SmoothTab({
                   }}
                   className="relative inline-flex"
                 >
-                  <CustomeTooltip
-                    truncateValue={button}
-                    value={
-                      item.disabledReason ||
-                      "🚫 You don’t have permission or this section is locked."
-                    }
-                  />
+                  {button}
                 </span>
               );
-            }
-
-            return (
-              <span
-                key={item.id}
-                ref={(el) => {
-                  if (el) tabRefs.current.set(item.id, el);
-                  else tabRefs.current.delete(item.id);
-                }}
-                className="relative inline-flex"
-              >
-                {button}
-              </span>
-            );
-          })}
+            })}
+          </div>
         </div>
+
+        {headerRight ? <div className="xl:shrink-0">{headerRight}</div> : null}
       </div>
 
       {/* Card Content Area */}

@@ -16,7 +16,7 @@ export default function LoginPage() {
   const { user, token } = useSelector((state: RootState) => state.auth);
   const [logoSrc, setLogoSrc] = useState("/logos/furnix-logo-dark.png");
   const [useFallbackLogo, setUseFallbackLogo] = useState(false);
-  const [heroSrc, setHeroSrc] = useState("/image.png");
+  const [heroSrc, setHeroSrc] = useState("/login_image.png");
   const [logoNaturalSize, setLogoNaturalSize] = useState<{ width: number; height: number } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -69,7 +69,7 @@ export default function LoginPage() {
             if (res.data.loginImageUrl) {
               setHeroSrc(res.data.loginImageUrl);
             } else {
-              setHeroSrc("/image.png");
+              setHeroSrc("/login_image.png");
             }
             setIsLoading(false);
             return;
@@ -82,7 +82,7 @@ export default function LoginPage() {
       // Default Fallback
       setUseFallbackLogo(false);
       setLogoSrc("/logos/furnix-logo-dark.png");
-      setHeroSrc("/image.png");
+      setHeroSrc("/login_image.png");
       setIsLoading(false);
     };
 
@@ -171,7 +171,7 @@ export default function LoginPage() {
           alt="Background Image"
           className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
           fill
-          onError={() => setHeroSrc("/image.png")}
+          onError={() => setHeroSrc("/login_image.png")}
         />
       </div>
     </div>

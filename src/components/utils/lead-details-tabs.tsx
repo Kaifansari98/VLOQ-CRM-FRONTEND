@@ -140,7 +140,7 @@ export default function LeadDetailsUtil({
       "measurement",
       "designing",
       "booking",
-      ...(hasAtLeastOneDocUploaded ? ["finalMeasurement"] : []),
+      "finalMeasurement",
     ],
     clientdocumentation: [
       "details",

@@ -153,7 +153,7 @@ type FastProductionTimelineRule = {
   shutter_id: number | null;
   kitchen_manufacturing_days_for_fast_production: number | null;
   other_manufacturing_days_for_fast_production: number | null;
-  carcass: { id: number; name: string };
+  carcass: { id: number; name: string; can_do_fast_production?: boolean };
   shutter: {
     id: number;
     name: string;
@@ -245,7 +245,12 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
   );
 
   const eligibleFastProductionRules = React.useMemo(
-    () => fastProductionRules.filter(hasFastProductionTimeline),
+    () =>
+      fastProductionRules.filter(
+        (rule) =>
+          hasFastProductionTimeline(rule) &&
+          rule.carcass?.can_do_fast_production === true,
+      ),
     [fastProductionRules],
   );
 
@@ -326,7 +331,10 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
     const handles = byType("Handles");
 
     if (carcas) {
-      defaultValues.carcass_finish_category = chsMappingToOptionValues(carcas.id, "Carcas");
+      defaultValues.carcass_finish_category = chsMappingToOptionValues(
+        carcas.id,
+        "Carcas",
+      );
       defaultValues.carcass_finish_description = carcas.desc || "";
     }
     if (shutter) {
@@ -384,6 +392,10 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
       );
     },
     [eligibleFastProductionRules],
+  );
+  const availableCarcassValues = React.useMemo(
+    () => new Set(carcassOptions.map((item) => item.value)),
+    [carcassOptions],
   );
 
   const shutterOptions = React.useMemo<ClientDocsSelectionOption[]>(
@@ -536,8 +548,8 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
           const match = carcassOptions.find(
             (opt) => opt.label.toLowerCase() === lbl.toLowerCase(),
           );
-          return match ? match.value : lbl;
-        });
+          return match ? match.value : "";
+        }).filter(Boolean);
 
         const shutterValues = shutterLabels.map((lbl: string) => {
           const match = shutterOptions.find(
@@ -691,6 +703,21 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
         : undefined;
 
   React.useEffect(() => {
+    const currentCarcassValues = form.getValues("carcass_finish_category") ?? [];
+    if (currentCarcassValues.length === 0) return;
+
+    const nextValues = currentCarcassValues.filter((value) =>
+      availableCarcassValues.has(value),
+    );
+
+    if (nextValues.length !== currentCarcassValues.length) {
+      form.setValue("carcass_finish_category", nextValues, {
+        shouldValidate: true,
+      });
+    }
+  }, [availableCarcassValues, form]);
+
+  React.useEffect(() => {
     const currentShutterValues = form.getValues("shutter_finish_category") ?? [];
     if (currentShutterValues.length === 0) return;
 
@@ -759,6 +786,10 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
         .map((selectedValue) => labelMap.get(selectedValue) ?? selectedValue)
         .filter(Boolean);
 
+    const sanitizedCarcassValues = values.carcass_finish_category.filter(
+      (selectedValue) => availableCarcassValues.has(selectedValue),
+    );
+
     const wasAlreadySaved = savedInstanceIds.includes(currentInstance.id);
     const nextSavedIds = wasAlreadySaved
       ? savedInstanceIds
@@ -772,7 +803,7 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
         createdBy: userId,
         instanceId: currentInstance.id,
         carcassFinishCategory: toLabels(
-          values.carcass_finish_category,
+          sanitizedCarcassValues,
           carcassOptionLabelMap,
         ),
         carcassFinishDescription: values.carcass_finish_description,
@@ -916,7 +947,13 @@ const FastProductionRequestModal: React.FC<FastProductionRequestModalProps> = ({
             <FormItem>
               <FormControl>
                 <ClientDocsSelectionMultiSelect
-                  value={field.value || []}
+                  value={
+                    categoryName === "carcass_finish_category"
+                      ? (field.value || []).filter((selectedValue) =>
+                          options.some((option) => option.value === selectedValue),
+                        )
+                      : field.value || []
+                  }
                   onChange={field.onChange}
                   options={options}
                   placeholder={placeholder}

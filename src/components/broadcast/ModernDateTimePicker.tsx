@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -38,6 +38,59 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
   const [seconds, setSeconds] = useState(0);
   const [ampm, setAmpm] = useState<"AM" | "PM">(rawHours >= 12 ? "PM" : "AM");
 
+  // Track focused input to prevent value sync overwriting active typing
+  const focusedInput = useRef<"hour" | "minute" | "second" | null>(null);
+
+  // Typing input states
+  const [hourInput, setHourInput] = useState<string>(String(hour12).padStart(2, "0"));
+  const [minuteInput, setMinuteInput] = useState<string>(String(minutes).padStart(2, "0"));
+  const [secondInput, setSecondInput] = useState<string>(String(seconds).padStart(2, "0"));
+
+  // Sync internal state if external value changes
+  useEffect(() => {
+    if (!value) return;
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return;
+
+    setCurrentMonth(d.getMonth());
+    setCurrentYear(d.getFullYear());
+    setSelectedDay(d.getDate());
+
+    const h = d.getHours();
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    const m = d.getMinutes();
+    const p: "AM" | "PM" = h >= 12 ? "PM" : "AM";
+
+    setHour12(h12);
+    setMinutes(m);
+    setAmpm(p);
+
+    if (focusedInput.current !== "hour") {
+      setHourInput(String(h12).padStart(2, "0"));
+    }
+    if (focusedInput.current !== "minute") {
+      setMinuteInput(String(m).padStart(2, "0"));
+    }
+  }, [value]);
+
+  useEffect(() => {
+    if (focusedInput.current !== "hour") {
+      setHourInput(String(hour12).padStart(2, "0"));
+    }
+  }, [hour12]);
+
+  useEffect(() => {
+    if (focusedInput.current !== "minute") {
+      setMinuteInput(String(minutes).padStart(2, "0"));
+    }
+  }, [minutes]);
+
+  useEffect(() => {
+    if (focusedInput.current !== "second") {
+      setSecondInput(String(seconds).padStart(2, "0"));
+    }
+  }, [seconds]);
+
   // Prevent past dates/months selection helper
   const now = new Date();
   const todayDateMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -51,22 +104,6 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
     return targetDate < todayDateMidnight;
   };
 
-  // Sync internal state if external value changes
-  useEffect(() => {
-    if (!value) return;
-    let d = new Date(value);
-    if (isNaN(d.getTime()) || d < new Date()) {
-      d = new Date();
-    }
-    setCurrentMonth(d.getMonth());
-    setCurrentYear(d.getFullYear());
-    setSelectedDay(d.getDate());
-    const h = d.getHours();
-    setHour12(h % 12 === 0 ? 12 : h % 12);
-    setMinutes(d.getMinutes());
-    setAmpm(h >= 12 ? "PM" : "AM");
-  }, [value]);
-
   // Update parent with YYYY-MM-DDTHH:mm format
   const applyDateTime = (
     day: number,
@@ -78,30 +115,6 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
   ) => {
     let militaryHour = h12 % 12;
     if (period === "PM") militaryHour += 12;
-
-    const currentTime = new Date();
-    let targetDate = new Date(year, month, day, militaryHour, m);
-
-    // If target date/time is in the past, clamp to current present time
-    if (targetDate < currentTime) {
-      targetDate = new Date();
-      day = targetDate.getDate();
-      month = targetDate.getMonth();
-      year = targetDate.getFullYear();
-      const h = targetDate.getHours();
-      militaryHour = h;
-      h12 = h % 12 === 0 ? 12 : h % 12;
-      m = targetDate.getMinutes();
-      period = h >= 12 ? "PM" : "AM";
-
-      // Sync local component state to clamped time
-      setSelectedDay(day);
-      setCurrentMonth(month);
-      setCurrentYear(year);
-      setHour12(h12);
-      setMinutes(m);
-      setAmpm(period);
-    }
 
     const formattedYear = String(year);
     const formattedMonth = String(month + 1).padStart(2, "0");
@@ -169,6 +182,94 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
   const toggleAmpm = (newAmpm: "AM" | "PM") => {
     setAmpm(newAmpm);
     applyDateTime(selectedDay, currentMonth, currentYear, hour12, minutes, newAmpm);
+  };
+
+  const handleHourChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/\D/g, "");
+    if (val.length > 2) return;
+    setHourInput(val);
+
+    if (val !== "") {
+      const num = parseInt(val, 10);
+      if (num >= 1 && num <= 12) {
+        setHour12(num);
+        applyDateTime(selectedDay, currentMonth, currentYear, num, minutes, ampm);
+      }
+    }
+  };
+
+  const handleHourBlur = () => {
+    focusedInput.current = null;
+    const num = parseInt(hourInput, 10);
+    let validH = hour12;
+    if (isNaN(num) || num < 1) {
+      validH = 12;
+    } else if (num > 12) {
+      validH = 12;
+    } else {
+      validH = num;
+    }
+    setHour12(validH);
+    setHourInput(String(validH).padStart(2, "0"));
+    applyDateTime(selectedDay, currentMonth, currentYear, validH, minutes, ampm);
+  };
+
+  const handleMinuteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/\D/g, "");
+    if (val.length > 2) return;
+    setMinuteInput(val);
+
+    if (val !== "") {
+      const num = parseInt(val, 10);
+      if (num >= 0 && num <= 59) {
+        setMinutes(num);
+        applyDateTime(selectedDay, currentMonth, currentYear, hour12, num, ampm);
+      }
+    }
+  };
+
+  const handleMinuteBlur = () => {
+    focusedInput.current = null;
+    const num = parseInt(minuteInput, 10);
+    let validM = minutes;
+    if (isNaN(num) || num < 0) {
+      validM = 0;
+    } else if (num > 59) {
+      validM = 59;
+    } else {
+      validM = num;
+    }
+    setMinutes(validM);
+    setMinuteInput(String(validM).padStart(2, "0"));
+    applyDateTime(selectedDay, currentMonth, currentYear, hour12, validM, ampm);
+  };
+
+  const handleSecondChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/\D/g, "");
+    if (val.length > 2) return;
+    setSecondInput(val);
+
+    if (val !== "") {
+      const num = parseInt(val, 10);
+      if (num >= 0 && num <= 59) {
+        setSeconds(num);
+      }
+    }
+  };
+
+  const handleSecondBlur = () => {
+    focusedInput.current = null;
+    const num = parseInt(secondInput, 10);
+    let validS = seconds;
+    if (isNaN(num) || num < 0) {
+      validS = 0;
+    } else if (num > 59) {
+      validS = 59;
+    } else {
+      validS = num;
+    }
+    setSeconds(validS);
+    setSecondInput(String(validS).padStart(2, "0"));
   };
 
   return (
@@ -276,83 +377,149 @@ export const ModernDateTimePicker: React.FC<ModernDateTimePickerProps> = ({
       {/* ─── 2. TIME SELECTOR CARD ────────────────────────────────────────── */}
       <div className="flex-1 min-w-[240px] bg-white rounded-2xl p-5 border border-neutral-200/60 shadow-sm flex flex-col justify-between">
         <div>
-          <div className="text-center font-extrabold text-sm text-neutral-900 mb-4 tracking-tight">
+          <div className="text-center font-extrabold text-sm text-neutral-900 mb-0.5 tracking-tight">
             Time
           </div>
+          <p className="text-[10px] font-semibold text-neutral-400 text-center mb-3">
+            Type value or use arrows
+          </p>
 
           {/* Time Spinner Columns */}
-          <div className="flex items-center justify-center gap-4 my-2">
+          <div className="flex items-center justify-center gap-2.5 my-2">
             {/* Hours Column */}
             <div className="flex flex-col items-center">
               <button
                 type="button"
                 onClick={incrementHour}
-                className="p-2 rounded-xl border border-neutral-200 hover:bg-neutral-100 text-neutral-800 transition-colors"
+                className="p-1.5 rounded-xl border border-neutral-200 hover:bg-neutral-100 text-neutral-800 transition-colors"
+                title="Increment hour"
               >
                 <ChevronUp className="w-4 h-4" />
               </button>
-              <span className="text-2xl font-black text-neutral-900 my-2">
-                {String(hour12).padStart(2, "0")}
-              </span>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={2}
+                value={hourInput}
+                onFocus={(e) => {
+                  focusedInput.current = "hour";
+                  e.target.select();
+                }}
+                onChange={handleHourChange}
+                onBlur={handleHourBlur}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowUp") { e.preventDefault(); incrementHour(); }
+                  if (e.key === "ArrowDown") { e.preventDefault(); decrementHour(); }
+                  if (e.key === "Enter") { e.currentTarget.blur(); }
+                }}
+                className="text-xl font-black text-neutral-900 my-1.5 w-12 h-11 text-center bg-neutral-50 border border-neutral-200 hover:bg-neutral-100 focus:bg-white focus:border-black focus:ring-2 focus:ring-black/10 rounded-xl outline-none transition-all font-mono shadow-sm"
+              />
               <span className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">
                 hour
               </span>
               <button
                 type="button"
                 onClick={decrementHour}
-                className="p-2 rounded-xl border border-neutral-200 hover:bg-neutral-100 text-neutral-800 transition-colors mt-2"
+                className="p-1.5 rounded-xl border border-neutral-200 hover:bg-neutral-100 text-neutral-800 transition-colors mt-1.5"
+                title="Decrement hour"
               >
                 <ChevronDown className="w-4 h-4" />
               </button>
             </div>
 
-            <span className="text-2xl font-bold text-neutral-300 -mt-4">:</span>
+            <span className="text-xl font-bold text-neutral-300 -mt-4">:</span>
 
             {/* Minutes Column */}
             <div className="flex flex-col items-center">
               <button
                 type="button"
                 onClick={incrementMinutes}
-                className="p-2 rounded-xl border border-neutral-200 hover:bg-neutral-100 text-neutral-800 transition-colors"
+                className="p-1.5 rounded-xl border border-neutral-200 hover:bg-neutral-100 text-neutral-800 transition-colors"
+                title="Increment minutes"
               >
                 <ChevronUp className="w-4 h-4" />
               </button>
-              <span className="text-2xl font-black text-neutral-900 my-2">
-                {String(minutes).padStart(2, "0")}
-              </span>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={2}
+                value={minuteInput}
+                onFocus={(e) => {
+                  focusedInput.current = "minute";
+                  e.target.select();
+                }}
+                onChange={handleMinuteChange}
+                onBlur={handleMinuteBlur}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowUp") { e.preventDefault(); incrementMinutes(); }
+                  if (e.key === "ArrowDown") { e.preventDefault(); decrementMinutes(); }
+                  if (e.key === "Enter") { e.currentTarget.blur(); }
+                }}
+                className="text-xl font-black text-neutral-900 my-1.5 w-12 h-11 text-center bg-neutral-50 border border-neutral-200 hover:bg-neutral-100 focus:bg-white focus:border-black focus:ring-2 focus:ring-black/10 rounded-xl outline-none transition-all font-mono shadow-sm"
+              />
               <span className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">
                 min
               </span>
               <button
                 type="button"
                 onClick={decrementMinutes}
-                className="p-2 rounded-xl border border-neutral-200 hover:bg-neutral-100 text-neutral-800 transition-colors mt-2"
+                className="p-1.5 rounded-xl border border-neutral-200 hover:bg-neutral-100 text-neutral-800 transition-colors mt-1.5"
+                title="Decrement minutes"
               >
                 <ChevronDown className="w-4 h-4" />
               </button>
             </div>
 
-            <span className="text-2xl font-bold text-neutral-300 -mt-4">:</span>
+            <span className="text-xl font-bold text-neutral-300 -mt-4">:</span>
 
             {/* Seconds Column */}
             <div className="flex flex-col items-center">
               <button
                 type="button"
-                onClick={() => setSeconds((s) => (s + 15) % 60)}
-                className="p-2 rounded-xl border border-neutral-200 hover:bg-neutral-100 text-neutral-800 transition-colors"
+                onClick={() => {
+                  const nextS = (seconds + 1) % 60;
+                  setSeconds(nextS);
+                }}
+                className="p-1.5 rounded-xl border border-neutral-200 hover:bg-neutral-100 text-neutral-800 transition-colors"
+                title="Increment seconds"
               >
                 <ChevronUp className="w-4 h-4" />
               </button>
-              <span className="text-2xl font-black text-neutral-900 my-2">
-                {String(seconds).padStart(2, "0")}
-              </span>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={2}
+                value={secondInput}
+                onFocus={(e) => {
+                  focusedInput.current = "second";
+                  e.target.select();
+                }}
+                onChange={handleSecondChange}
+                onBlur={handleSecondBlur}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setSeconds((s) => (s + 1) % 60);
+                  }
+                  if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    setSeconds((s) => (s < 1 ? 59 : s - 1));
+                  }
+                  if (e.key === "Enter") { e.currentTarget.blur(); }
+                }}
+                className="text-xl font-black text-neutral-900 my-1.5 w-12 h-11 text-center bg-neutral-50 border border-neutral-200 hover:bg-neutral-100 focus:bg-white focus:border-black focus:ring-2 focus:ring-black/10 rounded-xl outline-none transition-all font-mono shadow-sm"
+              />
               <span className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">
                 sec
               </span>
               <button
                 type="button"
-                onClick={() => setSeconds((s) => (s < 15 ? 45 : s - 15))}
-                className="p-2 rounded-xl border border-neutral-200 hover:bg-neutral-100 text-neutral-800 transition-colors mt-2"
+                onClick={() => {
+                  const prevS = seconds < 1 ? 59 : seconds - 1;
+                  setSeconds(prevS);
+                }}
+                className="p-1.5 rounded-xl border border-neutral-200 hover:bg-neutral-100 text-neutral-800 transition-colors mt-1.5"
+                title="Decrement seconds"
               >
                 <ChevronDown className="w-4 h-4" />
               </button>

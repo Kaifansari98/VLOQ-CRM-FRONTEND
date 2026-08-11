@@ -77,7 +77,8 @@ export interface BroadcastReader {
   id: number;
   user_id: number;
   broadcast_id: number;
-  read_at: string;
+  read_at?: string | null;
+  is_read?: boolean;
   user?: {
     id: number;
     user_name: string;
