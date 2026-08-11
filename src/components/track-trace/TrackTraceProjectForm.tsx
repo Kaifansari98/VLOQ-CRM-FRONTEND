@@ -405,53 +405,53 @@ export default function TrackTraceProjectForm({
     const project = projectData as any;
 
     form.reset({
-  projectName: project.project_name || "",
-  lead_id: project.lead_id || null,
-  order_no: project.order_no || "",
-  client_name: project.client_name || "",
-  client_address: project.client_address || "",
-  client_contact_no: project.client_contact_no || "",
+      projectName: project.project_name || "",
+      lead_id: project.lead_id || null,
+      order_no: project.order_no || "",
+      client_name: project.client_name || "",
+      client_address: project.client_address || "",
+      client_contact_no: project.client_contact_no || "",
 
-  packing_type:
-    project.packing_type ||
-    PackingType.DEFAULT,
+      packing_type:
+        project.packing_type ||
+        PackingType.DEFAULT,
 
-  no_of_boxes:
-    Number(project.no_of_boxes || 0),
+      no_of_boxes:
+        Number(project.no_of_boxes || 0),
 
-  box_info_fields:
-    project.box_info_fields?.map(
-      (
-        item: any,
-        index: number
-      ) => ({
-        id: Number(item.id),
+      box_info_fields:
+        project.box_info_fields?.map(
+          (
+            item: any,
+            index: number
+          ) => ({
+            id: Number(item.id),
 
-        field_label:
-          item.field_label ||
-          "",
+            field_label:
+              item.field_label ||
+              "",
 
-        field_type:
-          item.field_type ||
-          "TEXT",
+            field_type:
+              item.field_type ||
+              "TEXT",
 
-        is_required:
-          Boolean(
-            item.is_required
-          ),
+            is_required:
+              Boolean(
+                item.is_required
+              ),
 
-        sort_order:
-          item.sort_order ||
-          index + 1,
+            sort_order:
+              item.sort_order ||
+              index + 1,
 
-        active:
-          item.active ??
-          true,
-      })
-    ) || [],
+            active:
+              item.active ??
+              true,
+          })
+        ) || [],
 
-  file: [],
-});
+      file: [],
+    });
 
     if (project.lead) {
       setSelectedLeadFromProject(project.lead as ExtendedLeadOption);
@@ -1120,15 +1120,13 @@ export default function TrackTraceProjectForm({
                         min={0}
                         step={1}
                         placeholder="e.g., 10"
-                        value={field.value ?? 0}
+                        value={String(field.value ?? 0)}
                         disabled={isPending}
-                        onChange={(event) =>
-                          field.onChange(
-                            event.target.value === ""
-                              ? 0
-                              : Number(event.target.value)
-                          )
-                        }
+                        onChange={(event) => {
+                          const value = event.target.value;
+
+                          field.onChange(value === "" ? 0 : Number(value));
+                        }}
                         className="h-10"
                       />
                     </FormControl>
@@ -1168,167 +1166,167 @@ export default function TrackTraceProjectForm({
               />
 
               <div className="md:col-span-2 rounded-2xl border bg-muted/20 p-4">
-  <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-    <div>
-      <h3 className="text-sm font-semibold">
-        Box Information Fields
-      </h3>
+                <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold">
+                      Box Information Fields
+                    </h3>
 
-      <p className="mt-1 text-xs leading-5 text-muted-foreground">
-        Configure extra box fields for the mobile app. Example: Floor Name,
-        Room Name, Zone, Area, Tower, Flat No.
-      </p>
-    </div>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      Configure extra box fields for the mobile app. Example: Floor Name,
+                      Room Name, Zone, Area, Tower, Flat No.
+                    </p>
+                  </div>
 
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      disabled={isPending}
-      onClick={() =>
-        appendBoxInfoField({
-          field_label: "",
-          field_type: "TEXT",
-          is_required: false,
-          active: true,
-          sort_order: boxInfoFields.length + 1,
-        })
-      }
-    >
-      <Plus className="mr-2 h-4 w-4" />
-      Add New
-    </Button>
-  </div>
-
-  {boxInfoFields.length === 0 ? (
-    <div className="rounded-xl border border-dashed bg-background px-4 py-6 text-center">
-      <p className="text-sm font-medium">
-        No box information fields configured
-      </p>
-
-      <p className="mt-1 text-xs text-muted-foreground">
-        Click Add New to create fields that will appear in the mobile app while
-        creating or editing a box.
-      </p>
-    </div>
-  ) : (
-    <div className="space-y-3">
-      {boxInfoFields.map((item, index) => (
-        <div
-          key={item.id}
-          className="grid gap-3 rounded-xl border bg-background p-3 md:grid-cols-[1fr_150px_120px_44px]"
-        >
-          <FormField
-            control={form.control}
-            name={`box_info_fields.${index}.field_label`}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-xs">
-                  Field Name
-                </FormLabel>
-
-                <FormControl>
-                  <Input
-                    placeholder="e.g., Floor Name"
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
                     disabled={isPending}
-                    {...field}
-                    className="h-10"
-                  />
-                </FormControl>
-
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name={`box_info_fields.${index}.field_type`}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-xs">
-                  Type
-                </FormLabel>
-
-                <FormControl>
-                  <select
-                    value={field.value || "TEXT"}
-                    disabled={isPending}
-                    onChange={(event) =>
-                      field.onChange(event.target.value)
+                    onClick={() =>
+                      appendBoxInfoField({
+                        field_label: "",
+                        field_type: "TEXT",
+                        is_required: false,
+                        active: true,
+                        sort_order: boxInfoFields.length + 1,
+                      })
                     }
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <option value="TEXT">
-                      Text
-                    </option>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add New
+                  </Button>
+                </div>
 
-                    <option value="NUMBER">
-                      Number
-                    </option>
+                {boxInfoFields.length === 0 ? (
+                  <div className="rounded-xl border border-dashed bg-background px-4 py-6 text-center">
+                    <p className="text-sm font-medium">
+                      No box information fields configured
+                    </p>
 
-                    <option value="DATE">
-                      Date
-                    </option>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Click Add New to create fields that will appear in the mobile app while
+                      creating or editing a box.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {boxInfoFields.map((item, index) => (
+                      <div
+                        key={item.id}
+                        className="grid gap-3 rounded-xl border bg-background p-3 md:grid-cols-[1fr_150px_120px_44px]"
+                      >
+                        <FormField
+                          control={form.control}
+                          name={`box_info_fields.${index}.field_label`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">
+                                Field Name
+                              </FormLabel>
 
-                    <option value="TEXTAREA">
-                      Textarea
-                    </option>
-                  </select>
-                </FormControl>
+                              <FormControl>
+                                <Input
+                                  placeholder="e.g., Floor Name"
+                                  disabled={isPending}
+                                  {...field}
+                                  className="h-10"
+                                />
+                              </FormControl>
 
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
-          <FormField
-            control={form.control}
-            name={`box_info_fields.${index}.is_required`}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-xs">
-                  Required
-                </FormLabel>
+                        <FormField
+                          control={form.control}
+                          name={`box_info_fields.${index}.field_type`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">
+                                Type
+                              </FormLabel>
 
-                <FormControl>
-                  <label className="flex h-10 items-center gap-2 rounded-md border bg-background px-3 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(field.value)}
-                      disabled={isPending}
-                      onChange={(event) =>
-                        field.onChange(event.target.checked)
-                      }
-                      className="h-4 w-4"
-                    />
+                              <FormControl>
+                                <select
+                                  value={field.value || "TEXT"}
+                                  disabled={isPending}
+                                  onChange={(event) =>
+                                    field.onChange(event.target.value)
+                                  }
+                                  className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  <option value="TEXT">
+                                    Text
+                                  </option>
 
-                    Yes
-                  </label>
-                </FormControl>
+                                  <option value="NUMBER">
+                                    Number
+                                  </option>
 
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                                  <option value="DATE">
+                                    Date
+                                  </option>
 
-          <div className="flex items-end justify-end">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              disabled={isPending}
-              onClick={() => removeBoxInfoField(index)}
-              className="text-red-600 hover:bg-red-50 hover:text-red-700"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      ))}
-    </div>
-  )}
-</div>
+                                  <option value="TEXTAREA">
+                                    Textarea
+                                  </option>
+                                </select>
+                              </FormControl>
+
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name={`box_info_fields.${index}.is_required`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">
+                                Required
+                              </FormLabel>
+
+                              <FormControl>
+                                <label className="flex h-10 items-center gap-2 rounded-md border bg-background px-3 text-sm">
+                                  <input
+                                    type="checkbox"
+                                    checked={Boolean(field.value)}
+                                    disabled={isPending}
+                                    onChange={(event) =>
+                                      field.onChange(event.target.checked)
+                                    }
+                                    className="h-4 w-4"
+                                  />
+
+                                  Yes
+                                </label>
+                              </FormControl>
+
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <div className="flex items-end justify-end">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            disabled={isPending}
+                            onClick={() => removeBoxInfoField(index)}
+                            className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               <FormField
                 control={form.control}
