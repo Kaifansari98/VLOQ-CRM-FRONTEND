@@ -748,7 +748,7 @@ export default function SiteMeasurementLead() {
         statusType={activityType}
         vendorId={vendorId}
         franchiseId={lead?.franchise_id ?? null}
-        onSubmitRemark={(remark, dueDate) => {
+        onSubmitRemark={(remark, dueDate, selection) => {
           if (!vendorId || !userId || !accountId) return;
           updateStatusMutation.mutate(
             {
@@ -760,7 +760,7 @@ export default function SiteMeasurementLead() {
                 status: activityType === "onHold" ? "onHold" : "lost",
                 remark,
                 createdBy: userId,
-                ...(activityType === "onHold" ? { dueDate } : {}),
+                ...((activityType === "onHold") ? { dueDate, ...(selection ?? {}) } : {}),
               },
             },
             {

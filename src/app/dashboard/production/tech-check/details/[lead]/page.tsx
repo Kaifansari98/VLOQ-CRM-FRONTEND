@@ -1801,7 +1801,7 @@ export default function ClientApprovalLeadDetails() {
         open={activityModalOpen}
         onOpenChange={setActivityModalOpen}
         statusType={activityType}
-        onSubmitRemark={(remark, dueDate) => {
+        onSubmitRemark={(remark, dueDate, selection) => {
           if (!vendorId || !userId) {
             toastManager.add({
               title: "Vendor or User info is missing!",
@@ -1819,7 +1819,7 @@ export default function ClientApprovalLeadDetails() {
                 status: activityType,
                 remark,
                 createdBy: userId,
-                ...(activityType === "onHold" ? { dueDate } : {}),
+                ...((activityType === "onHold") ? { dueDate, ...(selection ?? {}) } : {}),
               },
             },
             {

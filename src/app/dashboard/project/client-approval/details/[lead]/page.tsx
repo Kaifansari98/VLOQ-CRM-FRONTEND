@@ -882,7 +882,7 @@ export default function ClientApprovalLeadDetails() {
         onOpenChange={setActivityModalOpen}
         statusType="onHold"
         loading={updateStatusMutation.isPending}
-        onSubmitRemark={(remark, dueDate) => {
+        onSubmitRemark={(remark, dueDate, selection) => {
           if (!vendorId || !userId) {
             toastManager.add({
               title: "Vendor or User info missing!",

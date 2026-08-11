@@ -52,14 +52,14 @@ type ScopedOnHoldItem = {
 };
 
 type ScopedOnHoldGroup = {
-  id: string;
+  id: number;
   title: string;
   items: ScopedOnHoldItem[];
 };
 
 export type ActivityStatusModalSelectionPayload = {
   applyToWholeLead: boolean;
-  selectedGroupIds: string[];
+  selectedGroupIds: number[];
   selectedItemIds: number[];
 };
 
@@ -107,8 +107,8 @@ const ActivityStatusModal: React.FC<Props> = ({
     const parsedLeadId = Number(rawLeadId);
     return Number.isFinite(parsedLeadId) ? parsedLeadId : undefined;
   }, [leadId, params?.lead, params?.leadId]);
-  const [expandedGroupIds, setExpandedGroupIds] = useState<string[]>([]);
-  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
+  const [expandedGroupIds, setExpandedGroupIds] = useState<number[]>([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([]);
   const [selectedItemIds, setSelectedItemIds] = useState<number[]>([]);
   const shouldShowScopedSelection =
     open && statusType === "onHold" && handlesLargeScaleProjects;
@@ -153,16 +153,23 @@ const ActivityStatusModal: React.FC<Props> = ({
       ? structureInstancesData.data
       : [];
 
-    const groups = new Map<string, ScopedOnHoldGroup>();
+    const groups = new Map<number, ScopedOnHoldGroup>();
 
     for (const instance of rawInstances as any[]) {
+      const productTypeId = Number(
+        instance.productType?.id ||
+          instance.productItemCode?.productStructure?.productType?.id ||
+          0,
+      );
+      if (!productTypeId) {
+        continue;
+      }
       const groupTitle =
         instance.productType?.type ||
         instance.productItemCode?.productStructure?.productType?.type ||
         "Other Items";
-      const groupId = String(groupTitle).trim().toLowerCase();
-      const existingGroup: ScopedOnHoldGroup = groups.get(groupId) ?? {
-        id: groupId,
+      const existingGroup: ScopedOnHoldGroup = groups.get(productTypeId) ?? {
+        id: productTypeId,
         title: groupTitle,
         items: [],
       };
@@ -182,7 +189,7 @@ const ActivityStatusModal: React.FC<Props> = ({
         }
       }
 
-      groups.set(groupId, existingGroup);
+      groups.set(productTypeId, existingGroup);
     }
 
     return Array.from(groups.values())
@@ -236,7 +243,7 @@ const ActivityStatusModal: React.FC<Props> = ({
     });
   }, [defaultLostRemark, form, open, statusType]);
 
-  const toggleGroupExpanded = (groupId: string) => {
+  const toggleGroupExpanded = (groupId: number) => {
     setExpandedGroupIds((current) =>
       current.includes(groupId)
         ? current.filter((id) => id !== groupId)
@@ -245,7 +252,7 @@ const ActivityStatusModal: React.FC<Props> = ({
   };
 
   const toggleGroupSelected = (
-    groupId: string,
+    groupId: number,
     itemIds: number[],
     checked: boolean,
   ) => {
@@ -263,7 +270,7 @@ const ActivityStatusModal: React.FC<Props> = ({
   };
 
   const toggleItemSelected = (
-    groupId: string,
+    groupId: number,
     itemId: number,
     groupItemIds: number[],
     checked: boolean,
