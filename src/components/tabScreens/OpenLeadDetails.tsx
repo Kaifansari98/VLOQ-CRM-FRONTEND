@@ -1387,7 +1387,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
           </BaseModal>
 
           {/* REQUIREMENT TYPES EDIT MODAL */}
-          {!handlesLargeScaleProjects && (
+          {!handlesLargeScaleProjects && isB2b && (
             <SectionCard
               title="Requirement Details"
               action={
