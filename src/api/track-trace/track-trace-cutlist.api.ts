@@ -144,9 +144,11 @@ export interface ProjectDetailData {
   stats: {
     total_panels: number; total_items: number;
     total_boxes: number; packed_boxes: number; unpacked_boxes: number;
+    total_weight?: number;
   };
   machines: {
     machine_id: number; machine_name: string; machine_type: string | null;
+    sequence_no: number;
     total: number; scanned: number; pending: number; pct: number;
   }[];
   boxes: {
@@ -154,6 +156,7 @@ export interface ProjectDetailData {
   box_name: string;
   box_status: string;
   items_count: number;
+  total_weight: number;
 
   factory_out_at: string | null;
   factory_out_by: string | null;
@@ -175,9 +178,13 @@ export interface ProjectDetailData {
     id: number; item_name: string; unique_code: string; description: string;
     qty: number; category: string; group: string;
     length: string; width: string; thickness: string;
+    weight: number;
+    package_box_id: number | null;
+    package_box_name: string | null;
     machines: {
       mapping_id: number; machine_id: number; machine_name: string;
       sequence_no: number; box_id: number | null;
+      weight: number;
       scanned: boolean; scanned_at: string | null; scanned_by: string | null;
     }[];
   }[];
@@ -197,18 +204,20 @@ export const getBoxItems = async (vendorId: number, projectId: string, boxId: nu
     `/track-trace/project-detail/${vendorId}/${projectId}/box/${boxId}`
   );
   return data.data as {
-    box: { id: number; box_name: string; box_status: string; factory_out_at: string | null; site_in_at: string | null };
+    box: { id: number; box_name: string; box_status: string; factory_out_at: string | null; site_in_at: string | null; total_weight?: number };
     items: {
       id: number;
       machine: { machine_name: string };
       actual_in_at: string | null;
       site_in_at: string | null;
+      weight?: number;
       inOperator: { id: number; name: string } | null;
       siteInByUser: { id: number; name: string } | null;
       cut_list: {
         id: number; item_name: string; unique_code: string;
         qty: number; category_name: string; group_name: string;
         length: string; width: string; thickness: string;
+        weight?: number;
       };
     }[];
   };

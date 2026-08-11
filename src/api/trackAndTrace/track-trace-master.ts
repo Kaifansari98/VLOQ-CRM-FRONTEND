@@ -138,6 +138,12 @@ export const updateTrackTraceProjectApi = async (
   formData.append("vendorId", String(payload.vendorId));
   formData.append("projectName", payload.projectName);
 formData.append("packing_type",payload.packing_type || PackingType.DEFAULT);
+  formData.append("no_of_boxes", String(Number((payload as any).no_of_boxes || 0)));
+
+  if (Array.isArray((payload as any).remove_box_ids)) {
+    formData.append("remove_box_ids", JSON.stringify((payload as any).remove_box_ids));
+  }
+
   if (payload.file) {
     formData.append("file", payload.file);
   }
@@ -189,6 +195,7 @@ export const createTrackTraceProjectApi = async (
   formData.append("vendorId", String(payload.vendorId));
   formData.append("projectName", payload.projectName);
   formData.append("packing_type",payload.packing_type || PackingType.DEFAULT);
+  formData.append("no_of_boxes", String(Number((payload as any).no_of_boxes || 0)));
 formData.append(
   "box_info_fields",
   JSON.stringify(payload.box_info_fields || [])
