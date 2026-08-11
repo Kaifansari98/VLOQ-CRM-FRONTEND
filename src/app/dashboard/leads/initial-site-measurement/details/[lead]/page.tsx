@@ -775,6 +775,10 @@ export default function SiteMeasurementLead() {
                         : "Lead marked as Lost!",
                   type: "success",
                 });
+                if (activityType === "onHold") {
+                  window.location.assign("/dashboard/leads/leadstable?tab=onHold");
+                  return;
+                }
                 queryClient.invalidateQueries({
                   queryKey: ["universal-stage-leads"],
                 });

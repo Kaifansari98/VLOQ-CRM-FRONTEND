@@ -914,6 +914,10 @@ export default function LeadDetails() {
                         : "Lead marked as Lost!",
                   type: "success",
                 });
+                if (status === "onHold") {
+                  window.location.assign("/dashboard/leads/leadstable?tab=onHold");
+                  return;
+                }
                 setActivityModalOpen(false);
               },
             },

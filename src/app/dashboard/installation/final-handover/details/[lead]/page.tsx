@@ -852,13 +852,7 @@ export default function FinalHandoverLeadDetails() {
             {
               onSuccess: () => {
                 toastManager.add({ title: "Lead marked as On Hold!", type: "success" });
-
-                setActivityModalOpen(false);
-
-                // Invalidate related queries to refresh UI
-                queryClient.invalidateQueries({
-                  queryKey: ["leadById", leadIdNum],
-                });
+                window.location.assign("/dashboard/leads/leadstable?tab=onHold");
               },
               onError: (err: any) => {
                 toastManager.add({ title: err?.message || "Failed to update lead status", type: "error" });

@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import BaseModal from "@/components/utils/baseModal";
 import z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
+import { useParams } from "next/navigation";
 import { apiClient } from "@/lib/apiClient";
 import {
   Form,
@@ -19,19 +20,48 @@ import TextAreaInput from "@/components/origin-text-area";
 import { Button } from "@/components/ui/button";
 import CustomeDatePicker from "../date-picker";
 import { useAppSelector } from "@/redux/store";
+import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   statusType: "onHold" | "lostApproval" | "lost"; // which action triggered
-  onSubmitRemark: (remark: string, dueDate?: string) => void; // callback
+  onSubmitRemark: (
+    remark: string,
+    dueDate?: string,
+    selection?: ActivityStatusModalSelectionPayload,
+  ) => void; // callback
   loading?: boolean;
   existingRemark?: string;
   existingRemarkLabel?: string;
   vendorId?: number;
   franchiseId?: number | null;
   hasAdmin?: boolean;
+  leadId?: number;
 }
+
+type ScopedOnHoldItem = {
+  id: number;
+  itemCode: string;
+  description?: string | null;
+  specification?: string | null;
+};
+
+type ScopedOnHoldGroup = {
+  id: string;
+  title: string;
+  items: ScopedOnHoldItem[];
+};
+
+export type ActivityStatusModalSelectionPayload = {
+  applyToWholeLead: boolean;
+  selectedGroupIds: string[];
+  selectedItemIds: number[];
+};
 
 const formSchema = z.object({
   remark: z.string().min(1, "Remark is required"),
@@ -49,7 +79,9 @@ const ActivityStatusModal: React.FC<Props> = ({
   vendorId,
   franchiseId,
   hasAdmin,
+  leadId,
 }) => {
+  const params = useParams<{ lead?: string; leadId?: string }>();
   const currentUserType = useAppSelector((state) => {
     const u = state.auth.user as any;
     const role =
@@ -63,6 +95,23 @@ const ActivityStatusModal: React.FC<Props> = ({
 
   const isCurrentAdmin =
     currentUserType === "admin" || currentUserType === "super-admin";
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const resolvedLeadId = useMemo(() => {
+    if (typeof leadId === "number" && Number.isFinite(leadId)) {
+      return leadId;
+    }
+
+    const rawLeadId = params?.leadId ?? params?.lead;
+    const parsedLeadId = Number(rawLeadId);
+    return Number.isFinite(parsedLeadId) ? parsedLeadId : undefined;
+  }, [leadId, params?.lead, params?.leadId]);
+  const [expandedGroupIds, setExpandedGroupIds] = useState<string[]>([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
+  const [selectedItemIds, setSelectedItemIds] = useState<number[]>([]);
+  const shouldShowScopedSelection =
+    open && statusType === "onHold" && handlesLargeScaleProjects;
 
   const { data: storeAdminExists = false } = useQuery({
     queryKey: ["franchise-admin-check", vendorId, franchiseId],
@@ -90,6 +139,73 @@ const ActivityStatusModal: React.FC<Props> = ({
       !!franchiseId &&
       (statusType === "lost" || statusType === "lostApproval"),
   });
+  const {
+    data: structureInstancesData,
+    isLoading: isStructureInstancesLoading,
+  } = useLeadProductStructureInstances(
+    resolvedLeadId,
+    vendorId,
+    shouldShowScopedSelection,
+  );
+
+  const itemGroups = useMemo(() => {
+    const rawInstances = Array.isArray(structureInstancesData?.data)
+      ? structureInstancesData.data
+      : [];
+
+    const groups = new Map<string, ScopedOnHoldGroup>();
+
+    for (const instance of rawInstances as any[]) {
+      const groupTitle =
+        instance.productType?.type ||
+        instance.productItemCode?.productStructure?.productType?.type ||
+        "Other Items";
+      const groupId = String(groupTitle).trim().toLowerCase();
+      const existingGroup: ScopedOnHoldGroup = groups.get(groupId) ?? {
+        id: groupId,
+        title: groupTitle,
+        items: [],
+      };
+
+      if (instance.productItemCode?.id) {
+        const alreadyExists = existingGroup.items.some(
+          (item) => item.id === instance.productItemCode.id,
+        );
+
+        if (!alreadyExists) {
+          existingGroup.items.push({
+            id: instance.productItemCode.id,
+            itemCode: instance.productItemCode.item_code,
+            description: instance.productItemCode.description,
+            specification: instance.productItemCode.specification,
+          });
+        }
+      }
+
+      groups.set(groupId, existingGroup);
+    }
+
+    return Array.from(groups.values())
+      .map((group) => ({
+        ...group,
+        items: group.items.sort((a, b) => a.itemCode.localeCompare(b.itemCode)),
+      }))
+      .sort((a, b) => a.title.localeCompare(b.title));
+  }, [structureInstancesData]);
+
+  useEffect(() => {
+    if (!shouldShowScopedSelection) {
+      setExpandedGroupIds([]);
+      setSelectedGroupIds([]);
+      setSelectedItemIds([]);
+      return;
+    }
+
+    setExpandedGroupIds((current) => {
+      if (current.length > 0) return current;
+      return itemGroups.map((group) => group.id);
+    });
+  }, [itemGroups, shouldShowScopedSelection]);
 
   const requiresApproval = isCurrentAdmin
     ? false
@@ -120,12 +236,92 @@ const ActivityStatusModal: React.FC<Props> = ({
     });
   }, [defaultLostRemark, form, open, statusType]);
 
+  const toggleGroupExpanded = (groupId: string) => {
+    setExpandedGroupIds((current) =>
+      current.includes(groupId)
+        ? current.filter((id) => id !== groupId)
+        : [...current, groupId],
+    );
+  };
+
+  const toggleGroupSelected = (
+    groupId: string,
+    itemIds: number[],
+    checked: boolean,
+  ) => {
+    setSelectedGroupIds((current) =>
+      checked
+        ? Array.from(new Set([...current, groupId]))
+        : current.filter((id) => id !== groupId),
+    );
+    setSelectedItemIds((current) => {
+      if (checked) {
+        return Array.from(new Set([...current, ...itemIds]));
+      }
+      return current.filter((id) => !itemIds.includes(id));
+    });
+  };
+
+  const toggleItemSelected = (
+    groupId: string,
+    itemId: number,
+    groupItemIds: number[],
+    checked: boolean,
+  ) => {
+    setSelectedItemIds((current) =>
+      checked
+        ? Array.from(new Set([...current, itemId]))
+        : current.filter((id) => id !== itemId),
+    );
+
+    setSelectedGroupIds((current) => {
+      const nextItemIds = checked
+        ? Array.from(new Set([...selectedItemIds, itemId]))
+        : selectedItemIds.filter((id) => id !== itemId);
+      const isEveryItemSelected = groupItemIds.every((id) =>
+        nextItemIds.includes(id),
+      );
+
+      if (isEveryItemSelected) {
+        return Array.from(new Set([...current, groupId]));
+      }
+
+      return current.filter((id) => id !== groupId);
+    });
+  };
+
+  const hasScopedSelection =
+    selectedGroupIds.length > 0 || selectedItemIds.length > 0;
+  const areAllItemGroupsSelected =
+    shouldShowScopedSelection &&
+    itemGroups.length > 0 &&
+    itemGroups.every((group) => {
+      const groupItemIds = group.items.map((item) => item.id);
+      return (
+        selectedGroupIds.includes(group.id) ||
+        (groupItemIds.length > 0 &&
+          groupItemIds.every((itemId) => selectedItemIds.includes(itemId)))
+      );
+    });
+  const isLargeScaleOnHoldSubmitDisabled =
+    shouldShowScopedSelection &&
+    (!form.watch("dueDate") || !hasScopedSelection);
+
   const handleSubmit = (values: z.infer<typeof formSchema>) => {
     if (statusType === "onHold" && !values.dueDate) {
       form.setError("dueDate", { message: "Follow-up date is required" });
       return;
     }
-    onSubmitRemark(values.remark, values.dueDate);
+
+    if (shouldShowScopedSelection && !hasScopedSelection) {
+      return;
+    }
+
+    onSubmitRemark(values.remark, values.dueDate, {
+      applyToWholeLead: areAllItemGroupsSelected,
+      selectedGroupIds,
+      selectedItemIds,
+    });
     form.reset();
     onOpenChange(false);
   };
@@ -155,7 +351,7 @@ const ActivityStatusModal: React.FC<Props> = ({
       onOpenChange={onOpenChange}
       title={titles[modalStatusType]}
       description={descriptions[modalStatusType]}
-      size="md"
+      size={shouldShowScopedSelection ? "lg" : "md"}
     >
       <div className="p-6 flex flex-col gap-4">
         <Form {...form}>
@@ -191,6 +387,125 @@ const ActivityStatusModal: React.FC<Props> = ({
               </div>
             )}
 
+            {shouldShowScopedSelection && (
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <FormLabel className="text-sm">
+                    Select Item Groups / Item Codes <span className="text-destructive">*</span>
+                  </FormLabel>
+                  <p className="text-xs text-muted-foreground">
+                    Choose the item groups or item codes to place on hold.
+                  </p>
+                </div>
+
+                {isStructureInstancesLoading ? (
+                  <div className="flex items-center gap-2 rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                    <Loader2 className="size-4 animate-spin" />
+                    Loading item groups...
+                  </div>
+                ) : itemGroups.length === 0 ? (
+                  <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                    No item groups found for this lead.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {itemGroups.map((group) => {
+                      const groupItemIds = group.items.map((item) => item.id);
+                      const checkedItemCount = groupItemIds.filter((id) =>
+                        selectedItemIds.includes(id),
+                      ).length;
+                      const isGroupChecked =
+                        groupItemIds.length > 0 &&
+                        checkedItemCount === groupItemIds.length;
+                      const isExpanded = expandedGroupIds.includes(group.id);
+
+                      return (
+                        <Collapsible
+                          key={group.id}
+                          open={isExpanded}
+                          onOpenChange={() => toggleGroupExpanded(group.id)}
+                        >
+                          <div className="rounded-xl border bg-background">
+                            <div className="flex items-center gap-3 p-4">
+                              <Checkbox
+                                checked={isGroupChecked || selectedGroupIds.includes(group.id)}
+                                onCheckedChange={(checked) =>
+                                  toggleGroupSelected(group.id, groupItemIds, checked === true)
+                                }
+                                aria-label={`Select ${group.title}`}
+                              />
+
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-semibold text-foreground">
+                                  {group.title}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {group.items.length} item code{group.items.length === 1 ? "" : "s"}
+                                </p>
+                              </div>
+
+                              <CollapsibleTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="size-8 shrink-0"
+                                  aria-label={isExpanded ? "Collapse item group" : "Expand item group"}
+                                >
+                                  <ChevronDown
+                                    className={cn(
+                                      "size-4 transition-transform",
+                                      isExpanded && "rotate-180",
+                                    )}
+                                  />
+                                </Button>
+                              </CollapsibleTrigger>
+                            </div>
+
+                            <CollapsibleContent>
+                              <div className="border-t bg-muted/20 px-4 py-3">
+                                <div className="space-y-2">
+                                  {group.items.map((item) => (
+                                    <label
+                                      key={item.id}
+                                      className="flex cursor-pointer items-start gap-3 rounded-lg border bg-background px-3 py-3"
+                                    >
+                                      <Checkbox
+                                        checked={selectedItemIds.includes(item.id)}
+                                        onCheckedChange={(checked) =>
+                                          toggleItemSelected(
+                                            group.id,
+                                            item.id,
+                                            groupItemIds,
+                                            checked === true,
+                                          )
+                                        }
+                                        aria-label={`Select ${item.itemCode}`}
+                                      />
+                                      <div className="min-w-0 flex-1">
+                                        <p className="text-sm font-medium text-foreground">
+                                          {item.itemCode}
+                                        </p>
+                                        {(item.description || item.specification) && (
+                                          <p className="mt-1 text-xs text-muted-foreground">
+                                            {item.description || item.specification}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                            </CollapsibleContent>
+                          </div>
+                        </Collapsible>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Remark */}
             <FormField
               control={form.control}
@@ -223,7 +538,11 @@ const ActivityStatusModal: React.FC<Props> = ({
               >
                 Cancel
               </Button>
-              <Button type="submit" className="text-sm" disabled={loading}>
+              <Button
+                type="submit"
+                className="text-sm"
+                disabled={loading || isLargeScaleOnHoldSubmitDisabled}
+              >
                 {buttonText[modalStatusType]}
               </Button>
             </div>

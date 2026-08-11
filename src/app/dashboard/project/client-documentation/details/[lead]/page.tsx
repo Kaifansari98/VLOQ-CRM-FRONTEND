@@ -731,11 +731,7 @@ export default function ClientDocumentationLeadDetails() {
                   title: "Lead marked On Hold!",
                   type: "success",
                 });
-                setActivityModalOpen(false);
-
-                queryClient.invalidateQueries({
-                  queryKey: ["leadById", leadIdNum],
-                });
+                window.location.assign("/dashboard/leads/leadstable?tab=onHold");
               },
               onError: (err) => {
                 toastManager.add({

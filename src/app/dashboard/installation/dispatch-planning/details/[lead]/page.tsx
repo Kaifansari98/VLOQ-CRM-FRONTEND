@@ -807,13 +807,7 @@ const isBlockActionPending =
                   title: "Lead marked as On Hold!",
                   type: "success",
                 });
-
-                setActivityModalOpen(false);
-
-                // Invalidate related queries to refresh UI
-                queryClient.invalidateQueries({
-                  queryKey: ["leadById", leadIdNum],
-                });
+                window.location.assign("/dashboard/leads/leadstable?tab=onHold");
               },
               onError: (err) => {
                 toastManager.add({

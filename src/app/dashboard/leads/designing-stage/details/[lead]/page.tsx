@@ -1129,6 +1129,10 @@ export default function DesigningStageLead() {
                         : "Lead marked as Lost!",
                   type: "success",
                 });
+                if (activityType === "onHold") {
+                  window.location.assign("/dashboard/leads/leadstable?tab=onHold");
+                  return;
+                }
                 setActivityModalOpen(false);
               },
             },

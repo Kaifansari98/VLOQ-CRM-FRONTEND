@@ -1224,13 +1224,7 @@ export default function UnderInstallationLeadDetails() {
                   title: "Lead marked as On Hold!",
                   type: "success",
                 });
-
-                setActivityModalOpen(false);
-
-                // Invalidate related queries to refresh UI
-                queryClient.invalidateQueries({
-                  queryKey: ["leadById"],
-                });
+                window.location.assign("/dashboard/leads/leadstable?tab=onHold");
               },
               onError: (err: any) => {
                 toastManager.add({
