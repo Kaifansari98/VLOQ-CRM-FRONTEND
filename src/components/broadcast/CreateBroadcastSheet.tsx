@@ -990,8 +990,47 @@ export const CreateBroadcastSheet: React.FC<CreateBroadcastSheetProps> = ({
                   </div>
                 )}
 
-                <div className="text-xs space-y-3 leading-relaxed p-4 rounded-xl border bg-muted/10 rich-text-container break-words w-full max-h-[250px] overflow-y-auto min-h-[100px]">
+                <div className="ql-editor ql-snow text-sm leading-relaxed p-4 rounded-xl border bg-muted/10 rich-text-container w-full max-h-[250px] overflow-y-auto min-h-[100px]">
                   <div dangerouslySetInnerHTML={{ __html: content || "<p className='text-muted-foreground'>Broadcast body preview...</p>" }} />
+                  <style dangerouslySetInnerHTML={{ __html: `
+                    .rich-text-container * {
+                      max-width: 100% !important;
+                      overflow-wrap: break-word !important;
+                      word-break: normal !important;
+                      hyphens: none !important;
+                      -webkit-hyphens: none !important;
+                    }
+                    .rich-text-container p {
+                      margin-top: 0 !important;
+                      margin-bottom: 0.75rem !important;
+                      line-height: 1.6 !important;
+                    }
+                    .rich-text-container p:last-child {
+                      margin-bottom: 0 !important;
+                    }
+                    .rich-text-container u {
+                      text-decoration: underline;
+                    }
+                    .rich-text-container s, .rich-text-container strike {
+                      text-decoration: line-through;
+                    }
+                    .rich-text-container strong, .rich-text-container b {
+                      font-weight: 700;
+                    }
+                    .rich-text-container em, .rich-text-container i {
+                      font-style: italic;
+                    }
+                    .rich-text-container ol {
+                      list-style-type: decimal;
+                      padding-left: 1.25rem;
+                      margin-bottom: 0.75rem;
+                    }
+                    .rich-text-container ul {
+                      list-style-type: disc;
+                      padding-left: 1.25rem;
+                      margin-bottom: 0.75rem;
+                    }
+                  `}} />
                 </div>
 
                 {videoLinks && videoLinks.length > 0 && (

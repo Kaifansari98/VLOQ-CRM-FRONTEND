@@ -176,6 +176,7 @@ export interface SubmitDesignPayload {
   userId: number;
   designType?: "2D" | "3D" | "2D + 3D";
   productStructureInstanceIds?: number[] | string[];
+  specificationId?: number | null;
 }
 
 export const submitDesigns = async (payload: SubmitDesignPayload) => {
@@ -195,6 +196,10 @@ export const submitDesigns = async (payload: SubmitDesignPayload) => {
   payload.productStructureInstanceIds?.forEach((instanceId) => {
     formData.append("product_structure_instance_ids", String(instanceId));
   });
+
+  if (payload.specificationId) {
+    formData.append("specification_id", payload.specificationId.toString());
+  }
 
   const { data } = await apiClient.post(
     "/leads/designing-stage/upload-designs",
@@ -626,18 +631,31 @@ export type LightsRemark =
   | "Not in our scope"
   | "Provide only grooves";
 
+export type SpecificationSectionRemark = LightsRemark;
+export type SpecificationSectionType =
+  | "appliances"
+  | "stone"
+  | "sinks"
+  | "faucets";
+
 export interface LeadSpecificationEntry {
   id: number;
   vendor_id: number;
   lead_id: number;
   name: string;
   lights_remark: LightsRemark | null;
+  appliances_remark: SpecificationSectionRemark | null;
+  stone_remark: SpecificationSectionRemark | null;
+  sinks_remark: SpecificationSectionRemark | null;
+  faucets_remark: SpecificationSectionRemark | null;
   item_code_id: number | null;
   productItemCode?: { id: number; item_code: string } | null;
   created_at: string;
   created_by: number;
   is_latest_for_item_code?: boolean;
   is_editable?: boolean;
+  is_completed?: boolean;
+  completed_marked_at?: string | null;
 }
 
 export const getLeadSpecifications = async (
@@ -677,13 +695,46 @@ export const updateLeadSpecificationLightsRemark = async (
   return data?.data;
 };
 
+export const updateLeadSpecificationSectionRemark = async (
+  specsId: number,
+  section: SpecificationSectionType,
+  remark: SpecificationSectionRemark,
+): Promise<LeadSpecificationEntry> => {
+  const { data } = await apiClient.put(
+    `/leads/designing-stage/specifications/${specsId}/section-remark`,
+    { section, remark },
+  );
+
+  return data?.data;
+};
+
+export const markLeadSpecificationCompleted = async (
+  specsId: number,
+): Promise<LeadSpecificationEntry> => {
+  const { data } = await apiClient.put(
+    `/leads/designing-stage/specifications/${specsId}/mark-completed`,
+    {},
+  );
+
+  return data?.data;
+};
+
 export interface LeadCarcassMaterialMappingEntry {
   id: number;
   vendor_id: number;
   lead_id: number;
+  specs_id: number;
   carcass_type_id: number;
   carcas_material_id: number;
   carcass_material_finish_id: number;
+  is_approved: boolean;
+  approved_at: string | null;
+  is_amended: boolean;
+  amended_at: string | null;
+  amended_remark?: string | null;
+  is_deleted_item: boolean;
+  deleted_item_at: string | null;
+  deleted_remark?: string | null;
   created_at: string;
   created_by: number;
   carcassType?: { id: number; name: string };
@@ -695,18 +746,25 @@ export interface UpsertLeadCarcassMaterialMappingPayload {
   id?: number;
   vendor_id: number;
   lead_id: number;
+  specs_id: number;
   carcass_type_id: number;
   carcas_material_id: number;
   carcass_material_finish_id: number;
   created_by: number;
+  is_approved?: boolean;
+  is_amended?: boolean;
+  amended_remark?: string | null;
+  is_deleted_item?: boolean;
+  deleted_remark?: string | null;
 }
 
 export const getLeadCarcassMaterialMappings = async (
   vendorId: number,
   leadId: number,
+  specsId: number,
 ): Promise<LeadCarcassMaterialMappingEntry[]> => {
   const { data } = await apiClient.get(
-    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/carcass-material-mappings`,
+    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/specs/${specsId}/carcass-material-mappings`,
   );
 
   return Array.isArray(data?.data) ? data.data : [];
@@ -726,9 +784,18 @@ export interface LeadShutterMaterialMappingEntry {
   id: number;
   vendor_id: number;
   lead_id: number;
+  specs_id: number;
   shutter_type_id: number;
   shutter_material_id: number;
   shutter_material_finish_id: number;
+  is_approved: boolean;
+  approved_at: string | null;
+  is_amended: boolean;
+  amended_at: string | null;
+  amended_remark?: string | null;
+  is_deleted_item: boolean;
+  deleted_item_at: string | null;
+  deleted_remark?: string | null;
   created_at: string;
   created_by: number;
   shutterType?: { id: number; name: string };
@@ -740,18 +807,25 @@ export interface UpsertLeadShutterMaterialMappingPayload {
   id?: number;
   vendor_id: number;
   lead_id: number;
+  specs_id: number;
   shutter_type_id: number;
   shutter_material_id: number;
   shutter_material_finish_id: number;
   created_by: number;
+  is_approved?: boolean;
+  is_amended?: boolean;
+  amended_remark?: string | null;
+  is_deleted_item?: boolean;
+  deleted_remark?: string | null;
 }
 
 export const getLeadShutterMaterialMappings = async (
   vendorId: number,
   leadId: number,
+  specsId: number,
 ): Promise<LeadShutterMaterialMappingEntry[]> => {
   const { data } = await apiClient.get(
-    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/shutter-material-mappings`,
+    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/specs/${specsId}/shutter-material-mappings`,
   );
 
   return Array.isArray(data?.data) ? data.data : [];
@@ -771,10 +845,19 @@ export interface LeadHardwareMappingEntry {
   id: number;
   vendor_id: number;
   lead_id: number;
+  specs_id: number;
   carcass_legs_id: number;
   skirting_carcass_legs_id: number;
   skirting_carcass_legs_color_id: number | null;
   note: string | null;
+  is_approved: boolean;
+  approved_at: string | null;
+  is_amended: boolean;
+  amended_at: string | null;
+  amended_remark?: string | null;
+  is_deleted_item: boolean;
+  deleted_item_at: string | null;
+  deleted_remark?: string | null;
   created_at: string;
   created_by: number;
   carcassLegs?: { id: number; name: string };
@@ -786,19 +869,26 @@ export interface UpsertLeadHardwareMappingPayload {
   id?: number;
   vendor_id: number;
   lead_id: number;
+  specs_id: number;
   carcass_legs_id: number;
   skirting_carcass_legs_id: number;
   skirting_carcass_legs_color_id?: number | null;
   note?: string | null;
   created_by: number;
+  is_approved?: boolean;
+  is_amended?: boolean;
+  amended_remark?: string | null;
+  is_deleted_item?: boolean;
+  deleted_remark?: string | null;
 }
 
 export const getLeadHardwareMappings = async (
   vendorId: number,
   leadId: number,
+  specsId: number,
 ): Promise<LeadHardwareMappingEntry[]> => {
   const { data } = await apiClient.get(
-    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/hardware-mappings`,
+    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/specs/${specsId}/hardware-mappings`,
   );
 
   return Array.isArray(data?.data) ? data.data : [];
@@ -819,7 +909,16 @@ export interface LeadLightCarcasUnitMappingEntry {
   vendor_id: number;
   lead_id: number;
   specs_id: number;
-  light_carcas_unit_master_id: number;
+  light_carcas_unit_master_id: number | null;
+  custom_remark?: string | null;
+  is_approved: boolean;
+  approved_at: string | null;
+  is_amended: boolean;
+  amended_at: string | null;
+  amended_remark?: string | null;
+  is_deleted_item: boolean;
+  deleted_item_at: string | null;
+  deleted_remark?: string | null;
   created_at: string;
   created_by: number;
   lightCarcasUnit?: {
@@ -827,7 +926,7 @@ export interface LeadLightCarcasUnitMappingEntry {
     type: string;
     light_carcas_type_id: number;
     lightCarcasType?: { id: number; type: string };
-  };
+  } | null;
 }
 
 export interface UpsertLeadLightCarcasUnitMappingPayload {
@@ -835,8 +934,14 @@ export interface UpsertLeadLightCarcasUnitMappingPayload {
   vendor_id: number;
   lead_id: number;
   specs_id: number;
-  light_carcas_unit_master_id: number;
+  light_carcas_unit_master_id?: number | null;
+  custom_remark?: string | null;
   created_by: number;
+  is_approved?: boolean;
+  is_amended?: boolean;
+  amended_remark?: string | null;
+  is_deleted_item?: boolean;
+  deleted_remark?: string | null;
 }
 
 export const getLeadLightCarcasUnitMappings = async (
@@ -866,7 +971,17 @@ export interface LeadOtherAppliancesMappingEntry {
   vendor_id: number;
   lead_id: number;
   specs_id: number;
-  other_appliances_master_id: number;
+  other_appliance_type?: string | null;
+  other_appliances_master_id: number | null;
+  custom_remark?: string | null;
+  is_approved: boolean;
+  approved_at: string | null;
+  is_amended: boolean;
+  amended_at: string | null;
+  amended_remark?: string | null;
+  is_deleted_item: boolean;
+  deleted_item_at: string | null;
+  deleted_remark?: string | null;
   created_at: string;
   created_by: number;
   otherAppliances?: {
@@ -874,7 +989,7 @@ export interface LeadOtherAppliancesMappingEntry {
     type: string;
     article_number: string;
     description: string;
-  };
+  } | null;
 }
 
 export interface UpsertLeadOtherAppliancesMappingPayload {
@@ -882,8 +997,15 @@ export interface UpsertLeadOtherAppliancesMappingPayload {
   vendor_id: number;
   lead_id: number;
   specs_id: number;
-  other_appliances_master_id: number;
+  other_appliance_type?: string | null;
+  other_appliances_master_id?: number | null;
+  custom_remark?: string | null;
   created_by: number;
+  is_approved?: boolean;
+  is_amended?: boolean;
+  amended_remark?: string | null;
+  is_deleted_item?: boolean;
+  deleted_remark?: string | null;
 }
 
 export const getLeadOtherAppliancesMappings = async (

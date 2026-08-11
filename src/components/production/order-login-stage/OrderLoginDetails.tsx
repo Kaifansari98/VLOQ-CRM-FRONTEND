@@ -11,8 +11,21 @@ import { useTechCheckInstanceStatus } from "@/api/tech-check";
 import { useAppSelector } from "@/redux/store";
 import { useClientDocumentationDetails } from "@/hooks/client-documentation/use-clientdocumentation";
 import { useLeadById, useLeadSuperAdminApprovalLockIns } from "@/hooks/useLeadsQueries";
+import { useUpdateSoValueReceivedStatus } from "@/api/production/order-login";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { toastManager } from "@/components/ui/toast";
 
 interface OrderLoginDetailsProps {
   leadId: number;
@@ -48,6 +61,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
+  const updateSoValueReceived = useUpdateSoValueReceivedStatus(vendorId, leadId);
   const {
     data: orderLoginLockIns = [],
     isLoading: orderLoginLockInsLoading,
@@ -66,6 +80,9 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   const hasMultipleInstances = (clientDocs?.instance_count ?? 0) > 1;
   const [activeInstanceId, setActiveInstanceId] = useState<number | null>(
     resolvedInstanceId,
+  );
+  const [pendingSoValueState, setPendingSoValueState] = useState<boolean | null>(
+    null,
   );
 
   useEffect(() => {
@@ -184,6 +201,8 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
           leadId={leadId}
           accountId={accountId}
           instanceId={scopedInstanceId}
+          orderLoginApprovalPending={isOrderLoginLocked}
+          orderLoginApprovalPendingTooltip={lockedTabsTooltip}
         />
       ),
     },
@@ -200,10 +219,77 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
           leadId={leadId}
           accountId={accountId}
           instanceId={scopedInstanceId}
+          orderLoginApprovalPending={isOrderLoginLocked}
+          orderLoginApprovalPendingTooltip={lockedTabsTooltip}
         />
       ),
     },
   ];
+
+  const lead = leadResponse?.data?.lead;
+  const isSoValueReceived = lead?.is_so_value_received === true;
+  const soValueReceivedAt = lead?.so_value_received_at ?? null;
+  const normalizedUserType = userType?.toLowerCase() ?? "";
+  const canFullyManageSoValue = normalizedUserType === "super-admin";
+  const canCheckSoValueOnly =
+    normalizedUserType === "sales-executive" ||
+    normalizedUserType === "backend";
+  const canToggleSoValue =
+    canFullyManageSoValue || (canCheckSoValueOnly && !isSoValueReceived);
+  const formatSoValueReceivedAt = (value: string | null) => {
+    if (!value) return "";
+
+    return new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    })
+      .format(new Date(value))
+      .replace(", ", " - ");
+  };
+
+  const persistSoValueToggle = async (checked: boolean) => {
+    if (!userId) return;
+
+    try {
+      await updateSoValueReceived.mutateAsync({
+        is_so_value_received: checked,
+        updated_by: userId,
+      });
+      toastManager.add({
+        title: checked
+          ? "SO value marked as sent."
+          : "SO value marked as not sent.",
+        type: "success",
+      });
+    } catch (error: any) {
+      toastManager.add({
+        title:
+          error?.response?.data?.message ||
+          error?.message ||
+          "Failed to update SO value status.",
+        type: "error",
+      });
+    }
+  };
+
+  const handleSoValueToggleIntent = (checked: boolean) => {
+    if (!canToggleSoValue) return;
+    if (checked === isSoValueReceived) return;
+    setPendingSoValueState(checked);
+  };
+
+  const handleConfirmSoValueToggle = async () => {
+    if (pendingSoValueState === null) return;
+
+    const nextValue = pendingSoValueState;
+    setPendingSoValueState(null);
+    await persistSoValueToggle(nextValue);
+  };
 
   return (
     <div className="space-y-6 bg-[#fff] dark:bg-[#0a0a0a]">
@@ -274,7 +360,64 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
         defaultTabId={resolvedDefaultTab}
         className="-mt-3"
         items={tabItems}
+        headerRight={
+          <div className="flex items-start gap-3 xl:pt-1 -mt-3">
+            <Checkbox
+              checked={isSoValueReceived}
+              disabled={
+                updateSoValueReceived.isPending || !userId || !canToggleSoValue
+              }
+              onCheckedChange={(checked) =>
+                handleSoValueToggleIntent(checked === true)
+              }
+              className="mt-1 data-[state=checked]:bg-[#000000] data-[state=checked]:border-[#8F8F8F]"
+            />
+            <div>
+              <p className="text-[15px] font-medium text-foreground">
+                SO Value Sent?
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {isSoValueReceived && soValueReceivedAt
+                  ? formatSoValueReceivedAt(soValueReceivedAt)
+                  : "Currently SO value is considered as not sent."}
+              </p>
+            </div>
+          </div>
+        }
       />
+
+      <AlertDialog
+        open={pendingSoValueState !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingSoValueState(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingSoValueState
+                ? "Mark SO Value as sent?"
+                : "Mark SO Value as not sent?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingSoValueState
+                ? "This will mark SO Value Sent as checked and store the current timestamp."
+                : "This will uncheck SO Value Sent and clear the saved timestamp."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updateSoValueReceived.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmSoValueToggle}
+              disabled={updateSoValueReceived.isPending}
+            >
+              {updateSoValueReceived.isPending ? "Saving..." : "Confirm"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

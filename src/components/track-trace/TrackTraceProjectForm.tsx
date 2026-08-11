@@ -93,6 +93,13 @@ const projectFormSchema = z.object({
     z.enum(
       PackingType
     ),
+
+  no_of_boxes: z.coerce
+    .number()
+    .int("No of boxes must be an integer")
+    .min(0, "No of boxes cannot be negative")
+    .default(0),
+
   box_info_fields: z
     .array(boxInfoFieldSchema)
     .default([]),
@@ -135,6 +142,15 @@ type TrackTraceProjectFormProps = {
 type ExtendedLeadOption = TrackTraceLeadOption & {
   lastname?: string | null;
   site_address?: string | null;
+};
+
+type BoxRemovalOption = {
+  id: number;
+  box_name: string;
+  sequence_no: number;
+  box_status?: string | null;
+  item_count: number;
+  can_remove: boolean;
 };
 
 function LeadSearchBox({
@@ -349,6 +365,12 @@ export default function TrackTraceProjectForm({
   const [selectedLeadFromProject, setSelectedLeadFromProject] =
     useState<ExtendedLeadOption | null>(null);
 
+  const [boxRemovalDialogOpen, setBoxRemovalDialogOpen] = useState(false);
+  const [boxRemovalOptions, setBoxRemovalOptions] = useState<BoxRemovalOption[]>([]);
+  const [boxRemovalRequiredCount, setBoxRemovalRequiredCount] = useState(0);
+  const [selectedRemoveBoxIds, setSelectedRemoveBoxIds] = useState<number[]>([]);
+  const [pendingUpdatePayload, setPendingUpdatePayload] = useState<any | null>(null);
+
   const form = useForm<ProjectFormInput, unknown, ProjectFormData>({
     resolver: zodResolver(projectFormSchema),
     defaultValues: {
@@ -359,6 +381,7 @@ export default function TrackTraceProjectForm({
       client_address: "",
       client_contact_no: "",
       packing_type: PackingType.DEFAULT,
+      no_of_boxes: 0,
       box_info_fields: [],
       file: [],
     },
@@ -382,50 +405,53 @@ export default function TrackTraceProjectForm({
     const project = projectData as any;
 
     form.reset({
-  projectName: project.project_name || "",
-  lead_id: project.lead_id || null,
-  order_no: project.order_no || "",
-  client_name: project.client_name || "",
-  client_address: project.client_address || "",
-  client_contact_no: project.client_contact_no || "",
+      projectName: project.project_name || "",
+      lead_id: project.lead_id || null,
+      order_no: project.order_no || "",
+      client_name: project.client_name || "",
+      client_address: project.client_address || "",
+      client_contact_no: project.client_contact_no || "",
 
-  packing_type:
-    project.packing_type ||
-    PackingType.DEFAULT,
+      packing_type:
+        project.packing_type ||
+        PackingType.DEFAULT,
 
-  box_info_fields:
-    project.box_info_fields?.map(
-      (
-        item: any,
-        index: number
-      ) => ({
-        id: Number(item.id),
+      no_of_boxes:
+        Number(project.no_of_boxes || 0),
 
-        field_label:
-          item.field_label ||
-          "",
+      box_info_fields:
+        project.box_info_fields?.map(
+          (
+            item: any,
+            index: number
+          ) => ({
+            id: Number(item.id),
 
-        field_type:
-          item.field_type ||
-          "TEXT",
+            field_label:
+              item.field_label ||
+              "",
 
-        is_required:
-          Boolean(
-            item.is_required
-          ),
+            field_type:
+              item.field_type ||
+              "TEXT",
 
-        sort_order:
-          item.sort_order ||
-          index + 1,
+            is_required:
+              Boolean(
+                item.is_required
+              ),
 
-        active:
-          item.active ??
-          true,
-      })
-    ) || [],
+            sort_order:
+              item.sort_order ||
+              index + 1,
 
-  file: [],
-});
+            active:
+              item.active ??
+              true,
+          })
+        ) || [],
+
+      file: [],
+    });
 
     if (project.lead) {
       setSelectedLeadFromProject(project.lead as ExtendedLeadOption);
@@ -511,6 +537,148 @@ export default function TrackTraceProjectForm({
     return true;
   };
 
+
+  const openBoxRemovalSelection = (
+    response: any,
+    attemptedPayload: any
+  ) => {
+    const selectionData =
+      response?.data?.requires_box_removal_selection
+        ? response.data
+        : response?.response?.data?.data?.requires_box_removal_selection
+          ? response.response.data.data
+          : response?.data?.data?.requires_box_removal_selection
+            ? response.data.data
+            : null;
+
+    if (!selectionData) {
+      return false;
+    }
+
+    const boxes = Array.isArray(selectionData.boxes)
+      ? selectionData.boxes
+      : [];
+
+    setPendingUpdatePayload(attemptedPayload);
+    setBoxRemovalOptions(boxes);
+    setBoxRemovalRequiredCount(Number(selectionData.remove_count || 0));
+    setSelectedRemoveBoxIds([]);
+    setBoxRemovalDialogOpen(true);
+
+    toastManager.add({
+      title:
+        response?.message ||
+        response?.response?.data?.message ||
+        "Select empty boxes to remove",
+      type: "error",
+    });
+
+    return true;
+  };
+
+  const submitProjectUpdate = (payload: any) => {
+    if (!uniqueProjectId) {
+      toastManager.add({
+        title: "Project ID not found",
+        type: "error",
+      });
+
+      return;
+    }
+
+    updateProject(
+      {
+        uniqueProjectId,
+        payload,
+      },
+      {
+        onSuccess: (response: any) => {
+          if (openBoxRemovalSelection(response, payload)) {
+            return;
+          }
+
+          toastManager.add({
+            title: response?.message || "Project updated successfully",
+            type: "success",
+          });
+
+          router.push("/dashboard/track-trace/manage-project");
+        },
+        onError: (error: any) => {
+          if (openBoxRemovalSelection(error?.response?.data || error, payload)) {
+            return;
+          }
+
+          const errorMessage =
+            error?.response?.data?.message ||
+            error?.message ||
+            "Failed to update project";
+
+          toastManager.add({
+            title: errorMessage,
+            type: "error",
+          });
+        },
+      }
+    );
+  };
+
+  const toggleRemoveBoxSelection = (
+    boxId: number,
+    canRemove: boolean
+  ) => {
+    if (!canRemove || isPending) {
+      return;
+    }
+
+    setSelectedRemoveBoxIds((previous) => {
+      if (previous.includes(boxId)) {
+        return previous.filter((id) => id !== boxId);
+      }
+
+      if (previous.length >= boxRemovalRequiredCount) {
+        toastManager.add({
+          title: `You can select only ${boxRemovalRequiredCount} box${boxRemovalRequiredCount > 1 ? "es" : ""}`,
+          type: "error",
+        });
+
+        return previous;
+      }
+
+      return [...previous, boxId];
+    });
+  };
+
+  const handleConfirmBoxRemoval = () => {
+    if (!pendingUpdatePayload) {
+      return;
+    }
+
+    if (selectedRemoveBoxIds.length !== boxRemovalRequiredCount) {
+      toastManager.add({
+        title: `Please select ${boxRemovalRequiredCount} empty box${boxRemovalRequiredCount > 1 ? "es" : ""}`,
+        type: "error",
+      });
+
+      return;
+    }
+
+    setBoxRemovalDialogOpen(false);
+
+    submitProjectUpdate({
+      ...pendingUpdatePayload,
+      remove_box_ids: selectedRemoveBoxIds,
+    });
+  };
+
+  const handleCancelBoxRemoval = () => {
+    setBoxRemovalDialogOpen(false);
+    setPendingUpdatePayload(null);
+    setSelectedRemoveBoxIds([]);
+    setBoxRemovalOptions([]);
+    setBoxRemovalRequiredCount(0);
+  };
+
   const onSubmit = (data: ProjectFormData) => {
     if (!vendorId) {
       toastManager.add({
@@ -540,6 +708,7 @@ export default function TrackTraceProjectForm({
       client_address: data.client_address?.trim() || undefined,
       client_contact_no: data.client_contact_no?.trim() || undefined,
       packing_type: data.packing_type,
+      no_of_boxes: Number(data.no_of_boxes || 0),
       box_info_fields:
         data.box_info_fields
           ?.filter(
@@ -589,33 +758,7 @@ export default function TrackTraceProjectForm({
         return;
       }
 
-      updateProject(
-        {
-          uniqueProjectId,
-          payload,
-        },
-        {
-          onSuccess: (response: any) => {
-            toastManager.add({
-              title: response?.message || "Project updated successfully",
-              type: "success",
-            });
-
-            router.push("/dashboard/track-trace/manage-project");
-          },
-          onError: (error: any) => {
-            const errorMessage =
-              error?.response?.data?.message ||
-              error?.message ||
-              "Failed to update project";
-
-            toastManager.add({
-              title: errorMessage,
-              type: "error",
-            });
-          },
-        }
-      );
+      submitProjectUpdate(payload);
 
       return;
     }
@@ -872,6 +1015,7 @@ export default function TrackTraceProjectForm({
                   </FormItem>
                 )}
               />
+              <br />
 
               <FormField
                 control={form.control}
@@ -960,6 +1104,46 @@ export default function TrackTraceProjectForm({
 
               <FormField
                 control={form.control}
+                name="no_of_boxes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      No of Boxes{" "}
+                      <span className="text-xs text-muted-foreground">
+                        (optional)
+                      </span>
+                    </FormLabel>
+
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={0}
+                        step={1}
+                        placeholder="e.g., 10"
+                        value={String(field.value ?? 0)}
+                        disabled={isPending}
+                        onChange={(event) => {
+                          const value = event.target.value;
+
+                          field.onChange(value === "" ? 0 : Number(value));
+                        }}
+                        className="h-10"
+                      />
+                    </FormControl>
+
+                    <p className="text-xs leading-5 text-muted-foreground">
+                      When creating a project, boxes will be generated as 1, 2,
+                      3... up to this number. While editing, reducing this
+                      number will require selecting empty boxes to remove.
+                    </p>
+
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="client_address"
                 render={({ field }) => (
                   <FormItem className="md:col-span-2">
@@ -982,167 +1166,167 @@ export default function TrackTraceProjectForm({
               />
 
               <div className="md:col-span-2 rounded-2xl border bg-muted/20 p-4">
-  <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-    <div>
-      <h3 className="text-sm font-semibold">
-        Box Information Fields
-      </h3>
+                <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold">
+                      Box Information Fields
+                    </h3>
 
-      <p className="mt-1 text-xs leading-5 text-muted-foreground">
-        Configure extra box fields for the mobile app. Example: Floor Name,
-        Room Name, Zone, Area, Tower, Flat No.
-      </p>
-    </div>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      Configure extra box fields for the mobile app. Example: Floor Name,
+                      Room Name, Zone, Area, Tower, Flat No.
+                    </p>
+                  </div>
 
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      disabled={isPending}
-      onClick={() =>
-        appendBoxInfoField({
-          field_label: "",
-          field_type: "TEXT",
-          is_required: false,
-          active: true,
-          sort_order: boxInfoFields.length + 1,
-        })
-      }
-    >
-      <Plus className="mr-2 h-4 w-4" />
-      Add New
-    </Button>
-  </div>
-
-  {boxInfoFields.length === 0 ? (
-    <div className="rounded-xl border border-dashed bg-background px-4 py-6 text-center">
-      <p className="text-sm font-medium">
-        No box information fields configured
-      </p>
-
-      <p className="mt-1 text-xs text-muted-foreground">
-        Click Add New to create fields that will appear in the mobile app while
-        creating or editing a box.
-      </p>
-    </div>
-  ) : (
-    <div className="space-y-3">
-      {boxInfoFields.map((item, index) => (
-        <div
-          key={item.id}
-          className="grid gap-3 rounded-xl border bg-background p-3 md:grid-cols-[1fr_150px_120px_44px]"
-        >
-          <FormField
-            control={form.control}
-            name={`box_info_fields.${index}.field_label`}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-xs">
-                  Field Name
-                </FormLabel>
-
-                <FormControl>
-                  <Input
-                    placeholder="e.g., Floor Name"
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
                     disabled={isPending}
-                    {...field}
-                    className="h-10"
-                  />
-                </FormControl>
-
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name={`box_info_fields.${index}.field_type`}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-xs">
-                  Type
-                </FormLabel>
-
-                <FormControl>
-                  <select
-                    value={field.value || "TEXT"}
-                    disabled={isPending}
-                    onChange={(event) =>
-                      field.onChange(event.target.value)
+                    onClick={() =>
+                      appendBoxInfoField({
+                        field_label: "",
+                        field_type: "TEXT",
+                        is_required: false,
+                        active: true,
+                        sort_order: boxInfoFields.length + 1,
+                      })
                     }
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <option value="TEXT">
-                      Text
-                    </option>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add New
+                  </Button>
+                </div>
 
-                    <option value="NUMBER">
-                      Number
-                    </option>
+                {boxInfoFields.length === 0 ? (
+                  <div className="rounded-xl border border-dashed bg-background px-4 py-6 text-center">
+                    <p className="text-sm font-medium">
+                      No box information fields configured
+                    </p>
 
-                    <option value="DATE">
-                      Date
-                    </option>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Click Add New to create fields that will appear in the mobile app while
+                      creating or editing a box.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {boxInfoFields.map((item, index) => (
+                      <div
+                        key={item.id}
+                        className="grid gap-3 rounded-xl border bg-background p-3 md:grid-cols-[1fr_150px_120px_44px]"
+                      >
+                        <FormField
+                          control={form.control}
+                          name={`box_info_fields.${index}.field_label`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">
+                                Field Name
+                              </FormLabel>
 
-                    <option value="TEXTAREA">
-                      Textarea
-                    </option>
-                  </select>
-                </FormControl>
+                              <FormControl>
+                                <Input
+                                  placeholder="e.g., Floor Name"
+                                  disabled={isPending}
+                                  {...field}
+                                  className="h-10"
+                                />
+                              </FormControl>
 
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
-          <FormField
-            control={form.control}
-            name={`box_info_fields.${index}.is_required`}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-xs">
-                  Required
-                </FormLabel>
+                        <FormField
+                          control={form.control}
+                          name={`box_info_fields.${index}.field_type`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">
+                                Type
+                              </FormLabel>
 
-                <FormControl>
-                  <label className="flex h-10 items-center gap-2 rounded-md border bg-background px-3 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(field.value)}
-                      disabled={isPending}
-                      onChange={(event) =>
-                        field.onChange(event.target.checked)
-                      }
-                      className="h-4 w-4"
-                    />
+                              <FormControl>
+                                <select
+                                  value={field.value || "TEXT"}
+                                  disabled={isPending}
+                                  onChange={(event) =>
+                                    field.onChange(event.target.value)
+                                  }
+                                  className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  <option value="TEXT">
+                                    Text
+                                  </option>
 
-                    Yes
-                  </label>
-                </FormControl>
+                                  <option value="NUMBER">
+                                    Number
+                                  </option>
 
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                                  <option value="DATE">
+                                    Date
+                                  </option>
 
-          <div className="flex items-end justify-end">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              disabled={isPending}
-              onClick={() => removeBoxInfoField(index)}
-              className="text-red-600 hover:bg-red-50 hover:text-red-700"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      ))}
-    </div>
-  )}
-</div>
+                                  <option value="TEXTAREA">
+                                    Textarea
+                                  </option>
+                                </select>
+                              </FormControl>
+
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name={`box_info_fields.${index}.is_required`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs">
+                                Required
+                              </FormLabel>
+
+                              <FormControl>
+                                <label className="flex h-10 items-center gap-2 rounded-md border bg-background px-3 text-sm">
+                                  <input
+                                    type="checkbox"
+                                    checked={Boolean(field.value)}
+                                    disabled={isPending}
+                                    onChange={(event) =>
+                                      field.onChange(event.target.checked)
+                                    }
+                                    className="h-4 w-4"
+                                  />
+
+                                  Yes
+                                </label>
+                              </FormControl>
+
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <div className="flex items-end justify-end">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            disabled={isPending}
+                            onClick={() => removeBoxInfoField(index)}
+                            className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               <FormField
                 control={form.control}
@@ -1218,6 +1402,149 @@ export default function TrackTraceProjectForm({
           </form>
         </Form>
       </div>
+
+      {boxRemovalDialogOpen && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[85vh] w-full max-w-3xl overflow-hidden rounded-2xl border bg-background shadow-2xl">
+            <div className="border-b p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold">
+                    Select Empty Boxes to Remove
+                  </h2>
+
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    You reduced No of Boxes. Select exactly{" "}
+                    <span className="font-semibold text-foreground">
+                      {boxRemovalRequiredCount}
+                    </span>{" "}
+                    empty box{boxRemovalRequiredCount > 1 ? "es" : ""} to
+                    remove. Boxes with items cannot be removed.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleCancelBoxRemoval}
+                  disabled={isPending}
+                  className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="max-h-[55vh] overflow-y-auto p-5">
+              <div className="mb-3 rounded-xl border bg-muted/40 px-4 py-3 text-sm">
+                Selected{" "}
+                <span className="font-semibold">
+                  {selectedRemoveBoxIds.length}
+                </span>{" "}
+                of{" "}
+                <span className="font-semibold">
+                  {boxRemovalRequiredCount}
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                {boxRemovalOptions.map((box) => {
+                  const selected = selectedRemoveBoxIds.includes(box.id);
+                  const disabled = !box.can_remove || isPending;
+
+                  return (
+                    <button
+                      key={box.id}
+                      type="button"
+                      disabled={disabled}
+                      onClick={() =>
+                        toggleRemoveBoxSelection(box.id, box.can_remove)
+                      }
+                      className={cn(
+                        "flex w-full items-center justify-between gap-4 rounded-xl border p-4 text-left transition-colors",
+                        selected
+                          ? "border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/30"
+                          : "bg-background hover:bg-muted/60",
+                        disabled && "cursor-not-allowed opacity-60"
+                      )}
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          disabled={disabled}
+                          readOnly
+                          className="h-4 w-4"
+                        />
+
+                        <div className="min-w-0">
+                          <p className="font-semibold">
+                            Box {box.box_name || box.sequence_no}
+                          </p>
+
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            Status: {box.box_status || "-"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="shrink-0 text-right">
+                        <p
+                          className={cn(
+                            "text-sm font-semibold",
+                            box.item_count > 0
+                              ? "text-red-600"
+                              : "text-emerald-600"
+                          )}
+                        >
+                          {box.item_count} item{box.item_count === 1 ? "" : "s"}
+                        </p>
+
+                        <p className="text-xs text-muted-foreground">
+                          {box.can_remove ? "Can remove" : "Cannot remove"}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 border-t p-5">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCancelBoxRemoval}
+                disabled={isPending}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleConfirmBoxRemoval}
+                disabled={
+                  isPending ||
+                  selectedRemoveBoxIds.length !== boxRemovalRequiredCount
+                }
+              >
+                {isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Remove Selected Boxes
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

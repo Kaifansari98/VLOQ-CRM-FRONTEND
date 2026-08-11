@@ -47,6 +47,7 @@ interface Props {
   disabled?: boolean;
   className?: string; // ✅ ADDED
   textClassName?: string;
+  tooltipContent?: string;
 }
 
 export default function AssignToPicker({
@@ -59,6 +60,7 @@ export default function AssignToPicker({
   disabled = false,
   className, // ✅ ADDED
   textClassName,
+  tooltipContent,
 }: Props) {
   const id = useId();
   const [open, setOpen] = useState<boolean>(false);
@@ -121,34 +123,74 @@ export default function AssignToPicker({
     <div className="relative w-full min-w-0 *:not-first:mt-2 group">
       <Popover modal={true} open={open && !disabled} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button
-            id={id}
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            disabled={disabled}
-            className={cn(
-              "bg-background hover:bg-background border-input w-full min-w-0 justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]",
-              disabled &&
-                "opacity-60 cursor-not-allowed relative after:content-[''] after:absolute after:inset-0 after:border-2 after:border-transparent after:rounded-md",
-              className // ✅ Apply className here
-            )}
-          >
-            <span
+          {tooltipContent ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="w-full">
+                  <Button
+                    id={id}
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={open}
+                    disabled={disabled}
+                    className={cn(
+                      "bg-background hover:bg-background border-input w-full min-w-0 justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]",
+                      disabled &&
+                        "opacity-60 cursor-not-allowed relative after:content-[''] after:absolute after:inset-0 after:border-2 after:border-transparent after:rounded-md",
+                      className
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "truncate text-left flex-1",
+                        !stringValue && "text-muted-foreground",
+                        textClassName
+                      )}
+                    >
+                      {selectedItem ? selectedItem.label : emptyLabel}
+                    </span>
+                    <ChevronDownIcon
+                      size={16}
+                      className="text-muted-foreground/80 shrink-0"
+                      aria-hidden="true"
+                    />
+                  </Button>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-sm whitespace-pre-wrap break-words">
+                {tooltipContent}
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <Button
+              id={id}
+              variant="outline"
+              role="combobox"
+              aria-expanded={open}
+              disabled={disabled}
               className={cn(
-                "truncate text-left flex-1",
-                !stringValue && "text-muted-foreground",
-                textClassName
+                "bg-background hover:bg-background border-input w-full min-w-0 justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]",
+                disabled &&
+                  "opacity-60 cursor-not-allowed relative after:content-[''] after:absolute after:inset-0 after:border-2 after:border-transparent after:rounded-md",
+                className
               )}
             >
-              {selectedItem ? selectedItem.label : emptyLabel}
-            </span>
-            <ChevronDownIcon
-              size={16}
-              className="text-muted-foreground/80 shrink-0"
-              aria-hidden="true"
-            />
-          </Button>
+              <span
+                className={cn(
+                  "truncate text-left flex-1",
+                  !stringValue && "text-muted-foreground",
+                  textClassName
+                )}
+              >
+                {selectedItem ? selectedItem.label : emptyLabel}
+              </span>
+              <ChevronDownIcon
+                size={16}
+                className="text-muted-foreground/80 shrink-0"
+                aria-hidden="true"
+              />
+            </Button>
+          )}
         </PopoverTrigger>
 
         {!disabled && (

@@ -250,7 +250,9 @@ export default function LeadDetails() {
   const isAuditor = normalizedUserType === "auditor";
   const isSuperAdmin = normalizedUserType === "super-admin";
   const shouldDirectlyMarkLost =
-    normalizedUserType === "admin" || normalizedUserType === "super-admin";
+    normalizedUserType === "admin" ||
+    normalizedUserType === "super-admin" ||
+    normalizedUserType === "sales-executive";
   const canReassign =
     normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
@@ -691,11 +693,7 @@ export default function LeadDetails() {
                       {canMarkAsLost && (
                         <DropdownMenuItem
                           onSelect={() => {
-                            setActivityType(
-                              shouldDirectlyMarkLost
-                                ? "lost"
-                                : "lostApproval"
-                            );
+                            setActivityType("lost");
                             setActivityModalOpen(true);
                           }}
                         >
@@ -877,6 +875,8 @@ export default function LeadDetails() {
         open={activityModalOpen}
         onOpenChange={setActivityModalOpen}
         statusType={activityType}
+        vendorId={vendorId}
+        franchiseId={lead?.franchise_id ?? franchiseId}
         onSubmitRemark={(remark, dueDate) => {
           if (!vendorId || !userId) {
             toastManager.add({
@@ -888,9 +888,7 @@ export default function LeadDetails() {
           const status =
             activityType === "onHold"
               ? "onHold"
-              : activityType === "lost"
-                ? "lost"
-                : "lostApproval";
+              : "lost";
           updateActivityStatusMutation.mutate(
             {
               leadId: leadIdNum,
@@ -905,14 +903,15 @@ export default function LeadDetails() {
               },
             },
             {
-              onSuccess: () => {
+              onSuccess: (res: any) => {
+                const finalStatus = res?.data?.activity_status ?? res?.data?.lead?.activity_status;
                 toastManager.add({
                   title:
                     status === "onHold"
                       ? "Lead marked as On Hold!"
-                      : status === "lost"
-                        ? "Lead marked as Lost!"
-                        : "Lead sent for Lost Approval!",
+                      : finalStatus === "lostApproval"
+                        ? "Lead sent for Lost Approval!"
+                        : "Lead marked as Lost!",
                   type: "success",
                 });
                 setActivityModalOpen(false);

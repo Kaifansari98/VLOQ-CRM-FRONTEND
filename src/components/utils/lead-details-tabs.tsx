@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import SmoothTab from "@/components/kokonutui/smooth-tab";
 import {
   DropdownMenu,
@@ -40,6 +40,10 @@ export default function LeadDetailsUtil({
   onlyThisTab,
 }: LeadDetailsUtilProps) {
   const [mobileTab, setMobileTab] = useState(defaultTab);
+
+  useEffect(() => {
+    setMobileTab(defaultTab);
+  }, [defaultTab]);
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -136,7 +140,7 @@ export default function LeadDetailsUtil({
       "measurement",
       "designing",
       "booking",
-      ...(hasAtLeastOneDocUploaded ? ["finalMeasurement"] : []),
+      "finalMeasurement",
     ],
     clientdocumentation: [
       "details",
@@ -165,7 +169,8 @@ export default function LeadDetailsUtil({
     ? visibleTabs.filter((t) => t.id === onlyThisTab)
     : visibleTabs;
 
-  const selectedTab = finalTabs.find((t) => t.id === mobileTab);
+  const selectedTab =
+    finalTabs.find((t) => t.id === mobileTab) ?? finalTabs[0];
 
   /* ---------------- MOBILE GROUPING ---------------- */
   const leadTabs = ["details", "measurement", "designing", "booking"];
@@ -255,7 +260,11 @@ export default function LeadDetailsUtil({
       </div>
       {/* ================= DESKTOP TABS ================= */}
       <div className="hidden md:block">
-        <SmoothTab items={finalTabs} defaultTabId={defaultTab} />
+        <SmoothTab
+          items={finalTabs}
+          defaultTabId={selectedTab?.id}
+          onChange={setMobileTab}
+        />
       </div>
 
       {/* ================= MOBILE CONTENT ================= */}

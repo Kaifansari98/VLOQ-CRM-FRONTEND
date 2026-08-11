@@ -9,6 +9,7 @@ import {
   updateProductMasterApi,
   createHSNApi
 } from "@/api/inventory/product-master";
+import { apiClient } from "@/lib/apiClient";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -23,6 +24,14 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toastManager } from "@/components/ui/toast";
 import { useAppSelector } from "@/redux/store";
+import AssignToPicker from "@/components/assign-to-picker";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   ArrowLeft,
   Loader2,
@@ -37,16 +46,21 @@ import {
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-const PRODUCT_MASTER_BASE = "/dashboard/inventory/product-master";
+const PRODUCT_MASTER_BASE = "/dashboard/inventory/master/products/list";
 
 const emptyForm: ProductPayload = {
   category_id: 0,
+  sub_category_id: null,
   product_name: "",
   article_code: "",
+  item_code: "",
+  barcode: "",
 
+  brand_id: null,
   item_group_id: null,
 
   primary_unit_id: null,
+  purchase_unit_id: null,
   stock_unit_id: null,
   consumption_unit_id: null,
 
@@ -69,6 +83,17 @@ const emptyForm: ProductPayload = {
 
   hsn_id: null,
   item_type: "Goods",
+  item_type_master_id: null,
+
+  core_product_id: null,
+  grade_id: null,
+  type_id: null,
+  finish_id: null,
+
+  length: null,
+  height: null,
+  thickness: null,
+  size: "",
 };
 
 
@@ -149,6 +174,80 @@ export function ProductMasterFormPage({
     description: "",
     igst_rate: "",
   });
+
+  // ── Quick Add Master States ──
+  const [quickAddModal, setQuickAddModal] = useState<{
+    open: boolean;
+    title: string;
+    fieldKey: "grade_id" | "type_id" | "finish_id" | "core_product_id" | "primary_unit_id";
+    nameKey: "grades" | "types" | "finishes" | "coreProducts" | "units";
+    items: { id: number; name: string }[];
+    placeholder: string;
+    endpoint: string;
+    payloadKey: string;
+  } | null>(null);
+
+  const [quickAddName, setQuickAddName] = useState("");
+  const [quickAddSaving, setQuickAddSaving] = useState(false);
+  const [quickAddSearch, setQuickAddSearch] = useState("");
+
+  const handleQuickAddSave = async () => {
+    if (!quickAddModal) return;
+    if (!quickAddName.trim()) {
+      toastManager.add({
+        title: `${quickAddModal.title} name is required`,
+        type: "error",
+      });
+      return;
+    }
+
+    setQuickAddSaving(true);
+    try {
+      const payload = {
+        vendor_id: vendorId,
+        [quickAddModal.payloadKey]: quickAddName.trim(),
+        created_by: userId,
+      };
+      const { data: responseData } = await apiClient.post(
+        quickAddModal.endpoint,
+        payload
+      );
+
+      const newItem = responseData.data;
+
+      setMasters((prev) => {
+        if (!prev) return prev;
+        const currentList = prev[quickAddModal.nameKey] || [];
+        const updatedList = [...currentList, newItem].sort((a: any, b: any) =>
+          String(a[quickAddModal.payloadKey]).localeCompare(
+            String(b[quickAddModal.payloadKey])
+          )
+        );
+        return {
+          ...prev,
+          [quickAddModal.nameKey]: updatedList,
+        };
+      });
+
+      set(quickAddModal.fieldKey, newItem.id);
+
+      toastManager.add({
+        title: `${quickAddModal.title} added successfully`,
+        type: "success",
+      });
+
+      setQuickAddName("");
+      setQuickAddModal(null);
+    } catch (err: any) {
+      toastManager.add({
+        title: err?.response?.data?.message || err?.message || `Failed to add ${quickAddModal.title}`,
+        type: "error",
+      });
+    } finally {
+      setQuickAddSaving(false);
+    }
+  };
+
   const saveHSN = async () => {
     if (!vendorId) {
       toastManager.add({
@@ -294,7 +393,17 @@ export function ProductMasterFormPage({
 
             hsn_id: product.hsn_id || null,
             item_type: product.item_type || "Goods",
-
+            brand_id: product.brand_id || null,
+            sub_category_id: product.sub_category_id || null,
+            core_product_id: product.core_product_id || null,
+            grade_id: product.grade_id || null,
+            type_id: product.type_id || null,
+            finish_id: product.finish_id || null,
+            length: product.length || null,
+            height: product.height || null,
+            thickness: product.thickness || null,
+            size: product.size || "",
+            item_type_master_id: product.item_type_master_id || null,
           });
           setSupplierRows(
             (product.supplierMappings ?? []).map((row: any) =>
@@ -357,6 +466,7 @@ export function ProductMasterFormPage({
       }
 
       if (key === "primary_unit_id") {
+        next.purchase_unit_id = value ? Number(value) : null;
         next.reorder_level_unit_id = value ? Number(value) : null;
         next.reorder_batch_unit_id = value ? Number(value) : null;
       }
@@ -419,12 +529,17 @@ export function ProductMasterFormPage({
     user_id: userId,
 
     category_id: Number(form.category_id),
+    sub_category_id: toNumOrNull(form.sub_category_id),
     product_name: form.product_name.trim(),
     article_code: form.article_code.trim(),
+    item_code: form.article_code.trim(),
+    barcode: form.barcode?.trim() || null,
 
+    brand_id: toNumOrNull(form.brand_id),
     item_group_id: toNumOrNull(form.item_group_id),
 
     primary_unit_id: toNumOrNull(form.primary_unit_id),
+    purchase_unit_id: toNumOrNull(form.purchase_unit_id),
     stock_unit_id: toNumOrNull(form.stock_unit_id),
     consumption_unit_id: toNumOrNull(form.consumption_unit_id),
 
@@ -445,6 +560,17 @@ export function ProductMasterFormPage({
     reorder_batch_unit_id: toNumOrNull(form.reorder_batch_unit_id),
 
     hsn_id: toNumOrNull(form.hsn_id),
+    item_type_master_id: toNumOrNull(form.item_type_master_id),
+
+    core_product_id: toNumOrNull(form.core_product_id),
+    grade_id: toNumOrNull(form.grade_id),
+    type_id: toNumOrNull(form.type_id),
+    finish_id: toNumOrNull(form.finish_id),
+
+    length: toNumOrNull(form.length),
+    height: toNumOrNull(form.height),
+    thickness: toNumOrNull(form.thickness),
+    size: form.size?.trim() || null,
     suppliers: supplierRows
       .filter((row) => row.company_vendor_id)
       .map((row) => ({
@@ -627,473 +753,698 @@ export function ProductMasterFormPage({
             </div>
           </div>
         ) : (
-          <div className="rounded-3xl border bg-card shadow-sm">
-            <div className="border-b px-6 py-4">
-              <p className="font-black">Product Details</p>
-              <p className="text-xs text-muted-foreground">
-                Fields marked with * are required.
-              </p>
-            </div>
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* COLUMN 1: Basic Information & Taxation */}
+            <div className="flex flex-col gap-6">
+              <div className="rounded-3xl border bg-card shadow-sm p-6 space-y-4">
+                <p className="font-black text-sm text-foreground flex items-center gap-2 border-b pb-2 mb-2">
+                  <span className="h-2 w-2 rounded-full bg-indigo-600" />
+                  Basic Information
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Item Category *">
+                    <AssignToPicker
+                      data={masters.categories
+                        .filter((c) => !c.parent_id)
+                        .map((c) => ({ id: c.id, label: c.category_name }))}
+                      value={form.category_id || undefined}
+                      onChange={(val) => {
+                        set("category_id", val || 0);
+                        set("sub_category_id", null);
+                      }}
+                      placeholder="Search category..."
+                      emptyLabel="Select category"
+                      className="input flex items-center justify-between text-left cursor-pointer w-full"
+                    />
+                  </Field>
 
-            <div className="p-6">
-              <div className="grid gap-4 md:grid-cols-3">
-                <Field label="Item Category *">
-                  <select
-                    value={form.category_id || ""}
-                    onChange={(e) => set("category_id", Number(e.target.value))}
-                    className="input"
-                  >
-                    <option value="">Select category</option>
-                    {masters.categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.category_name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
+                  <Field label="Sub Category">
+                    <AssignToPicker
+                      data={masters.categories
+                        .filter((c) => c.parent_id === Number(form.category_id))
+                        .map((c) => ({ id: c.id, label: c.category_name }))}
+                      value={form.sub_category_id || undefined}
+                      onChange={(val) => set("sub_category_id", val)}
+                      disabled={!form.category_id}
+                      placeholder="Search sub category..."
+                      emptyLabel="Select sub category"
+                      className="input flex items-center justify-between text-left cursor-pointer w-full"
+                    />
+                  </Field>
 
-                <Field label="Item Name *">
-                  <input
-                    value={form.product_name}
-                    onChange={(e) => set("product_name", e.target.value)}
-                    className="input"
-                    placeholder="Enter item name"
-                  />
-                </Field>
-
-                <Field label="Item Code *">
-                  <input
-                    value={form.article_code}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      set("article_code", value);
-
-                      setSupplierRows((prev) =>
-                        prev.map((row) =>
-                          row.same_as_product_code
-                            ? {
-                              ...row,
-                              supplier_item_code: value,
-                            }
-                            : row
-                        )
-                      );
-                    }}
-                    className="input"
-                    placeholder="Unique item code"
-                  />
-                </Field>
-
-                <Field label="Item Group">
-                  <select
-                    value={form.item_group_id || ""}
-                    onChange={(e) => set("item_group_id", e.target.value)}
-                    className="input"
-                  >
-                    <option value="">Select group</option>
-                    {masters.itemGroups.map((g) => (
-                      <option key={g.id} value={g.id}>
-                        {g.group_name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-
-                <Field label="Primary Unit / Purchase Unit">
-                  <select
-                    value={form.primary_unit_id || ""}
-                    onChange={(e) => set("primary_unit_id", e.target.value)}
-                    className="input"
-                  >
-                    <option value="">Select unit</option>
-                    {masters.units.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.unit_name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-
-                <Field label="Stock Unit">
-                  <select
-                    value={form.stock_unit_id || ""}
-                    onChange={(e) => set("stock_unit_id", e.target.value)}
-                    className="input"
-                  >
-                    <option value="">Select unit</option>
-                    {masters.units.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.unit_name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-
-                <Field label="Consumption Unit">
-                  <select
-                    value={form.consumption_unit_id || ""}
-                    onChange={(e) => set("consumption_unit_id", e.target.value)}
-                    className="input"
-                  >
-                    <option value="">Select unit</option>
-                    {masters.units.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.unit_name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-
-                <Field label="Shelf Life Days">
-                  <input
-                    type="number"
-                    min="0"
-                    value={form.shelf_life_days ?? ""}
-                    onChange={(e) => set("shelf_life_days", e.target.value)}
-                    className="input"
-                    placeholder="Number in days"
-                  />
-                </Field>
-                <Field label="Costing Method">
-                  <select
-                    value={form.costing_method}
-                    onChange={(e) => set("costing_method", e.target.value)}
-                    className="input"
-                  >
-                    <option value="FIFO">FIFO</option>
-                    <option value="MANUAL">Manual Value Entry</option>
-                  </select>
-                </Field>
-                <Field label="Purchase Rate">
-                  <input
-                    type="number"
-                    min="0"
-                    value={form.level1_price ?? ""}
-                    onChange={(e) => set("level1_price", e.target.value)}
-                    className="input"
-                    placeholder="0.00"
-                  />
-                </Field>
-
-                <Field label="HSN">
-                  <div className="flex gap-2">
-                    <select
-                      value={form.hsn_id || ""}
-                      onChange={(e) => set("hsn_id", e.target.value)}
+                  <Field label="Item Name *">
+                    <input
+                      value={form.product_name}
+                      onChange={(e) => set("product_name", e.target.value)}
                       className="input"
-                    >
-                      <option value="">Select HSN</option>
-                      {masters.hsns.map((h: any) => (
-                        <option key={h.id} value={h.id}>
-                          {h.hsn_code}
-                          {h.description ? ` - ${h.description}` : ""}
-                        </option>
-                      ))}
-                    </select>
+                      placeholder="Enter item name"
+                    />
+                  </Field>
 
-                    <button
-                      type="button"
-                      onClick={() => setHsnModalOpen(true)}
-                      className="add-hsn-btn"
-                      title="Add HSN"
-                    >
-                      <PlusCircle size={16} />
-                      Add
-                    </button>
-                  </div>
-                </Field>
+                  <Field label="Item Code *">
+                    <input
+                      value={form.article_code}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        set("article_code", value);
 
-                <Field label="Item Type">
-                  <select
-                    value={form.item_type}
-                    onChange={(e) => set("item_type", e.target.value)}
-                    className="input"
-                  >
-                    <option value="CapitalGoods">Capital Goods</option>
-                    <option value="Goods">Goods</option>
-                    <option value="Services">Services</option>
-                  </select>
-                </Field>
-              </div>
-
-              <div className="mt-6 grid gap-4 md:grid-cols-2">
-                <StockPair
-                  title="Minimum Stock"
-                  qty={form.min_stock_qty}
-                  unitId={form.min_stock_unit_id}
-                  units={masters.units}
-                  onQty={(v) => set("min_stock_qty", v)}
-                  onUnit={(v) => set("min_stock_unit_id", v)}
-                />
-
-                <StockPair
-                  title="Maximum Stock"
-                  qty={form.max_stock_qty}
-                  unitId={form.max_stock_unit_id}
-                  units={masters.units}
-                  onQty={(v) => set("max_stock_qty", v)}
-                  onUnit={(v) => set("max_stock_unit_id", v)}
-                />
-
-                <StockPair
-                  title="Reorder Level"
-                  qty={form.reorder_level_qty}
-                  unitId={form.reorder_level_unit_id}
-                  units={masters.units}
-                  onQty={(v) => set("reorder_level_qty", v)}
-                  onUnit={(v) => set("reorder_level_unit_id", v)}
-                />
-
-                <StockPair
-                  title="Reorder Batch"
-                  qty={form.reorder_batch_qty}
-                  unitId={form.reorder_batch_unit_id}
-                  units={masters.units}
-                  onQty={(v) => set("reorder_batch_qty", v)}
-                  onUnit={(v) => set("reorder_batch_unit_id", v)}
-                />
-              </div>
-              <div className="mt-6 rounded-3xl border bg-background">
-                <div className="flex items-center justify-between gap-3 border-b px-5 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-xl bg-indigo-50 p-2 text-indigo-600">
-                      <Building2 size={18} />
-                    </div>
-
-                    <div>
-                      <p className="font-black">Suppliers</p>
-                      <p className="text-xs text-muted-foreground">
-                        Map multiple suppliers with their supplier item code and amount.
-                      </p>
-                    </div>
-                  </div>
-
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={addSupplierRow}
-                    className="gap-2"
-                  >
-                    <Plus size={14} />
-                    Add Supplier
-                  </Button>
-                </div>
-
-                <div className="p-5">
-                  {supplierRows.length === 0 ? (
-                    <button
-                      type="button"
-                      onClick={addSupplierRow}
-                      className="flex w-full flex-col items-center justify-center rounded-2xl border border-dashed bg-muted/20 py-10 text-muted-foreground transition-colors hover:border-indigo-300 hover:bg-indigo-50/40 hover:text-indigo-600"
-                    >
-                      <Building2 size={28} className="mb-2 opacity-50" />
-                      <p className="text-sm font-semibold">Add supplier mapping</p>
-                      <p className="text-xs">
-                        One product can have multiple supplier item codes.
-                      </p>
-                    </button>
-                  ) : (
-                    <div className="space-y-3">
-                      {supplierRows.map((row, index) => {
-                        const selectedIds = supplierRows
-                          .map((r, i) => (i === index ? null : Number(r.company_vendor_id)))
-                          .filter(Boolean);
-
-                        const availableSuppliers = masters.suppliers.filter(
-                          (s) => !selectedIds.includes(s.id)
-                        );
-
-                        return (
-                          <div
-                            key={index}
-                            className="rounded-3xl border bg-background p-5 shadow-sm transition-all hover:border-indigo-200 hover:shadow-md"
-                          >
-                            <div className="mb-4 flex items-start justify-between gap-3">
-                              <div className="flex items-center gap-3">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
-                                  <Building2 size={18} />
-                                </div>
-
-                                <div>
-                                  <p className="text-sm font-black">Supplier #{index + 1}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    Supplier code, base amount and procurement expense.
-                                  </p>
-                                </div>
-                              </div>
-
-                              <Button
-                                type="button"
-                                variant="outline"
-                                className="h-9 w-9 p-0 text-red-600 hover:bg-red-50 hover:text-red-700"
-                                onClick={() => removeSupplierRow(index)}
-                              >
-                                <Trash2 size={15} />
-                              </Button>
-                            </div>
-
-                            <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
-                              <Field label="Supplier">
-                                <select
-                                  value={row.company_vendor_id}
-                                  onChange={(e) =>
-                                    updateSupplierRow(
-                                      index,
-                                      "company_vendor_id",
-                                      e.target.value ? Number(e.target.value) : ""
-                                    )
+                        setSupplierRows((prev) =>
+                            prev.map((row) =>
+                              row.same_as_product_code
+                                ? {
+                                    ...row,
+                                    supplier_item_code: value,
                                   }
-                                  className="input"
-                                >
-                                  <option value="">Select supplier</option>
-
-                                  {availableSuppliers.map((supplier) => (
-                                    <option key={supplier.id} value={supplier.id}>
-                                      {supplier.company_name} · {supplier.vendor_code}
-                                    </option>
-                                  ))}
-                                </select>
-                              </Field>
-
-                              <div>
-                                <Field label="Supplier Item Code">
-                                  <input
-                                    value={row.supplier_item_code}
-                                    disabled={row.same_as_product_code}
-                                    onChange={(e) =>
-                                      updateSupplierRow(index, "supplier_item_code", e.target.value)
-                                    }
-                                    className="input"
-                                    placeholder="Supplier item code"
-                                  />
-                                </Field>
-
-                                <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                                  <input
-                                    type="checkbox"
-                                    checked={row.same_as_product_code}
-                                    onChange={(e) =>
-                                      updateSupplierRow(index, "same_as_product_code", e.target.checked)
-                                    }
-                                  />
-                                  Seller code same as main product code
-                                </label>
-                              </div>
-                            </div>
-
-                            <div className="mt-5 rounded-2xl border bg-muted/20 p-4">
-                              <div className="mb-3 flex items-center justify-between gap-3">
-                                <div>
-                                  <p className="text-xs font-black uppercase tracking-wide text-muted-foreground">
-                                    Supplier Pricing
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    Final amount is calculated from amount + procurement expense.
-                                  </p>
-                                </div>
-                              </div>
-
-                              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                                <Field label="Amount">
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    value={row.amount}
-                                    onChange={(e) =>
-                                      updateSupplierRow(index, "amount", e.target.value)
-                                    }
-                                    className="input"
-                                    placeholder="0.00"
-                                  />
-                                </Field>
-
-                                <Field label="Proc. Exp Amt">
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    value={row.procurement_expense_amount}
-                                    onChange={(e) =>
-                                      updateSupplierRow(
-                                        index,
-                                        "procurement_expense_amount",
-                                        e.target.value
-                                      )
-                                    }
-                                    className="input"
-                                    placeholder="0.00"
-                                  />
-                                </Field>
-
-                                <Field label="Proc. Exp %">
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    value={row.procurement_expense_pct}
-                                    onChange={(e) =>
-                                      updateSupplierRow(
-                                        index,
-                                        "procurement_expense_pct",
-                                        e.target.value
-                                      )
-                                    }
-                                    className="input"
-                                    placeholder="0"
-                                  />
-                                </Field>
-
-                                <Field label="Proc. Exp Total">
-                                  <input
-                                    value={row.procurement_expense_total}
-                                    disabled
-                                    className="input bg-indigo-50/70 font-bold text-indigo-700"
-                                  />
-                                </Field>
-
-                                <Field label="Final Amount">
-                                  <input
-                                    value={row.final_amount}
-                                    disabled
-                                    className="input bg-emerald-50/70 font-black text-emerald-700"
-                                  />
-                                </Field>
-                              </div>
-                            </div>
-                          </div>
+                                : row
+                            )
                         );
-                      })}
-                    </div>
-                  )}
+                      }}
+                      className="input"
+                      placeholder="Unique item code"
+                    />
+                  </Field>
+
+                  <Field label="Barcode (Auto / Manual)">
+                    <input
+                      value={form.barcode || ""}
+                      onChange={(e) => set("barcode", e.target.value)}
+                      className="input"
+                      placeholder="Leave empty to auto-generate"
+                    />
+                  </Field>
+
+                  <Field label="Brand">
+                    <AssignToPicker
+                      data={masters.brands?.map((b) => ({
+                        id: b.id,
+                        label: `${b.brand_name}${b.brand_short_name ? ` (${b.brand_short_name})` : ""}`
+                      })) || []}
+                      value={form.brand_id || undefined}
+                      onChange={(val) => set("brand_id", val)}
+                      placeholder="Search brand..."
+                      emptyLabel="Select brand"
+                      className="input flex items-center justify-between text-left cursor-pointer w-full"
+                    />
+                  </Field>
+
+                  <Field label="Item Group">
+                    <AssignToPicker
+                      data={masters.itemGroups.map((g) => ({ id: g.id, label: g.group_name }))}
+                      value={form.item_group_id || undefined}
+                      onChange={(val) => set("item_group_id", val)}
+                      placeholder="Search group..."
+                      emptyLabel="Select group"
+                      className="input flex items-center justify-between text-left cursor-pointer w-full"
+                    />
+                  </Field>
+
+                  <Field label="Item Type">
+                    <Select
+                      value={form.item_type || "Goods"}
+                      onValueChange={(val) => set("item_type", val)}
+                    >
+                      <SelectTrigger className="input flex items-center justify-between text-left cursor-pointer w-full">
+                        <SelectValue placeholder="Select item type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CapitalGoods">Capital Goods</SelectItem>
+                        <SelectItem value="Goods">Goods</SelectItem>
+                        <SelectItem value="Services">Services</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </div>
+              </div>
+
+              {/* Pricing, Taxation, and Units */}
+              <div className="rounded-3xl border bg-card shadow-sm p-6 space-y-4">
+                <p className="font-black text-sm text-foreground flex items-center gap-2 border-b pb-2 mb-2">
+                  <span className="h-2 w-2 rounded-full bg-emerald-600" />
+                  Inventory & Taxation
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field
+                    label={
+                      <div className="flex items-center justify-between w-full">
+                        <span>Primary / Purchase Unit *</span>
+                        <button
+                          type="button"
+                          onClick={() => setQuickAddModal({
+                            open: true,
+                            title: "Unit",
+                            fieldKey: "primary_unit_id",
+                            nameKey: "units",
+                            items: (masters.units || []).map(u => ({ id: u.id, name: `${u.unit_name}${u.short_name ? ` (${u.short_name})` : ""}` })),
+                            placeholder: "e.g. Kilogram",
+                            endpoint: "/track-trace/units",
+                            payloadKey: "unit_name",
+                          })}
+                          className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-0.5"
+                        >
+                          <Plus size={10} /> Add
+                        </button>
+                      </div>
+                    }
+                  >
+                    <AssignToPicker
+                      data={masters.units.map((u) => ({
+                        id: u.id,
+                        label: `${u.unit_name}${u.short_name ? ` (${u.short_name})` : ""}`
+                      }))}
+                      value={form.primary_unit_id || undefined}
+                      onChange={(val) => set("primary_unit_id", val)}
+                      placeholder="Search unit..."
+                      emptyLabel="Select unit"
+                      className="input flex items-center justify-between text-left cursor-pointer w-full"
+                    />
+                  </Field>
+
+                  <Field label="Stock Unit">
+                    <AssignToPicker
+                      data={masters.units.map((u) => ({
+                        id: u.id,
+                        label: `${u.unit_name}${u.short_name ? ` (${u.short_name})` : ""}`
+                      }))}
+                      value={form.stock_unit_id || undefined}
+                      onChange={(val) => set("stock_unit_id", val)}
+                      placeholder="Search unit..."
+                      emptyLabel="Select unit"
+                      className="input flex items-center justify-between text-left cursor-pointer w-full"
+                    />
+                  </Field>
+
+                  <Field label="Consumption Unit">
+                    <AssignToPicker
+                      data={masters.units.map((u) => ({
+                        id: u.id,
+                        label: `${u.unit_name}${u.short_name ? ` (${u.short_name})` : ""}`
+                      }))}
+                      value={form.consumption_unit_id || undefined}
+                      onChange={(val) => set("consumption_unit_id", val)}
+                      placeholder="Search unit..."
+                      emptyLabel="Select unit"
+                      className="input flex items-center justify-between text-left cursor-pointer w-full"
+                    />
+                  </Field>
+
+                  <Field label="Costing Method">
+                    <Select
+                      value={form.costing_method || "FIFO"}
+                      onValueChange={(val) => set("costing_method", val)}
+                    >
+                      <SelectTrigger className="input flex items-center justify-between text-left cursor-pointer w-full">
+                        <SelectValue placeholder="Select costing method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="FIFO">FIFO</SelectItem>
+                        <SelectItem value="MANUAL">Manual Entry</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+
+                  <Field label="Purchase Rate">
+                    <input
+                      type="number"
+                      min="0"
+                      value={form.level1_price ?? ""}
+                      onChange={(e) => set("level1_price", e.target.value)}
+                      className="input"
+                      placeholder="0.00"
+                    />
+                  </Field>
+
+                  <Field
+                    label={
+                      <div className="flex items-center justify-between w-full">
+                        <span>HSN</span>
+                        <button
+                          type="button"
+                          onClick={() => setHsnModalOpen(true)}
+                          className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-0.5"
+                        >
+                          <Plus size={10} /> Add
+                        </button>
+                      </div>
+                    }
+                  >
+                    <AssignToPicker
+                      data={masters.hsns.map((h: any) => ({
+                        id: h.id,
+                        label: `${h.hsn_code}${h.description ? ` - ${h.description}` : ""}`
+                      }))}
+                      value={form.hsn_id || undefined}
+                      onChange={(val) => set("hsn_id", val)}
+                      placeholder="Search HSN..."
+                      emptyLabel="Select HSN"
+                      className="input flex items-center justify-between text-left cursor-pointer w-full"
+                    />
+                  </Field>
+
+                  <Field label="Shelf Life Days">
+                    <input
+                      type="number"
+                      min="0"
+                      value={form.shelf_life_days ?? ""}
+                      onChange={(e) => set("shelf_life_days", e.target.value)}
+                      className="input"
+                      placeholder="Number in days"
+                    />
+                  </Field>
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 border-t bg-muted/20 px-6 py-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.push(PRODUCT_MASTER_BASE)}
-                disabled={saving}
-              >
-                Cancel
-              </Button>
+            {/* COLUMN 2: Physical Specs, Stock levels, and Suppliers */}
+            <div className="flex flex-col gap-6">
+              <div className="rounded-3xl border bg-card shadow-sm p-6 space-y-4">
+                <p className="font-black text-sm text-foreground flex items-center gap-2 border-b pb-2 mb-2">
+                  <span className="h-2 w-2 rounded-full bg-violet-600" />
+                  Physical Specifications
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field
+                    label={
+                      <div className="flex items-center justify-between w-full">
+                        <span>Core Product</span>
+                        <button
+                          type="button"
+                          onClick={() => setQuickAddModal({
+                            open: true,
+                            title: "Core Product",
+                            fieldKey: "core_product_id",
+                            nameKey: "coreProducts",
+                            items: (masters.coreProducts || []).map(cp => ({
+                              id: cp.id,
+                              name: cp.core_product_name ?? cp.name ?? "",
+                            })),
+                            placeholder: "e.g. Carcass",
+                            endpoint: "/track-trace/core-products",
+                            payloadKey: "core_product_name",
+                          })}
+                          className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-0.5"
+                        >
+                          <Plus size={10} /> Add
+                        </button>
+                      </div>
+                    }
+                  >
+                    <AssignToPicker
+                      data={masters.coreProducts?.map((cp) => ({
+                        id: cp.id,
+                        label: cp.core_product_name ?? cp.name ?? "",
+                      })) || []}
+                      value={form.core_product_id || undefined}
+                      onChange={(val) => set("core_product_id", val)}
+                      placeholder="Search core product..."
+                      emptyLabel="Select core product"
+                      className="input flex items-center justify-between text-left cursor-pointer w-full"
+                    />
+                  </Field>
 
-              <Button
-                type="button"
-                onClick={submit}
-                disabled={saving}
-                className="gap-2"
-              >
-                {saving ? (
-                  <Loader2 size={15} className="animate-spin" />
-                ) : (
-                  <Save size={15} />
-                )}
-                {isEdit ? "Update Product" : "Create Product"}
-              </Button>
+                  <Field
+                    label={
+                      <div className="flex items-center justify-between w-full">
+                        <span>Grade Type</span>
+                        <button
+                          type="button"
+                          onClick={() => setQuickAddModal({
+                            open: true,
+                            title: "Grade",
+                            fieldKey: "grade_id",
+                            nameKey: "grades",
+                            items: (masters.grades || []).map(g => ({
+                              id: g.id,
+                              name: g.grade_name ?? g.name ?? "",
+                            })),
+                            placeholder: "e.g. MDF 18mm",
+                            endpoint: "/track-trace/grades",
+                            payloadKey: "grade_name",
+                          })}
+                          className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-0.5"
+                        >
+                          <Plus size={10} /> Add
+                        </button>
+                      </div>
+                    }
+                  >
+                    <AssignToPicker
+                      data={masters.grades?.map((g) => ({
+                        id: g.id,
+                        label: g.grade_name ?? g.name ?? "",
+                      })) || []}
+                      value={form.grade_id || undefined}
+                      onChange={(val) => set("grade_id", val)}
+                      placeholder="Search grade..."
+                      emptyLabel="Select grade"
+                      className="input flex items-center justify-between text-left cursor-pointer w-full"
+                    />
+                  </Field>
+
+                  <Field
+                    label={
+                      <div className="flex items-center justify-between w-full">
+                        <span>Type</span>
+                        <button
+                          type="button"
+                          onClick={() => setQuickAddModal({
+                            open: true,
+                            title: "Type",
+                            fieldKey: "type_id",
+                            nameKey: "types",
+                            items: (masters.types || []).map(t => ({ id: t.id, name: t.type_name })),
+                            placeholder: "e.g. Modular",
+                            endpoint: "/track-trace/types",
+                            payloadKey: "type_name",
+                          })}
+                          className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-0.5"
+                        >
+                          <Plus size={10} /> Add
+                        </button>
+                      </div>
+                    }
+                  >
+                    <AssignToPicker
+                      data={masters.types?.map((t) => ({ id: t.id, label: t.type_name })) || []}
+                      value={form.type_id || undefined}
+                      onChange={(val) => set("type_id", val)}
+                      placeholder="Search type..."
+                      emptyLabel="Select type"
+                      className="input flex items-center justify-between text-left cursor-pointer w-full"
+                    />
+                  </Field>
+
+                  <Field
+                    label={
+                      <div className="flex items-center justify-between w-full">
+                        <span>Finish</span>
+                        <button
+                          type="button"
+                          onClick={() => setQuickAddModal({
+                            open: true,
+                            title: "Finish",
+                            fieldKey: "finish_id",
+                            nameKey: "finishes",
+                            items: (masters.finishes || []).map(f => ({
+                              id: f.id,
+                              name: f.finish_name ?? f.name ?? "",
+                            })),
+                            placeholder: "e.g. Matte Finish",
+                            endpoint: "/track-trace/finishes",
+                            payloadKey: "finish_name",
+                          })}
+                          className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-0.5"
+                        >
+                          <Plus size={10} /> Add
+                        </button>
+                      </div>
+                    }
+                  >
+                    <AssignToPicker
+                      data={masters.finishes?.map((f) => ({
+                        id: f.id,
+                        label: f.finish_name ?? f.name ?? "",
+                      })) || []}
+                      value={form.finish_id || undefined}
+                      onChange={(val) => set("finish_id", val)}
+                      placeholder="Search finish..."
+                      emptyLabel="Select finish"
+                      className="input flex items-center justify-between text-left cursor-pointer w-full"
+                    />
+                  </Field>
+
+                  <Field label="Length (mm)">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.length ?? ""}
+                      onChange={(e) => set("length", e.target.value)}
+                      className="input"
+                      placeholder="Length"
+                    />
+                  </Field>
+
+                  <Field label="Height (mm)">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.height ?? ""}
+                      onChange={(e) => set("height", e.target.value)}
+                      className="input"
+                      placeholder="Height"
+                    />
+                  </Field>
+
+                  <Field label="Thickness (mm)">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.thickness ?? ""}
+                      onChange={(e) => set("thickness", e.target.value)}
+                      className="input"
+                      placeholder="Thickness"
+                    />
+                  </Field>
+
+                  <Field label={`Size${form.primary_unit_id && masters.units.find(u => u.id === form.primary_unit_id) ? ` (${masters.units.find(u => u.id === form.primary_unit_id)?.short_name || masters.units.find(u => u.id === form.primary_unit_id)?.unit_name})` : ""}`}>
+                    {(() => {
+                      const filledCount = [form.length, form.height, form.thickness].filter(
+                        (val) => val !== null && val !== undefined && String(val).trim() !== ""
+                      ).length;
+                      const isSizeDisabled = filledCount >= 2;
+                      return (
+                        <input
+                          type="text"
+                          value={isSizeDisabled ? "" : (form.size || "")}
+                          onChange={(e) => set("size", e.target.value)}
+                          disabled={isSizeDisabled}
+                          className={`input ${isSizeDisabled ? "opacity-50 cursor-not-allowed bg-muted/30" : ""}`}
+                          placeholder={isSizeDisabled ? "Disabled (Dimensions entered)" : "e.g. 5kg, 25MM, 6\", 16X8"}
+                        />
+                      );
+                    })()}
+                  </Field>
+                </div>
+              </div>
+
+              {/* Stock Levels Section */}
+              <div className="rounded-3xl border bg-card p-6 space-y-4 shadow-sm">
+                <p className="font-black text-sm text-foreground flex items-center gap-2 border-b pb-2 mb-2">
+                  <span className="h-2 w-2 rounded-full bg-amber-500" />
+                  Stock Thresholds
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <StockPair
+                    title="Minimum Stock"
+                    qty={form.min_stock_qty}
+                    unitId={form.min_stock_unit_id}
+                    units={masters.units}
+                    onQty={(v) => set("min_stock_qty", v)}
+                    onUnit={(v) => set("min_stock_unit_id", v)}
+                  />
+
+                  <StockPair
+                    title="Maximum Stock"
+                    qty={form.max_stock_qty}
+                    unitId={form.max_stock_unit_id}
+                    units={masters.units}
+                    onQty={(v) => set("max_stock_qty", v)}
+                    onUnit={(v) => set("max_stock_unit_id", v)}
+                  />
+
+                  <StockPair
+                    title="Reorder Level"
+                    qty={form.reorder_level_qty}
+                    unitId={form.reorder_level_unit_id}
+                    units={masters.units}
+                    onQty={(v) => set("reorder_level_qty", v)}
+                    onUnit={(v) => set("reorder_level_unit_id", v)}
+                  />
+
+                  <StockPair
+                    title="Reorder Batch"
+                    qty={form.reorder_batch_qty}
+                    unitId={form.reorder_batch_unit_id}
+                    units={masters.units}
+                    onQty={(v) => set("reorder_batch_qty", v)}
+                    onUnit={(v) => set("reorder_batch_unit_id", v)}
+                  />
+                </div>
+              </div>
             </div>
           </div>
-        )}
+        )
+      }
+
+      {/* Supplier Section (Full-width below Columns) */}
+      {!loading && masters && (
+        <div className="mt-6 rounded-3xl border bg-card shadow-sm p-6 space-y-6">
+          <div className="flex items-center justify-between border-b pb-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl bg-indigo-50 p-2 text-indigo-600">
+                <Building2 size={18} />
+              </div>
+              <div>
+                <p className="font-black text-sm">Suppliers Mapping</p>
+                <p className="text-xs text-muted-foreground">Map multiple suppliers with codes and final calculations.</p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={addSupplierRow}
+              className="gap-2"
+            >
+              <Plus size={14} /> Add Supplier
+            </Button>
+          </div>
+
+          <div>
+            {supplierRows.length === 0 ? (
+              <button
+                type="button"
+                onClick={addSupplierRow}
+                className="flex w-full flex-col items-center justify-center rounded-2xl border border-dashed py-8 text-muted-foreground transition-all hover:border-indigo-300 hover:bg-indigo-50/40 hover:text-indigo-600"
+              >
+                <Building2 size={24} className="mb-2 opacity-50" />
+                <p className="text-sm font-semibold">No suppliers mapped yet</p>
+                <p className="text-xs">Click "Add Supplier" to map a vendor.</p>
+              </button>
+            ) : (
+              <div className="space-y-4">
+                {supplierRows.map((row, index) => {
+                  const selectedIds = supplierRows
+                    .map((r, i) => (i === index ? null : Number(r.company_vendor_id)))
+                    .filter(Boolean);
+
+                  const availableSuppliers = masters.suppliers.filter(
+                    (s) => !selectedIds.includes(s.id)
+                  );
+
+                  return (
+                    <div key={index} className="rounded-2xl border p-5 space-y-4 hover:border-indigo-200 transition-all">
+                      <div className="flex items-center justify-between border-b pb-2">
+                        <span className="text-xs font-bold text-indigo-700 uppercase">Supplier #{index + 1}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => removeSupplierRow(index)}
+                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full"
+                        >
+                          <Trash2 size={14} />
+                        </Button>
+                      </div>
+
+                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <Field label="Supplier">
+                          <AssignToPicker
+                            data={availableSuppliers.map((supplier) => ({
+                              id: supplier.id,
+                              label: `${supplier.company_name} · ${supplier.vendor_code}`
+                            }))}
+                            value={row.company_vendor_id ? Number(row.company_vendor_id) : undefined}
+                            onChange={(val) =>
+                              updateSupplierRow(index, "company_vendor_id", val || "")
+                            }
+                            placeholder="Search supplier..."
+                            emptyLabel="Select supplier"
+                            className="input flex items-center justify-between text-left w-full"
+                          />
+                        </Field>
+
+                        <div>
+                          <Field label="Supplier Item Code">
+                            <input
+                              value={row.supplier_item_code}
+                              disabled={row.same_as_product_code}
+                              onChange={(e) => updateSupplierRow(index, "supplier_item_code", e.target.value)}
+                              className="input"
+                              placeholder="Supplier code"
+                            />
+                          </Field>
+                          <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground select-none cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={row.same_as_product_code}
+                              onChange={(e) => updateSupplierRow(index, "same_as_product_code", e.target.checked)}
+                            />
+                            Same as main item code
+                          </label>
+                        </div>
+
+                        <Field label="Base Amount">
+                          <input
+                            type="number"
+                            min="0"
+                            value={row.amount}
+                            onChange={(e) => updateSupplierRow(index, "amount", e.target.value)}
+                            className="input"
+                            placeholder="0.00"
+                          />
+                        </Field>
+
+                        <Field label="Proc. Exp %">
+                          <input
+                            type="number"
+                            min="0"
+                            value={row.procurement_expense_pct}
+                            onChange={(e) => updateSupplierRow(index, "procurement_expense_pct", e.target.value)}
+                            className="input"
+                            placeholder="0"
+                          />
+                        </Field>
+
+                        <Field label="Proc. Exp Total">
+                          <input
+                            value={row.procurement_expense_total}
+                            disabled
+                            className="input bg-muted/30 font-bold"
+                          />
+                        </Field>
+
+                        <Field label="Final Amount">
+                          <input
+                            value={row.final_amount}
+                            disabled
+                            className="input bg-emerald-50/50 font-bold text-emerald-700"
+                          />
+                        </Field>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Form Submission Actions Container */}
+      {!loading && masters && (
+        <div className="mt-6 flex justify-end gap-3 rounded-3xl border bg-card p-6 shadow-sm">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.push(PRODUCT_MASTER_BASE)}
+            disabled={saving}
+          >
+            Cancel
+          </Button>
+
+          <Button
+            type="button"
+            onClick={submit}
+            disabled={saving}
+            className="gap-2"
+          >
+            {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+            {isEdit ? "Update Product" : "Create Product"}
+          </Button>
+        </div>
+      )}
 
         {hsnModalOpen && (
           <div
@@ -1226,6 +1577,119 @@ export function ProductMasterFormPage({
             </div>
           </div>
         )}
+
+        {/* ── Quick Add Modal ── */}
+        {quickAddModal?.open && (
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+            onMouseDown={() => {
+              setQuickAddModal(null);
+              setQuickAddName("");
+              setQuickAddSearch("");
+            }}
+          >
+            <div
+              className="w-full max-w-md overflow-hidden rounded-3xl border bg-background shadow-2xl flex flex-col max-h-[85vh]"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between border-b px-6 py-4">
+                <div>
+                  <p className="text-base font-black">Manage {quickAddModal.title}s</p>
+                  <p className="text-xs text-muted-foreground font-medium">
+                    View saved items or add a new one.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuickAddModal(null);
+                    setQuickAddName("");
+                    setQuickAddSearch("");
+                  }}
+                  className="rounded-full p-2 text-muted-foreground hover:bg-muted"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Form to Add New */}
+              <div className="p-6 border-b bg-muted/10 space-y-4">
+                <Field label={`New ${quickAddModal.title} Name *`}>
+                  <div className="flex gap-2">
+                    <input
+                      value={quickAddName}
+                      onChange={(e) => setQuickAddName(e.target.value)}
+                      className="input flex-1"
+                      placeholder={quickAddModal.placeholder}
+                      onKeyDown={(e) => e.key === "Enter" && handleQuickAddSave()}
+                    />
+                    <Button
+                      type="button"
+                      onClick={handleQuickAddSave}
+                      disabled={quickAddSaving}
+                      className="gap-1.5 shrink-0"
+                    >
+                      {quickAddSaving ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <Plus size={14} />
+                      )}
+                      Add
+                    </Button>
+                  </div>
+                </Field>
+              </div>
+
+              {/* List of Saved Items */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-3 min-h-[200px]">
+                <div className="flex items-center gap-1.5 border-b pb-2 mb-2">
+                  <p className="text-xs font-black uppercase tracking-wider text-muted-foreground flex-1">
+                    Saved {quickAddModal.title}s
+                  </p>
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    value={quickAddSearch}
+                    onChange={(e) => setQuickAddSearch(e.target.value)}
+                    className="text-xs border rounded px-2 py-0.5 max-w-[120px] focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+                <div className="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
+                  {quickAddModal.items
+                    .filter(item => item.name.toLowerCase().includes(quickAddSearch.toLowerCase()))
+                    .map((item) => (
+                      <div
+                        key={item.id}
+                        onClick={() => {
+                          set(quickAddModal.fieldKey, item.id);
+                          setQuickAddModal(null);
+                          setQuickAddName("");
+                          setQuickAddSearch("");
+                          toastManager.add({
+                            title: `Selected ${item.name}`,
+                            type: "success",
+                          });
+                        }}
+                        className="flex items-center justify-between rounded-xl border p-2.5 text-sm hover:bg-primary/5 hover:border-primary/30 cursor-pointer transition-all group"
+                      >
+                        <span className="font-semibold truncate">{item.name}</span>
+                        <span className="text-[10px] bg-muted group-hover:bg-primary/10 text-muted-foreground group-hover:text-primary px-2 py-0.5 rounded-full font-bold transition-all">
+                          Select
+                        </span>
+                      </div>
+                    ))}
+                  {quickAddModal.items.filter(item => item.name.toLowerCase().includes(quickAddSearch.toLowerCase())).length === 0 && (
+                    <div className="text-center py-6 text-xs text-muted-foreground">
+                      No saved {quickAddModal.title.toLowerCase()}s found.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
 
         <style jsx>{`
         .add-hsn-btn {
@@ -1568,14 +2032,14 @@ function Field({
   label,
   children,
 }: {
-  label: string;
+  label: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <div>
-      <label className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-muted-foreground">
+      <div className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-muted-foreground">
         {label}
-      </label>
+      </div>
       {children}
     </div>
   );
@@ -1597,33 +2061,29 @@ function StockPair({
   onUnit: (value: string) => void;
 }) {
   return (
-    <div className="rounded-2xl border bg-muted/20 p-4">
-      <p className="mb-3 text-xs font-black uppercase tracking-wide text-muted-foreground">
+    <div className="rounded-2xl border bg-muted/20 p-3.5 min-w-0">
+      <p className="mb-2.5 text-[11px] font-black uppercase tracking-wide text-muted-foreground">
         {title}
       </p>
 
-      <div className="grid grid-cols-[1fr_150px] gap-3">
+      <div className="grid grid-cols-[1fr_110px] gap-2 min-w-0">
         <input
           type="number"
           min="0"
           value={qty ?? ""}
           onChange={(e) => onQty(e.target.value)}
-          className="input"
+          className="input min-w-0 w-full"
           placeholder="Qty"
         />
 
-        <select
-          value={unitId || ""}
-          onChange={(e) => onUnit(e.target.value)}
-          className="input"
-        >
-          <option value="">Unit</option>
-          {units.map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.unit_name}
-            </option>
-          ))}
-        </select>
+        <AssignToPicker
+          data={units.map((u) => ({ id: u.id, label: u.unit_name }))}
+          value={unitId ? Number(unitId) : undefined}
+          onChange={(val) => onUnit(val ? String(val) : "")}
+          placeholder="Search unit..."
+          emptyLabel="Unit"
+          className="input flex items-center justify-between text-left cursor-pointer w-full min-w-0 text-xs px-2.5"
+        />
       </div>
     </div>
   );

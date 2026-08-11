@@ -8,6 +8,7 @@ import {
   useLeadStatus,
   useDesignsDoc,
 } from "@/hooks/designing-stage/designing-leads-hooks";
+import type { LeadSpecificationEntry } from "@/api/designingStageQueries";
 import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 import {
   AlertDialog,
@@ -25,6 +26,7 @@ import Loader from "@/components/utils/loader";
 import { Button } from "@/components/ui/button";
 import ComingSoon from "@/components/generics/ComingSoon";
 import { Badge } from "@/components/ui/badge";
+import ViewSpecsModal from "./modals/view-specs-modal";
 
 const getSortedLatestFirst = <T extends { created_at?: string; id: number }>(
   docs: T[],
@@ -78,6 +80,8 @@ const DesigningTab = () => {
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [selectedSpec, setSelectedSpec] =
+    useState<LeadSpecificationEntry | null>(null);
 
   const groupedDesignDocs = useMemo(() => {
     if (!handlesLargeScaleProjects) {
@@ -303,20 +307,83 @@ const DesigningTab = () => {
           ) : (selectedGroup ? selectedGroup.docs : sortedDesignDocs).length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {(selectedGroup ? selectedGroup.docs : sortedDesignDocs).map(
-                (doc: any, index: number) => (
-                  <DocumentCard
-                    key={doc.id}
-                    doc={{
-                      id: doc.id,
-                      originalName: doc.doc_og_name,
-                      created_at: doc.created_at,
-                      signedUrl: doc.signedUrl,
-                    }}
-                    isLatest={index === 0}
-                    canDelete={canDelete}
-                    onDelete={(id) => setConfirmDelete(id)}
-                  />
-                ),
+                (doc: any, index: number) => {
+                  const hasSpec = !!doc.specification?.name;
+
+                  return (
+                    <div key={doc.id} className="relative mt-8">
+                      {hasSpec && (
+                        <>
+                          <div className="absolute top-[20px] left-[-7px] h-[14px] w-[14px] rounded-full border-2 border-background bg-muted-foreground shadow-sm z-20" />
+
+                          <svg
+                            className="absolute pointer-events-none z-10"
+                            style={{
+                              left: "-20px",
+                              top: "-30px",
+                              width: "100px",
+                              height: "100px",
+                              overflow: "visible",
+                            }}
+                          >
+                            <path
+                              d="M 20,57 L 12,57 Q 6,57 6,51 L 6,17 Q 6,9 14,9 L 44,9"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                              className="text-muted-foreground/60"
+                            />
+                            <path
+                              d="M 39,6 L 44,9 L 39,12"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="text-muted-foreground/60"
+                            />
+                          </svg>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSelectedSpec({
+                                id: doc.specification.id,
+                                name: doc.specification.name,
+                                lead_id: Number(leadId),
+                                vendor_id: Number(vendorId),
+                                created_by: Number(userId),
+                                created_at: doc.created_at,
+                                lights_remark: null,
+                                appliances_remark: null,
+                                stone_remark: null,
+                                sinks_remark: null,
+                                faucets_remark: null,
+                                item_code_id: null,
+                              })
+                            }
+                            className="absolute -top-7 left-6 z-10 rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+                          >
+                            {doc.specification.name}
+                          </button>
+                        </>
+                      )}
+
+                      <DocumentCard
+                        doc={{
+                          id: doc.id,
+                          originalName: doc.doc_og_name,
+                          created_at: doc.created_at,
+                          signedUrl: doc.signedUrl,
+                        }}
+                        isLatest={index === 0}
+                        canDelete={canDelete}
+                        onDelete={(id) => setConfirmDelete(id)}
+                      />
+                    </div>
+                  );
+                },
               )}
             </div>
           ) : (
@@ -356,6 +423,16 @@ const DesigningTab = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ViewSpecsModal
+        open={!!selectedSpec}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedSpec(null);
+          }
+        }}
+        specification={selectedSpec}
+      />
     </div>
   );
 };

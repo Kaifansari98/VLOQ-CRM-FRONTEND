@@ -349,6 +349,8 @@ export type CreateTrackTraceProjectRequest = {
   client_contact_no?: string;
   packing_type?: PackingType;
   box_info_fields?: ProjectBoxInfoField[];
+  no_of_boxes?: number;
+remove_box_ids?: number[];
 
 };
 

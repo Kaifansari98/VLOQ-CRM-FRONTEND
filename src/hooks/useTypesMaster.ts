@@ -63,6 +63,8 @@ import {
   fetchSiteTypes,
   fetchSiteTypesForMaster,
   fetchProductTypes,
+  fetchB2BRequirementTypes,
+  fetchProcessBriefs,
   fetchSmallOrderRequestTypes,
   updateCompanyVendor,
   updateCompanyVendorStatus,
@@ -485,11 +487,11 @@ export const useProductItemCodes = () => {
   })
 }
 
-export const useCarcassTypes = () => {
+export const useCarcassTypes = (onlyFastProduction: boolean = false) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   return useQuery({
-    queryKey: getCarcassTypesQueryKey(vendorId),
-    queryFn: () => fetchCarcassTypes(vendorId!),
+    queryKey: [...getCarcassTypesQueryKey(vendorId), onlyFastProduction ? "fast-production-only" : "all"],
+    queryFn: () => fetchCarcassTypes(vendorId!, onlyFastProduction),
     enabled: !!vendorId,
     retry: false,
     refetchOnWindowFocus: false,
@@ -1602,6 +1604,25 @@ export const useProductTypes = () => {
   return useQuery({
     queryKey: ["productTypes", vendorId],
     queryFn: () => fetchProductTypes(vendorId!),
+    enabled: !!vendorId,
+  })
+}
+
+export const useB2BRequirementTypes = (vendorIdOverride?: number) => {
+  const authVendorId = useAppSelector((state) => state.auth.user?.vendor_id)
+  const vendorId = vendorIdOverride ?? authVendorId
+  return useQuery({
+    queryKey: ["b2bRequirementTypes", vendorId],
+    queryFn: () => fetchB2BRequirementTypes(vendorId!),
+    enabled: !!vendorId,
+  })
+}
+
+export const useProcessBriefs = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id)
+  return useQuery({
+    queryKey: ["processBriefs", vendorId],
+    queryFn: () => fetchProcessBriefs(vendorId!),
     enabled: !!vendorId,
   })
 }

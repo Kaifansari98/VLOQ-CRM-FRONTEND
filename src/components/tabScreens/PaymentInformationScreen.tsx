@@ -126,6 +126,16 @@ export default function PaymentInformation({
     activeProductTypeId != null
       ? paymentByProductType.get(activeProductTypeId) ?? null
       : null;
+  const overallBookingAmount = useMemo(() => {
+    const payments = Array.isArray(bookingLeadData?.payments)
+      ? bookingLeadData.payments
+      : [];
+
+    return payments.reduce(
+      (sum, payment) => sum + Number(payment?.amount || 0),
+      0,
+    );
+  }, [bookingLeadData?.payments]);
   const [billingModalOpen, setBillingModalOpen] = useState(false);
 
   return (
@@ -200,6 +210,7 @@ export default function PaymentInformation({
             leadId={finalLeadId}
             accountId={accountId}
             activeProductTypeId={activeProductTypeId}
+            overallBookingAmountOverride={overallBookingAmount}
             productTypePayment={activeProductTypePayment}
           />
         </div>

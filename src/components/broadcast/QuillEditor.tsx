@@ -87,6 +87,17 @@ export const QuillEditor: React.FC<QuillEditorProps> = ({
           overflow-y: auto;
           padding: 16px;
           color: var(--foreground, hsl(var(--foreground)));
+          line-height: 1.6;
+        }
+
+        .quill-wrapper .ql-editor p {
+          margin-top: 0;
+          margin-bottom: 0.75rem;
+          line-height: 1.6;
+        }
+
+        .quill-wrapper .ql-editor p:last-child {
+          margin-bottom: 0;
         }
 
         .quill-wrapper .ql-editor.ql-blank::before {

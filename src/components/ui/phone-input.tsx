@@ -72,6 +72,16 @@ const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> =
         onChange?.(finalVal);
       };
 
+      const formattedValue = React.useMemo(() => {
+        if (!value) return undefined;
+        const strVal = String(value).trim();
+        if (!strVal) return undefined;
+        if (strVal.startsWith("+")) return strVal as RPNInput.Value;
+        const digits = strVal.replace(/\D/g, "");
+        if (!digits) return undefined;
+        return `+91${digits}` as RPNInput.Value;
+      }, [value]);
+
       return (
         <div className="flex flex-col gap-1">
           <RPNInput.default
@@ -81,7 +91,7 @@ const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> =
             countrySelectComponent={CountrySelect}
             inputComponent={InputComponent}
             smartCaret={true}
-            value={value || undefined}
+            value={formattedValue}
             onChange={handleChange}
             {...props}
           />

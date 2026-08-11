@@ -46,6 +46,8 @@ interface ProductionFilesSectionProps {
   accountId: number | null;
   readOnly?: boolean;
   instanceId?: number | null;
+  orderLoginApprovalPending?: boolean;
+  orderLoginApprovalPendingTooltip?: string;
 }
 
 export default function ProductionFilesSection({
@@ -53,6 +55,8 @@ export default function ProductionFilesSection({
   accountId,
   readOnly = false,
   instanceId,
+  orderLoginApprovalPending = false,
+  orderLoginApprovalPendingTooltip = "Accounts approval for Order Login is still pending",
 }: ProductionFilesSectionProps) {
   const searchParams = useSearchParams();
 
@@ -113,6 +117,11 @@ export default function ProductionFilesSection({
     userType,
     lead,
   });
+  const shouldDisableActions =
+    shouldDisableBlockedActions || orderLoginApprovalPending;
+  const effectiveBlockedTooltip = orderLoginApprovalPending
+    ? orderLoginApprovalPendingTooltip
+    : blockedTooltip;
 
   useEffect(() => {
     if (savedRemark && savedRemark !== "N/A") setRemark(savedRemark);
@@ -204,7 +213,7 @@ export default function ProductionFilesSection({
     !isAuditor &&
     canUploadOrDeleteOrderLogin(userType ?? "", effectiveStage);
   const canUploadProductionFiles =
-    !shouldDisableBlockedActions &&
+    !shouldDisableActions &&
     (
       userType === "custom"
         ? customPrivilegeCodes.includes(
@@ -214,7 +223,7 @@ export default function ProductionFilesSection({
     );
 
   const canDeleteProductionFiles =
-    !shouldDisableBlockedActions &&
+    !shouldDisableActions &&
     (
       userType === "custom"
         ? customPrivilegeCodes.includes(
@@ -253,10 +262,10 @@ export default function ProductionFilesSection({
         {/* -------------------------------- UPLOAD AREA -------------------------------- */}
 
 
-        {shouldDisableBlockedActions ? (
+        {shouldDisableActions ? (
           <div className="p-6 border-b space-y-4">
             <CustomeTooltip
-              value={blockedTooltip}
+              value={effectiveBlockedTooltip}
               truncateValue={
                 <div>
                   <FileUploadField
@@ -309,9 +318,9 @@ export default function ProductionFilesSection({
         {/* -------------------------------- REMARK SECTION -------------------------------- */}
         <div className="p-6 border-b space-y-2">
           <p className="text-sm font-semibold tracking-tight">Remark</p>
-          {shouldDisableBlockedActions ? (
+          {shouldDisableActions ? (
             <CustomeTooltip
-              value={blockedTooltip}
+              value={effectiveBlockedTooltip}
               truncateValue={
                 <div>
                   <TextAreaInput

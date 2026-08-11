@@ -191,12 +191,13 @@ export const useUniversalStageLeads = (
 export interface UniversalStagePostPayload {
   userId: number;
   franchise_id?: number;
+  franchise_ids?: number[];
   tag?: string;
   page: number;
   limit: number;
 
   filter_name: string;
-  filter_lead_code: string;
+  filter_lead_code?: string;
   contact: string;
   alt_contact_no: string;
   email: string;
@@ -221,6 +222,7 @@ export interface UniversalStagePostPayload {
   };
   production_status?: string;
   pending_services?: boolean;
+  franchises?: number[];
 }
 
 export const postUniversalStageLeads = async (
@@ -285,6 +287,7 @@ export const useUniversalStageLeadsPost = (
 export interface VendorLeadsByTagPostPayload {
   userId?: number | null; // optional (for exclusion logic)
   franchise_id?: number;
+  franchise_ids?: number[];
   tag: string;
 
   page: number;
@@ -319,6 +322,7 @@ export interface VendorLeadsByTagPostPayload {
   activity_status?: string;
   production_status?: string;
   pending_services?: boolean;
+  franchises?: number[];
 }
 
 export const postVendorLeadsByTag = async (

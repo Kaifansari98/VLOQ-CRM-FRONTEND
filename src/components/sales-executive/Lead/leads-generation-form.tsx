@@ -507,6 +507,7 @@ export default function LeadsGenerationForm({
   const { data: clientsData, isLoading: isClientsLoading } = useClients({
     vendor_id: vendorId,
     limit: 200,
+    activeOnly: true,
   });
   const clientsList = clientsData?.data?.data ?? [];
   const { data: sourceTypes, isLoading: isSourceTypesLoading } =
@@ -846,6 +847,32 @@ export default function LeadsGenerationForm({
     ? designerUsers.data 
     : (designerUsers?.data?.sales_executives || []);
 
+  const invalidateLeadTableQueries = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ["leadStats", vendorId, userId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["activityStatusCounts"],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["universal-stage-leads"],
+        exact: false,
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["vendorOverallLeads"],
+        exact: false,
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["vendorUserLeads", vendorId, userId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["vendorUserLeadsOpen"],
+        exact: false,
+      }),
+    ]);
+  }, [queryClient, userId, vendorId]);
+
   const createLeadMutation = useMutation({
     mutationFn: ({
       payload,
@@ -874,9 +901,7 @@ export default function LeadsGenerationForm({
       }
 
       toastManager.add({ title: "Lead created successfully!", type: "success" });
-      queryClient.invalidateQueries({ queryKey: ["leadStats", vendorId, userId] });
-      queryClient.invalidateQueries({ queryKey: ["universal-stage-leads"] });
-      queryClient.invalidateQueries({ queryKey: ["vendorUserLeads", vendorId, userId] });
+      await invalidateLeadTableQueries();
       form.reset();
       setFiles([]);
       onClose();
@@ -912,16 +937,7 @@ export default function LeadsGenerationForm({
       }
 
       toastManager.add({ title: "Lead saved as draft!", type: "success" });
-      queryClient.invalidateQueries({
-        queryKey: ["leadStats", vendorId, userId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["universal-stage-leads"],
-        exact: false,
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["vendorUserLeads", vendorId, userId],
-      });
+      await invalidateLeadTableQueries();
       queryClient.invalidateQueries({
         queryKey: ["draft-lead-table-data"],
       });
@@ -1228,9 +1244,7 @@ export default function LeadsGenerationForm({
       { payload, files: buildRenamedSitePhotoFiles() },
       {
         onSuccess: async () => {
-          queryClient.invalidateQueries({
-            queryKey: ["leadStats", vendorId, userId],
-          });
+          await invalidateLeadTableQueries();
           router.push("/dashboard/leads/leadstable");
         },
       }
@@ -1726,7 +1740,7 @@ export default function LeadsGenerationForm({
           )}
         </div>
 
-        {(showReferredByField || canReassingLead(userType)) && (
+        {(showReferredByField || canReassingLead(userType) || isB2b) && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
             {showReferredByField && (
               <FormField
@@ -1776,6 +1790,36 @@ export default function LeadsGenerationForm({
                         disabled={isVendorUsersLoading}
                       />
 
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+            )}
+
+            {isB2b && (
+              <FormField
+                control={form.control}
+                name="designer_id"
+                render={({ field }) => {
+                  const pickerData = designersList.map((d: any) => ({
+                    id: d.id,
+                    label: d.user_name || "",
+                    subLabel: d.user_email || d.email || "",
+                  }));
+                  return (
+                    <FormItem data-name={field?.name || ""} >
+                      <FormLabel className="text-sm">Assign Designer</FormLabel>
+                      <AssignToPicker
+                        data={pickerData}
+                        textClassName="text-sm font-medium"
+                        value={field.value ? Number(field.value) : undefined}
+                        onChange={(selectedId) => {
+                          field.onChange(selectedId ? String(selectedId) : "");
+                        }}
+                        placeholder="Select Designer..."
+                        disabled={isDesignersLoading}
+                      />
                       <FormMessage />
                     </FormItem>
                   );

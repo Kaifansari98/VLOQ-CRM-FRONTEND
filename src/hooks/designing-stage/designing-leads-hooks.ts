@@ -12,7 +12,11 @@ import {
   getLeadSpecifications,
   createLeadSpecification,
   updateLeadSpecificationLightsRemark,
+  updateLeadSpecificationSectionRemark,
+  markLeadSpecificationCompleted,
   type LightsRemark,
+  type SpecificationSectionRemark,
+  type SpecificationSectionType,
   getLeadCarcassMaterialMappings,
   getLeadShutterMaterialMappings,
   getLeadHardwareMappings,
@@ -219,14 +223,57 @@ export const useUpdateLeadSpecificationLightsRemark = () => {
   });
 };
 
+export const useUpdateLeadSpecificationSectionRemark = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      specsId,
+      section,
+      remark,
+    }: {
+      specsId: number;
+      section: SpecificationSectionType;
+      remark: SpecificationSectionRemark;
+      vendorId: number;
+      leadId: number;
+    }) => updateLeadSpecificationSectionRemark(specsId, section, remark),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["leadSpecifications", variables.vendorId, variables.leadId],
+      });
+    },
+  });
+};
+
+export const useMarkLeadSpecificationCompleted = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      specsId,
+    }: {
+      specsId: number;
+      vendorId: number;
+      leadId: number;
+    }) => markLeadSpecificationCompleted(specsId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["leadSpecifications", variables.vendorId, variables.leadId],
+      });
+    },
+  });
+};
+
 export const useLeadCarcassMaterialMappings = (
   vendorId?: number,
   leadId?: number,
+  specsId?: number,
 ) => {
   return useQuery({
-    queryKey: ["leadCarcassMaterialMappings", vendorId, leadId],
-    queryFn: () => getLeadCarcassMaterialMappings(vendorId!, leadId!),
-    enabled: !!vendorId && !!leadId,
+    queryKey: ["leadCarcassMaterialMappings", vendorId, leadId, specsId],
+    queryFn: () => getLeadCarcassMaterialMappings(vendorId!, leadId!, specsId!),
+    enabled: !!vendorId && !!leadId && !!specsId,
   });
 };
 
@@ -242,6 +289,7 @@ export const useUpsertLeadCarcassMaterialMapping = () => {
           "leadCarcassMaterialMappings",
           variables.vendor_id,
           variables.lead_id,
+          variables.specs_id,
         ],
       });
     },
@@ -251,11 +299,12 @@ export const useUpsertLeadCarcassMaterialMapping = () => {
 export const useLeadShutterMaterialMappings = (
   vendorId?: number,
   leadId?: number,
+  specsId?: number,
 ) => {
   return useQuery({
-    queryKey: ["leadShutterMaterialMappings", vendorId, leadId],
-    queryFn: () => getLeadShutterMaterialMappings(vendorId!, leadId!),
-    enabled: !!vendorId && !!leadId,
+    queryKey: ["leadShutterMaterialMappings", vendorId, leadId, specsId],
+    queryFn: () => getLeadShutterMaterialMappings(vendorId!, leadId!, specsId!),
+    enabled: !!vendorId && !!leadId && !!specsId,
   });
 };
 
@@ -271,6 +320,7 @@ export const useUpsertLeadShutterMaterialMapping = () => {
           "leadShutterMaterialMappings",
           variables.vendor_id,
           variables.lead_id,
+          variables.specs_id,
         ],
       });
     },
@@ -280,11 +330,12 @@ export const useUpsertLeadShutterMaterialMapping = () => {
 export const useLeadHardwareMappings = (
   vendorId?: number,
   leadId?: number,
+  specsId?: number,
 ) => {
   return useQuery({
-    queryKey: ["leadHardwareMappings", vendorId, leadId],
-    queryFn: () => getLeadHardwareMappings(vendorId!, leadId!),
-    enabled: !!vendorId && !!leadId,
+    queryKey: ["leadHardwareMappings", vendorId, leadId, specsId],
+    queryFn: () => getLeadHardwareMappings(vendorId!, leadId!, specsId!),
+    enabled: !!vendorId && !!leadId && !!specsId,
   });
 };
 
@@ -300,6 +351,7 @@ export const useUpsertLeadHardwareMapping = () => {
           "leadHardwareMappings",
           variables.vendor_id,
           variables.lead_id,
+          variables.specs_id,
         ],
       });
     },

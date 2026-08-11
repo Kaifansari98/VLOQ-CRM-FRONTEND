@@ -47,6 +47,7 @@ interface ProjectFinanceSummaryProps {
   accountId: number;
   activeProductTypeId?: number | null;
   hideAddPaymentForm?: boolean;
+  overallBookingAmountOverride?: number | null;
   productTypePayment?: {
     amount: number;
     basic_amount?: number | null;
@@ -81,6 +82,7 @@ export default function ProjectFinanceSummary({
   accountId,
   activeProductTypeId,
   hideAddPaymentForm = false,
+  overallBookingAmountOverride = null,
   productTypePayment = null,
 }: ProjectFinanceSummaryProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
@@ -129,6 +131,22 @@ export default function ProjectFinanceSummary({
       null,
     );
   }, [activeProductTypeId, scopedPaymentLogs]);
+  const overallBookingAmountFromLogs = useMemo(
+    () =>
+      paymentLogs.reduce((sum, log) => {
+        if (!log.is_booking_received_amt) return sum;
+        return sum + Number(log.amount || 0);
+      }, 0),
+    [paymentLogs],
+  );
+  const scopedBookingAmountFromLogs = useMemo(
+    () =>
+      scopedPaymentLogs.reduce((sum, log) => {
+        if (!log.is_booking_received_amt) return sum;
+        return sum + Number(log.amount || 0);
+      }, 0),
+    [scopedPaymentLogs],
+  );
   const scopedPaidAmount = useMemo(
     () =>
       scopedPaymentLogs.reduce(
@@ -136,6 +154,14 @@ export default function ProjectFinanceSummary({
         0,
       ),
     [scopedPaymentLogs],
+  );
+  const overallPaidAmountFromLogs = useMemo(
+    () =>
+      paymentLogs.reduce(
+        (sum, log) => sum + Number(log.amount || 0),
+        0,
+      ),
+    [paymentLogs],
   );
 
   const totalProjectAmount =
@@ -149,17 +175,25 @@ export default function ProjectFinanceSummary({
   const bookingAmount =
     activeProductTypeId != null
       ? Number(
-          productTypePayment?.amount ?? scopedBookingPayment?.amount ?? 0,
+          scopedBookingAmountFromLogs ||
+            productTypePayment?.amount ||
+            scopedBookingPayment?.amount ||
+            0,
         )
-      : projectFinance?.booking_amount ?? 0;
+      : Number(
+          overallBookingAmountOverride ||
+            overallBookingAmountFromLogs ||
+            projectFinance?.booking_amount ||
+            0,
+        );
   const pendingAmount =
     activeProductTypeId != null
       ? Math.max(totalProjectAmount - scopedPaidAmount, 0)
-      : projectFinance?.pending_amount ?? 0;
+      : Math.max(totalProjectAmount - overallPaidAmountFromLogs, 0);
   const mrpValue = projectFinance?.mrp_value ?? 0;
   const overallReceivedAmount =
     activeProductTypeId == null
-      ? Math.max(totalProjectAmount - pendingAmount, 0)
+      ? overallPaidAmountFromLogs
       : null;
   const scopedBasicAmount =
     activeProductTypeId != null

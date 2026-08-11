@@ -23,7 +23,7 @@ export const clientTypeKeys = {
   list: (vendorId: number) => [...clientTypeKeys.all, "list", vendorId] as const,
 };
 
-export const useClients = (params: { vendor_id?: number; page?: number; limit?: number; search?: string }) => {
+export const useClients = (params: { vendor_id?: number; page?: number; limit?: number; search?: string; activeOnly?: boolean }) => {
   return useQuery({
     queryKey: clientKeys.list(params),
     queryFn: () => getClients({ ...params, vendor_id: params.vendor_id! }),
@@ -43,7 +43,7 @@ export const useCreateClient = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreateClientDTO) => createClient(data),
+    mutationFn: (data: CreateClientDTO | FormData) => createClient(data),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: clientKeys.lists() });
       toastManager.add({ title: res.message || "Client created successfully.", type: "success" });
@@ -58,7 +58,7 @@ export const useUpdateClient = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateClientDTO }) => updateClient(id, data),
+    mutationFn: ({ id, data }: { id: number; data: UpdateClientDTO | FormData }) => updateClient(id, data),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: clientKeys.lists() });
       queryClient.invalidateQueries({ queryKey: clientKeys.details() });

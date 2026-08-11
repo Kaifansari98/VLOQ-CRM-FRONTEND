@@ -45,6 +45,8 @@ interface OrderLoginTabProps {
   leadId: number;
   accountId: number;
   instanceId?: number | null;
+  orderLoginApprovalPending?: boolean;
+  orderLoginApprovalPendingTooltip?: string;
 }
 
 const isOrderLoginMarkedInBackend = (instance: any) =>
@@ -54,6 +56,8 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   leadId,
   accountId,
   instanceId,
+  orderLoginApprovalPending = false,
+  orderLoginApprovalPendingTooltip = "Accounts approval for Order Login is still pending",
 }) => {
   const queryClient = useQueryClient();
 
@@ -143,6 +147,11 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
     userType,
     lead,
   });
+  const shouldDisableActions =
+    shouldDisableBlockedActions || orderLoginApprovalPending;
+  const effectiveBlockedTooltip = orderLoginApprovalPending
+    ? orderLoginApprovalPendingTooltip
+    : blockedTooltip;
 
   // Debounce timers for description auto-save
   const descTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -589,10 +598,10 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
   </div>
 ) : (
   canShowCompletedButton &&
-  (shouldDisableBlockedActions ? (
+  (shouldDisableActions ? (
 <div className="ml-auto">
   <CustomeTooltip
-    value={blockedTooltip}
+    value={effectiveBlockedTooltip}
     truncateValue={
       <Button
         disabled
@@ -665,14 +674,14 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
               onDescriptionChange={(description) =>
                 handleDescriptionChange(title, description, existingData)
               }
-              disabled={!perms.canEdit}
+              disabled={!perms.canEdit || shouldDisableActions}
               isMandatory={mandatoryTitles.includes(title)}
               vendorId={vendorId}
               leadId={leadId}
               orderLoginId={existingData?.id}
               userId={userId}
               showPoUpload
-              disablePoDelete={isBackendLockedAfterOrderLogin}
+              disablePoDelete={isBackendLockedAfterOrderLogin || shouldDisableActions}
             />
           );
         })}
@@ -699,10 +708,10 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
               onDescriptionChange={(description) =>
                 handleDescriptionChange(item.item_type, description, item)
               }
-              disabled={!perms.canEdit}
+              disabled={!perms.canEdit || shouldDisableActions}
               isMandatory={false}
               isTitleEditable={canEditOrDeleteCustomSection && !!item.id}
-              canDelete={canEditOrDeleteCustomSection && !!item.id}
+              canDelete={canEditOrDeleteCustomSection && !!item.id && !shouldDisableActions}
               onTitleSave={(nextTitle) => handleTitleUpdate(item, nextTitle)}
               onDelete={() =>
                 setConfirmDelete({ id: item.id, title: item.item_type })
@@ -712,16 +721,16 @@ const OrderLoginTab: React.FC<OrderLoginTabProps> = ({
               orderLoginId={item.id}
               userId={userId}
               showPoUpload
-              disablePoDelete={isBackendLockedAfterOrderLogin}
+              disablePoDelete={isBackendLockedAfterOrderLogin || shouldDisableActions}
             />
           );
         })}
 
         {/* Add New Section Card */}
         {canAccessButtons && canAddCustomSection && (
-          shouldDisableBlockedActions ? (
+          shouldDisableActions ? (
             <CustomeTooltip
-              value={blockedTooltip}
+              value={effectiveBlockedTooltip}
               truncateValue={
                 <div
                   className="rounded-xl border-2 border-dashed border-primary/30 p-5 bg-primary/5

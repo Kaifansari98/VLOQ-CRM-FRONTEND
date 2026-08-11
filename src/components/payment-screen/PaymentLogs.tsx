@@ -154,16 +154,7 @@ export default function PaymentLogs({
 
   // 1. URL param → 2. props → 3. null fallback
   const urlLeadId = lead ? Number(lead) : null;
-  const finalLeadId = urlLeadId || leadIdProps;
-
-  // If still null → show fallback UI
-  if (!finalLeadId) {
-    return (
-      <div className="flex items-center justify-center min-h-[200px] text-muted-foreground">
-        Lead ID not available.
-      </div>
-    );
-  }
+  const finalLeadId = urlLeadId || leadIdProps || 0;
 
   // Use finalLeadId for API
   const { data, isLoading } = usePaymentLogs(finalLeadId, vendorId);
@@ -173,27 +164,6 @@ export default function PaymentLogs({
     vendorId,
     handlesLargeScaleProjects,
   );
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-          className="text-center space-y-4"
-        >
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-2"
-          />
-          <p className="text-muted-foreground font-medium">
-            Loading payment logs...
-          </p>
-        </motion.div>
-      </div>
-    );
-  }
 
   const productTypeLabelMap = new Map<number, string>(
     (Array.isArray(structureInstancesData?.data) ? structureInstancesData.data : [])
@@ -303,6 +273,36 @@ export default function PaymentLogs({
     if (!editingLog) return;
     reset({ amount: Number(editingLog.amount || 0) });
   }, [editingLog, reset]);
+
+  if (!finalLeadId) {
+    return (
+      <div className="flex items-center justify-center min-h-[200px] text-muted-foreground">
+        Lead ID not available.
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="text-center space-y-4"
+        >
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-2"
+          />
+          <p className="text-muted-foreground font-medium">
+            Loading payment logs...
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
 
   if (!visibleLogs.length) {
     return (

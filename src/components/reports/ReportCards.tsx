@@ -15,6 +15,7 @@ import { generateLeadsOverviewReport } from "@/lib/reports/leadsOverviewReport";
 import { generateTechCheckStageReport } from "@/lib/reports/techCheckStageReport";
 import { generateErdReport } from "@/lib/reports/erdReport";
 import { generatePaymentsBetweenClientAndStoreReport } from "@/lib/reports/paymentsBetweenClientAndStoreReport";
+import { generateLeadServicingReport } from "@/lib/reports/leadServicingReport";
 import { toast } from "sonner";
 
 interface ReportCardConfig {
@@ -74,6 +75,12 @@ const REPORTS: ReportCardConfig[] = [
     description: "Entity-relationship data export for system analysis and auditing.",
     userTypes: [],
   },
+  {
+    id: "lead-servicing",
+    title: "Lead Servicing Report",
+    description: "Track free and AMC service schedule dates, handovers, and AMC status.",
+    userTypes: [],
+  },
 ];
 
 const containerVariants = {
@@ -104,7 +111,8 @@ export function ReportCards() {
     user?.vendor?.["vendor-report-code"] ||
     user?.vendor?.vendor_code ||
     `VENDOR_${vendorId}`;
-  const isSuperAdmin = user?.user_type?.user_type?.toLowerCase() === "super-admin";
+  const userType = user?.user_type?.user_type?.toLowerCase()?.trim();
+  const isSuperAdmin = userType === "super-admin" || userType === "auditor";
   const adminFranchiseId = reduxFranchiseId ?? user?.franchise_id ?? null;
 
   const { data: franchises = [] } = useFranchisesByVendorId(vendorId, true);
@@ -349,6 +357,44 @@ try {
       setStage(reportId, "Fetching ERD data...");
       try {
         await generateErdReport({
+          vendorId,
+          vendorReportCode,
+          franchiseId,
+          fromDate: filters?.fromDate ?? "",
+          toDate: filters?.toDate ?? "",
+          onProgress: (stage) => setStage(reportId, stage),
+        });
+        toast.success("Report downloaded successfully.");
+      } catch (err: unknown) {
+        console.error(err);
+        const msg =
+          err instanceof Error ? err.message : "Failed to generate report.";
+        toast.error(msg);
+      } finally {
+        clearStage(reportId);
+      }
+      return;
+    }
+
+    if (reportId === "lead-servicing") {
+      const filters = appliedFilters[reportId];
+      if (isSuperAdmin && !filters?._franchiseId) {
+        toast.error("Please apply filters before downloading.");
+        openFilterModal(reportId);
+        return;
+      }
+
+      const rawFranchiseId = filters?._franchiseId ?? adminFranchiseId ?? "all";
+      const franchiseId =
+        rawFranchiseId === "all"
+          ? "all"
+          : Array.isArray(rawFranchiseId)
+          ? rawFranchiseId.map(Number)
+          : Number(rawFranchiseId);
+
+      setStage(reportId, "Fetching servicing data...");
+      try {
+        await generateLeadServicingReport({
           vendorId,
           vendorReportCode,
           franchiseId,
