@@ -1386,6 +1386,227 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
             </div>
           </BaseModal>
 
+          {/* PRODUCT INFORMATION (B2C Leads) */}
+          {!handlesLargeScaleProjects && !isB2b && (
+            <SectionCard
+              title="Product Information"
+              action={
+                canEditStructures && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="w-auto">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="w-auto">
+                              <Button
+                                onClick={() => {
+                                  if (shouldDisableBlockedActions) return;
+                                  handleAddOpen();
+                                }}
+                                className={
+                                  shouldDisableBlockedActions
+                                    ? "opacity-50 cursor-not-allowed"
+                                    : ""
+                                }
+                              >
+                                <Plus className="h-5 w-5 sm:h-4 sm:w-4 sm:mr-2" />
+                                <span className="hidden sm:inline">Add Furniture Structure</span>
+                              </Button>
+                            </div>
+                          </TooltipTrigger>
+
+                          {shouldDisableBlockedActions && (
+                            <TooltipContent>
+                              <p>{blockedTooltip}</p>
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      </div>
+                    </TooltipTrigger>
+
+                    {shouldDisableBlockedActions && (
+                      <TooltipContent>
+                        {blockedTooltip}
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                )
+              }
+            >
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center w-full justify-between gap-3 items-start">
+                  <InfoRow
+                    icon={Package}
+                    label={
+                      <span className="inline-flex items-center gap-2">
+                        <span>Product Types</span>
+                        {canEditProductType && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (shouldDisableBlockedActions) return;
+
+                                  handleOpenProductTypeEdit();
+                                }}
+                                className="
+                                  text-muted-foreground/70
+                                  hover:text-foreground
+                                  inline-flex size-7 items-center justify-center
+                                  rounded-md
+                                  transition
+                                  disabled:pointer-events-none
+                                "
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </button>
+                            </TooltipTrigger>
+
+                            {shouldDisableBlockedActions && (
+                              <TooltipContent>
+                                {blockedTooltip}
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        )}
+                      </span>
+                    }
+                    value={lead.productMappings
+                      ?.map((pm: any) => pm.productType?.type)
+                      ?.filter(Boolean)
+                      ?.join(", ")}
+                  />
+                  {(structureSummary.total > 0 ||
+                    structureSummary.uniqueStructures > 0) && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        {structureSummary.total > 0 && (
+                          <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60">
+                            <span className="flex h-1.5 w-1.5 rounded-full bg-current opacity-60"></span>
+                            {structureSummary.total} Instance
+                            {structureSummary.total === 1 ? "" : "s"}
+                          </span>
+                        )}
+                        {structureSummary.uniqueStructures > 0 && (
+                          <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/60">
+                            <span className="flex h-1.5 w-1.5 rounded-full bg-current opacity-60"></span>
+                            {structureSummary.uniqueStructures} Structure
+                            {structureSummary.uniqueStructures === 1 ? "" : "s"}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                </div>
+
+                {isStructuresLoading ? (
+                  <div className="flex items-center gap-2 rounded-lg border border-dashed bg-muted/20 p-4 text-sm text-muted-foreground">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                    Loading product information...
+                  </div>
+                ) : structureInstances.length === 0 ? (
+                  <InfoRow
+                    icon={Package}
+                    label="Product Structures"
+                    value={lead.leadProductStructureMapping
+                      ?.map((ps: any) => ps.productStructure?.type)
+                      ?.filter(Boolean)
+                      ?.join(", ")}
+                  />
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {structureInstances.map((item: any) => (
+                      <div
+                        key={`${item.product_structure_id}-${item.quantity_index}`}
+                        className="group rounded-xl border bg-white/60 p-5 transition-all hover:border-border/80 dark:bg-[#0a0a0a] min-w-0"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0 flex-1 space-y-1">
+                            <div className="flex items-start justify-between gap-3">
+                              <p className="flex-1 min-w-0 line-clamp-2 text-base font-semibold leading-tight text-heading transition-colors group-hover:text-foreground dark:text-neutral-200 text-wrap break-words">
+                                {item.title || item.productStructure?.type || "—"}
+                              </p>
+                              <div className="flex items-center gap-1 shrink-0">
+                                {canEditStructures && (
+                                  <>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <button
+                                          type="button"
+                                          className="text-muted-foreground/70 hover:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 inline-flex size-7 items-center justify-center rounded-md border border-transparent transition-[color,box-shadow] outline-none focus-visible:ring-[3px]"
+                                          onClick={() => {
+                                            if (shouldDisableBlockedActions) return;
+
+                                            handleEditOpen(item);
+                                          }}
+                                          aria-label="Edit"
+                                        >
+                                          <Pencil className="h-4 w-4" />
+                                        </button>
+                                      </TooltipTrigger>
+
+                                      {shouldDisableBlockedActions && (
+                                        <TooltipContent>
+                                          {blockedTooltip}
+                                        </TooltipContent>
+                                      )}
+                                    </Tooltip>
+                                    {structureInstances.length > 1 && (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              if (shouldDisableBlockedActions) return;
+
+                                              setConfirmStructureDelete({
+                                                id: item.id,
+                                                title:
+                                                  item.title ||
+                                                  item.productStructure?.type ||
+                                                  "this item",
+                                              });
+                                            }}
+                                            className="
+                                              text-muted-foreground/70
+                                              hover:text-destructive
+                                              inline-flex size-7 items-center justify-center
+                                              rounded-md
+                                            "
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                          </button>
+                                        </TooltipTrigger>
+
+                                        {shouldDisableBlockedActions && (
+                                          <TooltipContent>
+                                            {blockedTooltip}
+                                          </TooltipContent>
+                                        )}
+                                      </Tooltip>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
+                              {item.productStructure?.type || "—"}
+                            </p>
+                          </div>
+                        </div>
+
+                        {item.description && (
+                          <div className="mt-4 rounded-lg border border-dashed border-border/60 bg-muted/30 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground transition-colors group-hover:bg-muted/40">
+                            {item.description}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </SectionCard>
+          )}
+
           {/* REQUIREMENT TYPES EDIT MODAL */}
           {!handlesLargeScaleProjects && isB2b && (
             <SectionCard
