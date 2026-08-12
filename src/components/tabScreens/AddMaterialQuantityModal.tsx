@@ -344,7 +344,7 @@ export const AddMaterialQuantityModal: React.FC<AddMaterialQuantityModalProps> =
 
           {/* Expandable Options List Panel */}
           {isDropdownOpen && (
-            <div className="p-2 border rounded-lg bg-background shadow-lg space-y-2 mt-1 z-50">
+            <div className="absolute w-full p-2 border rounded-lg bg-background shadow-lg space-y-2 mt-1 z-50">
               {/* Header with Select All */}
               <div className="flex items-center justify-between border-b pb-1.5 text-xs text-muted-foreground">
                 <span>Materials</span>
