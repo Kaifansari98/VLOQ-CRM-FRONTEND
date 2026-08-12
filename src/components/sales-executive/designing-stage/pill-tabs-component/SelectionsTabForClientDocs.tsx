@@ -1366,6 +1366,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     !shouldDisableBlockedActions;
 
   const isSingleInstance = structureInstances.length === 1;
+  const isSingleDisplayGroup = displayGroups.length === 1;
 
   const handleOpenUploadModal = (instance: LeadProductStructureInstance) => {
     setActiveInstance(instance);
@@ -2218,9 +2219,14 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         </div>
       )}
 
-      {canViewSelectionInstances && isSingleInstance && activeInstance && (
+      {canViewSelectionInstances &&
+        ((handlesLargeScaleProjects && isSingleDisplayGroup) ||
+          (!handlesLargeScaleProjects && isSingleInstance)) &&
+        activeInstance && (
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold">{activeInstance.title}</h3>
+          <h3 className="text-sm font-semibold">
+            {activeDisplayGroup?.title || activeInstance.title}
+          </h3>
           <div className="rounded-2xl border bg-white dark:bg-neutral-900">
             {renderInstanceEditorContent(activeInstance.id)}
           </div>

@@ -10,6 +10,9 @@ export interface UpdateActivityStatusPayload {
   remark: string;
   createdBy: number;
   dueDate?: string;
+  applyToWholeLead?: boolean;
+  selectedGroupIds?: number[];
+  selectedItemIds?: number[];
 }
 
 export interface RevertActivityStatusPayload {

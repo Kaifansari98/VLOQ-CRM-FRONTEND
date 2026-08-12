@@ -1279,7 +1279,7 @@ export const fetchProcessBriefs = async (vendorId: number) => {
 export const saveLeadProcessBriefsApi = async (payload: {
   lead_id: number;
   vendor_id: number;
-  mappings?: { product_type_id: number; process_brief_id: number }[];
+  mappings?: { product_type_id?: number; b2b_requirement_type_id?: number; process_brief_id: number }[];
   process_brief_ids?: number[];
   created_by?: number;
 }) => {

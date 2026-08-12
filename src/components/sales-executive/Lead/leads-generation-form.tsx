@@ -27,6 +27,7 @@ import {
   useSourceTypes,
   useProductStructureTypes,
   useProductTypes,
+  useB2BRequirementTypes,
 } from "@/hooks/useTypesMaster";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { toastManager } from "@/components/ui/toast";
@@ -178,8 +179,11 @@ const createFormSchema = (
         ? z.string().min(1, "Please select a client")
         : z.string().optional().or(z.literal("")),
       order_number: z.string().max(100).optional().or(z.literal("")),
-      product_types: requiresFurnitureSelection
+      product_types: (requiresFurnitureSelection && !isB2b)
         ? z.array(z.string()).min(1, "Please select at least one product type")
+        : z.array(z.string()).optional(),
+      b2b_requirement_type_ids: (requiresFurnitureSelection && isB2b)
+        ? z.array(z.string()).min(1, "Please select at least one requirement type")
         : z.array(z.string()).optional(),
       product_structures: requiresFurnitureSelection
         ? z
@@ -557,6 +561,7 @@ export default function LeadsGenerationForm({
       client_id: "",
       order_number: "",
       product_types: [],
+      b2b_requirement_type_ids: [],
       product_structures: [],
       documents: "",
       archetech_name: "",
@@ -609,6 +614,8 @@ export default function LeadsGenerationForm({
     useProductStructureTypes();
   const { data: productTypes, isLoading: isProductTypesLoading } =
     useProductTypes();
+  const { data: b2bRequirementTypes, isLoading: isB2bRequirementTypesLoading } = 
+    useB2BRequirementTypes();
 
   const selectedTypeId = selectedProductTypes?.[0];
   const selectedTypeLabel =
@@ -1198,6 +1205,11 @@ export default function LeadsGenerationForm({
       alt_contact_no: altContactNo,
 
       product_types: requiresFurnitureSelection ? values.product_types || [] : [],
+      b2b_requirement_type_ids: requiresFurnitureSelection && isB2b
+        ? (values.b2b_requirement_type_ids || [])
+            .map((id) => Number(id))
+            .filter((id) => Number.isFinite(id))
+        : [],
       product_structures: requiresFurnitureSelection
         ? values.product_structures || []
         : [],
@@ -1319,6 +1331,11 @@ export default function LeadsGenerationForm({
         ? values.alt_contact_no.replace(/\D/g, "") // remove + or non-digits
         : undefined,
       product_types: requiresFurnitureSelection ? values.product_types || [] : [],
+      b2b_requirement_type_ids: requiresFurnitureSelection && isB2b
+        ? (values.b2b_requirement_type_ids || [])
+            .map((id) => Number(id))
+            .filter((id) => Number.isFinite(id))
+        : [],
       product_structures: requiresFurnitureSelection
         ? values.product_structures || []
         : [],
@@ -1920,48 +1937,100 @@ export default function LeadsGenerationForm({
             />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
-              <FormField
-                control={form.control}
-                name="product_types"
-                render={({ field }) => {
-                  const pickerData =
-                    productTypes?.data?.map((p: any) => ({
-                      id: p.id,
-                      label: p.type,
-                    })) || [];
+              {isB2b ? (
+                <FormField
+                  control={form.control}
+                  name="b2b_requirement_type_ids"
+                  render={({ field }) => {
+                    const pickerData =
+                      b2bRequirementTypes?.data?.map((p: any) => ({
+                        value: String(p.id),
+                        label: p.type,
+                      })) || [];
 
-                  return (
-                    <FormItem data-name={field?.name || ""} >
-                    <FormLabel className="text-sm">Furniture Type *</FormLabel>
+                    const selectedOptions = (field.value || [])
+                      .filter((id) =>
+                        pickerData.some((opt: Option) => opt.value === id)
+                      )
+                      .map((id) =>
+                        pickerData.find((opt: Option) => opt.value === id)
+                      ) as Option[];
 
-                      {isProductTypesLoading ? (
-                        <p className="text-xs text-muted-foreground">Loading...</p>
-                      ) : (
-                        <div onBlurCapture={handleSimilarityFieldBlur}>
-                          <AssignToPicker
-                            data={pickerData}
-                            value={
-                              field.value?.length ? Number(field.value[0]) : undefined
-                            }
-                            onChange={(selectedId) => {
-                              resetSimilarLeadValidation();
-                              field.onChange(selectedId ? [String(selectedId)] : []);
-                            }}
-                            placeholder="Search furniture type..."
-                          />
-                        </div>
-                      )}
+                    return (
+                      <FormItem data-name={field?.name || ""}>
+                        <FormLabel className="text-sm">
+                          Requirement Type (Multi-Select) *
+                        </FormLabel>
+                        {isB2bRequirementTypesLoading ? (
+                          <p className="text-xs text-muted-foreground">Loading...</p>
+                        ) : (
+                          <div onBlurCapture={handleSimilarityFieldBlur}>
+                            <MultipleSelector
+                              value={selectedOptions}
+                              onChange={(options) => {
+                                resetSimilarLeadValidation();
+                                field.onChange(options.map((o) => o.value));
+                              }}
+                              defaultOptions={pickerData}
+                              placeholder="Select requirement types..."
+                              emptyIndicator={
+                                <p className="text-center text-xs leading-5 text-muted-foreground">
+                                  No results found.
+                                </p>
+                              }
+                              maxSelected={10}
+                            />
+                          </div>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
+              ) : (
+                <FormField
+                  control={form.control}
+                  name="product_types"
+                  render={({ field }) => {
+                    const pickerData =
+                      productTypes?.data?.map((p: any) => ({
+                        id: p.id,
+                        label: p.type,
+                      })) || [];
 
-                      <FormMessage />
-                      {similarLeadWarning && (
-                        <p className="text-sm font-medium text-destructive">
-                          {similarLeadErrorMessage}
-                        </p>
-                      )}
-                    </FormItem>
-                  );
-                }}
-              />
+                    return (
+                      <FormItem data-name={field?.name || ""} >
+                      <FormLabel className="text-sm">Furniture Type *</FormLabel>
+
+                        {isProductTypesLoading ? (
+                          <p className="text-xs text-muted-foreground">Loading...</p>
+                        ) : (
+                          <div onBlurCapture={handleSimilarityFieldBlur}>
+                            <AssignToPicker
+                              data={pickerData}
+                              value={
+                                field.value?.length ? Number(field.value[0]) : undefined
+                              }
+                              onChange={(selectedId) => {
+                                resetSimilarLeadValidation();
+                                field.onChange(selectedId ? [String(selectedId)] : []);
+                              }}
+                              placeholder="Search furniture type..."
+                            />
+                          </div>
+                        )}
+
+                        <FormMessage />
+                        {similarLeadWarning && (
+                          <p className="text-sm font-medium text-destructive">
+                            {similarLeadErrorMessage}
+                          </p>
+                        )}
+                      </FormItem>
+                    );
+                  }}
+                />
+              )}
 
               <FormField
                 control={form.control}

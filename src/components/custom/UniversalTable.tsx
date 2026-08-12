@@ -435,6 +435,18 @@ export function UniversalTable({
   const franchiseId = useAppSelector(
     (s) => s.auth.franchise_id ?? s.auth.user?.franchise_id,
   );
+  const reduxModuledForB2b = useAppSelector(
+    (s) => s.auth.moduled_for_b2b ?? s.auth.user?.moduled_for_b2b ?? false,
+  );
+  const { data: franchisesForB2b = [] } = useFranchisesByVendorId(
+    vendorId,
+    !!vendorId,
+  );
+  const isB2b = useMemo(() => {
+    if (!franchiseId) return reduxModuledForB2b;
+    const activeFranchise = franchisesForB2b.find((f: any) => f.id === franchiseId);
+    return activeFranchise?.moduled_for_b2b ?? reduxModuledForB2b;
+  }, [franchisesForB2b, franchiseId, reduxModuledForB2b]);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const isHOUser = useAppSelector(
     (s) => s.auth.is_ho_user ?? s.auth.user?.is_ho_user ?? false,
@@ -1020,6 +1032,23 @@ export function UniversalTable({
       designerMapping?.userMaster?.user_name ??
       "";
 
+    const requirementTypes = Array.from(
+      new Set(
+        [
+          ...(Array.isArray(lead.leadB2BReqMappings)
+            ? lead.leadB2BReqMappings.map(
+                (mapping: any) => mapping.b2bRequirementType?.type,
+              )
+            : []),
+          ...(Array.isArray(lead.leadProcessBriefs)
+            ? lead.leadProcessBriefs.map(
+                (mapping: any) => mapping.b2bRequirementType?.type,
+              )
+            : []),
+        ].filter(Boolean),
+      ),
+    ).join(", ");
+
     return {
       rowKey: options?.rowKey,
       instanceId: options?.instanceId,
@@ -1033,14 +1062,32 @@ export function UniversalTable({
       site_map_link: lead.site_map_link ?? "",
       architechName: lead.archetech_name ?? "",
       designerRemark: lead.designer_remark ?? "",
-      furnitureType:
-        lead.productMappings?.map((p: any) => p.productType?.type).join(", ") ??
-        "",
-      furnitueStructures: options?.furnitureStructureOverride
-        ? [options.furnitureStructureOverride]
-        : (lead.leadProductStructureMapping?.map(
-            (p: any) => p.productStructure?.type,
-          ) ?? []),
+      furnitureType: isB2b
+        ? requirementTypes
+        : (Array.isArray(lead.productMappings)
+            ? lead.productMappings
+                .map((p: any) => p.productType?.type)
+                .filter(Boolean)
+                .join(", ")
+            : ""),
+      furnitueStructures: isB2b
+        ? (Array.isArray(lead.leadProcessBriefs)
+            ? lead.leadProcessBriefs
+                .map((p: any) => {
+                  const reqType = p.b2bRequirementType?.type;
+                  const briefName = p.processBrief?.name;
+                  if (reqType && briefName) {
+                    return `${reqType} - ${briefName}`;
+                  }
+                  return briefName || reqType;
+                })
+                .filter(Boolean)
+            : [])
+        : (options?.furnitureStructureOverride
+            ? [options.furnitureStructureOverride]
+            : (lead.leadProductStructureMapping
+                ?.map((p: any) => p.productStructure?.type)
+                .filter(Boolean) ?? [])),
       productionStatus: options?.productionStatus,
       type8StatusLoggedAt: options?.type8StatusLoggedAt,
       techCheckCompletedAt: options?.techCheckCompletedAt,
@@ -1325,6 +1372,7 @@ export function UniversalTable({
         showPriorityColumn,
         showServicingColumn,
         showDesignerColumn: isCustomUserTypeOnlyVendor,
+        isB2b,
       }),
     [
       showStageColumn,
@@ -1332,6 +1380,7 @@ export function UniversalTable({
       showPriorityColumn,
       showServicingColumn,
       isCustomUserTypeOnlyVendor,
+      isB2b,
     ],
   );
 
@@ -1357,6 +1406,7 @@ export function UniversalTable({
       showFranchiseFilter,
       franchisesFilter: activeFranchisesFilter,
       setFranchisesFilter: setActiveFranchisesFilter,
+      isB2b,
     },
 
     onPaginationChange:

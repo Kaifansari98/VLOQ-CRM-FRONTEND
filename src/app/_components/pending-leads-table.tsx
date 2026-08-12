@@ -16,6 +16,7 @@ import {
   getPendingLeadsColumns,
   PendingLeadRow,
 } from "./pending-leads-columns";
+import { useFranchisesByVendorId } from "@/api/franchise";
 
 import {
   AlertDialog,
@@ -60,6 +61,18 @@ export default function PendingLeadsTable({
   const franchiseId = useAppSelector(
     (s) => s.auth.franchise_id ?? s.auth.user?.franchise_id
   );
+  const reduxModuledForB2b = useAppSelector(
+    (s) => s.auth.moduled_for_b2b ?? s.auth.user?.moduled_for_b2b ?? false
+  );
+  const { data: franchisesForB2b = [] } = useFranchisesByVendorId(
+    vendorId,
+    !!vendorId
+  );
+  const isB2b = React.useMemo(() => {
+    if (!franchiseId) return reduxModuledForB2b;
+    const activeFranchise = franchisesForB2b.find((f: any) => f.id === franchiseId);
+    return activeFranchise?.moduled_for_b2b ?? reduxModuledForB2b;
+  }, [franchisesForB2b, franchiseId, reduxModuledForB2b]);
   const router = useRouter();
 
   // ============================================
@@ -263,15 +276,29 @@ export default function PendingLeadsTable({
       architechName: lead.archetech_name || "",
       designerRemark: lead.designer_remark || "",
       activity_status: lead.activity_status || "",
-      furnitureType:
-        lead.productMappings
-          ?.map((pm: any) => pm.productType.type)
-          .join(", ") || "",
+      furnitureType: isB2b
+        ? (Array.isArray(lead.leadB2BReqMappings)
+            ? lead.leadB2BReqMappings
+                .map((p: any) => p.b2bRequirementType?.type)
+                .filter(Boolean)
+                .join(", ")
+            : "")
+        : (Array.isArray(lead.productMappings)
+            ? lead.productMappings
+                .map((pm: any) => pm.productType?.type)
+                .filter(Boolean)
+                .join(", ")
+            : ""),
 
-      furnitueStructures:
-        lead.leadProductStructureMapping?.map(
-          (psm: any) => psm.productStructure?.type,
-        ) ?? [],
+      furnitueStructures: isB2b
+        ? (Array.isArray(lead.leadProcessBriefs)
+            ? lead.leadProcessBriefs
+                .map((p: any) => p.processBrief?.name)
+                .filter(Boolean)
+            : [])
+        : (lead.leadProductStructureMapping
+            ?.map((psm: any) => psm.productStructure?.type)
+            .filter(Boolean) ?? []),
 
       source: lead.source?.type || "",
       siteType: lead.siteType?.type || "",
@@ -396,8 +423,9 @@ export default function PendingLeadsTable({
         onMarkAsLost: (lead) => {
           setRowAction({ row: lead, variant: "lost" });
         },
+        isB2b,
       }),
-    [tab],
+    [tab, isB2b],
   );
 
   // ============================================
@@ -483,6 +511,9 @@ export default function PendingLeadsTable({
 
     getCoreRowModel: getCoreRowModel(),
     getRowId: (row) => row.id.toString(),
+    meta: {
+      isB2b,
+    },
   });
 
   // ============================================

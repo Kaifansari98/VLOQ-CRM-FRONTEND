@@ -183,6 +183,35 @@ export default function LeadDetails() {
   const isBoqMissingForDesign =
     handlesLargeScaleProjects && boqInstances.length === 0;
 
+  const hasB2bReqTypes = useMemo(() => {
+    if (!isB2b || !lead) return true;
+    const reqs = (lead as any)?.leadB2BReqMappings;
+    return Array.isArray(reqs) && reqs.length > 0;
+  }, [isB2b, lead]);
+
+  const hasB2bProcessBriefs = useMemo(() => {
+    if (!isB2b || !lead) return true;
+    const briefs = (lead as any)?.leadProcessBriefs;
+    return Array.isArray(briefs) && briefs.length > 0;
+  }, [isB2b, lead]);
+
+  const isB2bPrerequisiteMissingForDesign = useMemo(() => {
+    return isB2b && (!hasB2bReqTypes || !hasB2bProcessBriefs);
+  }, [isB2b, hasB2bReqTypes, hasB2bProcessBriefs]);
+
+  const b2bPrerequisiteTooltip = useMemo(() => {
+    if (!isB2bPrerequisiteMissingForDesign) return "";
+    if (!hasB2bReqTypes && !hasB2bProcessBriefs) {
+      return "Please select at least one Requirement Type and one Process Brief before moving to the Designing Stage.";
+    }
+    if (!hasB2bReqTypes) {
+      return "Please select at least one Requirement Type before moving to the Designing Stage.";
+    }
+    if (!hasB2bProcessBriefs) {
+      return "Please select at least one Process Brief before moving to the Designing Stage.";
+    }
+    return "";
+  }, [isB2bPrerequisiteMissingForDesign, hasB2bReqTypes, hasB2bProcessBriefs]);
 
   const blockedAtTooltip = isLeadBlocked
     ? (leadBlockStatus?.lead_blocked_at || lead?.lead_blocked_at)
@@ -191,6 +220,18 @@ export default function LeadDetails() {
         )}`
       : "Lead is blocked"
     : "";
+
+  const moveToDesignTooltip = isLeadBlocked
+    ? blockedAtTooltip
+    : isBoqMissingForDesign
+      ? boqRequiredTooltip
+      : isB2bPrerequisiteMissingForDesign
+        ? b2bPrerequisiteTooltip
+        : "";
+
+  const isMoveToDesignDisabled =
+    isLeadBlocked || uiDisabled || isBoqMissingForDesign || isB2bPrerequisiteMissingForDesign;
+
   const isBlockActionPending =
     blockLeadMutation.isPending || unblockLeadMutation.isPending;
 
@@ -461,20 +502,14 @@ export default function LeadDetails() {
         <div className="flex items-center space-x-2">
           {(vendorCustomUserTypeMode === true || isB2b) && !isAuditor && (
             <CustomeTooltip
-              value={
-                isLeadBlocked
-                  ? blockedAtTooltip
-                  : isBoqMissingForDesign
-                    ? boqRequiredTooltip
-                    : ""
-              }
+              value={moveToDesignTooltip}
               truncateValue={
                 <span>
                   <Button
                     size="sm"
                     className="hidden sm:flex"
                     onClick={() => setMoveToDesigningOpen(true)}
-                    disabled={isLeadBlocked || uiDisabled || isBoqMissingForDesign}
+                    disabled={isMoveToDesignDisabled}
                   >
                     Move to Designing Stage
                   </Button>
@@ -541,18 +576,12 @@ export default function LeadDetails() {
             <DropdownMenuContent align="end">
               {(isB2b) && (
                     <CustomeTooltip
-                      value={
-                        isLeadBlocked
-                          ? blockedAtTooltip
-                          : isBoqMissingForDesign
-                            ? boqRequiredTooltip
-                            : ""
-                      }
+                      value={moveToDesignTooltip}
                       truncateValue={
                         <DropdownMenuItem
                           className="sm:hidden"
                           onClick={() => setMoveToDesigningOpen(true)}
-                          disabled={uiDisabled || isLeadBlocked || isBoqMissingForDesign}
+                          disabled={isMoveToDesignDisabled}
                         >
                           <UserPlus size={20} />
                           Move to Designing Stage
@@ -877,7 +906,7 @@ export default function LeadDetails() {
         statusType={activityType}
         vendorId={vendorId}
         franchiseId={lead?.franchise_id ?? franchiseId}
-        onSubmitRemark={(remark, dueDate) => {
+        onSubmitRemark={(remark, dueDate, selection) => {
           if (!vendorId || !userId) {
             toastManager.add({
               title: "Missing vendor/user info",
@@ -899,7 +928,7 @@ export default function LeadDetails() {
                 status,
                 remark,
                 createdBy: userId,
-                ...(status === "onHold" ? { dueDate } : {}),
+                ...((status === "onHold") ? { dueDate, ...(selection ?? {}) } : {}),
               },
             },
             {
@@ -914,6 +943,10 @@ export default function LeadDetails() {
                         : "Lead marked as Lost!",
                   type: "success",
                 });
+                if (status === "onHold") {
+                  window.location.assign("/dashboard/leads/leadstable?tab=onHold");
+                  return;
+                }
                 setActivityModalOpen(false);
               },
             },

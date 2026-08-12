@@ -33,6 +33,7 @@ interface UniversalColumnOptions {
   showPriorityColumn?: boolean;
   showServicingColumn?: boolean;
   showDesignerColumn?: boolean;
+  isB2b?: boolean;
 }
 
 function toTitleCase(value: string) {
@@ -53,6 +54,7 @@ export function getUniversalTableColumns(
     showPriorityColumn = false,
     showServicingColumn = false,
     showDesignerColumn = false,
+    isB2b = false,
   } =
     options;
   const columns: ColumnDef<LeadColumn>[] = [
@@ -239,33 +241,86 @@ export function getUniversalTableColumns(
       enableColumnFilter: true,
     },
 
-    // 4) Product Types
+    // 4) Product Types / Requirement Types
 
     {
       accessorKey: "furnitureType",
       filterFn: tableMultiValueFilter,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Furniture Type" />
+      header: ({ column, table }) => (
+        <DataTableColumnHeader
+          column={column}
+          table={table}
+          title={isB2b ? "Requirement Type" : "Furniture Type"}
+        />
       ),
       meta: {
-        label: "Furniture Type",
+        label: isB2b ? "Requirement Type" : "Furniture Type",
       },
       enableSorting: false,
       enableHiding: true,
       enableColumnFilter: true,
+      cell: ({ row }) => {
+        const raw = (row.getValue("furnitureType") as string) || "";
+        if (!raw.trim()) return "—";
+
+        const items = raw
+          .split(",")
+          .map((i) => i.trim())
+          .filter(Boolean);
+
+        if (!items.length) return "—";
+
+        const visible = items.slice(0, 2);
+        const remaining = items.slice(2);
+
+        return (
+          <div className="flex items-center gap-1 max-w-[220px] whitespace-nowrap">
+            <span className="truncate text-xs font-medium">{visible.join(", ")}</span>
+            {remaining.length > 0 && (
+              <TooltipProvider delayDuration={100}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="secondary" className="text-xs px-1.5 py-0 cursor-pointer shrink-0">
+                      +{remaining.length}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="bottom"
+                    align="start"
+                    className="max-w-[280px] p-2.5 space-y-1.5 z-50 bg-zinc-900 text-white border border-zinc-700 shadow-xl"
+                  >
+                    <p className="text-[11px] font-bold text-amber-400 uppercase tracking-wider border-b border-zinc-800 pb-1">
+                      {isB2b ? "Requirement Types" : "Furniture Types"}
+                    </p>
+                    {items.map((item, idx) => (
+                      <p key={idx} className="text-xs text-zinc-100 font-medium">
+                        • {item}
+                      </p>
+                    ))}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
+        );
+      },
     },
 
-    // 4.1) Furniture Structures
+    // 4.1) Furniture Structures / Process Brief
     {
       accessorKey: "furnitueStructures",
       filterFn: tableMultiValueFilter,
 
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Furniture Structures" />
+      header: ({ column, table }) => (
+        <DataTableColumnHeader
+          column={column}
+          table={table}
+          title={isB2b ? "Process Brief" : "Furniture Structures"}
+        />
       ),
 
       meta: {
-        label: "Furniture Structures",
+        label: isB2b ? "Process Brief" : "Furniture Structures",
       },
 
       enableSorting: false,
@@ -280,64 +335,106 @@ export function getUniversalTableColumns(
 
         if (!structures.length) return "—";
 
+        const parseItem = (itemStr: string) => {
+          const parts = itemStr.split(" - ");
+          if (parts.length >= 2) {
+            return {
+              reqType: parts[0].trim(),
+              briefName: parts.slice(1).join(" - ").trim(),
+              fullLabel: itemStr,
+            };
+          }
+          return {
+            reqType: "",
+            briefName: itemStr,
+            fullLabel: itemStr,
+          };
+        };
+
+        // Group all structures by requirement type for complete hover tooltip context
+        const groupedMap: Record<string, string[]> = {};
+        structures.forEach((itemStr) => {
+          const parsed = parseItem(itemStr);
+          const key = parsed.reqType || "Process Briefs";
+          if (!groupedMap[key]) groupedMap[key] = [];
+          if (!groupedMap[key].includes(parsed.briefName)) {
+            groupedMap[key].push(parsed.briefName);
+          }
+        });
+
         const visible = structures.slice(0, 2);
         const remaining = structures.slice(2);
 
         return (
-          <div className="space-x-1">
-            {visible.map((name: string, index: number) =>
-              hasInstanceInfo ? (
+          <div className="flex items-center gap-1 whitespace-nowrap">
+            {visible.map((itemStr: string, index: number) => {
+              const parsed = parseItem(itemStr);
+              const displayName = parsed.briefName;
+
+              return (
                 <TooltipProvider key={index} delayDuration={100}>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Badge variant="secondary" className="text-xs px-2 cursor-default flex flex-col items-start gap-0">
-                        <span className="capitalize">{instanceTitle ?? name}</span>
-                        {instanceTitle && instanceTitle !== name && (
-                          <span className="opacity-60 text-[10px] leading-tight capitalize">{name}</span>
-                        )}
+                      <Badge
+                        variant="secondary"
+                        className="text-xs px-2 cursor-default inline-flex items-center capitalize max-w-[170px] truncate"
+                      >
+                        <span className="truncate">
+                          {instanceTitle ?? displayName}
+                        </span>
                       </Badge>
                     </TooltipTrigger>
                     <TooltipContent
                       side="bottom"
                       align="start"
-                      className="max-w-[260px] p-2 space-y-1"
+                      className="max-w-[280px] p-2 space-y-1 z-50 bg-zinc-900 text-white border border-zinc-700 shadow-xl"
                     >
-                      {instanceTitle && (
-                        <p className="text-xs font-semibold">{instanceTitle}</p>
+                      {parsed.reqType ? (
+                        <p className="text-xs font-semibold text-zinc-100">
+                          <span className="text-amber-400">{parsed.reqType}</span> - {parsed.briefName}
+                        </p>
+                      ) : (
+                        <p className="text-xs font-semibold text-zinc-100">{displayName}</p>
                       )}
-                      {instanceTitle && instanceTitle !== name && (
-                        <p className="text-xs opacity-60 capitalize">{name}</p>
+                      {instanceTitle && (
+                        <p className="text-xs opacity-75 text-zinc-300">{instanceTitle}</p>
                       )}
                       {instanceDescription && (
-                        <p className="text-xs opacity-75">{instanceDescription}</p>
+                        <p className="text-xs opacity-75 text-zinc-300">{instanceDescription}</p>
                       )}
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-              ) : (
-                <Badge key={index} variant="secondary" className="text-xs px-2 capitalize">
-                  {name}
-                </Badge>
-              ),
-            )}
+              );
+            })}
 
             {remaining.length > 0 && (
               <TooltipProvider delayDuration={100}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Badge variant="secondary" className="text-xs px-2">
+                    <Badge variant="secondary" className="text-xs px-2 cursor-pointer">
                       +{remaining.length}
                     </Badge>
                   </TooltipTrigger>
                   <TooltipContent
                     side="bottom"
                     align="start"
-                    className="max-w-[220px] p-2 space-y-1"
+                    className="max-w-[320px] p-2.5 space-y-2.5 z-50 max-h-[300px] overflow-y-auto bg-zinc-900 text-white border border-zinc-700 shadow-xl"
                   >
-                    {remaining.map((name: string, index: number) => (
-                      <p key={index} className="text-xs capitalize">
-                        • {name}
-                      </p>
+                    {Object.entries(groupedMap).map(([reqGroup, briefs], gIdx) => (
+                      <div key={gIdx} className="space-y-1">
+                        <p className="text-xs font-bold text-amber-400 border-b border-zinc-700 pb-1 flex items-center justify-between">
+                          <span>{reqGroup}</span>
+                          <span className="text-[10px] text-zinc-400 font-normal">
+                            ({briefs.length} Brief{briefs.length === 1 ? "" : "s"})
+                          </span>
+                        </p>
+                        {briefs.map((bName, bIdx) => (
+                          <p key={bIdx} className="text-xs pl-1.5 text-zinc-100 font-medium capitalize">
+                            • {bName}
+                          </p>
+                        ))}
+                      </div>
                     ))}
                   </TooltipContent>
                 </Tooltip>
