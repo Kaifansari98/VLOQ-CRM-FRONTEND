@@ -235,20 +235,27 @@ export default function RequirementDocUpload({
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-          {documents.map((doc) => (
-            <DocumentCard
-              key={doc.id}
-              doc={{
-                id: doc.id,
-                originalName: doc.doc_og_name,
-                signedUrl: doc.signedUrl || "",
-                created_at: doc.created_at,
-              }}
-              status={doc.documentType?.tag}
-              canDelete={true}
-              onDelete={() => handleDelete(doc.id)}
-            />
-          ))}
+          {documents.map((doc) => {
+            const docTypeObj = doc.documentType || docTypes.find((t) => t.id === doc.doc_type_id);
+            const tagLabel = docTypeObj
+              ? `${docTypeObj.type} (${docTypeObj.tag})`
+              : "Document";
+
+            return (
+              <DocumentCard
+                key={doc.id}
+                doc={{
+                  id: doc.id,
+                  originalName: doc.doc_og_name,
+                  signedUrl: doc.signedUrl || "",
+                  created_at: doc.created_at,
+                }}
+                tagLabel={tagLabel}
+                canDelete={true}
+                onDelete={() => handleDelete(doc.id)}
+              />
+            );
+          })}
         </div>
       )}
 
