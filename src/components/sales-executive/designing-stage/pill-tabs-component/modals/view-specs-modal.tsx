@@ -21,6 +21,7 @@ import {
   Box,
   Check,
   CheckCircle2,
+  Download,
   Loader2,
   PanelsTopLeft,
   Pencil,
@@ -29,11 +30,12 @@ import {
   Wrench,
 } from "lucide-react";
 import { formatDate } from "@/lib/format";
-import type {
-  LeadSpecificationEntry,
-  LightsRemark,
-  SpecificationSectionRemark,
-  SpecificationSectionType,
+import {
+  getLeadSpecificationPdfData,
+  type LeadSpecificationEntry,
+  type LightsRemark,
+  type SpecificationSectionRemark,
+  type SpecificationSectionType,
 } from "@/api/designingStageQueries";
 import AssignToPicker from "@/components/assign-to-picker";
 import { Badge } from "@/components/ui/badge";
@@ -228,7 +230,6 @@ const makeBlankOtherApplianceRow = (type: string = ""): OtherApplianceRow => ({
 const pickerClassName =
   "h-11 rounded-md border border-input bg-background px-3 text-sm";
 const clonedRowHighlightClass = "bg-blue-50/80 dark:bg-blue-950/20";
-const newRowHighlightClass = "bg-emerald-50/80 dark:bg-emerald-950/20";
 const specificationSectionOptions: SpecificationSectionRemark[] = [
   "In our scope",
   "Not in our scope",
@@ -363,6 +364,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
   const updateSectionRemark = useUpdateLeadSpecificationSectionRemark();
   const markSpecificationCompleted = useMarkLeadSpecificationCompleted();
   const [completedOverride, setCompletedOverride] = React.useState(false);
+  const [isExporting, setIsExporting] = React.useState(false);
   React.useEffect(() => {
     setCompletedOverride(false);
   }, [specification?.id]);
@@ -575,6 +577,8 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         is_deleted_item?: boolean;
       },
     ) => {
+      if (!showReviewColumns) return "";
+
       const action = getReviewAction(section, row, fallback);
       if (action === "approve") {
         return "bg-emerald-50 dark:bg-emerald-950/20";
@@ -585,9 +589,12 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       if (action === "delete") {
         return "bg-red-50 dark:bg-red-950/20";
       }
+      if (fallback) {
+        return clonedRowHighlightClass;
+      }
       return "";
     },
-    [getReviewAction],
+    [getReviewAction, showReviewColumns],
   );
 
   const isReviewDeleted = React.useCallback(
@@ -599,8 +606,10 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         is_amended?: boolean;
         is_deleted_item?: boolean;
       },
-    ) => getReviewAction(section, row, fallback) === "delete",
-    [getReviewAction],
+    ) =>
+      showReviewColumns &&
+      getReviewAction(section, row, fallback) === "delete",
+    [getReviewAction, showReviewColumns],
   );
 
   const getDeletedRemark = React.useCallback(
@@ -642,6 +651,8 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         deleted_remark?: string | null;
       },
     ) => {
+      if (!showReviewColumns) return "";
+
       const action = getReviewAction(section, row, fallback);
       if (action === "amend") {
         return getAmendedRemark(section, row, fallback);
@@ -651,7 +662,12 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
       }
       return "";
     },
-    [getAmendedRemark, getDeletedRemark, getReviewAction],
+    [
+      getAmendedRemark,
+      getDeletedRemark,
+      getReviewAction,
+      showReviewColumns,
+    ],
   );
 
   const getPersistReviewSection = React.useCallback(
@@ -2123,6 +2139,8 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     [otherApplianceRemarks],
   );
 
+  const stageRowHighlightClass = clonedRowHighlightClass;
+
   const getCarcassRowHighlightClass = React.useCallback(
     (row: CarcassRow, index: number) => {
       const persistedRow = row.id
@@ -2137,11 +2155,11 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         !!row.carcass_material_finish_id;
       if (!hasValue) return "";
 
-      if (!row.id) return newRowHighlightClass;
+      if (!row.id) return stageRowHighlightClass;
       if (!previousSpecification) return "";
 
       const baseline = previousCarcassMappings[index];
-      if (!baseline) return newRowHighlightClass;
+      if (!baseline) return stageRowHighlightClass;
 
       const changed =
         Number(row.carcass_type_id || 0) !== baseline.carcass_type_id ||
@@ -2149,9 +2167,15 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         Number(row.carcass_material_finish_id || 0) !==
           baseline.carcass_material_finish_id;
 
-      return changed ? clonedRowHighlightClass : "";
+      return changed ? stageRowHighlightClass : "";
     },
-    [carcassMappings, getReviewRowClass, previousCarcassMappings, previousSpecification],
+    [
+      carcassMappings,
+      getReviewRowClass,
+      stageRowHighlightClass,
+      previousCarcassMappings,
+      previousSpecification,
+    ],
   );
 
   const getShutterRowHighlightClass = React.useCallback(
@@ -2168,11 +2192,11 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         !!row.shutter_material_finish_id;
       if (!hasValue) return "";
 
-      if (!row.id) return newRowHighlightClass;
+      if (!row.id) return stageRowHighlightClass;
       if (!previousSpecification) return "";
 
       const baseline = previousShutterMappings[index];
-      if (!baseline) return newRowHighlightClass;
+      if (!baseline) return stageRowHighlightClass;
 
       const changed =
         Number(row.shutter_type_id || 0) !== baseline.shutter_type_id ||
@@ -2180,9 +2204,15 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         Number(row.shutter_material_finish_id || 0) !==
           baseline.shutter_material_finish_id;
 
-      return changed ? clonedRowHighlightClass : "";
+      return changed ? stageRowHighlightClass : "";
     },
-    [getReviewRowClass, previousShutterMappings, previousSpecification, shutterMappings],
+    [
+      getReviewRowClass,
+      stageRowHighlightClass,
+      previousShutterMappings,
+      previousSpecification,
+      shutterMappings,
+    ],
   );
 
   const getHardwareRowHighlightClass = React.useCallback(
@@ -2200,11 +2230,11 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         !!row.note;
       if (!hasValue) return "";
 
-      if (!row.id) return newRowHighlightClass;
+      if (!row.id) return stageRowHighlightClass;
       if (!previousSpecification) return "";
 
       const baseline = previousHardwareMappings[index];
-      if (!baseline) return newRowHighlightClass;
+      if (!baseline) return stageRowHighlightClass;
 
       const changed =
         Number(row.carcass_legs_id || 0) !== baseline.carcass_legs_id ||
@@ -2214,9 +2244,15 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
           Number(baseline.skirting_carcass_legs_color_id || 0) ||
         (row.note || "") !== (baseline.note || "");
 
-      return changed ? clonedRowHighlightClass : "";
+      return changed ? stageRowHighlightClass : "";
     },
-    [getReviewRowClass, hardwareMappings, previousHardwareMappings, previousSpecification],
+    [
+      getReviewRowClass,
+      hardwareMappings,
+      stageRowHighlightClass,
+      previousHardwareMappings,
+      previousSpecification,
+    ],
   );
 
   const getLightRowHighlightClass = React.useCallback(
@@ -2233,11 +2269,11 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
         !!row.custom_remark.trim();
       if (!hasValue) return "";
 
-      if (!row.id) return newRowHighlightClass;
+      if (!row.id) return stageRowHighlightClass;
       if (!previousSpecification) return "";
 
       const baseline = previousLightMappings[index];
-      if (!baseline) return newRowHighlightClass;
+      if (!baseline) return stageRowHighlightClass;
 
       const changed =
         Number(row.light_carcas_unit_master_id || 0) !==
@@ -2250,12 +2286,13 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
           ) ||
         row.custom_remark.trim() !== (baseline.custom_remark ?? "").trim();
 
-      return changed ? clonedRowHighlightClass : "";
+      return changed ? stageRowHighlightClass : "";
     },
     [
       customLightCarcasType?.id,
       getReviewRowClass,
       lightMappings,
+      stageRowHighlightClass,
       previousLightMappings,
       previousSpecification,
     ],
@@ -2271,20 +2308,21 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
       if (!row.other_appliances_master_id && !row.custom_remark.trim()) return "";
 
-      if (!row.id) return newRowHighlightClass;
+      if (!row.id) return stageRowHighlightClass;
       if (!previousSpecification) return "";
 
       const baseline = previousOtherApplianceRowsByType[type]?.[index];
-      if (!baseline) return newRowHighlightClass;
+      if (!baseline) return stageRowHighlightClass;
 
       return row.other_appliances_master_id !== baseline.other_appliances_master_id ||
         row.custom_remark.trim() !== baseline.custom_remark.trim()
-        ? clonedRowHighlightClass
+        ? stageRowHighlightClass
         : "";
     },
     [
       getReviewRowClass,
       otherApplianceMappings,
+      stageRowHighlightClass,
       previousOtherApplianceRowsByType,
       previousSpecification,
     ],
@@ -2360,6 +2398,41 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
     );
   };
 
+  const handleExportPdf = async () => {
+    if (!vendorId || !specification || isExporting) return;
+
+    setIsExporting(true);
+    try {
+      const [pdfData, pdfModule] = await Promise.all([
+        getLeadSpecificationPdfData(
+          vendorId,
+          specification.lead_id,
+          specification.id,
+        ),
+        import("@/utils/pdf/specifications-pdf"),
+      ]);
+      pdfModule.exportLeadSpecificationPdf(
+        specification.name,
+        pdfData,
+        showReviewColumns,
+      );
+      toastManager.add({
+        title: "Specification PDF exported successfully!",
+        type: "success",
+      });
+    } catch (error: any) {
+      toastManager.add({
+        title:
+          error?.response?.data?.message ||
+          error?.message ||
+          "Failed to export specification PDF.",
+        type: "error",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   if (!specification) return null;
 
   return (
@@ -2379,9 +2452,23 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
               Created on {formatDate(specification.created_at)}
             </DialogDescription>
           </div>
-          {showReviewColumns && (
-            <div className="shrink-0">
-              {isSpecCompleted ? (
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleExportPdf}
+              disabled={isExporting || !vendorId}
+            >
+              {isExporting ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Download className="mr-1.5 h-3.5 w-3.5" />
+              )}
+              {isExporting ? "Exporting..." : "Export PDF"}
+            </Button>
+            {showReviewColumns && (
+              isSpecCompleted ? (
                 <Badge
                   variant="outline"
                   className="border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300"
@@ -2418,9 +2505,9 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                     </TooltipContent>
                   )}
                 </Tooltip>
-              )}
-            </div>
-          )}
+              )
+            )}
+          </div>
         </DialogHeader>
 
         <Tabs
