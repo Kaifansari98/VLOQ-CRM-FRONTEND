@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import SmoothTab from "@/components/kokonutui/smooth-tab";
 import {
   DropdownMenu,
@@ -22,6 +22,7 @@ import BookingLeadsDetails from "../sales-executive/booking-stage/view-booking-m
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import { useFinalMeasurementLeadById } from "@/hooks/final-measurement/use-final-measurement";
+import { useFranchisesByVendorId } from "@/api/franchise";
 
 interface LeadDetailsUtilProps {
   status: string;
@@ -73,6 +74,14 @@ export default function LeadDetailsUtil({
   );
   const sitePhotos = finalMeasurementData?.sitePhotos ?? [];
   const measurementDocs = finalMeasurementData?.measurementDocs ?? [];
+  const { data: franchisesForB2b = [] } = useFranchisesByVendorId(vendorId, !!vendorId);
+  const isB2b = useMemo(() => {
+    const leadFranchise = franchisesForB2b.find(
+      (franchise: any) => franchise.id === leadById?.franchise_id,
+    );
+    return leadFranchise?.moduled_for_b2b ?? false;
+  }, [franchisesForB2b, leadById?.franchise_id]);
+
   const hasAtLeastOneDocUploaded = sitePhotos.length > 0 || measurementDocs.length > 0;
 
   const allTabs = [
@@ -161,9 +170,12 @@ export default function LeadDetailsUtil({
     ],
   };
 
-  const visibleTabs = allTabs.filter((tab) =>
-    statusFlow[status].includes(tab.id)
-  );
+  const visibleTabs = allTabs.filter((tab) => {
+    if (isB2b && tab.id === "measurement") {
+      return false;
+    }
+    return statusFlow[status].includes(tab.id);
+  });
 
   const finalTabs = onlyThisTab
     ? visibleTabs.filter((t) => t.id === onlyThisTab)

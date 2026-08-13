@@ -61,7 +61,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useDeleteLead } from "@/hooks/useDeleteLead";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { toastManager } from "@/components/ui/toast";
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
@@ -102,6 +102,10 @@ import {
   useLeadProductStructureInstances,
 } from "@/hooks/useLeadsQueries";
 import CancelFastProductionModal from "@/components/generics/CancelFastProductionModal";
+import { useB2BRequirementTypes } from "@/hooks/useTypesMaster";
+import { useFranchisesByVendorId } from "@/api/franchise";
+import { fetchRequirementDocumentsApi, fetchRequirementDocumentTypesApi } from "@/api/leadRequirementDocuments";
+import { fetchLeadRequirementMaterialsApi } from "@/api/leadRequirementMaterial";
 
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 
@@ -300,6 +304,112 @@ export default function DesigningStageLead() {
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
+
+  const { data: franchisesForB2b = [] } = useFranchisesByVendorId(vendorId, !!vendorId);
+  const isB2b = useMemo(() => {
+    const leadFranchise = franchisesForB2b.find(
+      (franchise: any) => franchise.id === lead?.franchise_id,
+    );
+    return leadFranchise?.moduled_for_b2b ?? false;
+  }, [franchisesForB2b, lead?.franchise_id]);
+
+  const { data: b2bReqTypesData } = useB2BRequirementTypes(vendorId);
+
+  const { data: docTypesData } = useQuery({
+    queryKey: ["lead-requirement-document-types", vendorId],
+    queryFn: () => fetchRequirementDocumentTypesApi(vendorId!),
+    enabled: !!vendorId && isB2b,
+  });
+  const docTypesList = useMemo(() => docTypesData?.data || [], [docTypesData]);
+
+  const { data: documentsData } = useQuery({
+    queryKey: ["lead-requirement-documents", leadIdNum, vendorId],
+    queryFn: () => fetchRequirementDocumentsApi(leadIdNum, vendorId!),
+    enabled: !!leadIdNum && !!vendorId && isB2b,
+  });
+  const b2bDocuments = useMemo(() => documentsData?.data || [], [documentsData]);
+
+  const { data: reqMaterialsData } = useQuery({
+    queryKey: ["lead-requirement-materials", leadIdNum, vendorId],
+    queryFn: () => fetchLeadRequirementMaterialsApi(leadIdNum, vendorId!),
+    enabled: !!leadIdNum && !!vendorId && isB2b,
+  });
+  const b2bMaterials = useMemo(() => reqMaterialsData?.data || [], [reqMaterialsData]);
+
+  const b2bBookingValidation = useMemo(() => {
+    if (!isB2b || !lead) {
+      return {
+        isReady: true,
+        tooltip: "",
+      };
+    }
+
+    const missingItems: string[] = [];
+
+    // Check B2B requirement types (documents & materials)
+    const b2bIds = (lead as any)?.leadB2BReqMappings
+      ?.map((m: any) => m.b2b_requirement_type_id || m.b2bRequirementType?.id)
+      ?.filter(Boolean) || [];
+    const briefTypeIds = (lead as any)?.leadProcessBriefs
+      ?.map((m: any) => m.b2b_requirement_type_id || m.b2bRequirementType?.id)
+      ?.filter(Boolean) || [];
+    const uniqueReqTypeIds = Array.from(new Set<number>([...b2bIds, ...briefTypeIds]));
+
+    if (uniqueReqTypeIds.length === 0) {
+      missingItems.push("No mapped requirement types");
+    } else {
+      const typesList = b2bReqTypesData?.data || [];
+
+      for (const typeId of uniqueReqTypeIds) {
+        const typeObj = typesList.find((t: any) => t.id === typeId);
+        const name = typeObj?.type || `Type #${typeId}`;
+
+        const reqDocs = b2bDocuments.filter(
+          (doc: any) => (doc.b2b_requirement_type_id || doc.product_type_id) === typeId
+        );
+        const hasDoc = reqDocs.length > 0;
+
+        const hasMaterial = b2bMaterials.some(
+          (mat: any) => (mat.b2b_requirement_type_id || mat.product_type_id) === typeId
+        );
+
+        if (!hasDoc || !hasMaterial) {
+          const parts = [];
+          if (!hasDoc) {
+            parts.push("Doc");
+          }
+          if (!hasMaterial) {
+            parts.push("Material");
+          }
+          missingItems.push(`${name} (${parts.join(" & ")})`);
+        }
+      }
+    }
+
+    const hasQuotation = countsData && countsData.QuotationDoc > 0;
+    const hasDesign = countsData && countsData.DesignsDoc > 0;
+    const isQuotationOrDesignMissing = !hasQuotation || !hasDesign;
+
+    if (isQuotationOrDesignMissing || missingItems.length > 0) {
+      const tooltipParts = [];
+      if (isQuotationOrDesignMissing) {
+        tooltipParts.push("Requires at least 1 Quotation and 1 Design");
+      }
+      if (missingItems.length > 0) {
+        tooltipParts.push(`Missing: ${missingItems.join(", ")}`);
+      }
+
+      return {
+        isReady: false,
+        tooltip: tooltipParts.join(". "),
+      };
+    }
+
+    return {
+      isReady: true,
+      tooltip: "",
+    };
+  }, [isB2b, lead, b2bReqTypesData, b2bDocuments, b2bMaterials, countsData, docTypesList]);
   const designDocs = designDocsData?.data?.documents || [];
   const quotationDocs = quotationDocsData?.data?.documents || [];
   const structureInstances: any[] = Array.isArray(structureInstancesData?.data)
@@ -477,9 +587,11 @@ export default function DesigningStageLead() {
     structureInstances,
   ]);
 
-  const canMoveToBooking = handlesLargeScaleProjects
-    ? largeScaleBookingDocValidation.isReady
-    : countsData?.QuotationDoc > 0 && countsData?.DesignsDoc > 0;
+  const canMoveToBooking = isB2b
+    ? b2bBookingValidation.isReady
+    : handlesLargeScaleProjects
+      ? largeScaleBookingDocValidation.isReady
+      : countsData?.QuotationDoc > 0 && countsData?.DesignsDoc > 0;
 
   const canOpenBookingModal =
     canMoveToBooking &&
@@ -515,9 +627,11 @@ export default function DesigningStageLead() {
   const moveToBookingTooltip = isLeadBlocked
     ? blockedTooltip
     : !canMoveToBooking
-      ? handlesLargeScaleProjects
-        ? largeScaleBookingDocValidation.tooltip
-        : "Requires at least 1 Quotation and 1 Design"
+      ? isB2b
+        ? b2bBookingValidation.tooltip
+        : handlesLargeScaleProjects
+          ? largeScaleBookingDocValidation.tooltip
+          : "Requires at least 1 Quotation and 1 Design"
       : isBookingLockedByEligibleDays
         ? bookingLockTooltip
         : !canPerformMoveToBooking
@@ -686,13 +800,19 @@ export default function DesigningStageLead() {
                   />
                 </div>
               ) : (
-                <Button
-                  size="sm"
-                  className="hidden md:block"
-                  onClick={() => setBookingOpenLead(true)}
-                >
-                  Move To Booking
-                </Button>
+                <CustomeTooltip
+                  truncateValue={
+                    <Button
+                      size="sm"
+                      className="hidden md:block"
+                      onClick={() => setBookingOpenLead(true)}
+                    >
+                      Move To Booking
+                    </Button>
+                  }
+                  value="Move lead to booking stage"
+                  contentClassName="max-w-80 text-left"
+                />
               )}
             </div>
           )}

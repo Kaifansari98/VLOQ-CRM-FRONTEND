@@ -727,7 +727,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
             {/* Status & Design Type / Tag Label */}
             <div className="flex items-center gap-2 flex-wrap justify-end">
               {tagLabel && (
-                <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-semibold rounded-md bg-primary/10 text-primary border border-primary/20">
+                <span className="inline-flex items-center px-2.5 py-0.5 text-[10px] font-semibold rounded-full bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/40 shadow-3xs">
                   {tagLabel}
                 </span>
               )}

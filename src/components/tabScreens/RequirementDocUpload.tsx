@@ -238,7 +238,7 @@ export default function RequirementDocUpload({
           {documents.map((doc) => {
             const docTypeObj = doc.documentType || docTypes.find((t) => t.id === doc.doc_type_id);
             const tagLabel = docTypeObj
-              ? `${docTypeObj.type} (${docTypeObj.tag})`
+              ? docTypeObj.type
               : "Document";
 
             return (

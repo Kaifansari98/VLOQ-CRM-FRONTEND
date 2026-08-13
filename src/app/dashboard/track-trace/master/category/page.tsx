@@ -20,6 +20,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -44,6 +57,9 @@ import {
   ToggleRight,
   Trash2,
   GitBranch,
+  List,
+  ChevronDown,
+  Check,
 } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import {
@@ -62,7 +78,9 @@ import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 // ─── Sub Category Entry ───────────────────────────────────────────────────────
 
 interface SubCategoryEntry {
+  id?: number;
   name: string;
+  status?: "Yes" | "No";
   type_ids: number[];
 }
 
@@ -72,11 +90,12 @@ interface CategoryFormDialogProps {
   open: boolean;
   onClose: () => void;
   editData?: ProjectCategory | null;
+  allCategories: ProjectCategory[];
   vendorId: number;
   userId: number;
 }
 
-function CategoryFormDialog({ open, onClose, editData, vendorId, userId }: CategoryFormDialogProps) {
+function CategoryFormDialog({ open, onClose, editData, allCategories, vendorId, userId }: CategoryFormDialogProps) {
   const { data: types = [], isLoading: typesLoading } = useProjectCategoryTypes();
   const createMutation = useCreateProjectCategory(vendorId);
   const updateMutation = useUpdateProjectCategory(vendorId);
@@ -84,34 +103,84 @@ function CategoryFormDialog({ open, onClose, editData, vendorId, userId }: Categ
   const [categoryName, setCategoryName] = useState("");
   const [selectedTypeIds, setSelectedTypeIds] = useState<number[]>([]);
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isNewCategory, setIsNewCategory] = useState(false);
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<ProjectCategory | null>(null);
 
-  // Sub-categories (only for create mode)
+  // Sub-categories
   const [subCategories, setSubCategories] = useState<SubCategoryEntry[]>([]);
 
   const isEdit = !!editData;
   const isPending = createMutation.isPending || updateMutation.isPending;
 
+  const mainCategoryOptions = useMemo(() => {
+    return allCategories
+      .filter((c) => !c.parent_id)
+      .map((c) => ({
+        id: c.id,
+        name: c.category_name,
+      }));
+  }, [allCategories]);
+
   useEffect(() => {
-    if (editData) {
-      setCategoryName(editData.category_name);
+    setIsNewCategory(false);
+    setPopoverOpen(false);
+    const targetCategory = editData || null;
+    setActiveCategory(targetCategory);
+
+    if (targetCategory) {
+      setCategoryName(targetCategory.category_name);
       setSelectedTypeIds(
-        editData.projectCategoriesMasterVendorMapping.map((m) => m.project_categories_type_master_id)
+        targetCategory.projectCategoriesMasterVendorMapping.map((m) => m.project_categories_type_master_id)
       );
+
+      // Load existing sub-categories of this parent category
+      const existingSubs = allCategories
+        .filter((c) => c.parent_id === targetCategory.id)
+        .map((c) => ({
+          id: c.id,
+          name: c.category_name,
+          status: c.status,
+          type_ids: c.projectCategoriesMasterVendorMapping.map((m) => m.project_categories_type_master_id),
+        }));
+      setSubCategories(existingSubs);
     } else {
       setCategoryName("");
       setSelectedTypeIds([]);
+      setSubCategories([]);
     }
-    setSubCategories([]);
     setError("");
-  }, [editData, open]);
+  }, [editData, open, allCategories]);
 
   const toggleType = (id: number) => {
     setSelectedTypeIds((prev) => prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]);
   };
 
+  const handleCategorySelect = (val: number | string) => {
+    const selected = allCategories.find((c) => c.id === Number(val));
+    if (selected) {
+      setActiveCategory(selected);
+      setCategoryName(selected.category_name);
+      setSelectedTypeIds(
+        selected.projectCategoriesMasterVendorMapping.map((m) => m.project_categories_type_master_id)
+      );
+      // Load existing sub-categories of this selected parent category
+      const existingSubs = allCategories
+        .filter((c) => c.parent_id === selected.id)
+        .map((c) => ({
+          id: c.id,
+          name: c.category_name,
+          status: c.status,
+          type_ids: c.projectCategoriesMasterVendorMapping.map((m) => m.project_categories_type_master_id),
+        }));
+      setSubCategories(existingSubs);
+    }
+  };
+
   // ── Sub-category helpers ──
   const addSubCategory = () => {
-    setSubCategories((prev) => [...prev, { name: "", type_ids: [] }]);
+    setSubCategories((prev) => [...prev, { name: "", type_ids: [], status: "Yes" }]);
   };
 
   const removeSubCategory = (index: number) => {
@@ -122,57 +191,111 @@ function CategoryFormDialog({ open, onClose, editData, vendorId, userId }: Categ
     setSubCategories((prev) => prev.map((s, i) => i === index ? { ...s, name } : s));
   };
 
-  const toggleSubType = (index: number, typeId: number) => {
-    setSubCategories((prev) =>
-      prev.map((s, i) =>
-        i === index
-          ? { ...s, type_ids: s.type_ids.includes(typeId) ? s.type_ids.filter((t) => t !== typeId) : [...s.type_ids, typeId] }
-          : s
-      )
-    );
-  };
-
   const handleSubmit = async () => {
+    if (isSubmitting) return;
     if (!categoryName.trim()) { setError("Category name is required"); return; }
 
     // Validate sub-categories
     for (let i = 0; i < subCategories.length; i++) {
-      if (!subCategories[i].name.trim()) {
+      if (subCategories[i].status !== "No" && !subCategories[i].name.trim()) {
         setError(`Sub-category #${i + 1} name is required`);
         return;
       }
     }
 
-    if (isEdit && editData) {
-      await updateMutation.mutateAsync({
-        id: editData.id, vendor_id: vendorId, category_name: categoryName.trim(),
-        status: editData.status, type_ids: selectedTypeIds,
-        created_by: userId, updated_by: userId,
-      });
-    } else {
-      // Create main category first
-      const result = await createMutation.mutateAsync({
-        vendor_id: vendorId, category_name: categoryName.trim(),
-        type_ids: selectedTypeIds, created_by: userId,
-      });
+    setIsSubmitting(true);
+    try {
+      const isEditMode = !!activeCategory;
+      if (isEditMode && activeCategory) {
+        // 1. Update parent category
+        await updateMutation.mutateAsync({
+          id: activeCategory.id,
+          vendor_id: vendorId,
+          category_name: categoryName.trim(),
+          status: activeCategory.status,
+          type_ids: selectedTypeIds,
+          created_by: userId,
+          updated_by: userId,
+          parent_id: activeCategory.parent_id,
+        });
 
-      // Create sub-categories sequentially under the new parent
-      const parentId = result?.data?.category?.id ?? result?.data?.id ?? result?.category?.id ?? result?.id;
-      if (parentId && subCategories.length > 0) {
-        for (const sub of subCategories) {
-          if (sub.name.trim()) {
-            await createMutation.mutateAsync({
+        // 2. Manage sub-categories: update existing, create new, or deactivate removed ones
+        const originalSubs = allCategories.filter((c) => c.parent_id === activeCategory.id);
+
+        // Deactivate removed sub-categories
+        for (const original of originalSubs) {
+          const stillExists = subCategories.find((s) => s.id === original.id);
+          if ((!stillExists || stillExists.status === "No") && original.status === "Yes") {
+            await updateMutation.mutateAsync({
+              id: original.id,
               vendor_id: vendorId,
-              category_name: sub.name.trim(),
-              parent_id: parentId,
-              type_ids: sub.type_ids,
+              category_name: original.category_name,
+              status: "No", // Deactivate it
+              type_ids: [],
               created_by: userId,
+              updated_by: userId,
+              parent_id: activeCategory.id,
             });
           }
         }
+
+        // Update existing or create new sub-categories
+        for (const sub of subCategories) {
+          if (sub.id) {
+            const original = originalSubs.find((c) => c.id === sub.id);
+            if (original?.category_name !== sub.name.trim() || original?.status !== sub.status) {
+              await updateMutation.mutateAsync({
+                id: sub.id,
+                vendor_id: vendorId,
+                category_name: sub.name.trim(),
+                status: sub.status || "Yes",
+                type_ids: [],
+                created_by: userId,
+                updated_by: userId,
+                parent_id: activeCategory.id,
+              });
+            }
+          } else {
+            if (sub.name.trim() && sub.status !== "No") {
+              await createMutation.mutateAsync({
+                vendor_id: vendorId,
+                category_name: sub.name.trim(),
+                parent_id: activeCategory.id,
+                type_ids: [],
+                created_by: userId,
+              });
+            }
+          }
+        }
+      } else {
+        // Create main category first
+        const result = await createMutation.mutateAsync({
+          vendor_id: vendorId,
+          category_name: categoryName.trim(),
+          type_ids: selectedTypeIds,
+          created_by: userId,
+        });
+
+        // Create sub-categories sequentially under the new parent
+        const parentId = result?.data?.category?.id ?? result?.data?.id ?? result?.category?.id ?? result?.id;
+        if (parentId && subCategories.length > 0) {
+          for (const sub of subCategories) {
+            if (sub.name.trim()) {
+              await createMutation.mutateAsync({
+                vendor_id: vendorId,
+                category_name: sub.name.trim(),
+                parent_id: parentId,
+                type_ids: [],
+                created_by: userId,
+              });
+            }
+          }
+        }
       }
+      onClose();
+    } finally {
+      setIsSubmitting(false);
     }
-    onClose();
   };
 
   return (
@@ -181,7 +304,7 @@ function CategoryFormDialog({ open, onClose, editData, vendorId, userId }: Categ
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FolderOpen className="size-5 text-primary" />
-            {isEdit ? "Edit Category" : "New Category"}
+            {activeCategory ? "Edit Category" : "New Category"}
           </DialogTitle>
         </DialogHeader>
 
@@ -190,51 +313,131 @@ function CategoryFormDialog({ open, onClose, editData, vendorId, userId }: Categ
           {/* ── Category Name ── */}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="category_name">Category Name *</Label>
-            <Input
-              id="category_name"
-              placeholder="e.g. Shutter Finish"
-              value={categoryName}
-              onChange={(e) => { setCategoryName(e.target.value); if (error) setError(""); }}
-              className={cn(error && !error.startsWith("Sub") && "border-destructive")}
-            />
+            {isEdit ? (
+              <Input
+                id="category_name"
+                placeholder="e.g. Shutter Finish"
+                value={categoryName}
+                onChange={(e) => { setCategoryName(e.target.value); if (error) setError(""); }}
+                className={cn(error && !error.startsWith("Sub") && "border-destructive")}
+              />
+            ) : (
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  {isNewCategory ? (
+                    <Input
+                      id="category_name"
+                      placeholder="Type new category name..."
+                      value={categoryName}
+                      onChange={(e) => { setCategoryName(e.target.value); if (error) setError(""); }}
+                      className={cn(error && !error.startsWith("Sub") && "border-destructive")}
+                    />
+                  ) : (
+                    <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={popoverOpen}
+                          className={cn(
+                            "w-full justify-between h-9 px-3 border border-input bg-background font-normal text-muted-foreground",
+                            categoryName && "text-foreground"
+                          )}
+                        >
+                          {categoryName || "Select existing category..."}
+                          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search categories..." />
+                          <CommandList>
+                            <CommandEmpty>No categories found.</CommandEmpty>
+                            <CommandGroup>
+                              {mainCategoryOptions.map((option) => (
+                                <CommandItem
+                                  key={option.id}
+                                  value={option.name}
+                                  onSelect={() => {
+                                    handleCategorySelect(option.id);
+                                    setPopoverOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      categoryName === option.name ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {option.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  onClick={() => {
+                    setIsNewCategory(!isNewCategory);
+                    setActiveCategory(null);
+                    setCategoryName("");
+                    setSelectedTypeIds([]);
+                    setSubCategories([]);
+                    if (error) setError("");
+                  }}
+                  title={isNewCategory ? "Select existing category" : "Type new category"}
+                >
+                  {isNewCategory ? <List className="size-4" /> : <Plus className="size-4" />}
+                </Button>
+              </div>
+            )}
             {error && !error.startsWith("Sub") && <p className="text-xs text-destructive">{error}</p>}
           </div>
 
           {/* ── Modules ── */}
-          <div className="flex flex-col gap-2">
-            <Label>Assign to Modules</Label>
-            {typesLoading ? (
-              <div className="flex flex-col gap-2">
-                {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
-              </div>
-            ) : types.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No modules configured</p>
-            ) : (
-              <div className="flex flex-col gap-1 rounded-lg border p-3 max-h-40 overflow-y-auto">
-                {types.map((type) => (
-                  <label key={type.id} className="flex items-center gap-3 rounded-md px-2 py-2 cursor-pointer hover:bg-muted/60 transition-colors">
-                    <Checkbox checked={selectedTypeIds.includes(type.id)} onCheckedChange={() => toggleType(type.id)} />
-                    <span className="text-sm font-medium">{type.module_name}</span>
-                  </label>
-                ))}
-              </div>
-            )}
-            {selectedTypeIds.length > 0 && (
-              <p className="text-xs text-muted-foreground">
-                {selectedTypeIds.length} module{selectedTypeIds.length !== 1 ? "s" : ""} selected
-              </p>
-            )}
-          </div>
+          {(!activeCategory || !activeCategory.parent_id) && (
+            <div className="flex flex-col gap-2">
+              <Label>Assign to Modules</Label>
+              {typesLoading ? (
+                <div className="flex flex-col gap-2">
+                  {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
+                </div>
+              ) : types.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No modules configured</p>
+              ) : (
+                <div className="flex flex-col gap-1 rounded-lg border p-3 max-h-40 overflow-y-auto">
+                  {types.map((type) => (
+                    <label key={type.id} className="flex items-center gap-3 rounded-md px-2 py-2 cursor-pointer hover:bg-muted/60 transition-colors">
+                      <Checkbox checked={selectedTypeIds.includes(type.id)} onCheckedChange={() => toggleType(type.id)} />
+                      <span className="text-sm font-medium">{type.module_name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              {selectedTypeIds.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {selectedTypeIds.length} module{selectedTypeIds.length !== 1 ? "s" : ""} selected
+                </p>
+              )}
+            </div>
+          )}
 
-          {/* ── Sub Categories (create mode only) ── */}
-          {!isEdit && (
+          {/* ── Sub Categories ── */}
+          {!isEdit && (!activeCategory || !activeCategory.parent_id) && (
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <GitBranch className="size-4 text-muted-foreground" />
                   <Label className="text-sm font-semibold">Sub Categories</Label>
-                  {subCategories.length > 0 && (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{subCategories.length}</Badge>
+                  {subCategories.filter(s => s.status !== "No").length > 0 && (
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{subCategories.filter(s => s.status !== "No").length}</Badge>
                   )}
                 </div>
                 <Button type="button" variant="outline" size="sm" onClick={addSubCategory} className="h-7 gap-1 text-xs">
@@ -242,7 +445,7 @@ function CategoryFormDialog({ open, onClose, editData, vendorId, userId }: Categ
                 </Button>
               </div>
 
-              {subCategories.length === 0 ? (
+              {subCategories.filter(s => s.status !== "No").length === 0 ? (
                 <div
                   onClick={addSubCategory}
                   className="rounded-lg border border-dashed border-muted-foreground/30 px-4 py-4 text-center cursor-pointer hover:border-primary/50 hover:bg-muted/30 transition-colors"
@@ -251,32 +454,41 @@ function CategoryFormDialog({ open, onClose, editData, vendorId, userId }: Categ
                 </div>
               ) : (
                 <div className="flex flex-col gap-3">
-                  {subCategories.map((sub, index) => (
-                    <div key={index} className="rounded-lg border bg-muted/20 p-3 flex flex-col gap-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Sub Category {index + 1}</span>
-                        <Button
-                          type="button" variant="ghost" size="sm"
-                          onClick={() => removeSubCategory(index)}
-                          className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="size-3" />
-                        </Button>
-                      </div>
+                  {subCategories.map((sub, index) => {
+                    if (sub.status === "No") return null;
+                    return (
+                      <div key={index} className="rounded-lg border bg-muted/20 p-3 flex flex-col gap-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Sub Category {index + 1}</span>
+                          <Button
+                            type="button" variant="ghost" size="sm"
+                            onClick={() => {
+                              if (sub.id) {
+                                setSubCategories((prev) => prev.map((s, i) => i === index ? { ...s, status: "No" } : s));
+                              } else {
+                                removeSubCategory(index);
+                              }
+                            }}
+                            className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="size-3" />
+                          </Button>
+                        </div>
 
-                      <div className="flex flex-col gap-1.5">
-                        <Input
-                          placeholder="e.g. PVC Edgeband Tape"
-                          value={sub.name}
-                          onChange={(e) => { updateSubCategoryName(index, e.target.value); if (error) setError(""); }}
-                          className={cn("h-8 text-sm", error.startsWith("Sub") && !sub.name.trim() && "border-destructive")}
-                        />
-                        {error.startsWith("Sub") && !sub.name.trim() && index === Number(error.match(/\d+/)?.[0] ?? -1) - 1 && (
-                          <p className="text-xs text-destructive">{error}</p>
-                        )}
+                        <div className="flex flex-col gap-1.5">
+                          <Input
+                            placeholder="e.g. PVC Edgeband Tape"
+                            value={sub.name}
+                            onChange={(e) => { updateSubCategoryName(index, e.target.value); if (error) setError(""); }}
+                            className={cn("h-8 text-sm", error.startsWith("Sub") && !sub.name.trim() && "border-destructive")}
+                          />
+                          {error.startsWith("Sub") && !sub.name.trim() && index === Number(error.match(/\d+/)?.[0] ?? -1) - 1 && (
+                            <p className="text-xs text-destructive">{error}</p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -284,11 +496,11 @@ function CategoryFormDialog({ open, onClose, editData, vendorId, userId }: Categ
         </div>
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onClose} disabled={isPending}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={isPending}>
-            {isPending
+          <Button variant="outline" onClick={onClose} disabled={isPending || isSubmitting}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={isPending || isSubmitting}>
+            {isPending || isSubmitting
               ? "Saving..."
-              : isEdit
+              : activeCategory
                 ? "Save Changes"
                 : subCategories.length > 0
                   ? `Create Category + ${subCategories.length} Sub${subCategories.length > 1 ? "s" : ""}`
@@ -320,7 +532,10 @@ export default function ProjectCategoriesPage() {
     return categories.filter((c) => c.category_name.toLowerCase().includes(q));
   }, [categories, search]);
 
-  const handleEdit        = (category: ProjectCategory) => { setEditCategory(category); setDialogOpen(true); };
+  const handleEdit = (category: ProjectCategory) => {
+    setEditCategory(category);
+    setDialogOpen(true);
+  };
   const handleToggle      = (category: ProjectCategory) => { toggleStatus.mutate({ id: category.id, status: category.status === "Yes" ? "No" : "Yes" }); };
   const handleDialogClose = () => { setDialogOpen(false); setEditCategory(null); };
 
@@ -547,7 +762,7 @@ export default function ProjectCategoriesPage() {
           </Table>
         </div>
 
-        <CategoryFormDialog open={dialogOpen} onClose={handleDialogClose} editData={editCategory} vendorId={vendorId ?? 0} userId={userId ?? 0} />
+        <CategoryFormDialog open={dialogOpen} onClose={handleDialogClose} editData={editCategory} allCategories={categories} vendorId={vendorId ?? 0} userId={userId ?? 0} />
       </div>
     </>
   );
