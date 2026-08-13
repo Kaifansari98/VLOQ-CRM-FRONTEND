@@ -641,6 +641,9 @@ export default function ReadyToDispatchLeadDetails() {
         open={activityModalOpen}
         onOpenChange={setActivityModalOpen}
         statusType={activityType}
+        vendorId={vendorId}
+        franchiseId={lead?.franchise_id ?? null}
+        leadId={leadIdNum}
         onSubmitRemark={(remark, dueDate, selection) => {
           if (!vendorId || !userId) {
             toastManager.add({
@@ -659,13 +662,20 @@ export default function ReadyToDispatchLeadDetails() {
                 status: activityType,
                 remark,
                 createdBy: userId,
-                ...((activityType === "onHold") ? { dueDate, ...(selection ?? {}) } : {}),
+                ...(dueDate ? { dueDate } : {}),
+                ...(selection ?? {}),
               },
             },
             {
-              onSuccess: () => {
+              onSuccess: (res: any) => {
+                const finalStatus = res?.data?.activity_status ?? res?.data?.lead?.activity_status;
                 toastManager.add({
-                  title: "Lead marked as On Hold!",
+                  title:
+                    activityType === "onHold"
+                      ? "Lead marked as On Hold!"
+                      : finalStatus === "lostApproval"
+                        ? "Lead sent for Lost Approval!"
+                        : "Lead marked as Lost!",
                   type: "success",
                 });
                 window.location.assign("/dashboard/leads/leadstable?tab=onHold");

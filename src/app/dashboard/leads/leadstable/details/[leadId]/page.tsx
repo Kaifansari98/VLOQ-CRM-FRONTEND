@@ -906,6 +906,7 @@ export default function LeadDetails() {
         statusType={activityType}
         vendorId={vendorId}
         franchiseId={lead?.franchise_id ?? franchiseId}
+        leadId={leadIdNum}
         onSubmitRemark={(remark, dueDate, selection) => {
           if (!vendorId || !userId) {
             toastManager.add({
@@ -928,7 +929,8 @@ export default function LeadDetails() {
                 status,
                 remark,
                 createdBy: userId,
-                ...((status === "onHold") ? { dueDate, ...(selection ?? {}) } : {}),
+                ...(dueDate ? { dueDate } : {}),
+                ...(selection ?? {}),
               },
             },
             {

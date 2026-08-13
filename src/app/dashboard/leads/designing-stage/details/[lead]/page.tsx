@@ -1096,6 +1096,7 @@ export default function DesigningStageLead() {
         statusType={activityType}
         vendorId={vendorId}
         franchiseId={lead?.franchise_id ?? null}
+        leadId={leadIdNum}
         onSubmitRemark={(remark, dueDate, selection) => {
           if (!vendorId || !userId) {
             toastManager.add({
@@ -1114,7 +1115,8 @@ export default function DesigningStageLead() {
                 status: activityType === "onHold" ? "onHold" : "lost",
                 remark,
                 createdBy: userId,
-                ...((activityType === "onHold") ? { dueDate, ...(selection ?? {}) } : {}),
+                ...(dueDate ? { dueDate } : {}),
+                ...(selection ?? {}),
               },
             },
             {

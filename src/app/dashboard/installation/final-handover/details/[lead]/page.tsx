@@ -831,6 +831,9 @@ export default function FinalHandoverLeadDetails() {
         open={activityModalOpen}
         onOpenChange={setActivityModalOpen}
         statusType={activityType}
+        vendorId={vendorId}
+        franchiseId={lead?.franchise_id ?? null}
+        leadId={leadIdNum}
         onSubmitRemark={(remark, dueDate, selection) => {
           if (!vendorId || !userId) {
             toastManager.add({ title: "Vendor or User info is missing!", type: "error" });
@@ -846,12 +849,22 @@ export default function FinalHandoverLeadDetails() {
                 status: activityType,
                 remark,
                 createdBy: userId,
-                ...((activityType === "onHold") ? { dueDate, ...(selection ?? {}) } : {}),
+                ...(dueDate ? { dueDate } : {}),
+                ...(selection ?? {}),
               },
             },
             {
-              onSuccess: () => {
-                toastManager.add({ title: "Lead marked as On Hold!", type: "success" });
+              onSuccess: (res: any) => {
+                const finalStatus = res?.data?.activity_status ?? res?.data?.lead?.activity_status;
+                toastManager.add({
+                  title:
+                    activityType === "onHold"
+                      ? "Lead marked as On Hold!"
+                      : finalStatus === "lostApproval"
+                        ? "Lead sent for Lost Approval!"
+                        : "Lead marked as Lost!",
+                  type: "success",
+                });
                 window.location.assign("/dashboard/leads/leadstable?tab=onHold");
               },
               onError: (err: any) => {
