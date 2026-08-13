@@ -349,6 +349,18 @@ export default function LeadDetails() {
         "leads.open_leads.details_of_lead.chat.enable_disable",
       )
       : true;
+  const canMoveToDesigningStage =
+    normalizedUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.move_to_designing_stage",
+        )
+      : true;
+  const canAddVisit =
+    normalizedUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.add_visit",
+        )
+      : true;
 
   const handleToggleLeadBlock = () => {
     if (!vendorId || !userId || !leadIdNum) {
@@ -500,7 +512,7 @@ export default function LeadDetails() {
           </Breadcrumb>
         </div>
         <div className="flex items-center space-x-2">
-          {(vendorCustomUserTypeMode === true || isB2b) && !isAuditor && (
+          {canMoveToDesigningStage && (vendorCustomUserTypeMode === true || isB2b) && !isAuditor && (
             <CustomeTooltip
               value={moveToDesignTooltip}
               truncateValue={
@@ -518,7 +530,7 @@ export default function LeadDetails() {
             />
           )}
 
-          {isClientVisitEnabled && !isAuditor && (
+          {canAddVisit && isClientVisitEnabled && !isAuditor && (
             <CustomeTooltip
               value={blockedAtTooltip}
               truncateValue={
@@ -574,7 +586,7 @@ export default function LeadDetails() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {(isB2b) && (
+              {canMoveToDesigningStage && (isB2b) && (
                     <CustomeTooltip
                       value={moveToDesignTooltip}
                       truncateValue={
@@ -589,7 +601,7 @@ export default function LeadDetails() {
                       }
                     />
                   )}
-              {isClientVisitEnabled && (
+              {canAddVisit && isClientVisitEnabled && (
                 <>
                 <DropdownMenuItem
                   className="sm:hidden"
