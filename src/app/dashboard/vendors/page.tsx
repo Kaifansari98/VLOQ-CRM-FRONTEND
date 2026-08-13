@@ -292,7 +292,7 @@ export default function VendorsPage() {
       is_inventory_enabled: boolean;
       is_tracktrace_enabled: boolean;
       is_scanpack_enabled: boolean;
-      push_lead_to_cadbid: boolean;
+      push_lead_to_cadbid?: boolean | null;
       status?: string | null;
       gst_no?: string | null;
       toll_free_no?: string | null;
