@@ -362,7 +362,7 @@ export const AddMaterialQuantityModal: React.FC<AddMaterialQuantityModalProps> =
               </div>
 
               {/* Options List */}
-              <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
+              <div className="max-h-[148px] overflow-y-auto space-y-1 pr-1">
                 {filteredProducts.length === 0 ? (
                   <p className="text-xs text-muted-foreground italic p-3 text-center">
                     {productsList.length === 0 ? "Loading materials..." : "No matching materials found."}
@@ -455,7 +455,7 @@ export const AddMaterialQuantityModal: React.FC<AddMaterialQuantityModalProps> =
               {openUnitDropdown && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setOpenUnitDropdown(false)} />
-                  <div className="absolute right-0 mt-1 w-full p-1 rounded-xl border bg-background text-foreground shadow-lg z-50 space-y-0.5 border-border max-h-52 overflow-y-auto">
+                  <div className="absolute right-0 mt-1 w-full p-1 rounded-xl border bg-background text-foreground shadow-lg z-50 space-y-0.5 border-border max-h-[148px] overflow-y-auto">
                     {availableUnits.map((u) => {
                       const val = u.short_name || u.unit_name;
                       const isActive = unitName === val || unitName === u.unit_name;
