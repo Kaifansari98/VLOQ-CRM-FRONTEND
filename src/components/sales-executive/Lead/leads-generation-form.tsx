@@ -848,7 +848,9 @@ export default function LeadsGenerationForm({
             assigneeUserType: "custom",
             requiredPrivilegeCode: "leads.designing_stage.designs.upload",
           }
-        : undefined,
+        : {
+            assigneeUserType: "designer",
+          },
     );
   const designersList = Array.isArray(designerUsers?.data) 
     ? designerUsers.data 

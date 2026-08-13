@@ -22,6 +22,7 @@ import FinalHandoverWrapper from "../installation/final-handover/FinalHandoverWr
 import ServicingWrapper from "../installation/servicing/ServicingWrapper";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
+import { useFranchisesByVendorId } from "@/api/franchise";
 type GroupKey =
   | "leads"
   | "project"
@@ -93,29 +94,46 @@ export default function LeadDetailsGrouped({
       allowServicingTabFromDeliveredProjects);
   const isSmallOrderLead = Boolean(lead?.is_small_order_request);
   const smallOrderRequestSource = lead?.smallOrderRequest?.request_source;
-  const groups = {
-    leads: [
+
+  const { data: franchisesForB2b = [] } = useFranchisesByVendorId(vendorId, !!vendorId);
+  const isB2b = React.useMemo(() => {
+    const leadFranchise = franchisesForB2b.find(
+      (franchise: any) => franchise.id === lead?.franchise_id,
+    );
+    return leadFranchise?.moduled_for_b2b ?? false;
+  }, [franchisesForB2b, lead?.franchise_id]);
+
+  const leadsStages = React.useMemo(() => {
+    const base = [
       {
-        id: "details",
+        id: "details" as StageId,
         title: "Lead Details",
         component: <OpenLeadDetails leadId={leadId} />,
       },
       {
-        id: "measurement",
+        id: "measurement" as StageId,
         title: "Site Measurement",
         component: <SiteMeasurementLeadDetails leadId={leadId} />,
       },
       {
-        id: "designing",
+        id: "designing" as StageId,
         title: "Designing",
         component: <DesigningLeadsDetails leadId={leadId} />,
       },
       {
-        id: "booking",
+        id: "booking" as StageId,
         title: "Booking",
         component: <BookingLeadsDetails leadId={leadId} />,
       },
-    ],
+    ];
+    if (isB2b) {
+      return base.filter((s) => s.id !== "measurement");
+    }
+    return base;
+  }, [isB2b, leadId]);
+
+  const groups = {
+    leads: leadsStages,
     project: [
       {
         id: "finalMeasurement",

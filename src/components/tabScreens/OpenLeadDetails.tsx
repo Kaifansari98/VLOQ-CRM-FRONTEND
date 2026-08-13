@@ -1911,26 +1911,28 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                                 </h5>
                               </div>
 
-                              <div className="max-h-44 overflow-y-auto border rounded-lg divide-y bg-background text-xs shadow-2xs">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-64 overflow-y-auto pr-1">
                                 {typeMaterials.map((mat: any) => (
                                   <div
                                     key={mat.id}
-                                    className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 hover:bg-muted/30 transition-colors"
+                                    className="flex items-center justify-between gap-3 p-3 rounded-xl border bg-muted/20 hover:bg-muted/40 transition-colors border-border/50 text-xs"
                                   >
-                                    <div className="flex items-center gap-3 min-w-0 flex-1 flex-wrap">
-                                      <span className="font-semibold text-foreground truncate min-w-[120px] max-w-[220px]">
+                                    <div className="flex flex-col gap-1 min-w-0 flex-1">
+                                      <span className="font-semibold text-foreground break-words leading-tight">
                                         {mat.product?.product_name || "Material"}
                                       </span>
-                                      <span className="text-muted-foreground shrink-0 text-[11px]">
-                                        Qty: <strong className="text-foreground font-semibold">{mat.quantity}</strong> {mat.unit_name || mat.product?.unit_of_measure || ""}
-                                      </span>
-                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted border shrink-0">
-                                        {mat.supplied_by === "Frankvin"
-                                          ? "Frankvin (100%)"
-                                          : mat.supplied_by === "Client"
-                                          ? "Client (100%)"
-                                          : `Shared (Client: ${mat.client_percentage}% / Frankvin: ${mat.frankvin_percentage}%)`}
-                                      </span>
+                                      <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                                        <span className="text-muted-foreground shrink-0">
+                                          Qty: <strong className="text-foreground font-semibold">{mat.quantity}</strong> {mat.unit_name || mat.product?.unit_of_measure || ""}
+                                        </span>
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-background border shadow-3xs text-muted-foreground shrink-0">
+                                          {mat.supplied_by === "Frankvin"
+                                            ? "Frankvin"
+                                            : mat.supplied_by === "Client"
+                                            ? "Client"
+                                            : `Shared (${mat.client_percentage}% / ${mat.frankvin_percentage}%)`}
+                                        </span>
+                                      </div>
                                     </div>
 
                                     <div className="flex items-center gap-1 shrink-0">
