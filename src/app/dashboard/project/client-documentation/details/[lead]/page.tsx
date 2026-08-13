@@ -703,7 +703,7 @@ export default function ClientDocumentationLeadDetails() {
         open={activityModalOpen}
         onOpenChange={setActivityModalOpen}
         statusType="onHold"
-        onSubmitRemark={(remark, dueDate) => {
+        onSubmitRemark={(remark, dueDate, selection) => {
           if (!vendorId || !userId) {
             toastManager.add({
               title: "Vendor or user info missing!",
@@ -731,11 +731,7 @@ export default function ClientDocumentationLeadDetails() {
                   title: "Lead marked On Hold!",
                   type: "success",
                 });
-                setActivityModalOpen(false);
-
-                queryClient.invalidateQueries({
-                  queryKey: ["leadById", leadIdNum],
-                });
+                window.location.assign("/dashboard/leads/leadstable?tab=onHold");
               },
               onError: (err) => {
                 toastManager.add({

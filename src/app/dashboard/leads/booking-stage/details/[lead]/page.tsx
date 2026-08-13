@@ -761,7 +761,7 @@ export default function BookingStageLeadsDetails() {
         open={activityModalOpen}
         onOpenChange={setActivityModalOpen}
         statusType={activityType}
-        onSubmitRemark={(remark, dueDate) => {
+        onSubmitRemark={(remark, dueDate, selection) => {
           if (!vendorId || !userId) {
             toastManager.add({
               title: "Vendor or User info is missing!",
@@ -779,7 +779,7 @@ export default function BookingStageLeadsDetails() {
                 status: activityType,
                 remark,
                 createdBy: userId,
-                ...(activityType === "onHold" ? { dueDate } : {}),
+                ...((activityType === "onHold") ? { dueDate, ...(selection ?? {}) } : {}),
               },
             },
             {
@@ -788,13 +788,7 @@ export default function BookingStageLeadsDetails() {
                   title: "Lead marked as On Hold!",
                   type: "success",
                 });
-
-                setActivityModalOpen(false);
-
-                // Invalidate related queries to refresh UI
-                queryClient.invalidateQueries({
-                  queryKey: ["leadById", leadIdNum],
-                });
+                window.location.assign("/dashboard/leads/leadstable?tab=onHold");
               },
               onError: (err) => {
                 toastManager.add({
