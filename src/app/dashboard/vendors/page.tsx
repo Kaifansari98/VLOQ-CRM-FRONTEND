@@ -82,6 +82,7 @@ const createVendorSchema = z.object({
   is_inventory_enabled: z.boolean(),
   is_tracktrace_enabled: z.boolean(),
   is_scanpack_enabled: z.boolean(),
+  push_lead_to_cadbid: z.boolean(),
   status: z.enum(["active", "inactive"]),
   gst_no: z
     .string()
@@ -141,6 +142,7 @@ export default function VendorsPage() {
     is_inventory_enabled: false,
     is_tracktrace_enabled: false,
     is_scanpack_enabled: false,
+    push_lead_to_cadbid: false,
     status: "active",
     gst_no: "",
     toll_free_no: "",
@@ -227,7 +229,8 @@ export default function VendorsPage() {
         | "is_crm_enabled"
         | "is_inventory_enabled"
         | "is_tracktrace_enabled"
-        | "is_scanpack_enabled",
+        | "is_scanpack_enabled"
+        | "push_lead_to_cadbid",
       value: boolean,
     ) =>
       () => {
@@ -250,6 +253,7 @@ export default function VendorsPage() {
       is_inventory_enabled: false,
       is_tracktrace_enabled: false,
       is_scanpack_enabled: false,
+      push_lead_to_cadbid: false,
       status: "active",
       gst_no: "",
       toll_free_no: "",
@@ -272,7 +276,7 @@ export default function VendorsPage() {
     setOpenCreateVendor(true);
   };
 
-  
+
 
   const handleOpenConfigureVendor = React.useCallback(
     (row: {
@@ -288,6 +292,7 @@ export default function VendorsPage() {
       is_inventory_enabled: boolean;
       is_tracktrace_enabled: boolean;
       is_scanpack_enabled: boolean;
+      push_lead_to_cadbid: boolean;
       status?: string | null;
       gst_no?: string | null;
       toll_free_no?: string | null;
@@ -311,6 +316,7 @@ export default function VendorsPage() {
         is_inventory_enabled: row.is_inventory_enabled,
         is_tracktrace_enabled: row.is_tracktrace_enabled,
         is_scanpack_enabled: row.is_scanpack_enabled,
+        push_lead_to_cadbid: row.push_lead_to_cadbid === true,
         status: (row.status || "active").toLowerCase() as "active" | "inactive",
         gst_no: row.gst_no || "",
         toll_free_no: row.toll_free_no || "",
@@ -371,6 +377,7 @@ export default function VendorsPage() {
         formData.append("is_inventory_enabled", String(validatedForm.data.is_inventory_enabled));
         formData.append("is_tracktrace_enabled", String(validatedForm.data.is_tracktrace_enabled));
         formData.append("is_scanpack_enabled", String(validatedForm.data.is_scanpack_enabled));
+        formData.append("push_lead_to_cadbid", String(validatedForm.data.push_lead_to_cadbid));
         formData.append("gst_no", validatedForm.data.gst_no || "");
         formData.append("toll_free_no", validatedForm.data.toll_free_no || "");
         formData.append("website_link", validatedForm.data.website_link || "");
@@ -414,6 +421,7 @@ export default function VendorsPage() {
         formData.append("is_inventory_enabled", String(validatedForm.data.is_inventory_enabled));
         formData.append("is_tracktrace_enabled", String(validatedForm.data.is_tracktrace_enabled));
         formData.append("is_scanpack_enabled", String(validatedForm.data.is_scanpack_enabled));
+        formData.append("push_lead_to_cadbid", String(validatedForm.data.push_lead_to_cadbid));
         formData.append("gst_no", validatedForm.data.gst_no || "");
         formData.append("toll_free_no", validatedForm.data.toll_free_no || "");
         formData.append("website_link", validatedForm.data.website_link || "");
@@ -844,6 +852,34 @@ export default function VendorsPage() {
                         option.value,
                       )}
                     />
+                    <span className="text-sm font-medium">{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Push Lead to Cadbid</Label>
+
+              <div className="flex items-center gap-6 pt-1">
+                {[
+                  { label: "Yes", value: true },
+                  { label: "No", value: false },
+                ].map((option) => (
+                  <label
+                    key={`push-lead-to-cadbid-${String(option.value)}`}
+                    className="flex items-center gap-2 cursor-pointer"
+                    htmlFor={`push-lead-to-cadbid-${String(option.value)}`}
+                  >
+                    <Checkbox
+                      id={`push-lead-to-cadbid-${String(option.value)}`}
+                      checked={form.push_lead_to_cadbid === option.value}
+                      onCheckedChange={handleBooleanFieldChange(
+                        "push_lead_to_cadbid",
+                        option.value,
+                      )}
+                    />
+
                     <span className="text-sm font-medium">{option.label}</span>
                   </label>
                 ))}

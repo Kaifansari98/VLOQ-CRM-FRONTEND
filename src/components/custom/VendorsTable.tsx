@@ -59,6 +59,7 @@ type VendorRow = {
   is_inventory_enabled: boolean;
   is_tracktrace_enabled: boolean;
   is_scanpack_enabled: boolean;
+  push_lead_to_cadbid?: boolean | null;
   createdAt: string;
   logoUrl?: string;
   iconUrl?: string;
@@ -137,6 +138,7 @@ export default function VendorsTable({
       is_inventory_enabled: item.is_inventory_enabled === true,
       is_tracktrace_enabled: item.is_tracktrace_enabled === true,
       is_scanpack_enabled: item.is_scanpack_enabled === true,
+      push_lead_to_cadbid: item.push_lead_to_cadbid,
       createdAt: item.createdAt ?? "",
       logoUrl: item.logoUrl ?? "",
       iconUrl: item.iconUrl ?? "",
@@ -309,6 +311,30 @@ export default function VendorsTable({
         },
         enableSorting: false,
       },
+      {
+  accessorKey: "push_lead_to_cadbid",
+  header: ({ column }) => (
+    <DataTableColumnHeader column={column} title="Push to Cadbid" />
+  ),
+  cell: ({ row }) => {
+    const enabled = row.getValue("push_lead_to_cadbid") as boolean;
+
+    return (
+      <Badge
+        variant={enabled ? "default" : "secondary"}
+        className={cn(
+          "text-xs",
+          enabled
+            ? "bg-emerald-500/10 text-emerald-600 border border-emerald-200 hover:bg-emerald-500/10"
+            : "",
+        )}
+      >
+        {enabled ? "Enabled" : "Disabled"}
+      </Badge>
+    );
+  },
+  enableSorting: false,
+},
       {
         accessorKey: "createdAt",
         header: ({ column }) => (
