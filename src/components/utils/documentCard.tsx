@@ -111,16 +111,28 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({ url, fileName, fileE
         setPreviewError(null);
 
         if (isImage) {
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error("Failed to load image preview.");
+          }
+          const blob = await response.blob();
+          objectUrl = URL.createObjectURL(blob);
           if (!cancelled) {
-            setPreviewUrl(url);
+            setPreviewUrl(objectUrl);
           }
           return;
         }
 
         const isPdf = fileExt === "pdf" || fileName?.toLowerCase().endsWith(".pdf") || url.toLowerCase().includes(".pdf");
         if (isPdf) {
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error("Failed to load PDF preview.");
+          }
+          const blob = await response.blob();
+          objectUrl = URL.createObjectURL(blob);
           if (!cancelled) {
-            setPreviewUrl(url);
+            setPreviewUrl(objectUrl);
           }
           return;
         }
@@ -355,15 +367,14 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
       document.body.appendChild(a);
       a.click();
       a.remove();
-      window.URL.revokeObjectURL(url);
+      window.setTimeout(() => window.URL.revokeObjectURL(url), 1000);
     } catch (err) {
       console.error("Download error:", err);
       if (typeof window !== "undefined" && doc.signedUrl) {
         const a = document.createElement("a");
         a.href = doc.signedUrl;
-        a.download = doc.originalName;
         a.rel = "noopener noreferrer";
-        a.target = "_self";
+        a.target = "_blank";
         document.body.appendChild(a);
         a.click();
         a.remove();
