@@ -204,7 +204,13 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
       : true;
   const canShowFollowUpOption =
     normalizedUserType === "custom" ? canAssignFollowUpForCustomUser : true;
-  const canShowApprovalRequestOption = isApprovalTaskEnabled !== false;
+  const hasApprovalRequestPrivilege = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "leads.initial_site_measurement.assign_task.approval_request"
+      )
+    : true;
+  const canShowApprovalRequestOption =
+    isApprovalTaskEnabled !== false && hasApprovalRequestPrivilege;
   const allowedFastProductionRoles = ["super-admin", "admin", "sales-executive"];
   const canShowFastProductionOption = isFastProductionEnabled && allowedFastProductionRoles.includes(normalizedUserType);
   const shouldShowInitialSiteMeasurementOption = !onlyFollowUp;

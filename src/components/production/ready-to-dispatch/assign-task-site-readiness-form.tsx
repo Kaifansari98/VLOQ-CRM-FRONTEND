@@ -249,7 +249,14 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   const taskType = form.watch("task_type");
   const [approvalFiles, setApprovalFiles] = React.useState<File[]>([]);
   const isApprovalRequestTask = taskType === "Approval Request";
-  const canShowApprovalRequestOption = isApprovalTaskEnabled !== false;
+  const isCustomUser = normalizedUserType === "custom";
+  const hasApprovalRequestPrivilege = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "production.ready_to_dispatch.assign_task.approval_request"
+      )
+    : true;
+  const canShowApprovalRequestOption =
+    isApprovalTaskEnabled !== false && hasApprovalRequestPrivilege;
 
   const {
     data: selfAssignTaskTypes = [],

@@ -69,11 +69,6 @@ const data = {
       showCount: "total_my_tasks" as const,
     },
     {
-      title: "Online Leads",
-      url: "/dashboard/online-leads",
-      icon: NotebookPen,
-    },
-    {
       title: "Overall Leads",
       url: "/dashboard/overall-leads",
       icon: Users,
@@ -84,6 +79,11 @@ const data = {
       url: "/dashboard/delivered-projects",
       icon: Handshake,
       showCount: "total_project_completed_stage_leads" as const,
+    },
+    {
+      title: "Lead Pool",
+      url: "/dashboard/online-leads",
+      icon: NotebookPen,
     },
     {
       title: "Leads",
@@ -227,11 +227,6 @@ const data = {
       showCount: "total_my_tasks" as const,
     },
     {
-      title: "Online Leads",
-      url: "/dashboard/online-leads",
-      icon: NotebookPen,
-    },
-    {
       title: "Overall Leads",
       url: "/dashboard/overall-leads",
       icon: Users,
@@ -242,6 +237,11 @@ const data = {
       url: "/dashboard/delivered-projects",
       icon: Handshake,
       showCount: "total_project_completed_stage_leads" as const,
+    },
+    {
+      title: "Lead Pool",
+      url: "/dashboard/online-leads",
+      icon: NotebookPen,
     },
     {
       title: "Open Leads",
@@ -719,7 +719,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
     const resolvedNavItems = isOnlineLeadFeatureEnabled
       ? finalNavItems
-      : finalNavItems.filter((item) => item.title !== "Online Leads");
+      : finalNavItems.filter((item) => item.title !== "Lead Pool");
 
     return {
       navItems: resolvedNavItems,

@@ -204,9 +204,7 @@ export async function generateLeadServicingReport(params: GenerateLeadServicingR
         ).flat()
       : await fetchReportData(vendorId, franchiseId, fromDate, toDate);
 
-  if (rows.length === 0) {
-    throw new Error("No servicing rows found for the selected filters.");
-  }
+
 
   onProgress?.("Building Excel report...");
 

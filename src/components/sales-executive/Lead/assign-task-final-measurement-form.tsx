@@ -399,7 +399,13 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       "leads.booking_done.assign_task.bookingdone_ism",
     )
     : true;
-  const canShowApprovalRequestOption = isApprovalTaskEnabled !== false;
+  const hasApprovalRequestPrivilege = isCustomUser
+    ? customPrivilegeCodes.includes(
+        "leads.booking_stage.assign_task.approval_request"
+      )
+    : true;
+  const canShowApprovalRequestOption =
+    isApprovalTaskEnabled !== false && hasApprovalRequestPrivilege;
   const allowedFastProductionRoles = ["super-admin", "admin", "sales-executive"];
   const canShowFastProductionOption = isFastProductionEnabled && allowedFastProductionRoles.includes(normalizedUserRole);
 
