@@ -323,7 +323,8 @@ export default function SmoothTab({
         setSelected(defaultTabId);
       }
     }
-  }, [defaultTabId, items]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultTabId]);
 
   // Update dimensions whenever selected tab changes or on mount
   React.useLayoutEffect(() => {
