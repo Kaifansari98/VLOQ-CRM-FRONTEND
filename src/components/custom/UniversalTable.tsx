@@ -128,6 +128,27 @@ function getProductionStatusFromInstance(instance: any) {
   return "Pending";
 }
 
+function isType7SmallOrderLead(lead: any) {
+  if (lead?.is_small_order_request === true) {
+    return true;
+  }
+
+  const productMappings = Array.isArray(lead?.productMappings)
+    ? lead.productMappings
+    : [];
+
+  return productMappings.some((mapping: any) => {
+    const productTag = String(mapping?.productType?.tag ?? "")
+      .trim()
+      .toLowerCase();
+    const productType = String(mapping?.productType?.type ?? "")
+      .trim()
+      .toLowerCase();
+
+    return productTag === "type 7" || productType === "small order";
+  });
+}
+
 function compareOrderLoginCompletedAtDesc(
   a?: string | null,
   b?: string | null,
@@ -1124,6 +1145,15 @@ export function UniversalTable({
     const createdAtDirection = primarySort?.desc ? "desc" : "asc";
     const filteredActiveData = activeData.filter((lead: any) => {
       if (normalizedType === "type 1" && lead?.is_draft === true) {
+        return false;
+      }
+
+      if (
+        normalizedType === "type 17" &&
+        showServicingColumn &&
+        pendingServicesOnly &&
+        isType7SmallOrderLead(lead)
+      ) {
         return false;
       }
 
