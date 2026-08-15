@@ -1470,7 +1470,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
       max-h-[250px] overflow-y-auto
     "
             >
-              {leadData?.payments?.[0].text || "N/A"}
+              {leadData?.payments?.[0]?.text || "N/A"}
             </div>
           </div>
           )}

@@ -11,6 +11,8 @@ import SpecificationsTab from "../sales-executive/designing-stage/pill-tabs-comp
 import CostingFileTab from "../sales-executive/designing-stage/pill-tabs-component/costing-file";
 import ElectricalPlumbingTab from "../sales-executive/designing-stage/pill-tabs-component/electrical-plumbing";
 import FinalIsmUploadTab from "../sales-executive/designing-stage/pill-tabs-component/final-ism-upload";
+import MaterialConfigurationTab from "../sales-executive/designing-stage/pill-tabs-component/material-configuration";
+import ClientReceivedFilesTab from "../sales-executive/designing-stage/pill-tabs-component/client-received-files";
 import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import {
@@ -21,7 +23,11 @@ import {
   Receipt,
   Zap,
   Upload,
+  Paperclip,
+  Sliders,
 } from "lucide-react";
+import { useFranchisesByVendorId } from "@/api/franchise";
+import ComingSoon from "@/components/generics/ComingSoon";
 
 type props = {
   leadId: number;
@@ -52,6 +58,17 @@ export default function DesigningLeadsDetails({ leadId }: props) {
   );
   const { data: leadData } = useLeadById(leadId, vendorId, userId);
   const accountId = leadData?.data?.lead?.account_id ?? leadId;
+  const { data: franchisesForB2b = [] } = useFranchisesByVendorId(
+    vendorId,
+    !!vendorId,
+  );
+  const lead = leadData?.data?.lead;
+  const isB2b = React.useMemo(() => {
+    const leadFranchise = franchisesForB2b.find(
+      (franchise: any) => franchise.id === lead?.franchise_id,
+    );
+    return leadFranchise?.moduled_for_b2b ?? false;
+  }, [franchisesForB2b, lead?.franchise_id]);
 
   const tabs = React.useMemo(() => {
     const baseTabs = [
@@ -62,13 +79,17 @@ export default function DesigningLeadsDetails({ leadId }: props) {
         content: <QuotationTab />,
         customPrivilegeCode: "leads.designing_stage.quotation.view",
       },
-      {
-        id: "meetings",
-        label: "Meetings",
-        icon: Calendar,
-        content: <MeetingsTab />,
-        customPrivilegeCode: "leads.designing_stage.meetings.view",
-      },
+      ...(!isB2b
+        ? [
+            {
+              id: "meetings",
+              label: "Meetings",
+              icon: Calendar,
+              content: <MeetingsTab />,
+              customPrivilegeCode: "leads.designing_stage.meetings.view",
+            },
+          ]
+        : []),
       {
         id: "designs",
         label: "Designs",
@@ -85,36 +106,54 @@ export default function DesigningLeadsDetails({ leadId }: props) {
             .filter((tab) => customPrivilegeCodes.includes(tab.customPrivilegeCode))
             .map(({ customPrivilegeCode, ...tab }) => tab);
 
-    if (!handlesLargeScaleProjects) return gatedTabs;
+    const activeTabs = [...gatedTabs];
 
-    return [
-      ...gatedTabs,
-      {
-        id: "specifications",
-        label: "Specifications",
-        icon: ClipboardList,
-        content: <SpecificationsTab />,
-      },
-      {
-        id: "costing-file",
-        label: "Costing File",
-        icon: Receipt,
-        content: <CostingFileTab />,
-      },
-      {
-        id: "electrical-plumbing",
-        label: "Electrical & Plumbing",
-        icon: Zap,
-        content: <ElectricalPlumbingTab />,
-      },
-      {
-        id: "final-ism-upload",
-        label: "Revised ISM",
-        icon: Upload,
-        content: <FinalIsmUploadTab />,
-      },
-    ];
-  }, [customPrivilegeCodes, userType, handlesLargeScaleProjects]);
+    if (handlesLargeScaleProjects) {
+      activeTabs.push(
+        {
+          id: "specifications",
+          label: "Specifications",
+          icon: ClipboardList,
+          content: <SpecificationsTab />,
+        },
+        {
+          id: "costing-file",
+          label: "Costing File",
+          icon: Receipt,
+          content: <CostingFileTab />,
+        },
+        {
+          id: "electrical-plumbing",
+          label: "Electrical & Plumbing",
+          icon: Zap,
+          content: <ElectricalPlumbingTab />,
+        },
+        {
+          id: "final-ism-upload",
+          label: "Revised ISM",
+          icon: Upload,
+          content: <FinalIsmUploadTab />,
+        },
+      );
+    }
+
+    if (isB2b) {
+      activeTabs.unshift({
+        id: "client-received-files",
+        label: "Client Received Files",
+        icon: Paperclip,
+        content: <ClientReceivedFilesTab />,
+      });
+      activeTabs.push({
+        id: "material-configuration",
+        label: "Material Configuration",
+        icon: Sliders,
+        content: <MaterialConfigurationTab />,
+      });
+    }
+
+    return activeTabs;
+  }, [customPrivilegeCodes, userType, handlesLargeScaleProjects, isB2b]);
 
   return (
     <motion.div

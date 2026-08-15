@@ -39,6 +39,7 @@ interface DocumentCardProps {
   canDelete?: boolean;
   onDelete?: (id: number) => void;
   status?: "APPROVED" | "REJECTED" | "PENDING" | string;
+  tagLabel?: string;
   isLatest?: boolean;
   disableActions?: boolean;
   alwaysShowText?: boolean;
@@ -110,16 +111,28 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({ url, fileName, fileE
         setPreviewError(null);
 
         if (isImage) {
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error("Failed to load image preview.");
+          }
+          const blob = await response.blob();
+          objectUrl = URL.createObjectURL(blob);
           if (!cancelled) {
-            setPreviewUrl(url);
+            setPreviewUrl(objectUrl);
           }
           return;
         }
 
         const isPdf = fileExt === "pdf" || fileName?.toLowerCase().endsWith(".pdf") || url.toLowerCase().includes(".pdf");
         if (isPdf) {
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error("Failed to load PDF preview.");
+          }
+          const blob = await response.blob();
+          objectUrl = URL.createObjectURL(blob);
           if (!cancelled) {
-            setPreviewUrl(url);
+            setPreviewUrl(objectUrl);
           }
           return;
         }
@@ -238,6 +251,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
   canDelete = false,
   onDelete,
   status,
+  tagLabel,
   isLatest = false,
   disableActions = false,
   alwaysShowText = false,
@@ -353,15 +367,14 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
       document.body.appendChild(a);
       a.click();
       a.remove();
-      window.URL.revokeObjectURL(url);
+      window.setTimeout(() => window.URL.revokeObjectURL(url), 1000);
     } catch (err) {
       console.error("Download error:", err);
       if (typeof window !== "undefined" && doc.signedUrl) {
         const a = document.createElement("a");
         a.href = doc.signedUrl;
-        a.download = doc.originalName;
         a.rel = "noopener noreferrer";
-        a.target = "_self";
+        a.target = "_blank";
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -722,8 +735,13 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
               </button>
             </div>
 
-            {/* Status & Design Type */}
-            <div className="flex items-center gap-3">
+            {/* Status & Design Type / Tag Label */}
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              {tagLabel && (
+                <span className="inline-flex items-center px-2.5 py-0.5 text-[10px] font-semibold rounded-full bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/40 shadow-3xs">
+                  {tagLabel}
+                </span>
+              )}
               {isCustomVendor && designTypeTag && (
                 <span className="text-zinc-700 font-semibold">
                   {designTypeTag} File

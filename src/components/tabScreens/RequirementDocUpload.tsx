@@ -11,9 +11,21 @@ import {
   Paperclip,
   Check,
   Eye,
+  Plus,
+  X,
 } from "lucide-react";
 import DocumentCard, { PreviewModal } from "@/components/utils/documentCard";
 import { Button } from "@/components/ui/button";
+import BaseModal from "@/components/utils/baseModal";
+import { DocumentsUploader } from "@/components/document-upload";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toastManager } from "@/components/ui/toast";
 import { formatDateTime } from "../utils/privileges";
 import {
@@ -46,6 +58,8 @@ export default function RequirementDocUpload({
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [openDropdown, setOpenDropdown] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [previewDoc, setPreviewDoc] = useState<{ url: string; name: string; ext: string } | null>(null);
 
   // Fetch Requirement Document Types for Vendor
@@ -88,15 +102,15 @@ export default function RequirementDocUpload({
     }
   }, [vendorId, leadId, productTypeId]);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  const handleUploadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (uploadFiles.length === 0) return;
     if (!selectedDocTypeId) {
       toastManager.add({ title: "Please select a Document Type first", type: "error" });
       return;
     }
 
-    const file = files[0];
+    const file = uploadFiles[0];
     try {
       setUploading(true);
       const res = await uploadRequirementDocumentApi({
@@ -111,6 +125,8 @@ export default function RequirementDocUpload({
       if (res?.success) {
         toastManager.add({ title: "Document uploaded successfully!", type: "success" });
         loadDocuments();
+        setIsAdding(false);
+        setUploadFiles([]);
       } else {
         toastManager.add({ title: res?.message || "Failed to upload document", type: "error" });
       }
@@ -119,7 +135,6 @@ export default function RequirementDocUpload({
       toastManager.add({ title: err?.response?.data?.message || err?.message || "Upload failed", type: "error" });
     } finally {
       setUploading(false);
-      e.target.value = "";
     }
   };
 
@@ -151,77 +166,98 @@ export default function RequirementDocUpload({
           <span>Requirement Documents</span>
         </div>
 
-        {/* Form controls: Document Type Dropdown + Upload Button */}
+        {/* Form controls: Progressive Disclosure Upload */}
         <div className="flex items-center gap-2">
-          {/* Custom Dropdown Selector */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setOpenDropdown((prev) => !prev)}
-              disabled={loadingTypes || docTypes.length === 0}
-              className="inline-flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg border bg-background text-foreground text-xs font-semibold shadow-2xs hover:bg-muted/40 transition-colors disabled:opacity-50"
-            >
-              <span>{currentType ? `${currentType.type} (${currentType.tag})` : "Select Type..."}</span>
-              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            </button>
-
-            {openDropdown && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setOpenDropdown(false)} />
-                <div className="absolute right-0 mt-1 w-48 p-1 rounded-xl border bg-background text-foreground shadow-lg z-50 space-y-0.5 border-border">
-                  {docTypes.map((t) => {
-                    const isActive = selectedDocTypeId === t.id;
-                    return (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedDocTypeId(t.id);
-                          setOpenDropdown(false);
-                        }}
-                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
-                          isActive
-                            ? "bg-muted text-foreground font-semibold"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold">{t.type}</span>
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted/80 text-muted-foreground font-mono">
-                            {t.tag}
-                          </span>
-                        </div>
-                        {isActive && <Check className="h-3.5 w-3.5 text-foreground" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Upload Button */}
-          <label className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-primary-foreground bg-primary rounded-lg shadow-2xs cursor-pointer hover:bg-primary/90 transition-colors">
-            {uploading ? (
-              <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                <span>Uploading...</span>
-              </>
-            ) : (
-              <>
-                <Upload className="h-3.5 w-3.5" />
-                <span>Upload File</span>
-              </>
-            )}
-            <input
-              type="file"
-              onChange={handleFileUpload}
-              disabled={uploading || !selectedDocTypeId}
-              className="hidden"
-            />
-          </label>
+          <button
+            type="button"
+            onClick={() => {
+              setIsAdding(true);
+              setUploadFiles([]);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>Add Document</span>
+          </button>
         </div>
       </div>
+
+      {/* Upload Modal */}
+      <BaseModal
+        open={isAdding}
+        onOpenChange={setIsAdding}
+        title="Upload Requirement Document"
+        description="Choose a document type and select files to upload."
+        size="smd"
+      >
+        <form onSubmit={handleUploadSubmit} className="p-5 space-y-4">
+          {/* Document Type Dropdown */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold text-foreground">Document Type</Label>
+            <Select
+              value={selectedDocTypeId ? String(selectedDocTypeId) : ""}
+              onValueChange={(value) => setSelectedDocTypeId(Number(value))}
+              disabled={docTypes.length === 0}
+            >
+              <SelectTrigger className="w-full text-xs">
+                <SelectValue placeholder="Select Document Type..." />
+              </SelectTrigger>
+              <SelectContent>
+                {docTypes.map((t) => (
+                  <SelectItem key={t.id} value={String(t.id)}>
+                    <div className="flex items-center gap-2">
+                      <span>{t.type}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted/80 text-muted-foreground font-mono">
+                        {t.tag}
+                      </span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* File Picker */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold text-foreground">Upload Files</Label>
+            <DocumentsUploader
+              value={uploadFiles}
+              onChange={setUploadFiles}
+              accept=".pdf,.jpg,.jpeg,.png,.zip"
+            />
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex justify-end gap-2.5 pt-3 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setIsAdding(false);
+                setUploadFiles([]);
+              }}
+              disabled={uploading}
+              className="text-xs"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={uploading || !selectedDocTypeId || uploadFiles.length === 0}
+              className="text-xs"
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                  Uploading...
+                </>
+              ) : (
+                "Upload"
+              )}
+            </Button>
+          </div>
+        </form>
+      </BaseModal>
 
       {/* Uploaded Documents List */}
       {loadingDocs ? (
@@ -230,25 +266,34 @@ export default function RequirementDocUpload({
           <span>Loading documents...</span>
         </div>
       ) : documents.length === 0 ? (
-        <div className="text-muted-foreground italic text-xs py-1 border border-dashed rounded-lg px-3 bg-muted/20">
-          No documents uploaded yet for this requirement. Select a document type above and upload files (Layout, Sizes, Cutlist, Drawing).
+        <div className="flex flex-col items-center justify-center py-8 text-center bg-muted/10 border border-dashed rounded-xl gap-2 w-full">
+          <FileText className="h-8 w-8 text-muted-foreground/40" />
+          <p className="text-sm font-medium text-foreground">No documents yet</p>
+          <p className="text-xs text-muted-foreground max-w-[250px]">Click "+ Add Document" to upload a new requirement file.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-          {documents.map((doc) => (
-            <DocumentCard
-              key={doc.id}
-              doc={{
-                id: doc.id,
-                originalName: doc.doc_og_name,
-                signedUrl: doc.signedUrl || "",
-                created_at: doc.created_at,
-              }}
-              status={doc.documentType?.tag}
-              canDelete={true}
-              onDelete={() => handleDelete(doc.id)}
-            />
-          ))}
+          {documents.map((doc) => {
+            const docTypeObj = doc.documentType || docTypes.find((t) => t.id === doc.doc_type_id);
+            const tagLabel = docTypeObj
+              ? docTypeObj.type
+              : "Document";
+
+            return (
+              <DocumentCard
+                key={doc.id}
+                doc={{
+                  id: doc.id,
+                  originalName: doc.doc_og_name,
+                  signedUrl: doc.signedUrl || "",
+                  created_at: doc.created_at,
+                }}
+                tagLabel={tagLabel}
+                canDelete={true}
+                onDelete={() => handleDelete(doc.id)}
+              />
+            );
+          })}
         </div>
       )}
 
