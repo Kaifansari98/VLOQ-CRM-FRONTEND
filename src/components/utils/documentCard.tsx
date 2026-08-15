@@ -39,6 +39,7 @@ interface DocumentCardProps {
   canDelete?: boolean;
   onDelete?: (id: number) => void;
   status?: "APPROVED" | "REJECTED" | "PENDING" | string;
+  tagLabel?: string;
   isLatest?: boolean;
   disableActions?: boolean;
   alwaysShowText?: boolean;
@@ -238,6 +239,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
   canDelete = false,
   onDelete,
   status,
+  tagLabel,
   isLatest = false,
   disableActions = false,
   alwaysShowText = false,
@@ -722,8 +724,13 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
               </button>
             </div>
 
-            {/* Status & Design Type */}
-            <div className="flex items-center gap-3">
+            {/* Status & Design Type / Tag Label */}
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              {tagLabel && (
+                <span className="inline-flex items-center px-2.5 py-0.5 text-[10px] font-semibold rounded-full bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/40 shadow-3xs">
+                  {tagLabel}
+                </span>
+              )}
               {isCustomVendor && designTypeTag && (
                 <span className="text-zinc-700 font-semibold">
                   {designTypeTag} File

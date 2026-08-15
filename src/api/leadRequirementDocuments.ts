@@ -16,6 +16,7 @@ export interface RequirementDocumentItem {
   vendor_id: number;
   lead_id: number;
   product_type_id?: number | null;
+  b2b_requirement_type_id?: number | null;
   doc_type_id: number;
   created_at: string;
   created_by: number;

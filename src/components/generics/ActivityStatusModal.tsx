@@ -94,7 +94,9 @@ const ActivityStatusModal: React.FC<Props> = ({
   });
 
   const isCurrentAdmin =
-    currentUserType === "admin" || currentUserType === "super-admin";
+    currentUserType === "admin" ||
+    currentUserType === "super-admin" ||
+    currentUserType === "superadmin";
   const handlesLargeScaleProjects = useAppSelector(
     (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
   );
@@ -111,7 +113,9 @@ const ActivityStatusModal: React.FC<Props> = ({
   const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([]);
   const [selectedItemIds, setSelectedItemIds] = useState<number[]>([]);
   const shouldShowScopedSelection =
-    open && statusType === "onHold" && handlesLargeScaleProjects;
+    open &&
+    (statusType === "onHold" || statusType === "lost" || statusType === "lostApproval") &&
+    handlesLargeScaleProjects;
 
   const { data: storeAdminExists = false } = useQuery({
     queryKey: ["franchise-admin-check", vendorId, franchiseId],
@@ -218,7 +222,7 @@ const ActivityStatusModal: React.FC<Props> = ({
     ? false
     : hasAdmin !== undefined
       ? hasAdmin
-      : statusType === "lostApproval" || (statusType === "lost" && storeAdminExists);
+      : statusType === "lost" || statusType === "lostApproval" || storeAdminExists;
 
   const modalStatusType: Props["statusType"] =
     statusType === "onHold"
@@ -310,9 +314,9 @@ const ActivityStatusModal: React.FC<Props> = ({
           groupItemIds.every((itemId) => selectedItemIds.includes(itemId)))
       );
     });
-  const isLargeScaleOnHoldSubmitDisabled =
+  const isLargeScaleScopedSubmitDisabled =
     shouldShowScopedSelection &&
-    (!form.watch("dueDate") || !hasScopedSelection);
+    ((statusType === "onHold" && !form.watch("dueDate")) || !hasScopedSelection);
 
   const handleSubmit = (values: z.infer<typeof formSchema>) => {
     if (statusType === "onHold" && !values.dueDate) {
@@ -401,7 +405,7 @@ const ActivityStatusModal: React.FC<Props> = ({
                     Select Item Groups / Item Codes <span className="text-destructive">*</span>
                   </FormLabel>
                   <p className="text-xs text-muted-foreground">
-                    Choose the item groups or item codes to place on hold.
+                    Choose the item groups or item codes to {statusType === "onHold" ? "place on hold" : "mark as lost"}.
                   </p>
                 </div>
 
@@ -548,7 +552,7 @@ const ActivityStatusModal: React.FC<Props> = ({
               <Button
                 type="submit"
                 className="text-sm"
-                disabled={loading || isLargeScaleOnHoldSubmitDisabled}
+                disabled={loading || isLargeScaleScopedSubmitDisabled}
               >
                 {buttonText[modalStatusType]}
               </Button>

@@ -596,6 +596,37 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         ? canEditAtCurrentStage
         : false);
   const canEditBoqItems = canEditStructures;
+  const canAddBoqItems =
+    !isAuditor &&
+    (normalizedUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.add_boq_items",
+        )
+      : canEditBoqItems);
+
+  const canCreateBoqItems =
+    !isAuditor &&
+    (normalizedUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.create_boq_items",
+        )
+      : userType === "super-admin");
+
+  const canEditBoqItem =
+    !isAuditor &&
+    (normalizedUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.edit_boq_item",
+        )
+      : canEditBoqItems);
+
+  const canDeleteBoqItem =
+    !isAuditor &&
+    (normalizedUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.delete_boq_item",
+        )
+      : canEditBoqItems);
   const currentProductTypeId =
     lead?.productMappings?.[0]?.product_type_id ||
     lead?.productMappings?.[0]?.productType?.id ||
@@ -1880,26 +1911,28 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                                 </h5>
                               </div>
 
-                              <div className="max-h-44 overflow-y-auto border rounded-lg divide-y bg-background text-xs shadow-2xs">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-64 overflow-y-auto pr-1">
                                 {typeMaterials.map((mat: any) => (
                                   <div
                                     key={mat.id}
-                                    className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 hover:bg-muted/30 transition-colors"
+                                    className="flex items-center justify-between gap-3 p-3 rounded-xl border bg-muted/20 hover:bg-muted/40 transition-colors border-border/50 text-xs"
                                   >
-                                    <div className="flex items-center gap-3 min-w-0 flex-1 flex-wrap">
-                                      <span className="font-semibold text-foreground truncate min-w-[120px] max-w-[220px]">
+                                    <div className="flex flex-col gap-1 min-w-0 flex-1">
+                                      <span className="font-semibold text-foreground break-words leading-tight">
                                         {mat.product?.product_name || "Material"}
                                       </span>
-                                      <span className="text-muted-foreground shrink-0 text-[11px]">
-                                        Qty: <strong className="text-foreground font-semibold">{mat.quantity}</strong> {mat.unit_name || mat.product?.unit_of_measure || ""}
-                                      </span>
-                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted border shrink-0">
-                                        {mat.supplied_by === "Frankvin"
-                                          ? "Frankvin (100%)"
-                                          : mat.supplied_by === "Client"
-                                          ? "Client (100%)"
-                                          : `Shared (Client: ${mat.client_percentage}% / Frankvin: ${mat.frankvin_percentage}%)`}
-                                      </span>
+                                      <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                                        <span className="text-muted-foreground shrink-0">
+                                          Qty: <strong className="text-foreground font-semibold">{mat.quantity}</strong> {mat.unit_name || mat.product?.unit_of_measure || ""}
+                                        </span>
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-background border shadow-3xs text-muted-foreground shrink-0">
+                                          {mat.supplied_by === "Frankvin"
+                                            ? "Frankvin"
+                                            : mat.supplied_by === "Client"
+                                            ? "Client"
+                                            : `Shared (${mat.client_percentage}% / ${mat.frankvin_percentage}%)`}
+                                        </span>
+                                      </div>
                                     </div>
 
                                     <div className="flex items-center gap-1 shrink-0">
@@ -1975,7 +2008,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
               title="Bill of Quantity"
               action={
                 <div className="flex items-center gap-2">
-                  {userType === "super-admin" && (
+                  {canCreateBoqItems && (
                     <Link
                       href="/dashboard/masters-management/boq-items-master"
                       target="_blank"
@@ -1985,7 +2018,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                       Create BOQ Items
                     </Link>
                   )}
-                  {canEditBoqItems && boqInstances.length > 0 ? (
+                  {canAddBoqItems && boqInstances.length > 0 ? (
                     <Button
                       type="button"
                       className="gap-2"
@@ -2002,28 +2035,39 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
               }
             >
               {boqInstances.length === 0 ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!canEditBoqItems || shouldDisableBlockedActions) return;
-                    setBoqModalOpen(true);
-                  }}
-                  className={`group flex w-full flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-border/70 bg-muted/20 px-6 py-14 text-center transition hover:border-primary/50 hover:bg-muted/30 ${
-                    !canEditBoqItems ? "cursor-default" : ""
-                  }`}
-                >
-                  <span className="flex h-16 w-16 items-center justify-center rounded-full border border-dashed border-border/80 bg-background shadow-sm transition group-hover:scale-105">
-                    <Plus className="h-8 w-8 text-muted-foreground" />
-                  </span>
-                  <div className="space-y-1">
+                canAddBoqItems ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!canAddBoqItems || shouldDisableBlockedActions) return;
+                      setBoqModalOpen(true);
+                    }}
+                    className={`group flex w-full flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-border/70 bg-muted/20 px-6 py-14 text-center transition hover:border-primary/50 hover:bg-muted/30 ${
+                      !canAddBoqItems ? "cursor-default" : ""
+                    }`}
+                  >
+                    <span className="flex h-16 w-16 items-center justify-center rounded-full border border-dashed border-border/80 bg-background shadow-sm transition group-hover:scale-105">
+                      <Plus className="h-8 w-8 text-muted-foreground" />
+                    </span>
+                    <div className="space-y-1">
+                      <p className="text-base font-semibold text-foreground">
+                        Create BOQ Items
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        No BOQ items added yet. Start by selecting item codes and quantities.
+                      </p>
+                    </div>
+                  </button>
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border/70 bg-muted/10 px-6 py-14 text-center">
                     <p className="text-base font-semibold text-foreground">
-                      Create BOQ Items
+                      No BOQ Items Added
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      No BOQ items added yet. Start by selecting item codes and quantities.
+                      No BOQ items have been added to this lead yet.
                     </p>
                   </div>
-                </button>
+                )
               ) : (
                 <div className="space-y-4">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -2081,7 +2125,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 	                                  {item.productItemCode?.item_code || item.title || "—"}
 	                                </p>
 	                              </div>
-	                              {canEditBoqItems && (
+	                              {canDeleteBoqItem && (
 	                                <div className="flex shrink-0 items-center gap-1">
 	                                  <Tooltip>
 	                                    <TooltipTrigger asChild>
@@ -2220,7 +2264,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 	                                      {item.quantity ?? "—"}
 	                                    </span>
 	                                  </div>
-	                                  {canEditBoqItems && (
+	                                  {canEditBoqItem && (
 	                                    <Button
 	                                      type="button"
 	                                      variant="ghost"

@@ -285,9 +285,12 @@ export default function PendingLeadDetails() {
         open={openApproveModal}
         onOpenChange={setOpenApproveModal}
         statusType="lost"
+        vendorId={vendorId}
+        franchiseId={leadResponse?.data?.lead?.franchise_id ?? null}
+        leadId={leadIdNum}
         existingRemark={latestActivityStatus?.activity_status_remark || ""}
         existingRemarkLabel="Sales executive remark"
-        onSubmitRemark={(remark) => {
+        onSubmitRemark={(remark, dueDate, selection) => {
           if (!vendorId || !userId) {
             toastManager.add({ title: "Missing vendor/user info", type: "error" });
             return;
@@ -304,6 +307,7 @@ export default function PendingLeadDetails() {
                 status: "lost",
                 remark,
                 createdBy: userId,
+                ...(selection ?? {}),
               },
             },
             {
@@ -333,7 +337,10 @@ export default function PendingLeadDetails() {
         open={openMarkLost}
         onOpenChange={setOpenMarkLost}
         statusType="lost"
-        onSubmitRemark={(remark) => {
+        vendorId={vendorId}
+        franchiseId={leadResponse?.data?.lead?.franchise_id ?? null}
+        leadId={leadIdNum}
+        onSubmitRemark={(remark, dueDate, selection) => {
           if (!vendorId || !userId) {
             toastManager.add({ title: "Missing vendor/user info", type: "error" });
             return;
@@ -349,6 +356,7 @@ export default function PendingLeadDetails() {
                 status: "lost",
                 remark,
                 createdBy: userId,
+                ...(selection ?? {}),
               },
             },
             {
