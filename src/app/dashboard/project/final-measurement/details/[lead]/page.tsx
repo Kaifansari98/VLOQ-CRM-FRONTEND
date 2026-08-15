@@ -800,6 +800,9 @@ export default function FinalMeasurementLeadDetails() {
         open={activityModalOpen}
         onOpenChange={setActivityModalOpen}
         statusType="onHold"
+        vendorId={vendorId}
+        franchiseId={lead?.franchise_id ?? null}
+        leadId={leadIdNum}
         onSubmitRemark={(remark, dueDate, selection) => {
           if (!vendorId || !userId) {
             toastManager.add({
@@ -820,6 +823,7 @@ export default function FinalMeasurementLeadDetails() {
                 remark,
                 createdBy: userId,
                 dueDate,
+                ...(selection ?? {}),
               },
             },
             {

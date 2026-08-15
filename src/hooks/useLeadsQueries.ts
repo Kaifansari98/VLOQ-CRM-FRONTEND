@@ -232,6 +232,8 @@ export function useLeadProductStructureInstances(
   vendorId?: number,
   enabled: boolean = true
 ) {
+
+  console.log("lead id: ", leadId, " vendorid: ", vendorId)
   return useQuery({
     queryKey: ["lead-product-structure-instances", leadId, vendorId],
     queryFn: () => getLeadProductStructureInstances(vendorId!, leadId!),

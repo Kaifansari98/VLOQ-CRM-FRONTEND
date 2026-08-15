@@ -881,6 +881,9 @@ export default function ClientApprovalLeadDetails() {
         open={activityModalOpen}
         onOpenChange={setActivityModalOpen}
         statusType="onHold"
+        vendorId={vendorId}
+        franchiseId={lead?.franchise_id ?? null}
+        leadId={leadIdNum}
         loading={updateStatusMutation.isPending}
         onSubmitRemark={(remark, dueDate, selection) => {
           if (!vendorId || !userId) {
@@ -902,6 +905,7 @@ export default function ClientApprovalLeadDetails() {
                 remark,
                 createdBy: userId,
                 dueDate,
+                ...(selection ?? {}),
               },
             },
             {
