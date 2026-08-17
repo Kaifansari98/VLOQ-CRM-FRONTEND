@@ -513,7 +513,7 @@ export default function InstallationMiscellaneous({
   const canUpdateERD = canDoERDDate && !isTaskReady && isApproved;
   const isDeliveryTaskCompleted = viewModalData?.delivery_task?.status === "completed";
   const canUpdateRequiredDelivery =
-    ["super-admin", "site-supervisor"].includes(userType || "") &&
+    ["super-admin", "site-supervisor", "head-site-supervisor"].includes(userType || "") &&
     isApproved &&
     isReady &&
     !isDeliveryTaskCompleted &&
