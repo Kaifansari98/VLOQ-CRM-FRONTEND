@@ -596,6 +596,37 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         ? canEditAtCurrentStage
         : false);
   const canEditBoqItems = canEditStructures;
+  const canAddBoqItems =
+    !isAuditor &&
+    (normalizedUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.add_boq_items",
+        )
+      : canEditBoqItems);
+
+  const canCreateBoqItems =
+    !isAuditor &&
+    (normalizedUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.create_boq_items",
+        )
+      : userType === "super-admin");
+
+  const canEditBoqItem =
+    !isAuditor &&
+    (normalizedUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.edit_boq_item",
+        )
+      : canEditBoqItems);
+
+  const canDeleteBoqItem =
+    !isAuditor &&
+    (normalizedUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.delete_boq_item",
+        )
+      : canEditBoqItems);
   const currentProductTypeId =
     lead?.productMappings?.[0]?.product_type_id ||
     lead?.productMappings?.[0]?.productType?.id ||
@@ -1977,7 +2008,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
               title="Bill of Quantity"
               action={
                 <div className="flex items-center gap-2">
-                  {userType === "super-admin" && (
+                  {canCreateBoqItems && (
                     <Link
                       href="/dashboard/masters-management/boq-items-master"
                       target="_blank"
@@ -1987,7 +2018,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                       Create BOQ Items
                     </Link>
                   )}
-                  {canEditBoqItems && boqInstances.length > 0 ? (
+                  {canAddBoqItems && boqInstances.length > 0 ? (
                     <Button
                       type="button"
                       className="gap-2"
@@ -2004,28 +2035,39 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
               }
             >
               {boqInstances.length === 0 ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!canEditBoqItems || shouldDisableBlockedActions) return;
-                    setBoqModalOpen(true);
-                  }}
-                  className={`group flex w-full flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-border/70 bg-muted/20 px-6 py-14 text-center transition hover:border-primary/50 hover:bg-muted/30 ${
-                    !canEditBoqItems ? "cursor-default" : ""
-                  }`}
-                >
-                  <span className="flex h-16 w-16 items-center justify-center rounded-full border border-dashed border-border/80 bg-background shadow-sm transition group-hover:scale-105">
-                    <Plus className="h-8 w-8 text-muted-foreground" />
-                  </span>
-                  <div className="space-y-1">
+                canAddBoqItems ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!canAddBoqItems || shouldDisableBlockedActions) return;
+                      setBoqModalOpen(true);
+                    }}
+                    className={`group flex w-full flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-border/70 bg-muted/20 px-6 py-14 text-center transition hover:border-primary/50 hover:bg-muted/30 ${
+                      !canAddBoqItems ? "cursor-default" : ""
+                    }`}
+                  >
+                    <span className="flex h-16 w-16 items-center justify-center rounded-full border border-dashed border-border/80 bg-background shadow-sm transition group-hover:scale-105">
+                      <Plus className="h-8 w-8 text-muted-foreground" />
+                    </span>
+                    <div className="space-y-1">
+                      <p className="text-base font-semibold text-foreground">
+                        Create BOQ Items
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        No BOQ items added yet. Start by selecting item codes and quantities.
+                      </p>
+                    </div>
+                  </button>
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border/70 bg-muted/10 px-6 py-14 text-center">
                     <p className="text-base font-semibold text-foreground">
-                      Create BOQ Items
+                      No BOQ Items Added
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      No BOQ items added yet. Start by selecting item codes and quantities.
+                      No BOQ items have been added to this lead yet.
                     </p>
                   </div>
-                </button>
+                )
               ) : (
                 <div className="space-y-4">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -2083,7 +2125,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 	                                  {item.productItemCode?.item_code || item.title || "—"}
 	                                </p>
 	                              </div>
-	                              {canEditBoqItems && (
+	                              {canDeleteBoqItem && (
 	                                <div className="flex shrink-0 items-center gap-1">
 	                                  <Tooltip>
 	                                    <TooltipTrigger asChild>
@@ -2222,7 +2264,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 	                                      {item.quantity ?? "—"}
 	                                    </span>
 	                                  </div>
-	                                  {canEditBoqItems && (
+	                                  {canEditBoqItem && (
 	                                    <Button
 	                                      type="button"
 	                                      variant="ghost"

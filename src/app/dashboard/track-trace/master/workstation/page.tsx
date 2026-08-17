@@ -22,9 +22,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
-import { CreateMachineModal } from "@/components/track-trace/CreateMachineModal";
-import { EditMachineModal } from "@/components/track-trace/EditMachineModal";
-
+import { useRouter } from "next/navigation";
 import { Plus, Loader2, Pencil } from "lucide-react";
 import { useAppSelector } from "@/redux/store";
 import { useMachinesByVendor } from "@/hooks/track-trace-hooks/useTrackTraceMasterHooks";
@@ -34,20 +32,16 @@ import type { MachineData } from "@/types/track-trace";
 
 import { useAssignedUsersByMachine } from "@/hooks/track-trace-hooks/useTrackTraceMasterHooks";
 import { UserMachineAssignModal } from "@/components/track-trace/UserMachineAssignModal";
+
 export default function MachineMasterPage() {
+  const router = useRouter();
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedMachine, setSelectedMachine] = useState<MachineData | null>(
-    null,
-  );
 
   const { data: machines, isLoading, error } = useMachinesByVendor(vendorId!);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [assignMachineId, setAssignMachineId] = useState<number | null>(null);
 
-  // console.log("useMachinesByVendor", machines)
   const getStatusBadge = (status: string) => {
     const statusStyles = {
       ACTIVE: "bg-foreground text-background",
@@ -92,15 +86,7 @@ export default function MachineMasterPage() {
   };
 
   const handleEdit = (machine: MachineData) => {
-    setSelectedMachine(machine);
-    setIsEditModalOpen(true);
-  };
-
-  const handleEditModalClose = (open: boolean) => {
-    setIsEditModalOpen(open);
-    if (!open) {
-      setSelectedMachine(null);
-    }
+    router.push(`/dashboard/track-trace/master/workstation/create?id=${machine.id}`);
   };
 
   const handleAssignUsers = (machineId: number) => {
@@ -167,7 +153,7 @@ export default function MachineMasterPage() {
             </div>
             <Button
               className="gap-2"
-              onClick={() => setIsCreateModalOpen(true)}
+              onClick={() => router.push("/dashboard/track-trace/master/workstation/create")}
             >
               <Plus className="h-4 w-4" />
               Create Workstation
@@ -310,19 +296,6 @@ export default function MachineMasterPage() {
           </div>
         </div>
       </main>
-
-      {/* Create Machine Modal */}
-      <CreateMachineModal
-        open={isCreateModalOpen}
-        onOpenChange={setIsCreateModalOpen}
-      />
-
-      {/* Edit Machine Modal */}
-      <EditMachineModal
-        open={isEditModalOpen}
-        onOpenChange={handleEditModalClose}
-        machine={selectedMachine}
-      />
 
       <UserMachineAssignModal
         open={isAssignModalOpen}

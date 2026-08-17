@@ -20,6 +20,9 @@ export interface ProjectCategory {
   status: "Yes" | "No";
   created_at: string;
   projectCategoriesMasterVendorMapping: CategoryMapping[];
+  include_in_packing?: boolean;
+  scan_pack_validate?: boolean;
+  use_in_assembled_packing?: boolean;
 }
 
 export interface CreateCategoryPayload {
@@ -28,6 +31,9 @@ export interface CreateCategoryPayload {
   parent_id?: number | null;
   type_ids: number[];
   created_by: number;
+  include_in_packing?: boolean;
+  scan_pack_validate?: boolean;
+  use_in_assembled_packing?: boolean;
 }
 
 export interface UpdateCategoryPayload {
@@ -39,6 +45,9 @@ export interface UpdateCategoryPayload {
   type_ids: number[];
   created_by: number;
   updated_by: number;
+  include_in_packing?: boolean;
+  scan_pack_validate?: boolean;
+  use_in_assembled_packing?: boolean;
 }
 
 export const getProjectCategories = async (vendorId: number) => {

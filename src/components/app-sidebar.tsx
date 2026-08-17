@@ -286,7 +286,7 @@ const data = {
           title: "Defects",
           url: "/dashboard/track-trace/defect",
         },
-        
+
         // { title: "Configure", url: "/dashboard/track-trace/configure" },
       ],
     },
@@ -296,29 +296,53 @@ const data = {
       icon: FolderKanban,
       items: [
         { title: "Workstation", url: "/dashboard/track-trace/master/workstation" },
-        { title: "Category", url: "/dashboard/track-trace/master/category" },
-        { title: "Brand", url: "/dashboard/track-trace/master/brand" },
-        { title: "Grade", url: "/dashboard/track-trace/master/grade" },
-        { title: "Finish", url: "/dashboard/track-trace/master/finish" },
-        { title: "Type", url: "/dashboard/track-trace/master/type" },
-        { title: "Core Product", url: "/dashboard/track-trace/master/core-product" },
+        { title: "Category", url: "/dashboard/track-trace/master/category" },       
       ],
     },
-    
+
   ],
 
-  inventoryTraceNav: [   
+  inventoryTraceNav: [
     {
       title: "Inventory",
       url: "#",
       icon: Warehouse,
       items: [{ title: "Products", url: "/dashboard/inventory/master/products/list" },
-        { title: "Purchase Enquiry", url: "/dashboard/inventory/purchase-intents" },
-        { title: "Purchase Order", url: "/dashboard/inventory/purchase-orders" },
-        { title: "GRN", url: "/dashboard/inventory/grn" },
-         { title: "Payment Requisition", url: "/dashboard/inventory/payment-requisitions" },
-        
+      { title: "Purchase Enquiry", url: "/dashboard/inventory/purchase-intents" },
+      { title: "Purchase Order", url: "/dashboard/inventory/purchase-orders" },
+      { title: "GRN", url: "/dashboard/inventory/grn" },
+      { title: "Payment Requisition", url: "/dashboard/inventory/payment-requisitions" },
+
         // { title: "Category", url: "/dashboard/track-trace/master/category" }
+      ],
+    },
+  ],
+  inventoryMasterNav: [
+    {
+      title: "Master",
+      url: "#",
+      icon: FolderKanban,
+      items: [
+        {
+          title: "Brand",
+          url: "/dashboard/track-trace/master/brand",
+        },
+        {
+          title: "Grade",
+          url: "/dashboard/track-trace/master/grade",
+        },
+        {
+          title: "Finish",
+          url: "/dashboard/track-trace/master/finish",
+        },
+        {
+          title: "Type",
+          url: "/dashboard/track-trace/master/type",
+        },
+        {
+          title: "Core Product",
+          url: "/dashboard/track-trace/master/core-product",
+        },
       ],
     },
   ],
@@ -453,21 +477,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const userData = user
     ? {
-        name: user?.user_name || "username",
-        avatar: "/avatars/shadcn.jpg",
-        email: user?.user_email || "N/A",
-      }
+      name: user?.user_name || "username",
+      avatar: "/avatars/shadcn.jpg",
+      email: user?.user_email || "N/A",
+    }
     : data.user;
 
-  const { navItems, trackTraceItems, inventoryItems, mastersItems } = React.useMemo(() => {
+  const { navItems, trackTraceItems, inventoryItems, mastersItems, inventoryMasterItems } = React.useMemo(() => {
     // master-admin only sees Dashboard + Vendors — no CRM pipeline nav
     if (isMasterAdmin) {
       return {
-        navItems: data.masterAdminNav,
-        trackTraceItems: [],
-        inventoryItems: [],
-        mastersItems: [],
-      };
+  navItems: data.masterAdminNav,
+  trackTraceItems: [],
+  inventoryItems: [],
+  inventoryMasterItems: [],
+  mastersItems: [],
+};
     }
 
     const environment = (
@@ -505,155 +530,155 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
     const baseItems = hideSectionsForRole
       ? withoutOverall.filter(
-          (item) =>
-            item.title !== "Leads" &&
-            (userType === "site-supervisor" ? true : item.title !== "Project"),
-        )
+        (item) =>
+          item.title !== "Leads" &&
+          (userType === "site-supervisor" ? true : item.title !== "Project"),
+      )
       : withoutOverall;
 
     const adminOnlyItems =
       userType === "admin" || userType === "super-admin" || userType === "auditor"
         ? baseItems
         : baseItems.filter(
-            (item) =>
-              item.title !== "Delivered Projects" &&
-              item.title !== "CRM Reports",
-          );
+          (item) =>
+            item.title !== "Delivered Projects" &&
+            item.title !== "CRM Reports",
+        );
 
     const filteredItems =
       userType === "backend" || userType === "factory" || userType === "pre-prod"
         ? adminOnlyItems.map((item) =>
-            item.title === "Production"
-              ? {
-                  ...item,
-                  items: item.items?.filter((subItem) =>
-                    userType === "backend"
-                      ? subItem.title !== "Tech Check"
-                      : subItem.title !== "Tech Check" &&
-                        subItem.title !== "Order Login",
-                  ),
-                }
-              : item,
-          )
+          item.title === "Production"
+            ? {
+              ...item,
+              items: item.items?.filter((subItem) =>
+                userType === "backend"
+                  ? subItem.title !== "Tech Check"
+                  : subItem.title !== "Tech Check" &&
+                  subItem.title !== "Order Login",
+              ),
+            }
+            : item,
+        )
         : adminOnlyItems;
 
     const customFilteredItems =
       userType === "custom"
         ? filteredItems
-            .filter(
-              (item) =>
-                item.title !== "Servicing" ||
-                customPrivilegeCodes.some((code) =>
-                  code.startsWith("installation.servicing."),
+          .filter(
+            (item) =>
+              item.title !== "Servicing" ||
+              customPrivilegeCodes.some((code) =>
+                code.startsWith("installation.servicing."),
+              ),
+          )
+          .map((item) =>
+            item.title === "Leads"
+              ? {
+                ...item,
+                items: item.items?.filter((subItem) =>
+                  subItem.title === "Open Leads"
+                    ? customPrivilegeCodes.includes(
+                      "leads.open_leads.details_of_lead.view",
+                    )
+                    : subItem.title === "ISM Leads"
+                      ? customPrivilegeCodes.includes(
+                        "leads.ism_leads.ism_details.view",
+                      )
+                      : subItem.title === "Designing Stage"
+                        ? customPrivilegeCodes.includes(
+                          "leads.designing_stage.quotation.view",
+                        ) ||
+                        customPrivilegeCodes.includes(
+                          "leads.designing_stage.meetings.view",
+                        ) ||
+                        customPrivilegeCodes.includes(
+                          "leads.designing_stage.designs.view",
+                        )
+                        : subItem.title === "Booking Done"
+                          ? customPrivilegeCodes.some((code) =>
+                            code.startsWith("leads.booking_done."),
+                          )
+                          : true,
                 ),
-            )
-            .map((item) =>
-              item.title === "Leads"
+              }
+              : item.title === "Project"
                 ? {
+                  ...item,
+                  items: item.items?.filter((subItem) =>
+                    subItem.title === "FM Sites"
+                      ? customPrivilegeCodes.some((code) =>
+                        code.startsWith("project.final_measurement."),
+                      )
+                      : subItem.title === "Client Documents"
+                        ? customPrivilegeCodes.some((code) =>
+                          code.startsWith("project.client_documentation."),
+                        )
+                        : subItem.title === "Client Approval"
+                          ? customPrivilegeCodes.some((code) =>
+                            code.startsWith("project.client_approval."),
+                          )
+                          : true,
+                  ),
+                }
+                : item.title === "Production"
+                  ? {
                     ...item,
                     items: item.items?.filter((subItem) =>
-                      subItem.title === "Open Leads"
+                      subItem.title === "Tech Check"
                         ? customPrivilegeCodes.includes(
-                            "leads.open_leads.details_of_lead.view",
+                          "production.tech_check.tech_check_details.view",
+                        )
+                        : subItem.title === "Order Login"
+                          ? customPrivilegeCodes.some((code) =>
+                            code.startsWith("production.order_login."),
                           )
-                        : subItem.title === "ISM Leads"
-                          ? customPrivilegeCodes.includes(
-                              "leads.ism_leads.ism_details.view",
+                          : subItem.title === "Production"
+                            ? customPrivilegeCodes.some((code) =>
+                              code.startsWith("production.production."),
                             )
-                          : subItem.title === "Designing Stage"
-                            ? customPrivilegeCodes.includes(
-                                "leads.designing_stage.quotation.view",
-                              ) ||
-                              customPrivilegeCodes.includes(
-                                "leads.designing_stage.meetings.view",
-                              ) ||
-                              customPrivilegeCodes.includes(
-                                "leads.designing_stage.designs.view",
+                            : subItem.title === "RTD Sites"
+                              ? customPrivilegeCodes.includes(
+                                "production.production.ready_to_dispatch.enable_disable",
                               )
-                            : subItem.title === "Booking Done"
-                              ? customPrivilegeCodes.some((code) =>
-                                  code.startsWith("leads.booking_done."),
-                                )
                               : true,
                     ),
                   }
-                : item.title === "Project"
-                  ? {
+                  : item.title === "Execution"
+                    ? {
                       ...item,
                       items: item.items?.filter((subItem) =>
-                        subItem.title === "FM Sites"
+                        subItem.title === "Site Readiness"
                           ? customPrivilegeCodes.some((code) =>
-                              code.startsWith("project.final_measurement."),
-                            )
-                          : subItem.title === "Client Documents"
+                            code.startsWith("installation.site_readiness."),
+                          )
+                          : subItem.title === "Dispatch Planning"
                             ? customPrivilegeCodes.some((code) =>
-                                code.startsWith("project.client_documentation."),
+                              code.startsWith(
+                                "installation.dispatch_planning.",
+                              ),
+                            )
+                            : subItem.title === "Dispatch"
+                              ? customPrivilegeCodes.some((code) =>
+                                code.startsWith("installation.dispatch."),
                               )
-                            : subItem.title === "Client Approval"
-                              ? customPrivilegeCodes.some((code) =>
-                                  code.startsWith("project.client_approval."),
-                                )
-                              : true,
-                      ),
-                    }
-                  : item.title === "Production"
-                    ? {
-                        ...item,
-                        items: item.items?.filter((subItem) =>
-                          subItem.title === "Tech Check"
-                            ? customPrivilegeCodes.includes(
-                                "production.tech_check.tech_check_details.view",
-                              )
-                            : subItem.title === "Order Login"
-                              ? customPrivilegeCodes.some((code) =>
-                                  code.startsWith("production.order_login."),
-                                )
-                              : subItem.title === "Production"
+                              : subItem.title === "Installation"
                                 ? customPrivilegeCodes.some((code) =>
-                                    code.startsWith("production.production."),
-                                  )
-                                : subItem.title === "RTD Sites"
-                                  ? customPrivilegeCodes.includes(
-                                      "production.production.ready_to_dispatch.enable_disable",
-                                    )
-                                  : true,
-                        ),
-                      }
-                    : item.title === "Execution"
-                      ? {
-                          ...item,
-                          items: item.items?.filter((subItem) =>
-                            subItem.title === "Site Readiness"
-                              ? customPrivilegeCodes.some((code) =>
-                                  code.startsWith("installation.site_readiness."),
+                                  code.startsWith(
+                                    "installation.under_installation.",
+                                  ),
                                 )
-                              : subItem.title === "Dispatch Planning"
-                                ? customPrivilegeCodes.some((code) =>
+                                : subItem.title === "Final Handover"
+                                  ? customPrivilegeCodes.some((code) =>
                                     code.startsWith(
-                                      "installation.dispatch_planning.",
+                                      "installation.final_handover.",
                                     ),
                                   )
-                                : subItem.title === "Dispatch"
-                                  ? customPrivilegeCodes.some((code) =>
-                                      code.startsWith("installation.dispatch."),
-                                    )
-                                  : subItem.title === "Installation"
-                                    ? customPrivilegeCodes.some((code) =>
-                                        code.startsWith(
-                                          "installation.under_installation.",
-                                        ),
-                                      )
-                                    : subItem.title === "Final Handover"
-                                      ? customPrivilegeCodes.some((code) =>
-                                          code.startsWith(
-                                            "installation.final_handover.",
-                                          ),
-                                        )
-                                      : true,
-                          ),
-                        }
-                      : item,
-            )
+                                  : true,
+                      ),
+                    }
+                    : item,
+          )
         : filteredItems;
 
     const miscItem = {
@@ -676,10 +701,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           const shouldShowMisc = canSeeMiscLeads && miscLeadsCount > 0;
           const updatedItems = shouldShowMisc
             ? [
-                ...item.items.slice(0, underInstallationIndex + 1),
-                miscItem,
-                ...item.items.slice(underInstallationIndex + 1),
-              ]
+              ...item.items.slice(0, underInstallationIndex + 1),
+              miscItem,
+              ...item.items.slice(underInstallationIndex + 1),
+            ]
             : item.items;
           return { ...item, items: updatedItems };
         }
@@ -698,25 +723,30 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       : initialNavItems.filter((item) => item.title !== "Broadcast");
 
     const finalTrackTraceItems =
-  isSuperAdmin && (isTrackTraceEnabled || isScanPackEnabled)
-    ? data.trackTraceNav
-    : [];
+      isSuperAdmin && (isTrackTraceEnabled || isScanPackEnabled)
+        ? data.trackTraceNav
+        : [];
 
     const finalInventoryItems = isSuperAdmin && isInventoryEnabled
       ? data.inventoryTraceNav
       : [];
+
+    const finalInventoryMasterItems = isSuperAdmin && isInventoryEnabled
+      ? data.inventoryMasterNav
+      : [];
+
     const finalMastersItems = isSuperAdmin && isCrmEnabled
       ? data.mastersNav.map((section) => ({
-          ...section,
-          items:
-            environment === "PRODUCTION"
-              ? section.items.filter((item) =>
-                  item.title === "User Master"
-                    ? isCustomUserTypeOnlyVendor
-                    : true,
-                )
-              : section.items,
-        }))
+        ...section,
+        items:
+          environment === "PRODUCTION"
+            ? section.items.filter((item) =>
+              item.title === "User Master"
+                ? isCustomUserTypeOnlyVendor
+                : true,
+            )
+            : section.items,
+      }))
       : [];
 
     const resolvedNavItems = isOnlineLeadFeatureEnabled
@@ -728,6 +758,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       trackTraceItems: finalTrackTraceItems,
       inventoryItems: finalInventoryItems,
       mastersItems: finalMastersItems,
+      inventoryMasterItems: finalInventoryMasterItems
     };
   }, [
     mounted,
@@ -818,12 +849,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
 
       <SidebarContent>
-          <NavMain
-            items={navItems}
-            trackTraceItems={trackTraceItems}
-            inventoryItems={inventoryItems}
-            mastersItems={mastersItems}
-          />
+        <NavMain
+          items={navItems}
+          trackTraceItems={trackTraceItems}
+          inventoryItems={inventoryItems}
+          mastersItems={mastersItems}
+          inventoryMasterItems={inventoryMasterItems}
+
+        />
       </SidebarContent>
 
       <SidebarFooter>

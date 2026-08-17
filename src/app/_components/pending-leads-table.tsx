@@ -643,8 +643,11 @@ export default function PendingLeadsTable({
         open={openActivityStatus}
         onOpenChange={setOpenActivityStatus}
         statusType="lost"
+        vendorId={vendorId}
+        franchiseId={(activeLead as any)?.franchise_id ?? null}
+        leadId={activeLead?.id}
         existingRemark={activeLead?.designerRemark || ""}
-        onSubmitRemark={(remark) => {
+        onSubmitRemark={(remark, dueDate, selection) => {
           if (!activeLead || !vendorId || !userId) return;
 
           markAsLostMutation.mutate(
@@ -657,11 +660,19 @@ export default function PendingLeadsTable({
                 status: "lost",
                 remark,
                 createdBy: userId,
+                ...(selection ?? {}),
               },
             },
             {
-              onSuccess: () => {
-                toastManager.add({ title: "Lead marked as Lost!", type: "success" });
+              onSuccess: (res: any) => {
+                const finalStatus = res?.data?.activity_status ?? res?.data?.lead?.activity_status;
+                toastManager.add({
+                  title:
+                    finalStatus === "lostApproval"
+                      ? "Lead sent for Lost Approval!"
+                      : "Lead marked as Lost!",
+                  type: "success",
+                });
                 setOpenActivityStatus(false);
                 setActiveLead(null);
                 queryClient.invalidateQueries({
