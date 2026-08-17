@@ -94,14 +94,14 @@ function WorkstationFormContent() {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
 
-  const { data: machines = [], isLoading: machinesLoading } = useMachinesByVendor(
-    vendorId ?? 0
-  );
-  const { data: machineTypes, isLoading: machineTypesLoading } = useMachineTypes();
+  const { data: machines = [], isLoading: machinesLoading } =
+    useMachinesByVendor(vendorId ?? 0);
+  const { data: machineTypes, isLoading: machineTypesLoading } =
+    useMachineTypes();
 
   const { mutate: createMachine, isPending: isCreating } = useCreateMachine();
   const { mutate: updateMachine, isPending: isUpdating } = useUpdateMachine(
-    vendorId ?? 0
+    vendorId ?? 0,
   );
 
   const editData = useMemo(() => {
@@ -207,7 +207,7 @@ function WorkstationFormContent() {
               "Failed to update workstation";
             toastManager.add({ title: errorMessage, type: "error" });
           },
-        }
+        },
       );
     } else {
       const payload: CreateMachinePayload = {
@@ -320,7 +320,8 @@ function WorkstationFormContent() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm font-semibold">
-                      Workstation Name <span className="text-destructive">*</span>
+                      Workstation Name{" "}
+                      <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input
@@ -333,7 +334,6 @@ function WorkstationFormContent() {
                     <FormMessage />
                   </FormItem>
                 )}
-
               />
 
               <FormField
@@ -342,7 +342,8 @@ function WorkstationFormContent() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm font-semibold">
-                      Workstation Code <span className="text-destructive">*</span>
+                      Workstation Code{" "}
+                      <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input
@@ -363,7 +364,8 @@ function WorkstationFormContent() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm font-semibold">
-                      Workstation Type <span className="text-destructive">*</span>
+                      Workstation Type{" "}
+                      <span className="text-destructive">*</span>
                     </FormLabel>
                     {machineTypesLoading ? (
                       <Skeleton className="h-10 w-full rounded-md" />
@@ -395,9 +397,8 @@ function WorkstationFormContent() {
                       Status <span className="text-destructive">*</span>
                     </FormLabel>
                     <Select
-                      key={field.value || "empty-status"}
                       onValueChange={field.onChange}
-                      value={field.value || ""}
+                      value={field.value}
                       disabled={isSubmitting}
                     >
                       <FormControl>
@@ -426,9 +427,8 @@ function WorkstationFormContent() {
                       Scan Type <span className="text-destructive">*</span>
                     </FormLabel>
                     <Select
-                      key={field.value || "empty-scantype"}
                       onValueChange={field.onChange}
-                      value={field.value || ""}
+                      value={field.value}
                       disabled={isSubmitting}
                     >
                       <FormControl>
@@ -454,7 +454,8 @@ function WorkstationFormContent() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm font-semibold">
-                      Sequence Number <span className="text-destructive">*</span>
+                      Sequence Number{" "}
+                      <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input
@@ -549,7 +550,8 @@ function WorkstationFormContent() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm font-semibold">
-                      Workstation Image{!isEdit && <span className="text-destructive"> *</span>}
+                      Workstation Image
+                      {!isEdit && <span className="text-destructive"> *</span>}
                     </FormLabel>
                     <FormControl>
                       <FileUploadField
@@ -579,7 +581,11 @@ function WorkstationFormContent() {
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting} className="gap-2 px-6">
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="gap-2 px-6"
+              >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
