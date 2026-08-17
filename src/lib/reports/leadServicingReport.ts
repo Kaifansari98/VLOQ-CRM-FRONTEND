@@ -30,6 +30,56 @@ interface LeadServicingReportRow {
   service_3_completed_date: string | null;
   amc_opted_date: string | null;
   amc_dates_same_as_service_dates: string;
+  status: string | null;
+}
+
+function getStatusDisplay(status: string | null | undefined): string {
+  switch (status?.toLowerCase()) {
+    case "open":
+      return "Pending";
+    case "completed":
+      return "Completed";
+    case "rejected":
+      return "Rejected";
+    default:
+      return status?.trim() || "-";
+  }
+}
+
+function applyStatusCellStyle(cell: ExcelJS.Cell, status: string | null | undefined) {
+  const normalizedStatus = status?.toLowerCase();
+
+  if (normalizedStatus === "open") {
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFD9EAF7" },
+    };
+    cell.font = { size: 10, bold: true, color: { argb: "FF1D4ED8" } };
+    return;
+  }
+
+  if (normalizedStatus === "completed") {
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFDCFCE7" },
+    };
+    cell.font = { size: 10, bold: true, color: { argb: "FF15803D" } };
+    return;
+  }
+
+  if (normalizedStatus === "rejected") {
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFFEE2E2" },
+    };
+    cell.font = { size: 10, bold: true, color: { argb: "FFB91C1C" } };
+    return;
+  }
+
+  cell.font = { size: 10 };
 }
 
 async function fetchReportData(
@@ -84,6 +134,7 @@ function buildLeadServicingSheet(
     "Service 3 Completed date",
     "AMC Opted Date",
     "AMC Dates same as service dates",
+    "Status",
   ];
 
   sheet.columns = [
@@ -103,6 +154,7 @@ function buildLeadServicingSheet(
     { key: "service3CompletedDate", width: 24 },
     { key: "amcOptedDate", width: 20 },
     { key: "amcDatesSameAsServiceDates", width: 30 },
+    { key: "status", width: 16 },
   ];
 
   sheet.mergeCells(1, 1, 1, headers.length);
@@ -159,6 +211,7 @@ function buildLeadServicingSheet(
       formatDate(entry.service_3_completed_date),
       formatDate(entry.amc_opted_date),
       entry.amc_dates_same_as_service_dates,
+      getStatusDisplay(entry.status),
     ]);
 
     row.height = 18;
@@ -175,6 +228,12 @@ function buildLeadServicingSheet(
         left: { style: "thin", color: { argb: "FFD9D9D9" } },
         right: { style: "thin", color: { argb: "FFD9D9D9" } },
       };
+      if (colNum === headers.length) {
+        applyStatusCellStyle(cell, entry.status);
+        return;
+      }
+
+      cell.font = { size: 10 };
       if (index % 2 === 1) {
         cell.fill = {
           type: "pattern",
