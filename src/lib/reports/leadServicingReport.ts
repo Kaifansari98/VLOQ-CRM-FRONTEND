@@ -24,13 +24,15 @@ interface LeadServicingReportRow {
   final_handover_date: string | null;
   service_1_due_date: string | null;
   service_1_completed_date: string | null;
+  service_1_status: string | null;
   service_2_due_date: string | null;
   service_2_completed_date: string | null;
+  service_2_status: string | null;
   service_3_due_date: string | null;
   service_3_completed_date: string | null;
+  service_3_status: string | null;
   amc_opted_date: string | null;
   amc_dates_same_as_service_dates: string;
-  status: string | null;
 }
 
 function getStatusDisplay(status: string | null | undefined): string {
@@ -128,13 +130,15 @@ function buildLeadServicingSheet(
     "Final Handover Date",
     "Service 1 due date",
     "Service 1 Completed date",
+    "Service 1 Status",
     "Service 2 due date",
     "Service 2 Completed date",
+    "Service 2 Status",
     "Service 3 due date",
     "Service 3 Completed date",
+    "Service 3 Status",
     "AMC Opted Date",
     "AMC Dates same as service dates",
-    "Status",
   ];
 
   sheet.columns = [
@@ -148,13 +152,15 @@ function buildLeadServicingSheet(
     { key: "finalHandoverDate", width: 22 },
     { key: "service1DueDate", width: 20 },
     { key: "service1CompletedDate", width: 24 },
+    { key: "service1Status", width: 16 },
     { key: "service2DueDate", width: 20 },
     { key: "service2CompletedDate", width: 24 },
+    { key: "service2Status", width: 16 },
     { key: "service3DueDate", width: 20 },
     { key: "service3CompletedDate", width: 24 },
+    { key: "service3Status", width: 16 },
     { key: "amcOptedDate", width: 20 },
     { key: "amcDatesSameAsServiceDates", width: 30 },
-    { key: "status", width: 16 },
   ];
 
   sheet.mergeCells(1, 1, 1, headers.length);
@@ -205,13 +211,15 @@ function buildLeadServicingSheet(
       formatDate(entry.final_handover_date),
       formatDate(entry.service_1_due_date),
       formatDate(entry.service_1_completed_date),
+      getStatusDisplay(entry.service_1_status),
       formatDate(entry.service_2_due_date),
       formatDate(entry.service_2_completed_date),
+      getStatusDisplay(entry.service_2_status),
       formatDate(entry.service_3_due_date),
       formatDate(entry.service_3_completed_date),
+      getStatusDisplay(entry.service_3_status),
       formatDate(entry.amc_opted_date),
       entry.amc_dates_same_as_service_dates,
-      getStatusDisplay(entry.status),
     ]);
 
     row.height = 18;
@@ -228,8 +236,18 @@ function buildLeadServicingSheet(
         left: { style: "thin", color: { argb: "FFD9D9D9" } },
         right: { style: "thin", color: { argb: "FFD9D9D9" } },
       };
-      if (colNum === headers.length) {
-        applyStatusCellStyle(cell, entry.status);
+      if (colNum === 11) {
+        applyStatusCellStyle(cell, entry.service_1_status);
+        return;
+      }
+
+      if (colNum === 14) {
+        applyStatusCellStyle(cell, entry.service_2_status);
+        return;
+      }
+
+      if (colNum === 17) {
+        applyStatusCellStyle(cell, entry.service_3_status);
         return;
       }
 
