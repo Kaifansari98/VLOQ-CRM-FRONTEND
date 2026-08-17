@@ -248,7 +248,15 @@ export default function BookingStageLeadsDetails() {
     lead?.createdBy?.vendor?.handlesLargeScaleProjects === true ||
     lead?.assignedTo?.vendor?.handlesLargeScaleProjects === true;
 
-  const showSkipButton = isCustomVendorFlow && handlesLargeScaleProjects;
+  const canSkipFinalMeasurement =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.booking_done.skip_final_measurement.action",
+        )
+      : true;
+
+  const showSkipButton =
+    isCustomVendorFlow && handlesLargeScaleProjects && canSkipFinalMeasurement;
 
   const handleSkipFinalMeasurement = () => {
     skipFinalMeasurementMutation.mutate(

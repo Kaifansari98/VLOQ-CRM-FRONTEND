@@ -84,7 +84,7 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
   const createdBy = useAppSelector((state) => state.auth.user?.id) || 0;
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type?.user_type
+    (state) => state.auth.user?.user_type?.user_type,
   )?.toLowerCase();
 
   const leadId = data?.leadId ?? 0;
@@ -98,20 +98,17 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
 
   const { data: structureInstancesData } = useLeadProductStructureInstances(
     leadId,
-    vendorId
-  );
-  const { data: docsDetails, isLoading: docsLoading } = useClientDocumentationDetails(
     vendorId,
-    leadId,
-    createdBy,
   );
+  const { data: docsDetails, isLoading: docsLoading } =
+    useClientDocumentationDetails(vendorId, leadId, createdBy);
   const { mutateAsync: uploadDocs, isPending: uploading } =
     useUploadMoreClientDocumentation();
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
 
   const structureInstances: LeadProductStructureInstance[] = Array.isArray(
-    structureInstancesData?.data
+    structureInstancesData?.data,
   )
     ? structureInstancesData.data
     : [];
@@ -120,7 +117,7 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
       validUrlInstanceId
         ? structureInstances.filter((item) => item.id === validUrlInstanceId)
         : structureInstances,
-    [structureInstances, validUrlInstanceId]
+    [structureInstances, validUrlInstanceId],
   );
   const hasMultipleInstances = displayInstances.length > 1;
   const canDelete =
@@ -129,7 +126,7 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
     userType === "super admin";
 
   const [activeInstanceId, setActiveInstanceId] = useState<number | undefined>(
-    validUrlInstanceId ?? selectedInstanceId ?? undefined
+    validUrlInstanceId ?? selectedInstanceId ?? undefined,
   );
   const [activeSection, setActiveSection] = useState<Section | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -144,7 +141,8 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
 
     const hasActive = !!activeInstanceId;
     const activeExists =
-      hasActive && displayInstances.some((item) => item.id === activeInstanceId);
+      hasActive &&
+      displayInstances.some((item) => item.id === activeInstanceId);
     const urlExists =
       validUrlInstanceId &&
       displayInstances.some((item) => item.id === validUrlInstanceId);
@@ -185,14 +183,17 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
     const getBySection = (sectionId: SectionId) => {
       const grouped = docsDetails?.documents_by_instance || [];
       const targetGroup = hasMultipleInstances
-        ? grouped.find((g) => Number(g.instance_id) === Number(resolvedInstanceId))
+        ? grouped.find(
+            (g) => Number(g.instance_id) === Number(resolvedInstanceId),
+          )
         : null;
 
       // Fallback to filtering flat docs when grouped payload is missing/stale
       const filteredFromFlat = (docs: any[]) =>
         docs.filter(
           (doc: any) =>
-            Number(doc.product_structure_instance_id) === Number(resolvedInstanceId)
+            Number(doc.product_structure_instance_id) ===
+            Number(resolvedInstanceId),
         );
 
       if (sectionId === "project") {
@@ -211,7 +212,14 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
       project: getBySection("project"),
       pytha: getBySection("pytha"),
     };
-  }, [docsDetails, hasMultipleInstances, activeInstanceId, displayInstances, validUrlInstanceId, selectedInstanceId]);
+  }, [
+    docsDetails,
+    hasMultipleInstances,
+    activeInstanceId,
+    displayInstances,
+    validUrlInstanceId,
+    selectedInstanceId,
+  ]);
 
   const handleUpload = async () => {
     if (!activeSection) return;
@@ -222,11 +230,17 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
       selectedInstanceId ??
       (hasMultipleInstances ? displayInstances[0]?.id : undefined);
     if (hasMultipleInstances && !resolvedInstanceId) {
-      toastManager.add({ title: "Please select an instance before upload", type: "error" });
+      toastManager.add({
+        title: "Please select an instance before upload",
+        type: "error",
+      });
       return;
     }
     if (selectedFiles.length === 0) {
-      toastManager.add({ title: "Please select at least one file to upload", type: "error" });
+      toastManager.add({
+        title: "Please select at least one file to upload",
+        type: "error",
+      });
       return;
     }
 
@@ -303,9 +317,12 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
                   >
                     <CardContent className="px-4 py-3 flex items-start justify-between">
                       <div>
-                        <p className="text-sm font-semibold">{instance.title}</p>
+                        <p className="text-sm font-semibold">
+                          {instance.title}
+                        </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {instance.productStructure?.type || "Product Structure"}
+                          {instance.productStructure?.type ||
+                            "Product Structure"}
                         </p>
                       </div>
                       <FolderOpen className="size-4 text-muted-foreground" />
@@ -343,7 +360,9 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
                           {section.icon}
                         </div>
                         <div>
-                          <h3 className="font-semibold text-sm">{section.title}</h3>
+                          <h3 className="font-semibold text-sm">
+                            {section.title}
+                          </h3>
                           <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
                             {section.description}
                           </p>
@@ -422,7 +441,9 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-semibold">Upload New Files</h4>
                     {selectedFiles.length > 0 && (
-                      <Badge variant="secondary">{selectedFiles.length} selected</Badge>
+                      <Badge variant="secondary">
+                        {selectedFiles.length} selected
+                      </Badge>
                     )}
                   </div>
 
@@ -435,7 +456,11 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
 
                   {selectedFiles.length > 0 && (
                     <div className="flex justify-end">
-                      <Button onClick={handleUpload} disabled={uploading} className="gap-2">
+                      <Button
+                        onClick={handleUpload}
+                        disabled={uploading}
+                        className="gap-2"
+                      >
                         {uploading ? (
                           <>
                             <Loader2 className="animate-spin w-4 h-4" />
@@ -528,12 +553,16 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Document?</AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. The selected document will be permanently removed.
+                This action cannot be undone. The selected document will be
+                permanently removed.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleConfirmDelete} disabled={deleting}>
+              <AlertDialogAction
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+              >
                 {deleting ? "Deleting..." : "Delete"}
               </AlertDialogAction>
             </AlertDialogFooter>

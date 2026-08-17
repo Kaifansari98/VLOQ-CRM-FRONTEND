@@ -565,7 +565,7 @@ export default function ClientDocumentationLeadDetails() {
               Lead Details
             </TabsTrigger>
 
-            {!isAuditor && canAccessClientDocumentation ? (
+            {!isAuditor ? (
               <TabsTrigger value="todo">
                 <PencilLine size={16} className="mr-1 opacity-60" />
                 To-Do Task
