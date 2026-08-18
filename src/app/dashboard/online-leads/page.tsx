@@ -42,7 +42,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, UserPlus, PlusCircle, PhoneCall, Calendar, MapPin, Loader2, ChevronDown, User, Mail, Phone, MessageSquare, Zap, Magnet, Activity, Building } from "lucide-react";
+import { Search, UserPlus, PlusCircle, PhoneCall, Calendar, MapPin, Loader2, ChevronDown, User, Mail, Phone, MessageSquare, Zap, Magnet, Activity, Building, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import MultipleSelector, { Option } from "@/components/ui/multiselect";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
@@ -408,6 +408,8 @@ export default function OnlineLeadsPage() {
   const [assigneeId, setAssigneeId] = useState("");
   const [assignRemark, setAssignRemark] = useState("");
   const [assigning, setAssigning] = useState(false);
+  const [isSuccessOpen, setIsSuccessOpen] = useState(false);
+  const [assignedToName, setAssignedToName] = useState("");
 
   const [isWalkInOpen, setIsWalkInOpen] = useState(false);
 
@@ -504,9 +506,12 @@ export default function OnlineLeadsPage() {
       if (res.data?.success) {
         setIsAssignOpen(false);
         setSelectedLeadId(null);
+        const assignedUser = telecallers.find((tc) => String(tc.id) === String(assigneeId));
+        setAssignedToName(assignedUser ? assignedUser.user_name : "the Telecaller");
         setAssigneeId("");
         setAssignRemark("");
         fetchLeadsData();
+        setIsSuccessOpen(true);
       }
     } catch (err) {
       console.error("Assignment error:", err);
@@ -730,6 +735,38 @@ export default function OnlineLeadsPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Allocation Success Dialog */}
+      <Dialog open={isSuccessOpen} onOpenChange={setIsSuccessOpen}>
+        <DialogContent className="max-w-md bg-card/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl p-6 text-center">
+          <div className="flex flex-col items-center justify-center space-y-4">
+            {/* Animated Checkmark Wrapper */}
+            <div className="relative flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200/50 shadow-inner">
+              <CheckCircle2 className="w-9 h-9 animate-[scaleUp_0.35s_ease-out]" />
+              {/* Subtle pulsing background ring */}
+              <div className="absolute inset-0 rounded-full border-2 border-emerald-500/20 animate-ping" style={{ animationDuration: '2s' }} />
+            </div>
+            
+            <div className="space-y-1.5">
+              <DialogTitle className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+                Lead Allocated Successfully!
+              </DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground font-medium max-w-[280px] mx-auto mt-1">
+                The lead has been assigned to <span className="font-bold text-slate-800 dark:text-slate-200">{assignedToName}</span>.
+              </DialogDescription>
+            </div>
+          </div>
+          
+          <div className="mt-6 flex justify-center">
+            <Button
+              onClick={() => setIsSuccessOpen(false)}
+              className="px-6 h-10 text-xs bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-semibold rounded-xl hover:shadow-lg active:scale-[0.98] transition-all"
+            >
+              Okay, Great!
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
