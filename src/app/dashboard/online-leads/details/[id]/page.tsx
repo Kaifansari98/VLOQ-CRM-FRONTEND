@@ -89,6 +89,7 @@ import {
 
 interface OnlineLead {
   id: number;
+  lead_code?: string | null;
   leads_name: string;
   firstname: string | null;
   lastname: string | null;
@@ -707,7 +708,7 @@ export default function OnlineLeadDetailsPage() {
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
-                <BreadcrumbPage>Lead ID #{lead.id}</BreadcrumbPage>
+                <BreadcrumbPage>{lead.lead_code || `Lead ID #${lead.id}`}</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>

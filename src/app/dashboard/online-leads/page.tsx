@@ -50,6 +50,7 @@ import { GenerateLeadFormModal } from "@/components/sales-executive/Lead/leads-g
 
 interface OnlineLead {
   id: number;
+  lead_code?: string | null;
   leads_name: string;
   email: string | null;
   contact: string;
@@ -144,12 +145,12 @@ export default function OnlineLeadsPage() {
     {
       accessorKey: "id",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Lead ID" />
+        <DataTableColumnHeader column={column} title="Lead Code" />
       ),
       cell: ({ row }) => (
         <Link href={`/dashboard/online-leads/details/${row.original.id}`}>
           <div className="font-medium text-foreground text-sm hover:underline">
-            ID: #{row.original.id}
+            {row.original.lead_code || `ID: #${row.original.id}`}
             <span className="text-[10px] text-muted-foreground block mt-0.5 font-normal">
               Recd: {new Date(row.original.created_at).toLocaleDateString()}
             </span>
