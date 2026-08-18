@@ -9,7 +9,7 @@ import {
   useDesignsDoc,
 } from "@/hooks/designing-stage/designing-leads-hooks";
 import type { LeadSpecificationEntry } from "@/api/designingStageQueries";
-import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
+import { useLeadProductStructureInstances, useLeadById } from "@/hooks/useLeadsQueries";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,6 +27,8 @@ import { Button } from "@/components/ui/button";
 import ComingSoon from "@/components/generics/ComingSoon";
 import { Badge } from "@/components/ui/badge";
 import ViewSpecsModal from "./modals/view-specs-modal";
+import { useB2BRequirementTypes } from "@/hooks/useTypesMaster";
+import { useFranchisesByVendorId } from "@/api/franchise";
 
 const getSortedLatestFirst = <T extends { created_at?: string; id: number }>(
   docs: T[],
@@ -56,9 +58,23 @@ const DesigningTab = () => {
   );
   const userId = useAppSelector((state) => state.auth.user?.id);
 
-  // ✅ Fetch lead status
+  // ✅ Fetch lead status & details
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
+
+  const { data: leadDetailsData } = useLeadById(leadId, vendorId, userId);
+  const lead = leadDetailsData?.data?.lead;
+
+  const { data: franchisesForB2b = [] } = useFranchisesByVendorId(vendorId, !!vendorId);
+  const isB2b = useMemo(() => {
+    const leadFranchise = franchisesForB2b.find(
+      (franchise: any) => franchise.id === lead?.franchise_id,
+    );
+    return leadFranchise?.moduled_for_b2b ?? false;
+  }, [franchisesForB2b, lead?.franchise_id]);
+
+  const { data: b2bReqTypesData } = useB2BRequirementTypes(vendorId);
+  const b2bReqTypes = useMemo(() => b2bReqTypesData?.data || [], [b2bReqTypesData]);
 
   // ✅ Fetch design documents
   const { data, error, isLoading } = useDesignsDoc(vendorId!, leadId);
@@ -103,49 +119,50 @@ const DesigningTab = () => {
     >();
 
     for (const doc of sortedDesignDocs) {
-      const rawInstanceId = doc.product_structure_instance_id;
-      const instance =
-        rawInstanceId != null
-          ? instanceMap.get(String(rawInstanceId))
-          : null;
-      const productTypeTitle = instance?.productType?.type?.trim() || "";
-      const groupKey = normalizeGroupKey(productTypeTitle);
-
-      if (!grouped.has(groupKey)) {
-        grouped.set(groupKey, {
-          id: groupKey,
-          title:
-            productTypeTitle ||
-            (groupKey === UNASSIGNED_GROUP_ID ? "Other Designs" : "Item Group"),
-          subtitle:
-            groupKey === UNASSIGNED_GROUP_ID
-              ? "Unassigned files"
-              : "Product type",
-          docs: [],
-        });
+      const links = (doc as any).productStructureInstanceMapping || [];
+      if (links.length === 0) {
+        const key = UNASSIGNED_GROUP_ID;
+        if (!grouped.has(key)) {
+          grouped.set(key, {
+            id: key,
+            title: "Unassigned Documents",
+            subtitle: "No linked item group",
+            docs: [],
+          });
+        }
+        grouped.get(key)!.docs.push(doc);
+        continue;
       }
 
-      grouped.get(groupKey)!.docs.push(doc);
+      for (const link of links) {
+        const instanceId = String(link.product_structure_instance_id);
+        const inst = instanceMap.get(instanceId);
+        const title =
+          inst?.productType?.type ||
+          inst?.productItemCode?.productStructure?.productType?.type ||
+          `Group #${instanceId}`;
+
+        const key = normalizeGroupKey(title);
+        if (!grouped.has(key)) {
+          grouped.set(key, {
+            id: key,
+            title,
+            subtitle: "Product type",
+            docs: [],
+          });
+        }
+        if (!grouped.get(key)!.docs.includes(doc)) {
+          grouped.get(key)!.docs.push(doc);
+        }
+      }
     }
 
-    const uniqueProductTypes = [
-      ...new Set(
-        structureInstances
-          .map((instance: any) => normalizeGroupKey(instance.productType?.type))
-          .filter(Boolean),
-      ),
-    ];
-
-    for (const productTypeKey of uniqueProductTypes) {
-      const matchingInstance = structureInstances.find(
-        (instance: any) =>
-          normalizeGroupKey(instance.productType?.type) === productTypeKey,
-      );
+    for (const inst of structureInstances) {
       const title =
-        matchingInstance?.productType?.type?.trim() ||
-        (productTypeKey === UNASSIGNED_GROUP_ID ? "Other Designs" : "Item Group");
-
-      const key = String(productTypeKey);
+        inst?.productType?.type ||
+        inst?.productItemCode?.productStructure?.productType?.type ||
+        `Group #${inst.id}`;
+      const key = normalizeGroupKey(title);
       if (!grouped.has(key)) {
         grouped.set(key, {
           id: key,
@@ -166,6 +183,32 @@ const DesigningTab = () => {
       groupedDesignDocs.find((group) => group.id === selectedGroupId) || null,
     [groupedDesignDocs, selectedGroupId],
   );
+
+  // Group B2B documents by Requirement Type
+  const b2bGroupedDocs = useMemo(() => {
+    if (!isB2b) return [];
+
+    const mappedB2bIds = Array.from(
+      new Set([
+        ...((lead as any)?.leadB2BReqMappings?.map((m: any) => m.b2b_requirement_type_id) || []),
+        ...((lead as any)?.leadProcessBriefs?.map((m: any) => m.b2b_requirement_type_id) || []),
+        ...designDocs.map((d: any) => d.b2b_requirement_type_id).filter(Boolean),
+      ])
+    );
+
+    return mappedB2bIds
+      .map((typeId: any) => {
+        const typeObj = b2bReqTypes.find((t: any) => t.id === typeId);
+        const name = typeObj?.type || `Requirement #${typeId}`;
+        const docs = designDocs.filter((d: any) => d.b2b_requirement_type_id === typeId);
+        return {
+          id: typeId,
+          name,
+          docs: getSortedLatestFirst(docs),
+        };
+      })
+      .sort((a, b) => b.docs.length - a.docs.length);
+  }, [isB2b, lead, designDocs, b2bReqTypes]);
 
   // ✅ Handle confirm delete
   const handleConfirmDelete = () => {
@@ -198,8 +241,8 @@ const DesigningTab = () => {
     );
   }
 
-  // ✅ Empty State
-  if ((!designDocs || designDocs.length === 0) && !handlesLargeScaleProjects) {
+  // ✅ Empty State (if not B2B)
+  if (!isB2b && (!designDocs || designDocs.length === 0) && !handlesLargeScaleProjects) {
     return (
       <ComingSoon
         heading="No Design Documents"
@@ -258,22 +301,72 @@ const DesigningTab = () => {
               </Button>
             )}
             <span className="text-xs font-medium text-muted-foreground shrink-0 text-right">
-              {handlesLargeScaleProjects && !selectedGroup
-                ? `${groupedDesignDocs.length} ${
-                    groupedDesignDocs.length === 1 ? "Item Group" : "Item Groups"
-                  }`
-                : `${(selectedGroup?.docs || designDocs).length} ${
-                    (selectedGroup?.docs || designDocs).length === 1
-                      ? "Document"
-                      : "Documents"
-                  }`}
+              {isB2b
+                ? `${designDocs.length} ${designDocs.length === 1 ? "Document" : "Documents"}`
+                : handlesLargeScaleProjects && !selectedGroup
+                  ? `${groupedDesignDocs.length} ${
+                      groupedDesignDocs.length === 1 ? "Item Group" : "Item Groups"
+                    }`
+                  : `${(selectedGroup?.docs || designDocs).length} ${
+                      (selectedGroup?.docs || designDocs).length === 1
+                        ? "Document"
+                        : "Documents"
+                    }`}
             </span>
           </div>
         </div>
 
         {/* Body */}
         <div className="p-6">
-          {handlesLargeScaleProjects && !selectedGroup ? (
+          {isB2b ? (
+            <div className="space-y-6">
+              {b2bGroupedDocs.map((type) => (
+                <div
+                  key={type.id}
+                  className="rounded-xl border border-border bg-[#fff] dark:bg-[#09090b] overflow-hidden"
+                >
+                  <div className="flex items-center justify-between border-b border-border bg-muted/40 px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-primary shrink-0" />
+                      <h3 className="text-sm font-semibold text-foreground">
+                        {type.name}
+                      </h3>
+                    </div>
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {type.docs.length} {type.docs.length === 1 ? "File" : "Files"}
+                    </span>
+                  </div>
+
+                  <div className="p-4">
+                    {type.docs.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
+                        <Package className="h-8 w-8 opacity-40 mb-2" />
+                        <p className="text-xs text-muted-foreground">No design documents uploaded yet.</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        {type.docs.map((doc: any, index: number) => (
+                          <DocumentCard
+                            key={doc.id}
+                            doc={{
+                              id: doc.id,
+                              originalName: doc.doc_og_name,
+                              signedUrl: doc.signedUrl || "",
+                              created_at: doc.created_at,
+                            }}
+                            isLatest={index === 0}
+                            tagLabel="Design"
+                            canDelete={canDelete}
+                            onDelete={(id) => setConfirmDelete(id)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : handlesLargeScaleProjects && !selectedGroup ? (
             <div className="grid gap-4 md:grid-cols-2">
               {groupedDesignDocs.map((group) => (
                 <button

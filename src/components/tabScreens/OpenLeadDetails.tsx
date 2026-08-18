@@ -1959,8 +1959,9 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                             <RequirementDocUpload
                               leadId={leadId}
                               vendorId={vendorId}
-                              productTypeId={typeId}
+                              b2bRequirementTypeId={typeId}
                               userId={userId}
+                              stage="Requirement"
                             />
                           )}
                         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import BaseModal from "@/components/utils/baseModal";
 import {
   Form,
@@ -33,8 +33,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { fetchLeadB2BRequirementMappingsApi } from "@/api/typesMasterApi";
+import { uploadRequirementDocumentApi } from "@/api/leadRequirementDocuments";
 
 const designsSchema = z.object({
+  b2b_requirement_type_id: z.string().optional(),
   design_type: z.enum(["2D", "3D", "2D + 3D"]).optional(),
   product_type: z.string().optional(),
   specification_id: z.string().optional(),
@@ -67,6 +70,7 @@ interface DesignsModalProps {
 }
 
 const getDefaultDesignValues = (): DesignsFormValues => ({
+  b2b_requirement_type_id: "",
   design_type: undefined,
   product_type: "",
   specification_id: "",
@@ -84,11 +88,33 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
     (s) => s.auth.user?.vendor?.handlesLargeScaleProjects === true,
   );
 
+  const [b2bReqTypes, setB2BReqTypes] = useState<{ id: number; typeName: string }[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+
   const queryClient = useQueryClient();
   const form = useForm<DesignsFormValues>({
     resolver: zodResolver(designsSchema),
     defaultValues: getDefaultDesignValues(),
   });
+
+  useEffect(() => {
+    if (open && vendorId && leadId) {
+      fetchLeadB2BRequirementMappingsApi(leadId, vendorId)
+        .then((res) => {
+          if (res?.success && Array.isArray(res?.data)) {
+            const mapped = res.data.map((item: any) => ({
+              id: item.b2b_requirement_type_id,
+              typeName: item.b2bRequirementType?.type || `Requirement #${item.b2b_requirement_type_id}`,
+            }));
+            setB2BReqTypes(mapped);
+            if (mapped.length > 0) {
+              form.setValue("b2b_requirement_type_id", String(mapped[0].id));
+            }
+          }
+        })
+        .catch((err) => console.error("Error fetching B2B requirement mappings:", err));
+    }
+  }, [open, vendorId, leadId, form]);
 
   React.useEffect(() => {
     if (!open) {
@@ -174,6 +200,46 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
   }, [form, selectedProductType]);
 
   const onSubmit = async (data: DesignsFormValues) => {
+    const b2bReqTypeId = data.b2b_requirement_type_id
+      ? Number(data.b2b_requirement_type_id)
+      : b2bReqTypes[0]?.id;
+
+    if (b2bReqTypeId) {
+      try {
+        setSubmitting(true);
+        const files = Array.from(data.upload_pdf) as File[];
+        for (const file of files) {
+          await uploadRequirementDocumentApi({
+            file,
+            lead_id: leadId,
+            vendor_id: vendorId,
+            b2b_requirement_type_id: b2bReqTypeId,
+            stage: "Designing",
+            created_by: userId,
+          });
+        }
+        toastManager.add({ title: "Design files uploaded successfully!", type: "success" });
+
+        queryClient.invalidateQueries({
+          queryKey: ["getDesignsDoc", vendorId, leadId],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["designingStageCounts", vendorId, leadId],
+        });
+
+        form.reset(getDefaultDesignValues());
+        onOpenChange(false);
+      } catch (error: any) {
+        toastManager.add({
+          title: error?.response?.data?.message || error?.message || "Failed to upload design files",
+          type: "error",
+        });
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
     if (isCustomVendor && !data.design_type) {
       form.setError("design_type", {
         type: "manual",
@@ -259,6 +325,37 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-5">
+          {/* Requirement Type Dropdown for B2B */}
+          {b2bReqTypes.length > 0 && (
+            <FormField
+              control={form.control}
+              name="b2b_requirement_type_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Requirement Type</FormLabel>
+                  <Select
+                    value={field.value || (b2bReqTypes[0]?.id ? String(b2bReqTypes[0].id) : "")}
+                    onValueChange={field.onChange}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select Requirement Type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {b2bReqTypes.map((req) => (
+                        <SelectItem key={req.id} value={String(req.id)}>
+                          {req.typeName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
           {(isCustomVendor || shouldRenderProductTypeField) && (
             <div
               className={
@@ -382,7 +479,7 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
                   <DocumentsUploader
                     value={field.value}
                     onChange={field.onChange}
-                    accept=".pdf,.pyo,.pytha,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip"
+                    accept=".pdf,.zip,.pyo,.pytha,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct"
                   />
                 </FormControl>
                 <FormMessage />
@@ -390,30 +487,23 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
             )}
           />
 
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-3 pt-4">
             <Button
               type="button"
               variant="outline"
-              onClick={() => {
-                form.reset(getDefaultDesignValues());
-                onOpenChange(false);
-              }}
-              disabled={submitDesignsMutation.isPending}
+              onClick={() => onOpenChange(false)}
             >
               Cancel
             </Button>
-
-            {!isAuditor && (
-              <Button type="submit" disabled={submitDesignsMutation.isPending}>
-                {submitDesignsMutation.isPending
-                  ? "Uploading..."
-                  : "Submit Designs"}
-              </Button>
-            )}
+            <Button
+              type="submit"
+              disabled={submitDesignsMutation.isPending || submitting}
+            >
+              {submitDesignsMutation.isPending || submitting ? "Uploading..." : "Submit Designs"}
+            </Button>
           </div>
         </form>
       </Form>
-
     </BaseModal>
   );
 };
