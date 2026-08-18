@@ -343,14 +343,14 @@ function TimelineRulesPanel({
     <Card>
       <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <CardTitle>TimeLine Rules</CardTitle>
+          <CardTitle>Timeline Rules</CardTitle>
           <p className="text-sm text-muted-foreground">
             View vendor-specific timeline rules.
           </p>
         </div>
         <Button onClick={onOpenCreate} className="sm:self-start">
           <Plus className="mr-2 h-4 w-4" />
-          Add TimeLine Rule
+          Add Timeline Rule
         </Button>
       </CardHeader>
 
@@ -410,6 +410,7 @@ export default function SpecsMasterTable() {
   const [selectedShutterTypeId, setSelectedShutterTypeId] = React.useState("");
   const [selectedCarcassId, setSelectedCarcassId] = React.useState("");
   const [selectedShutterSubTypeId, setSelectedShutterSubTypeId] = React.useState("");
+  const [shutterSubTypeSelectOpen, setShutterSubTypeSelectOpen] = React.useState(false);
   const [kitchenManufacturingDays, setKitchenManufacturingDays] = React.useState("");
   const [generalManufacturingDays, setGeneralManufacturingDays] = React.useState("");
   const [fpKitchenManufacturingDays, setFpKitchenManufacturingDays] = React.useState("");
@@ -487,11 +488,17 @@ export default function SpecsMasterTable() {
     setSelectedShutterTypeId("");
     setSelectedCarcassId("");
     setSelectedShutterSubTypeId("");
+    setShutterSubTypeSelectOpen(false);
     setKitchenManufacturingDays("");
     setGeneralManufacturingDays("");
     setFpKitchenManufacturingDays("");
     setFpGeneralManufacturingDays("");
     setEditingTimelineRuleId(null);
+  };
+
+  const clearOptionalShutterSubTypeSelection = () => {
+    setSelectedShutterSubTypeId("");
+    setShutterSubTypeSelectOpen(false);
   };
 
   const openTimelineRuleEditModal = (row: TimelineRuleRow) => {
@@ -510,7 +517,13 @@ export default function SpecsMasterTable() {
     const firstMatchingSubType = shutterSubTypeOptions.find(
       (item) => item.shutterTypeId === row.shutterId,
     );
-    setSelectedShutterSubTypeId(firstMatchingSubType ? String(firstMatchingSubType.id) : "");
+    setSelectedShutterSubTypeId(
+      row.shutterId == null
+        ? "none"
+        : firstMatchingSubType
+          ? String(firstMatchingSubType.id)
+          : "",
+    );
     setOpenCreateModal(true);
   };
 
@@ -524,21 +537,29 @@ export default function SpecsMasterTable() {
     if (activeTab === "timeline-rules") {
       if (
         !selectedCarcassId ||
-        !selectedShutterSubTypeId ||
         !kitchenManufacturingDays ||
         !generalManufacturingDays
       ) {
         return;
       }
 
-      const selectedSubType = shutterSubTypeOptions.find(
-        (item) => item.id === Number(selectedShutterSubTypeId),
-      );
-      if (!selectedSubType) return;
+      const selectedSubType =
+        selectedShutterSubTypeId && selectedShutterSubTypeId !== "none"
+          ? shutterSubTypeOptions.find(
+              (item) => item.id === Number(selectedShutterSubTypeId),
+            )
+          : null;
+      if (
+        selectedShutterSubTypeId &&
+        selectedShutterSubTypeId !== "none" &&
+        !selectedSubType
+      ) {
+        return;
+      }
       const payload = {
         vendor_id: vendorId,
         carcass_id: Number(selectedCarcassId),
-        shutter_id: selectedSubType.shutterTypeId,
+        shutter_id: selectedSubType?.shutterTypeId ?? null,
         kitchen_manufacturing_days: Number(kitchenManufacturingDays),
         other_manufacturing_days: Number(generalManufacturingDays),
         kitchen_manufacturing_days_for_fast_production:
@@ -605,7 +626,7 @@ export default function SpecsMasterTable() {
         : activeTab === "sub-shutter"
           ? "Sub Shutter Types"
           : activeTab === "timeline-rules"
-            ? "TimeLine Rules"
+            ? "Timeline Rules"
             : "Handle Types";
 
   return (
@@ -679,8 +700,25 @@ export default function SpecsMasterTable() {
                 ),
               },
               {
+                id: "handles",
+                title: "Handle Types",
+                color: "bg-black hover:bg-black",
+                cardContent: (
+                  <SpecsTablePanel
+                    label="Handle Types"
+                    rows={handleRows}
+                    isLoading={isHandleTypesLoading}
+                    globalFilter={filters.handles}
+                    onGlobalFilterChange={(value) =>
+                      setFilters((prev) => ({ ...prev, handles: value }))
+                    }
+                    onOpenCreate={() => setOpenCreateModal(true)}
+                  />
+                ),
+              },
+              {
                 id: "timeline-rules",
-                title: "TimeLine Rules",
+                title: "Timeline Rules",
                 color: "bg-black hover:bg-black",
                 cardContent: (
                   <TimelineRulesPanel
@@ -695,23 +733,6 @@ export default function SpecsMasterTable() {
                         "timeline-rules": value,
                       }))
                     }
-                  />
-                ),
-              },
-              {
-                id: "handles",
-                title: "Handle Types",
-                color: "bg-black hover:bg-black",
-                cardContent: (
-                  <SpecsTablePanel
-                    label="Handle Types"
-                    rows={handleRows}
-                    isLoading={isHandleTypesLoading}
-                    globalFilter={filters.handles}
-                    onGlobalFilterChange={(value) =>
-                      setFilters((prev) => ({ ...prev, handles: value }))
-                    }
-                    onOpenCreate={() => setOpenCreateModal(true)}
                   />
                 ),
               },
@@ -772,9 +793,11 @@ export default function SpecsMasterTable() {
 
               <div className="space-y-2">
                 <Label>
-                  Shutter Sub Type <span className="text-destructive">*</span>
+                  Shutter Sub Type
                 </Label>
                 <Select
+                  open={shutterSubTypeSelectOpen}
+                  onOpenChange={setShutterSubTypeSelectOpen}
                   value={selectedShutterSubTypeId}
                   onValueChange={setSelectedShutterSubTypeId}
                 >
@@ -782,8 +805,30 @@ export default function SpecsMasterTable() {
                     <SelectValue placeholder="Select shutter sub type" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem
+                      value="none"
+                      onMouseUp={(event) => {
+                        if (selectedShutterSubTypeId === "none") {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          clearOptionalShutterSubTypeSelection();
+                        }
+                      }}
+                    >
+                      No shutter sub type
+                    </SelectItem>
                     {shutterSubTypeOptions.map((subType) => (
-                      <SelectItem key={subType.id} value={String(subType.id)}>
+                      <SelectItem
+                        key={subType.id}
+                        value={String(subType.id)}
+                        onMouseUp={(event) => {
+                          if (selectedShutterSubTypeId === String(subType.id)) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            clearOptionalShutterSubTypeSelection();
+                          }
+                        }}
+                      >
                         {subType.shutterTypeName} - {subType.name}
                       </SelectItem>
                     ))}
@@ -905,12 +950,17 @@ export default function SpecsMasterTable() {
                 (activeTab === "sub-shutter" && !selectedShutterTypeId) ||
                 (activeTab === "timeline-rules" &&
                   (!selectedCarcassId ||
-                    !selectedShutterSubTypeId ||
                     !kitchenManufacturingDays ||
                     !generalManufacturingDays))
               }
             >
-              {isCreating ? "Creating..." : "Create"}
+              {isCreating
+                ? editingTimelineRuleId && activeTab === "timeline-rules"
+                  ? "Updating..."
+                  : "Creating..."
+                : editingTimelineRuleId && activeTab === "timeline-rules"
+                  ? "Update"
+                  : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>
