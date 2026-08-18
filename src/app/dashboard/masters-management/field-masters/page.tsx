@@ -21,6 +21,7 @@ import InstallerUserMastersTable from "@/components/custom/InstallerUserMastersT
 import CompanyVendorMastersTable from "@/components/custom/CompanyVendorMastersTable";
 import ArchitectureMastersTable from "@/components/custom/ArchitectureMastersTable";
 import BroadcastCategoryMastersTable from "@/components/custom/BroadcastCategoryMastersTable";
+import SpecsMasterTable from "@/components/custom/SpecsMasterTable";
 import { useSearchParams } from "next/navigation";
 import { useVendorById } from "@/api/vendors";
 import { useAppSelector } from "@/redux/store";
@@ -34,6 +35,7 @@ export default function FieldMastersPage() {
   const sessionVendorAllowsBroadcast = useAppSelector(
     (state) => state.auth.user?.vendor?.is_broadcast_enabled === true,
   );
+  const isVendorUser = useAppSelector((state) => Boolean(state.auth.user?.vendor_id));
   const { data: vendorResponse } = useVendorById(vendorIdOverride);
   const showArchitectureMaster = vendorIdOverride
     ? vendorResponse?.data?.handlesLargeScaleProjects === true
@@ -41,6 +43,7 @@ export default function FieldMastersPage() {
   const showBroadcastMaster = vendorIdOverride
     ? (vendorResponse?.data as any)?.is_broadcast_enabled === true
     : sessionVendorAllowsBroadcast;
+  const showSpecsMaster = isVendorUser && !vendorIdOverride && !sessionVendorAllowsLargeScale;
 
   const rawTabItems = [
     {
@@ -85,6 +88,16 @@ export default function FieldMastersPage() {
       color: "bg-black hover:bg-black",
       cardContent: <CompanyVendorMastersTable vendorIdOverride={vendorIdOverride} />,
     },
+    ...(showSpecsMaster
+      ? [
+          {
+            id: "specs-master",
+            title: "Specs Master",
+            color: "bg-black hover:bg-black",
+            cardContent: <SpecsMasterTable />,
+          },
+        ]
+      : []),
     ...(showBroadcastMaster
       ? [
           {
@@ -108,8 +121,10 @@ export default function FieldMastersPage() {
   ];
 
   const tabItems = rawTabItems.sort((a, b) => a.title.localeCompare(b.title));
-
-  const activeTab = searchParams.get("tab") || tabItems[0]?.id || "site-master";
+  const requestedTab = searchParams.get("tab");
+  const activeTab = tabItems.some((tab) => tab.id === requestedTab)
+    ? (requestedTab as string)
+    : (tabItems[0]?.id || "site-master");
 
   return (
     <>

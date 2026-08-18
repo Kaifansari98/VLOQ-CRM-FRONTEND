@@ -24,12 +24,64 @@ interface LeadServicingReportRow {
   final_handover_date: string | null;
   service_1_due_date: string | null;
   service_1_completed_date: string | null;
+  service_1_status: string | null;
   service_2_due_date: string | null;
   service_2_completed_date: string | null;
+  service_2_status: string | null;
   service_3_due_date: string | null;
   service_3_completed_date: string | null;
+  service_3_status: string | null;
   amc_opted_date: string | null;
   amc_dates_same_as_service_dates: string;
+}
+
+function getStatusDisplay(status: string | null | undefined): string {
+  switch (status?.toLowerCase()) {
+    case "open":
+      return "Pending";
+    case "completed":
+      return "Completed";
+    case "rejected":
+      return "Rejected";
+    default:
+      return status?.trim() || "-";
+  }
+}
+
+function applyStatusCellStyle(cell: ExcelJS.Cell, status: string | null | undefined) {
+  const normalizedStatus = status?.toLowerCase();
+
+  if (normalizedStatus === "open") {
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFD9EAF7" },
+    };
+    cell.font = { size: 10, bold: true, color: { argb: "FF1D4ED8" } };
+    return;
+  }
+
+  if (normalizedStatus === "completed") {
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFDCFCE7" },
+    };
+    cell.font = { size: 10, bold: true, color: { argb: "FF15803D" } };
+    return;
+  }
+
+  if (normalizedStatus === "rejected") {
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFFEE2E2" },
+    };
+    cell.font = { size: 10, bold: true, color: { argb: "FFB91C1C" } };
+    return;
+  }
+
+  cell.font = { size: 10 };
 }
 
 async function fetchReportData(
@@ -78,10 +130,13 @@ function buildLeadServicingSheet(
     "Final Handover Date",
     "Service 1 due date",
     "Service 1 Completed date",
+    "Service 1 Status",
     "Service 2 due date",
     "Service 2 Completed date",
+    "Service 2 Status",
     "Service 3 due date",
     "Service 3 Completed date",
+    "Service 3 Status",
     "AMC Opted Date",
     "AMC Dates same as service dates",
   ];
@@ -97,10 +152,13 @@ function buildLeadServicingSheet(
     { key: "finalHandoverDate", width: 22 },
     { key: "service1DueDate", width: 20 },
     { key: "service1CompletedDate", width: 24 },
+    { key: "service1Status", width: 16 },
     { key: "service2DueDate", width: 20 },
     { key: "service2CompletedDate", width: 24 },
+    { key: "service2Status", width: 16 },
     { key: "service3DueDate", width: 20 },
     { key: "service3CompletedDate", width: 24 },
+    { key: "service3Status", width: 16 },
     { key: "amcOptedDate", width: 20 },
     { key: "amcDatesSameAsServiceDates", width: 30 },
   ];
@@ -153,10 +211,13 @@ function buildLeadServicingSheet(
       formatDate(entry.final_handover_date),
       formatDate(entry.service_1_due_date),
       formatDate(entry.service_1_completed_date),
+      getStatusDisplay(entry.service_1_status),
       formatDate(entry.service_2_due_date),
       formatDate(entry.service_2_completed_date),
+      getStatusDisplay(entry.service_2_status),
       formatDate(entry.service_3_due_date),
       formatDate(entry.service_3_completed_date),
+      getStatusDisplay(entry.service_3_status),
       formatDate(entry.amc_opted_date),
       entry.amc_dates_same_as_service_dates,
     ]);
@@ -175,6 +236,22 @@ function buildLeadServicingSheet(
         left: { style: "thin", color: { argb: "FFD9D9D9" } },
         right: { style: "thin", color: { argb: "FFD9D9D9" } },
       };
+      if (colNum === 11) {
+        applyStatusCellStyle(cell, entry.service_1_status);
+        return;
+      }
+
+      if (colNum === 14) {
+        applyStatusCellStyle(cell, entry.service_2_status);
+        return;
+      }
+
+      if (colNum === 17) {
+        applyStatusCellStyle(cell, entry.service_3_status);
+        return;
+      }
+
+      cell.font = { size: 10 };
       if (index % 2 === 1) {
         cell.fill = {
           type: "pattern",
