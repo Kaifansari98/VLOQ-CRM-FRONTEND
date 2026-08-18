@@ -623,7 +623,7 @@ export default function OnlineLeadDetailsPage() {
     try {
       await generateOnlineLeadHistoryReport({
         leadId: lead.id,
-        leadName: lead.name,
+        leadName: lead.leads_name,
         leadContact: lead.contact,
         historyLogs: lead.online_lead_history,
       });

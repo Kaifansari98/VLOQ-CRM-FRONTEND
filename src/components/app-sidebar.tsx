@@ -20,6 +20,7 @@ import {
   MapPinned,
   Building2,
   Megaphone,
+  Magnet,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -84,6 +85,11 @@ const data = {
       title: "Lead Pool",
       url: "/dashboard/online-leads",
       icon: NotebookPen,
+    },
+    {
+      title: "Meta Leads",
+      url: "/dashboard/meta-leads",
+      icon: Magnet,
     },
     {
       title: "Leads",
@@ -242,6 +248,11 @@ const data = {
       title: "Lead Pool",
       url: "/dashboard/online-leads",
       icon: NotebookPen,
+    },
+    {
+      title: "Meta Leads",
+      url: "/dashboard/meta-leads",
+      icon: Magnet,
     },
     {
       title: "Open Leads",
