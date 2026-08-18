@@ -29,6 +29,7 @@ import {
   fetchAllShutterMaterialFinishes,
   createShutterMaterialFinish,
   uploadShutterMaterialFinishes,
+  createShutterSubType,
   fetchCarcassLegs,
   createCarcassLegs,
   fetchSkirtingCarcassLegs,
@@ -49,6 +50,7 @@ import {
   uploadOtherAppliances,
   downloadOtherAppliancesReport,
   fetchHandleTypes,
+  createHandleType,
   createMiscellaneousTeam,
   createMiscellaneousType,
   createSourceType,
@@ -669,6 +671,32 @@ export const useCreateShutterType = () => {
   });
 }
 
+export const useCreateShutterSubType = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createShutterSubType,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: getShutterTypesQueryKey(vendorId),
+      });
+      toastManager.add({
+        title: "Shutter sub type created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          "Failed to create shutter sub type.",
+        type: "error",
+      });
+    },
+  });
+}
+
 export const useCreateShutterMaterial = () => {
   const queryClient = useQueryClient();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -1186,6 +1214,30 @@ export const useHandleTypes = () => {
     enabled: !!vendorId,
     retry: false,
     refetchOnWindowFocus: false,
+  });
+}
+
+export const useCreateHandleType = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createHandleType,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: getHandleTypesQueryKey(vendorId),
+      });
+      toastManager.add({
+        title: "Handle type created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to create handle type.",
+        type: "error",
+      });
+    },
   });
 }
 

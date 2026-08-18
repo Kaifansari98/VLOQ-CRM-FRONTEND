@@ -362,6 +362,16 @@ export interface CreateShutterTypePayload {
   name: string;
 }
 
+export interface CreateHandleTypePayload {
+  vendor_id: number;
+  name: string;
+}
+
+export interface CreateShutterSubTypePayload {
+  shutter_type_id: number;
+  name: string;
+}
+
 export interface CreateShutterMaterialPayload {
   vendor_id: number;
   name: string;
@@ -705,6 +715,18 @@ export const uploadCarcassMaterialFinishes = async (formData: FormData) => {
 
 export const createShutterType = async (payload: CreateShutterTypePayload) => {
   const res = await apiClient.post("/leads/create-shutter-type", payload);
+  return res.data;
+}
+
+export const createShutterSubType = async (
+  payload: CreateShutterSubTypePayload,
+) => {
+  const res = await apiClient.post("/leads/create-shutter-sub-type", payload);
+  return res.data;
+}
+
+export const createHandleType = async (payload: CreateHandleTypePayload) => {
+  const res = await apiClient.post("/leads/create-handle-type", payload);
   return res.data;
 }
 
