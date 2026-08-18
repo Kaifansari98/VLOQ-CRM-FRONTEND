@@ -51,6 +51,8 @@ import {
   downloadOtherAppliancesReport,
   fetchHandleTypes,
   createHandleType,
+  createTimelineRule,
+  updateTimelineRule,
   createMiscellaneousTeam,
   createMiscellaneousType,
   createSourceType,
@@ -1249,6 +1251,54 @@ export const useFastProductionTimelineRules = () => {
     enabled: !!vendorId,
     retry: false,
     refetchOnWindowFocus: false,
+  });
+}
+
+export const useCreateTimelineRule = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createTimelineRule,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: getFastProductionTimelineRulesQueryKey(vendorId),
+      });
+      toastManager.add({
+        title: "Timeline rule created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to create timeline rule.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUpdateTimelineRule = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: updateTimelineRule,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: getFastProductionTimelineRulesQueryKey(vendorId),
+      });
+      toastManager.add({
+        title: "Timeline rule updated successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to update timeline rule.",
+        type: "error",
+      });
+    },
   });
 }
 
