@@ -310,60 +310,47 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     userType,
     leadStatus,
   );
-  const canViewSelectionInstances =
-    userType === "custom"
-      ? customPrivilegeCodes.includes(
-          "project.client_documentation.design_selections_and_instance_documents.view",
-        )
-      : true;
-  const canEditSelectionInstances =
-    userType === "custom"
-      ? customPrivilegeCodes.includes(
-          "project.client_documentation.design_selections_and_instance_documents.edit_update",
-        )
-      : canUpdateInput;
-  const canViewProjectFiles =
-    userType === "custom"
-      ? customPrivilegeCodes.includes(
-          "project.client_documentation.project_files.view",
-        )
-      : true;
+  const canViewSelectionInstances = true;
+  const canEditSelectionInstances = canUpdateInput;
+  const canViewProjectFiles = true;
   const canUploadProjectFiles =
     userType === "custom"
       ? customPrivilegeCodes.includes(
-          "project.client_documentation.project_files.upload",
+          "project.client_documentation.presentation_file.upload",
         )
       : canUpdateInput;
-  const canDeleteProjectFiles =
-    userType === "custom"
-      ? customPrivilegeCodes.includes(
-          "project.client_documentation.project_files.delete",
-        )
-      : canUpdateInput;
-  const canViewDesignFiles =
-    userType === "custom"
-      ? customPrivilegeCodes.includes(
-          "project.client_documentation.design_file.view",
-        )
-      : true;
+  const canDeleteProjectFiles = canUpdateInput;
+  const canViewDesignFiles = true;
   const canUploadDesignFiles =
     userType === "custom"
       ? customPrivilegeCodes.includes(
           "project.client_documentation.design_file.upload",
+        ) ||
+        customPrivilegeCodes.includes(
+          "project.client_documentation.pytha_file.upload",
         )
       : canUpdateInput;
-  const canDeleteDesignFiles =
+  const canDeleteDesignFiles = canUpdateInput;
+  const canUploadQuotationFiles =
     userType === "custom"
       ? customPrivilegeCodes.includes(
-          "project.client_documentation.design_file.delete",
+          "project.client_documentation.quotation_file.upload",
         )
       : canUpdateInput;
-  const canMoveToClientApproval =
+  const canDeleteQuotationFiles = canUpdateInput;
+  const canViewSpecifications =
     userType === "custom"
       ? customPrivilegeCodes.includes(
-          "project.client_documentation.move_to_client_approval.enable_disable",
+          "project.client_documentation.specifications.view",
         )
       : true;
+  const canUploadSpecifications =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.client_documentation.specifications.upload",
+        )
+      : canUpdateInput;
+  const canMoveToClientApproval = true;
 
   // ✅ Effective permissions — blocked lead overrides all write actions
   const effectiveCanEditSelections =
@@ -376,6 +363,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     canDeleteProjectFiles && !shouldDisableBlockedActions;
   const effectiveCanDeleteDesignFiles =
     canDeleteDesignFiles && !shouldDisableBlockedActions;
+  const effectiveCanUploadQuotationFiles =
+    canUploadQuotationFiles && !shouldDisableBlockedActions;
+  const effectiveCanDeleteQuotationFiles =
+    canDeleteQuotationFiles && !shouldDisableBlockedActions;
   const effectiveCanMoveToClientApproval =
     canMoveToClientApproval && !pathname?.includes("/client-approval");
 
@@ -545,6 +536,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const [activeInstance, setActiveInstance] =
     React.useState<LeadProductStructureInstance | null>(null);
   const [confirmDelete, setConfirmDelete] = React.useState<null | number>(null);
+  const [openConfirmMoveModal, setOpenConfirmMoveModal] = React.useState(false);
   const [selectedSpec, setSelectedSpec] =
     React.useState<LeadSpecificationEntry | null>(null);
   const activeDisplayGroup = React.useMemo(() => {
@@ -1454,8 +1446,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     }
   };
 
-  const handleMoveStage = () => {
-    if (!vendorId || !userId) return;
+  const handleOpenConfirmMove = () => {
     if (shouldDisableBlockedActions) {
       toastManager.add({
         title: blockedTooltip || "This lead is blocked.",
@@ -1470,15 +1461,24 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       });
       return;
     }
+    setOpenConfirmMoveModal(true);
+  };
+
+  const handleMoveStage = () => {
+    if (!vendorId || !userId) return;
     moveToClientApproval(
       { leadId, vendorId, updatedBy: userId },
       {
         onSuccess: () => {
+          setOpenConfirmMoveModal(false);
           router.push("/dashboard/project/client-approval");
           queryClient.invalidateQueries({ queryKey: ["leadStats"] });
           queryClient.invalidateQueries({
             queryKey: ["universal-stage-leads"],
           });
+        },
+        onError: () => {
+          setOpenConfirmMoveModal(false);
         },
       },
     );
@@ -1577,7 +1577,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
 
     return (
       <div className="flex-1 space-y-6 py-4 px-5">
-        {handlesLargeScaleProjects && (
+        {handlesLargeScaleProjects && canViewSpecifications && (
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -1928,8 +1928,8 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                   ".pdf,.pyo,.pytha,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip",
                 docs: instanceDesignDocs,
                 canView: true,
-                canUpload: !shouldDisableBlockedActions,
-                canDelete: !shouldDisableBlockedActions,
+                canUpload: effectiveCanUploadDesignFiles,
+                canDelete: effectiveCanDeleteDesignFiles,
                 required: true,
               },
               {
@@ -1939,8 +1939,8 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                 icon: <ScrollText className="w-5 h-5" />,
                 docs: instanceQuotationDocs,
                 canView: true,
-                canUpload: !shouldDisableBlockedActions,
-                canDelete: !shouldDisableBlockedActions,
+                canUpload: effectiveCanUploadQuotationFiles,
+                canDelete: effectiveCanDeleteQuotationFiles,
                 required: true,
               },
             );
@@ -2064,6 +2064,70 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
           );
         })()}
       </div>
+    );
+  };
+
+  const renderMoveToClientApprovalButton = () => {
+    if (handlesLargeScaleProjects) return null;
+    if (!isClientDocumentationStage || !effectiveCanMoveToClientApproval)
+      return null;
+
+    const missing: string[] = [];
+    if (shouldDisableBlockedActions)
+      missing.push(blockedTooltip || "Lead is blocked");
+    if (!allInstancesSelectionsReady) {
+      if (isFastProduction) {
+        missing.push("Save Carcas for all instances");
+      } else {
+        missing.push("Save Carcas & Shutter for all instances");
+      }
+    }
+    if (!allInstancesDocsReady)
+      missing.push(
+        "Upload Project Files & Pytha Files for all instances",
+      );
+    if (selectionForm.formState.isDirty)
+      missing.push("Save unsaved Design Selection changes");
+
+    const canMoveStage = missing.length === 0;
+
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-block w-full sm:w-auto">
+              <Button
+                onClick={handleOpenConfirmMove}
+                disabled={!canMoveStage}
+                className="w-full sm:w-auto"
+              >
+                {isMovingStage ? (
+                  "Moving..."
+                ) : (
+                  <>
+                    <CheckCircle2 className="size-4 mr-2" />
+                    Move to Client Approval
+                  </>
+                )}
+              </Button>
+            </span>
+          </TooltipTrigger>
+          {missing.length > 0 && (
+            <TooltipContent side="top" className="max-w-xs">
+              <p className="font-medium mb-1">
+                Complete the following:
+              </p>
+              <ul className="list-disc pl-4 space-y-0.5">
+                {missing.map((item) => (
+                  <li key={item} className="text-xs">
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </TooltipContent>
+          )}
+        </Tooltip>
+      </TooltipProvider>
     );
   };
 
@@ -2233,81 +2297,12 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         </div>
       )}
 
-      {/* ✅ Move to Client Approval — disabled + tooltip when blocked */}
-      {isClientDocumentationStage && effectiveCanMoveToClientApproval && (
-        <div className="pt-2">
-          {(() => {
-            const missing: string[] = [];
-            if (shouldDisableBlockedActions)
-              missing.push(blockedTooltip || "Lead is blocked");
-            if (handlesLargeScaleProjects) {
-              if (largeScaleSpecificationStatus.missingGroups.length > 0) {
-                const prefix =
-                  largeScaleSpecificationStatus.missingGroups.length === 1
-                    ? "Complete specification review for"
-                    : "Complete specification review for all item groups:";
-                const suffix =
-                  largeScaleSpecificationStatus.missingGroups.length === 1
-                    ? `${largeScaleSpecificationStatus.missingGroups[0]}. Approve, amend, or delete every row and mark the specification as completed.`
-                    : `${largeScaleSpecificationStatus.missingGroups.join(", ")}. Approve, amend, or delete every row and mark each latest specification as completed.`;
-                missing.push(`${prefix} ${suffix}`);
-              }
-            }
-            if (!allInstancesSelectionsReady) {
-              if (isFastProduction) {
-                missing.push("Save Carcas for all instances");
-              } else {
-                missing.push("Save Carcas & Shutter for all instances");
-              }
-            }
-            if (!allInstancesDocsReady)
-              missing.push(
-                "Upload Project Files & Pytha Files for all instances",
-              );
-            if (selectionForm.formState.isDirty)
-              missing.push("Save unsaved Design Selection changes");
-
-            return (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="inline-block w-full sm:w-auto">
-                      <Button
-                        onClick={handleMoveStage}
-                        disabled={!canMoveStage}
-                        className="w-full sm:w-auto"
-                      >
-                        {isMovingStage ? (
-                          "Moving..."
-                        ) : (
-                          <>
-                            <CheckCircle2 className="size-4 mr-2" />
-                            Move to Client Approval
-                          </>
-                        )}
-                      </Button>
-                    </span>
-                  </TooltipTrigger>
-                  {missing.length > 0 && (
-                    <TooltipContent side="top" className="max-w-xs">
-                      <p className="font-medium mb-1">
-                        Complete the following:
-                      </p>
-                      <ul className="list-disc pl-4 space-y-0.5">
-                        {missing.map((item) => (
-                          <li key={item} className="text-xs">
-                            {item}
-                          </li>
-                        ))}
-                      </ul>
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-              </TooltipProvider>
-            );
-          })()}
-        </div>
-      )}
+      {/* ✅ Move to Client Approval — shown when handlesLargeScaleProjects is false */}
+      {!handlesLargeScaleProjects &&
+        isClientDocumentationStage &&
+        effectiveCanMoveToClientApproval && (
+          <div className="pt-2">{renderMoveToClientApprovalButton()}</div>
+        )}
 
       {/* Upload Modal */}
       <AnimatePresence>
@@ -2522,6 +2517,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
           if (!open) setSelectedSpec(null);
         }}
         specification={selectedSpec}
+        readOnly={!canUploadSpecifications}
         showReviewColumns
         stackSections
         contentClassName="w-[95vw] max-w-[95vw] sm:w-[92vw] sm:max-w-[92vw] xl:max-w-[1680px]"
@@ -2547,6 +2543,30 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
               disabled={deleting}
             >
               {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirm Move Stage Modal */}
+      <AlertDialog
+        open={openConfirmMoveModal}
+        onOpenChange={setOpenConfirmMoveModal}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Move to Client Approval?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to move this lead to the Client Approval stage?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isMovingStage}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleMoveStage}
+              disabled={isMovingStage}
+            >
+              {isMovingStage ? "Moving..." : "Move to Client Approval"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

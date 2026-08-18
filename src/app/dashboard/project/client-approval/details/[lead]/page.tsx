@@ -335,11 +335,11 @@ export default function ClientApprovalLeadDetails() {
         "project.client_approval.client_approval_form.enable_disable",
       )
       : canUploadClientApproval(userType);
-  const isCustomUser = userType === "custom";
+  const isCustomUser = userType?.toLowerCase() === "custom";
   const canRequestToTechCheckAccess = isCustomUser
     ? customPrivilegeCodes.includes(
-      "project.client_approval.client_approval_screenshots.upload",
-    )
+        "project.c  lient_documentation.request_to_techcheck.enable_disable",
+      )
     : canRequestToTeckCheck(userType);
 
   return (
@@ -367,52 +367,45 @@ export default function ClientApprovalLeadDetails() {
         {/* ACTION BUTTONS */}
         <div className="flex items-center space-x-2">
           {/* Tech Check */}
-{!isAuditor && (shouldDisableBlockedActions ? (
-  <CustomeTooltip
-    value={blockedTooltip}
-    truncateValue={
-      <Button
-        className="hidden lg:block"
-        size="sm"
-        disabled
-        variant="secondary"
-      >
-        Request To Tech Check
-      </Button>
-    }
-  />
-) : !is_client_approval_submitted ? (
-  <CustomeTooltip
-    truncateValue={
-      <Button
-        className="hidden lg:block"
-        size="sm"
-        disabled
-        variant="secondary"
-      >
-        Request To Tech Check
-      </Button>
-    }
-    value="Submit approval first"
-  />
-) : canRequestToTechCheckAccess ? (
-  <Button
-    size="sm"
-    className="hidden lg:block"
-    onClick={() => setOpenRequestToTechCheckModal(true)}
-  >
-    Request To Tech Check
-  </Button>
-) : isCustomUser ? (
-  <Button
-    className="hidden lg:block"
-    size="sm"
-    disabled
-    variant="secondary"
-  >
-    Request To Tech Check
-  </Button>
-) : (
+{!isAuditor && (canRequestToTechCheckAccess ? (
+  shouldDisableBlockedActions ? (
+    <CustomeTooltip
+      value={blockedTooltip}
+      truncateValue={
+        <Button
+          className="hidden lg:block"
+          size="sm"
+          disabled
+          variant="secondary"
+        >
+          Request To Tech Check
+        </Button>
+      }
+    />
+  ) : !is_client_approval_submitted ? (
+    <CustomeTooltip
+      truncateValue={
+        <Button
+          className="hidden lg:block"
+          size="sm"
+          disabled
+          variant="secondary"
+        >
+          Request To Tech Check
+        </Button>
+      }
+      value="Submit approval first"
+    />
+  ) : (
+    <Button
+      size="sm"
+      className="hidden lg:block"
+      onClick={() => setOpenRequestToTechCheckModal(true)}
+    >
+      Request To Tech Check
+    </Button>
+  )
+) : isCustomUser ? null : (
   <CustomeTooltip
     truncateValue={
       <Button
@@ -576,17 +569,7 @@ export default function ClientApprovalLeadDetails() {
                     Request To Tech Check
                   </DropdownMenuItem>
                 )
-              ) : isCustomUser ? (
-                <CustomeTooltip
-                  value={shouldDisableBlockedActions ? blockedTooltip : ""}
-                  truncateValue={
-                    <DropdownMenuItem className="lg:hidden" disabled>
-                      <FileText size={20} />
-                      Request To Tech Check
-                    </DropdownMenuItem>
-                  }
-                />
-              ) : (
+              ) : isCustomUser ? null : (
                 <CustomeTooltip
                   truncateValue={
                     <DropdownMenuItem className="lg:hidden" disabled>

@@ -1,14 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAppSelector } from "@/redux/store";
 import {
-  // ClientDocDetailsResponse,
   ClientDocumentationResponse,
+  ClientDocMoveEligibilityData,
 } from "@/types/client-documentation";
 import {
   getClientDocumentationDetails,
   getClientDocumentationLeads,
   moveLeadToClientApproval,
   uploadMoreClientDocumentation,
+  getClientDocMoveEligibility,
   UploadMoreDocPayload,
 } from "@/api/client-documentation";
 import { toastManager } from "@/components/ui/toast";
@@ -149,5 +150,17 @@ export const useMoveLeadToClientApproval = () => {
         "Failed to move lead";
       toastManager.add({ title: message, type: "error" });
     },
+  });
+};
+
+export const useClientDocMoveEligibility = (
+  vendorId?: number,
+  leadId?: number,
+) => {
+  return useQuery<ClientDocMoveEligibilityData>({
+    queryKey: ["clientDocMoveEligibility", vendorId, leadId],
+    queryFn: () => getClientDocMoveEligibility(vendorId!, leadId!),
+    enabled: !!vendorId && !!leadId,
+    staleTime: 1000 * 15,
   });
 };

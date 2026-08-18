@@ -86,3 +86,13 @@ export const moveLeadToClientApproval = async (payload: {
   );
   return data;
 };
+
+export const getClientDocMoveEligibility = async (
+  vendorId: number,
+  leadId: number,
+) => {
+  const { data } = await apiClient.get(
+    `/leads/client-documentation/move-eligibility/vendorId/${vendorId}/leadId/${leadId}`,
+  );
+  return data.data;
+};
