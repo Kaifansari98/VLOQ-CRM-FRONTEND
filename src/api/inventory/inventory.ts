@@ -127,3 +127,40 @@ export const syncCadBidProducts = async (vendorId: number) => {
   const { data } = await apiClient.post(`/inventory/sync-cadbid-products`, { vendor_id: vendorId });
   return data as { success: boolean; message: string; data: SyncResult };
 };
+
+export interface BulkUploadProductResult {
+  total: number;
+  created: number;
+  failed: number;
+  errors: { row: number; reason: string }[];
+  errorFileBase64?: string;
+}
+
+export const downloadProductBulkTemplate = async (vendorId: number): Promise<void> => {
+  const res = await apiClient.get(`/inventory/products/${vendorId}/bulk-upload/template`, {
+    responseType: "blob",
+  });
+  const url = URL.createObjectURL(new Blob([res.data]));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `product_bulk_upload_template.xlsx`;
+  link.click();
+  URL.revokeObjectURL(url);
+};
+
+export const uploadProductBulkSheet = async (
+  vendorId: number,
+  userId: number,
+  file: File
+): Promise<BulkUploadProductResult> => {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("user_id", String(userId));
+  const { data } = await apiClient.post(
+    `/inventory/products/${vendorId}/bulk-upload`,
+    form,
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
+  return data.data as BulkUploadProductResult;
+};
+

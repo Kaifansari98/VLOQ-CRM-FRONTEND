@@ -2,6 +2,7 @@
 
 import {
   getProducts, getProductFilters, syncCadBidProducts,
+  downloadProductBulkTemplate, uploadProductBulkSheet, BulkUploadProductResult,
   Product, ProductListResponse, ProductFilters, SyncResult,
 } from "@/api/inventory/inventory";
 import {
@@ -1202,6 +1203,9 @@ export default function ProductMasterPage() {
   const [showUpload, setShowUpload] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const [bulkUploadResult, setBulkUploadResult] = useState<BulkUploadProductResult | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [filters, setFilters] = useState<Filters>({
     search: "", category_id: undefined, brand_id: undefined, active: "", procurement: "",
@@ -1267,6 +1271,29 @@ export default function ProductMasterPage() {
     finally { setUploading(false); }
   };
 
+  const handleDownloadProductTemplate = async () => {
+    if (!vendorId) return;
+    try {
+      await downloadProductBulkTemplate(Number(vendorId));
+    } catch (err) {
+      console.error("Failed to download template", err);
+    }
+  };
+
+  const handleUploadProductBulk = async (file: File) => {
+    if (!vendorId || !userId) return;
+    setBulkUploading(true);
+    try {
+      const result = await uploadProductBulkSheet(Number(vendorId), Number(userId), file);
+      setBulkUploadResult(result);
+      fetchProducts();
+    } catch (e: any) {
+      console.error("Bulk upload failed", e);
+    } finally {
+      setBulkUploading(false);
+    }
+  };
+
   const handleFilters = (f: Filters) => { setFilters(f); setPage(1); };
   const handlePage = (p: number) => { setPage(p); window.scrollTo({ top: 0, behavior: "smooth" }); };
 
@@ -1325,6 +1352,13 @@ export default function ProductMasterPage() {
               disabled={uploading}>
               <Upload size={14} />
               Upload Stock
+            </Button>
+            <Button size="sm" variant="outline"
+              className="gap-1.5 h-9 text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+              onClick={() => { setBulkUploadResult(null); setShowBulkUpload(true); }}
+              disabled={bulkUploading}>
+              <Upload size={14} />
+              Bulk Upload Products
             </Button>
             <Button size="sm" variant="outline" className="gap-1.5 h-9"
               onClick={handleSync} disabled={syncing}>
@@ -1532,6 +1566,241 @@ export default function ProductMasterPage() {
         <StockUploadModal uploading={uploading} result={uploadResult}
           onUpload={handleUpload} onClose={() => setShowUpload(false)} />
       )}
+
+      {showBulkUpload && (
+        <ProductBulkUploadModal
+          uploading={bulkUploading}
+          result={bulkUploadResult}
+          onDownloadTemplate={handleDownloadProductTemplate}
+          onUpload={handleUploadProductBulk}
+          onClose={() => setShowBulkUpload(false)}
+        />
+      )}
     </>
   );
 }
+
+// ─── Product Bulk Upload Modal ───────────────────────────────────────────────
+
+function ProductBulkUploadModal({
+  uploading,
+  result,
+  onDownloadTemplate,
+  onUpload,
+  onClose,
+}: {
+  uploading: boolean;
+  result: BulkUploadProductResult | null;
+  onDownloadTemplate: () => void;
+  onUpload: (file: File) => void;
+  onClose: () => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+
+  const handleFile = (file: File | undefined) => {
+    if (!file) return;
+    if (!file.name.endsWith(".xlsx")) return;
+    onUpload(file);
+  };
+
+  const handleDownloadErrorFile = () => {
+    if (!result?.errorFileBase64) return;
+    const byteCharacters = atob(result.errorFileBase64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `product_upload_errors.xlsx`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-lg p-0 overflow-hidden">
+        <div className="px-5 py-4 border-b bg-indigo-50/50">
+          <DialogTitle className="text-base font-black flex items-center gap-2 text-indigo-950">
+            <Upload size={16} className="text-indigo-600" /> Bulk Upload Products
+          </DialogTitle>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Download template Excel, fill product details, and upload back.
+          </p>
+        </div>
+
+        {!result ? (
+          <div className="p-5 space-y-4">
+            {/* Step 1: Download Template */}
+            <div className="flex items-center justify-between p-3.5 rounded-xl border bg-card/60">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-indigo-100/60 text-indigo-600">
+                  <Download size={18} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold">1. Download Template Excel</p>
+                  <p className="text-[11px] text-muted-foreground">Pre-formatted sheet with all product columns</p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 h-8 text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                onClick={async () => {
+                  setDownloadingTemplate(true);
+                  try {
+                    await onDownloadTemplate();
+                  } finally {
+                    setDownloadingTemplate(false);
+                  }
+                }}
+                disabled={downloadingTemplate || uploading}
+              >
+                <Download size={13} className={downloadingTemplate ? "animate-bounce" : ""} />
+                {downloadingTemplate ? "Downloading…" : "Download Template"}
+              </Button>
+            </div>
+
+            {/* Step 2: Upload Template */}
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                handleFile(e.dataTransfer.files[0]);
+              }}
+              onClick={() => !uploading && fileRef.current?.click()}
+              className={cn(
+                "border-2 border-dashed rounded-xl p-6 flex flex-col items-center gap-3 cursor-pointer transition-colors",
+                dragOver ? "border-indigo-400 bg-indigo-50" : "",
+                uploading
+                  ? "pointer-events-none opacity-60 border-muted"
+                  : "border-muted hover:border-indigo-300 hover:bg-muted/30"
+              )}
+            >
+              {uploading ? (
+                <Loader2 size={28} className="animate-spin text-indigo-600" />
+              ) : (
+                <Upload size={28} className="text-muted-foreground/40" />
+              )}
+              <div className="text-center">
+                <p className="text-sm font-semibold">
+                  {uploading ? "Processing Bulk Products..." : "2. Drop .xlsx here or click to browse"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">Only .xlsx files · Max 10 MB</p>
+              </div>
+            </div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".xlsx"
+              className="hidden"
+              onChange={(e) => handleFile(e.target.files?.[0])}
+            />
+
+            <div className="rounded-lg bg-indigo-50/50 border border-indigo-100 px-4 py-3 space-y-1.5">
+              <p className="text-xs font-bold text-indigo-900 mb-1">Important Upload Guidelines</p>
+              {[
+                "Mandatory fields: Product Name, Category, Item Code (Must be unique), Primary Unit.",
+                "Non-mandatory fields can be left blank, but if filled, values must match system Master tables.",
+                "If Barcode is left empty, system auto-generates a unique barcode.",
+                "If errors occur in any rows, valid rows will be saved and an Error Report will be provided.",
+              ].map((t, i) => (
+                <p key={i} className="text-xs text-indigo-800 flex items-start gap-1.5">
+                  <span className="font-black shrink-0">•</span>
+                  {t}
+                </p>
+              ))}
+            </div>
+
+            <div className="flex justify-end">
+              <Button variant="outline" size="sm" onClick={onClose} disabled={uploading}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="p-5 space-y-4">
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: "Total Rows", value: result.total, cls: "text-foreground", bg: "bg-muted/40" },
+                { label: "Created / Saved", value: result.created, cls: "text-emerald-700", bg: "bg-emerald-50" },
+                { label: "Failed Rows", value: result.failed, cls: "text-red-700", bg: "bg-red-50" },
+              ].map(({ label, value, cls, bg }) => (
+                <div key={label} className={cn("rounded-xl px-3 py-3 text-center", bg)}>
+                  <p className="text-[10px] font-black uppercase text-muted-foreground">{label}</p>
+                  <p className={cn("text-2xl font-black tabular-nums", cls)}>{value}</p>
+                </div>
+              ))}
+            </div>
+
+            {result.failed > 0 && (
+              <div className="rounded-xl border border-red-200 bg-red-50/50 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-red-800 font-bold text-xs">
+                    <AlertTriangle size={15} />
+                    <span>{result.failed} rows failed validation</span>
+                  </div>
+                  {result.errorFileBase64 && (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="h-8 gap-1.5 text-xs"
+                      onClick={handleDownloadErrorFile}
+                    >
+                      <Download size={13} />
+                      Download Error Excel
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-red-700">
+                  Review the downloaded error file to fix misspelled master names or missing compulsory values, then re-upload.
+                </p>
+                {result.errors?.length > 0 && (
+                  <div className="max-h-32 overflow-y-auto space-y-1.5 pr-1 border-t border-red-200/60 pt-2">
+                    {result.errors.slice(0, 10).map((err, idx) => (
+                      <p key={idx} className="text-[11px] text-red-800">
+                        <span className="font-bold">Row {err.row}:</span> {err.reason}
+                      </p>
+                    ))}
+                    {result.errors.length > 10 && (
+                      <p className="text-[10px] text-red-600 font-semibold italic">
+                        ...and {result.errors.length - 10} more error(s) in downloaded report.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {result.failed === 0 && (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center space-y-1">
+                <CheckCircle2 size={24} className="mx-auto text-emerald-600 mb-1" />
+                <p className="text-xs font-bold text-emerald-800">All products uploaded successfully!</p>
+                <p className="text-[11px] text-emerald-700">All {result.created} products were created and saved.</p>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2 border-t">
+              <Button size="sm" onClick={onClose}>
+                Done
+              </Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+

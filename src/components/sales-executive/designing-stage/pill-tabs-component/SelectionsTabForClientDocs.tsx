@@ -132,15 +132,22 @@ const getFormSchema = (
           });
         }
         const shutterIsRequired = !(isFastProduction || isSmallOrder);
-        if (shutterIsRequired && (!data.shutter_remark || !data.shutter_remark.trim())) {
+        if (
+          shutterIsRequired &&
+          (!data.shutter_remark || !data.shutter_remark.trim())
+        ) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: "Field is required",
             path: ["shutter_remark"],
           });
         }
-        const handlesHasSelections = Array.isArray(data.handles) && data.handles.length > 0;
-        if (handlesHasSelections && (!data.handles_remark || !data.handles_remark.trim())) {
+        const handlesHasSelections =
+          Array.isArray(data.handles) && data.handles.length > 0;
+        if (
+          handlesHasSelections &&
+          (!data.handles_remark || !data.handles_remark.trim())
+        ) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: "Field is required",
@@ -225,7 +232,11 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const { data: specifications = [] } = useLeadSpecifications(vendorId, leadId);
   const { data: leadDataById } = useLeadById(leadId, vendorId, userId);
   const lead = leadDataById?.data?.lead;
-  const furniture_type = lead?.productMappings?.map((pm: any) => pm.productType?.type).filter(Boolean).join(", ") || "N/A";
+  const furniture_type =
+    lead?.productMappings
+      ?.map((pm: any) => pm.productType?.type)
+      .filter(Boolean)
+      .join(", ") || "N/A";
   const isSmallOrder = furniture_type.toLowerCase().includes("small order");
   const isFastProduction = lead?.is_fast_production === true;
   const { data: carcassTypesData, isLoading: isCarcassTypesLoading } =
@@ -243,16 +254,13 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     lead?.assignedTo?.vendor?.handlesLargeScaleProjects === true;
   const defaultRemark = handlesLargeScaleProjects ? DEFAULT_REMARK : "";
   const dynamicFormSchema = React.useMemo(
-    () => getFormSchema(isSmallOrder, isFastProduction, handlesLargeScaleProjects),
+    () =>
+      getFormSchema(isSmallOrder, isFastProduction, handlesLargeScaleProjects),
     [isSmallOrder, isFastProduction, handlesLargeScaleProjects],
   );
 
-  const { data: fastProductionDetailsResponse } = useGetFastProductionDetailsForLead(
-    vendorId,
-    leadId,
-    undefined,
-    true,
-  );
+  const { data: fastProductionDetailsResponse } =
+    useGetFastProductionDetailsForLead(vendorId, leadId, undefined, true);
   const fastProductionDetails: any = fastProductionDetailsResponse?.data;
   const { data: structureInstancesData } = useLeadProductStructureInstances(
     leadId,
@@ -768,7 +776,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       "Carcas",
     ).filter((value) => availableCarcassValues.has(value));
     let existingCarcassRemark = existingCarcas?.desc || defaultRemark;
-    if (!handlesLargeScaleProjects && existingCarcassRemark === DEFAULT_REMARK) {
+    if (
+      !handlesLargeScaleProjects &&
+      existingCarcassRemark === DEFAULT_REMARK
+    ) {
       existingCarcassRemark = "";
     }
 
@@ -779,9 +790,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       (f: any) => f.component === "CARCASS",
     );
 
-    const hasNoCarcasSelectionSaved = !existingCarcas;
-
-    if (hasNoCarcasSelectionSaved && fastProdCarcass) {
+    // For fast-production leads, the request finish is the latest source of
+    // truth. Do not let an older client-documentation selection override it.
+    if (isFastProduction && fastProdCarcass) {
       const carcassValues = labelToValues(
         fastProdCarcass.finish_category,
         carcassOptions,
@@ -806,12 +817,17 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     existingShutter: DesignSelection | undefined,
     currentInstanceId: number | null,
   ) => {
-    const existingShutterValues = chsMappingToOptionValues(
-      existingShutter?.id,
-      "Shutter",
-    );
+    const existingShutterValues = (existingShutter as any)?.finish_category
+      ? labelToValues(
+          (existingShutter as any).finish_category,
+          shutterOptions,
+        )
+      : chsMappingToOptionValues(existingShutter?.id, "Shutter");
     let existingShutterRemark = existingShutter?.desc || defaultRemark;
-    if (!handlesLargeScaleProjects && existingShutterRemark === DEFAULT_REMARK) {
+    if (
+      !handlesLargeScaleProjects &&
+      existingShutterRemark === DEFAULT_REMARK
+    ) {
       existingShutterRemark = "";
     }
 
@@ -822,9 +838,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       (f: any) => f.component === "SHUTTER",
     );
 
-    const hasNoShutterSelectionSaved = !existingShutter;
-
-    if (hasNoShutterSelectionSaved && fastProdShutter) {
+    if (isFastProduction && fastProdShutter) {
       const shutterValues = labelToValues(
         fastProdShutter.finish_category,
         shutterOptions,
@@ -849,12 +863,17 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     existingHandles: DesignSelection | undefined,
     currentInstanceId: number | null,
   ) => {
-    const existingHandlesValues = chsMappingToOptionValues(
-      existingHandles?.id,
-      "Handles",
-    );
+    const existingHandlesValues = (existingHandles as any)?.finish_category
+      ? labelToValues(
+          (existingHandles as any).finish_category,
+          handleOptions,
+        )
+      : chsMappingToOptionValues(existingHandles?.id, "Handles");
     let existingHandlesRemark = existingHandles?.desc || defaultRemark;
-    if (!handlesLargeScaleProjects && existingHandlesRemark === DEFAULT_REMARK) {
+    if (
+      !handlesLargeScaleProjects &&
+      existingHandlesRemark === DEFAULT_REMARK
+    ) {
       existingHandlesRemark = "";
     }
 
@@ -865,9 +884,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       (f: any) => f.component === "HANDLE",
     );
 
-    const hasNoHandlesSelectionSaved = !existingHandles;
-
-    if (hasNoHandlesSelectionSaved && fastProdHandle) {
+    if (isFastProduction && fastProdHandle) {
       const handleValues = labelToValues(
         fastProdHandle.finish_category,
         handleOptions,
@@ -959,14 +976,28 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       handles_remark: hVal.remark,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeInstance?.id, selectionsData?.data, chsMappings, fastProductionDetails]);
+  }, [
+    activeInstance?.id,
+    selectionsData?.data,
+    chsMappings,
+    fastProductionDetails,
+  ]);
 
   useEffect(() => {
     if (!uploadModalOpen) {
       const activeInstanceId = activeInstance?.id ?? null;
-      const cVal = getCarcasValuesForInstance(existingSelections.carcas, activeInstanceId);
-      const sVal = getShutterValuesForInstance(existingSelections.shutter, activeInstanceId);
-      const hVal = getHandlesValuesForInstance(existingSelections.handles, activeInstanceId);
+      const cVal = getCarcasValuesForInstance(
+        existingSelections.carcas,
+        activeInstanceId,
+      );
+      const sVal = getShutterValuesForInstance(
+        existingSelections.shutter,
+        activeInstanceId,
+      );
+      const hVal = getHandlesValuesForInstance(
+        existingSelections.handles,
+        activeInstanceId,
+      );
 
       selectionForm.reset({
         carcas: cVal.value,
@@ -1080,7 +1111,8 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     if (!effectiveCanEditSelections) {
       toastManager.add({
         title: shouldDisableBlockedActions
-          ? blockedTooltip || "This lead is blocked. You cannot edit selections."
+          ? blockedTooltip ||
+            "This lead is blocked. You cannot edit selections."
           : "You do not have permission to update selections.",
         type: "error",
       });
@@ -1264,16 +1296,24 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       }
     }
 
-    const fastProdRequests = Array.isArray(fastProductionDetails?.requests) ? fastProductionDetails.requests : [];
+    const fastProdRequests = Array.isArray(fastProductionDetails?.requests)
+      ? fastProductionDetails.requests
+      : [];
     for (const req of fastProdRequests) {
       const key = req.instance_id ?? null;
       if (!grouped.has(key)) {
         grouped.set(key, { Carcas: false, Shutter: false, Handles: false });
       }
       const tracker = grouped.get(key)!;
-      const hasCarcass = req.finishes?.some((f: any) => f.component === "CARCASS" && f.finish_category);
-      const hasShutter = req.finishes?.some((f: any) => f.component === "SHUTTER" && f.finish_category);
-      const hasHandle = req.finishes?.some((f: any) => f.component === "HANDLE" && f.finish_category);
+      const hasCarcass = req.finishes?.some(
+        (f: any) => f.component === "CARCASS" && f.finish_category,
+      );
+      const hasShutter = req.finishes?.some(
+        (f: any) => f.component === "SHUTTER" && f.finish_category,
+      );
+      const hasHandle = req.finishes?.some(
+        (f: any) => f.component === "HANDLE" && f.finish_category,
+      );
 
       if (hasCarcass) tracker.Carcas = true;
       if (hasShutter) tracker.Shutter = true;
@@ -1283,7 +1323,11 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     return grouped;
   }, [selectionsData?.data, chsMappings, fastProductionDetails]);
 
-  const checkTrackerReady = (tracker: { Carcas: boolean; Shutter: boolean; Handles: boolean } | undefined) => {
+  const checkTrackerReady = (
+    tracker:
+      | { Carcas: boolean; Shutter: boolean; Handles: boolean }
+      | undefined,
+  ) => {
     if (!tracker) return false;
     if (isFastProduction) {
       return Boolean(tracker.Carcas);
@@ -1307,7 +1351,8 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
             ? selectionsByInstance.get(activeInstance.id)
             : undefined;
           return Boolean(
-            checkTrackerReady(firstInstanceBucket) || checkTrackerReady(nullBucket),
+            checkTrackerReady(firstInstanceBucket) ||
+            checkTrackerReady(nullBucket),
           );
         })();
 
@@ -1321,6 +1366,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     !shouldDisableBlockedActions;
 
   const isSingleInstance = structureInstances.length === 1;
+  const isSingleDisplayGroup = displayGroups.length === 1;
 
   const handleOpenUploadModal = (instance: LeadProductStructureInstance) => {
     setActiveInstance(instance);
@@ -1527,6 +1573,8 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
   const renderInstanceEditorContent = (instance_id: number | null) => {
     if (instance_id === null && structureInstances.length > 0) return null;
 
+    console.log("instance _id: ", instance_id);
+
     return (
       <div className="flex-1 space-y-6 py-4 px-5">
         {handlesLargeScaleProjects && (
@@ -1592,7 +1640,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
               <h4 className="text-sm font-semibold">Design Selections</h4>
               {!effectiveCanEditSelections && (
                 <Badge variant="secondary">
-                  {shouldDisableBlockedActions ? "Lead is blocked" : "Read only"}
+                  {shouldDisableBlockedActions
+                    ? "Lead is blocked"
+                    : "Read only"}
                 </Badge>
               )}
               {(() => {
@@ -1696,7 +1746,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                       <FormField
                         control={selectionForm.control}
                         name="carcas_remark"
-                        render={({ field: remarkField, fieldState: remarkState }) => (
+                        render={({
+                          field: remarkField,
+                          fieldState: remarkState,
+                        }) => (
                           <FormItem className="">
                             <FormControl>
                               <TextAreaInput
@@ -1742,7 +1795,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                       <FormField
                         control={selectionForm.control}
                         name="handles_remark"
-                        render={({ field: remarkField, fieldState: remarkState }) => (
+                        render={({
+                          field: remarkField,
+                          fieldState: remarkState,
+                        }) => (
                           <FormItem>
                             <FormControl>
                               <TextAreaInput
@@ -1770,7 +1826,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                   name="shutter"
                   render={({ field, fieldState }) => (
                     <FormItem className="space-y-2 md:col-span-2">
-                      <FormLabel className="font-medium">Shutter {!(isFastProduction || isSmallOrder) && " *"}</FormLabel>
+                      <FormLabel className="font-medium">
+                        Shutter {!(isFastProduction || isSmallOrder) && " *"}
+                      </FormLabel>
                       <FormControl>
                         <ClientDocsSelectionMultiSelect
                           value={field.value || []}
@@ -1788,7 +1846,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                       <FormField
                         control={selectionForm.control}
                         name="shutter_remark"
-                        render={({ field: remarkField, fieldState: remarkState }) => (
+                        render={({
+                          field: remarkField,
+                          fieldState: remarkState,
+                        }) => (
                           <FormItem>
                             <FormControl>
                               <TextAreaInput
@@ -2158,9 +2219,14 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         </div>
       )}
 
-      {canViewSelectionInstances && isSingleInstance && activeInstance && (
+      {canViewSelectionInstances &&
+        ((handlesLargeScaleProjects && isSingleDisplayGroup) ||
+          (!handlesLargeScaleProjects && isSingleInstance)) &&
+        activeInstance && (
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold">{activeInstance.title}</h3>
+          <h3 className="text-sm font-semibold">
+            {activeDisplayGroup?.title || activeInstance.title}
+          </h3>
           <div className="rounded-2xl border bg-white dark:bg-neutral-900">
             {renderInstanceEditorContent(activeInstance.id)}
           </div>

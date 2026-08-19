@@ -18,6 +18,7 @@ export interface VendorListItem {
   is_inventory_enabled: boolean | null;
   is_tracktrace_enabled: boolean | null;
   is_scanpack_enabled: boolean | null;
+  push_lead_to_cadbid: boolean | null;
   is_this_vendor_is_custom_usertype_only: boolean | null;
   createdAt: string | null;
   updatedAt: string | null;
@@ -78,6 +79,7 @@ export interface OnboardVendorPayload {
   is_crm_enabled?: boolean;
   is_inventory_enabled: boolean;
   is_tracktrace_enabled: boolean;
+  push_lead_to_cadbid?: boolean;
   gst_no?: string | null;
   toll_free_no?: string | null;
   website_link?: string | null;
@@ -105,6 +107,7 @@ export interface UpdateVendorPayload {
   is_crm_enabled: boolean;
   is_inventory_enabled: boolean;
   is_tracktrace_enabled: boolean;
+  push_lead_to_cadbid?: boolean;
   gst_no?: string | null;
   toll_free_no?: string | null;
   website_link?: string | null;

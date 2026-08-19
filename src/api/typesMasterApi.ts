@@ -362,6 +362,30 @@ export interface CreateShutterTypePayload {
   name: string;
 }
 
+export interface CreateHandleTypePayload {
+  vendor_id: number;
+  name: string;
+}
+
+export interface CreateShutterSubTypePayload {
+  shutter_type_id: number;
+  name: string;
+}
+
+export interface CreateTimelineRulePayload {
+  vendor_id: number;
+  carcass_id: number;
+  shutter_id: number | null;
+  kitchen_manufacturing_days: number;
+  other_manufacturing_days: number;
+  kitchen_manufacturing_days_for_fast_production?: number | null;
+  other_manufacturing_days_for_fast_production?: number | null;
+}
+
+export interface UpdateTimelineRulePayload extends CreateTimelineRulePayload {
+  id: number;
+}
+
 export interface CreateShutterMaterialPayload {
   vendor_id: number;
   name: string;
@@ -705,6 +729,29 @@ export const uploadCarcassMaterialFinishes = async (formData: FormData) => {
 
 export const createShutterType = async (payload: CreateShutterTypePayload) => {
   const res = await apiClient.post("/leads/create-shutter-type", payload);
+  return res.data;
+}
+
+export const createShutterSubType = async (
+  payload: CreateShutterSubTypePayload,
+) => {
+  const res = await apiClient.post("/leads/create-shutter-sub-type", payload);
+  return res.data;
+}
+
+export const createHandleType = async (payload: CreateHandleTypePayload) => {
+  const res = await apiClient.post("/leads/create-handle-type", payload);
+  return res.data;
+}
+
+export const createTimelineRule = async (payload: CreateTimelineRulePayload) => {
+  const res = await apiClient.post("/leads/create-timeline-rule", payload);
+  return res.data;
+}
+
+export const updateTimelineRule = async (payload: UpdateTimelineRulePayload) => {
+  const { id, ...body } = payload;
+  const res = await apiClient.patch(`/leads/update-timeline-rule/${id}`, body);
   return res.data;
 }
 

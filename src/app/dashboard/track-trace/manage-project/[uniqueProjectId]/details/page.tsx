@@ -1,7 +1,21 @@
 "use client";
 
 import { toastManager } from "@/components/ui/toast";
-import { getBoxItems, getProjectDetail, ProjectDetailData, downloadBoxPdf, downloadProjectFullReport } from "@/api/track-trace/track-trace-cutlist.api";
+import {
+  getBoxItems,
+  getProjectDetail,
+  getProjectCutListPaginated,
+  ProjectDetailData,
+  ProjectCutListItem,
+  ProjectCutListResponse,
+  ProjectCutListMachineStatus,
+  ProjectCutListPackingStatus,
+  ProjectCutListPackingMethod,
+  ProjectCutListSortBy,
+  ProjectCutListSortOrder,
+  downloadBoxPdf,
+  downloadProjectFullReport,
+} from "@/api/track-trace/track-trace-cutlist.api";
 import {
   Breadcrumb, BreadcrumbItem, BreadcrumbLink,
   BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
@@ -64,6 +78,32 @@ const formatWeight = (value: unknown) => {
   }
 
   return `${weight.toFixed(2)} kg`;
+};
+
+// ─── Received Quantity Stats ──────────────────────────────────────────────────
+
+type ReceivedQuantityStats = {
+  total_received_qty: number;
+  total_pending_receipt_qty: number;
+  item_receipt_progress_pct: number;
+
+  scanned_received_qty: number;
+  scanned_pending_receipt_qty: number;
+  scanned_receipt_progress_pct: number;
+
+  manual_received_qty: number;
+  manual_pending_receipt_qty: number;
+  manual_receipt_progress_pct: number;
+
+  site_in_qty: number;
+  site_in_received_qty: number;
+  site_in_pending_verification_qty: number;
+  site_item_verification_pct: number;
+  not_at_site_qty: number;
+
+  fully_received_boxes: number;
+  partially_received_boxes: number;
+  not_received_boxes: number;
 };
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
@@ -221,7 +261,7 @@ function BoxCard({
             {itemCount} item{itemCount === 1 ? "" : "s"}
           </span>
 
-          <span
+          {/* <span
             className={cn(
               "rounded-full px-2.5 py-1 text-xs font-bold",
               hasItems
@@ -230,7 +270,7 @@ function BoxCard({
             )}
           >
             {hasItems ? "With Items" : "Empty"}
-          </span>
+          </span> */}
         </div>
 
         <div className="flex items-center gap-2 md:justify-center">
@@ -889,6 +929,7 @@ function BoxItemsDialog({
                   <TableHead className="text-xs font-black uppercase">Item</TableHead>
                   <TableHead className="text-xs font-black uppercase">Code</TableHead>
                   <TableHead className="text-xs font-black uppercase">Size (L×W×T)</TableHead>
+                  <TableHead className="text-xs font-black uppercase">Qty</TableHead>
                   <TableHead className="text-xs font-black uppercase">Weight</TableHead>
                   <TableHead className="text-xs font-black uppercase">Category</TableHead>
                   <TableHead className="text-xs font-black uppercase">Machine</TableHead>
@@ -906,8 +947,21 @@ function BoxItemsDialog({
                     <TableCell className="text-xs text-muted-foreground">
                       {item.cut_list.length}×{item.cut_list.width}×{item.cut_list.thickness}
                     </TableCell>
+                    <TableCell className="text-xs font-bold">
+                      {Number((item as any).qty || 1)}
+                    </TableCell>
                     <TableCell className="text-xs font-black text-purple-700">
-                      {formatWeight((item as any).weight || (item.cut_list as any).weight)}
+                      {formatWeight(
+                        Number(
+                          (item as any).weight ||
+                          (
+                            Number((item.cut_list as any).weight || 0) /
+                            Math.max(1, Number(item.cut_list.qty || 1))
+                          ) ||
+                          0
+                        ) *
+                        Number((item as any).qty || 1)
+                      )}
                     </TableCell>
                     <TableCell className="text-xs">{item.cut_list.category_name}</TableCell>
                     <TableCell className="text-xs">{item.machine.machine_name}</TableCell>
@@ -942,122 +996,636 @@ function BoxItemsDialog({
   );
 }
 
-// ─── Cut List Table ───────────────────────────────────────────────────────────
+// ─── Cut List Table - SERVER PAGINATION ─────────────────────────────────────
 
-function CutListSection({ cutlist, machineIds }: {
-  cutlist: ProjectDetailData["cutlist"];
-  machineIds: { id: number; name: string; sequence_no?: number }[];
+function CutListSection({
+  vendorId,
+  projectId,
+  machineIds,
+}: {
+  vendorId: number;
+  projectId: string;
+  machineIds: {
+    id: number;
+    name: string;
+    sequence_no?: number;
+  }[];
 }) {
-  const [search, setSearch] = useState("");
-  const [productGroup, setProductGroup] = useState("all");
-  const [selectedMachineId, setSelectedMachineId] = useState("all");
-  const [machineStatus, setMachineStatus] = useState<"both" | "done" | "pending">("both");
-  const [collapsed, setCollapsed] = useState(false);
+  /*
+  |--------------------------------------------------------------------------
+  | Filter state
+  |--------------------------------------------------------------------------
+  */
 
-  const sortedMachineIds = useMemo(() => {
-    return [...machineIds].sort((a, b) => {
-      return Number(a.sequence_no || 0) - Number(b.sequence_no || 0);
-    });
-  }, [machineIds]);
+  const [search, setSearch] =
+    useState("");
 
-  const getProductGroup = (item: any) => {
-    return (
-      item.group ||
-      item.group_name ||
-      item.groupName ||
-      item.product_group ||
-      item.productGroup ||
-      "Ungrouped"
+  const [
+    debouncedSearch,
+    setDebouncedSearch,
+  ] =
+    useState("");
+
+  const [
+    productGroup,
+    setProductGroup,
+  ] =
+    useState("all");
+
+  const [
+    category,
+    setCategory,
+  ] =
+    useState("all");
+
+  const [
+    selectedMachineId,
+    setSelectedMachineId,
+  ] =
+    useState("all");
+
+  const [
+    machineStatus,
+    setMachineStatus,
+  ] =
+    useState<ProjectCutListMachineStatus>(
+      "all"
     );
-  };
 
-  const productGroups = Array.from(
-    new Set(cutlist.map((item: any) => getProductGroup(item)).filter(Boolean))
-  ).sort();
+  const [
+    packingStatus,
+    setPackingStatus,
+  ] =
+    useState<ProjectCutListPackingStatus>(
+      "all"
+    );
 
-  const totalWeight = cutlist.reduce((sum: number, item: any) => {
-    return sum + Number(item.weight || 0);
-  }, 0);
+  const [
+    packingMethod,
+    setPackingMethod,
+  ] =
+    useState<ProjectCutListPackingMethod>(
+      "all"
+    );
 
-  const filtered = cutlist.filter((item: any) => {
-    const searchText = search.trim().toLowerCase();
-    const itemName = String(item.item_name || "").toLowerCase();
-    const uniqueCode = String(item.unique_code || "").toLowerCase();
-    const category = String(item.category || "").toLowerCase();
-    const group = String(getProductGroup(item) || "").toLowerCase();
-    const packageBoxName = String(item.package_box_name || "").toLowerCase();
-    const weight = String(item.weight || "").toLowerCase();
+  const [
+    selectedBoxId,
+    setSelectedBoxId,
+  ] =
+    useState("all");
 
-    const matchesSearch =
-      !searchText ||
-      itemName.includes(searchText) ||
-      uniqueCode.includes(searchText) ||
-      category.includes(searchText) ||
-      group.includes(searchText) ||
-      packageBoxName.includes(searchText) ||
-      weight.includes(searchText);
+  const [
+    minWeight,
+    setMinWeight,
+  ] =
+    useState("");
 
-    const matchesProductGroup =
-      productGroup === "all" || getProductGroup(item) === productGroup;
+  const [
+    maxWeight,
+    setMaxWeight,
+  ] =
+    useState("");
 
-    let matchesMachine = true;
+  const [
+    sortBy,
+    setSortBy,
+  ] =
+    useState<ProjectCutListSortBy>(
+      "row_number"
+    );
 
-    if (selectedMachineId !== "all") {
-      const machineId = Number(selectedMachineId);
-      const mapping = item.machines.find(
-        (machineMapping: any) => Number(machineMapping.machine_id) === machineId
+  const [
+    sortOrder,
+    setSortOrder,
+  ] =
+    useState<ProjectCutListSortOrder>(
+      "asc"
+    );
+
+  /*
+  |--------------------------------------------------------------------------
+  | Pagination state
+  |--------------------------------------------------------------------------
+  */
+
+  const [page, setPage] =
+    useState(1);
+
+  const [pageSize, setPageSize] =
+    useState(25);
+
+  /*
+  |--------------------------------------------------------------------------
+  | UI state
+  |--------------------------------------------------------------------------
+  */
+
+  const [
+    collapsed,
+    setCollapsed,
+  ] =
+    useState(false);
+
+  const [
+    loading,
+    setLoading,
+  ] =
+    useState(false);
+
+  const [
+    error,
+    setError,
+  ] =
+    useState(false);
+
+  const [
+    reloadKey,
+    setReloadKey,
+  ] =
+    useState(0);
+
+  const [
+    cutListData,
+    setCutListData,
+  ] =
+    useState<ProjectCutListResponse | null>(
+      null
+    );
+
+  /*
+  |--------------------------------------------------------------------------
+  | Debounce search
+  |--------------------------------------------------------------------------
+  */
+
+  useEffect(() => {
+    const timer =
+      window.setTimeout(
+        () => {
+          setDebouncedSearch(
+            search.trim()
+          );
+        },
+        350
       );
 
-      if (!mapping) {
-        matchesMachine = false;
-      } else if (machineStatus === "done") {
-        matchesMachine = mapping.scanned === true;
-      } else if (machineStatus === "pending") {
-        matchesMachine = mapping.scanned !== true;
-      } else {
-        matchesMachine = true;
-      }
+    return () =>
+      window.clearTimeout(
+        timer
+      );
+  }, [search]);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Reset page when a server-side filter changes
+  |--------------------------------------------------------------------------
+  */
+
+  useEffect(() => {
+    setPage(1);
+  }, [
+    debouncedSearch,
+    productGroup,
+    category,
+    selectedMachineId,
+    machineStatus,
+    packingStatus,
+    packingMethod,
+    selectedBoxId,
+    minWeight,
+    maxWeight,
+    sortBy,
+    sortOrder,
+    pageSize,
+  ]);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Server request
+  |--------------------------------------------------------------------------
+  */
+
+  useEffect(() => {
+    if (
+      !vendorId ||
+      !projectId
+    ) {
+      return;
     }
 
-    return matchesSearch && matchesProductGroup && matchesMachine;
-  });
+    let active = true;
 
-  const resetFilters = () => {
-    setSearch("");
-    setProductGroup("all");
-    setSelectedMachineId("all");
-    setMachineStatus("both");
-  };
+    const fetchCutList =
+      async () => {
+        try {
+          setLoading(true);
+          setError(false);
+
+          const response =
+            await getProjectCutListPaginated(
+              vendorId,
+              projectId,
+              {
+                page,
+                limit:
+                  pageSize,
+
+                search:
+                  debouncedSearch,
+
+                group:
+                  productGroup,
+
+                category,
+
+                machine_id:
+                  selectedMachineId ===
+                  "all"
+                    ? null
+                    : Number(
+                        selectedMachineId
+                      ),
+
+                machine_status:
+                  machineStatus,
+
+                packing_status:
+                  packingStatus,
+
+                packing_method:
+                  packingMethod,
+
+                box_id:
+                  selectedBoxId ===
+                  "all"
+                    ? null
+                    : Number(
+                        selectedBoxId
+                      ),
+
+                min_weight:
+                  minWeight.trim() ===
+                  ""
+                    ? null
+                    : Number(
+                        minWeight
+                      ),
+
+                max_weight:
+                  maxWeight.trim() ===
+                  ""
+                    ? null
+                    : Number(
+                        maxWeight
+                      ),
+
+                sort_by:
+                  sortBy,
+
+                sort_order:
+                  sortOrder,
+              }
+            );
+
+          if (!active) {
+            return;
+          }
+
+          setCutListData(
+            response
+          );
+
+          /*
+          |--------------------------------------------------------------------------
+          | Service protects out-of-range pages.
+          |--------------------------------------------------------------------------
+          */
+
+          if (
+            response.pagination
+              .page !== page
+          ) {
+            setPage(
+              response.pagination
+                .page
+            );
+          }
+        } catch (requestError) {
+          console.error(
+            "Failed to fetch project cut list:",
+            requestError
+          );
+
+          if (active) {
+            setError(true);
+          }
+        } finally {
+          if (active) {
+            setLoading(false);
+          }
+        }
+      };
+
+    fetchCutList();
+
+    return () => {
+      active = false;
+    };
+  }, [
+    vendorId,
+    projectId,
+    page,
+    pageSize,
+    debouncedSearch,
+    productGroup,
+    category,
+    selectedMachineId,
+    machineStatus,
+    packingStatus,
+    packingMethod,
+    selectedBoxId,
+    minWeight,
+    maxWeight,
+    sortBy,
+    sortOrder,
+    reloadKey,
+  ]);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Machines displayed as columns
+  |--------------------------------------------------------------------------
+  */
+
+  const sortedMachineIds =
+    useMemo(() => {
+      const fromProject =
+        [...machineIds];
+
+      /*
+      |--------------------------------------------------------------------------
+      | The paginated endpoint can include machine-18 even when it has no DB
+      | mapping yet for manual items. Merge it into the table columns.
+      |--------------------------------------------------------------------------
+      */
+
+      const optionMachines =
+        cutListData
+          ?.filter_options
+          .machines ??
+        [];
+
+      for (
+        const machine
+        of optionMachines
+      ) {
+        if (
+          !fromProject.some(
+            (existing) =>
+              Number(
+                existing.id
+              ) ===
+              Number(
+                machine.id
+              )
+          )
+        ) {
+          fromProject.push({
+            id:
+              machine.id,
+
+            name:
+              machine.name,
+
+            sequence_no:
+              machine.sequence_no,
+          });
+        }
+      }
+
+      return fromProject.sort(
+        (a, b) =>
+          Number(
+            a.sequence_no || 0
+          ) -
+            Number(
+              b.sequence_no || 0
+            ) ||
+          Number(a.id) -
+            Number(b.id)
+      );
+    }, [
+      machineIds,
+      cutListData?.filter_options
+        .machines,
+    ]);
+
+  const items =
+    cutListData?.items ?? [];
+
+  const pagination =
+    cutListData?.pagination;
+
+  const summary =
+    cutListData?.summary;
+
+  const filterOptions =
+    cutListData?.filter_options;
+
+  /*
+  |--------------------------------------------------------------------------
+  | Reset
+  |--------------------------------------------------------------------------
+  */
+
+  const resetFilters =
+    () => {
+      setSearch("");
+      setDebouncedSearch("");
+
+      setProductGroup(
+        "all"
+      );
+
+      setCategory(
+        "all"
+      );
+
+      setSelectedMachineId(
+        "all"
+      );
+
+      setMachineStatus(
+        "all"
+      );
+
+      setPackingStatus(
+        "all"
+      );
+
+      setPackingMethod(
+        "all"
+      );
+
+      setSelectedBoxId(
+        "all"
+      );
+
+      setMinWeight("");
+      setMaxWeight("");
+
+      setSortBy(
+        "row_number"
+      );
+
+      setSortOrder(
+        "asc"
+      );
+
+      setPage(1);
+    };
+
+  /*
+  |--------------------------------------------------------------------------
+  | Compact page numbers
+  |--------------------------------------------------------------------------
+  */
+
+  const pageNumbers =
+    useMemo(() => {
+      const totalPages =
+        pagination
+          ?.total_pages ??
+        0;
+
+      const currentPage =
+        pagination?.page ??
+        page;
+
+      if (
+        totalPages <= 0
+      ) {
+        return [];
+      }
+
+      const values =
+        new Set<number>();
+
+      values.add(1);
+      values.add(
+        totalPages
+      );
+
+      for (
+        let current =
+          currentPage - 2;
+        current <=
+        currentPage + 2;
+        current++
+      ) {
+        if (
+          current >= 1 &&
+          current <=
+            totalPages
+        ) {
+          values.add(
+            current
+          );
+        }
+      }
+
+      return Array.from(
+        values
+      ).sort(
+        (a, b) =>
+          a - b
+      );
+    }, [
+      pagination?.page,
+      pagination?.total_pages,
+      page,
+    ]);
 
   return (
     <div className="overflow-hidden rounded-xl border shadow-sm">
+
+      {/* Header */}
       <div className="border-b bg-muted/40 px-4 py-3">
+
         <div className="flex flex-wrap items-center justify-between gap-3">
+
           <button
             type="button"
-            onClick={() => setCollapsed((value) => !value)}
+            onClick={() =>
+              setCollapsed(
+                (value) =>
+                  !value
+              )
+            }
             className="flex items-center gap-2 text-left"
           >
-            <Layers size={15} className="text-indigo-500" />
+            <Layers
+              size={15}
+              className="text-indigo-500"
+            />
+
             <span className="font-bold text-sm text-foreground">
-              Cut List ({filtered.length}/{cutlist.length} items)
+              Cut List (
+              {summary?.filtered_qty ?? 0}
+              /
+              {summary?.total_project_qty ?? 0}
+              {" "}items)
             </span>
+
             <span className="rounded-full bg-purple-50 px-2 py-0.5 text-[11px] font-black text-purple-700">
-              {formatWeight(totalWeight)}
+              {formatWeight(
+                summary?.filtered_weight ??
+                0
+              )}
             </span>
-            {collapsed ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
+
+            {collapsed
+              ? (
+                  <ChevronDown
+                    size={15}
+                  />
+                )
+              : (
+                  <ChevronUp
+                    size={15}
+                  />
+                )}
           </button>
 
           <div className="flex items-center gap-2">
+
             <Button
               type="button"
               size="sm"
               variant="ghost"
-              onClick={() => setCollapsed((value) => !value)}
+              onClick={() =>
+                setCollapsed(
+                  (value) =>
+                    !value
+                )
+              }
               className="h-8 gap-1 text-xs"
             >
-              {collapsed ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
-              {collapsed ? "Expand" : "Collapse"}
+              {collapsed
+                ? (
+                    <ChevronDown
+                      size={13}
+                    />
+                  )
+                : (
+                    <ChevronUp
+                      size={13}
+                    />
+                  )}
+
+              {collapsed
+                ? "Expand"
+                : "Collapse"}
             </Button>
 
             {!collapsed && (
@@ -1065,7 +1633,9 @@ function CutListSection({ cutlist, machineIds }: {
                 type="button"
                 size="sm"
                 variant="ghost"
-                onClick={resetFilters}
+                onClick={
+                  resetFilters
+                }
                 className="h-8 gap-1 text-xs"
               >
                 <X size={13} />
@@ -1076,161 +1646,1141 @@ function CutListSection({ cutlist, machineIds }: {
         </div>
 
         {!collapsed && (
-          <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-4">
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                Search
-              </label>
-              <input
-                className="h-9 w-full rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                placeholder="Search items, code, product, box, weight…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
+          <>
+            {/* Main filters */}
+            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                Product / Group
-              </label>
-              <select
-                value={productGroup}
-                onChange={(e) => setProductGroup(e.target.value)}
-                className="h-9 w-full rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
-              >
-                <option value="all">All Products / Groups</option>
-                {productGroups.map((group) => (
-                  <option key={group} value={group}>
-                    {group}
+              {/* Search */}
+              <div className="space-y-1 xl:col-span-2">
+                <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                  Search
+                </label>
+
+                <div className="relative">
+                  <Search
+                    size={14}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  />
+
+                  <input
+                    value={search}
+                    onChange={(event) =>
+                      setSearch(
+                        event.target.value
+                      )
+                    }
+                    placeholder="Item, code, description, category, group, material, procurement, box..."
+                    className="h-9 w-full rounded-lg border bg-background pl-9 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  />
+
+                  {search && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSearch("")
+                      }
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Group */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                  Product / Group
+                </label>
+
+                <select
+                  value={
+                    productGroup
+                  }
+                  onChange={(event) =>
+                    setProductGroup(
+                      event.target.value
+                    )
+                  }
+                  className="h-9 w-full rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                >
+                  <option value="all">
+                    All Groups
                   </option>
-                ))}
-              </select>
-            </div>
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                Machine
-              </label>
-              <select
-                value={selectedMachineId}
-                onChange={(e) => setSelectedMachineId(e.target.value)}
-                className="h-9 w-full rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
-              >
-                <option value="all">All Machines</option>
-                {sortedMachineIds.map((machine) => (
-                  <option key={machine.id} value={machine.id}>
-                    {machine.name}
+                  {(filterOptions
+                    ?.groups ??
+                    []
+                  ).map(
+                    (group) => (
+                      <option
+                        key={
+                          group
+                        }
+                        value={
+                          group
+                        }
+                      >
+                        {group}
+                      </option>
+                    )
+                  )}
+                </select>
+              </div>
+
+              {/* Category */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                  Category
+                </label>
+
+                <select
+                  value={
+                    category
+                  }
+                  onChange={(event) =>
+                    setCategory(
+                      event.target.value
+                    )
+                  }
+                  className="h-9 w-full rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                >
+                  <option value="all">
+                    All Categories
                   </option>
-                ))}
-              </select>
+
+                  {(filterOptions
+                    ?.categories ??
+                    []
+                  ).map(
+                    (
+                      categoryName
+                    ) => (
+                      <option
+                        key={
+                          categoryName
+                        }
+                        value={
+                          categoryName
+                        }
+                      >
+                        {
+                          categoryName
+                        }
+                      </option>
+                    )
+                  )}
+                </select>
+              </div>
+
+              {/* Machine */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                  Machine
+                </label>
+
+                <select
+                  value={
+                    selectedMachineId
+                  }
+                  onChange={(event) => {
+                    setSelectedMachineId(
+                      event.target.value
+                    );
+
+                    if (
+                      event.target
+                        .value ===
+                      "all"
+                    ) {
+                      setMachineStatus(
+                        "all"
+                      );
+                    }
+                  }}
+                  className="h-9 w-full rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                >
+                  <option value="all">
+                    All Machines
+                  </option>
+
+                  {(filterOptions
+                    ?.machines ??
+                    sortedMachineIds.map(
+                      (
+                        machine
+                      ) => ({
+                        id:
+                          machine.id,
+
+                        name:
+                          machine.name,
+
+                        sequence_no:
+                          machine.sequence_no ??
+                          0,
+                      })
+                    )
+                  ).map(
+                    (machine) => (
+                      <option
+                        key={
+                          machine.id
+                        }
+                        value={
+                          machine.id
+                        }
+                      >
+                        {
+                          machine.name
+                        }
+                      </option>
+                    )
+                  )}
+                </select>
+              </div>
+
+              {/* Machine Status */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                  Machine Status
+                </label>
+
+                <select
+                  value={
+                    machineStatus
+                  }
+                  onChange={(event) =>
+                    setMachineStatus(
+                      event.target
+                        .value as ProjectCutListMachineStatus
+                    )
+                  }
+                  disabled={
+                    selectedMachineId ===
+                    "all"
+                  }
+                  className="h-9 w-full rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <option value="all">
+                    Both
+                  </option>
+                  <option value="done">
+                    Done
+                  </option>
+                  <option value="pending">
+                    Pending
+                  </option>
+                </select>
+              </div>
+
+              {/* Packing Status */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                  Packing Status
+                </label>
+
+                <select
+                  value={
+                    packingStatus
+                  }
+                  onChange={(event) =>
+                    setPackingStatus(
+                      event.target
+                        .value as ProjectCutListPackingStatus
+                    )
+                  }
+                  className="h-9 w-full rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                >
+                  <option value="all">
+                    All
+                  </option>
+                  <option value="packed">
+                    Packed
+                  </option>
+                  <option value="pending">
+                    Pending
+                  </option>
+                </select>
+              </div>
+
+              {/* Packing Method */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                  Packing Method
+                </label>
+
+                <select
+                  value={
+                    packingMethod
+                  }
+                  onChange={(event) =>
+                    setPackingMethod(
+                      event.target
+                        .value as ProjectCutListPackingMethod
+                    )
+                  }
+                  className="h-9 w-full rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                >
+                  <option value="all">
+                    All
+                  </option>
+                  <option value="scanned">
+                    Scanned
+                  </option>
+                  <option value="manual">
+                    Manual
+                  </option>
+                </select>
+              </div>
+
+              {/* Box */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                  Packing Box
+                </label>
+
+                <select
+                  value={
+                    selectedBoxId
+                  }
+                  onChange={(event) =>
+                    setSelectedBoxId(
+                      event.target.value
+                    )
+                  }
+                  className="h-9 w-full rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                >
+                  <option value="all">
+                    All Boxes
+                  </option>
+
+                  {(filterOptions
+                    ?.boxes ??
+                    []
+                  ).map(
+                    (box) => (
+                      <option
+                        key={
+                          box.id
+                        }
+                        value={
+                          box.id
+                        }
+                      >
+                        Box{" "}
+                        {box.name}
+                      </option>
+                    )
+                  )}
+                </select>
+              </div>
+
+              {/* Minimum Weight */}
+              {/* <div className="space-y-1">
+                <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                  Min Weight
+                </label>
+
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={
+                    minWeight
+                  }
+                  onChange={(event) =>
+                    setMinWeight(
+                      event.target.value
+                    )
+                  }
+                  placeholder="0.00 kg"
+                  className="h-9 w-full rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                />
+              </div> */}
+
+              {/* Maximum Weight */}
+              {/* <div className="space-y-1">
+                <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                  Max Weight
+                </label>
+
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={
+                    maxWeight
+                  }
+                  onChange={(event) =>
+                    setMaxWeight(
+                      event.target.value
+                    )
+                  }
+                  placeholder="No maximum"
+                  className="h-9 w-full rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                />
+              </div> */}
+
+              {/* Sort */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                  Sort By
+                </label>
+
+                <div className="flex gap-2">
+                  <select
+                    value={
+                      sortBy
+                    }
+                    onChange={(event) =>
+                      setSortBy(
+                        event.target
+                          .value as ProjectCutListSortBy
+                      )
+                    }
+                    className="h-9 min-w-0 flex-1 rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  >
+                    <option value="row_number">
+                      Default
+                    </option>
+                    <option value="item_name">
+                      Item Name
+                    </option>
+                    <option value="unique_code">
+                      Code
+                    </option>
+                    <option value="group">
+                      Group
+                    </option>
+                    <option value="category">
+                      Category
+                    </option>
+                    <option value="weight">
+                      Weight
+                    </option>
+                    <option value="box">
+                      Box
+                    </option>
+                  </select>
+
+                  <select
+                    value={
+                      sortOrder
+                    }
+                    onChange={(event) =>
+                      setSortOrder(
+                        event.target
+                          .value as ProjectCutListSortOrder
+                      )
+                    }
+                    className="h-9 w-24 rounded-lg border bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  >
+                    <option value="asc">
+                      Asc
+                    </option>
+                    <option value="desc">
+                      Desc
+                    </option>
+                  </select>
+                </div>
+              </div>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                Status
-              </label>
-              <select
-                value={machineStatus}
-                onChange={(e) => setMachineStatus(e.target.value as "both" | "done" | "pending")}
-                disabled={selectedMachineId === "all"}
-                className="h-9 w-full rounded-lg border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <option value="both">Both</option>
-                <option value="done">Done</option>
-                <option value="pending">Pending</option>
-              </select>
+            {/* Summary row */}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-bold text-indigo-700">
+                Matching:{" "}
+                {summary?.filtered_qty ??
+                  0}
+              </span>
+
+              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+                Packed:{" "}
+                {summary?.packed_qty ??
+                  0}
+              </span>
+
+              <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700">
+                Pending:{" "}
+                {summary?.pending_qty ??
+                  0}
+              </span>
+
+              <span className="rounded-full bg-purple-50 px-2.5 py-1 text-[11px] font-bold text-purple-700">
+                Weight:{" "}
+                {formatWeight(
+                  summary?.filtered_weight ??
+                  0
+                )}
+              </span>
+
+              {/* Received Qty */}
+              <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700">
+                Received:{" "}
+                {summary?.received_qty ??
+                  0}
+              </span>
+
+              {/* Packed but not yet received */}
+              <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[11px] font-bold text-orange-700">
+                Pending Receipt:{" "}
+                {summary?.pending_receipt_qty ??
+                  0}
+              </span>
+
+              {/* Qty inside site-in boxes but not yet verified */}
+              <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] font-bold text-cyan-700">
+                Pending Verification:{" "}
+                {summary?.pending_verification_qty ??
+                  0}
+              </span>
+
+              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+                Site Verification:{" "}
+                {summary?.site_verification_pct ??
+                  0}
+                %
+              </span>
             </div>
-          </div>
+          </>
         )}
       </div>
 
       {!collapsed && (
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50 hover:bg-muted/50">
-                <TableHead className="text-xs font-black uppercase w-8">#</TableHead>
-                <TableHead className="text-xs font-black uppercase">Item</TableHead>
-                <TableHead className="text-xs font-black uppercase">Product</TableHead>
-                <TableHead className="text-xs font-black uppercase">Code</TableHead>
-                <TableHead className="text-xs font-black uppercase">Size (mm)</TableHead>
-                <TableHead className="text-xs font-black uppercase">Weight</TableHead>
-                <TableHead className="text-xs font-black uppercase">Packing Box</TableHead>
-                <TableHead className="text-xs font-black uppercase">Qty</TableHead>
-                <TableHead className="text-xs font-black uppercase">Category</TableHead>
-                {sortedMachineIds.map(m => (
-                  <TableHead key={m.id} className="text-xs font-black uppercase text-center min-w-36">{m.name}</TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={9 + sortedMachineIds.length} className="text-center py-10 text-muted-foreground text-sm">
-                    No items found
-                  </TableCell>
-                </TableRow>
-              ) : filtered.map((item: any, idx) => (
-                <TableRow key={`${item.cut_list_id}-${item.unit_index}-${idx}`} className={cn("hover:bg-primary/5", idx % 2 === 0 ? "bg-background" : "bg-muted/20")}>
-                  <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
-                  <TableCell className="font-semibold text-sm">{item.item_name}</TableCell>
-                  <TableCell className="font-semibold text-sm">{getProductGroup(item)}</TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">{item.unique_code}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {item.length}×{item.width}×{item.thickness}
-                  </TableCell>
-                  <TableCell className="text-xs font-black text-purple-700">
-                    {formatWeight(item.weight)}
-                  </TableCell>
-                  <TableCell className="text-xs">
-                    {item.package_box_name ? (
-                      <span className="inline-flex items-center rounded-full bg-indigo-50 px-2 py-1 text-[11px] font-black text-indigo-700">
-                        Box {item.package_box_name}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-xs font-bold">1</TableCell>
-                  <TableCell className="text-xs">{item.category}</TableCell>
-
-                  {sortedMachineIds.map(m => {
-                    const mapping = item.machines.find((mm: any) => Number(mm.machine_id) === Number(m.id));
-                    if (!mapping) {
-                      return <TableCell key={m.id} className="text-center text-xs text-muted-foreground">—</TableCell>;
+        <>
+          {/* Loading */}
+          {loading && (
+            <div className="space-y-2 p-4">
+              {Array.from({
+                length:
+                  Math.min(
+                    pageSize,
+                    8
+                  ),
+              }).map(
+                (_, index) => (
+                  <Skeleton
+                    key={
+                      index
                     }
-                    return (
-                      <TableCell key={m.id} className="text-center">
-                        {mapping.scanned ? (
-                          <div className="flex flex-col items-center gap-0.5">
-                            <span className="inline-flex items-center gap-1 text-emerald-700 font-semibold text-[10px]">
-                              <CheckCircle2 size={11} /> Done
-                            </span>
-                            {mapping.scanned_by && (
-                              <span className="text-[9px] text-muted-foreground flex items-center gap-0.5">
-                                <User size={8} />{mapping.scanned_by}
+                    className="h-10 w-full"
+                  />
+                )
+              )}
+            </div>
+          )}
+
+          {/* Error */}
+          {!loading &&
+            error && (
+              <div className="p-8 text-center">
+                <p className="text-sm font-bold text-destructive">
+                  Failed to load Cut List.
+                </p>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() =>
+                    setReloadKey(
+                      (value) =>
+                        value + 1
+                    )
+                  }
+                >
+                  Try Again
+                </Button>
+              </div>
+            )}
+
+          {/* Table */}
+          {!loading &&
+            !error && (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50 hover:bg-muted/50">
+
+                      <TableHead className="w-8 text-xs font-black uppercase">
+                        #
+                      </TableHead>
+
+                      <TableHead className="text-xs font-black uppercase">
+                        Item
+                      </TableHead>
+
+                      <TableHead className="text-xs font-black uppercase">
+                        Product
+                      </TableHead>
+
+                      <TableHead className="text-xs font-black uppercase">
+                        Code
+                      </TableHead>
+
+                      <TableHead className="text-xs font-black uppercase">
+                        Size (mm)
+                      </TableHead>
+
+                      <TableHead className="text-xs font-black uppercase">
+                        Weight
+                      </TableHead>
+
+                      <TableHead className="text-xs font-black uppercase">
+                        Packing
+                      </TableHead>
+
+                      <TableHead className="text-xs font-black uppercase">
+                        Packing Box
+                      </TableHead>
+
+                      <TableHead className="text-xs font-black uppercase">
+                        Qty
+                      </TableHead>
+
+                      <TableHead className="min-w-44 text-xs font-black uppercase">
+                        Received
+                      </TableHead>
+
+                      <TableHead className="text-xs font-black uppercase">
+                        Category
+                      </TableHead>
+
+                      {sortedMachineIds.map(
+                        (machine) => (
+                          <TableHead
+                            key={
+                              machine.id
+                            }
+                            className="min-w-36 text-center text-xs font-black uppercase"
+                          >
+                            {
+                              machine.name
+                            }
+                          </TableHead>
+                        )
+                      )}
+                    </TableRow>
+                  </TableHeader>
+
+                  <TableBody>
+                    {items.length ===
+                    0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={
+                            11 +
+                            sortedMachineIds.length
+                          }
+                          className="py-10 text-center text-sm text-muted-foreground"
+                        >
+                          No items found
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      items.map(
+                        (
+                          item:
+                            ProjectCutListItem,
+                          index
+                        ) => (
+                          <TableRow
+                            key={`${item.cut_list_id}-${item.unit_index}-${item.row_number}`}
+                            className={cn(
+                              "hover:bg-primary/5",
+
+                              index %
+                                2 ===
+                                0
+                                ? "bg-background"
+                                : "bg-muted/20"
+                            )}
+                          >
+                            <TableCell className="font-mono text-xs text-muted-foreground">
+                              {
+                                item.row_number
+                              }
+                            </TableCell>
+
+                            <TableCell className="text-sm font-semibold">
+                              {
+                                item.item_name
+                              }
+                            </TableCell>
+
+                            <TableCell className="text-sm font-semibold">
+                              {item.group ||
+                                "Ungrouped"}
+                            </TableCell>
+
+                            <TableCell className="font-mono text-xs text-muted-foreground">
+                              {item.unique_code ||
+                                "—"}
+                            </TableCell>
+
+                            <TableCell className="text-xs text-muted-foreground">
+                              {item.length ??
+                                "—"}
+                              ×
+                              {item.width ??
+                                "—"}
+                              ×
+                              {item.thickness ??
+                                "—"}
+                            </TableCell>
+
+                            <TableCell className="text-xs font-black text-purple-700">
+                              {formatWeight(
+                                item.weight
+                              )}
+                            </TableCell>
+
+                            <TableCell className="text-xs">
+                              <span
+                                className={cn(
+                                  "inline-flex rounded-full px-2 py-1 text-[10px] font-black",
+
+                                  item.packing_method ===
+                                    "Manual"
+                                    ? "bg-purple-50 text-purple-700"
+                                    : "bg-blue-50 text-blue-700"
+                                )}
+                              >
+                                {
+                                  item.packing_method
+                                }
+                              </span>
+                            </TableCell>
+
+                            <TableCell className="text-xs">
+                              {item.package_box_name
+                                ? (
+                                    <span className="inline-flex items-center rounded-full bg-indigo-50 px-2 py-1 text-[11px] font-black text-indigo-700">
+                                      Box{" "}
+                                      {
+                                        item.package_box_name
+                                      }
+                                    </span>
+                                  )
+                                : (
+                                    <span className="text-muted-foreground">
+                                      —
+                                    </span>
+                                  )}
+                            </TableCell>
+
+                            <TableCell className="text-xs font-bold">
+                              {
+                                item.qty
+                              }
+                            </TableCell>
+
+                            {/* Received Qty / Site Verification */}
+                            <TableCell className="text-xs">
+                              <div className="flex min-w-40 flex-col gap-1">
+
+                                {/* Receipt status */}
+                                <span
+                                  className={cn(
+                                    "inline-flex w-fit items-center gap-1 rounded-full px-2 py-1 text-[10px] font-black",
+
+                                    item.receipt_status ===
+                                      "Received"
+                                      ? "bg-emerald-50 text-emerald-700"
+                                      : item.receipt_status ===
+                                          "Pending Verification"
+                                        ? "bg-amber-50 text-amber-700"
+                                        : item.receipt_status ===
+                                            "Not At Site"
+                                          ? "bg-blue-50 text-blue-700"
+                                          : "bg-slate-100 text-slate-600"
+                                  )}
+                                >
+                                  {item.receipt_status ===
+                                    "Received" ? (
+                                    <CheckCircle2
+                                      size={11}
+                                    />
+                                  ) : item.receipt_status ===
+                                      "Pending Verification" ? (
+                                    <Clock
+                                      size={11}
+                                    />
+                                  ) : item.receipt_status ===
+                                      "Not At Site" ? (
+                                    <MapPin
+                                      size={11}
+                                    />
+                                  ) : (
+                                    <Package
+                                      size={11}
+                                    />
+                                  )}
+
+                                  {
+                                    item.receipt_status
+                                  }
+                                </span>
+
+                                {/* This Cut List row represents one physical unit */}
+                                <span className="text-[10px] font-semibold text-muted-foreground">
+                                  Received Qty{" "}
+                                  <span
+                                    className={cn(
+                                      "font-black",
+                                      Number(
+                                        item.received_qty ||
+                                          0
+                                      ) > 0
+                                        ? "text-emerald-700"
+                                        : "text-muted-foreground"
+                                    )}
+                                  >
+                                    {Number(
+                                      item.received_qty ||
+                                        0
+                                    )}
+                                  </span>
+                                  /1
+                                </span>
+
+                                {/* QR / Manual Verification */}
+                                <span
+                                  className={cn(
+                                    "text-[9px] font-bold",
+                                    item.receipt_method ===
+                                      "Manual Verification"
+                                      ? "text-indigo-600"
+                                      : "text-blue-600"
+                                  )}
+                                >
+                                  {
+                                    item.receipt_method
+                                  }
+                                </span>
+
+                                {/* Manual mapping can contain qty > 1 */}
+                                {item.packing_method ===
+                                  "Manual" &&
+                                  Number(
+                                    item.mapping_packed_qty ||
+                                      0
+                                  ) > 1 && (
+                                    <span className="text-[9px] font-semibold text-indigo-600">
+                                      Mapping{" "}
+                                      {Number(
+                                        item.mapping_received_qty ||
+                                          0
+                                      )}
+                                      /
+                                      {Number(
+                                        item.mapping_packed_qty ||
+                                          0
+                                      )}{" "}
+                                      received
+                                    </span>
+                                  )}
+
+                                {/* Received operator */}
+                                {item.received_by && (
+                                  <span className="inline-flex items-center gap-1 text-[9px] text-muted-foreground">
+                                    <User
+                                      size={9}
+                                    />
+                                    {
+                                      item.received_by
+                                    }
+                                  </span>
+                                )}
+
+                                {/* Received time */}
+                                {item.received_at && (
+                                  <span className="text-[9px] text-muted-foreground">
+                                    {fmtDateTime(
+                                      item.received_at
+                                    )}
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+
+                            <TableCell className="text-xs">
+                              {item.category ||
+                                "—"}
+                            </TableCell>
+
+                            {sortedMachineIds.map(
+                              (
+                                machine
+                              ) => {
+                                const mapping =
+                                  item.machines.find(
+                                    (
+                                      machineMapping
+                                    ) =>
+                                      Number(
+                                        machineMapping.machine_id
+                                      ) ===
+                                      Number(
+                                        machine.id
+                                      )
+                                  );
+
+                                if (
+                                  !mapping
+                                ) {
+                                  return (
+                                    <TableCell
+                                      key={
+                                        machine.id
+                                      }
+                                      className="text-center text-xs text-muted-foreground"
+                                    >
+                                      —
+                                    </TableCell>
+                                  );
+                                }
+
+                                return (
+                                  <TableCell
+                                    key={
+                                      machine.id
+                                    }
+                                    className="text-center"
+                                  >
+                                    {mapping.scanned
+                                      ? (
+                                          <div className="flex flex-col items-center gap-0.5">
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700">
+                                              <CheckCircle2
+                                                size={
+                                                  11
+                                                }
+                                              />
+                                              Done
+                                            </span>
+
+                                            {mapping.scanned_by && (
+                                              <span className="flex items-center gap-0.5 text-[9px] text-muted-foreground">
+                                                <User
+                                                  size={
+                                                    8
+                                                  }
+                                                />
+                                                {
+                                                  mapping.scanned_by
+                                                }
+                                              </span>
+                                            )}
+
+                                            {mapping.scanned_at && (
+                                              <span className="text-[9px] text-muted-foreground">
+                                                {fmtDateTime(
+                                                  mapping.scanned_at
+                                                )}
+                                              </span>
+                                            )}
+
+                                            {Number(
+                                              mapping.weight ||
+                                                0
+                                            ) >
+                                              0 && (
+                                              <span className="text-[9px] font-black text-purple-700">
+                                                {formatWeight(
+                                                  mapping.weight
+                                                )}
+                                              </span>
+                                            )}
+                                          </div>
+                                        )
+                                      : (
+                                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-600">
+                                            <Clock
+                                              size={
+                                                11
+                                              }
+                                            />
+                                            Pending
+                                          </span>
+                                        )}
+                                  </TableCell>
+                                );
+                              }
+                            )}
+                          </TableRow>
+                        )
+                      )
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+
+          {/* Pagination */}
+          {!loading &&
+            !error &&
+            pagination &&
+            pagination.total >
+              0 && (
+              <div className="flex flex-col gap-3 border-t bg-muted/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+
+                <div className="flex flex-wrap items-center gap-3">
+
+                  <p className="text-xs text-muted-foreground">
+                    Showing{" "}
+                    <span className="font-bold text-foreground">
+                      {
+                        pagination.from
+                      }
+                    </span>
+                    {" - "}
+                    <span className="font-bold text-foreground">
+                      {
+                        pagination.to
+                      }
+                    </span>
+                    {" of "}
+                    <span className="font-bold text-foreground">
+                      {
+                        pagination.total
+                      }
+                    </span>
+                    {" matching items"}
+                  </p>
+
+                  <select
+                    value={
+                      pageSize
+                    }
+                    onChange={(event) => {
+                      setPageSize(
+                        Number(
+                          event.target
+                            .value
+                        )
+                      );
+
+                      setPage(1);
+                    }}
+                    className="h-8 rounded-lg border bg-background px-2 text-xs"
+                  >
+                    <option value={10}>
+                      10 / page
+                    </option>
+                    <option value={25}>
+                      25 / page
+                    </option>
+                    <option value={50}>
+                      50 / page
+                    </option>
+                    <option value={100}>
+                      100 / page
+                    </option>
+                  </select>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1">
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={
+                      !pagination.has_previous
+                    }
+                    onClick={() =>
+                      setPage(
+                        Math.max(
+                          1,
+                          pagination.page -
+                            1
+                        )
+                      )
+                    }
+                    className="h-8 px-3 text-xs"
+                  >
+                    Previous
+                  </Button>
+
+                  {pageNumbers.map(
+                    (
+                      pageNumber,
+                      index
+                    ) => {
+                      const previousPage =
+                        pageNumbers[
+                          index -
+                            1
+                        ];
+
+                      return (
+                        <div
+                          key={
+                            pageNumber
+                          }
+                          className="flex items-center gap-1"
+                        >
+                          {previousPage &&
+                            pageNumber -
+                              previousPage >
+                              1 && (
+                              <span className="px-1 text-xs text-muted-foreground">
+                                ...
                               </span>
                             )}
-                            {mapping.scanned_at && (
-                              <span className="text-[9px] text-muted-foreground">{fmtDateTime(mapping.scanned_at)}</span>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPage(
+                                pageNumber
+                              )
+                            }
+                            className={cn(
+                              "flex h-8 min-w-8 items-center justify-center rounded-lg border px-2 text-xs font-bold transition-colors",
+
+                              pageNumber ===
+                                pagination.page
+                                ? "border-indigo-600 bg-indigo-600 text-white"
+                                : "bg-background text-muted-foreground hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
                             )}
-                            {Number(mapping.weight || 0) > 0 && (
-                              <span className="text-[9px] font-black text-purple-700">{formatWeight(mapping.weight)}</span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-amber-600 text-[10px] font-medium">
-                            <Clock size={11} /> Pending
-                          </span>
-                        )}
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+                          >
+                            {
+                              pageNumber
+                            }
+                          </button>
+                        </div>
+                      );
+                    }
+                  )}
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={
+                      !pagination.has_next
+                    }
+                    onClick={() =>
+                      setPage(
+                        Math.min(
+                          pagination.total_pages,
+                          pagination.page +
+                            1
+                        )
+                      )
+                    }
+                    className="h-8 px-3 text-xs"
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+        </>
       )}
     </div>
   );
@@ -1258,6 +2808,15 @@ export default function ProjectDetailPage() {
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [vendorId, uniqueProjectId]);
+
+  const receivedStats =
+    data
+      ? (
+          data.stats as
+            ProjectDetailData["stats"] &
+            ReceivedQuantityStats
+        )
+      : null;
 
   const machineIds = data
     ? data.machines
@@ -1459,19 +3018,487 @@ const handleDownloadBoxPdf = async (box: ProjectDetailData["boxes"][0]) => {
             </div>
           </div>
 
-          {/* ── Stats grid ── */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            <StatCard label="Total Items" value={data.stats.total_items} color="blue" />
-            <StatCard label="Total Panels" value={data.stats.total_panels} color="purple" />
-            <StatCard label="Total Boxes" value={data.stats.total_boxes} color="slate" />
-            <StatCard label="Packed Boxes" value={data.stats.packed_boxes} color="green" />
-            <StatCard label="Unpacked" value={data.stats.unpacked_boxes} color="amber" />
+          {/* ── Packing overview ── */}
+          <div className="rounded-2xl border bg-card p-4 shadow-sm">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-black text-foreground">Packing Overview</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Quantity-based status across scanned and manually selected products.
+                </p>
+              </div>
+
+              <Badge
+                variant="outline"
+                className={cn(
+                  "text-xs font-black",
+                  data.stats.packing_progress_pct >= 100
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : "border-indigo-200 bg-indigo-50 text-indigo-700"
+                )}
+              >
+                {data.stats.packing_progress_pct}% packed
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+              <StatCard
+                label="Product Types"
+                value={data.stats.product_types}
+                sub="Unique cut-list products"
+                color="blue"
+              />
+              <StatCard
+                label="Total Qty"
+                value={data.stats.total_qty}
+                sub="Physical quantity"
+                color="purple"
+              />
+              <StatCard
+                label="Packed Qty"
+                value={data.stats.total_packed_qty}
+                sub={`${data.stats.packing_progress_pct}% completed`}
+                color="green"
+              />
+              <StatCard
+                label="Pending Qty"
+                value={data.stats.total_pending_qty}
+                sub={`${data.stats.pending_at_packaging} pending at packing`}
+                color="amber"
+              />
+              <StatCard
+                label="Packing Progress"
+                value={`${data.stats.packing_progress_pct}%`}
+                sub={`${data.stats.total_packed_qty}/${data.stats.total_qty} qty`}
+                color="slate"
+              />
+            </div>
+
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-indigo-500 transition-all"
+                style={{
+                  width: `${Math.min(100, Math.max(0, data.stats.packing_progress_pct))}%`,
+                }}
+              />
+            </div>
           </div>
+
+          {/* ── Packing method + product status ── */}
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <div className="rounded-2xl border bg-card p-4 shadow-sm">
+              <div className="mb-4">
+                <h2 className="text-sm font-black text-foreground">Packing Method</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Split of packed quantity between barcode scanning and manual selection.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <StatCard
+                  label="Scanned Packed"
+                  value={data.stats.scanned_packed_qty}
+                  sub={`${data.stats.scanned_packing_pct}% of packed qty`}
+                  color="green"
+                />
+                <StatCard
+                  label="Manual Packed"
+                  value={data.stats.manual_packed_qty}
+                  sub={`${data.stats.manual_packing_pct}% of packed qty`}
+                  color="purple"
+                />
+              </div>
+
+              <div className="mt-4 space-y-3">
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between text-xs">
+                    <span className="font-semibold text-muted-foreground">Scanned</span>
+                    <span className="font-black text-emerald-700">
+                      {data.stats.scanned_packing_pct}%
+                    </span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-emerald-500"
+                      style={{ width: `${Math.min(100, data.stats.scanned_packing_pct)}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between text-xs">
+                    <span className="font-semibold text-muted-foreground">Manual</span>
+                    <span className="font-black text-indigo-700">
+                      {data.stats.manual_packing_pct}%
+                    </span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-indigo-500"
+                      style={{ width: `${Math.min(100, data.stats.manual_packing_pct)}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border bg-card p-4 shadow-sm">
+              <div className="mb-4">
+                <h2 className="text-sm font-black text-foreground">Product Packing Status</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Unique products grouped by their current packing completion.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <StatCard
+                  label="Fully Packed"
+                  value={data.stats.fully_packed_products}
+                  color="green"
+                />
+                <StatCard
+                  label="Partial"
+                  value={data.stats.partially_packed_products}
+                  color="amber"
+                />
+                <StatCard
+                  label="Not Started"
+                  value={data.stats.not_started_products}
+                  color="slate"
+                />
+              </div>
+
+              <div className="mt-4 rounded-xl border bg-muted/30 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                      Machine Completion
+                    </p>
+                    <p className="mt-1 text-lg font-black text-indigo-700">
+                      {data.stats.machine_completion_pct}%
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                      Pending at Packaging
+                    </p>
+                    <p className="mt-1 text-lg font-black text-amber-700">
+                      {data.stats.pending_at_packaging}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Box / weight statistics ── */}
+          <div className="rounded-2xl border bg-card p-4 shadow-sm">
+            <div className="mb-4">
+              <h2 className="text-sm font-black text-foreground">Box & Weight Summary</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Current box usage and packed material weight.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+              <StatCard label="Total Boxes" value={data.stats.total_boxes} color="slate" />
+              <StatCard label="Boxes With Items" value={data.stats.boxes_with_items} color="green" />
+              <StatCard label="Empty Boxes" value={data.stats.empty_boxes} color="amber" />
+              <StatCard
+                label="Packed Weight"
+                value={formatWeight(data.stats.total_weight)}
+                sub={`${formatWeight(data.stats.average_box_weight)} avg / used box`}
+                color="purple"
+              />
+              <StatCard
+                label="Avg Qty / Box"
+                value={data.stats.average_qty_per_box}
+                sub="Boxes containing items"
+                color="blue"
+              />
+            </div>
+          </div>
+
+          {/* ── Dispatch / site progress ── */}
+          <div className="rounded-2xl border bg-card p-4 shadow-sm">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-black text-foreground">Dispatch & Site Progress</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Box movement from packing to factory dispatch and site receipt.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline" className="text-[11px]">
+                  Packed {data.stats.packed_boxes}/{data.stats.total_boxes}
+                </Badge>
+                <Badge variant="outline" className="text-[11px]">
+                  Factory Out {data.stats.factory_out_boxes}/{data.stats.total_boxes}
+                </Badge>
+                <Badge variant="outline" className="text-[11px]">
+                  Site {data.stats.site_received_boxes}/{data.stats.total_boxes}
+                </Badge>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+              <StatCard label="Packed Boxes" value={data.stats.packed_boxes} color="green" />
+              <StatCard label="Unpacked Boxes" value={data.stats.unpacked_boxes} color="amber" />
+              <StatCard label="Factory Out" value={data.stats.factory_out_boxes} color="purple" />
+              <StatCard label="Site Received" value={data.stats.site_received_boxes} color="blue" />
+              <StatCard
+                label="Dispatch Progress"
+                value={`${data.stats.dispatch_progress_pct}%`}
+                sub={`Site receipt ${data.stats.site_receipt_progress_pct}%`}
+                color="slate"
+              />
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <div className="mb-1.5 flex items-center justify-between text-xs">
+                  <span className="inline-flex items-center gap-1.5 font-semibold text-muted-foreground">
+                    <TruckIcon size={12} /> Factory Out
+                  </span>
+                  <span className="font-black text-indigo-700">
+                    {data.stats.dispatch_progress_pct}%
+                  </span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-indigo-500"
+                    style={{ width: `${Math.min(100, data.stats.dispatch_progress_pct)}%` }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-1.5 flex items-center justify-between text-xs">
+                  <span className="inline-flex items-center gap-1.5 font-semibold text-muted-foreground">
+                    <MapPin size={12} /> Site Received
+                  </span>
+                  <span className="font-black text-blue-700">
+                    {data.stats.site_receipt_progress_pct}%
+                  </span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-blue-500"
+                    style={{ width: `${Math.min(100, data.stats.site_receipt_progress_pct)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Site item receipt / verification ── */}
+          {receivedStats && (
+            <div className="rounded-2xl border bg-card p-4 shadow-sm">
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-black text-foreground">
+                    Site Item Receipt & Verification
+                  </h2>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Physical quantity received at site. Scanned items use item site-in;
+                    manual items use CutListMachineMapping.received_qty.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-[11px] font-black",
+                      receivedStats.item_receipt_progress_pct >= 100
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        : "border-blue-200 bg-blue-50 text-blue-700"
+                    )}
+                  >
+                    {receivedStats.item_receipt_progress_pct}% received
+                  </Badge>
+
+                  <Badge variant="outline" className="text-[11px]">
+                    At Site {receivedStats.site_in_qty}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+                <StatCard
+                  label="Packed Qty"
+                  value={data.stats.total_packed_qty}
+                  sub="Total quantity inside boxes"
+                  color="purple"
+                />
+
+                <StatCard
+                  label="At Site Qty"
+                  value={receivedStats.site_in_qty}
+                  sub={`${receivedStats.not_at_site_qty} qty not at site`}
+                  color="blue"
+                />
+
+                <StatCard
+                  label="Received Qty"
+                  value={receivedStats.total_received_qty}
+                  sub={`${receivedStats.item_receipt_progress_pct}% of packed qty`}
+                  color="green"
+                />
+
+                <StatCard
+                  label="Pending Receipt"
+                  value={receivedStats.total_pending_receipt_qty}
+                  sub="Packed but not received"
+                  color="amber"
+                />
+
+                <StatCard
+                  label="Pending Verification"
+                  value={receivedStats.site_in_pending_verification_qty}
+                  sub="At site but not verified"
+                  color="amber"
+                />
+
+                <StatCard
+                  label="Site Verification"
+                  value={`${receivedStats.site_item_verification_pct}%`}
+                  sub={`${receivedStats.site_in_received_qty}/${receivedStats.site_in_qty} site qty`}
+                  color="slate"
+                />
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+                {/* Scanned receipt */}
+                <div className="rounded-xl border bg-muted/20 p-3">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-black text-foreground">
+                        Scanned Item Receipt
+                      </p>
+                      <p className="mt-0.5 text-[10px] text-muted-foreground">
+                        Confirmed through item QR site-in.
+                      </p>
+                    </div>
+
+                    <span className="text-sm font-black text-emerald-700">
+                      {receivedStats.scanned_receipt_progress_pct}%
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-lg bg-emerald-50 p-2">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                        Received
+                      </p>
+                      <p className="mt-1 text-lg font-black text-emerald-700">
+                        {receivedStats.scanned_received_qty}
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg bg-amber-50 p-2">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-amber-700">
+                        Pending
+                      </p>
+                      <p className="mt-1 text-lg font-black text-amber-700">
+                        {receivedStats.scanned_pending_receipt_qty}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-emerald-500"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          Math.max(0, receivedStats.scanned_receipt_progress_pct)
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Manual receipt */}
+                <div className="rounded-xl border bg-muted/20 p-3">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-black text-foreground">
+                        Manual Item Verification
+                      </p>
+                      <p className="mt-0.5 text-[10px] text-muted-foreground">
+                        Actual received quantity from received_qty.
+                      </p>
+                    </div>
+
+                    <span className="text-sm font-black text-indigo-700">
+                      {receivedStats.manual_receipt_progress_pct}%
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-lg bg-indigo-50 p-2">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-indigo-700">
+                        Received
+                      </p>
+                      <p className="mt-1 text-lg font-black text-indigo-700">
+                        {receivedStats.manual_received_qty}
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg bg-amber-50 p-2">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-amber-700">
+                        Pending
+                      </p>
+                      <p className="mt-1 text-lg font-black text-amber-700">
+                        {receivedStats.manual_pending_receipt_qty}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-indigo-500"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          Math.max(0, receivedStats.manual_receipt_progress_pct)
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-3 gap-3">
+                <StatCard
+                  label="Fully Received Boxes"
+                  value={receivedStats.fully_received_boxes}
+                  color="green"
+                />
+                <StatCard
+                  label="Partial Receipt Boxes"
+                  value={receivedStats.partially_received_boxes}
+                  color="amber"
+                />
+                <StatCard
+                  label="Not Received Boxes"
+                  value={receivedStats.not_received_boxes}
+                  color="slate"
+                />
+              </div>
+            </div>
+          )}
 
           {/* ── Machine progress ── */}
           {data.machines.length > 0 && (
             <div className="rounded-xl border bg-card p-5 shadow-sm">
-              <h2 className="font-bold text-sm mb-3 text-foreground">Machine Progress</h2>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="font-bold text-sm text-foreground">Machine Progress</h2>
+                <Badge variant="outline" className="text-[11px] font-black">
+                  Overall {data.stats.machine_completion_pct}%
+                </Badge>
+              </div>
               <div className="divide-y">
                 {data.machines.map(m => <MachineBar key={m.machine_id} m={m} />)}
               </div>
@@ -1496,7 +3523,11 @@ const handleDownloadBoxPdf = async (box: ProjectDetailData["boxes"][0]) => {
           )}
 
           {/* ── Cut list table ── */}
-          <CutListSection cutlist={data.cutlist} machineIds={machineIds} />
+          <CutListSection
+            vendorId={Number(vendorId)}
+            projectId={String(uniqueProjectId)}
+            machineIds={machineIds}
+          />
 
         </>)}
       </div>

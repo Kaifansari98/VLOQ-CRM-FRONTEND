@@ -1020,6 +1020,78 @@ export const getLeadOtherAppliancesMappings = async (
   return Array.isArray(data?.data) ? data.data : [];
 };
 
+export interface LeadSpecificationPdfData {
+  header: {
+    lead_name: string;
+    sheet_title: string;
+    created_at: string;
+  };
+  lights_remark: LightsRemark | null;
+  carcassMaterialMappings: Array<{
+    is_approved: boolean;
+    is_amended: boolean;
+    is_deleted_item: boolean;
+    carcassType: { name: string };
+    carcasMaterial: { name: string };
+    carcassMaterialFinish: { name: string };
+  }>;
+  shutterMaterialMappings: Array<{
+    is_approved: boolean;
+    is_amended: boolean;
+    is_deleted_item: boolean;
+    shutterType: { name: string };
+    shutterMaterial: { name: string };
+    shutterMaterialFinish: { name: string };
+  }>;
+  hardwareMappings: Array<{
+    is_approved: boolean;
+    is_amended: boolean;
+    is_deleted_item: boolean;
+    carcassLegs: { name: string };
+    skirtingCarcassLegs: { name: string; inScope: boolean };
+    skirtingCarcassLegsColor: { color: string } | null;
+    note: string | null;
+  }>;
+  lightCarcasUnitMappings: Array<{
+    is_approved: boolean;
+    is_amended: boolean;
+    is_deleted_item: boolean;
+    custom_remark: string | null;
+    lightCarcasUnit: {
+      type: string;
+      lightCarcasType: { type: string };
+    } | null;
+  }>;
+  otherAppliancesMappings: Array<{
+    is_approved: boolean;
+    is_amended: boolean;
+    is_deleted_item: boolean;
+    other_appliance_type: string | null;
+    custom_remark: string | null;
+    otherAppliances: {
+      type: string;
+      article_number: string;
+      description: string;
+    } | null;
+  }>;
+  otherAppliancesRemarkMappings: Array<{
+    other_appliance_type: string;
+    remark: SpecificationSectionRemark;
+  }>;
+}
+
+export const getLeadSpecificationPdfData = async (
+  vendorId: number,
+  leadId: number,
+  specificationId: number,
+): Promise<LeadSpecificationPdfData> => {
+  const { data } = await apiClient.get(
+    `/leads/designing-stage/vendor/${vendorId}/lead/${leadId}/specifications/${specificationId}/pdf-data`,
+  );
+
+  return data?.data as LeadSpecificationPdfData;
+};
+
 export const upsertLeadOtherAppliancesMapping = async (
   payload: UpsertLeadOtherAppliancesMappingPayload,
 ) => {
