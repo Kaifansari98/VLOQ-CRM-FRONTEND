@@ -326,21 +326,25 @@ const customPrivilegeSections: readonly CustomPrivilegeSection[] = [
         id: "open",
         title: "Open Leads",
         childModuleIncludes: ["Open Leads"],
+        codePrefixes: ["leads.open_leads."],
       },
       {
         id: "initial_site_measurement",
         title: "Initial Site Measurement",
         childModuleIncludes: ["ISM Leads"],
+        codePrefixes: ["leads.initial_site_measurement."],
       },
       {
         id: "designing_stage",
         title: "Desiging Stage",
         childModuleIncludes: ["Designing Stage"],
+        codePrefixes: ["leads.designing_stage."],
       },
       {
         id: "booking_stage",
         title: "Booking Stage",
         childModuleIncludes: ["Booking Done"],
+        codePrefixes: ["leads.booking_stage."],
       },
     ],
   },
@@ -355,11 +359,13 @@ const customPrivilegeSections: readonly CustomPrivilegeSection[] = [
         id: "final_measurements",
         title: "Final Measurements",
         childModuleIncludes: ["Final Measurement"],
+        codePrefixes: ["project.final_measurement."],
       },
       {
         id: "client_documentations",
         title: "Client Documentations",
         childModuleIncludes: ["Client Documentation"],
+        codePrefixes: ["project.client_documentation."],
       },
       {
         id: "client_approvals",
@@ -370,6 +376,7 @@ const customPrivilegeSections: readonly CustomPrivilegeSection[] = [
           "Client Payment Details",
           "Client Approval Screenshots",
         ],
+        codePrefixes: ["project.client_approval."],
       },
     ],
   },
@@ -384,6 +391,7 @@ const customPrivilegeSections: readonly CustomPrivilegeSection[] = [
         id: "tech_check_stage",
         title: "Tech Check Stage",
         childModuleIncludes: ["Tech Check"],
+        codePrefixes: ["production.tech_check."],
       },
       {
         id: "order_login_stage",
@@ -418,6 +426,7 @@ const customPrivilegeSections: readonly CustomPrivilegeSection[] = [
         id: "ready_to_dispatch",
         title: "Ready To Dispatch",
         childModuleIncludes: ["Ready To Dispatch"],
+        codePrefixes: ["production.ready_to_dispatch."],
       },
     ],
   },
@@ -546,6 +555,9 @@ export default function UserMastersTable({ vendorIdOverride }: UserMastersTableP
     userId: editingUserId,
     vendorIdOverride: vendorId,
   });
+
+
+  console.log("privilages data: ", privilegeMastersData)
   const createUserMutation = useCreateUser(vendorId);
   const updateUserMutation = useUpdateUser(vendorId);
   const updateUserPrivilegesMutation = useUpdateUserPrivileges(vendorId);

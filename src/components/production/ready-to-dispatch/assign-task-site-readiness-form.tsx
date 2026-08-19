@@ -37,6 +37,7 @@ import {
 import { useVendorSiteSupervisorUsers } from "@/hooks/useVendorSiteSupervisorUsers";
 import { canAssignSR } from "@/components/utils/privileges";
 import CustomeTooltip from "@/components/custom-tooltip";
+import { canUserShowApprovalRequest, canUserShowFollowUp } from "@/lib/approval-request-privilege";
 import { useAssignedSiteSupervisor } from "@/api/installation/useSiteReadinessLeads";
 import { useFollowUpUsers } from "@/hooks/useFollowUpUsers";
 import { FileUploadField } from "@/components/custom/file-upload";
@@ -249,7 +250,17 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   const taskType = form.watch("task_type");
   const [approvalFiles, setApprovalFiles] = React.useState<File[]>([]);
   const isApprovalRequestTask = taskType === "Approval Request";
-  const canShowApprovalRequestOption = isApprovalTaskEnabled !== false;
+  const canShowApprovalRequestOption = canUserShowApprovalRequest({
+    isCustomUser: normalizedUserType === "custom",
+    customPrivilegeCodes,
+    isApprovalTaskEnabled,
+    stageProp: "site_readiness",
+  });
+  const canShowFollowUpOption = canUserShowFollowUp({
+    isCustomUser: normalizedUserType === "custom",
+    customPrivilegeCodes,
+    stageProp: "site_readiness",
+  });
 
   const {
     data: selfAssignTaskTypes = [],
@@ -752,8 +763,10 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
                         )
                       )}
 
-                      {/* ── Follow Up — always selectable even when blocked ── */}
-                      <SelectItem value="Follow Up">Follow Up</SelectItem>
+                      {/* ── Follow Up ── */}
+                      {canShowFollowUpOption && (
+                        <SelectItem value="Follow Up">Follow Up</SelectItem>
+                      )}
 
                       {/* ── Approval Request ── */}
                       {canShowApprovalRequestOption && (
