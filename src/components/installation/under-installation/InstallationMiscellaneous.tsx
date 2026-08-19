@@ -507,13 +507,13 @@ export default function InstallationMiscellaneous({
   const isRejected = miscApproved === false;
   const isApproved = miscApproved === true;
   const isReady = viewModalData?.task?.status === "completed";
-  const canResolveRole = ["super-admin", "site-supervisor"].includes(userType || "");
+  const canResolveRole = ["super-admin", "site-supervisor", "head-site-supervisor"].includes(userType || "");
   const canApproveReject = userType === "factory" || userType === "super-admin";
   const showApprovalActions = canApproveReject && miscApproved == null;
   const canUpdateERD = canDoERDDate && !isTaskReady && isApproved;
   const isDeliveryTaskCompleted = viewModalData?.delivery_task?.status === "completed";
   const canUpdateRequiredDelivery =
-    ["super-admin", "site-supervisor"].includes(userType || "") &&
+    ["super-admin", "site-supervisor", "head-site-supervisor"].includes(userType || "") &&
     isApproved &&
     isReady &&
     !isDeliveryTaskCompleted &&

@@ -36,6 +36,7 @@ interface Props {
   placeholder?: string;
   emptyLabel?: string;
   disabled?: boolean;
+  className?: string;
 }
 
 export default function MachinePicker({
@@ -46,6 +47,7 @@ export default function MachinePicker({
   placeholder = "Search user...",
   emptyLabel = "Select an option",
   disabled = false,
+  className,
 }: Props) {
   // alert(value)
   const id = useId();
@@ -75,10 +77,10 @@ export default function MachinePicker({
             aria-expanded={open}
             disabled={disabled}
             className={cn(
-              "bg-background hover:bg-background border-input w-full justify-between px-3 font-normal outline-offset-0 outline-none focus-visible:outline-[3px]",
+              "bg-background hover:bg-background border-input w-full justify-between px-3 font-normal h-10 text-sm outline-offset-0 outline-none focus-visible:outline-[3px]",
               disabled &&
-                "opacity-60 cursor-not-allowed relative after:content-[''] after:absolute after:inset-0 after:border-2 after:border-transparent after:rounded-md"
-              // ✅ Adds red border on hover when disabled
+                "opacity-60 cursor-not-allowed relative after:content-[''] after:absolute after:inset-0 after:border-2 after:border-transparent after:rounded-md",
+              className
             )}
           >
             <span

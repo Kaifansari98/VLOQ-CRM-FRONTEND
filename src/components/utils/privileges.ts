@@ -448,7 +448,8 @@ export function canMiscellaneousMarkAsResolved(
   return (
     role === "admin" ||
     role === "super-admin" ||
-    ((role === "site-supervisor" || role === "head-site-supervisor") && stage === "under-installation-stage")
+    role === "site-supervisor" ||
+    role === "head-site-supervisor"
   );
 }
 

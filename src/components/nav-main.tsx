@@ -40,32 +40,32 @@ interface NavSubItem {
   badgeClassName?: string;
   badgeStyle?: React.CSSProperties;
   showCount?:
-    | "total_leads"
-    | "total_overall_leads"
-    | "total_open_leads"
-    | "total_draft_leads"
-    | "total_initial_site_measurement_leads"
-    | "total_designing_stage_leads"
-    | "total_booking_stage_leads"
-    | "total_final_measurement_leads"
-    | "total_client_documentation_leads"
-    | "total_client_approval_leads"
-    | "total_tech_check_leads"
-    | "total_order_login_leads"
-    | "total_production_stage_leads"
-    | "total_ready_to_dispatch_leads"
-    | "total_site_readiness_stage_leads"
-    | "total_dispatch_planning_stage_leads"
-    | "total_dispatch_stage_leads"
-    | "total_under_installation_stage_leads"
-    | "total_final_handover_stage_leads"
-    | "total_project_completed_stage_leads"
-    | "total_servicing_stage_leads"
-    | "total_leads_group"
-    | "total_project_group"
-    | "total_production_group"
-    | "total_installation_group"
-    | "total_my_tasks";
+  | "total_leads"
+  | "total_overall_leads"
+  | "total_open_leads"
+  | "total_draft_leads"
+  | "total_initial_site_measurement_leads"
+  | "total_designing_stage_leads"
+  | "total_booking_stage_leads"
+  | "total_final_measurement_leads"
+  | "total_client_documentation_leads"
+  | "total_client_approval_leads"
+  | "total_tech_check_leads"
+  | "total_order_login_leads"
+  | "total_production_stage_leads"
+  | "total_ready_to_dispatch_leads"
+  | "total_site_readiness_stage_leads"
+  | "total_dispatch_planning_stage_leads"
+  | "total_dispatch_stage_leads"
+  | "total_under_installation_stage_leads"
+  | "total_final_handover_stage_leads"
+  | "total_project_completed_stage_leads"
+  | "total_servicing_stage_leads"
+  | "total_leads_group"
+  | "total_project_group"
+  | "total_production_group"
+  | "total_installation_group"
+  | "total_my_tasks";
 }
 
 interface NavItem {
@@ -79,32 +79,32 @@ interface NavItem {
   badgeClassName?: string;
   badgeStyle?: React.CSSProperties;
   showCount?:
-    | "total_leads"
-    | "total_overall_leads"
-    | "total_open_leads"
-    | "total_draft_leads"
-    | "total_initial_site_measurement_leads"
-    | "total_designing_stage_leads"
-    | "total_booking_stage_leads"
-    | "total_final_measurement_leads"
-    | "total_client_documentation_leads"
-    | "total_client_approval_leads"
-    | "total_tech_check_leads"
-    | "total_order_login_leads"
-    | "total_production_stage_leads"
-    | "total_ready_to_dispatch_leads"
-    | "total_site_readiness_stage_leads"
-    | "total_dispatch_planning_stage_leads"
-    | "total_dispatch_stage_leads"
-    | "total_under_installation_stage_leads"
-    | "total_final_handover_stage_leads"
-    | "total_project_completed_stage_leads"
-    | "total_servicing_stage_leads"
-    | "total_leads_group"
-    | "total_project_group"
-    | "total_production_group"
-    | "total_installation_group"
-    | "total_my_tasks";
+  | "total_leads"
+  | "total_overall_leads"
+  | "total_open_leads"
+  | "total_draft_leads"
+  | "total_initial_site_measurement_leads"
+  | "total_designing_stage_leads"
+  | "total_booking_stage_leads"
+  | "total_final_measurement_leads"
+  | "total_client_documentation_leads"
+  | "total_client_approval_leads"
+  | "total_tech_check_leads"
+  | "total_order_login_leads"
+  | "total_production_stage_leads"
+  | "total_ready_to_dispatch_leads"
+  | "total_site_readiness_stage_leads"
+  | "total_dispatch_planning_stage_leads"
+  | "total_dispatch_stage_leads"
+  | "total_under_installation_stage_leads"
+  | "total_final_handover_stage_leads"
+  | "total_project_completed_stage_leads"
+  | "total_servicing_stage_leads"
+  | "total_leads_group"
+  | "total_project_group"
+  | "total_production_group"
+  | "total_installation_group"
+  | "total_my_tasks";
   items?: NavSubItem[];
 }
 
@@ -149,11 +149,13 @@ export function NavMain({
   trackTraceItems,
   inventoryItems,
   mastersItems,
+  inventoryMasterItems
 }: {
   items: NavItem[];
   trackTraceItems?: NavItem[];
-  inventoryItems?:NavItem[];
+  inventoryItems?: NavItem[];
   mastersItems?: NavItem[];
+  inventoryMasterItems?: NavItem[];
 }) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -199,8 +201,8 @@ export function NavMain({
     useFranchisesByVendorId(
       vendorId ?? 0,
       !!vendorId &&
-        (shouldResolveMyTaskFranchiseFromVendor ||
-          (!franchiseId && isAdminUser)),
+      (shouldResolveMyTaskFranchiseFromVendor ||
+        (!franchiseId && isAdminUser)),
     );
   const myTaskFranchiseId = React.useMemo(() => {
     if (!shouldResolveMyTaskFranchiseFromVendor && franchiseId) {
@@ -359,6 +361,7 @@ export function NavMain({
     ...(trackTraceItems ?? []),
     ...(inventoryItems ?? []),
     ...(enhancedMastersItems ?? []),
+    ...(inventoryMasterItems ?? [])
   ];
 
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
@@ -602,14 +605,19 @@ export function NavMain({
         </SidebarGroup>
       )}
 
-       {inventoryItems && inventoryItems.length > 0 && (
-        <SidebarGroup>
-          <SidebarGroupLabel>Inventory Management</SidebarGroupLabel>
-          <SidebarMenu>
-            {inventoryItems.map((item) => renderItem(item))}
-          </SidebarMenu>
-        </SidebarGroup>
-      )}
+      {((inventoryItems?.length ?? 0) > 0 ||
+        (inventoryMasterItems?.length ?? 0) > 0) && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Inventory Management</SidebarGroupLabel>
+
+            <SidebarMenu>
+              {inventoryItems?.map((item) => renderItem(item))}
+
+              {/* Displays Master below Inventory */}
+              {inventoryMasterItems?.map((item) => renderItem(item))}
+            </SidebarMenu>
+          </SidebarGroup>
+        )}
 
       {enhancedMastersItems && enhancedMastersItems.length > 0 && (
         <SidebarGroup>
@@ -619,6 +627,10 @@ export function NavMain({
           </SidebarMenu>
         </SidebarGroup>
       )}
+
+
+
+
     </>
   );
 }
