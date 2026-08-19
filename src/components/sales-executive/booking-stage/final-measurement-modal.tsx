@@ -40,13 +40,6 @@ import {
   Image as ImageIcon,
   FileText,
 } from "lucide-react";
-import {
-  CheckCircle2,
-  Loader2,
-  Layers,
-  Image as ImageIcon,
-  FileText,
-} from "lucide-react";
 import DocumentCard from "@/components/utils/documentCard";
 import { ImageComponent } from "@/components/utils/ImageCard";
 
@@ -1343,9 +1336,6 @@ const FinalMeasurementModal = ({
                     <h3 className="font-semibold text-sm">
                       Final Measurement Documents
                     </h3>
-                    <h3 className="font-semibold text-sm">
-                      Final Measurement Documents
-                    </h3>
                   </div>
 
                   {canUploadMeasurementDocuments && (
@@ -1402,6 +1392,7 @@ const FinalMeasurementModal = ({
                       </Button>
                     </div>
                   </div>
+                  )}
 
                   {existingInstanceDocs.length > 0 && (
                     <div className="space-y-3 pt-2">

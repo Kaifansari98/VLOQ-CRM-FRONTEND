@@ -304,7 +304,6 @@ const data = {
   ],
 
   inventoryTraceNav: [
-  inventoryTraceNav: [
     {
       title: "Inventory",
       url: "#",
