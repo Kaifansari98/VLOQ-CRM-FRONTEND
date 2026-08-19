@@ -24,21 +24,24 @@ export const getClientApprovalLeads = async (
 
 export const getClientApprovalDetails = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
+  productTypeId?: number,
 ) => {
-  const { data } = await apiClient.get(
-    `/leads/client-approval/details/vendorId/${vendorId}/leadId/${leadId}`
-  );
+  const url = productTypeId
+    ? `/leads/client-approval/details/vendorId/${vendorId}/leadId/${leadId}?product_type_id=${productTypeId}`
+    : `/leads/client-approval/details/vendorId/${vendorId}/leadId/${leadId}`;
+  const { data } = await apiClient.get(url);
   return data.data;
 };
 
 export const useClientApprovalDetails = (
   vendorId?: number,
-  leadId?: number
+  leadId?: number,
+  productTypeId?: number,
 ) => {
   return useQuery({
-    queryKey: ["clientApprovalDetails", vendorId, leadId],
-    queryFn: () => getClientApprovalDetails(vendorId!, leadId!),
+    queryKey: ["clientApprovalDetails", vendorId, leadId, productTypeId],
+    queryFn: () => getClientApprovalDetails(vendorId!, leadId!, productTypeId),
     enabled: !!vendorId && !!leadId,
   });
 };
@@ -48,6 +51,7 @@ export interface UploadApprovalDocPayload {
   accountId: number;
   vendorId: number;
   createdBy: number;
+  productTypeId?: number;
   documents: File[];
 }
 
@@ -59,6 +63,9 @@ export const uploadMoreClientApprovalDocs = async (
   formData.append("account_id", payload.accountId.toString());
   formData.append("vendor_id", payload.vendorId.toString());
   formData.append("created_by", payload.createdBy.toString());
+  if (payload.productTypeId) {
+    formData.append("product_type_id", payload.productTypeId.toString());
+  }
 
   payload.documents.forEach((file) => {
     formData.append("documents", file);

@@ -2076,9 +2076,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       }
     }
     if (!allInstancesDocsReady)
-      missing.push(
-        "Upload Project Files & Pytha Files for all instances",
-      );
+      missing.push("Upload Project Files & Pytha Files for all instances");
     if (selectionForm.formState.isDirty)
       missing.push("Save unsaved Design Selection changes");
 
@@ -2107,9 +2105,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
           </TooltipTrigger>
           {missing.length > 0 && (
             <TooltipContent side="top" className="max-w-xs">
-              <p className="font-medium mb-1">
-                Complete the following:
-              </p>
+              <p className="font-medium mb-1">Complete the following:</p>
               <ul className="list-disc pl-4 space-y-0.5">
                 {missing.map((item) => (
                   <li key={item} className="text-xs">
@@ -2546,11 +2542,14 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
           <AlertDialogHeader>
             <AlertDialogTitle>Move to Client Approval?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to move this lead to the Client Approval stage?
+              Are you sure you want to move this lead to the Client Approval
+              stage?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isMovingStage}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isMovingStage}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleMoveStage}
               disabled={isMovingStage}

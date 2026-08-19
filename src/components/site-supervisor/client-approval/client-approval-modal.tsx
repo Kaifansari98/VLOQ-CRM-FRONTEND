@@ -32,6 +32,8 @@ interface ClientApprovalModalProps {
   data: {
     id: number;
     accountId: number;
+    productTypeId?: number;
+    instanceName?: string;
   };
 }
 
@@ -152,6 +154,9 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
     formData.append("vendor_id", String(vendorId));
     formData.append("account_id", String(data.accountId));
     formData.append("created_by", String(userId));
+    if (data.productTypeId) {
+      formData.append("product_type_id", String(data.productTypeId));
+    }
     if (values.advance_payment_date) {
       formData.append("advance_payment_date", values.advance_payment_date);
     }
@@ -200,7 +205,11 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
     <BaseModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Client Approval Form"
+      title={
+        data.instanceName
+          ? `Client Approval Form (${data.instanceName})`
+          : "Client Approval Form"
+      }
       description="Submit client approval screenshots and payment details."
       size="lg"
     >

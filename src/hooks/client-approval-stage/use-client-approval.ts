@@ -26,10 +26,14 @@ export const useClientApprovalLeads = () => {
 };
 
 // ✅ Get details
-export const useClientApprovalDetails = (vendorId: number, leadId: number) => {
+export const useClientApprovalDetails = (
+  vendorId: number,
+  leadId: number,
+  productTypeId?: number,
+) => {
   return useQuery({
-    queryKey: ["clientApprovalDetails", vendorId, leadId],
-    queryFn: () => getClientApprovalDetails(vendorId, leadId),
+    queryKey: ["clientApprovalDetails", vendorId, leadId, productTypeId],
+    queryFn: () => getClientApprovalDetails(vendorId, leadId, productTypeId),
     enabled: !!vendorId && !!leadId,
     staleTime: 5 * 60 * 1000,
   });
