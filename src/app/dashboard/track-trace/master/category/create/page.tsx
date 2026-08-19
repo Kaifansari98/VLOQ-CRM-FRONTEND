@@ -67,8 +67,10 @@ function CategoryFormContent() {
   const editIdParam = searchParams.get("id");
   const editId = editIdParam ? Number(editIdParam) : null;
 
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-  const userId = useAppSelector((state) => state.auth.user?.id);
+  const user = useAppSelector((state) => state.auth.user);
+  const isScanPackEnabled = user?.vendor?.is_scanpack_enabled === true;
+  const vendorId = user?.vendor_id;
+  const userId = user?.id;
 
   const { data: allCategories = [], isLoading: categoriesLoading } =
     useProjectCategories(vendorId);
@@ -556,7 +558,7 @@ function CategoryFormContent() {
           </div>
 
           {/* Row 2: Packing & Scan Validation Options */}
-          {(!activeCategory || !activeCategory.parent_id) && (
+          {isScanPackEnabled && (!activeCategory || !activeCategory.parent_id) && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <label
                 className={cn(

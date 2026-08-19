@@ -100,8 +100,10 @@ function IOSSwitch({
 
 export default function ProjectCategoriesPage() {
   const router = useRouter();
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-  const userId = useAppSelector((state) => state.auth.user?.id);
+  const user = useAppSelector((state) => state.auth.user);
+  const isScanPackEnabled = user?.vendor?.is_scanpack_enabled === true;
+  const vendorId = user?.vendor_id;
+  const userId = user?.id;
 
   const {
     data: categories = [],
@@ -161,7 +163,8 @@ export default function ProjectCategoriesPage() {
   };
 
   const columns = useMemo<ColumnDef<ProjectCategory>[]>(
-    () => [
+    () => {
+      const cols: ColumnDef<ProjectCategory>[] = [
       {
         id: "index",
         header: "#",
@@ -364,9 +367,13 @@ export default function ProjectCategoriesPage() {
           );
         },
       },
-    ],
-    [handleEdit, handleToggle, toggleStatus.isPending]
-  );
+    ];
+    return isScanPackEnabled
+      ? cols
+      : cols.filter((col) => col.id !== "packing_options");
+  },
+  [handleEdit, handleToggle, toggleStatus.isPending, isScanPackEnabled]
+);
 
   const table = useReactTable({
     data: categories,

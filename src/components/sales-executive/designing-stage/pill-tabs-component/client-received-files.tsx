@@ -73,9 +73,9 @@ export default function ClientReceivedFilesTab() {
   }, [franchisesForB2b, lead?.franchise_id]);
 
   const { data: documentsData, refetch: refetchDocuments, isLoading: isDocsLoading } = useQuery({
-    queryKey: ["lead-requirement-documents", leadId, vendorId],
-    queryFn: () => fetchRequirementDocumentsApi(leadId, vendorId!),
-    enabled: !!leadId && !!vendorId,
+    queryKey: ["lead-requirement-documents", leadId, vendorId, isB2b],
+    queryFn: () => fetchRequirementDocumentsApi(leadId, vendorId!, undefined, undefined, isB2b ? "Requirement" : undefined),
+    enabled: !!leadId && !!vendorId && isB2b !== undefined,
   });
   const documents: RequirementDocumentItem[] = useMemo(() => documentsData?.data || [], [documentsData]);
 
@@ -168,8 +168,10 @@ export default function ClientReceivedFilesTab() {
           file,
           lead_id: leadId,
           vendor_id: vendorId!,
-          product_type_id: Number(selectedProductTypeId),
+          product_type_id: isB2b ? undefined : Number(selectedProductTypeId),
+          b2b_requirement_type_id: isB2b ? Number(selectedProductTypeId) : undefined,
           doc_type_id: Number(selectedDocTypeId),
+          stage: isB2b ? "Designing" : undefined,
           created_by: userId!,
         })
       );

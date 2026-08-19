@@ -3,16 +3,9 @@
 import React, { useState, useEffect } from "react";
 import {
   FileText,
-  Upload,
   Loader2,
-  Trash2,
-  ExternalLink,
-  ChevronDown,
   Paperclip,
-  Check,
-  Eye,
   Plus,
-  X,
 } from "lucide-react";
 import DocumentCard, { PreviewModal } from "@/components/utils/documentCard";
 import { Button } from "@/components/ui/button";
@@ -27,7 +20,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toastManager } from "@/components/ui/toast";
-import { formatDateTime } from "../utils/privileges";
 import {
   RequirementDocumentType,
   RequirementDocumentItem,
@@ -36,36 +28,38 @@ import {
   uploadRequirementDocumentApi,
   deleteRequirementDocumentApi,
 } from "@/api/leadRequirementDocuments";
+import { fetchLeadB2BRequirementMappingsApi } from "@/api/typesMasterApi";
 
 interface RequirementDocUploadProps {
   leadId: number;
   vendorId: number;
-  productTypeId: number;
+  productTypeId?: number;
+  b2bRequirementTypeId?: number;
+  stage?: string;
   userId?: number;
 }
 
 export default function RequirementDocUpload({
   leadId,
   vendorId,
-  productTypeId,
+  productTypeId: initialProductTypeId,
+  b2bRequirementTypeId: initialB2BRequirementTypeId,
+  stage = "Designing",
   userId = 1,
 }: RequirementDocUploadProps) {
   const [docTypes, setDocTypes] = useState<RequirementDocumentType[]>([]);
   const [selectedDocTypeId, setSelectedDocTypeId] = useState<number | null>(null);
+
   const [documents, setDocuments] = useState<RequirementDocumentItem[]>([]);
-  const [loadingTypes, setLoadingTypes] = useState(false);
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [openDropdown, setOpenDropdown] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [previewDoc, setPreviewDoc] = useState<{ url: string; name: string; ext: string } | null>(null);
 
-  // Fetch Requirement Document Types for Vendor
+  // Load Document Types for Vendor
   const loadDocumentTypes = async () => {
     try {
-      setLoadingTypes(true);
       const res = await fetchRequirementDocumentTypesApi(vendorId);
       if (res?.success && Array.isArray(res?.data)) {
         setDocTypes(res.data);
@@ -75,16 +69,20 @@ export default function RequirementDocUpload({
       }
     } catch (err) {
       console.error("Failed to load document types:", err);
-    } finally {
-      setLoadingTypes(false);
     }
   };
 
-  // Fetch Requirement Documents for this Product Type
+  // Load Requirement Documents
   const loadDocuments = async () => {
     try {
       setLoadingDocs(true);
-      const res = await fetchRequirementDocumentsApi(leadId, vendorId, productTypeId);
+      const res = await fetchRequirementDocumentsApi(
+        leadId,
+        vendorId,
+        initialProductTypeId,
+        initialB2BRequirementTypeId,
+        stage
+      );
       if (res?.success && Array.isArray(res?.data)) {
         setDocuments(res.data);
       }
@@ -96,40 +94,44 @@ export default function RequirementDocUpload({
   };
 
   useEffect(() => {
-    if (vendorId && leadId && productTypeId) {
+    if (vendorId && leadId) {
       loadDocumentTypes();
+    }
+  }, [vendorId, leadId]);
+
+  useEffect(() => {
+    if (vendorId && leadId) {
       loadDocuments();
     }
-  }, [vendorId, leadId, productTypeId]);
+  }, [vendorId, leadId, initialProductTypeId, initialB2BRequirementTypeId, stage]);
 
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (uploadFiles.length === 0) return;
-    if (!selectedDocTypeId) {
-      toastManager.add({ title: "Please select a Document Type first", type: "error" });
-      return;
-    }
 
-    const file = uploadFiles[0];
     try {
       setUploading(true);
-      const res = await uploadRequirementDocumentApi({
-        file,
-        lead_id: leadId,
-        vendor_id: vendorId,
-        product_type_id: productTypeId,
-        doc_type_id: selectedDocTypeId,
-        created_by: userId,
-      });
+      for (const file of uploadFiles) {
+        const res = await uploadRequirementDocumentApi({
+          file,
+          lead_id: leadId,
+          vendor_id: vendorId,
+          product_type_id: initialProductTypeId,
+          b2b_requirement_type_id: initialB2BRequirementTypeId,
+          doc_type_id: selectedDocTypeId || undefined,
+          stage,
+          created_by: userId,
+        });
 
-      if (res?.success) {
-        toastManager.add({ title: "Document uploaded successfully!", type: "success" });
-        loadDocuments();
-        setIsAdding(false);
-        setUploadFiles([]);
-      } else {
-        toastManager.add({ title: res?.message || "Failed to upload document", type: "error" });
+        if (!res?.success) {
+          toastManager.add({ title: res?.message || "Failed to upload document", type: "error" });
+        }
       }
+
+      toastManager.add({ title: "Document(s) uploaded successfully!", type: "success" });
+      loadDocuments();
+      setIsAdding(false);
+      setUploadFiles([]);
     } catch (err: any) {
       console.error("Error uploading document:", err);
       toastManager.add({ title: err?.response?.data?.message || err?.message || "Upload failed", type: "error" });
@@ -140,7 +142,6 @@ export default function RequirementDocUpload({
 
   const handleDelete = async (docId: number) => {
     try {
-      setDeletingId(docId);
       const res = await deleteRequirementDocumentApi(docId, userId);
       if (res?.success) {
         toastManager.add({ title: "Document deleted", type: "success" });
@@ -151,22 +152,18 @@ export default function RequirementDocUpload({
     } catch (err: any) {
       console.error("Error deleting document:", err);
       toastManager.add({ title: "Failed to delete document", type: "error" });
-    } finally {
-      setDeletingId(null);
     }
   };
-
-  const currentType = docTypes.find((t) => t.id === selectedDocTypeId);
 
   return (
     <div className="mt-3 pt-3 border-t space-y-2.5 text-xs">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 font-semibold text-foreground">
           <Paperclip className="h-4 w-4 text-primary shrink-0" />
-          <span>Requirement Documents</span>
+          <span>{stage} Stage Documents</span>
         </div>
 
-        {/* Form controls: Progressive Disclosure Upload */}
+        {/* Action Button */}
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -177,27 +174,26 @@ export default function RequirementDocUpload({
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-colors"
           >
             <Plus className="h-3.5 w-3.5" />
-            <span>Add Document</span>
+            <span>Upload Document</span>
           </button>
         </div>
       </div>
 
-      {/* Upload Modal */}
       <BaseModal
         open={isAdding}
         onOpenChange={setIsAdding}
-        title="Upload Requirement Document"
-        description="Choose a document type and select files to upload."
+        title={`Upload ${stage} Document`}
+        description={`Choose a Document Type to upload files.`}
         size="smd"
       >
         <form onSubmit={handleUploadSubmit} className="p-5 space-y-4">
+
           {/* Document Type Dropdown */}
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-foreground">Document Type</Label>
             <Select
               value={selectedDocTypeId ? String(selectedDocTypeId) : ""}
-              onValueChange={(value) => setSelectedDocTypeId(Number(value))}
-              disabled={docTypes.length === 0}
+              onValueChange={(val) => setSelectedDocTypeId(Number(val))}
             >
               <SelectTrigger className="w-full text-xs">
                 <SelectValue placeholder="Select Document Type..." />
@@ -223,7 +219,7 @@ export default function RequirementDocUpload({
             <DocumentsUploader
               value={uploadFiles}
               onChange={setUploadFiles}
-              accept=".pdf,.jpg,.jpeg,.png,.zip"
+              accept=".pdf,.jpg,.jpeg,.png,.zip,.dwg,.dxf"
             />
           </div>
 
@@ -243,7 +239,7 @@ export default function RequirementDocUpload({
             </Button>
             <Button
               type="submit"
-              disabled={uploading || !selectedDocTypeId || uploadFiles.length === 0}
+              disabled={uploading || uploadFiles.length === 0}
               className="text-xs"
             >
               {uploading ? (
@@ -266,18 +262,16 @@ export default function RequirementDocUpload({
           <span>Loading documents...</span>
         </div>
       ) : documents.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-8 text-center bg-muted/10 border border-dashed rounded-xl gap-2 w-full">
+        <div className="flex flex-col items-center justify-center py-6 text-center bg-muted/10 border border-dashed rounded-xl gap-2 w-full">
           <FileText className="h-8 w-8 text-muted-foreground/40" />
-          <p className="text-sm font-medium text-foreground">No documents yet</p>
-          <p className="text-xs text-muted-foreground max-w-[250px]">Click "+ Add Document" to upload a new requirement file.</p>
+          <p className="text-sm font-medium text-foreground">No {stage.toLowerCase()} documents yet</p>
+          <p className="text-xs text-muted-foreground max-w-[250px]">Click "+ Upload Document" to attach a new file.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {documents.map((doc) => {
-            const docTypeObj = doc.documentType || docTypes.find((t) => t.id === doc.doc_type_id);
-            const tagLabel = docTypeObj
-              ? docTypeObj.type
-              : "Document";
+            const docTypeObj = docTypes.find((t) => t.id === doc.doc_type_id);
+            const tagLabel = docTypeObj ? docTypeObj.type : undefined;
 
             return (
               <DocumentCard

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import BaseModal from "@/components/utils/baseModal";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toastManager } from "@/components/ui/toast";
@@ -46,22 +47,21 @@ export const AddMaterialQuantityModal: React.FC<AddMaterialQuantityModalProps> =
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const [materialSearch, setMaterialSearch] = useState<string>("");
   
-  const [quantity, setQuantity] = useState<string>("");
-  const [unitName, setUnitName] = useState<string>("");
-  const [unitId, setUnitId] = useState<number | null>(null);
-  
-  const [suppliedBy, setSuppliedBy] = useState<MaterialSupplyType | "">("");
-  const [clientPercentage, setClientPercentage] = useState<number>(40);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [openUnitDropdown, setOpenUnitDropdown] = useState(false);
+  // New materials bulk configuration dictionary state
+  const [materialsDetails, setMaterialsDetails] = useState<
+    Record<
+      number,
+      {
+        quantity: string;
+        unit_id: number | null;
+        unit_name: string;
+        supplied_by: MaterialSupplyType;
+        client_percentage: number | "";
+      }
+    >
+  >({});
 
-  const availableUnits = useMemo(() => {
-    const list = [...masterUnits];
-    if (unitName && !list.some((u) => u.unit_name === unitName || u.short_name === unitName)) {
-      list.unshift({ id: 0, unit_name: unitName, short_name: unitName });
-    }
-    return list;
-  }, [masterUnits, unitName]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fetch product items & units from Product Master API
   useEffect(() => {
@@ -111,20 +111,20 @@ export const AddMaterialQuantityModal: React.FC<AddMaterialQuantityModalProps> =
         setSelectedProductIds([editingItem.product_id]);
         setIsDropdownOpen(false);
         setMaterialSearch("");
-        setQuantity(String(editingItem.quantity));
-        setUnitName(editingItem.unit_name || editingItem.product?.unit_of_measure || "");
-        setUnitId(editingItem.unit_id || null);
-        setSuppliedBy(editingItem.supplied_by || "");
-        setClientPercentage(editingItem.client_percentage ?? 40);
+        setMaterialsDetails({
+          [editingItem.product_id]: {
+            quantity: String(editingItem.quantity),
+            unit_id: editingItem.unit_id || null,
+            unit_name: editingItem.unit_name || editingItem.product?.unit_of_measure || "",
+            supplied_by: editingItem.supplied_by || "Frankvin",
+            client_percentage: editingItem.client_percentage ?? 40,
+          }
+        });
       } else {
         setSelectedProductIds([]);
         setIsDropdownOpen(false);
         setMaterialSearch("");
-        setQuantity("");
-        setUnitName("");
-        setUnitId(null);
-        setSuppliedBy("");
-        setClientPercentage(40);
+        setMaterialsDetails({});
       }
     }
   }, [open, editingItem]);
@@ -149,51 +149,63 @@ export const AddMaterialQuantityModal: React.FC<AddMaterialQuantityModalProps> =
 
     setSelectedProductIds(next);
 
-    // Auto-set UOM unit when selecting first material
-    if (!isSelected && next.length === 1) {
+    if (!isSelected) {
       const selectedProd = productsList.find((p: any) => p.id === pId);
-      if (selectedProd) {
-        const uom =
-          selectedProd.unit_of_measure ||
-          selectedProd.primaryUnit?.unit_name ||
-          selectedProd.unit_name ||
-          "";
-        setUnitName(uom);
-        if (selectedProd.primary_unit_id) {
-          setUnitId(selectedProd.primary_unit_id);
-        }
-      }
+      const uom =
+        selectedProd?.unit_of_measure ||
+        selectedProd?.primaryUnit?.unit_name ||
+        selectedProd?.unit_name ||
+        "";
+      const uomId = selectedProd?.primary_unit_id || null;
+      setMaterialsDetails((prev) => ({
+        ...prev,
+        [pId]: {
+          quantity: "",
+          unit_id: uomId,
+          unit_name: uom,
+          supplied_by: "Frankvin",
+          client_percentage: 40,
+        },
+      }));
+    } else {
+      setMaterialsDetails((prev) => {
+        const copy = { ...prev };
+        delete copy[pId];
+        return copy;
+      });
     }
   };
 
   const toggleSelectAll = () => {
     if (selectedProductIds.length === filteredProducts.length && filteredProducts.length > 0) {
       setSelectedProductIds([]);
+      setMaterialsDetails({});
     } else {
       const allFilteredIds = filteredProducts.map((p: any) => p.id);
       setSelectedProductIds(allFilteredIds);
+
+      const newDetails = { ...materialsDetails };
+      allFilteredIds.forEach((pId) => {
+        if (!newDetails[pId]) {
+          const selectedProd = productsList.find((p: any) => p.id === pId);
+          const uom =
+            selectedProd?.unit_of_measure ||
+            selectedProd?.primaryUnit?.unit_name ||
+            selectedProd?.unit_name ||
+            "";
+          const uomId = selectedProd?.primary_unit_id || null;
+          newDetails[pId] = {
+            quantity: "",
+            unit_id: uomId,
+            unit_name: uom,
+            supplied_by: "Frankvin",
+            client_percentage: 40,
+          };
+        }
+      });
+      setMaterialsDetails(newDetails);
     }
   };
-
-  const frankvinPercentage = useMemo(() => {
-    if (suppliedBy === "Frankvin") return 100;
-    if (suppliedBy === "Client") return 0;
-    return Math.max(0, Math.min(100, 100 - clientPercentage));
-  }, [suppliedBy, clientPercentage]);
-
-  const clientPctEffective = useMemo(() => {
-    if (suppliedBy === "Frankvin") return 0;
-    if (suppliedBy === "Client") return 100;
-    return Math.max(0, Math.min(100, clientPercentage));
-  }, [suppliedBy, clientPercentage]);
-
-  const calculatedQuantities = useMemo(() => {
-    const qtyNum = parseFloat(quantity) || 0;
-    return {
-      clientQty: ((qtyNum * clientPctEffective) / 100).toFixed(2),
-      frankvinQty: ((qtyNum * frankvinPercentage) / 100).toFixed(2),
-    };
-  }, [quantity, clientPctEffective, frankvinPercentage]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -203,60 +215,115 @@ export const AddMaterialQuantityModal: React.FC<AddMaterialQuantityModalProps> =
       return;
     }
 
-    const qtyNum = parseFloat(quantity);
-    if (isNaN(qtyNum) || qtyNum <= 0) {
-      toastManager.add({ title: "Please enter a valid quantity greater than 0", type: "error" });
-      return;
-    }
+    // 1. Handling edit mode
+    if (editingItem) {
+      const pId = editingItem.product_id;
+      const detail = materialsDetails[pId];
+      if (!detail) return;
 
-    if (!suppliedBy) {
-      toastManager.add({ title: "Please select who supplies the material", type: "error" });
-      return;
-    }
+      const qtyNum = parseFloat(detail.quantity);
+      if (isNaN(qtyNum) || qtyNum <= 0) {
+        toastManager.add({ title: "Please enter a valid quantity greater than 0", type: "error" });
+        return;
+      }
 
-    try {
-      setIsSubmitting(true);
-      if (editingItem) {
+      if (!detail.supplied_by) {
+        toastManager.add({ title: "Please select who supplies the material", type: "error" });
+        return;
+      }
+
+      const rawCp = detail.client_percentage === "" ? 0 : detail.client_percentage;
+      const cPct = detail.supplied_by === "Frankvin" ? 0 : detail.supplied_by === "Client" ? 100 : rawCp;
+      const fPct = 100 - cPct;
+
+      try {
+        setIsSubmitting(true);
         await updateLeadRequirementMaterialApi(editingItem.id, {
           vendor_id: vendorId,
           quantity: qtyNum,
-          unit_id: unitId,
-          unit_name: unitName,
-          supplied_by: suppliedBy,
-          client_percentage: clientPctEffective,
-          frankvin_percentage: frankvinPercentage,
+          unit_id: detail.unit_id,
+          unit_name: detail.unit_name,
+          supplied_by: detail.supplied_by,
+          client_percentage: cPct,
+          frankvin_percentage: fPct,
         });
 
         toastManager.add({
           title: "Material & Quantity updated successfully",
           type: "success",
         });
-      } else {
-        await createLeadRequirementMaterialApi({
-          lead_id: leadId,
-          vendor_id: vendorId,
-          product_type_id: productTypeId,
-          product_ids: selectedProductIds,
-          quantity: qtyNum,
-          unit_id: unitId,
-          unit_name: unitName,
-          supplied_by: suppliedBy,
-          client_percentage: clientPctEffective,
-          frankvin_percentage: frankvinPercentage,
-          created_by: userId,
-        });
-
+        onSuccess();
+        onOpenChange(false);
+      } catch (err: any) {
         toastManager.add({
-          title: `${selectedProductIds.length} Material(s) & Quantity added successfully`,
-          type: "success",
+          title: err?.response?.data?.message || "Failed to save material",
+          type: "error",
         });
+      } finally {
+        setIsSubmitting(false);
       }
+      return;
+    }
+
+    // 2. Handling creation mode (new bulk materials with distinct values logic)
+    const payloadMaterials = [];
+    for (const pId of selectedProductIds) {
+      const detail = materialsDetails[pId];
+      if (!detail) {
+        toastManager.add({ title: "Internal state mismatch for selected products", type: "error" });
+        return;
+      }
+
+      const qtyNum = parseFloat(detail.quantity);
+      if (isNaN(qtyNum) || qtyNum <= 0) {
+        const prod = productsList.find((p) => p.id === pId);
+        const name = prod ? prod.product_name || prod.item_name : `ID: ${pId}`;
+        toastManager.add({ title: `Please enter a valid quantity greater than 0 for "${name}"`, type: "error" });
+        return;
+      }
+
+      if (!detail.supplied_by) {
+        const prod = productsList.find((p) => p.id === pId);
+        const name = prod ? prod.product_name || prod.item_name : `ID: ${pId}`;
+        toastManager.add({ title: `Please select who supplies "${name}"`, type: "error" });
+        return;
+      }
+
+      const rawCp = detail.client_percentage === "" ? 0 : detail.client_percentage;
+      const cPct = detail.supplied_by === "Frankvin" ? 0 : detail.supplied_by === "Client" ? 100 : rawCp;
+      const fPct = 100 - cPct;
+
+      payloadMaterials.push({
+        product_id: pId,
+        quantity: qtyNum,
+        unit_id: detail.unit_id,
+        unit_name: detail.unit_name,
+        supplied_by: detail.supplied_by,
+        client_percentage: cPct,
+        frankvin_percentage: fPct,
+      });
+    }
+
+    try {
+      setIsSubmitting(true);
+      await createLeadRequirementMaterialApi({
+        lead_id: leadId,
+        vendor_id: vendorId,
+        product_type_id: productTypeId,
+        materials: payloadMaterials,
+        created_by: userId,
+      });
+
+      toastManager.add({
+        title: `${selectedProductIds.length} Material(s) configured & added successfully`,
+        type: "success",
+      });
 
       onSuccess();
       onOpenChange(false);
     } catch (err: any) {
       toastManager.add({
-        title: err?.response?.data?.message || "Failed to save material and quantity",
+        title: err?.response?.data?.message || "Failed to save materials",
         type: "error",
       });
     } finally {
@@ -268,62 +335,57 @@ export const AddMaterialQuantityModal: React.FC<AddMaterialQuantityModalProps> =
       open={open}
       onOpenChange={onOpenChange}
       title={editingItem ? `Edit Material & Quantity (${productTypeName})` : `Add Material & Quantity (${productTypeName})`}
-      description={editingItem ? "Update quantity, UOM, or material supply breakdown." : "Select inventory materials and specify quantity, UOM, and supply breakdown."}
-      size="md"
+      description={editingItem ? "Update quantity, UOM, or material supply breakdown." : "Select inventory materials and configure separate quantity, UOM, and supply parameters for each."}
+      size="xl"
       icon={<Package className="h-5 w-5 text-emerald-600" />}
     >
       <form onSubmit={handleSubmit} className="space-y-4 p-5">
         {/* Multi-Select Material Section */}
+        {!editingItem && (
         <div className="space-y-1.5 relative">
           <div className="flex items-center justify-between">
-            <Label className="text-xs font-semibold text-foreground">
-              Materials (Multi-Select) <span className="text-red-500">*</span>
+            <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+              <Package className="h-3.5 w-3.5 text-slate-500" />
+              Select Materials <span className="text-red-500">*</span>
             </Label>
-            <span className="text-[11px] text-muted-foreground font-normal">
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium">
               {selectedProductIds.length} selected
             </span>
           </div>
 
-          {/* Trigger Dropdown Button / Active Search Field */}
-          {!isDropdownOpen ? (
-            <button
-              type="button"
-              onClick={() => setIsDropdownOpen(true)}
-              className="w-full flex items-center justify-between px-3 py-2 text-xs border rounded-lg bg-background text-foreground hover:bg-muted/40 transition-colors focus:outline-hidden focus:ring-2 focus:ring-primary"
-            >
-              <span className="truncate text-left">
-                {selectedProductIds.length === 0
-                  ? "Select materials..."
-                  : `${selectedProductIds.length} Material${selectedProductIds.length > 1 ? "s" : ""} selected`}
-              </span>
-              <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-            </button>
-          ) : (
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-              <Input
-                type="text"
-                placeholder="Search materials..."
-                value={materialSearch}
-                onChange={(e) => setMaterialSearch(e.target.value)}
-                autoFocus
-                className="pl-8 text-xs h-9"
-              />
-            </div>
-          )}
+          <div className="relative">
+            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              type="text"
+              placeholder={selectedProductIds.length === 0 ? "Search and select materials..." : `${selectedProductIds.length} material(s) selected - click to toggle`}
+              value={materialSearch}
+              onChange={(e) => {
+                setMaterialSearch(e.target.value);
+                setIsDropdownOpen(true);
+              }}
+              onFocus={() => setIsDropdownOpen(true)}
+              onClick={() => setIsDropdownOpen((prev) => !prev)}
+              className="pl-9 pr-8 text-xs h-9 bg-background border-slate-200 dark:border-slate-800 focus-visible:ring-slate-950 focus-visible:ring-1 hover:border-slate-300 dark:hover:border-slate-700 transition-all rounded-lg cursor-pointer"
+            />
+            <ChevronDown
+              className={`absolute right-3 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none transition-transform duration-200 ${
+                isDropdownOpen ? "rotate-180" : ""
+              }`}
+            />
+          </div>
 
           {/* Selected Materials Badges Preview */}
           {selectedProductIds.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1.5 max-h-24 overflow-y-auto p-1.5 border rounded-md bg-muted/20">
+            <div className="flex flex-wrap gap-1 mt-1.5 max-h-24 overflow-y-auto p-1.5 border border-slate-100 dark:border-slate-800 rounded-lg bg-slate-50/50 dark:bg-slate-950/20">
               {selectedProductIds.map((pId) => {
                 const prod = productsList.find((p: any) => p.id === pId);
                 if (!prod) return null;
                 return (
                   <span
                     key={pId}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-primary/10 text-primary border border-primary/20"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-800 border border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 animate-in fade-in zoom-in-95 duration-150"
                   >
-                    <span className="truncate max-w-[140px]">
+                    <span className="truncate max-w-[150px]">
                       {prod.product_name || prod.item_name}
                     </span>
                     <button
@@ -332,7 +394,7 @@ export const AddMaterialQuantityModal: React.FC<AddMaterialQuantityModalProps> =
                         e.stopPropagation();
                         toggleMaterialSelect(pId);
                       }}
-                      className="hover:text-red-600"
+                      className="text-slate-400 hover:text-red-500 transition-colors"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -342,19 +404,19 @@ export const AddMaterialQuantityModal: React.FC<AddMaterialQuantityModalProps> =
             </div>
           )}
 
-          {/* Expandable Options List Panel */}
+          {/* Expandable Options List Panel (Inline to prevent clipping) */}
           {isDropdownOpen && (
-            <div className="absolute w-full p-2 border rounded-lg bg-background shadow-lg space-y-2 mt-1 z-50">
+            <div className="w-full p-2.5 border rounded-xl bg-slate-50/50 dark:bg-slate-900/10 space-y-2 mt-1.5 animate-in fade-in slide-in-from-top-1 duration-150 border-slate-200 dark:border-slate-800">
               {/* Header with Select All */}
-              <div className="flex items-center justify-between border-b pb-1.5 text-xs text-muted-foreground">
-                <span>Materials</span>
+              <div className="flex items-center justify-between border-b pb-1.5 px-1.5 text-xs text-muted-foreground">
+                <span>Materials List</span>
                 {filteredProducts.length > 0 && (
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     onClick={toggleSelectAll}
-                    className="text-[11px] h-6 px-2 text-muted-foreground hover:text-foreground shrink-0"
+                    className="text-[11px] h-6 px-2 text-muted-foreground hover:text-foreground shrink-0 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
                   >
                     {selectedProductIds.length === filteredProducts.length ? "Deselect All" : "Select All"}
                   </Button>
@@ -362,7 +424,7 @@ export const AddMaterialQuantityModal: React.FC<AddMaterialQuantityModalProps> =
               </div>
 
               {/* Options List */}
-              <div className="max-h-[148px] overflow-y-auto space-y-1 pr-1">
+              <div className="max-h-[160px] overflow-y-auto space-y-0.5 pr-1">
                 {filteredProducts.length === 0 ? (
                   <p className="text-xs text-muted-foreground italic p-3 text-center">
                     {productsList.length === 0 ? "Loading materials..." : "No matching materials found."}
@@ -373,23 +435,23 @@ export const AddMaterialQuantityModal: React.FC<AddMaterialQuantityModalProps> =
                     return (
                       <label
                         key={p.id}
-                        className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs cursor-pointer select-none transition-colors ${
+                        className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs cursor-pointer select-none transition-all ${
                           isSelected
-                            ? "bg-primary/10 text-foreground font-medium"
-                            : "hover:bg-muted text-muted-foreground"
+                            ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 font-semibold"
+                            : "hover:bg-slate-100 dark:hover:bg-slate-800 text-muted-foreground hover:text-foreground"
                         }`}
                       >
                         <input
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => toggleMaterialSelect(p.id)}
-                          className="h-3.5 w-3.5 rounded border-muted-foreground text-primary focus:ring-primary shrink-0"
+                          className="h-3.5 w-3.5 rounded border-muted-foreground text-slate-900 focus:ring-slate-900 dark:text-slate-100 shrink-0"
                         />
                         <span className="truncate flex-1">
                           {p.product_name || p.item_name} {p.item_code ? `(${p.item_code})` : ""}
                         </span>
                         {p.unit_of_measure && (
-                          <span className="text-[10px] text-muted-foreground shrink-0">
+                          <span className={`text-[10px] shrink-0 font-medium ${isSelected ? "text-slate-400 dark:text-slate-500" : "text-muted-foreground"}`}>
                             [{p.unit_of_measure}]
                           </span>
                         )}
@@ -406,7 +468,7 @@ export const AddMaterialQuantityModal: React.FC<AddMaterialQuantityModalProps> =
                   size="sm"
                   variant="outline"
                   onClick={() => setIsDropdownOpen(false)}
-                  className="h-7 text-xs px-3"
+                  className="h-7 text-xs px-3 rounded-lg"
                 >
                   Done
                 </Button>
@@ -414,153 +476,232 @@ export const AddMaterialQuantityModal: React.FC<AddMaterialQuantityModalProps> =
             </div>
           )}
         </div>
+        )}
 
-        {/* Quantity & Unit Row */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label className="text-xs font-semibold text-foreground">
-              Quantity <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              type="number"
-              step="any"
-              min="0.0001"
-              placeholder="Enter quantity"
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              className="mt-1 text-xs"
-              required
-            />
-          </div>
-
-          <div>
-            <Label className="text-xs font-semibold text-foreground">Unit</Label>
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setOpenUnitDropdown((prev) => !prev)}
-                className="w-full mt-1 inline-flex items-center justify-between px-3 py-2 text-xs font-semibold border rounded-lg bg-background text-foreground shadow-2xs hover:bg-muted/40 transition-colors"
-              >
-                <div className="flex items-center gap-2 truncate">
-                  <span className="truncate">{unitName || "Select Unit..."}</span>
-                  {unitName && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono font-bold shrink-0">
-                      {unitName}
-                    </span>
-                  )}
-                </div>
-                <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 ml-1" />
-              </button>
-
-              {openUnitDropdown && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setOpenUnitDropdown(false)} />
-                  <div className="absolute right-0 mt-1 w-full p-1 rounded-xl border bg-background text-foreground shadow-lg z-50 space-y-0.5 border-border max-h-[148px] overflow-y-auto">
-                    {availableUnits.map((u) => {
-                      const val = u.short_name || u.unit_name;
-                      const isActive = unitName === val || unitName === u.unit_name;
-                      return (
-                        <button
-                          key={u.id}
-                          type="button"
-                          onClick={() => {
-                            setUnitName(val);
-                            if (u.id > 0) setUnitId(u.id);
-                            setOpenUnitDropdown(false);
-                          }}
-                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
-                            isActive
-                              ? "bg-muted text-foreground font-semibold"
-                              : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span>{u.unit_name}</span>
-                            {u.short_name && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono font-semibold">
-                                {u.short_name}
-                              </span>
-                            )}
-                          </div>
-                          {isActive && <Check className="h-3.5 w-3.5 text-foreground shrink-0" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Supplied By Section */}
-        <div className="space-y-2 pt-2 border-t">
-          <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-            <Scale className="h-3.5 w-3.5 text-primary" />
-            Supplied By <span className="text-red-500">*</span>
-          </Label>
-
-          <div className="grid grid-cols-3 gap-2">
-            {(["Frankvin", "Client", "Shared"] as MaterialSupplyType[]).map((option) => (
-              <button
-                key={option}
-                type="button"
-                onClick={() => setSuppliedBy(option)}
-                className={`py-2 px-3 text-xs font-semibold rounded-lg border text-center transition-all select-none ${
-                  suppliedBy === option
-                    ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                    : "bg-background text-muted-foreground hover:bg-muted"
-                }`}
-              >
-                {option === "Frankvin" ? "Frankvin (100%)" : option === "Client" ? "Client (100%)" : "Shared"}
-              </button>
-            ))}
-          </div>
-
-          {/* Shared % Breakdown Inputs */}
-          {suppliedBy === "Shared" && (
-            <div className="p-3 border rounded-lg bg-muted/20 space-y-3 mt-2">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-[11px] font-medium text-foreground flex items-center gap-1">
-                    <Percent className="h-3 w-3 text-emerald-600" />
-                    Client %
-                  </Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={clientPercentage}
-                    onChange={(e) => {
-                      const val = Math.max(0, Math.min(100, Number(e.target.value) || 0));
-                      setClientPercentage(val);
-                    }}
-                    className="mt-1 text-xs"
-                  />
-                </div>
-
-                <div>
-                  <Label className="text-[11px] font-medium text-foreground flex items-center gap-1">
-                    <Percent className="h-3 w-3 text-blue-600" />
-                    Frankvin % (Auto)
-                  </Label>
-                  <Input
-                    type="number"
-                    value={frankvinPercentage}
-                    disabled
-                    className="mt-1 text-xs bg-muted cursor-not-allowed"
-                  />
-                </div>
+        {/* Quantity, Unit, SuppliedBy Forms */}
+        {selectedProductIds.length > 0 && (
+            <div className="space-y-2 animate-in fade-in duration-200">
+              <Label className="text-xs font-semibold text-foreground block border-b pb-1">
+                Configure Selected Materials
+              </Label>
+              
+              {/* Table Header Labels */}
+              <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.2fr)_minmax(0,1.8fr)_32px] gap-3 px-3 pb-1 text-[11px] font-semibold text-muted-foreground select-none">
+                <span className="truncate">Material Name</span>
+                <span className="truncate">Quantity <span className="text-red-500">*</span></span>
+                <span className="truncate">Unit</span>
+                <span className="truncate">Supplied By</span>
+                <span className="text-center truncate">C% / F%</span>
+         
               </div>
 
-              {quantity && parseFloat(quantity) > 0 && (
-                <div className="p-2 rounded-md bg-background border text-[11px] text-muted-foreground">
-                  <span className="font-semibold text-foreground">Supply Breakdown per material:</span> Client ({calculatedQuantities.clientQty} {unitName}), Frankvin ({calculatedQuantities.frankvinQty} {unitName})
-                </div>
-              )}
+              <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+                {selectedProductIds.map((pId) => {
+                  const prod = productsList.find((p) => p.id === pId);
+                  if (!prod) return null;
+                  const detail = materialsDetails[pId];
+                  if (!detail) return null;
+
+                  const qtyNum = parseFloat(detail.quantity) || 0;
+                  const cPct = detail.supplied_by === "Frankvin" ? 0 : detail.supplied_by === "Client" ? 100 : (detail.client_percentage === "" ? 0 : detail.client_percentage);
+                  const fPct = 100 - cPct;
+                  const clientQty = ((qtyNum * cPct) / 100).toFixed(2);
+                  const frankvinQty = ((qtyNum * fPct) / 100).toFixed(2);
+
+                  return (
+                    <div
+                      key={pId}
+                      className="space-y-1.5 p-2.5 border rounded-xl bg-muted/20 hover:border-slate-300 dark:hover:border-slate-800 transition-all animate-in fade-in slide-in-from-top-1 duration-200"
+                    >
+                      <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.2fr)_minmax(0,1.8fr)_32px] gap-3 items-center">
+                        {/* Product Name */}
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Package className="h-4 w-4 text-emerald-600 shrink-0" />
+                          <span className="text-xs font-semibold text-foreground truncate" title={`${prod.product_name || prod.item_name} ${prod.item_code ? `(${prod.item_code})` : ""}`}>
+                            {prod.product_name || prod.item_name}
+                          </span>
+                        </div>
+
+                        {/* Quantity */}
+                        <div>
+                          <Input
+                            type="number"
+                            step="any"
+                            min="0.0001"
+                            placeholder="Qty"
+                            value={detail.quantity}
+                            onChange={(e) => {
+                              setMaterialsDetails((prev) => ({
+                                ...prev,
+                                [pId]: { ...prev[pId], quantity: e.target.value },
+                              }));
+                            }}
+                            className="h-8 text-xs w-full hover:border-slate-300 dark:hover:border-slate-700 transition-colors focus-visible:ring-slate-950"
+                            required
+                          />
+                        </div>
+
+                        {/* Unit Selection */}
+                        <div>
+                          <Select
+                            value={detail.unit_name || ""}
+                            onValueChange={(val) => {
+                              const selectedUnit = masterUnits.find((u) => u.unit_name === val);
+                              const uId = selectedUnit ? selectedUnit.id : null;
+                              setMaterialsDetails((prev) => ({
+                                ...prev,
+                                [pId]: { ...prev[pId], unit_name: val, unit_id: uId },
+                              }));
+                            }}
+                          >
+                            <SelectTrigger size="sm" className="w-full h-8 text-xs bg-background hover:bg-muted/40 transition-colors">
+                              <SelectValue placeholder="Unit" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {masterUnits.map((u) => (
+                                <SelectItem key={u.id} value={u.unit_name}>
+                                  {u.unit_name}
+                                </SelectItem>
+                              ))}
+                              {prod.unit_of_measure && !masterUnits.some((u) => u.unit_name === prod.unit_of_measure) && (
+                                <SelectItem value={prod.unit_of_measure}>
+                                  {prod.unit_of_measure}
+                                </SelectItem>
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Supplied By */}
+                        <div>
+                          <Select
+                            value={detail.supplied_by}
+                            onValueChange={(val) => {
+                              setMaterialsDetails((prev) => ({
+                                ...prev,
+                                [pId]: { ...prev[pId], supplied_by: val as MaterialSupplyType },
+                              }));
+                            }}
+                          >
+                            <SelectTrigger size="sm" className="w-full h-8 text-xs bg-background hover:bg-muted/40 transition-colors">
+                              <SelectValue placeholder="Supplied By" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Frankvin">Frankvin</SelectItem>
+                              <SelectItem value="Client">Client</SelectItem>
+                              <SelectItem value="Shared">Shared</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Client % and Frankvin % (if Shared) */}
+                        <div className="flex justify-center">
+                          {detail.supplied_by === "Shared" ? (
+                            <div className="flex items-center gap-1 min-w-full">
+                              <div className="relative flex-1 flex items-center">
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  max="99"
+                                  placeholder="Client"
+                                  value={detail.client_percentage}
+                                  onChange={(e) => {
+                                    const valStr = e.target.value;
+                                    let val: number | "" = "";
+                                    if (valStr !== "") {
+                                      const num = Number(valStr);
+                                      val = Math.max(1, Math.min(99, isNaN(num) ? 1 : num));
+                                    }
+                                    setMaterialsDetails((prev) => ({
+                                      ...prev,
+                                      [pId]: { ...prev[pId], client_percentage: val },
+                                    }));
+                                  }}
+                                  className="h-8 text-xs pl-2 pr-6 hover:border-slate-300 dark:hover:border-slate-700 transition-colors focus-visible:ring-slate-950"
+                                />
+                                <span className="absolute right-2 text-[9px] text-muted-foreground font-semibold">C%</span>
+                              </div>
+                              <span className="text-[10px] text-muted-foreground">/</span>
+                              <div className="relative flex-1 flex items-center">
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  max="99"
+                                  placeholder="Frankvin"
+                                  value={detail.client_percentage === "" ? "" : 100 - detail.client_percentage}
+                                  onChange={(e) => {
+                                    const valStr = e.target.value;
+                                    let cPct: number | "" = "";
+                                    if (valStr !== "") {
+                                      const num = Number(valStr);
+                                      const val = Math.max(1, Math.min(99, isNaN(num) ? 1 : num));
+                                      cPct = 100 - val;
+                                    }
+                                    setMaterialsDetails((prev) => ({
+                                      ...prev,
+                                      [pId]: { ...prev[pId], client_percentage: cPct },
+                                    }));
+                                  }}
+                                  className="h-8 text-xs pl-2 pr-6 hover:border-slate-300 dark:hover:border-slate-700 transition-colors focus-visible:ring-slate-950"
+                                />
+                                <span className="absolute right-2 text-[9px] text-muted-foreground font-semibold">F%</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="h-8 w-full py-1.5 text-xs text-muted-foreground bg-muted/30 border border-transparent rounded-lg select-none text-center">
+                              —
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => toggleMaterialSelect(pId)}
+                            className="text-muted-foreground hover:text-red-500 p-1.5 rounded-lg hover:bg-muted/40 transition-colors"
+                            title="Remove material"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Supply Breakdown Summary with visual split progress bar */}
+                      {qtyNum > 0 && (
+                        <div className="space-y-1.5 text-[9px] text-muted-foreground bg-background dark:bg-slate-900/50 p-2 rounded-lg border border-slate-100 dark:border-slate-800 transition-all animate-in fade-in duration-300">
+                          <div className="flex items-center justify-between">
+                            <span>Supply Breakdown:</span>
+                            <span className="font-semibold text-foreground">
+                              {detail.supplied_by === "Frankvin"
+                                ? `Frankvin (100%): ${qtyNum} ${detail.unit_name}`
+                                : detail.supplied_by === "Client"
+                                ? `Client (100%): ${qtyNum} ${detail.unit_name}`
+                                : `Client: ${clientQty} ${detail.unit_name} | Frankvin: ${frankvinQty} ${detail.unit_name}`}
+                            </span>
+                          </div>
+                          
+                          {/* Visual Split Progress Bar */}
+                          <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex">
+                            <div
+                              className="bg-emerald-500 h-full transition-all duration-300"
+                              style={{ width: `${cPct}%` }}
+                              title={`Client: ${cPct}%`}
+                            />
+                            <div
+                              className="bg-blue-500 h-full transition-all duration-300"
+                              style={{ width: `${fPct}%` }}
+                              title={`Frankvin: ${fPct}%`}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
-        </div>
 
         {/* Modal Actions */}
         <div className="flex justify-end gap-2 pt-3 border-t">

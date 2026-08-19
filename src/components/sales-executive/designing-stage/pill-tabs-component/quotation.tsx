@@ -14,7 +14,7 @@ import {
   useLeadStatus,
   useQuotationDoc,
 } from "@/hooks/designing-stage/designing-leads-hooks";
-import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
+import { useLeadProductStructureInstances, useLeadById } from "@/hooks/useLeadsQueries";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +31,8 @@ import { Button } from "@/components/ui/button";
 import ComingSoon from "@/components/generics/ComingSoon";
 import Loader from "@/components/utils/loader";
 import { Badge } from "@/components/ui/badge";
+import { useB2BRequirementTypes } from "@/hooks/useTypesMaster";
+import { useFranchisesByVendorId } from "@/api/franchise";
 
 const getSortedLatestFirst = <T extends { created_at?: string; id: number }>(
   docs: T[],
@@ -60,9 +62,23 @@ const QuotationTab = () => {
   );
   const userId = useAppSelector((state) => state.auth.user?.id);
 
-  // ✅ Hooks for status & document retrieval
+  // ✅ Hooks for status, details & document retrieval
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
+
+  const { data: leadDetailsData } = useLeadById(leadId, vendorId, userId);
+  const lead = leadDetailsData?.data?.lead;
+
+  const { data: franchisesForB2b = [] } = useFranchisesByVendorId(vendorId, !!vendorId);
+  const isB2b = useMemo(() => {
+    const leadFranchise = franchisesForB2b.find(
+      (franchise: any) => franchise.id === lead?.franchise_id,
+    );
+    return leadFranchise?.moduled_for_b2b ?? false;
+  }, [franchisesForB2b, lead?.franchise_id]);
+
+  const { data: b2bReqTypesData } = useB2BRequirementTypes(vendorId);
+  const b2bReqTypes = useMemo(() => b2bReqTypesData?.data || [], [b2bReqTypesData]);
 
   const { data, error, isLoading } = useQuotationDoc(vendorId, leadId);
   const { data: structureInstancesData, isLoading: isInstancesLoading } =
@@ -202,7 +218,31 @@ const QuotationTab = () => {
     [groupedQuotationDocs, selectedGroupId],
   );
 
-  // ✅ Delete confirmation handler
+  // Group B2B documents by Requirement Type
+  const b2bGroupedDocs = useMemo(() => {
+    if (!isB2b) return [];
+
+    const mappedB2bIds = Array.from(
+      new Set([
+        ...((lead as any)?.leadB2BReqMappings?.map((m: any) => m.b2b_requirement_type_id) || []),
+        ...((lead as any)?.leadProcessBriefs?.map((m: any) => m.b2b_requirement_type_id) || []),
+        ...designQuotationDocs.map((d: any) => d.b2b_requirement_type_id).filter(Boolean),
+      ])
+    );
+
+    return mappedB2bIds
+      .map((typeId: any) => {
+        const typeObj = b2bReqTypes.find((t: any) => t.id === typeId);
+        const name = typeObj?.type || `Requirement #${typeId}`;
+        const docs = designQuotationDocs.filter((d: any) => d.b2b_requirement_type_id === typeId);
+        return {
+          id: typeId,
+          name,
+          docs: getSortedLatestFirst(docs),
+        };
+      })
+      .sort((a, b) => b.docs.length - a.docs.length);
+  }, [isB2b, lead, designQuotationDocs, b2bReqTypes]);
 
   if (isLoading || (handlesLargeScaleProjects && isInstancesLoading)) {
     return <Loader size={250} message="Loading Quotation Documents..." />;
@@ -222,8 +262,8 @@ const QuotationTab = () => {
     );
   }
 
-  // ✅ Empty state
-  if ((!designQuotationDocs || designQuotationDocs.length === 0) && !handlesLargeScaleProjects) {
+  // ✅ Empty state (if not B2B)
+  if (!isB2b && (!designQuotationDocs || designQuotationDocs.length === 0) && !handlesLargeScaleProjects) {
     return (
       <ComingSoon
         heading="No Quotations Found"
@@ -240,12 +280,10 @@ const QuotationTab = () => {
         userType === "super-admin" ||
         (userType === "sales-executive" && leadStatus === "designing-stage");
 
-  console.log("leads stage current: ", leadStatus);
   return (
     <div>
       {/* -------- Quotation Section (Matched UI) -------- */}
       <div
-        
         className="
     bg-[#fff] dark:bg-[#0a0a0a]
     rounded-2xl
@@ -284,31 +322,79 @@ const QuotationTab = () => {
               </Button>
             )}
             <span className="text-xs font-medium text-muted-foreground shrink-0 text-right">
-              {handlesLargeScaleProjects && !selectedGroup
-                ? `${groupedQuotationDocs.length} ${
-                    groupedQuotationDocs.length === 1
-                      ? "Item Group"
-                      : "Item Groups"
-                  }`
-                : `${(selectedGroup?.docs || designQuotationDocs).length} ${
-                    (selectedGroup?.docs || designQuotationDocs).length === 1
-                      ? "Document"
-                      : "Documents"
-                  }`}
+              {isB2b
+                ? `${designQuotationDocs.length} ${designQuotationDocs.length === 1 ? "Document" : "Documents"}`
+                : handlesLargeScaleProjects && !selectedGroup
+                  ? `${groupedQuotationDocs.length} ${
+                      groupedQuotationDocs.length === 1 ? "Item Group" : "Item Groups"
+                    }`
+                  : `${(selectedGroup?.docs || designQuotationDocs).length} ${
+                      (selectedGroup?.docs || designQuotationDocs).length === 1
+                        ? "Document"
+                        : "Documents"
+                    }`}
             </span>
           </div>
         </div>
 
         {/* Body */}
         <div className="p-6">
-          {handlesLargeScaleProjects && !selectedGroup ? (
+          {isB2b ? (
+            <div className="space-y-6">
+              {b2bGroupedDocs.map((type) => (
+                <div
+                  key={type.id}
+                  className="rounded-xl border border-border bg-[#fff] dark:bg-[#09090b] overflow-hidden"
+                >
+                  <div className="flex items-center justify-between border-b border-border bg-muted/40 px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-primary shrink-0" />
+                      <h3 className="text-sm font-semibold text-foreground">
+                        {type.name}
+                      </h3>
+                    </div>
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {type.docs.length} {type.docs.length === 1 ? "File" : "Files"}
+                    </span>
+                  </div>
+
+                  <div className="p-4">
+                    {type.docs.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
+                        <Package className="h-8 w-8 opacity-40 mb-2" />
+                        <p className="text-xs text-muted-foreground">No quotation documents uploaded yet.</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        {type.docs.map((doc: any, index: number) => (
+                          <DocumentCard
+                            key={doc.id}
+                            doc={{
+                              id: doc.id,
+                              originalName: doc.doc_og_name,
+                              signedUrl: doc.signedUrl || "",
+                              created_at: doc.created_at,
+                            }}
+                            isLatest={index === 0}
+                            tagLabel="Quotation"
+                            canDelete={canDelete}
+                            onDelete={(id) => setConfirmDelete(id)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : handlesLargeScaleProjects && !selectedGroup ? (
             <div className="grid gap-4 md:grid-cols-2">
               {groupedQuotationDocs.map((group) => (
                 <button
                   key={group.id}
                   type="button"
                   onClick={() => setSelectedGroupId(group.id)}
-                  className="group rounded-xl border bg-white/60 p-5 text-left transition-all hover:border-border/80 dark:bg-[#0a0a0a] min-w-0"
+                  className="group rounded-xl border bg-white/60 p-5 text-left transition-all hover:border-border/80 dark:bg-[#0a0a0a]"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1 space-y-2">
@@ -318,7 +404,7 @@ const QuotationTab = () => {
                           Item Group
                         </span>
                       </div>
-                      <p className="line-clamp-2 text-base font-semibold leading-tight text-heading transition-colors group-hover:text-foreground dark:text-neutral-200 break-words">
+                      <p className="line-clamp-2 text-base font-semibold leading-tight text-heading transition-colors group-hover:text-foreground dark:text-neutral-200">
                         {group.title}
                       </p>
                       <p className="text-sm text-muted-foreground">
@@ -334,44 +420,46 @@ const QuotationTab = () => {
             </div>
           ) : (selectedGroup ? selectedGroup.docs : sortedQuotationDocs).length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {(selectedGroup ? selectedGroup.docs : sortedQuotationDocs).map((doc: any, index: number) => (
-                <DocumentCard
-                  key={doc.id}
-                  doc={{
-                    id: doc.id,
-                    originalName: doc.doc_og_name,
-                    created_at: doc.created_at,
-                    signedUrl: doc.signedUrl,
-                  }}
-                  isLatest={index === 0}
-                  canDelete={canDelete}
-                  onDelete={(id) => setConfirmDelete(id)}
-                />
-              ))}
+              {(selectedGroup ? selectedGroup.docs : sortedQuotationDocs).map(
+                (doc: any, index: number) => (
+                  <DocumentCard
+                    key={doc.id}
+                    doc={{
+                      id: doc.id,
+                      originalName: doc.doc_og_name,
+                      created_at: doc.created_at,
+                      signedUrl: doc.signedUrl,
+                    }}
+                    isLatest={index === 0}
+                    canDelete={canDelete}
+                    onDelete={(id) => setConfirmDelete(id)}
+                  />
+                ),
+              )}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-10">
+            <div className="flex flex-col items-center justify-center py-12">
               <Images size={42} className="text-muted-foreground mb-3" />
               <p className="text-sm text-muted-foreground">
                 {handlesLargeScaleProjects && selectedGroup
-                  ? "No quotation documents found for this product type."
-                  : "No quotation documents found."}
+                  ? "No quotations found for this product type."
+                  : "No quotations found."}
               </p>
             </div>
           )}
         </div>
       </div>
 
-      {/* ✅ Delete confirmation modal */}
+      {/* ✅ Delete confirmation dialog */}
       <AlertDialog
         open={!!confirmDelete}
         onOpenChange={() => setConfirmDelete(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Document?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Quotation?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. The selected document will be
+              This action cannot be undone. The selected quotation will be
               permanently removed from the system.
             </AlertDialogDescription>
           </AlertDialogHeader>
