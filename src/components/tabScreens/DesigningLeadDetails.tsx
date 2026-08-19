@@ -97,6 +97,39 @@ export default function DesigningLeadsDetails({ leadId }: props) {
         content: <DesigningTab />,
         customPrivilegeCode: "leads.designing_stage.designs.view",
       },
+      ...(handlesLargeScaleProjects
+        ? [
+            {
+              id: "specifications",
+              label: "Specifications",
+              icon: ClipboardList,
+              content: <SpecificationsTab />,
+              customPrivilegeCode: "leads.designing_stage.specifications.view",
+            },
+            {
+              id: "costing-file",
+              label: "Costing File",
+              icon: Receipt,
+              content: <CostingFileTab />,
+              customPrivilegeCode: "leads.designing_stage.costing_file.view",
+            },
+            {
+              id: "electrical-plumbing",
+              label: "Electrical & Plumbing",
+              icon: Zap,
+              content: <ElectricalPlumbingTab />,
+              customPrivilegeCode:
+                "leads.designing_stage.electrical_plumbing.view",
+            },
+            {
+              id: "final-ism-upload",
+              label: "Revised ISM",
+              icon: Upload,
+              content: <FinalIsmUploadTab />,
+              customPrivilegeCode: "leads.designing_stage.final_ism_upload.view",
+            },
+          ]
+        : []),
     ];
 
     const gatedTabs =
@@ -107,35 +140,6 @@ export default function DesigningLeadsDetails({ leadId }: props) {
             .map(({ customPrivilegeCode, ...tab }) => tab);
 
     const activeTabs = [...gatedTabs];
-
-    if (handlesLargeScaleProjects) {
-      activeTabs.push(
-        {
-          id: "specifications",
-          label: "Specifications",
-          icon: ClipboardList,
-          content: <SpecificationsTab />,
-        },
-        {
-          id: "costing-file",
-          label: "Costing File",
-          icon: Receipt,
-          content: <CostingFileTab />,
-        },
-        {
-          id: "electrical-plumbing",
-          label: "Electrical & Plumbing",
-          icon: Zap,
-          content: <ElectricalPlumbingTab />,
-        },
-        {
-          id: "final-ism-upload",
-          label: "Revised ISM",
-          icon: Upload,
-          content: <FinalIsmUploadTab />,
-        },
-      );
-    }
 
     if (isB2b) {
       activeTabs.unshift({

@@ -287,6 +287,7 @@ const data = {
           url: "/dashboard/track-trace/defect",
         },
 
+
         // { title: "Configure", url: "/dashboard/track-trace/configure" },
       ],
     },
@@ -302,6 +303,7 @@ const data = {
 
   ],
 
+  inventoryTraceNav: [
   inventoryTraceNav: [
     {
       title: "Inventory",
@@ -419,7 +421,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const isOnlineLeadFeatureEnabled =
     user?.vendor?.is_online_lead_feature_enabled === true;
   const isScanPackEnabled = user?.vendor?.is_scanpack_enabled === true;
-  const canSeeOverallLeads = userType === "admin" || userType === "super-admin" || userType === "auditor";
+  const canSeeOverallLeads =
+    userType === "admin" ||
+    userType === "super-admin" ||
+    userType === "auditor";
   const isSuperAdmin = userType === "super-admin" || userType === "auditor";
   const isMasterAdmin =
     userType === "master-admin" ||
@@ -428,7 +433,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     userType === "masteradmin" ||
     userType === "master_admin";
   const shouldBootstrapFranchise =
-    userType === "admin" || userType === "super-admin" || userType === "auditor";
+    userType === "admin" ||
+    userType === "super-admin" ||
+    userType === "auditor";
   const canSeeMiscLeads =
     userType === "admin" ||
     userType === "super-admin" ||
@@ -473,7 +480,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const miscLeadsCount = miscCountData?.pending_miscellaneous_leads ?? 0;
 
-  const { unreadCount: unreadBroadcastCount, isLoading: isBroadcastLoading } = useUnreadBroadcastCount(userId, vendorId ?? undefined, isSuperAdmin);
+  const { unreadCount: unreadBroadcastCount, isLoading: isBroadcastLoading } =
+    useUnreadBroadcastCount(userId, vendorId ?? undefined, isSuperAdmin);
 
   const userData = user
     ? {
@@ -495,38 +503,42 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 };
     }
 
-    const environment = (
-      process.env.NEXT_PUBLIC_ENVIRONMENT ?? "PRODUCTION"
-    ).toUpperCase();
+      const environment = (
+        process.env.NEXT_PUBLIC_ENVIRONMENT ?? "PRODUCTION"
+      ).toUpperCase();
 
-    const navMainWithBroadcast = data.navMain.map((item) => {
-      if (item.title === "Broadcast") {
-        if (isSuperAdmin) {
-          return item;
+      const navMainWithBroadcast = data.navMain.map((item) => {
+        if (item.title === "Broadcast") {
+          if (isSuperAdmin) {
+            return item;
+          }
+          return {
+            ...item,
+            customCount: unreadBroadcastCount ?? 0,
+            customCountLoading: isBroadcastLoading,
+            badgeClassName:
+              badgeBg || badgeText
+                ? undefined
+                : "bg-red-500 text-white font-bold",
+            badgeStyle:
+              badgeBg || badgeText
+                ? { backgroundColor: badgeBg, color: badgeText }
+                : undefined,
+          };
         }
-        return {
-          ...item,
-          customCount: unreadBroadcastCount ?? 0,
-          customCountLoading: isBroadcastLoading,
-          badgeClassName: badgeBg || badgeText ? undefined : "bg-red-500 text-white font-bold",
-          badgeStyle: badgeBg || badgeText
-            ? { backgroundColor: badgeBg, color: badgeText }
-            : undefined,
-        };
-      }
-      return item;
-    });
+        return item;
+      });
 
-    const withoutOverall = canSeeOverallLeads
-      ? navMainWithBroadcast
-      : navMainWithBroadcast.filter((item) => item.title !== "Overall Leads");
+      const withoutOverall = canSeeOverallLeads
+        ? navMainWithBroadcast
+        : navMainWithBroadcast.filter((item) => item.title !== "Overall Leads");
 
-    const hideSectionsForRole =
-      userType === "site-supervisor" ||
-      userType === "tech-check" ||
-      userType === "backend" ||
-      userType === "factory" ||
-      userType === "pre-prod";
+      const hideSectionsForRole =
+        userType === "site-supervisor" ||
+        userType === "tech-check" ||
+        userType === "backend" ||
+        userType === "factory" ||
+        userType === "pre-prod";
 
     const baseItems = hideSectionsForRole
       ? withoutOverall.filter(
@@ -681,16 +693,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           )
         : filteredItems;
 
-    const miscItem = {
-      title: "Miscellaneous",
-      url: "/dashboard/installation/under-installation/miscellaneous-leads",
-      customCount: miscLeadsCount,
-      customCountLoading: isMiscLeadLoading,
-      badgeClassName: badgeBg || badgeText ? undefined : "bg-red-500 text-white",
-      badgeStyle: badgeBg || badgeText
-        ? { backgroundColor: badgeBg, color: badgeText }
-        : undefined,
-    };
+      const miscItem = {
+        title: "Miscellaneous",
+        url: "/dashboard/installation/under-installation/miscellaneous-leads",
+        customCount: miscLeadsCount,
+        customCountLoading: isMiscLeadLoading,
+        badgeClassName:
+          badgeBg || badgeText ? undefined : "bg-red-500 text-white",
+        badgeStyle:
+          badgeBg || badgeText
+            ? { backgroundColor: badgeBg, color: badgeText }
+            : undefined,
+      };
 
     const finalNavItemsSource = customFilteredItems.map((item) => {
       if (item.title === "Execution" && item.items) {
@@ -712,15 +726,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       return item;
     });
 
-    const initialNavItems = !isCrmEnabled
-      ? []
-      : isActiveFranchiseB2b
-        ? data.b2bNavMain
-        : finalNavItemsSource;
+      const initialNavItems = !isCrmEnabled
+        ? []
+        : isActiveFranchiseB2b
+          ? data.b2bNavMain
+          : finalNavItemsSource;
 
-    const finalNavItems = (isBroadcastEnabled && !isMasterAdmin)
-      ? initialNavItems
-      : initialNavItems.filter((item) => item.title !== "Broadcast");
+      const finalNavItems =
+        isBroadcastEnabled && !isMasterAdmin
+          ? initialNavItems
+          : initialNavItems.filter((item) => item.title !== "Broadcast");
 
     const finalTrackTraceItems =
       isSuperAdmin && (isTrackTraceEnabled || isScanPackEnabled)
@@ -749,9 +764,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       }))
       : [];
 
-    const resolvedNavItems = isOnlineLeadFeatureEnabled
-      ? finalNavItems
-      : finalNavItems.filter((item) => item.title !== "Online Leads");
+      const resolvedNavItems = isOnlineLeadFeatureEnabled
+        ? finalNavItems
+        : finalNavItems.filter((item) => item.title !== "Online Leads");
 
     return {
       navItems: resolvedNavItems,
@@ -827,17 +842,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }, [user, isMasterAdmin, isSuperAdmin, franchises, franchiseId]);
 
   const sidebarStyle: React.CSSProperties = {
-    ...(sidebarBg && {
-      "--sidebar": sidebarBg,
-      "--sidebar-accent": "rgba(255,255,255,0.12)",
-    } as React.CSSProperties),
-    ...(sidebarText && {
-      "--sidebar-foreground": sidebarText,
-      "--sidebar-accent-foreground": sidebarText,
-      "--sidebar-primary-foreground": sidebarText,
-    } as React.CSSProperties),
-    ...(badgeBg && { "--theme-badge-bg": badgeBg } as React.CSSProperties),
-    ...(badgeText && { "--theme-badge-text": badgeText } as React.CSSProperties),
+    ...(sidebarBg &&
+      ({
+        "--sidebar": sidebarBg,
+        "--sidebar-accent": "rgba(255,255,255,0.12)",
+      } as React.CSSProperties)),
+    ...(sidebarText &&
+      ({
+        "--sidebar-foreground": sidebarText,
+        "--sidebar-accent-foreground": sidebarText,
+        "--sidebar-primary-foreground": sidebarText,
+      } as React.CSSProperties)),
+    ...(badgeBg && ({ "--theme-badge-bg": badgeBg } as React.CSSProperties)),
+    ...(badgeText &&
+      ({ "--theme-badge-text": badgeText } as React.CSSProperties)),
   };
 
   return (

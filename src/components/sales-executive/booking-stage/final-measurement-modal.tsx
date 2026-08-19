@@ -40,6 +40,13 @@ import {
   Image as ImageIcon,
   FileText,
 } from "lucide-react";
+import {
+  CheckCircle2,
+  Loader2,
+  Layers,
+  Image as ImageIcon,
+  FileText,
+} from "lucide-react";
 import DocumentCard from "@/components/utils/documentCard";
 import { ImageComponent } from "@/components/utils/ImageCard";
 
@@ -162,6 +169,27 @@ const FinalMeasurementModal = ({
     (state) =>
       state.auth.user?.vendor?.is_custom_doc_nomenclature_enabled === true,
   );
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type,
+  );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
+
+  const canUploadCurrentSitePhotos =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.final_measurement.current_site_photos.upload",
+        )
+      : true;
+
+  const canUploadMeasurementDocuments =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.final_measurement.measurement_documents.upload",
+        )
+      : true;
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -1228,55 +1256,61 @@ const FinalMeasurementModal = ({
                     <h3 className="font-semibold text-sm">Site Photos</h3>
                   </div>
 
-                  <div className="space-y-4">
-                    <FileUploadField
-                      value={uploads.currentSitePhotos}
-                      onChange={(files) =>
-                        setInstanceFiles(
-                          instance.id,
-                          "currentSitePhotos",
-                          files.filter((file) =>
-                            imageMimeTypes.includes(file.type),
-                          ),
-                        )
-                      }
-                      accept={imageAccept}
-                      multiple
-                      maxFiles={MAX_FINAL_MEASUREMENT_FILES}
-                    />
+                  {canUploadCurrentSitePhotos && (
+                    <div className="space-y-4">
+                      <FileUploadField
+                        value={uploads.currentSitePhotos}
+                        onChange={(files) =>
+                          setInstanceFiles(
+                            instance.id,
+                            "currentSitePhotos",
+                            files.filter((file) =>
+                              imageMimeTypes.includes(file.type),
+                            ),
+                          )
+                        }
+                        accept={imageAccept}
+                        multiple
+                        maxFiles={MAX_FINAL_MEASUREMENT_FILES}
+                      />
 
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() =>
-                          setInstanceFiles(instance.id, "currentSitePhotos", [])
-                        }
-                        disabled={uploads.currentSitePhotos.length === 0}
-                      >
-                        Clear
-                      </Button>
-                      <Button
-                        type="button"
-                        onClick={() => handleInstanceUpload(instance, "CSP")}
-                        disabled={
-                          (uploadingInstanceId === instance.id &&
-                            addMoreFinalMeasurementSitePhotosMutation.isPending) ||
-                          uploads.currentSitePhotos.length === 0
-                        }
-                      >
-                        {uploadingInstanceId === instance.id &&
-                        addMoreFinalMeasurementSitePhotosMutation.isPending ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Uploading...
-                          </>
-                        ) : (
-                          "Upload"
-                        )}
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() =>
+                            setInstanceFiles(
+                              instance.id,
+                              "currentSitePhotos",
+                              [],
+                            )
+                          }
+                          disabled={uploads.currentSitePhotos.length === 0}
+                        >
+                          Clear
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={() => handleInstanceUpload(instance, "CSP")}
+                          disabled={
+                            (uploadingInstanceId === instance.id &&
+                              addMoreFinalMeasurementSitePhotosMutation.isPending) ||
+                            uploads.currentSitePhotos.length === 0
+                          }
+                        >
+                          {uploadingInstanceId === instance.id &&
+                          addMoreFinalMeasurementSitePhotosMutation.isPending ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Uploading...
+                            </>
+                          ) : (
+                            "Upload"
+                          )}
+                        </Button>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {existingInstanceSitePhotos.length > 0 && (
                     <div className="space-y-3 pt-2">
@@ -1309,24 +1343,28 @@ const FinalMeasurementModal = ({
                     <h3 className="font-semibold text-sm">
                       Final Measurement Documents
                     </h3>
+                    <h3 className="font-semibold text-sm">
+                      Final Measurement Documents
+                    </h3>
                   </div>
 
-                  <div className="space-y-4">
-                    <FileUploadField
-                      value={uploads.finalMeasurementDocs}
-                      onChange={(files) =>
-                        setInstanceFiles(
-                          instance.id,
-                          "finalMeasurementDocs",
-                          files.filter((file) =>
-                            documentMimeTypes.includes(file.type),
-                          ),
-                        )
-                      }
-                      accept={documentAccept}
-                      multiple
-                      maxFiles={MAX_FINAL_MEASUREMENT_FILES}
-                    />
+                  {canUploadMeasurementDocuments && (
+                    <div className="space-y-4">
+                      <FileUploadField
+                        value={uploads.finalMeasurementDocs}
+                        onChange={(files) =>
+                          setInstanceFiles(
+                            instance.id,
+                            "finalMeasurementDocs",
+                            files.filter((file) =>
+                              documentMimeTypes.includes(file.type),
+                            ),
+                          )
+                        }
+                        accept={documentAccept}
+                        multiple
+                        maxFiles={MAX_FINAL_MEASUREMENT_FILES}
+                      />
 
                     <div className="flex justify-end gap-2">
                       <Button

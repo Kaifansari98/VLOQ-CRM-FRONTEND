@@ -584,45 +584,51 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
                     <h4 className="font-semibold text-sm flex items-center gap-2 text-card-foreground">
                       <Images size={16} /> Site Photos
                     </h4>
-                    <FileUploadField
-                      value={sitePhotosToUpload}
-                      onChange={(files) => {
-                        const validFiles = files.filter((f) =>
-                          imageMimeTypes.includes(f.type),
-                        );
-                        if (files.length > 10) {
-                          setSitePhotosToUpload(validFiles.slice(0, 10));
-                        } else {
-                          setSitePhotosToUpload(validFiles);
-                        }
-                      }}
-                      accept={imageAccept}
-                      multiple
-                      maxFiles={10}
-                    />
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSitePhotosToUpload([])}
-                        disabled={
-                          sitePhotosToUpload.length === 0 || addingSitePhotos
-                        }
-                      >
-                        Clear
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() =>
-                          handleAddMoreInstanceSitePhotos(instance.id)
-                        }
-                        disabled={
-                          sitePhotosToUpload.length === 0 || addingSitePhotos
-                        }
-                      >
-                        {addingSitePhotos ? "Uploading..." : "Upload"}
-                      </Button>
-                    </div>
+                    {canUploadCurrentSitePhotos && (
+                      <>
+                        <FileUploadField
+                          value={sitePhotosToUpload}
+                          onChange={(files) => {
+                            const validFiles = files.filter((f) =>
+                              imageMimeTypes.includes(f.type),
+                            );
+                            if (files.length > 10) {
+                              setSitePhotosToUpload(validFiles.slice(0, 10));
+                            } else {
+                              setSitePhotosToUpload(validFiles);
+                            }
+                          }}
+                          accept={imageAccept}
+                          multiple
+                          maxFiles={10}
+                        />
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSitePhotosToUpload([])}
+                            disabled={
+                              sitePhotosToUpload.length === 0 ||
+                              addingSitePhotos
+                            }
+                          >
+                            Clear
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              handleAddMoreInstanceSitePhotos(instance.id)
+                            }
+                            disabled={
+                              sitePhotosToUpload.length === 0 ||
+                              addingSitePhotos
+                            }
+                          >
+                            {addingSitePhotos ? "Uploading..." : "Upload"}
+                          </Button>
+                        </div>
+                      </>
+                    )}
 
                     <div className="pt-2 space-y-2">
                       <h5 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
@@ -679,39 +685,45 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
                     <h4 className="font-semibold text-sm flex items-center gap-2 text-card-foreground">
                       <FileText size={16} /> Measurement Documents
                     </h4>
-                    <FileUploadField
-                      value={filesToUpload}
-                      onChange={(files) => {
-                        const validFiles = files.filter((f) =>
-                          documentMimeTypes.includes(f.type),
-                        );
-                        if (files.length > 10) {
-                          setFilesToUpload(validFiles.slice(0, 10));
-                        } else {
-                          setFilesToUpload(validFiles);
-                        }
-                      }}
-                      accept={documentAccept}
-                      multiple
-                      maxFiles={10}
-                    />
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setFilesToUpload([])}
-                        disabled={filesToUpload.length === 0 || addingFiles}
-                      >
-                        Clear
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => handleAddMoreInstanceFiles(instance.id)}
-                        disabled={filesToUpload.length === 0 || addingFiles}
-                      >
-                        {addingFiles ? "Uploading..." : "Upload"}
-                      </Button>
-                    </div>
+                    {canUploadMeasurementDocuments && (
+                      <>
+                        <FileUploadField
+                          value={filesToUpload}
+                          onChange={(files) => {
+                            const validFiles = files.filter((f) =>
+                              documentMimeTypes.includes(f.type),
+                            );
+                            if (files.length > 10) {
+                              setFilesToUpload(validFiles.slice(0, 10));
+                            } else {
+                              setFilesToUpload(validFiles);
+                            }
+                          }}
+                          accept={documentAccept}
+                          multiple
+                          maxFiles={10}
+                        />
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setFilesToUpload([])}
+                            disabled={filesToUpload.length === 0 || addingFiles}
+                          >
+                            Clear
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              handleAddMoreInstanceFiles(instance.id)
+                            }
+                            disabled={filesToUpload.length === 0 || addingFiles}
+                          >
+                            {addingFiles ? "Uploading..." : "Upload"}
+                          </Button>
+                        </div>
+                      </>
+                    )}
 
                     <div className="pt-2 space-y-2">
                       <h5 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">

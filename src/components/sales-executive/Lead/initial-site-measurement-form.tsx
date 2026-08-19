@@ -122,6 +122,23 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type
+  );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes
+  );
+
+  const canAddSitePhotos =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes("leads.ism_leads.ism_details.add_site_photos") 
+      : true;
+
+  const canUploadMeasurementDoc =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes("leads.ism_leads.ism_details.upload_measurement")
+      : true;
+
   const isCustomVendorFlowFromAuth = useAppSelector(
     (state) =>
       state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
@@ -816,54 +833,58 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                           </div>
 
                           <div className="grid gap-4 md:grid-cols-2">
-                            <div className="space-y-2">
-                              <FormLabel className="text-sm">
-                                Current Site Photos
-                              </FormLabel>
-                              <FileUploadField
-                                value={uploads.current_site_photos}
-                                onChange={(files) =>
-                                  setInstanceFiles(
-                                    instance.id,
-                                    "current_site_photos",
-                                    files,
-                                  )
-                                }
-                                accept=".png, .jpg, .jpeg, .gif"
-                              />
-                              <FormDescription className="text-xs">
-                                Upload photos for this instance.
-                              </FormDescription>
-                            </div>
+                            {canAddSitePhotos && (
+                              <div className="space-y-2">
+                                <FormLabel className="text-sm">
+                                  Current Site Photos
+                                </FormLabel>
+                                <FileUploadField
+                                  value={uploads.current_site_photos}
+                                  onChange={(files) =>
+                                    setInstanceFiles(
+                                      instance.id,
+                                      "current_site_photos",
+                                      files,
+                                    )
+                                  }
+                                  accept=".png, .jpg, .jpeg, .gif"
+                                />
+                                <FormDescription className="text-xs">
+                                  Upload photos for this instance.
+                                </FormDescription>
+                              </div>
+                            )}
 
-                            <div className="space-y-2">
-                              <FormLabel className={cn("text-sm", multiInstanceErrors.includes(instance.id) ? "text-destructive" : "")}>
-                                Initial Site Measurement Document *
-                              </FormLabel>
-                              <SinglePdfUploadField
-                                value={uploads.upload_pdf}
-                                invalid={multiInstanceErrors.includes(instance.id)}
-                                onChange={(files) => {
-                                  setMultiInstanceErrors((prev) => prev.filter(id => id !== instance.id));
-                                  setInstanceFiles(
-                                    instance.id,
-                                    "upload_pdf",
-                                    Array.isArray(files)
-                                      ? files
-                                      : files
-                                        ? [files]
-                                        : [],
-                                  );
-                                }}
-                                allowedMimeTypes={[]}
-                                accept="*/*"
-                                title="Upload Measurement Document"
-                                description="Any file type allowed. Upload one or more files."
-                                buttonLabel="Select File"
-                                multiple
-                                maxFiles={10}
-                              />
-                            </div>
+                            {canUploadMeasurementDoc && (
+                              <div className="space-y-2">
+                                <FormLabel className={cn("text-sm", multiInstanceErrors.includes(instance.id) ? "text-destructive" : "")}>
+                                  Initial Site Measurement Document *
+                                </FormLabel>
+                                <SinglePdfUploadField
+                                  value={uploads.upload_pdf}
+                                  invalid={multiInstanceErrors.includes(instance.id)}
+                                  onChange={(files) => {
+                                    setMultiInstanceErrors((prev) => prev.filter(id => id !== instance.id));
+                                    setInstanceFiles(
+                                      instance.id,
+                                      "upload_pdf",
+                                      Array.isArray(files)
+                                        ? files
+                                        : files
+                                          ? [files]
+                                          : [],
+                                    );
+                                  }}
+                                  allowedMimeTypes={[]}
+                                  accept="*/*"
+                                  title="Upload Measurement Document"
+                                  description="Any file type allowed. Upload one or more files."
+                                  buttonLabel="Select File"
+                                  multiple
+                                  maxFiles={10}
+                                />
+                              </div>
+                            )}
                           </div>
 
                           {(existingInstanceSitePhotos.length > 0 ||
@@ -984,54 +1005,58 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
               </div>
             ) : (!isCustomVendorFlowActive) ? (
               <>
-                <FormField
-                  control={form.control}
-                  name="current_site_photos"
-                  render={({ field }) => (
-                    <FormItem data-name="current_site_photos">
-                      <FormLabel className="text-sm">Current Site Photos</FormLabel>
-                      <FormControl>
-                        <FileUploadField
-                          value={field.value}
-                          onChange={field.onChange}
-                          accept=".png, .jpg, .jpeg, .gif"
-                          invalid={!!form.formState.errors.current_site_photos}
-                        />
-                      </FormControl>
-                      <FormDescription className="text-xs">
-                        Upload photos or documents.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {canAddSitePhotos && (
+                  <FormField
+                    control={form.control}
+                    name="current_site_photos"
+                    render={({ field }) => (
+                      <FormItem data-name="current_site_photos">
+                        <FormLabel className="text-sm">Current Site Photos</FormLabel>
+                        <FormControl>
+                          <FileUploadField
+                            value={field.value}
+                            onChange={field.onChange}
+                            accept=".png, .jpg, .jpeg, .gif"
+                            invalid={!!form.formState.errors.current_site_photos}
+                          />
+                        </FormControl>
+                        <FormDescription className="text-xs">
+                          Upload photos or documents.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
-                <FormField
-                  control={form.control}
-                  name="upload_pdf"
-                  render={({ field }) => (
-                    <FormItem data-name="upload_pdf">
-                      <FormLabel className="text-sm">
-                        Initial Site Measurement Document *
-                      </FormLabel>
-                      <FormControl>
-                        <SinglePdfUploadField
-                          value={field.value}
-                          onChange={field.onChange}
-                          allowedMimeTypes={[]}
-                          accept="*/*"
-                          title="Upload Measurement Document"
-                          description="Any file type allowed. Upload one or more files."
-                          buttonLabel="Select File"
-                          multiple
-                          maxFiles={10}
-                          invalid={!!form.formState.errors.upload_pdf}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {canUploadMeasurementDoc && (
+                  <FormField
+                    control={form.control}
+                    name="upload_pdf"
+                    render={({ field }) => (
+                      <FormItem data-name="upload_pdf">
+                        <FormLabel className="text-sm">
+                          Initial Site Measurement Document *
+                        </FormLabel>
+                        <FormControl>
+                          <SinglePdfUploadField
+                            value={field.value}
+                            onChange={field.onChange}
+                            allowedMimeTypes={[]}
+                            accept="*/*"
+                            title="Upload Measurement Document"
+                            description="Any file type allowed. Upload one or more files."
+                            buttonLabel="Select File"
+                            multiple
+                            maxFiles={10}
+                            invalid={!!form.formState.errors.upload_pdf}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
               </>
             ) : null}
 
@@ -1172,76 +1197,80 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
             return (
               <div className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-3">
-                    <label className="text-sm font-medium leading-none">Current Site Photos</label>
-                    <FileUploadField
-                      value={uploads.current_site_photos}
-                      onChange={(files) => setInstanceFiles(instance.id, "current_site_photos", files)}
-                      accept=".png, .jpg, .jpeg, .gif"
-                    />
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground">Upload photos for this instance.</p>
-                      <Button
-                        type="button"
-                        variant="default"
-                        size="sm"
-                        onClick={() => handleInstanceUpload(instance, 'photos')}
-                        disabled={(uploadSitePhotosMutation.isPending || uploadDocumentsMutation.isPending) && uploadingInstanceId === instance.id}
-                      >
-                        {uploadSitePhotosMutation.isPending && uploadingInstanceId === instance.id ? (
-                          <>
-                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                            Uploading...
-                          </>
-                        ) : (
-                          "Upload Photos"
-                        )}
-                      </Button>
+                  {canAddSitePhotos && (
+                    <div className="space-y-3">
+                      <label className="text-sm font-medium leading-none">Current Site Photos</label>
+                      <FileUploadField
+                        value={uploads.current_site_photos}
+                        onChange={(files) => setInstanceFiles(instance.id, "current_site_photos", files)}
+                        accept=".png, .jpg, .jpeg, .gif"
+                      />
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-muted-foreground">Upload photos for this instance.</p>
+                        <Button
+                          type="button"
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleInstanceUpload(instance, 'photos')}
+                          disabled={(uploadSitePhotosMutation.isPending || uploadDocumentsMutation.isPending) && uploadingInstanceId === instance.id}
+                        >
+                          {uploadSitePhotosMutation.isPending && uploadingInstanceId === instance.id ? (
+                            <>
+                              <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                              Uploading...
+                            </>
+                          ) : (
+                            "Upload Photos"
+                          )}
+                        </Button>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  <div className="space-y-3">
-                    <label className={cn("text-sm font-medium leading-none", multiInstanceErrors.includes(instance.id) ? "text-destructive" : "")}>
-                      Initial Site Measurement Document *
-                    </label>
-                    <SinglePdfUploadField
-                      value={uploads.upload_pdf}
-                      invalid={multiInstanceErrors.includes(instance.id)}
-                      onChange={(files) => {
-                        setMultiInstanceErrors((prev) => prev.filter(id => id !== instance.id));
-                        setInstanceFiles(
-                          instance.id,
-                          "upload_pdf",
-                          Array.isArray(files) ? files : files ? [files] : []
-                        );
-                      }}
-                      allowedMimeTypes={[]}
-                      accept="*/*"
-                      title="Upload Measurement Document"
-                      description="Any file type allowed. Upload one or more files."
-                      buttonLabel="Select File"
-                      multiple
-                      maxFiles={10}
-                    />
-                    <div className="flex items-center justify-end">
-                      <Button
-                        type="button"
-                        variant="default"
-                        size="sm"
-                        onClick={() => handleInstanceUpload(instance, 'documents')}
-                        disabled={(uploadSitePhotosMutation.isPending || uploadDocumentsMutation.isPending) && uploadingInstanceId === instance.id}
-                      >
-                        {uploadDocumentsMutation.isPending && uploadingInstanceId === instance.id ? (
-                          <>
-                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                            Uploading...
-                          </>
-                        ) : (
-                          "Upload Documents"
-                        )}
-                      </Button>
+                  {canUploadMeasurementDoc && (
+                    <div className="space-y-3">
+                      <label className={cn("text-sm font-medium leading-none", multiInstanceErrors.includes(instance.id) ? "text-destructive" : "")}>
+                        Initial Site Measurement Document *
+                      </label>
+                      <SinglePdfUploadField
+                        value={uploads.upload_pdf}
+                        invalid={multiInstanceErrors.includes(instance.id)}
+                        onChange={(files) => {
+                          setMultiInstanceErrors((prev) => prev.filter(id => id !== instance.id));
+                          setInstanceFiles(
+                            instance.id,
+                            "upload_pdf",
+                            Array.isArray(files) ? files : files ? [files] : []
+                          );
+                        }}
+                        allowedMimeTypes={[]}
+                        accept="*/*"
+                        title="Upload Measurement Document"
+                        description="Any file type allowed. Upload one or more files."
+                        buttonLabel="Select File"
+                        multiple
+                        maxFiles={10}
+                      />
+                      <div className="flex items-center justify-end">
+                        <Button
+                          type="button"
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleInstanceUpload(instance, 'documents')}
+                          disabled={(uploadSitePhotosMutation.isPending || uploadDocumentsMutation.isPending) && uploadingInstanceId === instance.id}
+                        >
+                          {uploadDocumentsMutation.isPending && uploadingInstanceId === instance.id ? (
+                            <>
+                              <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                              Uploading...
+                            </>
+                          ) : (
+                            "Upload Documents"
+                          )}
+                        </Button>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 {(existingInstanceSitePhotos.length > 0 || existingInstanceMeasurementDocs.length > 0) && (
@@ -1373,102 +1402,106 @@ const InitialSiteMeasuresMent: React.FC<LeadViewModalProps> = ({
                       </div>
 
                       <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium leading-none">
-                            Current Site Photos
-                          </label>
-                          <FileUploadField
-                            value={uploads.current_site_photos}
-                            onChange={(files) =>
-                              setInstanceFiles(
-                                instance.id,
-                                "current_site_photos",
-                                files,
-                              )
-                            }
-                            accept=".png, .jpg, .jpeg, .gif"
-                          />
-                          <div className="flex justify-between items-center mt-1">
-                            <p className="text-[11px] text-muted-foreground leading-tight max-w-[60%]">
-                              Upload photos for this instance.
-                            </p>
-                            {existingInstanceSitePhotos.length > 0 && (
-                              <div className="text-[10px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-md flex items-center gap-1">
-                                <CheckCircle2 className="h-3 w-3" />
-                                {existingInstanceSitePhotos.length} Saved
-                              </div>
-                            )}
+                        {canAddSitePhotos && (
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium leading-none">
+                              Current Site Photos
+                            </label>
+                            <FileUploadField
+                              value={uploads.current_site_photos}
+                              onChange={(files) =>
+                                setInstanceFiles(
+                                  instance.id,
+                                  "current_site_photos",
+                                  files,
+                                )
+                              }
+                              accept=".png, .jpg, .jpeg, .gif"
+                            />
+                            <div className="flex justify-between items-center mt-1">
+                              <p className="text-[11px] text-muted-foreground leading-tight max-w-[60%]">
+                                Upload photos for this instance.
+                              </p>
+                              {existingInstanceSitePhotos.length > 0 && (
+                                <div className="text-[10px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                  <CheckCircle2 className="h-3 w-3" />
+                                  {existingInstanceSitePhotos.length} Saved
+                                </div>
+                              )}
+                            </div>
+                            <Button
+                              type="button"
+                              variant="default"
+                              size="sm"
+                              className="mt-2"
+                              onClick={() => handleInstanceUpload(instance, 'photos')}
+                              disabled={(uploadSitePhotosMutation.isPending || uploadDocumentsMutation.isPending) && uploadingInstanceId === instance.id}
+                            >
+                              {uploadSitePhotosMutation.isPending && uploadingInstanceId === instance.id ? (
+                                <>
+                                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                  Uploading...
+                                </>
+                              ) : (
+                                "Upload Photos"
+                              )}
+                            </Button>
                           </div>
-                          <Button
-                            type="button"
-                            variant="default"
-                            size="sm"
-                            className="mt-2"
-                            onClick={() => handleInstanceUpload(instance, 'photos')}
-                            disabled={(uploadSitePhotosMutation.isPending || uploadDocumentsMutation.isPending) && uploadingInstanceId === instance.id}
-                          >
-                            {uploadSitePhotosMutation.isPending && uploadingInstanceId === instance.id ? (
-                              <>
-                                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                                Uploading...
-                              </>
-                            ) : (
-                              "Upload Photos"
-                            )}
-                          </Button>
-                        </div>
-                        <div className="space-y-2">
-                          <label className={cn("text-sm font-medium leading-none", multiInstanceErrors.includes(instance.id) ? "text-destructive" : "")}>
-                            Initial Site Measurement Document *
-                          </label>
-                          <SinglePdfUploadField
-                            value={uploads.upload_pdf}
-                            invalid={multiInstanceErrors.includes(instance.id)}
-                            onChange={(files) => {
-                              setMultiInstanceErrors((prev) => prev.filter(id => id !== instance.id));
-                              setInstanceFiles(
-                                instance.id,
-                                "upload_pdf",
-                                Array.isArray(files) ? files : files ? [files] : [],
-                              );
-                            }}
-                            allowedMimeTypes={[]}
-                            accept="*/*"
-                            title="Upload Measurement Document"
-                            description="Any file type allowed. Upload one or more files."
-                            buttonLabel="Select File"
-                            multiple
-                            maxFiles={10}
-                          />
-                          <div className="flex justify-between items-center mt-1">
-                            <p className="text-[11px] text-muted-foreground leading-tight max-w-[60%]">
-                              Upload measurement docs for this instance.
-                            </p>
-                            {existingInstanceMeasurementDocs.length > 0 && (
-                              <div className="text-[10px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-md flex items-center gap-1">
-                                <CheckCircle2 className="h-3 w-3" />
-                                {existingInstanceMeasurementDocs.length} Saved
-                              </div>
-                            )}
+                        )}
+                        {canUploadMeasurementDoc && (
+                          <div className="space-y-2">
+                            <label className={cn("text-sm font-medium leading-none", multiInstanceErrors.includes(instance.id) ? "text-destructive" : "")}>
+                              Initial Site Measurement Document *
+                            </label>
+                            <SinglePdfUploadField
+                              value={uploads.upload_pdf}
+                              invalid={multiInstanceErrors.includes(instance.id)}
+                              onChange={(files) => {
+                                setMultiInstanceErrors((prev) => prev.filter(id => id !== instance.id));
+                                setInstanceFiles(
+                                  instance.id,
+                                  "upload_pdf",
+                                  Array.isArray(files) ? files : files ? [files] : [],
+                                );
+                              }}
+                              allowedMimeTypes={[]}
+                              accept="*/*"
+                              title="Upload Measurement Document"
+                              description="Any file type allowed. Upload one or more files."
+                              buttonLabel="Select File"
+                              multiple
+                              maxFiles={10}
+                            />
+                            <div className="flex justify-between items-center mt-1">
+                              <p className="text-[11px] text-muted-foreground leading-tight max-w-[60%]">
+                                Upload measurement docs for this instance.
+                              </p>
+                              {existingInstanceMeasurementDocs.length > 0 && (
+                                <div className="text-[10px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                  <CheckCircle2 className="h-3 w-3" />
+                                  {existingInstanceMeasurementDocs.length} Saved
+                                </div>
+                              )}
+                            </div>
+                            <Button
+                              type="button"
+                              variant="default"
+                              size="sm"
+                              className="mt-2"
+                              onClick={() => handleInstanceUpload(instance, 'documents')}
+                              disabled={(uploadSitePhotosMutation.isPending || uploadDocumentsMutation.isPending) && uploadingInstanceId === instance.id}
+                            >
+                              {uploadDocumentsMutation.isPending && uploadingInstanceId === instance.id ? (
+                                <>
+                                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                  Uploading...
+                                </>
+                              ) : (
+                                "Upload Documents"
+                              )}
+                            </Button>
                           </div>
-                          <Button
-                            type="button"
-                            variant="default"
-                            size="sm"
-                            className="mt-2"
-                            onClick={() => handleInstanceUpload(instance, 'documents')}
-                            disabled={(uploadSitePhotosMutation.isPending || uploadDocumentsMutation.isPending) && uploadingInstanceId === instance.id}
-                          >
-                            {uploadDocumentsMutation.isPending && uploadingInstanceId === instance.id ? (
-                              <>
-                                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                                Uploading...
-                              </>
-                            ) : (
-                              "Upload Documents"
-                            )}
-                          </Button>
-                        </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>

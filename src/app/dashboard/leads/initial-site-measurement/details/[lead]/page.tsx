@@ -137,7 +137,7 @@ export default function SiteMeasurementLead() {
   const blockLeadMutation = useBlockLead();
   const unblockLeadMutation = useUnblockLead();
   const isAuditor = userType?.trim().toLowerCase() === "auditor";
-  
+
   const { data: ismUploadData } = useCheckIsmUploaded(leadIdNum);
   const isIsmUploaded = ismUploadData?.isUploaded;
 
@@ -146,37 +146,44 @@ export default function SiteMeasurementLead() {
     blockedTooltip,
     shouldDisableBlockedActions,
     isPending: isBlockActionPending,
-    isLoading: isLeadBlockStatusLoading
+    isLoading: isLeadBlockStatusLoading,
   } = useLeadAccessControl({
     leadId: leadIdNum,
     userType,
     lead,
   });
 
-  const { mutate: updateStage, isPending: isUpdateStagePending } = useUpdateLeadStage();
+  const { mutate: updateStage, isPending: isUpdateStagePending } =
+    useUpdateLeadStage();
 
   const handleMoveToDesigning = () => {
     updateStage(
-      { 
-        leadId: leadIdNum, 
-        payload: { 
-          stageTag: "Type 3", 
+      {
+        leadId: leadIdNum,
+        payload: {
+          stageTag: "Type 3",
           actionMessage: "Lead moved to Designing stage",
           vendor_id: vendorId,
           updated_by: userId,
-        } 
+        },
       },
       {
         onSuccess: () => {
-          toastManager.add({ title: "Lead moved to Designing stage successfully!", type: "success" });
+          toastManager.add({
+            title: "Lead moved to Designing stage successfully!",
+            type: "success",
+          });
           queryClient.invalidateQueries({ queryKey: ["leadById", leadIdNum] });
           setOpenMoveToDesigning(false);
           router.push("/dashboard/leads/designing-stage");
         },
         onError: (err) => {
-          toastManager.add({ title: err.message || "Failed to move lead to Designing stage", type: "error" });
+          toastManager.add({
+            title: err.message || "Failed to move lead to Designing stage",
+            type: "error",
+          });
         },
-      }
+      },
     );
   };
 
@@ -184,11 +191,9 @@ export default function SiteMeasurementLead() {
   useChatTabFromUrl(setActiveTab);
   const isChatNotification = useIsChatNotification();
 
-
-
-
   useEffect(() => {
-    if (isLoading || isLeadBlockStatusLoading || !lead || isChatNotification) return;
+    if (isLoading || isLeadBlockStatusLoading || !lead || isChatNotification)
+      return;
     if (activeTab !== "details") return;
 
     // ✅ Only open automatically if:
@@ -205,7 +210,15 @@ export default function SiteMeasurementLead() {
     ) {
       setOpenMeasurement(true);
     }
-  }, [isLoading, isLeadBlockStatusLoading, isChatNotification, lead, userType, activeTab, isLeadBlocked]);
+  }, [
+    isLoading,
+    isLeadBlockStatusLoading,
+    isChatNotification,
+    lead,
+    userType,
+    activeTab,
+    isLeadBlocked,
+  ]);
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
@@ -242,7 +255,6 @@ export default function SiteMeasurementLead() {
     );
   };
 
-
   const handleToggleLeadBlock = () => {
     if (!vendorId || !userId || !leadIdNum) {
       toastManager.add({
@@ -252,9 +264,7 @@ export default function SiteMeasurementLead() {
       return;
     }
 
-    const mutation = isLeadBlocked
-      ? unblockLeadMutation
-      : blockLeadMutation;
+    const mutation = isLeadBlocked ? unblockLeadMutation : blockLeadMutation;
 
     mutation.mutate(
       {
@@ -285,16 +295,14 @@ export default function SiteMeasurementLead() {
     );
   };
 
-
-
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
 
   const canReassign =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.ism_leads.ism_details.reassign_lead",
-      )
+          "leads.ism_leads.ism_details.reassign_lead",
+        )
       : canReassignLeadButton(userType);
   const canDelete = canDeleteLeadButton(userType);
   const canEdit = canEditLeadForSalesExecutiveButton(userType);
@@ -302,40 +310,52 @@ export default function SiteMeasurementLead() {
     isAuditor ||
     (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.open_leads.details_of_lead.payment_information.enable_disable",
-      )
+          "leads.open_leads.details_of_lead.payment_information.enable_disable",
+        )
       : canViewPaymentTab(userType));
   const canViewSiteHistory =
     isAuditor ||
     (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.open_leads.details_of_lead.site_history.enable_disable",
-      )
+          "leads.open_leads.details_of_lead.site_history.enable_disable",
+        )
       : canViewSiteHistoryTab(userType));
   const canViewChats =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.open_leads.details_of_lead.chat.enable_disable",
-      )
+          "leads.open_leads.details_of_lead.chat.enable_disable",
+        )
       : true;
-  const canAccessTodoTask =
+  const canUploadMeasurement =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.ism_leads.ism_details.upload_measurement",
-      )
-      : true;
+          "leads.ism_leads.ism_details.upload_measurement",
+        )
+      : canUploadISM(userType);
   const canMarkOnHold =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.ism_leads.ism_details.mark_on_hold",
-      )
+          "leads.ism_leads.ism_details.mark_on_hold",
+        )
       : true;
   const canMarkAsLost =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.ism_leads.ism_details.mark_as_lost",
-      )
+          "leads.ism_leads.ism_details.mark_as_lost",
+        )
       : true;
+  const canMoveToDesigning =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.ism_leads.ism_details.move_to_designing",
+        )
+      : canUploadISM(userType);
+  const canBlockLead =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.ism_leads.ism_details.block_lead",
+        )
+      : userType?.toLowerCase() === "super-admin";
   const canSeeLeadStatusMenu = canMarkOnHold || canMarkAsLost;
 
   console.log("assigned to", lead?.assignedTo?.id);
@@ -345,7 +365,9 @@ export default function SiteMeasurementLead() {
   }
 
   if (!lead) {
-    return <p className="p-6">Lead details not found or you do not have access.</p>;
+    return (
+      <p className="p-6">Lead details not found or you do not have access.</p>
+    );
   }
 
   return (
@@ -369,10 +391,11 @@ export default function SiteMeasurementLead() {
           </Breadcrumb>
         </div>
         <div className="flex items-center space-x-2">
-          {!isAuditor && canUploadISM(userType) && !lead?.is_draft && canAccessTodoTask && (
-            <>
-              {shouldDisableBlockedActions ? (
-                <>
+          {!isAuditor &&
+            !lead?.is_draft &&
+            (isIsmUploaded ? canMoveToDesigning : canUploadMeasurement) && (
+              <>
+                {shouldDisableBlockedActions ? (
                   <CustomeTooltip
                     value={blockedTooltip}
                     truncateValue={
@@ -381,57 +404,45 @@ export default function SiteMeasurementLead() {
                         className="hidden md:flex gap-1"
                         variant="outline"
                         disabled
+                      >
+                        <ClipboardCheck size={16} />
+                        {isIsmUploaded ? "Move to Designing" : "Upload ISM"}
+                      </Button>
+                    }
+                  />
+                ) : (
+                  <>
+                    {isIsmUploaded ? (
+                      <>
+                        <span className="text-sm font-medium text-green-600 hidden md:flex items-center gap-1 bg-green-50 px-2 py-1 rounded-md border border-green-200">
+                          <ClipboardCheck size={16} />
+                          Uploaded
+                        </span>
+                        <Button
+                          size="sm"
+                          className="hidden md:flex gap-1"
+                          onClick={() => setOpenMoveToDesigning(true)}
+                          disabled={isUpdateStagePending}
+                        >
+                          {isUpdateStagePending
+                            ? "Moving..."
+                            : "Move to Designing"}
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        size="sm"
+                        className="hidden md:flex gap-1"
+                        onClick={() => setOpenMeasurement(true)}
                       >
                         <ClipboardCheck size={16} />
                         Upload ISM
                       </Button>
-                    }
-                  />
-                  <CustomeTooltip
-                    value={blockedTooltip}
-                    truncateValue={
-                      <Button
-                        size="sm"
-                        className="hidden md:flex gap-1"
-                        variant="outline"
-                        disabled
-                      >
-                        Move to Designing
-                      </Button>
-                    }
-                  />
-                </>
-              ) : (
-                <>
-                  {isIsmUploaded ? (
-                    <>
-                      <span className="text-sm font-medium text-green-600 hidden md:flex items-center gap-1 bg-green-50 px-2 py-1 rounded-md border border-green-200">
-                        <ClipboardCheck size={16} />
-                        Uploaded
-                      </span>
-                      <Button
-                        size="sm"
-                        className="hidden md:flex gap-1"
-                        onClick={() => setOpenMoveToDesigning(true)}
-                        disabled={isUpdateStagePending}
-                      >
-                        {isUpdateStagePending ? "Moving..." : "Move to Designing"}
-                      </Button>
-                    </>
-                  ) : (
-                    <Button
-                      size="sm"
-                      className="hidden md:flex gap-1"
-                      onClick={() => setOpenMeasurement(true)}
-                    >
-                      <ClipboardCheck size={16} />
-                      Upload ISM
-                    </Button>
-                  )}
-                </>
-              )}
-            </>
-          )}
+                    )}
+                  </>
+                )}
+              </>
+            )}
           {!isAuditor && (
             <Button
               size="sm"
@@ -447,37 +458,40 @@ export default function SiteMeasurementLead() {
           {!isAuditor && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="relative bg-accent p-1.5 rounded-sm"
-              >
-                <EllipsisVertical size={25} />
-              </Button>
-            </DropdownMenuTrigger>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="relative bg-accent p-1.5 rounded-sm"
+                >
+                  <EllipsisVertical size={25} />
+                </Button>
+              </DropdownMenuTrigger>
 
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                className="bloack md:hidden"
-                onClick={() => setAssignOpen(true)}
-              >
-                <UserPlus size={20} />
-                Assign Task
-              </DropdownMenuItem>
-              {canUploadISM(userType) && !lead?.is_draft && canAccessTodoTask ? (
-                // Lead block handling added for DropdownMenu action
-                shouldDisableBlockedActions ? (
-                  <CustomeTooltip
-                    value={blockedTooltip}
-                    truncateValue={
-                      <DropdownMenuItem disabled>
-                        <ClipboardCheck size={20} /> Upload Measurement
-                      </DropdownMenuItem>
-                    }
-                  />
-                ) : (
-                  isIsmUploaded ? (
-                    <DropdownMenuItem onSelect={() => setOpenMoveToDesigning(true)} disabled={isUpdateStagePending}>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="bloack md:hidden"
+                  onClick={() => setAssignOpen(true)}
+                >
+                  <UserPlus size={20} />
+                  Assign Task
+                </DropdownMenuItem>
+                {!lead?.is_draft &&
+                (isIsmUploaded ? canMoveToDesigning : canUploadMeasurement) && (
+                  shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <ClipboardCheck size={20} />{" "}
+                          {isIsmUploaded ? "Move to Designing" : "Upload Measurement"}
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : isIsmUploaded ? (
+                    <DropdownMenuItem
+                      onSelect={() => setOpenMoveToDesigning(true)}
+                      disabled={isUpdateStagePending}
+                    >
                       <ClipboardCheck size={20} />
                       {isUpdateStagePending ? "Moving..." : "Move to Designing"}
                     </DropdownMenuItem>
@@ -487,153 +501,132 @@ export default function SiteMeasurementLead() {
                       Upload Measurement
                     </DropdownMenuItem>
                   )
-                )
-              ) : (
-                <CustomeTooltip
-                  truncateValue={
-                    <DropdownMenuItem disabled>
-                      <ClipboardCheck size={20} /> Upload Measurement
-                    </DropdownMenuItem>
-                  }
-                  value={
-                    lead?.is_draft
-                      ? "This action cannot be performed because the lead is still in Draft mode."
-                      : "You don't have permission to upload measurements."
-                  }
-                />
-              )}
+                )}
 
-              {/* Lead Status */}
-              {canSeeLeadStatusMenu && (
-                // Lead block handling added to prevent submenu opening
-                shouldDisableBlockedActions ? (
-                  <CustomeTooltip
-                    value={blockedTooltip}
-                    truncateValue={
-                      <DropdownMenuItem disabled>
-                        <CircleArrowOutUpRight className="h-4 w-4" />
-                        Lead Status
-                      </DropdownMenuItem>
-                    }
-                  />
-                ) : (
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger className="flex items-center gap-2">
-                      <CircleArrowOutUpRight className="h-4 w-4" />
-                      <span>Lead Status</span>
-                    </DropdownMenuSubTrigger>
-
-                    <DropdownMenuSubContent>
-                      {canMarkOnHold && (
-                        <DropdownMenuItem
-                          onSelect={() => {
-                            setActivityType("onHold");
-                            setActivityModalOpen(true);
-                          }}
-                        >
-                          <Clock className="h-4 w-4 " />
-                          Mark On Hold
-                        </DropdownMenuItem>
-                      )}
-
-                      {canMarkAsLost && (
-                        <DropdownMenuItem
-                          onSelect={() => {
-                            setActivityType("lost");
-                            setActivityModalOpen(true);
-                          }}
-                        >
-                          <XCircle className="h-4 w-4" />
-                          Mark As Lost
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuSubContent>
-                  </DropdownMenuSub>
-                )
-              )}
-
-              {/* Edit */}
-              {canEdit && (
-                // Lead block handling added for DropdownMenu action
-                shouldDisableBlockedActions ? (
-                  <CustomeTooltip
-                    value={blockedTooltip}
-                    truncateValue={
-                      <DropdownMenuItem disabled>
-                        <SquarePen size={20} />
-                        Edit
-                      </DropdownMenuItem>
-                    }
-                  />
-                ) : (
-                  <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                    <SquarePen size={20} />
-                    Edit
-                  </DropdownMenuItem>
-                )
-              )}
-
-              {userType?.toLowerCase() === "super-admin" && (
-                <DropdownMenuItem
-                  onSelect={() => setOpenBlockConfirm(true)}
-                  disabled={isBlockActionPending}
-                >
-                  {isLeadBlocked ? (
-                    <LockOpen className="h-4 w-4" />
-                  ) : (
-                    <Lock className="h-4 w-4" />
-                  )}
-
-                  {isLeadBlocked
-                    ? "Unblock Lead"
-                    : "Block Lead"}
-                </DropdownMenuItem>
-              )}
-
-              {/* Reassign */}
-              {canReassign && (
-                // Lead block handling added for DropdownMenu action
-                shouldDisableBlockedActions ? (
-                  <CustomeTooltip
-                    value={blockedTooltip}
-                    truncateValue={
-                      <DropdownMenuItem disabled>
-                        <Users size={20} />
-                        Reassign Lead
-                      </DropdownMenuItem>
-                    }
-                  />
-                ) : (
-                  <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                    <Users size={20} />
-                    Reassign Lead
-                  </DropdownMenuItem>
-                )
-              )}
-
-              {/* Delete */}
-              {canDelete && (
-                <>
-                  <DropdownMenuSeparator />
-                  {/* Lead block handling added for DropdownMenu action */}
-                  {shouldDisableBlockedActions ? (
+                {/* Lead Status */}
+                {canSeeLeadStatusMenu &&
+                  // Lead block handling added to prevent submenu opening
+                  (shouldDisableBlockedActions ? (
                     <CustomeTooltip
                       value={blockedTooltip}
                       truncateValue={
                         <DropdownMenuItem disabled>
-                          Delete
+                          <CircleArrowOutUpRight className="h-4 w-4" />
+                          Lead Status
                         </DropdownMenuItem>
                       }
                     />
                   ) : (
-                    <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
-                      Delete
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger className="flex items-center gap-2">
+                        <CircleArrowOutUpRight className="h-4 w-4" />
+                        <span>Lead Status</span>
+                      </DropdownMenuSubTrigger>
+
+                      <DropdownMenuSubContent>
+                        {canMarkOnHold && (
+                          <DropdownMenuItem
+                            onSelect={() => {
+                              setActivityType("onHold");
+                              setActivityModalOpen(true);
+                            }}
+                          >
+                            <Clock className="h-4 w-4 " />
+                            Mark On Hold
+                          </DropdownMenuItem>
+                        )}
+
+                        {canMarkAsLost && (
+                          <DropdownMenuItem
+                            onSelect={() => {
+                              setActivityType("lost");
+                              setActivityModalOpen(true);
+                            }}
+                          >
+                            <XCircle className="h-4 w-4" />
+                            Mark As Lost
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  ))}
+
+                {/* Edit */}
+                {canEdit &&
+                  // Lead block handling added for DropdownMenu action
+                  (shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <SquarePen size={20} />
+                          Edit
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                      <SquarePen size={20} />
+                      Edit
                     </DropdownMenuItem>
-                  )}
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                  ))}
+
+                {canBlockLead && (
+                  <DropdownMenuItem
+                    onSelect={() => setOpenBlockConfirm(true)}
+                    disabled={isBlockActionPending}
+                  >
+                    {isLeadBlocked ? (
+                      <LockOpen className="h-4 w-4" />
+                    ) : (
+                      <Lock className="h-4 w-4" />
+                    )}
+
+                    {isLeadBlocked ? "Unblock Lead" : "Block Lead"}
+                  </DropdownMenuItem>
+                )}
+
+                {/* Reassign */}
+                {canReassign &&
+                  // Lead block handling added for DropdownMenu action
+                  (shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <Users size={20} />
+                          Reassign Lead
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                      <Users size={20} />
+                      Reassign Lead
+                    </DropdownMenuItem>
+                  ))}
+
+                {/* Delete */}
+                {canDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    {/* Lead block handling added for DropdownMenu action */}
+                    {shouldDisableBlockedActions ? (
+                      <CustomeTooltip
+                        value={blockedTooltip}
+                        truncateValue={
+                          <DropdownMenuItem disabled>Delete</DropdownMenuItem>
+                        }
+                      />
+                    ) : (
+                      <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
+                        Delete
+                      </DropdownMenuItem>
+                    )}
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
       </header>
@@ -656,7 +649,8 @@ export default function SiteMeasurementLead() {
               <HouseIcon size={16} className="mr-1 opacity-60" />
               Lead Details
             </TabsTrigger>
-            {!isAuditor && canAccessTodoTask &&
+            {!isAuditor &&
+               
               (shouldDisableBlockedActions ? (
                 <CustomeTooltip
                   value={blockedTooltip}
@@ -698,11 +692,11 @@ export default function SiteMeasurementLead() {
         {/* Tab contents */}
         <TabsContent value="details">
           <main className="flex-1 h-fit">
-<LeadDetailsUtil 
-  status={isIsmUploaded ? "measurement" : "details"} 
-  defaultTab={isIsmUploaded ? "measurement" : "details"} 
-  leadId={leadIdNum} 
-/>
+            <LeadDetailsUtil
+              status={isIsmUploaded ? "measurement" : "details"}
+              defaultTab={isIsmUploaded ? "measurement" : "details"}
+              leadId={leadIdNum}
+            />
           </main>
         </TabsContent>
 
@@ -767,7 +761,9 @@ export default function SiteMeasurementLead() {
             },
             {
               onSuccess: (res: any) => {
-                const finalStatus = res?.data?.activity_status ?? res?.data?.lead?.activity_status;
+                const finalStatus =
+                  res?.data?.activity_status ??
+                  res?.data?.lead?.activity_status;
                 toastManager.add({
                   title:
                     activityType === "onHold"
@@ -778,7 +774,9 @@ export default function SiteMeasurementLead() {
                   type: "success",
                 });
                 if (activityType === "onHold") {
-                  window.location.assign("/dashboard/leads/leadstable?tab=onHold");
+                  window.location.assign(
+                    "/dashboard/leads/leadstable?tab=onHold",
+                  );
                   return;
                 }
                 queryClient.invalidateQueries({
@@ -812,17 +810,11 @@ export default function SiteMeasurementLead() {
         </AlertDialogContent>
       </AlertDialog>
 
-
-      <AlertDialog
-        open={openBlockConfirm}
-        onOpenChange={setOpenBlockConfirm}
-      >
+      <AlertDialog open={openBlockConfirm} onOpenChange={setOpenBlockConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {isLeadBlocked
-                ? "Unblock Lead?"
-                : "Block Lead?"}
+              {isLeadBlocked ? "Unblock Lead?" : "Block Lead?"}
             </AlertDialogTitle>
 
             <AlertDialogDescription>
@@ -833,9 +825,7 @@ export default function SiteMeasurementLead() {
           </AlertDialogHeader>
 
           <AlertDialogFooter>
-            <AlertDialogCancel
-              disabled={isBlockActionPending}
-            >
+            <AlertDialogCancel disabled={isBlockActionPending}>
               Cancel
             </AlertDialogCancel>
 

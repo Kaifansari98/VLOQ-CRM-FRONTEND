@@ -620,11 +620,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       allReviewed: missingGroups.length === 0,
       missingGroups,
     };
-  }, [
-    displayGroups,
-    handlesLargeScaleProjects,
-    latestSpecificationByGroup,
-  ]);
+  }, [displayGroups, handlesLargeScaleProjects, latestSpecificationByGroup]);
   const activeSpecificationGroupKey = React.useMemo(() => {
     if (!handlesLargeScaleProjects || !activeInstance) return null;
 
@@ -810,10 +806,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     currentInstanceId: number | null,
   ) => {
     const existingShutterValues = (existingShutter as any)?.finish_category
-      ? labelToValues(
-          (existingShutter as any).finish_category,
-          shutterOptions,
-        )
+      ? labelToValues((existingShutter as any).finish_category, shutterOptions)
       : chsMappingToOptionValues(existingShutter?.id, "Shutter");
     let existingShutterRemark = existingShutter?.desc || defaultRemark;
     if (
@@ -856,10 +849,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     currentInstanceId: number | null,
   ) => {
     const existingHandlesValues = (existingHandles as any)?.finish_category
-      ? labelToValues(
-          (existingHandles as any).finish_category,
-          handleOptions,
-        )
+      ? labelToValues((existingHandles as any).finish_category, handleOptions)
       : chsMappingToOptionValues(existingHandles?.id, "Handles");
     let existingHandlesRemark = existingHandles?.desc || defaultRemark;
     if (
@@ -1386,7 +1376,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
     if (sectionSelectedFiles.length === 0) return;
 
     try {
-      if (activeUploadSection.id === "project" || activeUploadSection.id === "pytha") {
+      if (
+        activeUploadSection.id === "project" ||
+        activeUploadSection.id === "pytha"
+      ) {
         await uploadClientDocs({
           leadId,
           accountId,
@@ -1432,7 +1425,10 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         });
       }
 
-      toastManager.add({ title: "Files uploaded successfully!", type: "success" });
+      toastManager.add({
+        title: "Files uploaded successfully!",
+        type: "success",
+      });
       setSectionSelectedFiles([]);
       queryClient.invalidateQueries({ queryKey: ["allLeadDocuments"] });
     } catch (e: any) {
@@ -1611,14 +1607,13 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                 <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
                   <span>Specification</span>
                   <span>
-                    {new Date(activeLatestSpecification.created_at).toLocaleDateString(
-                      "en-IN",
-                      {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      },
-                    )}
+                    {new Date(
+                      activeLatestSpecification.created_at,
+                    ).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
                   </span>
                 </div>
               </button>
@@ -1634,247 +1629,249 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         )}
 
         {!handlesLargeScaleProjects && (
-        <div className="space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between w-full gap-4">
-            <div>
-              <h4 className="text-sm font-semibold">Design Selections</h4>
-              {!effectiveCanEditSelections && (
-                <Badge variant="secondary">
-                  {shouldDisableBlockedActions
-                    ? "Lead is blocked"
-                    : "Read only"}
-                </Badge>
-              )}
-              {(() => {
-                const days = getManufacturingDaysForInstance(instance_id);
-                return days != null ? (
-                  <div className="flex items-center gap-2 mt-1.5">
-                    <span className="text-xs text-muted-foreground">
-                      Manufacturing Timeline:
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                      {days} days
-                    </span>
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground mt-1.5 max-w-xs">
-                    Save Carcas &amp; Shutter selections to auto-calculate the
-                    manufacturing timeline for this instance.
-                  </p>
-                );
-              })()}
-            </div>
-
-            <div>
-              {/* ✅ Save/Update button — disabled + tooltip when blocked */}
-              {canEditSelectionInstances && (
-                <div className="flex justify-end">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="inline-block">
-                          <Button
-                            type="button"
-                            disabled={isPending || shouldDisableBlockedActions}
-                            onClick={
-                              shouldDisableBlockedActions
-                                ? undefined
-                                : selectionForm.handleSubmit(onSaveSelections)
-                            }
-                          >
-                            {isPending
-                              ? "Saving..."
-                              : (existingSelections.carcas &&
-                                    chsMappings.some(
-                                      (m) =>
-                                        m.selection_id ===
-                                        existingSelections.carcas?.id,
-                                    )) ||
-                                  (existingSelections.shutter &&
-                                    chsMappings.some(
-                                      (m) =>
-                                        m.selection_id ===
-                                        existingSelections.shutter?.id,
-                                    )) ||
-                                  (existingSelections.handles &&
-                                    chsMappings.some(
-                                      (m) =>
-                                        m.selection_id ===
-                                        existingSelections.handles?.id,
-                                    ))
-                                ? "Update Design Selections"
-                                : "Save Design Selections"}
-                          </Button>
-                        </span>
-                      </TooltipTrigger>
-                      {shouldDisableBlockedActions && (
-                        <TooltipContent>{blockedTooltip}</TooltipContent>
-                      )}
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <Form {...selectionForm}>
-            <form
-              onSubmit={selectionForm.handleSubmit(onSaveSelections)}
-              className="space-y-4"
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={selectionForm.control}
-                  name="carcas"
-                  render={({ field, fieldState }) => (
-                    <FormItem className="space-y-2">
-                      <FormLabel className="font-medium">Carcas *</FormLabel>
-                      <FormControl>
-                        <ClientDocsSelectionMultiSelect
-                          value={field.value || []}
-                          onChange={field.onChange}
-                          options={carcassOptions}
-                          placeholder="Select carcass options"
-                          disabled={
-                            isPending ||
-                            !effectiveCanEditSelections ||
-                            isSelectionMastersLoading
-                          }
-                          isError={Boolean(fieldState.error)}
-                        />
-                      </FormControl>
-                      <FormField
-                        control={selectionForm.control}
-                        name="carcas_remark"
-                        render={({
-                          field: remarkField,
-                          fieldState: remarkState,
-                        }) => (
-                          <FormItem className="">
-                            <FormControl>
-                              <TextAreaInput
-                                value={remarkField.value ?? defaultRemark}
-                                onChange={remarkField.onChange}
-                                placeholder="Enter carcas remark..."
-                                disabled={
-                                  isPending || !effectiveCanEditSelections
-                                }
-                                className="h-24"
-                                isError={Boolean(remarkState.error)}
-                                errorMessage={remarkState.error?.message}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={selectionForm.control}
-                  name="handles"
-                  render={({ field, fieldState }) => (
-                    <FormItem className="space-y-2">
-                      <FormLabel className="font-medium">Handles</FormLabel>
-                      <FormControl>
-                        <ClientDocsSelectionMultiSelect
-                          value={field.value || []}
-                          onChange={field.onChange}
-                          options={handleOptions}
-                          placeholder="Select handle options"
-                          disabled={
-                            isPending ||
-                            !effectiveCanEditSelections ||
-                            isSelectionMastersLoading
-                          }
-                          isError={Boolean(fieldState.error)}
-                        />
-                      </FormControl>
-                      <FormField
-                        control={selectionForm.control}
-                        name="handles_remark"
-                        render={({
-                          field: remarkField,
-                          fieldState: remarkState,
-                        }) => (
-                          <FormItem>
-                            <FormControl>
-                              <TextAreaInput
-                                value={remarkField.value ?? defaultRemark}
-                                onChange={remarkField.onChange}
-                                placeholder="Enter handles remark..."
-                                disabled={
-                                  isPending || !effectiveCanEditSelections
-                                }
-                                className="h-24"
-                                isError={Boolean(remarkState.error)}
-                                errorMessage={remarkState.error?.message}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={selectionForm.control}
-                  name="shutter"
-                  render={({ field, fieldState }) => (
-                    <FormItem className="space-y-2 md:col-span-2">
-                      <FormLabel className="font-medium">
-                        Shutter {!(isFastProduction || isSmallOrder) && " *"}
-                      </FormLabel>
-                      <FormControl>
-                        <ClientDocsSelectionMultiSelect
-                          value={field.value || []}
-                          onChange={field.onChange}
-                          options={shutterOptions}
-                          placeholder="Select shutter options"
-                          disabled={
-                            isPending ||
-                            !effectiveCanEditSelections ||
-                            isSelectionMastersLoading
-                          }
-                          isError={Boolean(fieldState.error)}
-                        />
-                      </FormControl>
-                      <FormField
-                        control={selectionForm.control}
-                        name="shutter_remark"
-                        render={({
-                          field: remarkField,
-                          fieldState: remarkState,
-                        }) => (
-                          <FormItem>
-                            <FormControl>
-                              <TextAreaInput
-                                value={remarkField.value ?? defaultRemark}
-                                onChange={remarkField.onChange}
-                                placeholder="Enter shutter remark..."
-                                disabled={
-                                  isPending || !effectiveCanEditSelections
-                                }
-                                className="h-24"
-                                isError={Boolean(remarkState.error)}
-                                errorMessage={remarkState.error?.message}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+          <div className="space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between w-full gap-4">
+              <div>
+                <h4 className="text-sm font-semibold">Design Selections</h4>
+                {!effectiveCanEditSelections && (
+                  <Badge variant="secondary">
+                    {shouldDisableBlockedActions
+                      ? "Lead is blocked"
+                      : "Read only"}
+                  </Badge>
+                )}
+                {(() => {
+                  const days = getManufacturingDaysForInstance(instance_id);
+                  return days != null ? (
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <span className="text-xs text-muted-foreground">
+                        Manufacturing Timeline:
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                        {days} days
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground mt-1.5 max-w-xs">
+                      Save Carcas &amp; Shutter selections to auto-calculate the
+                      manufacturing timeline for this instance.
+                    </p>
+                  );
+                })()}
               </div>
-            </form>
-          </Form>
-        </div>
+
+              <div>
+                {/* ✅ Save/Update button — disabled + tooltip when blocked */}
+                {canEditSelectionInstances && (
+                  <div className="flex justify-end">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-block">
+                            <Button
+                              type="button"
+                              disabled={
+                                isPending || shouldDisableBlockedActions
+                              }
+                              onClick={
+                                shouldDisableBlockedActions
+                                  ? undefined
+                                  : selectionForm.handleSubmit(onSaveSelections)
+                              }
+                            >
+                              {isPending
+                                ? "Saving..."
+                                : (existingSelections.carcas &&
+                                      chsMappings.some(
+                                        (m) =>
+                                          m.selection_id ===
+                                          existingSelections.carcas?.id,
+                                      )) ||
+                                    (existingSelections.shutter &&
+                                      chsMappings.some(
+                                        (m) =>
+                                          m.selection_id ===
+                                          existingSelections.shutter?.id,
+                                      )) ||
+                                    (existingSelections.handles &&
+                                      chsMappings.some(
+                                        (m) =>
+                                          m.selection_id ===
+                                          existingSelections.handles?.id,
+                                      ))
+                                  ? "Update Design Selections"
+                                  : "Save Design Selections"}
+                            </Button>
+                          </span>
+                        </TooltipTrigger>
+                        {shouldDisableBlockedActions && (
+                          <TooltipContent>{blockedTooltip}</TooltipContent>
+                        )}
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <Form {...selectionForm}>
+              <form
+                onSubmit={selectionForm.handleSubmit(onSaveSelections)}
+                className="space-y-4"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={selectionForm.control}
+                    name="carcas"
+                    render={({ field, fieldState }) => (
+                      <FormItem className="space-y-2">
+                        <FormLabel className="font-medium">Carcas *</FormLabel>
+                        <FormControl>
+                          <ClientDocsSelectionMultiSelect
+                            value={field.value || []}
+                            onChange={field.onChange}
+                            options={carcassOptions}
+                            placeholder="Select carcass options"
+                            disabled={
+                              isPending ||
+                              !effectiveCanEditSelections ||
+                              isSelectionMastersLoading
+                            }
+                            isError={Boolean(fieldState.error)}
+                          />
+                        </FormControl>
+                        <FormField
+                          control={selectionForm.control}
+                          name="carcas_remark"
+                          render={({
+                            field: remarkField,
+                            fieldState: remarkState,
+                          }) => (
+                            <FormItem className="">
+                              <FormControl>
+                                <TextAreaInput
+                                  value={remarkField.value ?? defaultRemark}
+                                  onChange={remarkField.onChange}
+                                  placeholder="Enter carcas remark..."
+                                  disabled={
+                                    isPending || !effectiveCanEditSelections
+                                  }
+                                  className="h-24"
+                                  isError={Boolean(remarkState.error)}
+                                  errorMessage={remarkState.error?.message}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={selectionForm.control}
+                    name="handles"
+                    render={({ field, fieldState }) => (
+                      <FormItem className="space-y-2">
+                        <FormLabel className="font-medium">Handles</FormLabel>
+                        <FormControl>
+                          <ClientDocsSelectionMultiSelect
+                            value={field.value || []}
+                            onChange={field.onChange}
+                            options={handleOptions}
+                            placeholder="Select handle options"
+                            disabled={
+                              isPending ||
+                              !effectiveCanEditSelections ||
+                              isSelectionMastersLoading
+                            }
+                            isError={Boolean(fieldState.error)}
+                          />
+                        </FormControl>
+                        <FormField
+                          control={selectionForm.control}
+                          name="handles_remark"
+                          render={({
+                            field: remarkField,
+                            fieldState: remarkState,
+                          }) => (
+                            <FormItem>
+                              <FormControl>
+                                <TextAreaInput
+                                  value={remarkField.value ?? defaultRemark}
+                                  onChange={remarkField.onChange}
+                                  placeholder="Enter handles remark..."
+                                  disabled={
+                                    isPending || !effectiveCanEditSelections
+                                  }
+                                  className="h-24"
+                                  isError={Boolean(remarkState.error)}
+                                  errorMessage={remarkState.error?.message}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={selectionForm.control}
+                    name="shutter"
+                    render={({ field, fieldState }) => (
+                      <FormItem className="space-y-2 md:col-span-2">
+                        <FormLabel className="font-medium">
+                          Shutter {!(isFastProduction || isSmallOrder) && " *"}
+                        </FormLabel>
+                        <FormControl>
+                          <ClientDocsSelectionMultiSelect
+                            value={field.value || []}
+                            onChange={field.onChange}
+                            options={shutterOptions}
+                            placeholder="Select shutter options"
+                            disabled={
+                              isPending ||
+                              !effectiveCanEditSelections ||
+                              isSelectionMastersLoading
+                            }
+                            isError={Boolean(fieldState.error)}
+                          />
+                        </FormControl>
+                        <FormField
+                          control={selectionForm.control}
+                          name="shutter_remark"
+                          render={({
+                            field: remarkField,
+                            fieldState: remarkState,
+                          }) => (
+                            <FormItem>
+                              <FormControl>
+                                <TextAreaInput
+                                  value={remarkField.value ?? defaultRemark}
+                                  onChange={remarkField.onChange}
+                                  placeholder="Enter shutter remark..."
+                                  disabled={
+                                    isPending || !effectiveCanEditSelections
+                                  }
+                                  className="h-24"
+                                  isError={Boolean(remarkState.error)}
+                                  errorMessage={remarkState.error?.message}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </form>
+            </Form>
+          </div>
         )}
 
         {(() => {
@@ -1950,9 +1947,8 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
             <div className="space-y-4">
               {activeSpecRequiresAdditionalUploads && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-300">
-                  This specification was completed with amended or deleted
-                  items — please upload the updated design and quotation
-                  files below.
+                  This specification was completed with amended or deleted items
+                  — please upload the updated design and quotation files below.
                 </div>
               )}
 
@@ -1961,8 +1957,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                   .filter((section) => section.canView)
                   .map((section) => {
                     const count = section.docs.length;
-                    const isMissingRequired =
-                      !!section.required && count === 0;
+                    const isMissingRequired = !!section.required && count === 0;
 
                     return (
                       <Card
@@ -1983,9 +1978,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                                 <h3 className="font-semibold text-sm flex items-center gap-1.5">
                                   {section.title}
                                   {isMissingRequired && (
-                                    <span className="text-destructive">
-                                      *
-                                    </span>
+                                    <span className="text-destructive">*</span>
                                   )}
                                 </h3>
                                 <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
@@ -2287,15 +2280,15 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         ((handlesLargeScaleProjects && isSingleDisplayGroup) ||
           (!handlesLargeScaleProjects && isSingleInstance)) &&
         activeInstance && (
-        <div className="space-y-4">
-          <h3 className="text-sm font-semibold">
-            {activeDisplayGroup?.title || activeInstance.title}
-          </h3>
-          <div className="rounded-2xl border bg-white dark:bg-neutral-900">
-            {renderInstanceEditorContent(activeInstance.id)}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold">
+              {activeDisplayGroup?.title || activeInstance.title}
+            </h3>
+            <div className="rounded-2xl border bg-white dark:bg-neutral-900">
+              {renderInstanceEditorContent(activeInstance.id)}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* ✅ Move to Client Approval — shown when handlesLargeScaleProjects is false */}
       {!handlesLargeScaleProjects &&
@@ -2356,9 +2349,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                   className="space-y-4"
                 >
                   <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold">
-                      Upload New Files
-                    </h4>
+                    <h4 className="text-sm font-semibold">Upload New Files</h4>
                     {sectionSelectedFiles.length > 0 && (
                       <Badge variant="secondary">
                         {sectionSelectedFiles.length} selected
@@ -2407,9 +2398,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
                                   <>
                                     <Upload className="w-4 h-4" />
                                     Upload {sectionSelectedFiles.length} File
-                                    {sectionSelectedFiles.length > 1
-                                      ? "s"
-                                      : ""}
+                                    {sectionSelectedFiles.length > 1 ? "s" : ""}
                                   </>
                                 )}
                               </Button>

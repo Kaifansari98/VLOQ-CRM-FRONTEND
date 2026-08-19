@@ -59,12 +59,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type UserMasterRow = {
   srNo: number;
@@ -477,10 +472,7 @@ const customPrivilegeSections: readonly CustomPrivilegeSection[] = [
       {
         id: "final_handover",
         title: "Final Handover",
-        childModuleIncludes: [
-          "Final Handover",
-          "Pending Work",
-        ],
+        childModuleIncludes: ["Final Handover", "Pending Work"],
         codePrefixes: ["installation.final_handover."],
       },
     ],
@@ -499,8 +491,11 @@ interface UserMastersTableProps {
   vendorIdOverride?: number;
 }
 
-export default function UserMastersTable({ vendorIdOverride }: UserMastersTableProps) {
-  const vendorId = vendorIdOverride ?? useAppSelector((state) => state.auth.user?.vendor_id);
+export default function UserMastersTable({
+  vendorIdOverride,
+}: UserMastersTableProps) {
+  const vendorId =
+    vendorIdOverride ?? useAppSelector((state) => state.auth.user?.vendor_id);
 
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -534,12 +529,15 @@ export default function UserMastersTable({ vendorIdOverride }: UserMastersTableP
   const [privilegeSearch, setPrivilegeSearch] = React.useState("");
   const deferredPrivilegeSearch = React.useDeferredValue(privilegeSearch);
 
-  const { data, isLoading, isError, error } = useUsersForMaster({
-    page: pagination.pageIndex + 1,
-    limit: pagination.pageSize,
-    search: globalFilter,
-    franchise_id: franchiseFilter,
-  }, vendorId);
+  const { data, isLoading, isError, error } = useUsersForMaster(
+    {
+      page: pagination.pageIndex + 1,
+      limit: pagination.pageSize,
+      search: globalFilter,
+      franchise_id: franchiseFilter,
+    },
+    vendorId,
+  );
   const { data: franchisesData = [] } = useFranchisesByVendorId(
     vendorId,
     !!vendorId,
@@ -915,7 +913,7 @@ export default function UserMastersTable({ vendorIdOverride }: UserMastersTableP
                   }}
                   franchises={franchisesData}
                 />
-                <Button 
+                <Button
                   onClick={() => setOpenCreateModal(true)}
                   className="sm:hidden"
                 >
@@ -924,7 +922,7 @@ export default function UserMastersTable({ vendorIdOverride }: UserMastersTableP
                 </Button>
               </div>
             </div>
-            <Button 
+            <Button
               onClick={() => setOpenCreateModal(true)}
               className="hidden sm:flex"
             >
@@ -1458,113 +1456,116 @@ export default function UserMastersTable({ vendorIdOverride }: UserMastersTableP
                                   </div>
                                 ) : (
                                   <div className="space-y-2">
-                                    {generalToolsPrivilegeGroups.map((group) => {
-                                      const shouldRenderOpenDirectly =
-                                        generalToolsPrivilegeGroups.length === 1;
-                                      const isLeadSectionOpen =
-                                        shouldRenderOpenDirectly ||
-                                        openLeadPrivilegeSection === group.id;
+                                    {generalToolsPrivilegeGroups.map(
+                                      (group) => {
+                                        const shouldRenderOpenDirectly =
+                                          generalToolsPrivilegeGroups.length ===
+                                          1;
+                                        const isLeadSectionOpen =
+                                          shouldRenderOpenDirectly ||
+                                          openLeadPrivilegeSection === group.id;
 
-                                      return (
-                                        <div
-                                          key={group.id}
-                                          className="overflow-hidden rounded-lg border bg-background"
-                                        >
-                                          {shouldRenderOpenDirectly ? (
-                                            <div className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left">
-                                              <p className="text-sm font-medium text-foreground">
-                                                {group.title}
-                                              </p>
-                                            </div>
-                                          ) : (
-                                            <button
-                                              type="button"
-                                              onClick={() =>
-                                                setOpenLeadPrivilegeSection(
-                                                  (current) =>
-                                                    current === group.id
-                                                      ? null
-                                                      : group.id,
-                                                )
-                                              }
-                                              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/40"
-                                            >
-                                              <p className="text-sm font-medium text-foreground">
-                                                {group.title}
-                                              </p>
-                                              <ChevronDown
-                                                className={cn(
-                                                  "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
-                                                  isLeadSectionOpen &&
-                                                    "rotate-180",
-                                                )}
-                                              />
-                                            </button>
-                                          )}
-
-                                          {isLeadSectionOpen && (
-                                            <div className="border-t bg-muted/20 px-4 py-3">
-                                              <div className="space-y-2">
-                                                {group.privileges.map(
-                                                  (privilege) => {
-                                                    const isChecked =
-                                                      selectedPrivilegeIds.includes(
-                                                        privilege.id,
-                                                      );
-
-                                                    return (
-                                                      <label
-                                                        key={privilege.id}
-                                                        className="flex items-center gap-3 rounded-md border bg-background px-3 py-2"
-                                                      >
-                                                        <Checkbox
-                                                          checked={isChecked}
-                                                          disabled={
-                                                            updateUserPrivilegesMutation.isPending
-                                                          }
-                                                          onCheckedChange={(
-                                                            checked,
-                                                          ) =>
-                                                            setSelectedPrivilegeIds(
-                                                              (current) => {
-                                                                if (checked) {
-                                                                  return current.includes(
-                                                                    privilege.id,
-                                                                  )
-                                                                    ? current
-                                                                    : [
-                                                                        ...current,
-                                                                        privilege.id,
-                                                                      ];
-                                                                }
-
-                                                                return current.filter(
-                                                                  (id) =>
-                                                                    id !==
-                                                                    privilege.id,
-                                                                );
-                                                              },
-                                                            )
-                                                          }
-                                                        />
-                                                        <div className="space-y-0.5">
-                                                          <p className="text-sm font-medium text-foreground">
-                                                            {privilege.action}
-                                                          </p>
-                                                          <p className="text-xs text-muted-foreground">
-                                                            {privilege.code}
-                                                          </p>
-                                                        </div>
-                                                      </label>
-                                                    );
-                                                  },
-                                                )}
+                                        return (
+                                          <div
+                                            key={group.id}
+                                            className="overflow-hidden rounded-lg border bg-background"
+                                          >
+                                            {shouldRenderOpenDirectly ? (
+                                              <div className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left">
+                                                <p className="text-sm font-medium text-foreground">
+                                                  {group.title}
+                                                </p>
                                               </div>
-                                            </div>
-                                          )}
-                                        </div>
-                                      );
-                                    })}
+                                            ) : (
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  setOpenLeadPrivilegeSection(
+                                                    (current) =>
+                                                      current === group.id
+                                                        ? null
+                                                        : group.id,
+                                                  )
+                                                }
+                                                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/40"
+                                              >
+                                                <p className="text-sm font-medium text-foreground">
+                                                  {group.title}
+                                                </p>
+                                                <ChevronDown
+                                                  className={cn(
+                                                    "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                                                    isLeadSectionOpen &&
+                                                      "rotate-180",
+                                                  )}
+                                                />
+                                              </button>
+                                            )}
+
+                                            {isLeadSectionOpen && (
+                                              <div className="border-t bg-muted/20 px-4 py-3">
+                                                <div className="space-y-2">
+                                                  {group.privileges.map(
+                                                    (privilege) => {
+                                                      const isChecked =
+                                                        selectedPrivilegeIds.includes(
+                                                          privilege.id,
+                                                        );
+
+                                                      return (
+                                                        <label
+                                                          key={privilege.id}
+                                                          className="flex items-center gap-3 rounded-md border bg-background px-3 py-2"
+                                                        >
+                                                          <Checkbox
+                                                            checked={isChecked}
+                                                            disabled={
+                                                              updateUserPrivilegesMutation.isPending
+                                                            }
+                                                            onCheckedChange={(
+                                                              checked,
+                                                            ) =>
+                                                              setSelectedPrivilegeIds(
+                                                                (current) => {
+                                                                  if (checked) {
+                                                                    return current.includes(
+                                                                      privilege.id,
+                                                                    )
+                                                                      ? current
+                                                                      : [
+                                                                          ...current,
+                                                                          privilege.id,
+                                                                        ];
+                                                                  }
+
+                                                                  return current.filter(
+                                                                    (id) =>
+                                                                      id !==
+                                                                      privilege.id,
+                                                                  );
+                                                                },
+                                                              )
+                                                            }
+                                                          />
+                                                          <div className="space-y-0.5">
+                                                            <p className="text-sm font-medium text-foreground">
+                                                              {privilege.action}
+                                                            </p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                              {privilege.code}
+                                                            </p>
+                                                          </div>
+                                                        </label>
+                                                      );
+                                                    },
+                                                  )}
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      },
+                                    )}
                                   </div>
                                 )}
                               </>
@@ -1601,13 +1602,15 @@ export default function UserMastersTable({ vendorIdOverride }: UserMastersTableP
                                   </p>
                                   <div className="flex items-center gap-2">
                                     {(() => {
-                                      const allChildIds = getSectionChildPrivileges(
-                                        section.parentModule,
-                                        child.childModuleIncludes,
-                                        child.codePrefixes,
-                                      ).map((p) => p.id);
-                                      const selCount = allChildIds.filter((id) =>
-                                        selectedPrivilegeIds.includes(id),
+                                      const allChildIds =
+                                        getSectionChildPrivileges(
+                                          section.parentModule,
+                                          child.childModuleIncludes,
+                                          child.codePrefixes,
+                                        ).map((p) => p.id);
+                                      const selCount = allChildIds.filter(
+                                        (id) =>
+                                          selectedPrivilegeIds.includes(id),
                                       ).length;
                                       if (allChildIds.length === 0) return null;
                                       return (
@@ -1617,8 +1620,8 @@ export default function UserMastersTable({ vendorIdOverride }: UserMastersTableP
                                             selCount === allChildIds.length
                                               ? "bg-emerald-500/15 text-emerald-600 border-emerald-200"
                                               : selCount > 0
-                                              ? "bg-primary/10 text-primary border-primary/20"
-                                              : "bg-muted text-muted-foreground",
+                                                ? "bg-primary/10 text-primary border-primary/20"
+                                                : "bg-muted text-muted-foreground",
                                           )}
                                           onClick={(e) => e.stopPropagation()}
                                         >
@@ -1638,13 +1641,15 @@ export default function UserMastersTable({ vendorIdOverride }: UserMastersTableP
                                 {isLeadSectionOpen && (
                                   <div className="border-t bg-muted/20 px-4 py-3">
                                     {(() => {
-                                      const allChildIds = getSectionChildPrivileges(
-                                        section.parentModule,
-                                        child.childModuleIncludes,
-                                        child.codePrefixes,
-                                      ).map((p) => p.id);
-                                      const selCount = allChildIds.filter((id) =>
-                                        selectedPrivilegeIds.includes(id),
+                                      const allChildIds =
+                                        getSectionChildPrivileges(
+                                          section.parentModule,
+                                          child.childModuleIncludes,
+                                          child.codePrefixes,
+                                        ).map((p) => p.id);
+                                      const selCount = allChildIds.filter(
+                                        (id) =>
+                                          selectedPrivilegeIds.includes(id),
                                       ).length;
                                       const isAllSelected =
                                         allChildIds.length > 0 &&
@@ -1654,18 +1659,28 @@ export default function UserMastersTable({ vendorIdOverride }: UserMastersTableP
                                         <div className="mb-3 flex items-center justify-between gap-2">
                                           <button
                                             type="button"
-                                            disabled={updateUserPrivilegesMutation.isPending}
+                                            disabled={
+                                              updateUserPrivilegesMutation.isPending
+                                            }
                                             onClick={() =>
-                                              setSelectedPrivilegeIds((current) => {
-                                                if (isAllSelected) {
-                                                  return current.filter(
-                                                    (id) => !allChildIds.includes(id),
+                                              setSelectedPrivilegeIds(
+                                                (current) => {
+                                                  if (isAllSelected) {
+                                                    return current.filter(
+                                                      (id) =>
+                                                        !allChildIds.includes(
+                                                          id,
+                                                        ),
+                                                    );
+                                                  }
+                                                  return Array.from(
+                                                    new Set([
+                                                      ...current,
+                                                      ...allChildIds,
+                                                    ]),
                                                   );
-                                                }
-                                                return Array.from(
-                                                  new Set([...current, ...allChildIds]),
-                                                );
-                                              })
+                                                },
+                                              )
                                             }
                                             className={cn(
                                               "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
@@ -1675,10 +1690,13 @@ export default function UserMastersTable({ vendorIdOverride }: UserMastersTableP
                                             )}
                                           >
                                             <CheckIcon className="h-3.5 w-3.5" />
-                                            {isAllSelected ? "Deselect All" : "Select All"}
+                                            {isAllSelected
+                                              ? "Deselect All"
+                                              : "Select All"}
                                           </button>
                                           <span className="text-xs text-muted-foreground">
-                                            {selCount} of {allChildIds.length} selected
+                                            {selCount} of {allChildIds.length}{" "}
+                                            selected
                                           </span>
                                         </div>
                                       );
