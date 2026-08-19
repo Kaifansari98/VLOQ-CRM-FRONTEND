@@ -5,6 +5,8 @@ export type LeadColumn = {
   id: number; //n
   lead_code: string; // R
   name: string; // R
+  clientName?: string;
+  projectName?: string;
   contact: string; // R
   furnitureType: string; // R
   status: string; // R

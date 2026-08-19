@@ -1077,6 +1077,14 @@ export function UniversalTable({
       srNo: index + 1,
       lead_code: `${lead.lead_code ?? ""}${options?.leadCodeSuffix ?? ""}`,
       name: toTitleCase(`${lead.firstname ?? ""} ${lead.lastname ?? ""}`),
+      clientName: toTitleCase(
+        lead.firstname ||
+        lead.clientMaster?.company_name ||
+        lead.clientMaster?.name ||
+        lead.client?.company_name ||
+        ""
+      ),
+      projectName: toTitleCase(lead.lastname ?? ""),
       email: lead.email ?? "",
       contact: `${lead.country_code ?? ""}${lead.contact_no ?? ""}`,
       siteAddress: lead.site_address ?? "",

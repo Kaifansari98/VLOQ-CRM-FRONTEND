@@ -312,8 +312,6 @@ const data = {
       { title: "Purchase Order", url: "/dashboard/inventory/purchase-orders" },
       { title: "GRN", url: "/dashboard/inventory/grn" },
       { title: "Payment Requisition", url: "/dashboard/inventory/payment-requisitions" },
-
-        // { title: "Category", url: "/dashboard/track-trace/master/category" }
       ],
     },
   ],
@@ -323,6 +321,10 @@ const data = {
       url: "#",
       icon: FolderKanban,
       items: [
+        {
+          title: "Category",
+          url: "/dashboard/track-trace/master/category",
+        },
         {
           title: "Brand",
           url: "/dashboard/track-trace/master/brand",
