@@ -26,6 +26,7 @@ import {
 import {
   useMoveToBookingStage,
   useHeadSiteSupervisors,
+  useSiteSupervisors,
 } from "@/hooks/booking-stage/use-booking";
 import { BookingPayload, assignTaskBooking } from "@/api/booking";
 import { createLeadChatRoom } from "@/api/lead-chats";
@@ -165,9 +166,23 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
   console.log("PaymentInfo :- ", ismPaymentInfo);
   console.log("Amount :- ", ismPaymentInfo?.amount);
 
-  const { data: headSiteSupervisors, isLoading } =
+  const { data: headSiteSupervisors, isLoading: loadingHead } =
     useHeadSiteSupervisors(vendorId!);
-  const vendorUser = headSiteSupervisors?.data?.head_site_supervisors || [];
+  const { data: siteSupervisors, isLoading: loadingSite } =
+    useSiteSupervisors(vendorId!);
+
+  const headUsers = headSiteSupervisors?.data?.head_site_supervisors || [];
+  const siteUsers = siteSupervisors?.data?.site_supervisors || [];
+
+  const vendorUser = React.useMemo(() => {
+    const merged = [...headUsers, ...siteUsers];
+    return merged.filter(
+      (user: any, index: number, array: any[]) =>
+        array.findIndex((candidate: any) => candidate.id === user.id) === index
+    );
+  }, [headUsers, siteUsers]);
+
+  const isLoading = loadingHead || loadingSite;
   const hasMultipleSupervisors = vendorUser.length > 1;
   const { data: headSupervisorMapping } =
     useHeadSiteSupervisorFranchiseMapping(

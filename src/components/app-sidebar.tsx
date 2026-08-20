@@ -20,7 +20,6 @@ import {
   MapPinned,
   Building2,
   Megaphone,
-  Magnet,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -85,11 +84,6 @@ const data = {
       title: "Lead Pool",
       url: "/dashboard/online-leads",
       icon: NotebookPen,
-    },
-    {
-      title: "Meta Leads",
-      url: "/dashboard/meta-leads",
-      icon: Magnet,
     },
     {
       title: "Leads",
@@ -248,11 +242,6 @@ const data = {
       title: "Lead Pool",
       url: "/dashboard/online-leads",
       icon: NotebookPen,
-    },
-    {
-      title: "Meta Leads",
-      url: "/dashboard/meta-leads",
-      icon: Magnet,
     },
     {
       title: "Open Leads",
@@ -514,13 +503,35 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       userType === "telecaller-team-lead" ||
       userType === "store-manager";
 
-    const baseItems = hideSectionsForRole
-      ? withoutOverall.filter(
-          (item) =>
-            item.title !== "Leads" &&
-            (userType === "site-supervisor" ? true : item.title !== "Project"),
-        )
-      : withoutOverall;
+    const baseItems = withoutOverall.filter((item) => {
+      // Hide Leads section for specific roles (excluding telecallers)
+      if (item.title === "Leads") {
+        const hidesLeads =
+          userType === "site-supervisor" ||
+          userType === "tech-check" ||
+          userType === "backend" ||
+          userType === "factory" ||
+          userType === "pre-prod" ||
+          userType === "store-manager";
+        if (hidesLeads) return false;
+      }
+
+      // Hide Project section for specific roles (including telecallers)
+      if (item.title === "Project") {
+        const hidesProject =
+          userType === "site-supervisor" ||
+          userType === "tech-check" ||
+          userType === "backend" ||
+          userType === "factory" ||
+          userType === "pre-prod" ||
+          userType === "telecaller" ||
+          userType === "telecaller-team-lead" ||
+          userType === "store-manager";
+        if (hidesProject && userType !== "site-supervisor") return false;
+      }
+
+      return true;
+    });
 
     const adminOnlyItems =
       userType === "admin" || userType === "super-admin" || userType === "auditor"

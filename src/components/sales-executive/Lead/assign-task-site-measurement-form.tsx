@@ -287,7 +287,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     data: salesExecutiveUsers,
     isLoading: loadingSalesExecutiveUsers,
     error: salesExecutiveUsersError,
-  } = useVendorSalesExecutiveUsers(vendorId!, franchiseId!, {
+  } = useVendorSalesExecutiveUsers(vendorId!, (isFollowUp && franchiseId) ? franchiseId : undefined, {
     taskType: isFollowUp ? "followup" : undefined,
   });
 
@@ -295,7 +295,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     data: customPrivilegeUsers,
     isLoading: loadingCustomPrivilegeUsers,
     error: customPrivilegeUsersError,
-  } = useVendorSalesExecutiveUsers(vendorId!, franchiseId!, {
+  } = useVendorSalesExecutiveUsers(vendorId!, (isFollowUp && franchiseId) ? franchiseId : undefined, {
     assigneeUserType: "custom",
     requiredPrivilegeCode: "leads.ism_leads.ism_details.upload_measurement",
     taskType: isFollowUp ? "followup" : undefined,

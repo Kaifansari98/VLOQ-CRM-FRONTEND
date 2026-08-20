@@ -631,7 +631,30 @@ export default function LeadsGenerationForm({
       (type: any) => String(type.id) === selectedTypeId
     )?.type || "";
   const normalizedType = selectedTypeLabel.toLowerCase();
-  const hasSelectedFurnitureType = Boolean(selectedTypeId);
+  const hasSelectedFurnitureType = mode === "lead-pool"
+    ? Boolean(selectedProductTypes && selectedProductTypes.length > 0)
+    : Boolean(selectedTypeId);
+
+  const selectedCategories = useMemo(() => {
+    if (!selectedProductTypes || selectedProductTypes.length === 0) {
+      return new Set<string>();
+    }
+    const categories = new Set<string>();
+    selectedProductTypes.forEach((id: string) => {
+      const typeLabel =
+        productTypes?.data?.find(
+          (type: any) => String(type.id) === id
+        )?.type?.toLowerCase() || "";
+      if (typeLabel.includes("kitchen")) {
+        categories.add("kitchen");
+      } else if (typeLabel.includes("wardrobe")) {
+        categories.add("wardrobe");
+      } else {
+        categories.add("others");
+      }
+    });
+    return categories;
+  }, [selectedProductTypes, productTypes?.data]);
 
   let parentFilter: "Kitchen" | "Wardrobe" | "Others" | null = null;
   if (normalizedType.includes("kitchen")) {
@@ -641,9 +664,16 @@ export default function LeadsGenerationForm({
   } else if (selectedTypeId) {
     parentFilter = "Others";
   }
+
+  const isKitchenStructureSingleSelect =
+    mode === "lead-pool"
+      ? false
+      : parentFilter === "Kitchen";
+
   const allowDuplicatesForWardrobe =
-    parentFilter === "Wardrobe" || parentFilter === "Others";
-  const isKitchenStructureSingleSelect = parentFilter === "Kitchen";
+    mode === "lead-pool"
+      ? selectedCategories.has("wardrobe") || selectedCategories.has("others")
+      : parentFilter === "Wardrobe" || parentFilter === "Others";
 
   useEffect(() => {
     return () => {
@@ -657,6 +687,17 @@ export default function LeadsGenerationForm({
     () =>
       productStructures?.data
         ?.filter((p: any) => {
+          if (mode === "lead-pool") {
+            if (selectedCategories.size === 0) return false;
+            const parent = String(p.parent || "").toLowerCase();
+            const parentCat =
+              parent === "kitchen"
+                ? "kitchen"
+                : parent === "wardrobe"
+                ? "wardrobe"
+                : "others";
+            return selectedCategories.has(parentCat);
+          }
           if (!parentFilter) return true;
           const parent = String(p.parent || "").toLowerCase();
           if (parentFilter === "Kitchen") return parent === "kitchen";
@@ -667,7 +708,7 @@ export default function LeadsGenerationForm({
           value: String(p.id),
           label: p.type ? p.type.charAt(0).toUpperCase() + p.type.slice(1) : "",
         })) ?? [],
-    [parentFilter, productStructures?.data]
+    [parentFilter, productStructures?.data, mode, selectedCategories]
   );
   const buildStructureDetails = useCallback(
     (
@@ -822,6 +863,24 @@ export default function LeadsGenerationForm({
     hasSelectedFurnitureType,
     structureOptions,
   ]);
+
+  // Keep selected structures in sync with available options
+  useEffect(() => {
+    if (!hasSelectedFurnitureType) {
+      const current = form.getValues("product_structures") || [];
+      if (current.length > 0) {
+        form.setValue("product_structures", [], { shouldValidate: true });
+      }
+      return;
+    }
+    const current = form.getValues("product_structures") || [];
+    const valid = current.filter((id) =>
+      structureOptions.some((opt) => opt.value === id)
+    );
+    if (valid.length !== current.length) {
+      form.setValue("product_structures", valid, { shouldValidate: true });
+    }
+  }, [structureOptions, form, hasSelectedFurnitureType]);
 
   const queryClient = useQueryClient();
   const checkContactMutation = useCheckContactOrEmailExists();
@@ -1985,12 +2044,40 @@ export default function LeadsGenerationForm({
                       label: p.type,
                     })) || [];
 
+                  const multiselectOptions: Option[] =
+                    productTypes?.data?.map((p: any) => ({
+                      value: String(p.id),
+                      label: p.type ? p.type.charAt(0).toUpperCase() + p.type.slice(1) : "",
+                    })) || [];
+
+                  const selectedOptions = (field.value || [])
+                    .map((id) => multiselectOptions.find((opt) => opt.value === String(id)))
+                    .filter((opt): opt is Option => !!opt);
+
                   return (
                     <FormItem data-name={field?.name || ""} >
                     <FormLabel className="text-sm">Furniture Type *</FormLabel>
 
                       {isProductTypesLoading ? (
                         <p className="text-xs text-muted-foreground">Loading...</p>
+                      ) : mode === "lead-pool" ? (
+                        <div onBlurCapture={handleSimilarityFieldBlur}>
+                          <MultipleSelector
+                            value={selectedOptions}
+                            onChange={(selectedOptions) => {
+                              resetSimilarLeadValidation();
+                              const selectedIds = selectedOptions.map((opt) => opt.value);
+                              field.onChange(selectedIds);
+                            }}
+                            options={multiselectOptions}
+                            placeholder="Select furniture types"
+                            emptyIndicator={
+                              <p className="text-center text-lg leading-10 text-gray-600 dark:text-gray-400">
+                                no results found.
+                              </p>
+                            }
+                          />
+                        </div>
                       ) : (
                         <div onBlurCapture={handleSimilarityFieldBlur}>
                           <AssignToPicker

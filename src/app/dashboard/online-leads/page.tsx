@@ -42,11 +42,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, UserPlus, PlusCircle, PhoneCall, Calendar, MapPin, Loader2, ChevronDown, User, Mail, Phone, MessageSquare, Zap, Magnet, Activity, Building, CheckCircle2 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Search, UserPlus, PlusCircle, PhoneCall, Calendar, MapPin, Loader2, ChevronDown, User, Mail, Phone, MessageSquare, Zap, Magnet, Activity, Building, CheckCircle2, Upload, Trash2, AlertCircle, Trash } from "lucide-react";
+import CustomeDatePicker from "@/components/date-picker";
 import Link from "next/link";
 import MultipleSelector, { Option } from "@/components/ui/multiselect";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { GenerateLeadFormModal } from "@/components/sales-executive/Lead/leads-generation-form-modal";
+import { BulkUploadModal } from "@/components/sales-executive/Lead/bulk-upload-modal";
+import { toastManager } from "@/components/ui/toast";
 
 interface OnlineLead {
   id: number;
@@ -105,6 +109,9 @@ interface Store {
 interface Telecaller {
   id: number;
   user_name: string;
+  user_type?: {
+    user_type: string;
+  } | null;
 }
 
 export default function OnlineLeadsPage() {
@@ -122,6 +129,17 @@ export default function OnlineLeadsPage() {
   const [statuses, setStatuses] = useState<FollowupStatus[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [telecallers, setTelecallers] = useState<Telecaller[]>([]);
+
+  // Quick status / follow-up update states
+  const [updatingLeadId, setUpdatingLeadId] = useState<number | null>(null);
+  const [updatingPriorityId, setUpdatingPriorityId] = useState<number | null>(null);
+  const [isQuickFollowUpOpen, setIsQuickFollowUpOpen] = useState(false);
+  const [quickLeadId, setQuickLeadId] = useState<number | null>(null);
+  const [quickStatusId, setQuickStatusId] = useState<number | null>(null);
+  const [quickStatusName, setQuickStatusName] = useState("");
+  const [quickFollowUpDate, setQuickFollowUpDate] = useState("");
+  const [quickRemark, setQuickRemark] = useState("");
+  const [isSavingQuickFollowUp, setIsSavingQuickFollowUp] = useState(false);
   
   const router = useRouter();
 
@@ -130,6 +148,7 @@ export default function OnlineLeadsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [storeFilter, setStoreFilter] = useState("");
+  const [sourceFilter, setSourceFilter] = useState("");
 
   const [sorting, setSorting] = useState<any>([]);
   const [columnVisibility, setColumnVisibility] = useState<any>({});
@@ -208,8 +227,7 @@ export default function OnlineLeadsPage() {
         <DataTableColumnHeader column={column} title="Priority" />
       ),
       cell: ({ row }) => {
-        const value = row.original.priority || "";
-        if (!value) return "—";
+        const value = row.original.priority || "Medium";
 
         const config: Record<string, { dot: string; pill: string }> = {
           High: {
@@ -232,14 +250,44 @@ export default function OnlineLeadsPage() {
         };
 
         return (
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${style.pill}`}
+          <Select
+            disabled={updatingPriorityId === row.original.id}
+            value={value}
+            onValueChange={(val) => handlePriorityChange(row.original.id, val)}
           >
-            <span
-              className={`h-1.5 w-1.5 rounded-full shrink-0 ${style.dot}`}
-            />
-            {value}
-          </span>
+            <SelectTrigger className="border-0 shadow-none p-0 h-auto bg-transparent focus:ring-0 focus:ring-offset-0 focus:outline-none cursor-pointer flex items-center justify-start w-fit [&>svg]:hidden">
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${style.pill}`}
+              >
+                {updatingPriorityId === row.original.id ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full shrink-0 ${style.dot}`}
+                  />
+                )}
+                {value}
+                <ChevronDown className="w-3 h-3 opacity-60 ml-0.5" />
+              </span>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="High">
+                <span className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-red-500" /> High
+                </span>
+              </SelectItem>
+              <SelectItem value="Medium">
+                <span className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-orange-500" /> Medium
+                </span>
+              </SelectItem>
+              <SelectItem value="Low">
+                <span className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-yellow-500" /> Low
+                </span>
+              </SelectItem>
+            </SelectContent>
+          </Select>
         );
       },
       enableSorting: true,
@@ -269,7 +317,7 @@ export default function OnlineLeadsPage() {
         row.original.franchise ? (
           <div className="flex items-center gap-1.5 text-foreground text-sm font-medium">
             <MapPin className="w-3.5 h-3.5 text-rose-500" />
-            {row.original.franchise.franchise_name}
+            {row.original.franchise.franchise_name.replace(/vloq|furnix/gi, "").trim()}
           </div>
         ) : (
           <span className="text-xs text-muted-foreground italic">Not Selected</span>
@@ -281,69 +329,94 @@ export default function OnlineLeadsPage() {
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Status" />
       ),
-      cell: ({ row }) => (
-        <div>
-          <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200/50 inline-flex items-center gap-1 mb-1">
-            <Activity className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-            {row.original.followupStatus?.status_name || "New Lead"}
-          </span>
-          {row.original.follow_up_date && (
-            <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400 flex items-center gap-1 mt-1">
-              <Calendar className="w-3.5 h-3.5" /> F/Up: {new Date(row.original.follow_up_date).toLocaleString()}
-            </span>
-          )}
-        </div>
-      ),
+      cell: ({ row }) => {
+        const currentStatus = row.original.followupStatus;
+        return (
+          <div>
+            <Select
+              disabled={updatingLeadId === row.original.id}
+              value={currentStatus?.id?.toString() || ""}
+              onValueChange={(val) => handleStatusChange(row.original.id, Number(val))}
+            >
+              <SelectTrigger className="border-0 shadow-none p-0 h-auto bg-transparent focus:ring-0 focus:ring-offset-0 focus:outline-none cursor-pointer flex items-center justify-start w-fit">
+                <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200/50 inline-flex items-center gap-1">
+                  {updatingLeadId === row.original.id ? (
+                    <Loader2 className="w-3 h-3 text-blue-600 dark:text-blue-400 animate-spin" />
+                  ) : (
+                    <Activity className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                  )}
+                  {currentStatus?.status_name || "New Lead"}
+                </span>
+              </SelectTrigger>
+              <SelectContent>
+                {statuses
+                  .filter((st) => st.status_name.toLowerCase() !== "pending")
+                  .map((st) => (
+                    <SelectItem key={st.id} value={st.id.toString()}>
+                      {st.status_name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+        );
+      },
     },
     {
       accessorKey: "remark",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Remark" />
       ),
-      cell: ({ row }) => (
-        row.original.remark ? (
-          <p className="text-sm font-normal text-foreground truncate max-w-[200px]" title={row.original.remark}>
-            {row.original.remark}
-          </p>
-        ) : (
-          <span className="text-muted-foreground/50">—</span>
-        )
-      ),
+      cell: ({ row }) => {
+        const remark = row.original.remark;
+        if (!remark) return <span className="text-muted-foreground/50">—</span>;
+
+        return (
+          <TooltipProvider>
+            <Tooltip delayDuration={150}>
+              <TooltipTrigger asChild>
+                <p className="text-sm font-normal text-foreground truncate max-w-[200px] cursor-help">
+                  {remark}
+                </p>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-[240px] bg-slate-950 text-white border border-slate-850 px-2.5 py-1.5 rounded-md shadow-md text-[11px] leading-relaxed break-words whitespace-normal">
+                {remark}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      },
     },
     {
       accessorKey: "allocation",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Allocation" />
       ),
-      cell: ({ row }) => (
-        row.original.assignedTo ? (
-          <div className="flex items-center gap-1.5">
-            <User className="w-3.5 h-3.5 text-slate-500" />
-            <div>
-              <span className="font-medium text-foreground text-sm block">
-                {row.original.assignedTo.user_name}
-              </span>
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">
-                Active Caller
-              </span>
-            </div>
+      cell: ({ row }) => {
+        const callerName = row.original.assignedTo?.user_name;
+        const salesExecName = row.original.finalAssignedLeads?.user_name;
+        
+        if (!callerName && !salesExecName) {
+          return <span className="text-xs text-muted-foreground italic">Unassigned</span>;
+        }
+
+        return (
+          <div className="space-y-1">
+            {callerName && (
+              <div className="flex items-center gap-1">
+                <User className="w-3 h-3 text-blue-500" />
+                <span className="text-xs text-foreground font-medium">Caller: {callerName}</span>
+              </div>
+            )}
+            {salesExecName && (
+              <div className="flex items-center gap-1">
+                <User className="w-3 h-3 text-purple-500" />
+                <span className="text-xs text-foreground font-medium">Sales: {salesExecName}</span>
+              </div>
+            )}
           </div>
-        ) : row.original.finalAssignedLeads ? (
-          <div className="flex items-center gap-1.5">
-            <User className="w-3.5 h-3.5 text-slate-500" />
-            <div>
-              <span className="font-medium text-foreground text-sm block">
-                {row.original.finalAssignedLeads.user_name}
-              </span>
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">
-                Active Caller
-              </span>
-            </div>
-          </div>
-        ) : (
-          <span className="text-xs text-muted-foreground italic">Unassigned</span>
-        )
-      ),
+        );
+      },
     },
     {
       id: "actions",
@@ -365,11 +438,8 @@ export default function OnlineLeadsPage() {
               onClick={(e) => {
                 e.stopPropagation();
                 setSelectedLeadId(row.original.id);
-                if (row.original.assign_to) {
-                  setAssigneeId(row.original.assign_to.toString());
-                } else if (row.original.final_assigned_leads) {
-                  setAssigneeId(row.original.final_assigned_leads.toString());
-                }
+                setAssigneeId(row.original.assign_to ? row.original.assign_to.toString() : "none");
+                setSalesExecutiveId(row.original.final_assigned_leads ? row.original.final_assigned_leads.toString() : "none");
                 setIsAssignOpen(true);
               }}
               size="sm"
@@ -378,10 +448,24 @@ export default function OnlineLeadsPage() {
               <UserPlus className="w-3.5 h-3.5 mr-1" /> {row.original.assign_to || row.original.final_assigned_leads ? "Reallocate" : "Allocate"}
             </Button>
           )}
+
+          {isSuperAdminOrAdmin && (
+            <Button
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedLeadId(row.original.id);
+                setIsDeleteOpen(true);
+              }}
+              size="sm"
+              className="h-8 text-xs bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-medium"
+            >
+              <Trash className="w-3.5 h-3.5 mr-1" /> Delete
+            </Button>
+          )}
         </div>
       ),
     },
-  ], [canAssign]);
+  ], [canAssign, isSuperAdminOrAdmin, statuses, updatingLeadId, updatingPriorityId]);
 
   const table = useReactTable({
     data: leads,
@@ -406,12 +490,17 @@ export default function OnlineLeadsPage() {
   const [isAssignOpen, setIsAssignOpen] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState<number | null>(null);
   const [assigneeId, setAssigneeId] = useState("");
+  const [salesExecutiveId, setSalesExecutiveId] = useState("");
   const [assignRemark, setAssignRemark] = useState("");
   const [assigning, setAssigning] = useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
   const [assignedToName, setAssignedToName] = useState("");
 
   const [isWalkInOpen, setIsWalkInOpen] = useState(false);
+  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isDeleteBulkOpen, setIsDeleteBulkOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Set default tab based on role
   useEffect(() => {
@@ -468,6 +557,7 @@ export default function OnlineLeadsPage() {
       if (search) url += `&search=${encodeURIComponent(search)}`;
       if (statusFilter) url += `&status_id=${statusFilter}`;
       if (storeFilter) url += `&store_id=${storeFilter}`;
+      if (sourceFilter) url += `&source=${sourceFilter}`;
 
       const res = await apiClient.get(url);
       if (currentRequestId === requestIdRef.current && res.data?.success) {
@@ -486,19 +576,20 @@ export default function OnlineLeadsPage() {
 
   useEffect(() => {
     fetchLeadsData();
-  }, [vendorId, activeTab, search, statusFilter, storeFilter]);
+  }, [vendorId, activeTab, search, statusFilter, storeFilter, sourceFilter]);
 
 
 
   // Lead Assign Action
   const handleAssignSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedLeadId || !assigneeId) return;
+    if (!selectedLeadId) return;
 
     setAssigning(true);
     try {
       const res = await apiClient.put(`/online-leads/${selectedLeadId}/assign`, {
-        assign_to: assigneeId,
+        assign_to: assigneeId && assigneeId !== "none" ? Number(assigneeId) : null,
+        sales_executive_id: salesExecutiveId && salesExecutiveId !== "none" ? Number(salesExecutiveId) : null,
         remark: assignRemark,
         created_by: userId,
       });
@@ -506,9 +597,17 @@ export default function OnlineLeadsPage() {
       if (res.data?.success) {
         setIsAssignOpen(false);
         setSelectedLeadId(null);
-        const assignedUser = telecallers.find((tc) => String(tc.id) === String(assigneeId));
-        setAssignedToName(assignedUser ? assignedUser.user_name : "the Telecaller");
+        
+        const assignedCaller = telecallers.find((tc) => String(tc.id) === String(assigneeId));
+        const assignedSales = telecallers.find((tc) => String(tc.id) === String(salesExecutiveId));
+        
+        const names = [];
+        if (assignedCaller) names.push(`Caller: ${assignedCaller.user_name}`);
+        if (assignedSales) names.push(`Sales: ${assignedSales.user_name}`);
+        
+        setAssignedToName(names.join(" & ") || "Unassigned");
         setAssigneeId("");
+        setSalesExecutiveId("");
         setAssignRemark("");
         fetchLeadsData();
         setIsSuccessOpen(true);
@@ -519,6 +618,159 @@ export default function OnlineLeadsPage() {
       setAssigning(false);
     }
   };
+
+  // Lead Delete Action
+  const handleDeleteConfirm = async () => {
+    if (!selectedLeadId) return;
+    setIsDeleting(true);
+    try {
+      const res = await apiClient.delete(`/online-leads/${selectedLeadId}`);
+      if (res.data?.success) {
+        toastManager.add({ title: "Lead deleted successfully.", type: "success" });
+        setIsDeleteOpen(false);
+        setSelectedLeadId(null);
+        fetchLeadsData();
+      } else {
+        toastManager.add({ title: res.data?.error || "Failed to delete lead.", type: "error" });
+      }
+    } catch (err: any) {
+      console.error("Delete lead error:", err);
+      toastManager.add({
+        title: err.response?.data?.error || "Error occurred while deleting lead.",
+        type: "error",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Bulk Delete Action
+  const handleDeleteBulkConfirm = async () => {
+    setIsDeleting(true);
+    try {
+      const res = await apiClient.post("/online-leads/delete-bulk", {
+        vendor_id: vendorId,
+      });
+      if (res.data?.success) {
+        toastManager.add({
+          title: `Bulk cleanup successful. Deleted ${res.data.count} leads.`,
+          type: "success",
+        });
+        setIsDeleteBulkOpen(false);
+        fetchLeadsData();
+      } else {
+        toastManager.add({ title: res.data?.error || "Failed to cleanup bulk leads.", type: "error" });
+      }
+    } catch (err: any) {
+      console.error("Bulk delete error:", err);
+      toastManager.add({
+        title: err.response?.data?.error || "Error occurred while cleaning bulk leads.",
+        type: "error",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Quick Priority Change Action
+  async function handlePriorityChange(leadId: number, priority: string) {
+    setUpdatingPriorityId(leadId);
+    try {
+      const res = await apiClient.patch(`/online-leads/${leadId}`, {
+        priority,
+      });
+      if (res.data?.success) {
+        toastManager.add({ title: "Priority updated successfully.", type: "success" });
+        fetchLeadsData();
+      } else {
+        toastManager.add({ title: res.data?.error || "Failed to update priority.", type: "error" });
+      }
+    } catch (err: any) {
+      console.error("Direct priority update error:", err);
+      toastManager.add({
+        title: err.response?.data?.error || "Error occurred while updating priority.",
+        type: "error",
+      });
+    } finally {
+      setUpdatingPriorityId(null);
+    }
+  }
+
+  // Quick Status Change Action
+  async function handleStatusChange(leadId: number, statusId: number) {
+    const selectedStatus = statuses.find((s) => s.id === statusId);
+    if (!selectedStatus) return;
+
+    if (selectedStatus.followup_required) {
+      setQuickLeadId(leadId);
+      setQuickStatusId(statusId);
+      setQuickStatusName(selectedStatus.status_name);
+      setQuickFollowUpDate("");
+      setQuickRemark("");
+      setIsQuickFollowUpOpen(true);
+    } else {
+      setUpdatingLeadId(leadId);
+      try {
+        const res = await apiClient.post(`/online-leads/${leadId}/call`, {
+          telecaller_id: userId,
+          online_lead_status_id: statusId,
+          remark: `Status changed directly to ${selectedStatus.status_name}`,
+        });
+        if (res.data?.success) {
+          toastManager.add({ title: "Status updated successfully.", type: "success" });
+          fetchLeadsData();
+        } else {
+          toastManager.add({ title: res.data?.error || "Failed to update status.", type: "error" });
+        }
+      } catch (err: any) {
+        console.error("Direct status update error:", err);
+        toastManager.add({
+          title: err.response?.data?.error || "Error occurred while updating status.",
+          type: "error",
+        });
+      } finally {
+        setUpdatingLeadId(null);
+      }
+    }
+  }
+
+  async function handleSaveQuickFollowUp() {
+    if (!quickLeadId || !quickStatusId || !quickFollowUpDate) return;
+    setIsSavingQuickFollowUp(true);
+    try {
+      const res = await apiClient.post(`/online-leads/${quickLeadId}/call`, {
+        telecaller_id: userId,
+        online_lead_status_id: quickStatusId,
+        follow_up_date: new Date(quickFollowUpDate).toISOString(),
+        remark: quickRemark || `Status changed directly to ${quickStatusName}`,
+      });
+      if (res.data?.success) {
+        toastManager.add({ title: "Status and follow-up updated successfully.", type: "success" });
+        setIsQuickFollowUpOpen(false);
+        setQuickLeadId(null);
+        setQuickStatusId(null);
+        setQuickStatusName("");
+        fetchLeadsData();
+      } else {
+        toastManager.add({ title: res.data?.error || "Failed to update status.", type: "error" });
+      }
+    } catch (err: any) {
+      console.error("Save quick follow-up error:", err);
+      toastManager.add({
+        title: err.response?.data?.error || "Error occurred while saving follow-up.",
+        type: "error",
+      });
+    } finally {
+      setIsSavingQuickFollowUp(false);
+    }
+  }
+
+  function handleCancelQuickFollowUp() {
+    setIsQuickFollowUpOpen(false);
+    setQuickLeadId(null);
+    setQuickStatusId(null);
+    setQuickStatusName("");
+  }
 
 
 
@@ -561,12 +813,29 @@ export default function OnlineLeadsPage() {
           </div>
 
           {canAddWalkIn && (
-            <Button
-              onClick={() => setIsWalkInOpen(true)}
-              className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-semibold flex items-center gap-2 transition duration-200"
-            >
-              <PlusCircle className="w-5 h-5" /> Add Lead
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setIsWalkInOpen(true)}
+                className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-semibold flex items-center gap-2 transition duration-200"
+              >
+                <PlusCircle className="w-5 h-5" /> Add Lead
+              </Button>
+              <Button
+                onClick={() => setIsBulkUploadOpen(true)}
+                className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-semibold flex items-center gap-2 transition duration-200"
+              >
+                <Upload className="w-5 h-5" /> Bulk Upload
+              </Button>
+              {isSuperAdminOrAdmin && (
+                <Button
+                  onClick={() => setIsDeleteBulkOpen(true)}
+                  variant="destructive"
+                  className="bg-red-600 hover:bg-red-700 text-white font-semibold flex items-center gap-2 transition duration-200"
+                >
+                  <Trash2 className="w-5 h-5" /> Clean Bulk Uploads
+                </Button>
+              )}
+            </div>
           )}
         </div>
 
@@ -651,9 +920,26 @@ export default function OnlineLeadsPage() {
                   <SelectItem value="ALL_STORES">All Stores</SelectItem>
                   {stores.map((s) => (
                     <SelectItem key={s.id} value={s.id.toString()}>
-                      {s.franchise_name}
+                      {s.franchise_name.replace(/vloq|furnix/gi, "").trim()}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={sourceFilter || "ALL_SOURCES"}
+                onValueChange={(val) => {
+                  setSourceFilter(val === "ALL_SOURCES" ? "" : val);
+                  setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+                }}
+              >
+                <SelectTrigger className="h-9 w-[160px] bg-background text-xs font-semibold rounded-lg border shadow-sm">
+                  <SelectValue placeholder="All Sources" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL_SOURCES">All Sources</SelectItem>
+                  <SelectItem value="WALK_IN">Walk-In Leads</SelectItem>
+                  <SelectItem value="ONLINE">Online Leads</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -677,27 +963,63 @@ export default function OnlineLeadsPage() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAssignSubmit} className="space-y-5 mt-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground/80 flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-slate-500" /> Select Assignee (Sales Executive / Caller / Admin)
-              </label>
-              <div className="relative">
-                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground/60 pointer-events-none z-10" />
-                <Select
-                  value={assigneeId}
-                  onValueChange={(val) => setAssigneeId(val)}
-                >
-                  <SelectTrigger className="w-full h-10 pl-9 pr-10 rounded-xl border border-input bg-background/50 hover:bg-background/85 focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition duration-200 cursor-pointer text-sm text-foreground focus:outline-none">
-                    <SelectValue placeholder="Choose User" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-popover/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl">
-                    {telecallers.map((tc) => (
-                      <SelectItem key={tc.id} value={tc.id.toString()}>
-                        {tc.user_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground/80 flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-slate-500" /> Caller
+                </label>
+                <div className="relative">
+                  <Select
+                    value={assigneeId || "none"}
+                    onValueChange={(val) => setAssigneeId(val)}
+                  >
+                    <SelectTrigger className="w-full h-10 rounded-xl border border-input bg-background/50 hover:bg-background/85 focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition duration-200 cursor-pointer text-sm text-foreground focus:outline-none">
+                      <SelectValue placeholder="Select Caller" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl">
+                      <SelectItem value="none">Unassigned</SelectItem>
+                      {telecallers
+                        .filter((tc) => {
+                          const role = tc.user_type?.user_type?.toLowerCase() || "";
+                          return role === "telecaller" || role === "telecaller-team-lead" || role === "telecaller team lead";
+                        })
+                        .map((tc) => (
+                          <SelectItem key={tc.id} value={tc.id.toString()}>
+                            {tc.user_name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground/80 flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-slate-500" /> Sales Executive
+                </label>
+                <div className="relative">
+                  <Select
+                    value={salesExecutiveId || "none"}
+                    onValueChange={(val) => setSalesExecutiveId(val)}
+                  >
+                    <SelectTrigger className="w-full h-10 rounded-xl border border-input bg-background/50 hover:bg-background/85 focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition duration-200 cursor-pointer text-sm text-foreground focus:outline-none">
+                      <SelectValue placeholder="Select Sales Exec" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl">
+                      <SelectItem value="none">Unassigned</SelectItem>
+                      {telecallers
+                        .filter((tc) => {
+                          const role = tc.user_type?.user_type?.toLowerCase() || "";
+                          return role === "sales-executive" || role === "sales executive";
+                        })
+                        .map((tc) => (
+                          <SelectItem key={tc.id} value={tc.id.toString()}>
+                            {tc.user_name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
 
@@ -772,6 +1094,122 @@ export default function OnlineLeadsPage() {
 
       {/* Generate Lead Form Modal (exact same form as Draft Leads) */}
       <GenerateLeadFormModal open={isWalkInOpen} onOpenChange={setIsWalkInOpen} mode="lead-pool" />
+
+      {/* Bulk Upload Modal */}
+      <BulkUploadModal
+        open={isBulkUploadOpen}
+        onOpenChange={setIsBulkUploadOpen}
+        onSuccess={fetchLeadsData}
+      />
+
+      {/* Delete Lead Confirmation Dialog */}
+      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <DialogContent showCloseButton={false} className="max-w-md bg-background border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl p-6">
+          <DialogHeader className="space-y-2">
+            <DialogTitle className="text-xl font-semibold text-slate-900 dark:text-white">
+              Delete Lead?
+            </DialogTitle>
+            <DialogDescription className="text-[14px] leading-relaxed text-slate-500 dark:text-slate-400">
+              This action cannot be undone. This will permanently delete the lead from your system.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-6 flex justify-end gap-2.5">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteOpen(false)}
+              className="h-10 px-5 text-sm font-medium border border-slate-200 hover:bg-slate-50 rounded-lg"
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={isDeleting}
+              className="h-10 px-5 text-sm font-medium bg-slate-950 hover:bg-slate-900 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 rounded-lg"
+              onClick={handleDeleteConfirm}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Clean Bulk Uploads Confirmation Dialog */}
+      <Dialog open={isDeleteBulkOpen} onOpenChange={setIsDeleteBulkOpen}>
+        <DialogContent className="max-w-md bg-background border border-slate-200 dark:border-slate-800 shadow-xl rounded-lg p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-red-500" /> Clean Bulk Upload Leads
+            </DialogTitle>
+            <DialogDescription className="mt-2 text-sm text-muted-foreground">
+              This will permanently delete all leads created via bulk upload (both previous imports with name "Walk-In Customer" and all future imports marked as bulk uploads).
+              <br />
+              <br />
+              Are you sure you want to proceed?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-6 flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setIsDeleteBulkOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={isDeleting}
+              className="h-10 px-5 text-sm font-medium bg-slate-950 hover:bg-slate-900 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 rounded-lg"
+              onClick={handleDeleteBulkConfirm}
+            >
+              {isDeleting ? "Cleaning..." : "Confirm Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Quick Follow-up Date/Time Dialog */}
+      <Dialog open={isQuickFollowUpOpen} onOpenChange={setIsQuickFollowUpOpen}>
+        <DialogContent className="max-w-md bg-background border border-slate-200 dark:border-slate-800 shadow-xl rounded-lg p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-slate-800 dark:text-slate-200" /> Schedule Next Follow-up
+            </DialogTitle>
+            <DialogDescription className="mt-2 text-sm text-muted-foreground">
+              A follow-up date and time is mandatory for status <strong>"{quickStatusName}"</strong>. Please schedule the next callback.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-foreground/80 flex items-center gap-1.5">
+                Next Follow-up Date & Time
+              </label>
+              <CustomeDatePicker
+                value={quickFollowUpDate}
+                onChange={(val) => setQuickFollowUpDate(val || "")}
+                restriction="futureOnly"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                Optional Remark
+              </label>
+              <Input
+                placeholder="Optional call/follow-up remark..."
+                value={quickRemark}
+                onChange={(e) => setQuickRemark(e.target.value)}
+                className="h-10 rounded-lg border border-input bg-background/50 hover:bg-background/85 transition duration-200"
+              />
+            </div>
+          </div>
+          <DialogFooter className="mt-6 flex justify-end gap-2">
+            <Button variant="outline" className="h-9 text-xs" onClick={handleCancelQuickFollowUp}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-semibold h-9 text-xs"
+              onClick={handleSaveQuickFollowUp}
+              disabled={!quickFollowUpDate || isSavingQuickFollowUp}
+            >
+              {isSavingQuickFollowUp && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Save Follow-up
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

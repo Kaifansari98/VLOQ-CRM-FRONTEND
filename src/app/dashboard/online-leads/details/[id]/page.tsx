@@ -51,6 +51,7 @@ import {
   FileSpreadsheet,
   MessageSquare,
   EllipsisVertical,
+  Pencil,
   PencilLine,
   Plus,
   HouseIcon,
@@ -77,6 +78,17 @@ import Link from "next/link";
 import CustomeDatePicker from "@/components/date-picker";
 import { toastManager } from "@/components/ui/toast";
 import BaseModal from "@/components/utils/baseModal";
+import AssignToPicker from "@/components/assign-to-picker";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { generateOnlineLeadHistoryReport } from "@/lib/reports/onlineLeadHistoryReport";
 import {
   Table,
@@ -217,6 +229,7 @@ export default function OnlineLeadDetailsPage() {
   const [isAssignOpen, setIsAssignOpen] = useState(false);
   const [telecallers, setTelecallers] = useState<any[]>([]);
   const [assigneeId, setAssigneeId] = useState("");
+  const [salesExecutiveId, setSalesExecutiveId] = useState("");
   const [assignRemark, setAssignRemark] = useState("");
   const [assigning, setAssigning] = useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
@@ -258,6 +271,18 @@ export default function OnlineLeadDetailsPage() {
   const [editProductTypes, setEditProductTypes] = useState<string[]>([]);
   const [editProductStructures, setEditProductStructures] = useState<string[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+
+  // Product Type edit states (matching Draft Leads details exactly)
+  const [editProductTypeOpen, setEditProductTypeOpen] = useState(false);
+  const [selectedProductTypeId, setSelectedProductTypeId] = useState<number | null>(null);
+  const [confirmProductTypeSave, setConfirmProductTypeSave] = useState(false);
+  const [updatingLeadType, setUpdatingLeadType] = useState(false);
+
+  const currentProductTypeId = useMemo(() => {
+    const typeLabel = lead?.product_types?.[0];
+    if (!typeLabel) return null;
+    return allProductTypes.find((t: any) => t.type === typeLabel)?.id || null;
+  }, [lead?.product_types, allProductTypes]);
 
   // History search and export state
   const [historySearchQuery, setHistorySearchQuery] = useState("");
@@ -344,10 +369,35 @@ export default function OnlineLeadDetailsPage() {
     apiClient
       .get(`/franchises/vendor/${vendorId}`)
       .then((res) => {
-        if (Array.isArray(res.data)) {
-          setStores(res.data);
-        } else if (res.data?.data) {
-          setStores(res.data.data);
+        const rawList = Array.isArray(res.data)
+          ? res.data
+          : res.data?.data;
+        if (Array.isArray(rawList)) {
+          // Deduplicate stores by name, keeping correct unique store ID (e.g. Pune ID 5, Mumbai ID 1)
+          const nameToStoreMap: Record<string, any> = {};
+          for (const store of rawList) {
+            const displayName = store.franchise_name
+              .replace(/vloq|furnix/gi, "")
+              .trim();
+            
+            // If display name is not in map yet, add it
+            if (!nameToStoreMap[displayName]) {
+              nameToStoreMap[displayName] = store;
+            } else {
+              // If it is in the map, choose the one with the correct unique store ID (e.g. ID 5 for Pune, ID 1 for Mumbai)
+              const existingStore = nameToStoreMap[displayName];
+              if (displayName === "Pune" && store.id === 5) {
+                nameToStoreMap[displayName] = store;
+              } else if (displayName === "Mumbai" && store.id === 1) {
+                nameToStoreMap[displayName] = store;
+              } else if (store.id < existingStore.id) {
+                // Default fallback: keep the lower ID
+                nameToStoreMap[displayName] = store;
+              }
+            }
+          }
+          const deduplicatedList = Object.values(nameToStoreMap);
+          setStores(deduplicatedList);
         }
       })
       .catch(console.error);
@@ -617,6 +667,54 @@ export default function OnlineLeadDetailsPage() {
     }
   };
 
+  const handleOpenProductTypeEdit = () => {
+    setSelectedProductTypeId(currentProductTypeId);
+    setEditProductTypeOpen(true);
+  };
+
+  const handleSaveProductType = () => {
+    if (!selectedProductTypeId) {
+      toastManager.add({
+        title: "Please select a product type.",
+        type: "error",
+      });
+      return;
+    }
+    if (selectedProductTypeId === currentProductTypeId) {
+      toastManager.add({ title: "No changes to update.", type: "info" });
+      setEditProductTypeOpen(false);
+      return;
+    }
+    setConfirmProductTypeSave(true);
+  };
+
+  const handleConfirmProductTypeSave = async () => {
+    setConfirmProductTypeSave(false);
+    setUpdatingLeadType(true);
+    try {
+      const nextTypeLabel = allProductTypes.find((t: any) => t.id === selectedProductTypeId)?.type;
+      if (!nextTypeLabel) return;
+
+      const res = await apiClient.patch(`/online-leads/${id}`, {
+        product_types: [nextTypeLabel],
+        updated_by: userId,
+      });
+
+      if (res.data?.success) {
+        setEditProductTypeOpen(false);
+        fetchLeadDetails();
+        toastManager.add({ title: "Product type updated successfully.", type: "success" });
+      }
+    } catch (error: any) {
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to update product type.",
+        type: "error",
+      });
+    } finally {
+      setUpdatingLeadType(false);
+    }
+  };
+
   const handleHistoryExport = async () => {
     if (!lead || !lead.online_lead_history || lead.online_lead_history.length === 0) {
       toastManager.add({ title: "No history logs found for this lead.", type: "error" });
@@ -640,21 +738,29 @@ export default function OnlineLeadDetailsPage() {
 
   const handleAssignSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!assigneeId) return;
 
     setAssigning(true);
     try {
       const res = await apiClient.put(`/online-leads/${id}/assign`, {
-        assign_to: assigneeId,
+        assign_to: assigneeId && assigneeId !== "none" ? Number(assigneeId) : null,
+        sales_executive_id: salesExecutiveId && salesExecutiveId !== "none" ? Number(salesExecutiveId) : null,
         remark: assignRemark,
         created_by: userId,
       });
 
       if (res.data?.success) {
         setIsAssignOpen(false);
-        const assignedUser = telecallers.find((tc) => String(tc.id) === String(assigneeId));
-        setAssignedToName(assignedUser ? assignedUser.user_name : "the Telecaller");
+        
+        const assignedCaller = telecallers.find((tc) => String(tc.id) === String(assigneeId));
+        const assignedSales = telecallers.find((tc) => String(tc.id) === String(salesExecutiveId));
+        
+        const names = [];
+        if (assignedCaller) names.push(`Caller: ${assignedCaller.user_name}`);
+        if (assignedSales) names.push(`Sales: ${assignedSales.user_name}`);
+        
+        setAssignedToName(names.join(" & ") || "Unassigned");
         setAssigneeId("");
+        setSalesExecutiveId("");
         setAssignRemark("");
         fetchLeadDetails();
         setIsSuccessOpen(true);
@@ -775,11 +881,8 @@ export default function OnlineLeadDetailsPage() {
                 <DropdownMenuItem
                   onClick={() => {
                     if (lead) {
-                      if (lead.assignedTo) {
-                        setAssigneeId(lead.assignedTo.id.toString());
-                      } else if (lead.finalAssignedLeads) {
-                        setAssigneeId(lead.finalAssignedLeads.id.toString());
-                      }
+                      setAssigneeId(lead.assign_to ? lead.assign_to.toString() : "none");
+                      setSalesExecutiveId(lead.final_assigned_leads ? lead.final_assigned_leads.toString() : "none");
                     }
                     setIsAssignOpen(true);
                   }}
@@ -856,7 +959,17 @@ export default function OnlineLeadDetailsPage() {
                   <div className="flex items-start gap-3">
                     <Package className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
                     <div>
-                      <p className="text-sm text-muted-foreground font-medium">Product Types</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm text-muted-foreground font-medium">Product Types</p>
+                        <button
+                          type="button"
+                          onClick={handleOpenProductTypeEdit}
+                          className="text-muted-foreground/70 hover:text-foreground inline-flex size-7 items-center justify-center rounded-md transition"
+                          aria-label="Edit Product Type"
+                        >
+                          <PencilLine className="h-4 w-4" />
+                        </button>
+                      </div>
                       <p className="text-[15px] font-semibold text-foreground mt-0.5">
                         {lead.product_types?.length > 0 ? lead.product_types.join(", ") : "—"}
                       </p>
@@ -1032,7 +1145,7 @@ export default function OnlineLeadDetailsPage() {
                     <div>
                       <p className="text-sm text-muted-foreground font-medium">Assigned Store</p>
                       <p className="text-[15px] font-semibold text-foreground mt-0.5">
-                        {lead.franchise?.franchise_name || "No Store Selected"}
+                        {lead.franchise?.franchise_name ? lead.franchise.franchise_name.replace(/vloq|furnix/gi, "").trim() : "No Store Selected"}
                       </p>
                     </div>
                   </div>
@@ -1146,7 +1259,7 @@ export default function OnlineLeadDetailsPage() {
                             <div className="flex items-center gap-2">
                               {hist.franchise && (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-medium rounded-full bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-300 border border-rose-100 dark:border-rose-800">
-                                  <MapPin className="w-3 h-3" /> {hist.franchise.franchise_name}
+                                  <MapPin className="w-3 h-3" /> {hist.franchise.franchise_name.replace(/vloq|furnix/gi, "").trim()}
                                 </span>
                               )}
                               <span className="px-2.5 py-0.5 text-[11px] font-semibold rounded-full bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200/50">
@@ -1265,8 +1378,8 @@ export default function OnlineLeadDetailsPage() {
                           </span>
                         </div>
                         <p className="text-muted-foreground">
-                          {log.fromFranchise ? `${log.fromFranchise.franchise_name} ➔ ` : ""}
-                          <span className="font-semibold text-foreground">{log.toFranchise.franchise_name}</span>
+                          {log.fromFranchise ? `${log.fromFranchise.franchise_name.replace(/vloq|furnix/gi, "").trim()} ➔ ` : ""}
+                          <span className="font-semibold text-foreground">{log.toFranchise.franchise_name.replace(/vloq|furnix/gi, "").trim()}</span>
                         </p>
                         {log.remark && <p className="text-[11px] text-slate-700 dark:text-slate-300 italic">Remark: {log.remark}</p>}
                         <div className="text-[10px] text-muted-foreground flex justify-between pt-0.5">
@@ -1305,11 +1418,13 @@ export default function OnlineLeadDetailsPage() {
                     <SelectValue placeholder="Select Status" />
                   </SelectTrigger>
                   <SelectContent className="bg-popover text-popover-foreground">
-                    {statuses.map((st) => (
-                      <SelectItem key={st.id} value={st.id.toString()}>
-                        {st.status_name}
-                      </SelectItem>
-                    ))}
+                    {statuses
+                      .filter((st) => st.status_name.toLowerCase() !== "pending")
+                      .map((st) => (
+                        <SelectItem key={st.id} value={st.id.toString()}>
+                          {st.status_name}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -1365,7 +1480,7 @@ export default function OnlineLeadDetailsPage() {
                     <SelectContent className="bg-popover text-popover-foreground">
                       {stores.map((s) => (
                         <SelectItem key={s.id} value={s.id.toString()}>
-                          {s.franchise_name}
+                          {s.franchise_name.replace(/vloq|furnix/gi, "").trim()}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1427,7 +1542,7 @@ export default function OnlineLeadDetailsPage() {
                     <SelectContent className="bg-popover text-popover-foreground">
                       {stores.map((s) => (
                         <SelectItem key={s.id} value={s.id.toString()}>
-                          {s.franchise_name}
+                          {s.franchise_name.replace(/vloq|furnix/gi, "").trim()}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1512,29 +1627,65 @@ export default function OnlineLeadDetailsPage() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAssignSubmit} className="space-y-5 mt-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground/80 flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-slate-500" /> Select Assignee (Sales Executive / Caller / Admin)
-              </label>
-              <div className="relative">
-                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground/60 pointer-events-none z-10" />
-                <Select
-                  value={assigneeId}
-                  onValueChange={(val) => setAssigneeId(val)}
-                >
-                  <SelectTrigger className="w-full h-10 pl-9 pr-10 rounded-xl border border-input bg-background/50 hover:bg-background/85 focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition duration-200 cursor-pointer text-sm text-foreground focus:outline-none">
-                    <SelectValue placeholder="Choose User" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-popover text-popover-foreground">
-                    {telecallers.map((tc) => (
-                      <SelectItem key={tc.id} value={tc.id.toString()}>
-                        {tc.user_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+             <div className="grid grid-cols-2 gap-4">
+               <div className="space-y-1.5">
+                 <label className="text-xs font-semibold text-foreground/80 flex items-center gap-1.5">
+                   <User className="w-3.5 h-3.5 text-slate-500" /> Caller
+                 </label>
+                 <div className="relative">
+                   <Select
+                     value={assigneeId || "none"}
+                     onValueChange={(val) => setAssigneeId(val)}
+                   >
+                     <SelectTrigger className="w-full h-10 rounded-xl border border-input bg-background/50 hover:bg-background/85 focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition duration-200 cursor-pointer text-sm text-foreground focus:outline-none">
+                       <SelectValue placeholder="Select Caller" />
+                     </SelectTrigger>
+                     <SelectContent className="bg-popover text-popover-foreground">
+                       <SelectItem value="none">Unassigned</SelectItem>
+                       {telecallers
+                         .filter((tc) => {
+                           const role = tc.user_type?.user_type?.toLowerCase() || "";
+                           return role === "telecaller" || role === "telecaller-team-lead" || role === "telecaller team lead";
+                         })
+                         .map((tc) => (
+                           <SelectItem key={tc.id} value={tc.id.toString()}>
+                             {tc.user_name}
+                           </SelectItem>
+                         ))}
+                     </SelectContent>
+                   </Select>
+                 </div>
+               </div>
+
+               <div className="space-y-1.5">
+                 <label className="text-xs font-semibold text-foreground/80 flex items-center gap-1.5">
+                   <User className="w-3.5 h-3.5 text-slate-500" /> Sales Executive
+                 </label>
+                 <div className="relative">
+                   <Select
+                     value={salesExecutiveId || "none"}
+                     onValueChange={(val) => setSalesExecutiveId(val)}
+                   >
+                     <SelectTrigger className="w-full h-10 rounded-xl border border-input bg-background/50 hover:bg-background/85 focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition duration-200 cursor-pointer text-sm text-foreground focus:outline-none">
+                       <SelectValue placeholder="Select Sales Exec" />
+                     </SelectTrigger>
+                     <SelectContent className="bg-popover text-popover-foreground">
+                       <SelectItem value="none">Unassigned</SelectItem>
+                       {telecallers
+                         .filter((tc) => {
+                           const role = tc.user_type?.user_type?.toLowerCase() || "";
+                           return role === "sales-executive" || role === "sales executive";
+                         })
+                         .map((tc) => (
+                           <SelectItem key={tc.id} value={tc.id.toString()}>
+                             {tc.user_name}
+                           </SelectItem>
+                         ))}
+                     </SelectContent>
+                   </Select>
+                 </div>
+               </div>
+             </div>
 
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-foreground/80 flex items-center gap-1.5">
@@ -1843,6 +1994,90 @@ export default function OnlineLeadDetailsPage() {
           </div>
         </form>
       </BaseModal>
+
+      {/* Product Type Edit Modal */}
+      <BaseModal
+        open={editProductTypeOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditProductTypeOpen(false);
+            setSelectedProductTypeId(currentProductTypeId);
+          }
+        }}
+        title={currentProductTypeId ? "Edit Product Type" : "Set Product Type"}
+        description="Select the product type for this lead."
+        size="sm"
+      >
+        <div className="space-y-4 p-6">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">
+              Product Type <span className="text-red-500">*</span>
+            </label>
+            <div className="mt-2">
+              <AssignToPicker
+                data={
+                  allProductTypes.map((t: any) => ({
+                    id: t.id,
+                    label: t.type,
+                  })) ?? []
+                }
+                value={selectedProductTypeId ?? undefined}
+                onChange={(id) => setSelectedProductTypeId(id)}
+                placeholder="Search product type..."
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setEditProductTypeOpen(false)}
+              disabled={updatingLeadType}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveProductType}
+              disabled={updatingLeadType}
+            >
+              {updatingLeadType ? "Saving..." : "Save"}
+            </Button>
+          </div>
+        </div>
+      </BaseModal>
+
+      {/* Product Type Confirm Dialog */}
+      <AlertDialog
+        open={confirmProductTypeSave}
+        onOpenChange={setConfirmProductTypeSave}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {currentProductTypeId
+                ? "Confirm Product Type Change?"
+                : "Set Product Type?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {currentProductTypeId
+                ? "This will update the product type for this lead."
+                : "This will set the product type for this lead."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updatingLeadType}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmProductTypeSave}
+              disabled={updatingLeadType}
+            >
+              {updatingLeadType ? "Saving..." : "Confirm"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
