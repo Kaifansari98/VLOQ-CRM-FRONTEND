@@ -30,7 +30,7 @@ import {
   useLeadById,
   useLeadProductStructureInstances,
 } from "@/hooks/useLeadsQueries";
-import { LeadProductStructureInstance } from "@/api/leads";
+import { LeadProductStructureInstance, useDeleteDocument } from "@/api/leads";
 import { Card, CardContent } from "@/components/ui/card";
 import { FinalMeasurementDoc } from "@/types/final-measurement";
 import {
@@ -197,6 +197,35 @@ const FinalMeasurementModal = ({
   const addMoreFinalMeasurementSitePhotosMutation =
     useAddMoreFinalMeasurementSitePhotos();
   const leadId = data?.id;
+  const deleteDocumentMutation = useDeleteDocument(leadId);
+
+  const handleDocumentDelete = (documentId: number) => {
+    if (!vendorId || !userId) {
+      toastManager.add({
+        title: "Vendor or user context missing",
+        type: "error",
+      });
+      return;
+    }
+
+    deleteDocumentMutation.mutate(
+      {
+        vendorId,
+        documentId,
+        deleted_by: userId,
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: ["finalMeasurementLead", vendorId, leadId],
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["allLeadDocuments"],
+          });
+        },
+      },
+    );
+  };
   const { data: leadByIdResponse } = useLeadById(leadId, vendorId, userId);
   const { data: finalMeasurementDetails } = useFinalMeasurementLeadById(
     vendorId ?? 0,
@@ -683,7 +712,10 @@ const FinalMeasurementModal = ({
       try {
         setUploadingInstanceId(instance.id);
 
-        if (uploads.finalMeasurementDocs.length > 0) {
+        if (
+          (type === "ALL" || type === "FMD") &&
+          uploads.finalMeasurementDocs.length > 0
+        ) {
           await addMoreFinalMeasurementDocsMutation.mutateAsync({
             leadId,
             vendorId,
@@ -693,7 +725,10 @@ const FinalMeasurementModal = ({
           });
         }
 
-        if (uploads.currentSitePhotos.length > 0) {
+        if (
+          (type === "ALL" || type === "CSP") &&
+          uploads.currentSitePhotos.length > 0
+        ) {
           await addMoreFinalMeasurementSitePhotosMutation.mutateAsync({
             leadId,
             vendorId,
@@ -713,8 +748,14 @@ const FinalMeasurementModal = ({
         setInstanceUploads((prev) => ({
           ...prev,
           [instance.id]: {
-            finalMeasurementDocs: [],
-            currentSitePhotos: [],
+            finalMeasurementDocs:
+              type === "FMD" || type === "ALL"
+                ? []
+                : prev[instance.id]?.finalMeasurementDocs ?? [],
+            currentSitePhotos:
+              type === "CSP" || type === "ALL"
+                ? []
+                : prev[instance.id]?.currentSitePhotos ?? [],
           },
         }));
         queryClient.invalidateQueries({
@@ -992,6 +1033,8 @@ const FinalMeasurementModal = ({
                                             signedUrl: doc.signedUrl,
                                             created_at: doc.created_at,
                                           }}
+                                          canDelete={true}
+                                          onDelete={(id) => handleDocumentDelete(Number(id))}
                                         />
                                       </div>
                                     ))}
@@ -1019,6 +1062,8 @@ const FinalMeasurementModal = ({
                                               created_at: doc.created_at,
                                             }}
                                             index={index}
+                                            canDelete={true}
+                                            onDelete={(id) => handleDocumentDelete(Number(id))}
                                           />
                                         </div>
                                       ),
@@ -1321,6 +1366,8 @@ const FinalMeasurementModal = ({
                                 created_at: doc.created_at,
                               }}
                               index={index}
+                              canDelete={true}
+                              onDelete={(id) => handleDocumentDelete(Number(id))}
                             />
                           </div>
                         ))}
@@ -1409,6 +1456,8 @@ const FinalMeasurementModal = ({
                                 signedUrl: doc.signedUrl,
                                 created_at: doc.created_at,
                               }}
+                              canDelete={true}
+                              onDelete={(id) => handleDocumentDelete(Number(id))}
                             />
                           </div>
                         ))}
