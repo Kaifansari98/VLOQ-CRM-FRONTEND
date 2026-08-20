@@ -331,8 +331,6 @@ export default function ClientApprovalLeadDetails() {
     vendorId!,
     leadIdNum,
     userId!,
-    handlesLargeScaleProjects ? undefined : (validInstanceId ?? undefined),
-    handlesLargeScaleProjects ? (selectedProductTypeId ?? undefined) : undefined,
   );
 
   const allPptDocs = clientDocsData?.documents?.ppt ?? [];
@@ -652,55 +650,132 @@ export default function ClientApprovalLeadDetails() {
           d.tech_check_status === "REVISED",
       ).length;
 
-  const requiredApprovalCount = validInstanceId
+  const rawRequiredApprovalCount = validInstanceId
     ? (instanceDocCount ??
       no_of_client_documents_initially_submitted ??
       moveScope.docs.length)
     : (no_of_client_documents_initially_submitted ?? moveScope.docs.length);
 
+  const requiredApprovalCount =
+    moveScope.docs.length > 0
+      ? Math.min(rawRequiredApprovalCount, moveScope.docs.length)
+      : rawRequiredApprovalCount;
+
+  const incompleteLargeScaleGroup = (() => {
+    if (!handlesLargeScaleProjects || largeScaleGroups.length === 0) return null;
+
+    for (const group of largeScaleGroups) {
+      const groupDocs = allDocs.filter((doc: any) => {
+        const typeId =
+          doc.product_type_id ||
+          doc.productType?.id ||
+          doc.product_type?.id;
+
+        if (typeId && Number(typeId) === Number(group.productTypeId)) {
+          return true;
+        }
+
+        const instanceId =
+          doc.product_structure_instance_id ||
+          doc.productStructureInstance?.id ||
+          doc.instance_id;
+
+        if (instanceId) {
+          const instPTypeId = instanceToProductTypeMap.get(Number(instanceId));
+          if (instPTypeId && Number(instPTypeId) === Number(group.productTypeId)) {
+            return true;
+          }
+        }
+
+        return false;
+      });
+
+      if (groupDocs.length > 0) {
+        const groupApprovedPPT = groupDocs.filter(
+          (d: any) =>
+            d.tech_check_status === "APPROVED" &&
+            (d.documentType?.tag === "Type 11" ||
+              allPptDocs.some((p: any) => p.id === d.id)),
+        ).length;
+
+        const groupApprovedPytha = groupDocs.filter(
+          (d: any) =>
+            d.tech_check_status === "APPROVED" &&
+            (d.documentType?.tag === "Type 12" ||
+              allPythaDocs.some((p: any) => p.id === d.id)),
+        ).length;
+
+        const groupPending = groupDocs.filter(
+          (d: any) =>
+            !d.tech_check_status ||
+            d.tech_check_status === "PENDING" ||
+            d.tech_check_status === "REVISED",
+        ).length;
+
+        if (groupPending > 0) {
+          return {
+            group,
+            reason: `Documents for group "${group.title}" are still pending review. Please review all groups before moving to Order Login.`,
+          };
+        }
+
+        if (groupApprovedPPT === 0) {
+          return {
+            group,
+            reason: `Group "${group.title}" must have at least one approved PPT file before moving to Order Login.`,
+          };
+        }
+
+        if (groupApprovedPytha === 0) {
+          return {
+            group,
+            reason: `Group "${group.title}" must have at least one approved Pytha file before moving to Order Login.`,
+          };
+        }
+      }
+    }
+
+    return null;
+  })();
+
   const isMoveToOrderLoginDisabled =
     hasPendingFastProductionRequest ||
     (isFastProductionLead && !isFastProductionApproved) ||
     (handlesLargeScaleProjects
-      ? pendingCount > 0 ||
-        largeScaleGroups.some((group) => {
-          const groupDocs = allDocs.filter((doc: any) => {
-            if (
-              doc.product_type_id &&
-              Number(doc.product_type_id) === group.productTypeId
-            ) {
-              return true;
-            }
-            if (doc.product_structure_instance_id) {
-              const instPTypeId = instanceToProductTypeMap.get(
-                Number(doc.product_structure_instance_id),
-              );
-              if (instPTypeId && Number(instPTypeId) === group.productTypeId) {
-                return true;
-              }
-            }
-            return false;
-          });
-          const groupApprovedPPT = groupDocs.filter(
-            (d: any) =>
-              d.tech_check_status === "APPROVED" &&
-              d.documentType?.tag === "Type 11",
-          ).length;
-          const groupApprovedPytha = groupDocs.filter(
-            (d: any) =>
-              d.tech_check_status === "APPROVED" &&
-              d.documentType?.tag === "Type 12",
-          ).length;
-          return groupApprovedPPT === 0 || groupApprovedPytha === 0;
-        })
-      : requiredApprovalCount > 0
-        ? approvedCount < requiredApprovalCount ||
-          pendingCount > 0 ||
-          approvedPPTCount === 0 ||
-          approvedPythaCount === 0
-        : pendingCount > 0 ||
-          approvedPPTCount === 0 ||
-          approvedPythaCount === 0);
+      ? Boolean(incompleteLargeScaleGroup)
+      : pendingCount > 0 ||
+        approvedPPTCount === 0 ||
+        approvedPythaCount === 0 ||
+        (requiredApprovalCount > 0 && approvedCount < requiredApprovalCount));
+
+  const moveToOrderLoginTooltipMsg = (() => {
+    if (hasPendingFastProductionRequest) {
+      return "Fast Production approval is pending.";
+    }
+    if (isFastProductionLead && !isFastProductionApproved) {
+      return "Please wait for the Fast Production Request to be approved or rejected before moving to Order Login.";
+    }
+    if (handlesLargeScaleProjects && incompleteLargeScaleGroup) {
+      return incompleteLargeScaleGroup.reason;
+    }
+    if (requiredApprovalCount && approvedCount < requiredApprovalCount) {
+      return effectiveUserType === "sales-executive"
+        ? "Once Tech Check is completed, then only lead can be move to Order Login."
+        : `You must approve all required client documents (${requiredApprovalCount}) before moving to Order Login.`;
+    }
+    if (approvedPPTCount === 0) {
+      return "At least one PPT file must be approved before moving to Order Login.";
+    }
+    if (approvedPythaCount === 0) {
+      return "At least one Pytha file must be approved before moving to Order Login.";
+    }
+    if (pendingCount > 0) {
+      return `You still have ${pendingCount} pending document${
+        pendingCount > 1 ? "s" : ""
+      }. Please review all before proceeding.`;
+    }
+    return "";
+  })();
 
   return (
     <>
@@ -786,39 +861,9 @@ export default function ClientApprovalLeadDetails() {
 
                 // Existing Logic
                 if (isMoveToOrderLoginDisabled) {
-                  let tooltipMsg = "";
-
-                  if (hasPendingFastProductionRequest) {
-                    tooltipMsg = "Fast Production approval is pending.";
-                  } else if (
-                    isFastProductionLead &&
-                    !isFastProductionApproved
-                  ) {
-                    tooltipMsg =
-                      "Please wait for the Fast Production Request to be approved or rejected before moving to Order Login.";
-                  } else if (
-                    requiredApprovalCount &&
-                    approvedCount < requiredApprovalCount
-                  ) {
-                    tooltipMsg =
-                      effectiveUserType === "sales-executive"
-                        ? "Once Tech Check is completed, then only lead can be move to Order Login."
-                        : `You must approve all required client documents (${requiredApprovalCount}) before moving to Order Login.`;
-                  } else if (approvedPPTCount === 0) {
-                    tooltipMsg =
-                      "At least one PPT file must be approved before moving to Order Login.";
-                  } else if (approvedPythaCount === 0) {
-                    tooltipMsg =
-                      "At least one Pytha file must be approved before moving to Order Login.";
-                  } else if (pendingCount > 0) {
-                    tooltipMsg = `You still have ${pendingCount} pending document${
-                      pendingCount > 1 ? "s" : ""
-                    }. Please review all before proceeding.`;
-                  }
-
                   return (
                     <CustomeTooltip
-                      value={tooltipMsg}
+                      value={moveToOrderLoginTooltipMsg}
                       truncateValue={
                         <span>
                           <Button
@@ -920,33 +965,6 @@ export default function ClientApprovalLeadDetails() {
                     }
 
                     if (isMoveToOrderLoginDisabled) {
-                      let tooltipMsg = "";
-
-                      if (hasPendingFastProductionRequest) {
-                        tooltipMsg = "Fast Production approval is pending.";
-                      } else if (
-                        isFastProductionLead &&
-                        !isFastProductionApproved
-                      ) {
-                        tooltipMsg =
-                          "Please wait for the Fast Production Request to be approved or rejected before moving to Order Login.";
-                      } else if (
-                        requiredApprovalCount &&
-                        approvedCount < requiredApprovalCount
-                      ) {
-                        tooltipMsg = `You must approve all required client documents (${requiredApprovalCount}) before moving to Order Login.`;
-                      } else if (approvedPPTCount === 0) {
-                        tooltipMsg =
-                          "At least one PPT file must be approved before moving to Order Login.";
-                      } else if (approvedPythaCount === 0) {
-                        tooltipMsg =
-                          "At least one Pytha file must be approved before moving to Order Login.";
-                      } else if (pendingCount > 0) {
-                        tooltipMsg = `You still have ${pendingCount} pending document${
-                          pendingCount > 1 ? "s" : ""
-                        }. Please review all before proceeding.`;
-                      }
-
                       return (
                         <CustomeTooltip
                           truncateValue={
@@ -955,7 +973,7 @@ export default function ClientApprovalLeadDetails() {
                               Move To Order Login
                             </DropdownMenuItem>
                           }
-                          value={tooltipMsg}
+                          value={moveToOrderLoginTooltipMsg}
                         />
                       );
                     }

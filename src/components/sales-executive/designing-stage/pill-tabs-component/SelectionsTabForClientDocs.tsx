@@ -612,7 +612,7 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
         const latestSpec = latestSpecificationByGroup.get(
           group.title.trim().toLowerCase(),
         );
-        return !latestSpec?.is_completed;
+        return latestSpec && !latestSpec.is_completed;
       })
       .map((group) => group.title);
 

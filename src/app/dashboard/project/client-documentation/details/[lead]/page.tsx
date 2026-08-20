@@ -27,7 +27,12 @@ import {
   useMoveLeadToClientApproval,
   useClientDocMoveEligibility,
 } from "@/hooks/client-documentation/use-clientdocumentation";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import CancelFastProductionModal from "@/components/generics/CancelFastProductionModal";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
 import { Button } from "@/components/ui/button";
@@ -138,8 +143,10 @@ export default function ClientDocumentationLeadDetails() {
   const [openClientDocModal, setOpenClientDocModal] = useState(false);
 
   const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
-  const [openCancelFastProduction, setOpenCancelFastProduction] = useState(false);
-  const [fastProductionDetailsOpen, setFastProductionDetailsOpen] = useState(false);
+  const [openCancelFastProduction, setOpenCancelFastProduction] =
+    useState(false);
+  const [fastProductionDetailsOpen, setFastProductionDetailsOpen] =
+    useState(false);
   const [openMoveConfirmModal, setOpenMoveConfirmModal] = useState(false);
   const revokeFastProductionMutation = useRevokeFastProductionRequest();
 
@@ -171,11 +178,14 @@ export default function ClientDocumentationLeadDetails() {
         },
         onError: (err: any) => {
           toastManager.add({
-            title: err?.response?.data?.message || err?.message || "Failed to cancel fast production",
+            title:
+              err?.response?.data?.message ||
+              err?.message ||
+              "Failed to cancel fast production",
             type: "error",
           });
         },
-      }
+      },
     );
   };
 
@@ -330,7 +340,7 @@ export default function ClientDocumentationLeadDetails() {
         const latestSpec = latestSpecificationByGroup.get(
           group.title.trim().toLowerCase(),
         );
-        return !latestSpec?.is_completed;
+        return latestSpec && !latestSpec.is_completed;
       })
       .map((group: any) => group.title);
 
@@ -390,7 +400,7 @@ export default function ClientDocumentationLeadDetails() {
             : undefined;
           return Boolean(
             checkTrackerReady(firstInstanceBucket) ||
-              checkTrackerReady(nullBucket),
+            checkTrackerReady(nullBucket),
           );
         })();
 
@@ -416,8 +426,37 @@ export default function ClientDocumentationLeadDetails() {
     return { ppt, pytha };
   };
 
-  const allInstancesDocsReady =
-    structureInstances.length > 1
+  const allInstancesDocsReady = React.useMemo(() => {
+    if (handlesLargeScaleProjects && displayGroups.length > 0) {
+      return displayGroups.every((group: any) => {
+        const groupInstances = structureInstances.filter((instance: any) => {
+          const title =
+            instance.productType?.type ||
+            instance.productItemCode?.productStructure?.productType?.type ||
+            instance.productItemCode?.item_code ||
+            instance.title ||
+            "Item Group";
+          const key = String(
+            instance.productType?.id ||
+              instance.productItemCode?.productStructure?.productType?.id ||
+              title,
+          );
+          return key === group.key;
+        });
+
+        let ppt = 0;
+        let pytha = 0;
+        groupInstances.forEach((inst: any) => {
+          const counts = getCounts(inst.id);
+          ppt += counts.ppt;
+          pytha += counts.pytha;
+        });
+
+        return ppt > 0 && pytha > 0;
+      });
+    }
+
+    return structureInstances.length > 0
       ? structureInstances.every((instance: any) => {
           const counts = getCounts(instance.id);
           return counts.ppt > 0 && counts.pytha > 0;
@@ -427,6 +466,12 @@ export default function ClientDocumentationLeadDetails() {
           const flatPytha = docsDetails?.documents?.pytha?.length || 0;
           return flatPpt > 0 && flatPytha > 0;
         })();
+  }, [
+    handlesLargeScaleProjects,
+    displayGroups,
+    structureInstances,
+    docsDetails,
+  ]);
 
   const leadCode = lead?.lead_code || "";
   const clientName = `${lead?.firstname || ""} ${lead?.lastname || ""}`.trim();
@@ -443,8 +488,7 @@ export default function ClientDocumentationLeadDetails() {
   });
 
   const isBlockActionPending =
-    blockLeadMutation.isPending ||
-    unblockLeadMutation.isPending;
+    blockLeadMutation.isPending || unblockLeadMutation.isPending;
 
   // Auto-open documentation modal
   useEffect(() => {
@@ -453,12 +497,25 @@ export default function ClientDocumentationLeadDetails() {
       setActiveTab("details");
       return;
     }
-    if (userType === "sales-executive" && !isChatNotification && !isLeadBlocked && !lead.is_draft) {
+    if (
+      userType === "sales-executive" &&
+      !isChatNotification &&
+      !isLeadBlocked &&
+      !lead.is_draft
+    ) {
       setPreviousTab("details");
       setOpenClientDocModal(true);
       setActiveTab("todo");
     }
-  }, [isLoading, isLeadBlockStatusLoading, lead, isChatNotification, userType, isLeadBlocked, handlesLargeScaleProjects]);
+  }, [
+    isLoading,
+    isLeadBlockStatusLoading,
+    lead,
+    isChatNotification,
+    userType,
+    isLeadBlocked,
+    handlesLargeScaleProjects,
+  ]);
 
   // DELETE LEAD
   const deleteLeadMutation = useDeleteLead();
@@ -487,7 +544,6 @@ export default function ClientDocumentationLeadDetails() {
     );
     setOpenDelete(false);
   };
-
 
   const { data: moveEligibilityData } = useClientDocMoveEligibility(
     vendorId,
@@ -523,7 +579,63 @@ export default function ClientDocumentationLeadDetails() {
       }
     }
     if (!allInstancesDocsReady) {
-      missing.push("Upload Project Files & Pytha Files for all instances");
+      if (handlesLargeScaleProjects && displayGroups.length > 0) {
+        const missingGroups = displayGroups
+          .filter((group: any) => {
+            const groupInstances = structureInstances.filter(
+              (instance: any) => {
+                const title =
+                  instance.productType?.type ||
+                  instance.productItemCode?.productStructure?.productType
+                    ?.type ||
+                  instance.productItemCode?.item_code ||
+                  instance.title ||
+                  "Item Group";
+                const key = String(
+                  instance.productType?.id ||
+                    instance.productItemCode?.productStructure?.productType
+                      ?.id ||
+                    title,
+                );
+                return key === group.key;
+              },
+            );
+
+            let ppt = 0;
+            let pytha = 0;
+            groupInstances.forEach((inst: any) => {
+              const counts = getCounts(inst.id);
+              ppt += counts.ppt;
+              pytha += counts.pytha;
+            });
+
+            return ppt === 0 || pytha === 0;
+          })
+          .map((group: any) => group.title);
+
+        if (missingGroups.length > 0) {
+          missing.push(
+            `Please upload required files for item group(s): ${missingGroups.join(", ")}`,
+          );
+        } else {
+          missing.push("Please upload required files for all item groups");
+        }
+      } else {
+        const missingDocInstances = structureInstances
+          .filter((instance: any) => {
+            const counts = getCounts(instance.id);
+            return counts.ppt === 0 || counts.pytha === 0;
+          })
+          .map((instance: any) => instance.title || "Item Group");
+
+        if (missingDocInstances.length > 0) {
+          missing.push(
+            `Upload Project Files & Pytha Files for: ${missingDocInstances.join(", ")}`,
+          );
+        } else {
+          missing.push("Upload Project Files & Pytha Files for all instances");
+        }
+      }
     }
     return missing;
   }, [
@@ -535,6 +647,8 @@ export default function ClientDocumentationLeadDetails() {
     allInstancesSelectionsReady,
     isFastProduction,
     allInstancesDocsReady,
+    displayGroups,
+    structureInstances,
   ]);
 
   const canMoveStage = moveEligibilityData
@@ -546,7 +660,9 @@ export default function ClientDocumentationLeadDetails() {
   }
 
   if (!lead) {
-    return <p className="p-6">Lead details not found or you do not have access.</p>;
+    return (
+      <p className="p-6">Lead details not found or you do not have access.</p>
+    );
   }
 
   const canReassign = canReassignLeadButton(userType);
@@ -556,27 +672,29 @@ export default function ClientDocumentationLeadDetails() {
     isAuditor ||
     (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.open_leads.details_of_lead.payment_information.enable_disable",
-      )
+          "leads.open_leads.details_of_lead.payment_information.enable_disable",
+        )
       : canViewPaymentTab(userType));
   const canViewSiteHistory =
     isAuditor ||
     (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.open_leads.details_of_lead.site_history.enable_disable",
-      )
+          "leads.open_leads.details_of_lead.site_history.enable_disable",
+        )
       : canViewSiteHistoryTab(userType));
   const canViewChats =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.open_leads.details_of_lead.chat.enable_disable",
-      )
+          "leads.open_leads.details_of_lead.chat.enable_disable",
+        )
       : true;
   const canViewDocuments =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.some((code) =>
-        code.startsWith("leads.open_leads.details_of_lead.documents_section."),
-      )
+          code.startsWith(
+            "leads.open_leads.details_of_lead.documents_section.",
+          ),
+        )
       : true;
   const canAccessClientDocumentation =
     userType?.toLowerCase() === "custom"
@@ -598,7 +716,8 @@ export default function ClientDocumentationLeadDetails() {
   const handleOpenMoveConfirm = () => {
     if (!canMoveStage) {
       toastManager.add({
-        title: missingRequirements[0] || "Requirements incomplete for moving stage",
+        title:
+          missingRequirements[0] || "Requirements incomplete for moving stage",
         type: "error",
       });
       return;
@@ -610,7 +729,8 @@ export default function ClientDocumentationLeadDetails() {
     if (!vendorId || !userId || !leadIdNum) return;
     if (!canMoveStage) {
       toastManager.add({
-        title: missingRequirements[0] || "Requirements incomplete for moving stage",
+        title:
+          missingRequirements[0] || "Requirements incomplete for moving stage",
         type: "error",
       });
       return;
@@ -633,8 +753,6 @@ export default function ClientDocumentationLeadDetails() {
     );
   };
 
-
-
   const handleToggleLeadBlock = () => {
     if (!vendorId || !userId || !leadIdNum) {
       toastManager.add({
@@ -644,9 +762,7 @@ export default function ClientDocumentationLeadDetails() {
       return;
     }
 
-    const mutation = isLeadBlocked
-      ? unblockLeadMutation
-      : blockLeadMutation;
+    const mutation = isLeadBlocked ? unblockLeadMutation : blockLeadMutation;
 
     mutation.mutate(
       {
@@ -696,37 +812,43 @@ export default function ClientDocumentationLeadDetails() {
 
         {/* ACTIONS */}
         <div className="flex items-center space-x-2">
-          {!isAuditor && handlesLargeScaleProjects && canMoveToClientApproval && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="inline-block">
-                    <Button
-                      size="sm"
-                      disabled={!canMoveStage || isMovingStage}
-                      onClick={handleOpenMoveConfirm}
-                      className="hidden md:flex items-center gap-1.5"
-                    >
-                      <CheckCircle2 className="h-4 w-4" />
-                      {isMovingStage ? "Moving..." : "Move to Client Approval"}
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                {missingRequirements.length > 0 && (
-                  <TooltipContent side="bottom" className="max-w-xs">
-                    <p className="font-medium mb-1">Complete the following:</p>
-                    <ul className="list-disc pl-4 space-y-0.5">
-                      {missingRequirements.map((item) => (
-                        <li key={item} className="text-xs">
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </TooltipContent>
-                )}
-              </Tooltip>
-            </TooltipProvider>
-          )}
+          {!isAuditor &&
+            handlesLargeScaleProjects &&
+            canMoveToClientApproval && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-block">
+                      <Button
+                        size="sm"
+                        disabled={!canMoveStage || isMovingStage}
+                        onClick={handleOpenMoveConfirm}
+                        className="hidden md:flex items-center gap-1.5"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        {isMovingStage
+                          ? "Moving..."
+                          : "Move to Client Approval"}
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {missingRequirements.length > 0 && (
+                    <TooltipContent side="bottom" className="max-w-xs">
+                      <p className="font-medium mb-1">
+                        Complete the following:
+                      </p>
+                      <ul className="list-disc pl-4 space-y-0.5">
+                        {missingRequirements.map((item) => (
+                          <li key={item} className="text-xs">
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
+            )}
 
           {!isAuditor && (
             <Button
@@ -756,16 +878,18 @@ export default function ClientDocumentationLeadDetails() {
               </DropdownMenuTrigger>
 
               <DropdownMenuContent align="end">
-                {!isAuditor && handlesLargeScaleProjects && canMoveToClientApproval && (
-                  <DropdownMenuItem
-                    className="flex md:hidden"
-                    disabled={!canMoveStage || isMovingStage}
-                    onClick={handleOpenMoveConfirm}
-                  >
-                    <CheckCircle2 className="h-4 w-4" />
-                    Move to Client Approval
-                  </DropdownMenuItem>
-                )}
+                {!isAuditor &&
+                  handlesLargeScaleProjects &&
+                  canMoveToClientApproval && (
+                    <DropdownMenuItem
+                      className="flex md:hidden"
+                      disabled={!canMoveStage || isMovingStage}
+                      onClick={handleOpenMoveConfirm}
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      Move to Client Approval
+                    </DropdownMenuItem>
+                  )}
                 <DropdownMenuItem
                   className="flex md:hidden"
                   onClick={() => setAssignOpen(true)}
@@ -810,7 +934,9 @@ export default function ClientDocumentationLeadDetails() {
                       }
                     />
                   ) : (
-                    <DropdownMenuItem onClick={() => setOpenClientDocModal(true)}>
+                    <DropdownMenuItem
+                      onClick={() => setOpenClientDocModal(true)}
+                    >
                       <FileText size={20} />
                       Client Documentation
                     </DropdownMenuItem>
@@ -832,9 +958,9 @@ export default function ClientDocumentationLeadDetails() {
                 )}
 
                 {/* EDIT */}
-                {canEdit && (
+                {canEdit &&
                   // Lead block handling added for DropdownMenu action
-                  shouldDisableBlockedActions ? (
+                  (shouldDisableBlockedActions ? (
                     <CustomeTooltip
                       value={blockedTooltip}
                       truncateValue={
@@ -849,9 +975,7 @@ export default function ClientDocumentationLeadDetails() {
                       <SquarePen size={20} />
                       Edit
                     </DropdownMenuItem>
-                  )
-                )}
-
+                  ))}
 
                 {userType?.toLowerCase() === "super-admin" && (
                   <DropdownMenuItem
@@ -864,23 +988,25 @@ export default function ClientDocumentationLeadDetails() {
                       <Lock className="h-4 w-4" />
                     )}
 
-                    {isLeadBlocked
-                      ? "Unblock Lead"
-                      : "Block Lead"}
+                    {isLeadBlocked ? "Unblock Lead" : "Block Lead"}
                   </DropdownMenuItem>
                 )}
 
-                {userType?.toLowerCase() === "super-admin" && lead?.is_fast_production === true && (
-                  <DropdownMenuItem
-                    onSelect={() => setOpenCancelFastProduction(true)}
-                    disabled={revokeFastProductionMutation.isPending || isLeadBlocked}
-                  >
-                    <XCircle className="h-4 w-4 mr-2" />
-                    Cancel Fast Production
-                  </DropdownMenuItem>
-                )}
+                {userType?.toLowerCase() === "super-admin" &&
+                  lead?.is_fast_production === true && (
+                    <DropdownMenuItem
+                      onSelect={() => setOpenCancelFastProduction(true)}
+                      disabled={
+                        revokeFastProductionMutation.isPending || isLeadBlocked
+                      }
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Cancel Fast Production
+                    </DropdownMenuItem>
+                  )}
 
-                {(lead?.is_fast_production === true || lead?.has_pending_fast_production_request === true) && (
+                {(lead?.is_fast_production === true ||
+                  lead?.has_pending_fast_production_request === true) && (
                   <DropdownMenuItem
                     onSelect={() => setFastProductionDetailsOpen(true)}
                   >
@@ -890,9 +1016,9 @@ export default function ClientDocumentationLeadDetails() {
                 )}
 
                 {/* REASSIGN */}
-                {canReassign && (
+                {canReassign &&
                   // Lead block handling added for DropdownMenu action
-                  shouldDisableBlockedActions ? (
+                  (shouldDisableBlockedActions ? (
                     <CustomeTooltip
                       value={blockedTooltip}
                       truncateValue={
@@ -907,8 +1033,7 @@ export default function ClientDocumentationLeadDetails() {
                       <Users size={20} />
                       Reassign Lead
                     </DropdownMenuItem>
-                  )
-                )}
+                  ))}
 
                 {/* DELETE */}
                 {canDelete && (
@@ -965,16 +1090,18 @@ export default function ClientDocumentationLeadDetails() {
                 <PencilLine size={16} className="mr-1 opacity-60" />
                 To-Do Task
               </TabsTrigger>
-            ) : !isAuditor && (
-              <CustomeTooltip
-                truncateValue={
-                  <TabsTrigger value="" disabled>
-                    <PencilLine size={16} className="mr-1 opacity-60" />
-                    To-Do Task
-                  </TabsTrigger>
-                }
-                value="Only Sales Executive can access this tab"
-              />
+            ) : (
+              !isAuditor && (
+                <CustomeTooltip
+                  truncateValue={
+                    <TabsTrigger value="" disabled>
+                      <PencilLine size={16} className="mr-1 opacity-60" />
+                      To-Do Task
+                    </TabsTrigger>
+                  }
+                  value="Only Sales Executive can access this tab"
+                />
+              )
             )}
 
             {canViewSiteHistory && (
@@ -1122,7 +1249,8 @@ export default function ClientDocumentationLeadDetails() {
           <AlertDialogHeader>
             <AlertDialogTitle>Move to Client Approval?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to move this lead {leadCode ? `(${leadCode})` : ""} to the Client Approval stage?
+              Are you sure you want to move this lead{" "}
+              {leadCode ? `(${leadCode})` : ""} to the Client Approval stage?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1176,7 +1304,9 @@ export default function ClientDocumentationLeadDetails() {
                   title: "Lead marked On Hold!",
                   type: "success",
                 });
-                window.location.assign("/dashboard/leads/leadstable?tab=onHold");
+                window.location.assign(
+                  "/dashboard/leads/leadstable?tab=onHold",
+                );
               },
               onError: (err) => {
                 toastManager.add({
@@ -1190,17 +1320,11 @@ export default function ClientDocumentationLeadDetails() {
         loading={updateStatusMutation.isPending}
       />
 
-
-      <AlertDialog
-        open={openBlockConfirm}
-        onOpenChange={setOpenBlockConfirm}
-      >
+      <AlertDialog open={openBlockConfirm} onOpenChange={setOpenBlockConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {isLeadBlocked
-                ? "Unblock Lead?"
-                : "Block Lead?"}
+              {isLeadBlocked ? "Unblock Lead?" : "Block Lead?"}
             </AlertDialogTitle>
 
             <AlertDialogDescription>
@@ -1211,9 +1335,7 @@ export default function ClientDocumentationLeadDetails() {
           </AlertDialogHeader>
 
           <AlertDialogFooter>
-            <AlertDialogCancel
-              disabled={isBlockActionPending}
-            >
+            <AlertDialogCancel disabled={isBlockActionPending}>
               Cancel
             </AlertDialogCancel>
 
