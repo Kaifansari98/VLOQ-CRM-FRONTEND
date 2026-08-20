@@ -411,10 +411,11 @@ export function getUniversalTableColumns(
         };
 
         // Group all structures by requirement type for complete hover tooltip context
+        const defaultGroupKey = isB2b ? "Process Briefs" : "Furniture Structures";
         const groupedMap: Record<string, string[]> = {};
         structures.forEach((itemStr) => {
           const parsed = parseItem(itemStr);
-          const key = parsed.reqType || "Process Briefs";
+          const key = parsed.reqType || defaultGroupKey;
           if (!groupedMap[key]) groupedMap[key] = [];
           if (!groupedMap[key].includes(parsed.briefName)) {
             groupedMap[key].push(parsed.briefName);
@@ -485,7 +486,7 @@ export function getUniversalTableColumns(
                         <p className="text-xs font-bold text-amber-400 border-b border-zinc-700 pb-1 flex items-center justify-between">
                           <span>{reqGroup}</span>
                           <span className="text-[10px] text-zinc-400 font-normal">
-                            ({briefs.length} Brief{briefs.length === 1 ? "" : "s"})
+                            ({briefs.length} {isB2b ? "Brief" : "Structure"}{briefs.length === 1 ? "" : "s"})
                           </span>
                         </p>
                         {briefs.map((bName, bIdx) => (

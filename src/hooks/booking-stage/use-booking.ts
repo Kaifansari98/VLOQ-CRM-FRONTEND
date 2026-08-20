@@ -402,10 +402,11 @@ export const useUnderInstallationLeadsWithMiscellaneous = (
 export const useLeadBillingInformation = (
   vendorId?: number,
   leadId?: number,
+  productTypeId?: number | null,
 ) => {
   return useQuery({
-    queryKey: ["leadBillingInformation", vendorId, leadId],
-    queryFn: () => getLeadBillingInformation(vendorId!, leadId!),
+    queryKey: ["leadBillingInformation", vendorId, leadId, productTypeId ?? null],
+    queryFn: () => getLeadBillingInformation(vendorId!, leadId!, productTypeId),
     enabled: !!vendorId && !!leadId,
   });
 };

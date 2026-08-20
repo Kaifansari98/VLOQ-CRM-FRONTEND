@@ -402,9 +402,11 @@ export interface LeadBillingAddress {
 export interface LeadBillingInformationResponse {
   billingAddress: LeadBillingAddress | null;
   shippingAddress: LeadBillingAddress | null;
+  configuredProductTypeIds?: number[];
 }
 
 export interface UpsertLeadBillingInformationPayload {
+  product_type_id?: number | null;
   billingAddress: LeadBillingAddress | null;
   shippingAddress: LeadBillingAddress | null;
 }
@@ -412,9 +414,12 @@ export interface UpsertLeadBillingInformationPayload {
 export const getLeadBillingInformation = async (
   vendorId: number,
   leadId: number,
+  productTypeId?: number | null,
 ): Promise<LeadBillingInformationResponse> => {
+  const params = productTypeId ? { product_type_id: productTypeId } : undefined;
   const { data } = await apiClient.get(
     `/leads/bookingStage/billing-information/vendor/${vendorId}/lead/${leadId}`,
+    { params },
   );
 
   return data.data;
