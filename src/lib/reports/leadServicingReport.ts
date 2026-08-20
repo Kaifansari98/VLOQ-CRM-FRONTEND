@@ -113,6 +113,35 @@ function formatDate(dateStr: string | null | undefined): string {
   });
 }
 
+function sortRowsByService1DueDateClosestFirst(
+  rows: LeadServicingReportRow[],
+): LeadServicingReportRow[] {
+  const now = Date.now();
+
+  return [...rows].sort((a, b) => {
+    const aTime = a.service_1_due_date
+      ? new Date(a.service_1_due_date).getTime()
+      : Number.NaN;
+    const bTime = b.service_1_due_date
+      ? new Date(b.service_1_due_date).getTime()
+      : Number.NaN;
+
+    const aValid = !Number.isNaN(aTime);
+    const bValid = !Number.isNaN(bTime);
+
+    if (aValid && !bValid) return -1;
+    if (!aValid && bValid) return 1;
+    if (!aValid && !bValid) return a.lead_id - b.lead_id;
+
+    const aDistance = Math.abs(aTime - now);
+    const bDistance = Math.abs(bTime - now);
+
+    if (aDistance !== bDistance) return aDistance - bDistance;
+    if (aTime !== bTime) return aTime - bTime;
+    return a.lead_id - b.lead_id;
+  });
+}
+
 function buildLeadServicingSheet(
   workbook: ExcelJS.Workbook,
   rows: LeadServicingReportRow[],
@@ -281,7 +310,9 @@ export async function generateLeadServicingReport(params: GenerateLeadServicingR
         ).flat()
       : await fetchReportData(vendorId, franchiseId, fromDate, toDate);
 
-  if (rows.length === 0) {
+  const sortedRows = sortRowsByService1DueDateClosestFirst(rows);
+
+  if (sortedRows.length === 0) {
     throw new Error("No servicing rows found for the selected filters.");
   }
 
@@ -293,7 +324,7 @@ export async function generateLeadServicingReport(params: GenerateLeadServicingR
   const usedSheetNames = new Set<string>();
   buildLeadServicingSheet(
     workbook,
-    rows,
+    sortedRows,
     buildSheetName(
       franchiseId === "all" || Array.isArray(franchiseId) ? "Consolidated" : "Servicing Report",
       usedSheetNames,
@@ -302,7 +333,7 @@ export async function generateLeadServicingReport(params: GenerateLeadServicingR
 
   if (franchiseId === "all" || Array.isArray(franchiseId)) {
     const groupedRows = new Map<string, LeadServicingReportRow[]>();
-    for (const row of rows) {
+    for (const row of sortedRows) {
       const key = row.franchise_store || "Unknown Franchise";
       const group = groupedRows.get(key) ?? [];
       group.push(row);
@@ -312,7 +343,7 @@ export async function generateLeadServicingReport(params: GenerateLeadServicingR
     for (const [franchiseName, franchiseRows] of groupedRows) {
       buildLeadServicingSheet(
         workbook,
-        franchiseRows,
+        sortRowsByService1DueDateClosestFirst(franchiseRows),
         buildSheetName(franchiseName, usedSheetNames),
       );
     }
