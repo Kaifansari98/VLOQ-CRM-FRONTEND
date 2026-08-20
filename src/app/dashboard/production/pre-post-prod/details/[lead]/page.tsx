@@ -144,6 +144,7 @@ export default function ProductionLeadDetails() {
     string | undefined
   >(undefined);
   const [masterErdRemark, setMasterErdRemark] = useState("");
+  const [factoryErdLocked, setFactoryErdLocked] = useState(false);
 
   const updateStatusMutation = useUpdateActivityStatus();
   const queryClient = useQueryClient();
@@ -189,9 +190,11 @@ export default function ProductionLeadDetails() {
         vendorId: vendorId!,
         limit: 1,
         historyType: "Lead",
-        search: "Expected Order Login ready date changed to",
+        search: validInstanceId
+          ? "Instance ERD changed to"
+          : "Expected Order Login ready date changed to",
       }),
-    enabled: !!vendorId && !!leadIdNum && !validInstanceId,
+    enabled: !!vendorId && !!leadIdNum,
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
   });
@@ -481,14 +484,30 @@ export default function ProductionLeadDetails() {
   const handleExpectedDateChange = async (newDate?: string) => {
     if (!newDate || !vendorId || !userId || !leadIdNum) return;
 
-    const existingMasterErd = lead?.expected_order_login_ready_date
-      ? new Date(lead.expected_order_login_ready_date).toISOString().split("T")[0]
-      : null;
-    const isMasterErdUpdate = !validInstanceId;
-    const isMasterErdChange =
-      isMasterErdUpdate && !!existingMasterErd && existingMasterErd !== newDate;
+    const existingDisplayedErd = validInstanceId
+      ? currentInstance?.production_erd_date
+        ? new Date(currentInstance.production_erd_date).toISOString().split("T")[0]
+        : null
+      : lead?.expected_order_login_ready_date
+        ? new Date(lead.expected_order_login_ready_date).toISOString().split("T")[0]
+        : null;
+    const isDisplayedErdChange =
+      !!existingDisplayedErd && existingDisplayedErd !== newDate;
+    const isFactoryLockedForDisplayedErd =
+      normalizedUserType === "factory" &&
+      !!existingDisplayedErd &&
+      (factoryErdLocked || hasMasterErdBeenChangedOnce);
 
-    if (isMasterErdChange && !isSuperAdmin) {
+    if (isFactoryLockedForDisplayedErd) {
+      toastManager.add({
+        title:
+          "Factory can change this Expected Ready Date only once after setting it.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (isDisplayedErdChange && !isSuperAdmin) {
       setPendingMasterErdDate(newDate);
       setShowMasterErdRemarkModal(true);
       return;
@@ -507,7 +526,7 @@ export default function ProductionLeadDetails() {
         title: "Expected Order Login Ready Date updated successfully!",
         type: "success",
       });
-      queryClient.invalidateQueries({ queryKey: ["leadById", leadIdNum] });
+      queryClient.invalidateQueries({ queryKey: ["lead", leadIdNum] });
       queryClient.invalidateQueries({
         queryKey: ["lead-product-structure-instances", leadIdNum, vendorId],
       });
@@ -522,6 +541,9 @@ export default function ProductionLeadDetails() {
           validInstanceId ?? undefined,
         ],
       });
+      if (normalizedUserType === "factory" && isDisplayedErdChange) {
+        setFactoryErdLocked(true);
+      }
     } catch (err: any) {
       toastManager.add({
         title: err?.message || "Failed to update expected order login date",
@@ -635,11 +657,13 @@ export default function ProductionLeadDetails() {
 
   const hasMasterErdBeenChangedOnce =
     (masterErdChangeLogData?.data?.length ?? 0) > 0;
+  const displayedErdValue = validInstanceId
+    ? currentInstance?.production_erd_date
+    : lead?.expected_order_login_ready_date;
   const isMasterErdLocked =
-    !validInstanceId &&
-    !isSuperAdmin &&
-    !!lead?.expected_order_login_ready_date &&
-    hasMasterErdBeenChangedOnce;
+    normalizedUserType === "factory" &&
+    !!displayedErdValue &&
+    (factoryErdLocked || hasMasterErdBeenChangedOnce);
 
   const disabledReason = shouldDisableBlockedActions
     ? blockedTooltip
@@ -1422,6 +1446,7 @@ export default function ProductionLeadDetails() {
                     leadId: leadIdNum,
                     expected_order_login_ready_date: pendingMasterErdDate,
                     updated_by: userId,
+                    instance_id: validInstanceId,
                     change_remark: masterErdRemark.trim(),
                   });
 
@@ -1429,7 +1454,7 @@ export default function ProductionLeadDetails() {
                     title: "Expected Order Login Ready Date updated successfully!",
                     type: "success",
                   });
-                  queryClient.invalidateQueries({ queryKey: ["leadById", leadIdNum] });
+                  queryClient.invalidateQueries({ queryKey: ["lead", leadIdNum] });
                   queryClient.invalidateQueries({
                     queryKey: ["lead-product-structure-instances", leadIdNum, vendorId],
                   });
@@ -1447,6 +1472,9 @@ export default function ProductionLeadDetails() {
                   queryClient.invalidateQueries({
                     queryKey: ["master-erd-change-log", vendorId, leadIdNum],
                   });
+                  if (normalizedUserType === "factory") {
+                    setFactoryErdLocked(true);
+                  }
                   setShowMasterErdRemarkModal(false);
                   setPendingMasterErdDate(undefined);
                   setMasterErdRemark("");
