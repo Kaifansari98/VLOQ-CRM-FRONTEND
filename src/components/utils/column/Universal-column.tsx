@@ -33,6 +33,7 @@ interface UniversalColumnOptions {
   showPriorityColumn?: boolean;
   showServicingColumn?: boolean;
   showDesignerColumn?: boolean;
+  showSiteSupervisorColumn?: boolean;
   isB2b?: boolean;
 }
 
@@ -54,6 +55,7 @@ export function getUniversalTableColumns(
     showPriorityColumn = false,
     showServicingColumn = false,
     showDesignerColumn = false,
+    showSiteSupervisorColumn = false,
     isB2b = false,
   } =
     options;
@@ -618,6 +620,29 @@ export function getUniversalTableColumns(
       enableHiding: true,
       enableColumnFilter: true,
     },
+
+    ...(showSiteSupervisorColumn
+      ? ([
+          {
+            accessorKey: "siteSupervisor",
+            header: ({ column }) => (
+              <DataTableColumnHeader column={column} title="Site Supervisor" />
+            ),
+            meta: {
+              label: "Site Supervisor",
+            },
+            filterFn: tableSingleValueMultiSelectFilter,
+            enableSorting: false,
+            enableHiding: true,
+            enableColumnFilter: true,
+            cell: ({ row }) => {
+              const siteSupervisor =
+                (row.getValue("siteSupervisor") as string) || "";
+              return siteSupervisor.trim() ? siteSupervisor : "—";
+            },
+          },
+        ] satisfies ColumnDef<LeadColumn>[])
+      : []),
 
     ...(showDesignerColumn
       ? ([

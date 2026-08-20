@@ -13,6 +13,7 @@ export type LeadColumn = {
   siteType: string; // R
   sales_executive?: string; // R
   designer?: string;
+  siteSupervisor?: string;
   assignedToId?: number;
   siteAddress: string; // R
   architechName: string;
