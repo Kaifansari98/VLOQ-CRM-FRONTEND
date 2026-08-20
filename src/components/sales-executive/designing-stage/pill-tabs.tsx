@@ -458,6 +458,18 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
                     </Tooltip>
                   </>
                 )}
+                {activeTab === "client-received-files" && (
+                  <Button
+                    size="sm"
+                    className="text-xs sm:text-xs px-2 sm:px-4 whitespace-nowrap gap-1.5"
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent("open-client-received-files-upload-modal"));
+                    }}
+                  >
+                    <CloudUpload size={16} className="sm:mr-1" />
+                    <span>Upload Document</span>
+                  </Button>
+                )}
                 {bookingBtn && (
                   <Tooltip>
                     <TooltipTrigger asChild>
