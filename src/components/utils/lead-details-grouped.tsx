@@ -50,6 +50,8 @@ export interface LeadDetailsGroupedProps {
   underInstallationInstanceId?: number | null;
   finalHandoverInstanceId?: number | null;
   allowServicingTabFromDeliveredProjects?: boolean;
+  selectedProductTypeId?: number | null;
+  onProductTypeChange?: (productTypeId: number) => void;
 }
 
 const GROUP_ORDER: GroupKey[] = [
@@ -79,6 +81,8 @@ export default function LeadDetailsGrouped({
   underInstallationInstanceId,
   finalHandoverInstanceId,
   allowServicingTabFromDeliveredProjects = false,
+  selectedProductTypeId,
+  onProductTypeChange,
 }: LeadDetailsGroupedProps) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -95,7 +99,10 @@ export default function LeadDetailsGrouped({
   const isSmallOrderLead = Boolean(lead?.is_small_order_request);
   const smallOrderRequestSource = lead?.smallOrderRequest?.request_source;
 
-  const { data: franchisesForB2b = [] } = useFranchisesByVendorId(vendorId, !!vendorId);
+  const { data: franchisesForB2b = [] } = useFranchisesByVendorId(
+    vendorId,
+    !!vendorId,
+  );
   const isB2b = React.useMemo(() => {
     const leadFranchise = franchisesForB2b.find(
       (franchise: any) => franchise.id === lead?.franchise_id,
@@ -144,11 +151,7 @@ export default function LeadDetailsGrouped({
         id: "clientdocumentation",
         title: "Client Documentation",
         component: (
-          <ClientDocumentationDetails
-            leadId={leadId}
-            accountId={accountId}
-           
-          />
+          <ClientDocumentationDetails leadId={leadId} accountId={accountId} />
         ),
       },
       {
@@ -165,6 +168,8 @@ export default function LeadDetailsGrouped({
           <TechCheckDetails
             leadId={leadId}
             instanceId={techCheckInstanceId}
+            selectedProductTypeId={selectedProductTypeId}
+            onProductTypeChange={onProductTypeChange}
           />
         ),
       },
@@ -220,7 +225,11 @@ export default function LeadDetailsGrouped({
         id: "dispatchPlanning",
         title: "Dispatch Planning",
         component: (
-          <DispatchPlanningDetails leadId={leadId} accountId={accountId} instanceId={dispatchPlanningInstanceId} />
+          <DispatchPlanningDetails
+            leadId={leadId}
+            accountId={accountId}
+            instanceId={dispatchPlanningInstanceId}
+          />
         ),
       },
       {
@@ -310,7 +319,7 @@ export default function LeadDetailsGrouped({
 
     const allowedKeys = GROUP_ORDER.slice(
       0,
-      GROUP_ORDER.indexOf(effectiveParentTab) + 1
+      GROUP_ORDER.indexOf(effectiveParentTab) + 1,
     );
 
     const filtered = {} as Record<

@@ -80,10 +80,25 @@ export const useClientDocumentationDetails = (
   leadId: number,
   userId?: number,
   instanceId?: number,
+  productTypeId?: number,
 ) => {
   return useQuery<ClientDocDetailsResponse>({
-    queryKey: ["clientDocumentationDetails", vendorId, leadId, userId, instanceId],
-    queryFn: () => getClientDocumentationDetails(vendorId, leadId, userId, instanceId),
+    queryKey: [
+      "clientDocumentationDetails",
+      vendorId,
+      leadId,
+      userId,
+      instanceId,
+      productTypeId,
+    ],
+    queryFn: () =>
+      getClientDocumentationDetails(
+        vendorId,
+        leadId,
+        userId,
+        instanceId,
+        productTypeId,
+      ),
     enabled: !!vendorId && !!leadId && userId !== undefined && userId !== null,
     staleTime: 5 * 60 * 1000,
   });
@@ -95,7 +110,10 @@ export const useUploadMoreClientDocumentation = () => {
     mutationFn: (payload: UploadMoreDocPayload) =>
       uploadMoreClientDocumentation(payload),
     onSuccess: async (data, variables) => {
-      toastManager.add({ title: "Documents uploaded successfully!", type: "success" });
+      toastManager.add({
+        title: "Documents uploaded successfully!",
+        type: "success",
+      });
       await queryClient.refetchQueries({
         queryKey: [
           "clientDocumentationDetails",
@@ -124,7 +142,10 @@ export const useMoveLeadToClientApproval = () => {
       updatedBy: number;
     }) => moveLeadToClientApproval(payload),
     onSuccess: async (_data, variables) => {
-      toastManager.add({ title: "Lead moved to Client Approval", type: "success" });
+      toastManager.add({
+        title: "Lead moved to Client Approval",
+        type: "success",
+      });
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: ["clientDocumentationDetails"],
@@ -133,7 +154,7 @@ export const useMoveLeadToClientApproval = () => {
           queryKey: ["clientDocumentationLeads"],
           exact: false,
         }),
-         queryClient.invalidateQueries({
+        queryClient.invalidateQueries({
           queryKey: ["getSelectionData"],
           exact: false,
         }),

@@ -7,6 +7,8 @@ import { useAppSelector } from "@/redux/store";
 import { useClientDocumentationDetails } from "@/hooks/client-documentation/use-clientdocumentation";
 import { useSiteMeasurementLeadById } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
 import { useFinalMeasurementLeadById } from "@/hooks/final-measurement/use-final-measurement";
+import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
+import { LeadProductStructureInstance } from "@/api/leads";
 
 import {
   FileText,
@@ -45,6 +47,8 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 type Props = {
   leadId: number;
   instanceId?: number | null;
+  selectedProductTypeId?: number | null;
+  onProductTypeChange?: (productTypeId: number) => void;
 };
 
 const containerVariants = {
@@ -57,7 +61,12 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.2 } },
 };
 
-export default function TechCheckDetails({ leadId, instanceId }: Props) {
+export default function TechCheckDetails({
+  leadId,
+  instanceId,
+  selectedProductTypeId: selectedProductTypeIdProp,
+  onProductTypeChange,
+}: Props) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id)!;
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
@@ -80,11 +89,110 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
       : (instanceId ?? null);
 
   // ✅ Hooks
+  const { data: leadData } = useLeadStatus(leadId, vendorId);
+  const leadStatus = leadData?.status;
+
+  const handlesLargeScaleProjectsFromAuth = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const handlesLargeScaleProjects =
+    handlesLargeScaleProjectsFromAuth ||
+    (leadData as any)?.lead?.createdBy?.vendor?.handlesLargeScaleProjects ===
+      true ||
+    (leadData as any)?.lead?.assignedTo?.vendor?.handlesLargeScaleProjects ===
+      true;
+
+  const { data: structureInstancesData } = useLeadProductStructureInstances(
+    leadId,
+    vendorId,
+  );
+
+  const largeScaleGroups = useMemo(() => {
+    if (!handlesLargeScaleProjects) return [];
+
+    const rawInstances: LeadProductStructureInstance[] = Array.isArray(
+      structureInstancesData?.data,
+    )
+      ? structureInstancesData.data
+      : [];
+
+    const map = new Map<
+      number,
+      {
+        productTypeId: number;
+        title: string;
+        subtitle: string;
+      }
+    >();
+
+    rawInstances.forEach((inst: any) => {
+      const typeId =
+        inst.product_type_id ||
+        inst.product_type?.id ||
+        inst.productType?.id ||
+        inst.productItemCode?.productStructure?.productType?.id;
+
+      if (typeId && !map.has(Number(typeId))) {
+        const title =
+          inst.product_type?.name ||
+          inst.productType?.type ||
+          inst.productItemCode?.productStructure?.productType?.type ||
+          inst.title ||
+          "Item Group";
+
+        const subtitle =
+          inst.code ||
+          inst.productItemCode?.item_code ||
+          inst.description ||
+          title;
+
+        map.set(Number(typeId), {
+          productTypeId: Number(typeId),
+          title,
+          subtitle,
+        });
+      }
+    });
+
+    return Array.from(map.values());
+  }, [handlesLargeScaleProjects, structureInstancesData?.data]);
+
+  const [selectedProductTypeId, setSelectedProductTypeId] = useState<
+    number | null
+  >(selectedProductTypeIdProp ?? null);
+
+  useEffect(() => {
+    if (selectedProductTypeIdProp != null) {
+      setSelectedProductTypeId(selectedProductTypeIdProp);
+    }
+  }, [selectedProductTypeIdProp]);
+
+  useEffect(() => {
+    if (handlesLargeScaleProjects && largeScaleGroups.length > 0) {
+      if (
+        !selectedProductTypeId ||
+        !largeScaleGroups.some((g) => g.productTypeId === selectedProductTypeId)
+      ) {
+        const defaultTypeId = largeScaleGroups[0].productTypeId;
+        setSelectedProductTypeId(defaultTypeId);
+        onProductTypeChange?.(defaultTypeId);
+      }
+    }
+  }, [
+    handlesLargeScaleProjects,
+    largeScaleGroups,
+    selectedProductTypeId,
+    onProductTypeChange,
+  ]);
+
   const { data: clientDocs } = useClientDocumentationDetails(
     vendorId,
     leadId,
     userId!,
-    instanceIdFromUrl!,
+    handlesLargeScaleProjects ? undefined : (instanceIdFromUrl ?? undefined),
+    handlesLargeScaleProjects
+      ? (selectedProductTypeId ?? undefined)
+      : undefined,
   );
   const { data: siteMeasurement } = useSiteMeasurementLeadById(leadId);
   const { data: finalMeasurement } = useFinalMeasurementLeadById(
@@ -94,9 +202,6 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
 
   console.log("Client Documentation: ", clientDocs);
   const { data } = useClientRequiredCompletionDate(vendorId, leadId);
-
-  const { data: leadData } = useLeadStatus(leadId, vendorId);
-  const leadStatus = leadData?.status;
 
   // filter: "ALL" | "APPROVED" | "PENDING" | "REJECTED"
   const [activeFilter, setActiveFilter] = useState<
@@ -210,18 +315,85 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
       )
     : [];
 
-  const pptDocs =
-    scopedInstanceId && scopedGroup
+  const instanceToProductTypeMap = useMemo(() => {
+    const map = new Map<number, number>();
+    const rawInstances: any[] = Array.isArray(structureInstancesData?.data)
+      ? structureInstancesData.data
+      : [];
+    rawInstances.forEach((inst) => {
+      const typeId =
+        inst.product_type_id ||
+        inst.product_type?.id ||
+        inst.productType?.id ||
+        inst.productItemCode?.productStructure?.productType?.id;
+      if (inst.id && typeId) {
+        map.set(Number(inst.id), Number(typeId));
+      }
+    });
+    return map;
+  }, [structureInstancesData?.data]);
+
+  const rawPptDocs = clientDocs?.documents?.ppt ?? [];
+  const rawPythaDocs = clientDocs?.documents?.pytha ?? [];
+
+  const pptDocs = handlesLargeScaleProjects
+    ? selectedProductTypeId
+      ? rawPptDocs.filter((doc: any) => {
+          if (
+            doc.product_type_id &&
+            Number(doc.product_type_id) === Number(selectedProductTypeId)
+          ) {
+            return true;
+          }
+          if (doc.product_structure_instance_id) {
+            const instPTypeId = instanceToProductTypeMap.get(
+              Number(doc.product_structure_instance_id),
+            );
+            if (
+              instPTypeId &&
+              Number(instPTypeId) === Number(selectedProductTypeId)
+            ) {
+              return true;
+            }
+          }
+          return !doc.product_type_id && !doc.product_structure_instance_id;
+        })
+      : rawPptDocs
+    : scopedInstanceId && scopedGroup
       ? (scopedGroup?.documents?.ppt ?? [])
       : scopedInstanceId
         ? fallbackPptDocsByInstance
-        : (clientDocs?.documents?.ppt ?? []);
-  const pythaDocs =
-    scopedInstanceId && scopedGroup
+        : rawPptDocs;
+
+  const pythaDocs = handlesLargeScaleProjects
+    ? selectedProductTypeId
+      ? rawPythaDocs.filter((doc: any) => {
+          if (
+            doc.product_type_id &&
+            Number(doc.product_type_id) === Number(selectedProductTypeId)
+          ) {
+            return true;
+          }
+          if (doc.product_structure_instance_id) {
+            const instPTypeId = instanceToProductTypeMap.get(
+              Number(doc.product_structure_instance_id),
+            );
+            if (
+              instPTypeId &&
+              Number(instPTypeId) === Number(selectedProductTypeId)
+            ) {
+              return true;
+            }
+          }
+          return !doc.product_type_id && !doc.product_structure_instance_id;
+        })
+      : rawPythaDocs
+    : scopedInstanceId && scopedGroup
       ? (scopedGroup?.documents?.pytha ?? [])
       : scopedInstanceId
         ? fallbackPythaDocsByInstance
-        : (clientDocs?.documents?.pytha ?? []);
+        : rawPythaDocs;
+
   const allDocs = [...pptDocs, ...pythaDocs];
 
   // ✅ Delete mutation
@@ -316,7 +488,51 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
         animate="visible"
         className="w-full space-y-4"
       >
-        {showInstanceTabs && (
+        {handlesLargeScaleProjects && largeScaleGroups.length > 0 && (
+          <motion.div>
+            <div className="border-b border-border">
+              <ScrollArea className="w-full whitespace-nowrap">
+                <div className="flex items-end gap-2 sm:flex-wrap">
+                  {largeScaleGroups.map((group) => {
+                    const isActive =
+                      selectedProductTypeId === group.productTypeId;
+                    return (
+                      <div
+                        key={group.productTypeId}
+                        onClick={() => {
+                          setSelectedProductTypeId(group.productTypeId);
+                          onProductTypeChange?.(group.productTypeId);
+                        }}
+                        className={`
+                          cursor-pointer transition-all shrink-0
+                          px-3 py-2 rounded-t-lg border border-b-0
+                          min-w-[100px] max-w-[160px]
+                          ${
+                            isActive
+                              ? "bg-background text-foreground border-border"
+                              : "bg-muted/40 text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/60"
+                          }
+                        `}
+                      >
+                        <div className="flex flex-col items-start">
+                          <span className="text-xs font-semibold leading-none truncate w-full">
+                            {group.title}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground mt-1 truncate w-full">
+                            {group.subtitle}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <ScrollBar orientation="horizontal" />
+              </ScrollArea>
+            </div>
+          </motion.div>
+        )}
+
+        {!handlesLargeScaleProjects && showInstanceTabs && (
           <motion.div>
             <div className="border-b border-border">
               <ScrollArea className="w-full whitespace-nowrap">
@@ -356,7 +572,6 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
             </div>
           </motion.div>
         )}
-        
       </motion.div>
 
       {/* -------- Header Stats (Premium CRM Style) -------- */}
@@ -702,7 +917,7 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
         </div>
       </motion.div>
 
-      {activeFilter === "ALL" && (
+      {!handlesLargeScaleProjects && activeFilter === "ALL" && (
         <>
           {/* ---------------------------------------------------------- */}
           {/* -------- Design Selections -------- */}
@@ -812,18 +1027,18 @@ export default function TechCheckDetails({ leadId, instanceId }: Props) {
                   {ismDocs.map((doc: any) => (
                     <div key={doc.id} className="min-w-0">
                       <DocumentCard
-                      key={doc.id}
-                      doc={{
-                        id: doc.id,
-                        originalName: doc.originalName,
-                        signedUrl: doc.signedUrl,
-                        created_at: doc.created_at,
-                      }}
-                      canDelete={canDeleteTechCheckDocs}
-                      status={doc.tech_check_status}
-                      onDelete={(id) => setConfirmDelete(id)}
-                      alwaysShowText={true}
-                    />
+                        key={doc.id}
+                        doc={{
+                          id: doc.id,
+                          originalName: doc.originalName,
+                          signedUrl: doc.signedUrl,
+                          created_at: doc.created_at,
+                        }}
+                        canDelete={canDeleteTechCheckDocs}
+                        status={doc.tech_check_status}
+                        onDelete={(id) => setConfirmDelete(id)}
+                        alwaysShowText={true}
+                      />
                     </div>
                   ))}
                 </div>

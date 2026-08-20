@@ -275,15 +275,18 @@ export default function ClientApprovalLeadDetails() {
 
     // Auto-open only for Sales Executive
     if (userType === "sales-executive" && !isLeadBlocked && !lead.is_draft) {
-      if (isClientApprovalComplete) {
-        setOpenRequestToTechCheckModal(true);
+      if (handlesLargeScaleProjects) {
+        setActiveTab("details");
       } else {
-        setOpenClientApprovalModal(true);
+        if (isClientApprovalComplete) {
+          setOpenRequestToTechCheckModal(true);
+        } else {
+          setOpenClientApprovalModal(true);
+        }
+        setActiveTab("todo");
       }
-
-      setActiveTab("todo");
     }
-  }, [isLoading, isLeadBlockStatusLoading, lead, isChatNotification, userType, isClientApprovalComplete, isLeadBlocked]);
+  }, [isLoading, isLeadBlockStatusLoading, lead, isChatNotification, userType, isClientApprovalComplete, isLeadBlocked, handlesLargeScaleProjects]);
 
   const deleteLeadMutation = useDeleteLead();
   const handleDeleteLead = () => {
@@ -693,10 +696,15 @@ export default function ClientApprovalLeadDetails() {
         onValueChange={(val) => {
           // When user selects "todo"
           if (val === "todo") {
-            // Save previous tab (common in both functions)
             setPreviousTab(activeTab);
 
-            // First logic: access privilege + tech-check flow
+            if (handlesLargeScaleProjects) {
+              // Large Scale Project: Open clientApproval tab in LeadDetailsUtil directly on page (no modal)
+              setActiveTab("todo");
+              return;
+            }
+
+            // Normal Project (handlesLargeScaleProjects is false): Open modal!
             if (canRequestToTechCheckAccess) {
               if (!isClientApprovalComplete) {
                 setOpenClientApprovalModal(true);
@@ -704,12 +712,9 @@ export default function ClientApprovalLeadDetails() {
                 setOpenRequestToTechCheckModal(true);
               }
             } else {
-              // Second logic: open client document modal
               setOpenClientApprovalModal(true);
             }
 
-            // Keep tab on "todo"
-            setActiveTab("todo");
             return;
           }
 
@@ -783,6 +788,25 @@ export default function ClientApprovalLeadDetails() {
           </TabsList>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
+
+        <TabsContent value="todo">
+          <main className="flex-1 h-fit">
+            <LeadDetailsUtil
+              status={
+                handlesLargeScaleProjects || is_client_approval_submitted
+                  ? "clientApproval"
+                  : "clientdocumentation"
+              }
+              leadId={leadIdNum}
+              accountId={accountId}
+              defaultTab={
+                handlesLargeScaleProjects || is_client_approval_submitted
+                  ? "clientApproval"
+                  : "clientdocumentation"
+              }
+            />
+          </main>
+        </TabsContent>
 
         <TabsContent value="details">
           <main className="flex-1 h-fit">

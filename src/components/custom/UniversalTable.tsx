@@ -459,6 +459,9 @@ export function UniversalTable({
   const reduxModuledForB2b = useAppSelector(
     (s) => s.auth.moduled_for_b2b ?? s.auth.user?.moduled_for_b2b ?? false,
   );
+  const handlesLargeScaleProjectsFromAuth = useAppSelector(
+    (s) => s.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
   const { data: franchisesForB2b = [] } = useFranchisesByVendorId(
     vendorId,
     !!vendorId,
@@ -1222,6 +1225,11 @@ export function UniversalTable({
       const expanded: LeadColumn[] = [];
 
       filteredActiveData.forEach((lead) => {
+        const handlesLargeScaleProjects =
+          handlesLargeScaleProjectsFromAuth ||
+          (lead as any)?.createdBy?.vendor?.handlesLargeScaleProjects === true ||
+          (lead as any)?.assignedTo?.vendor?.handlesLargeScaleProjects === true;
+
         const type8StatusLoggedAt = STATUS_LOG_SORTED_STAGE_TYPES.has(
           normalizedType,
         )
@@ -1230,6 +1238,33 @@ export function UniversalTable({
         const instances = Array.isArray(lead?.productStructureInstances)
           ? lead.productStructureInstances
           : [];
+
+        if (handlesLargeScaleProjects) {
+          const structureTypes = Array.from(
+            new Set(
+              instances
+                .map(
+                  (inst: any) =>
+                    inst?.title ||
+                    inst?.productType?.type ||
+                    inst?.product_type?.name ||
+                    inst?.productStructure?.type
+                )
+                .filter(Boolean)
+            )
+          ).join(", ");
+
+          expanded.push(
+            mapUniversalRow(lead, expanded.length, {
+              rowKey: String(lead.id),
+              leadCodeSuffix: "",
+              furnitureStructureOverride: structureTypes || undefined,
+              type8StatusLoggedAt,
+            })
+          );
+          return;
+        }
+
         let instanceRows = instances;
         if (isType8) {
           instanceRows = instances.filter(
