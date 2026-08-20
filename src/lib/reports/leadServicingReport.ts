@@ -116,7 +116,9 @@ function formatDate(dateStr: string | null | undefined): string {
 function sortRowsByService1DueDateClosestFirst(
   rows: LeadServicingReportRow[],
 ): LeadServicingReportRow[] {
-  const now = Date.now();
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const todayTime = now.getTime();
 
   return [...rows].sort((a, b) => {
     const aTime = a.service_1_due_date
@@ -133,10 +135,21 @@ function sortRowsByService1DueDateClosestFirst(
     if (!aValid && bValid) return 1;
     if (!aValid && !bValid) return a.lead_id - b.lead_id;
 
-    const aDistance = Math.abs(aTime - now);
-    const bDistance = Math.abs(bTime - now);
+    const aIsPastOrToday = aTime <= todayTime;
+    const bIsPastOrToday = bTime <= todayTime;
 
-    if (aDistance !== bDistance) return aDistance - bDistance;
+    // Overdue / past-due rows should appear first.
+    if (aIsPastOrToday !== bIsPastOrToday) {
+      return aIsPastOrToday ? -1 : 1;
+    }
+
+    // Past dates: most recent first (closest past date at the top).
+    if (aIsPastOrToday && bIsPastOrToday) {
+      if (aTime !== bTime) return bTime - aTime;
+      return a.lead_id - b.lead_id;
+    }
+
+    // Future dates: nearest upcoming first.
     if (aTime !== bTime) return aTime - bTime;
     return a.lead_id - b.lead_id;
   });

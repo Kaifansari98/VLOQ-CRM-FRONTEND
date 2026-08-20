@@ -118,6 +118,7 @@ export const updateExpectedOrderLoginReadyDate = async (
   expected_order_login_ready_date: string,
   updated_by: number,
   instance_id?: number | null,
+  change_remark?: string,
 ) => {
   const { data } = await apiClient.put(
     `/leads/production/pre-production/vendorId/${vendorId}/leadId/${leadId}/update-expected-order-login-date`,
@@ -125,6 +126,7 @@ export const updateExpectedOrderLoginReadyDate = async (
       expected_order_login_ready_date,
       updated_by,
       ...(typeof instance_id !== "undefined" ? { instance_id } : {}),
+      ...(change_remark ? { change_remark } : {}),
     }
   );
   return data;
@@ -138,12 +140,14 @@ export const useUpdateExpectedOrderLoginReadyDate = () =>
       expected_order_login_ready_date,
       updated_by,
       instance_id,
+      change_remark,
     }: {
       vendorId: number;
       leadId: number;
       expected_order_login_ready_date: string;
       updated_by: number;
       instance_id?: number | null;
+      change_remark?: string;
     }) =>
       updateExpectedOrderLoginReadyDate(
         vendorId,
@@ -151,6 +155,7 @@ export const useUpdateExpectedOrderLoginReadyDate = () =>
         expected_order_login_ready_date,
         updated_by,
         instance_id,
+        change_remark,
       ),
   });
 

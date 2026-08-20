@@ -86,7 +86,7 @@ import {
   usePostProductionCompleteness,
   useUpdateExpectedOrderLoginReadyDate,
 } from "@/api/production/production-api";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useCheckPostProductionReady } from "@/api/production/production-api";
@@ -102,6 +102,9 @@ import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 import { useBlockLead, useUnblockLead } from "@/hooks/useLeadsQueries";
+import { fetchLeadLogs } from "@/api/leads";
+import BaseModal from "@/components/utils/baseModal";
+import TextAreaInput from "@/components/origin-text-area";
 export default function ProductionLeadDetails() {
   const router = useRouter();
   const { lead: leadId, remark } = useParams();
@@ -123,6 +126,8 @@ export default function ProductionLeadDetails() {
   );
   const effectiveUserType = userType;
   const isAuditor = effectiveUserType?.trim().toLowerCase() === "auditor";
+  const normalizedUserType = effectiveUserType?.trim().toLowerCase() ?? "";
+  const isSuperAdmin = normalizedUserType === "super-admin";
 
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -134,6 +139,11 @@ export default function ProductionLeadDetails() {
 
   const [activityModalOpen, setActivityModalOpen] = useState(false);
   const [activityType, setActivityType] = useState<"onHold">("onHold");
+  const [showMasterErdRemarkModal, setShowMasterErdRemarkModal] = useState(false);
+  const [pendingMasterErdDate, setPendingMasterErdDate] = useState<
+    string | undefined
+  >(undefined);
+  const [masterErdRemark, setMasterErdRemark] = useState("");
 
   const updateStatusMutation = useUpdateActivityStatus();
   const queryClient = useQueryClient();
@@ -171,6 +181,20 @@ export default function ProductionLeadDetails() {
     Number(leadIdNum),
     validInstanceId ?? undefined,
   );
+  const { data: masterErdChangeLogData } = useQuery({
+    queryKey: ["master-erd-change-log", vendorId, leadIdNum],
+    queryFn: () =>
+      fetchLeadLogs({
+        leadId: leadIdNum,
+        vendorId: vendorId!,
+        limit: 1,
+        historyType: "Lead",
+        search: "Expected Order Login ready date changed to",
+      }),
+    enabled: !!vendorId && !!leadIdNum && !validInstanceId,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
 
 
 
@@ -264,10 +288,8 @@ export default function ProductionLeadDetails() {
 
     // 3️⃣ Hit API ONLY in these specific cases:
     const shouldHitApi =
-      // Case 1: Expected date is missing → set by buffer
-      !expectedDate ||
-      // Case 2: Expected date < latest order login date → update to latest
-      (expectedDate && new Date(expectedDate) < new Date(computedDate));
+      // Only auto-set when missing. Do not silently change an already-set ERD.
+      !expectedDate;
 
     // ✅ REMOVED Case 3 (expectedDate === computedDate) because this causes repeated API calls
 
@@ -459,6 +481,19 @@ export default function ProductionLeadDetails() {
   const handleExpectedDateChange = async (newDate?: string) => {
     if (!newDate || !vendorId || !userId || !leadIdNum) return;
 
+    const existingMasterErd = lead?.expected_order_login_ready_date
+      ? new Date(lead.expected_order_login_ready_date).toISOString().split("T")[0]
+      : null;
+    const isMasterErdUpdate = !validInstanceId;
+    const isMasterErdChange =
+      isMasterErdUpdate && !!existingMasterErd && existingMasterErd !== newDate;
+
+    if (isMasterErdChange && !isSuperAdmin) {
+      setPendingMasterErdDate(newDate);
+      setShowMasterErdRemarkModal(true);
+      return;
+    }
+
     try {
       await updateExpectedDate({
         vendorId,
@@ -598,8 +633,18 @@ export default function ProductionLeadDetails() {
     userType,
   });
 
+  const hasMasterErdBeenChangedOnce =
+    (masterErdChangeLogData?.data?.length ?? 0) > 0;
+  const isMasterErdLocked =
+    !validInstanceId &&
+    !isSuperAdmin &&
+    !!lead?.expected_order_login_ready_date &&
+    hasMasterErdBeenChangedOnce;
+
   const disabledReason = shouldDisableBlockedActions
     ? blockedTooltip
+    : isMasterErdLocked
+      ? "Master ERD can only be changed once after setting. Please contact Super Admin for further changes."
     : !canUpdateExpectedDate
       ? "You do not have permission to update this date."
       : completeness?.any_exists
@@ -1325,6 +1370,99 @@ export default function ProductionLeadDetails() {
         }}
         loading={updateStatusMutation.isPending}
       />
+
+      <BaseModal
+        open={showMasterErdRemarkModal}
+        onOpenChange={(open) => {
+          setShowMasterErdRemarkModal(open);
+          if (!open) {
+            setPendingMasterErdDate(undefined);
+            setMasterErdRemark("");
+          }
+        }}
+        size="md"
+        title="Change Master ERD"
+        description="Please provide the reason for changing the master Expected Ready Date of Order."
+      >
+        <div className="space-y-4 px-6 py-4">
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium">Reason *</label>
+            <TextAreaInput
+              value={masterErdRemark}
+              onChange={(value) => setMasterErdRemark(value)}
+              placeholder="Enter reason for changing master ERD..."
+              maxLength={1000}
+            />
+          </div>
+          <div className="flex justify-end gap-3 border-t pt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowMasterErdRemarkModal(false);
+                setPendingMasterErdDate(undefined);
+                setMasterErdRemark("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!pendingMasterErdDate || !vendorId || !userId || !leadIdNum) return;
+                if (!masterErdRemark.trim()) {
+                  toastManager.add({
+                    title: "Please enter a reason for changing the master ERD",
+                    type: "error",
+                  });
+                  return;
+                }
+
+                try {
+                  await updateExpectedDate({
+                    vendorId,
+                    leadId: leadIdNum,
+                    expected_order_login_ready_date: pendingMasterErdDate,
+                    updated_by: userId,
+                    change_remark: masterErdRemark.trim(),
+                  });
+
+                  toastManager.add({
+                    title: "Expected Order Login Ready Date updated successfully!",
+                    type: "success",
+                  });
+                  queryClient.invalidateQueries({ queryKey: ["leadById", leadIdNum] });
+                  queryClient.invalidateQueries({
+                    queryKey: ["lead-product-structure-instances", leadIdNum, vendorId],
+                  });
+                  queryClient.invalidateQueries({
+                    queryKey: ["postProductionReady", vendorId, leadIdNum],
+                  });
+                  queryClient.invalidateQueries({
+                    queryKey: [
+                      "latestOrderLogin",
+                      vendorId,
+                      leadIdNum,
+                      validInstanceId ?? undefined,
+                    ],
+                  });
+                  queryClient.invalidateQueries({
+                    queryKey: ["master-erd-change-log", vendorId, leadIdNum],
+                  });
+                  setShowMasterErdRemarkModal(false);
+                  setPendingMasterErdDate(undefined);
+                  setMasterErdRemark("");
+                } catch (err: any) {
+                  toastManager.add({
+                    title: err?.message || "Failed to update expected order login date",
+                    type: "error",
+                  });
+                }
+              }}
+            >
+              Save
+            </Button>
+          </div>
+        </div>
+      </BaseModal>
 
 
 
