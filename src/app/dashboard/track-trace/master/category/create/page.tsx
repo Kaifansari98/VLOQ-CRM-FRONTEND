@@ -82,6 +82,7 @@ function CategoryFormContent() {
 
   // Form States
   const [categoryName, setCategoryName] = useState("");
+  const [prefix, setPrefix] = useState("");
   const [selectedTypeIds, setSelectedTypeIds] = useState<number[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategoryEntry[]>([]);
   const [includeInPacking, setIncludeInPacking] = useState(false);
@@ -135,6 +136,7 @@ function CategoryFormContent() {
     if (editData) {
       setActiveCategory(editData);
       setCategoryName(editData.category_name);
+      setPrefix(editData.prefix ?? "");
       setIncludeInPacking(editData.include_in_packing ?? false);
       setScanPackValidate(editData.scan_pack_validate ?? false);
       setUseInAssembledPacking(editData.use_in_assembled_packing ?? false);
@@ -163,6 +165,7 @@ function CategoryFormContent() {
     if (selected) {
       setActiveCategory(selected);
       setCategoryName(selected.category_name);
+      setPrefix(selected.prefix ?? "");
       setIncludeInPacking(selected.include_in_packing ?? false);
       setScanPackValidate(selected.scan_pack_validate ?? false);
       setUseInAssembledPacking(selected.use_in_assembled_packing ?? false);
@@ -233,6 +236,7 @@ function CategoryFormContent() {
           include_in_packing: includeInPacking,
           scan_pack_validate: scanPackValidate,
           use_in_assembled_packing: useInAssembledPacking,
+          prefix: prefix ? prefix.trim().toUpperCase() : null,
         });
 
         const originalSubs = allCategories.filter(
@@ -297,6 +301,7 @@ function CategoryFormContent() {
           include_in_packing: includeInPacking,
           scan_pack_validate: scanPackValidate,
           use_in_assembled_packing: useInAssembledPacking,
+          prefix: prefix ? prefix.trim().toUpperCase() : null,
         });
 
         const parentId =
@@ -388,8 +393,8 @@ function CategoryFormContent() {
 
         {/* ── Direct Form Inputs (No outer Card wrappers) ── */}
         <div className="flex flex-col gap-6">
-          {/* Row 1: Category Name & Assign Modules (Side by side in 1 row) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+          {/* Row 1: Category Name, Prefix, & Assign Modules */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
             {/* Left Col: Category Name */}
             <div className="flex flex-col gap-2">
               <Label htmlFor="category_name" className="text-sm font-semibold">
@@ -491,6 +496,7 @@ function CategoryFormContent() {
                       setIsNewCategory(!isNewCategory);
                       setActiveCategory(null);
                       setCategoryName("");
+                      setPrefix("");
                       setIncludeInPacking(false);
                       setScanPackValidate(false);
                       setSelectedTypeIds([]);
@@ -516,6 +522,23 @@ function CategoryFormContent() {
                   {error}
                 </p>
               )}
+            </div>
+
+            {/* Middle Col: Prefix */}
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="prefix" className="text-sm font-semibold">
+                Prefix / Item Code Group <span className="text-muted-foreground">(e.g. PNT)</span>
+              </Label>
+              <Input
+                id="prefix"
+                placeholder="Auto-derived if empty"
+                maxLength={5}
+                value={prefix}
+                onChange={(e) => {
+                  setPrefix(e.target.value.toUpperCase().replace(/[^A-Z]/g, ""));
+                }}
+                className="h-10 text-sm"
+              />
             </div>
 
             {/* Right Col: Assign Modules (MultipleSelector dropdown) */}

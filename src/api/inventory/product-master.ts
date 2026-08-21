@@ -252,3 +252,10 @@ export const deleteProductTypeApi = async (vendorId: number, id: number) => {
   const { data } = await apiClient.delete(`/inventory/producttype/${vendorId}/${id}`);
   return data;
 };
+
+export const fetchNextItemCode = async (vendorId: number, categoryId: number): Promise<string> => {
+  const { data } = await apiClient.get(`/inventory/products/${vendorId}/next-item-code`, {
+    params: { category_id: categoryId },
+  });
+  return data.data;
+};
