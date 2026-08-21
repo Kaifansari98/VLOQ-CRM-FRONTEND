@@ -225,6 +225,19 @@ export default function ProjectCategoriesPage() {
         },
       },
       {
+        accessorKey: "prefix",
+        header: "Prefix / Code Group",
+        size: 150,
+        cell: ({ row }) => {
+          const prefix = row.original.prefix;
+          return (
+            <span className="font-mono font-semibold text-xs text-foreground bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded border">
+              {prefix || "-"}
+            </span>
+          );
+        },
+      },
+      {
         id: "assigned_modules",
         header: "Assigned Modules",
         size: 200,

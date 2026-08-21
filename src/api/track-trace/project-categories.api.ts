@@ -23,6 +23,7 @@ export interface ProjectCategory {
   include_in_packing?: boolean;
   scan_pack_validate?: boolean;
   use_in_assembled_packing?: boolean;
+  prefix?: string | null;
 }
 
 export interface CreateCategoryPayload {
@@ -34,6 +35,7 @@ export interface CreateCategoryPayload {
   include_in_packing?: boolean;
   scan_pack_validate?: boolean;
   use_in_assembled_packing?: boolean;
+  prefix?: string | null;
 }
 
 export interface UpdateCategoryPayload {
@@ -48,6 +50,7 @@ export interface UpdateCategoryPayload {
   include_in_packing?: boolean;
   scan_pack_validate?: boolean;
   use_in_assembled_packing?: boolean;
+  prefix?: string | null;
 }
 
 export const getProjectCategories = async (vendorId: number) => {

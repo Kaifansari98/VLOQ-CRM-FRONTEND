@@ -7,7 +7,8 @@ import {
   ProductMastersResponse,
   ProductPayload,
   updateProductMasterApi,
-  createHSNApi
+  createHSNApi,
+  fetchNextItemCode
 } from "@/api/inventory/product-master";
 import { apiClient } from "@/lib/apiClient";
 import {
@@ -90,10 +91,10 @@ const emptyForm: ProductPayload = {
   type_id: null,
   finish_id: null,
 
-  length: null,
-  height: null,
   thickness: null,
   size: "",
+  p_code: "",
+  color_name: "",
 };
 
 
@@ -403,6 +404,8 @@ export function ProductMasterFormPage({
             height: product.height || null,
             thickness: product.thickness || null,
             size: product.size || "",
+            p_code: product.p_code || "",
+            color_name: product.color_name || "",
             item_type_master_id: product.item_type_master_id || null,
           });
           setSupplierRows(
@@ -571,6 +574,8 @@ export function ProductMasterFormPage({
     height: toNumOrNull(form.height),
     thickness: toNumOrNull(form.thickness),
     size: form.size?.trim() || null,
+    p_code: form.p_code?.trim() || null,
+    color_name: form.color_name?.trim() || null,
     suppliers: supplierRows
       .filter((row) => row.company_vendor_id)
       .map((row) => ({
@@ -768,9 +773,28 @@ export function ProductMasterFormPage({
                         .filter((c) => !c.parent_id)
                         .map((c) => ({ id: c.id, label: c.category_name }))}
                       value={form.category_id || undefined}
-                      onChange={(val) => {
+                      onChange={async (val) => {
                         set("category_id", val || 0);
                         set("sub_category_id", null);
+                        if (val && !isEdit) {
+                          try {
+                            const nextCode = await fetchNextItemCode(vendorId, val);
+                            set("article_code", nextCode);
+
+                            setSupplierRows((prev) =>
+                              prev.map((row) =>
+                                row.same_as_product_code
+                                  ? {
+                                      ...row,
+                                      supplier_item_code: nextCode,
+                                    }
+                                  : row
+                              )
+                            );
+                          } catch (err) {
+                            console.error("Error fetching next item code:", err);
+                          }
+                        }
                       }}
                       placeholder="Search category..."
                       emptyLabel="Select category"
@@ -1225,6 +1249,26 @@ export function ProductMasterFormPage({
                         />
                       );
                     })()}
+                  </Field>
+
+                  <Field label="Product Code">
+                    <input
+                      type="text"
+                      value={form.p_code || ""}
+                      onChange={(e) => set("p_code", e.target.value)}
+                      className="input"
+                      placeholder="e.g. 1000SR"
+                    />
+                  </Field>
+
+                  <Field label="Color Name">
+                    <input
+                      type="text"
+                      value={form.color_name || ""}
+                      onChange={(e) => set("color_name", e.target.value)}
+                      className="input"
+                      placeholder="e.g. Red"
+                    />
                   </Field>
                 </div>
               </div>
