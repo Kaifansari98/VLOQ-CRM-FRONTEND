@@ -1420,11 +1420,26 @@ export default function OnlineLeadDetailsPage() {
                   <SelectContent className="bg-popover text-popover-foreground">
                     {statuses
                       .filter((st) => st.status_name.toLowerCase() !== "pending")
-                      .map((st) => (
-                        <SelectItem key={st.id} value={st.id.toString()}>
-                          {st.status_name}
-                        </SelectItem>
-                      ))}
+                      .map((st) => {
+                        const statusNameLower = st.status_name.toLowerCase();
+                        const isStoreStatus =
+                          statusNameLower === "store assigned" ||
+                          statusNameLower === "store visit done";
+                        const hasNoStore = !lead?.franchise && !lead?.store_id;
+                        const isDisabled = isStoreStatus && hasNoStore;
+
+                        return (
+                          <SelectItem
+                            key={st.id}
+                            value={st.id.toString()}
+                            disabled={isDisabled}
+                            title={isDisabled ? "Please assign a store to this lead first." : undefined}
+                            style={isDisabled ? { pointerEvents: "auto", cursor: "not-allowed" } : undefined}
+                          >
+                            {st.status_name}
+                          </SelectItem>
+                        );
+                      })}
                   </SelectContent>
                 </Select>
               </div>

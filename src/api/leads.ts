@@ -1241,6 +1241,19 @@ export const fetchLeadLogs = async ({
   };
 };
 
+export const fetchLeadOnlineHistory = async ({
+  leadId,
+  vendorId,
+}: {
+  leadId: number;
+  vendorId: number;
+}) => {
+  const response = await apiClient.get(
+    `/leads/vendorId/${vendorId}/leadId/${leadId}/online-history`,
+  );
+  return response.data.data;
+};
+
 // vendor all user list
 export interface VendorUserItem {
   id: number;

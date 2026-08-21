@@ -125,7 +125,35 @@ export default function OnlineLeadsPage() {
   const canAssign = userType === "super-admin" || userType === "admin" || userType === "telecaller team lead" || userType === "telecaller-team-lead";
   const canAddWalkIn = userType === "store-manager" || userType === "store manager" || userType === "super-admin" || userType === "admin";
 
-  const [leads, setLeads] = useState<OnlineLead[]>([]);
+  const [rawLeads, setRawLeads] = useState<OnlineLead[]>([]);
+  const [statusTab, setStatusTab] = useState<"active" | "pending" | "lost">("active");
+
+  const leads = useMemo(() => {
+    return rawLeads.filter((lead) => {
+      const statusName = lead.followupStatus?.status_name.toLowerCase() || "";
+      if (statusTab === "pending") {
+        return statusName === "pending";
+      }
+      if (statusTab === "lost") {
+        return statusName === "lost";
+      }
+      // default: "active" (excludes lost leads)
+      return statusName !== "lost";
+    });
+  }, [rawLeads, statusTab]);
+
+  const activeCount = useMemo(() => {
+    return rawLeads.filter((l) => l.followupStatus?.status_name.toLowerCase() !== "lost").length;
+  }, [rawLeads]);
+
+  const pendingCount = useMemo(() => {
+    return rawLeads.filter((l) => l.followupStatus?.status_name.toLowerCase() === "pending").length;
+  }, [rawLeads]);
+
+  const lostCount = useMemo(() => {
+    return rawLeads.filter((l) => l.followupStatus?.status_name.toLowerCase() === "lost").length;
+  }, [rawLeads]);
+
   const [statuses, setStatuses] = useState<FollowupStatus[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [telecallers, setTelecallers] = useState<Telecaller[]>([]);
@@ -351,11 +379,26 @@ export default function OnlineLeadsPage() {
               <SelectContent>
                 {statuses
                   .filter((st) => st.status_name.toLowerCase() !== "pending")
-                  .map((st) => (
-                    <SelectItem key={st.id} value={st.id.toString()}>
-                      {st.status_name}
-                    </SelectItem>
-                  ))}
+                  .map((st) => {
+                    const statusNameLower = st.status_name.toLowerCase();
+                    const isStoreStatus =
+                      statusNameLower === "store assigned" ||
+                      statusNameLower === "store visit done";
+                    const hasNoStore = !row.original.franchise && !row.original.store_id;
+                    const isDisabled = isStoreStatus && hasNoStore;
+
+                    return (
+                      <SelectItem
+                        key={st.id}
+                        value={st.id.toString()}
+                        disabled={isDisabled}
+                        title={isDisabled ? "Please assign a store to this lead first." : undefined}
+                        style={isDisabled ? { pointerEvents: "auto", cursor: "not-allowed" } : undefined}
+                      >
+                        {st.status_name}
+                      </SelectItem>
+                    );
+                  })}
               </SelectContent>
             </Select>
           </div>
@@ -499,7 +542,7 @@ export default function OnlineLeadsPage() {
   const [isWalkInOpen, setIsWalkInOpen] = useState(false);
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [isDeleteBulkOpen, setIsDeleteBulkOpen] = useState(false);
+
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Set default tab based on role
@@ -561,7 +604,7 @@ export default function OnlineLeadsPage() {
 
       const res = await apiClient.get(url);
       if (currentRequestId === requestIdRef.current && res.data?.success) {
-        setLeads(res.data.data);
+        setRawLeads(res.data.data);
       }
     } catch (err) {
       if (currentRequestId === requestIdRef.current) {
@@ -644,33 +687,7 @@ export default function OnlineLeadsPage() {
     }
   };
 
-  // Bulk Delete Action
-  const handleDeleteBulkConfirm = async () => {
-    setIsDeleting(true);
-    try {
-      const res = await apiClient.post("/online-leads/delete-bulk", {
-        vendor_id: vendorId,
-      });
-      if (res.data?.success) {
-        toastManager.add({
-          title: `Bulk cleanup successful. Deleted ${res.data.count} leads.`,
-          type: "success",
-        });
-        setIsDeleteBulkOpen(false);
-        fetchLeadsData();
-      } else {
-        toastManager.add({ title: res.data?.error || "Failed to cleanup bulk leads.", type: "error" });
-      }
-    } catch (err: any) {
-      console.error("Bulk delete error:", err);
-      toastManager.add({
-        title: err.response?.data?.error || "Error occurred while cleaning bulk leads.",
-        type: "error",
-      });
-    } finally {
-      setIsDeleting(false);
-    }
-  };
+
 
   // Quick Priority Change Action
   async function handlePriorityChange(leadId: number, priority: string) {
@@ -701,7 +718,7 @@ export default function OnlineLeadsPage() {
     const selectedStatus = statuses.find((s) => s.id === statusId);
     if (!selectedStatus) return;
 
-    if (selectedStatus.followup_required) {
+    if (selectedStatus.followup_required || selectedStatus.status_name.toLowerCase() === "lost") {
       setQuickLeadId(leadId);
       setQuickStatusId(statusId);
       setQuickStatusName(selectedStatus.status_name);
@@ -735,21 +752,29 @@ export default function OnlineLeadsPage() {
   }
 
   async function handleSaveQuickFollowUp() {
-    if (!quickLeadId || !quickStatusId || !quickFollowUpDate) return;
+    if (!quickLeadId || !quickStatusId) return;
+    const isLost = quickStatusName?.toLowerCase() === "lost";
+    if (!isLost && !quickFollowUpDate) return;
+
     setIsSavingQuickFollowUp(true);
     try {
       const res = await apiClient.post(`/online-leads/${quickLeadId}/call`, {
         telecaller_id: userId,
         online_lead_status_id: quickStatusId,
-        follow_up_date: new Date(quickFollowUpDate).toISOString(),
+        follow_up_date: isLost ? undefined : new Date(quickFollowUpDate).toISOString(),
         remark: quickRemark || `Status changed directly to ${quickStatusName}`,
       });
       if (res.data?.success) {
-        toastManager.add({ title: "Status and follow-up updated successfully.", type: "success" });
+        toastManager.add({
+          title: isLost ? "Lead marked as lost successfully." : "Status and follow-up updated successfully.",
+          type: "success",
+        });
         setIsQuickFollowUpOpen(false);
         setQuickLeadId(null);
         setQuickStatusId(null);
         setQuickStatusName("");
+        setQuickFollowUpDate("");
+        setQuickRemark("");
         fetchLeadsData();
       } else {
         toastManager.add({ title: res.data?.error || "Failed to update status.", type: "error" });
@@ -757,7 +782,7 @@ export default function OnlineLeadsPage() {
     } catch (err: any) {
       console.error("Save quick follow-up error:", err);
       toastManager.add({
-        title: err.response?.data?.error || "Error occurred while saving follow-up.",
+        title: err.response?.data?.error || "Error occurred while saving status.",
         type: "error",
       });
     } finally {
@@ -770,6 +795,8 @@ export default function OnlineLeadsPage() {
     setQuickLeadId(null);
     setQuickStatusId(null);
     setQuickStatusName("");
+    setQuickFollowUpDate("");
+    setQuickRemark("");
   }
 
 
@@ -794,9 +821,61 @@ export default function OnlineLeadsPage() {
           </Breadcrumb>
         </div>
 
-        <div className="flex items-center gap-2">
-          <NotificationBell />
-          <AnimatedThemeToggler />
+        <div className="flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-2">
+            <button
+              onClick={() => setStatusTab("active")}
+              className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition hover:bg-muted ${
+                statusTab === "active" ? "bg-muted font-semibold" : "text-muted-foreground"
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full shrink-0 bg-blue-500" />
+              <span>Active Leads</span>
+              <span className="text-[10px] opacity-70">{activeCount}</span>
+            </button>
+            <button
+              onClick={() => setStatusTab("pending")}
+              className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition hover:bg-muted ${
+                statusTab === "pending" ? "bg-muted font-semibold" : "text-muted-foreground"
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full shrink-0 bg-yellow-500" />
+              <span>Pending Leads</span>
+              <span className="text-[10px] opacity-70">{pendingCount}</span>
+            </button>
+            <button
+              onClick={() => setStatusTab("lost")}
+              className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition hover:bg-muted ${
+                statusTab === "lost" ? "bg-muted font-semibold" : "text-muted-foreground"
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full shrink-0 bg-red-500" />
+              <span>Lost Leads</span>
+              <span className="text-[10px] opacity-70">{lostCount}</span>
+            </button>
+          </div>
+
+          {canAddWalkIn && (
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setIsWalkInOpen(true)}
+                className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-semibold flex items-center gap-2 transition duration-200 h-9 text-xs py-1.5"
+              >
+                <PlusCircle className="w-4 h-4" /> Add Lead
+              </Button>
+              <Button
+                onClick={() => setIsBulkUploadOpen(true)}
+                className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-semibold flex items-center gap-2 transition duration-200 h-9 text-xs py-1.5"
+              >
+                <Upload className="w-4 h-4" /> Bulk Upload
+              </Button>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 border-l pl-3">
+            <NotificationBell />
+            <AnimatedThemeToggler />
+          </div>
         </div>
       </header>
 
@@ -811,32 +890,6 @@ export default function OnlineLeadsPage() {
               Manage unassigned lead pools, caller allocations, and converted store leads.
             </p>
           </div>
-
-          {canAddWalkIn && (
-            <div className="flex gap-2">
-              <Button
-                onClick={() => setIsWalkInOpen(true)}
-                className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-semibold flex items-center gap-2 transition duration-200"
-              >
-                <PlusCircle className="w-5 h-5" /> Add Lead
-              </Button>
-              <Button
-                onClick={() => setIsBulkUploadOpen(true)}
-                className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-semibold flex items-center gap-2 transition duration-200"
-              >
-                <Upload className="w-5 h-5" /> Bulk Upload
-              </Button>
-              {isSuperAdminOrAdmin && (
-                <Button
-                  onClick={() => setIsDeleteBulkOpen(true)}
-                  variant="destructive"
-                  className="bg-red-600 hover:bg-red-700 text-white font-semibold flex items-center gap-2 transition duration-200"
-                >
-                  <Trash2 className="w-5 h-5" /> Clean Bulk Uploads
-                </Button>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Dashboard Tabs */}
@@ -1132,82 +1185,80 @@ export default function OnlineLeadsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Clean Bulk Uploads Confirmation Dialog */}
-      <Dialog open={isDeleteBulkOpen} onOpenChange={setIsDeleteBulkOpen}>
-        <DialogContent className="max-w-md bg-background border border-slate-200 dark:border-slate-800 shadow-xl rounded-lg p-6">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-red-500" /> Clean Bulk Upload Leads
-            </DialogTitle>
-            <DialogDescription className="mt-2 text-sm text-muted-foreground">
-              This will permanently delete all leads created via bulk upload (both previous imports with name "Walk-In Customer" and all future imports marked as bulk uploads).
-              <br />
-              <br />
-              Are you sure you want to proceed?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="mt-6 flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setIsDeleteBulkOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              disabled={isDeleting}
-              className="h-10 px-5 text-sm font-medium bg-slate-950 hover:bg-slate-900 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 rounded-lg"
-              onClick={handleDeleteBulkConfirm}
-            >
-              {isDeleting ? "Cleaning..." : "Confirm Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
 
       {/* Quick Follow-up Date/Time Dialog */}
       <Dialog open={isQuickFollowUpOpen} onOpenChange={setIsQuickFollowUpOpen}>
         <DialogContent className="max-w-md bg-background border border-slate-200 dark:border-slate-800 shadow-xl rounded-lg p-6">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-slate-800 dark:text-slate-200" /> Schedule Next Follow-up
-            </DialogTitle>
-            <DialogDescription className="mt-2 text-sm text-muted-foreground">
-              A follow-up date and time is mandatory for status <strong>"{quickStatusName}"</strong>. Please schedule the next callback.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="mt-4 space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground/80 flex items-center gap-1.5">
-                Next Follow-up Date & Time
-              </label>
-              <CustomeDatePicker
-                value={quickFollowUpDate}
-                onChange={(val) => setQuickFollowUpDate(val || "")}
-                restriction="futureOnly"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                Optional Remark
-              </label>
-              <Input
-                placeholder="Optional call/follow-up remark..."
-                value={quickRemark}
-                onChange={(e) => setQuickRemark(e.target.value)}
-                className="h-10 rounded-lg border border-input bg-background/50 hover:bg-background/85 transition duration-200"
-              />
-            </div>
-          </div>
-          <DialogFooter className="mt-6 flex justify-end gap-2">
-            <Button variant="outline" className="h-9 text-xs" onClick={handleCancelQuickFollowUp}>
-              Cancel
-            </Button>
-            <Button
-              className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-semibold h-9 text-xs"
-              onClick={handleSaveQuickFollowUp}
-              disabled={!quickFollowUpDate || isSavingQuickFollowUp}
-            >
-              {isSavingQuickFollowUp && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Save Follow-up
-            </Button>
-          </DialogFooter>
+          {(() => {
+            const isLost = quickStatusName?.toLowerCase() === "lost";
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    {isLost ? (
+                      <>
+                        <Trash2 className="w-5 h-5 text-slate-800 dark:text-slate-200" /> Mark Lead as Lost
+                      </>
+                    ) : (
+                      <>
+                        <Calendar className="w-5 h-5 text-slate-800 dark:text-slate-200" /> Schedule Next Follow-up
+                      </>
+                    )}
+                  </DialogTitle>
+                  <DialogDescription className="mt-2 text-sm text-muted-foreground">
+                    {isLost ? (
+                      <>
+                        Please enter the reason/remark for marking this lead as <strong>"{quickStatusName}"</strong>.
+                      </>
+                    ) : (
+                      <>
+                        A follow-up date and time is mandatory for status <strong>"{quickStatusName}"</strong>. Please schedule the next callback.
+                      </>
+                    )}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="mt-4 space-y-4">
+                  {!isLost && (
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-foreground/80 flex items-center gap-1.5">
+                        Next Follow-up Date & Time
+                      </label>
+                      <CustomeDatePicker
+                        value={quickFollowUpDate}
+                        onChange={(val) => setQuickFollowUpDate(val || "")}
+                        restriction="futureOnly"
+                      />
+                    </div>
+                  )}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      {isLost ? "Lost Reason / Remark" : "Optional Remark"}
+                    </label>
+                    <Input
+                      placeholder={isLost ? "Enter reason for losing this lead..." : "Optional call/follow-up remark..."}
+                      value={quickRemark}
+                      onChange={(e) => setQuickRemark(e.target.value)}
+                      className="h-10 rounded-lg border border-input bg-background/50 hover:bg-background/85 transition duration-200"
+                    />
+                  </div>
+                </div>
+                <DialogFooter className="mt-6 flex justify-end gap-2">
+                  <Button variant="outline" className="h-9 text-xs" onClick={handleCancelQuickFollowUp}>
+                    Cancel
+                  </Button>
+                  <Button
+                    className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-semibold h-9 text-xs"
+                    onClick={handleSaveQuickFollowUp}
+                    disabled={(!isLost && !quickFollowUpDate) || isSavingQuickFollowUp}
+                  >
+                    {isSavingQuickFollowUp && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    {isLost ? "Mark as Lost" : "Save Follow-up"}
+                  </Button>
+                </DialogFooter>
+              </>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </>

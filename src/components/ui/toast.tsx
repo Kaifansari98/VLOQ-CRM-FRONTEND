@@ -255,10 +255,11 @@ export interface ToastProviderProps extends Toast.Provider.Props {
 export function ToastProvider({
   children,
   position = "bottom-right",
+  timeout = 3000,
   ...props
 }: ToastProviderProps): React.ReactElement {
   return (
-    <Toast.Provider toastManager={toastManager} {...props}>
+    <Toast.Provider toastManager={toastManager} timeout={timeout} {...props}>
       {children}
       <Toasts position={position} />
     </Toast.Provider>
@@ -267,10 +268,11 @@ export function ToastProvider({
 
 export function AnchoredToastProvider({
   children,
+  timeout = 3000,
   ...props
 }: Toast.Provider.Props): React.ReactElement {
   return (
-    <Toast.Provider toastManager={anchoredToastManager} {...props}>
+    <Toast.Provider toastManager={anchoredToastManager} timeout={timeout} {...props}>
       {children}
       <AnchoredToasts />
     </Toast.Provider>

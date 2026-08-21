@@ -312,16 +312,21 @@ export default function SmoothTab({
   const containerRef = React.useRef<HTMLDivElement>(null);
 
   // Synchronize internal state when defaultTabId changes externally
+  const prevDefaultTabIdRef = React.useRef(defaultTabId);
   React.useEffect(() => {
-    if (defaultTabId && defaultTabId !== selected) {
+    if (defaultTabId && defaultTabId !== prevDefaultTabIdRef.current) {
+      prevDefaultTabIdRef.current = defaultTabId;
       const currentIndex = items.findIndex((item) => item.id === selected);
       const newIndex = items.findIndex((item) => item.id === defaultTabId);
       if (newIndex !== -1) {
         setDirection(newIndex > currentIndex ? 1 : -1);
         setSelected(defaultTabId);
       }
+    } else if (defaultTabId && selected === defaultTabId) {
+      // Keep ref in sync if selected changes to defaultTabId internally
+      prevDefaultTabIdRef.current = defaultTabId;
     }
-  }, [defaultTabId, items]);
+  }, [defaultTabId, items, selected]);
 
   // Update dimensions whenever selected tab changes or on mount
   React.useLayoutEffect(() => {
@@ -500,22 +505,26 @@ export default function SmoothTab({
               mode="popLayout"
               custom={direction}
             >
-              <motion.div
-                key={`card-${selected}`}
-                custom={direction}
-                variants={slideVariants as any}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={transition as any}
-                className="relative w-full will-change-transform bg-card"
-                style={{
-                  backfaceVisibility: "hidden",
-                  WebkitBackfaceVisibility: "hidden",
-                }}
-              >
-                {selectedItem?.cardContent}
-              </motion.div>
+              {items.map((item) =>
+                item.id === selected ? (
+                  <motion.div
+                    key={`card-${item.id}`}
+                    custom={direction}
+                    variants={slideVariants as any}
+                    initial="enter"
+                    animate="center"
+                    exit="exit"
+                    transition={transition as any}
+                    className="relative w-full will-change-transform bg-card"
+                    style={{
+                      backfaceVisibility: "hidden",
+                      WebkitBackfaceVisibility: "hidden",
+                    }}
+                  >
+                    {item.cardContent}
+                  </motion.div>
+                ) : null
+              )}
             </AnimatePresence>
           </div>
         </div>
