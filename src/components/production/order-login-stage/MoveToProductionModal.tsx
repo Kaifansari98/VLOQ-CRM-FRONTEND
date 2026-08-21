@@ -114,17 +114,7 @@ export default function MoveToProductionModal({
     defaultValues: { assign_to_user_id: 0 },
   });
 
-  // ✅ Auto-open confirmation if there’s only one user
-  useEffect(() => {
-    if (open && factoryUsers && factoryUsers.length === 1) {
-      const singleUser = factoryUsers[0];
-      form.setValue("assign_to_user_id", singleUser.id);
-      setSelectedUserId(singleUser.id);
-      setSelectedUserName(singleUser.user_name);
-      onOpenChange(false);
-      setConfirmOpen(true);
-    }
-  }, [open, factoryUsers, form, onOpenChange]);
+
 
   // ✅ Handle confirm submit
   const handleConfirmSubmit = () => {
@@ -193,8 +183,7 @@ export default function MoveToProductionModal({
 
   return (
     <>
-      {factoryUsers?.length !== 1 && (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={onOpenChange}>
           <DialogContent className="max-w-md w-full">
             <DialogHeader>
               <DialogTitle>{dialogTitle}</DialogTitle>
@@ -251,7 +240,7 @@ export default function MoveToProductionModal({
             </ScrollArea>
           </DialogContent>
         </Dialog>
-      )}
+
 
       {/* ✅ Confirmation Dialog */}
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>

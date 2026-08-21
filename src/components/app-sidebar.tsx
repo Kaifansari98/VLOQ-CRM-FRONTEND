@@ -81,6 +81,11 @@ const data = {
       showCount: "total_project_completed_stage_leads" as const,
     },
     {
+      title: "Lead Pool",
+      url: "/dashboard/online-leads",
+      icon: NotebookPen,
+    },
+    {
       title: "Leads",
       url: "#",
       icon: NotebookPen,
@@ -232,6 +237,11 @@ const data = {
       url: "/dashboard/delivered-projects",
       icon: Handshake,
       showCount: "total_project_completed_stage_leads" as const,
+    },
+    {
+      title: "Lead Pool",
+      url: "/dashboard/online-leads",
+      icon: NotebookPen,
     },
     {
       title: "Open Leads",
@@ -541,13 +551,28 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         userType === "factory" ||
         userType === "pre-prod";
 
-    const baseItems = hideSectionsForRole
-      ? withoutOverall.filter(
-        (item) =>
-          item.title !== "Leads" &&
-          (userType === "site-supervisor" ? true : item.title !== "Project"),
-      )
-      : withoutOverall;
+    const baseItems = withoutOverall.filter((item) => {
+      if (item.title === "Leads") {
+        const hidesLeads =
+          hideSectionsForRole || userType === "store-manager";
+        if (hidesLeads) return false;
+      }
+
+      if (item.title === "Project") {
+        const hidesProject =
+          userType === "site-supervisor" ||
+          userType === "tech-check" ||
+          userType === "backend" ||
+          userType === "factory" ||
+          userType === "pre-prod" ||
+          userType === "telecaller" ||
+          userType === "telecaller-team-lead" ||
+          userType === "store-manager";
+        if (hidesProject && userType !== "site-supervisor") return false;
+      }
+
+      return true;
+    });
 
     const adminOnlyItems =
       userType === "admin" || userType === "super-admin" || userType === "auditor"
@@ -764,10 +789,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             : section.items,
       }))
       : [];
-
-      const resolvedNavItems = isOnlineLeadFeatureEnabled
-        ? finalNavItems
-        : finalNavItems.filter((item) => item.title !== "Online Leads");
+    const resolvedNavItems = isOnlineLeadFeatureEnabled
+      ? finalNavItems
+      : finalNavItems.filter((item) => item.title !== "Lead Pool");
 
     return {
       navItems: resolvedNavItems,

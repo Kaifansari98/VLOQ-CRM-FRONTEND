@@ -32,6 +32,7 @@ import SmoothTab from "@/components/kokonutui/smooth-tab";
 import { useAppSelector } from "@/redux/store";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
+import OnlineHistoryTab from "./OnlineHistoryTab";
 
 interface SiteHistoryTabProps {
   leadId: number;
@@ -40,9 +41,17 @@ interface SiteHistoryTabProps {
   leadName?: string | null;
 }
 
-type TabId = "lead-history" | "task-history" | "follow-ups" | "approvals";
+type TabId =
+  | "lead-history"
+  | "task-history"
+  | "follow-ups"
+  | "approvals"
+  | "online-history";
 
-const HISTORY_TYPE_MAP: Record<TabId, "Lead" | "Task" | "FollowUp" | "Approval"> = {
+const HISTORY_TYPE_MAP: Record<
+  Exclude<TabId, "online-history">,
+  "Lead" | "Task" | "FollowUp" | "Approval"
+> = {
   "lead-history": "Lead",
   "task-history": "Task",
   "follow-ups": "FollowUp",
@@ -286,14 +295,21 @@ export default function SiteHistoryTab({
   const canSeeLeadHistoryTab =
     normalizedUserType === "super-admin" || normalizedUserType === "custom";
   const visibleTabIds: TabId[] = canSeeLeadHistoryTab
-    ? ["lead-history", "task-history", "follow-ups", "approvals"]
-    : ["task-history", "follow-ups", "approvals"];
+    ? [
+        "lead-history",
+        "task-history",
+        "follow-ups",
+        "approvals",
+        "online-history",
+      ]
+    : ["task-history", "follow-ups", "approvals", "online-history"];
   const defaultTabId: TabId = canSeeLeadHistoryTab
     ? "lead-history"
     : "task-history";
 
   const [activeTab, setActiveTab] = useState<TabId>(defaultTabId);
-  const historyType = HISTORY_TYPE_MAP[activeTab];
+  const historyType =
+    activeTab !== "online-history" ? HISTORY_TYPE_MAP[activeTab] : undefined;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -334,7 +350,11 @@ export default function SiteHistoryTab({
           search: debouncedSearch || undefined,
           userTypeId,
         }),
-      enabled: Boolean(userTypeId && visibleTabIds.includes(activeTab)),
+      enabled: Boolean(
+        userTypeId &&
+          visibleTabIds.includes(activeTab) &&
+          activeTab !== "online-history",
+      ),
       getNextPageParam: (lastPage) =>
         lastPage?.meta?.hasMore ? lastPage.meta.nextCursor : undefined,
       initialPageParam: undefined,
@@ -377,6 +397,7 @@ export default function SiteHistoryTab({
   const allLogs = data?.pages.flatMap((page) => page.data) ?? [];
   const isApprovalTimeline = activeTab === "approvals";
   const isTaskTimeline = activeTab === "task-history";
+  const isOnlineHistoryTimeline = activeTab === "online-history";
   const approvalGroups = isApprovalTimeline
     ? [...allLogs]
         .sort(
@@ -1205,6 +1226,10 @@ export default function SiteHistoryTab({
     </div>
   );
 
+  const onlineHistoryContent = (
+    <OnlineHistoryTab leadId={leadId} vendorId={vendorId} />
+  );
+
   const tabItems = [
     {
       id: "lead-history",
@@ -1230,6 +1255,12 @@ export default function SiteHistoryTab({
       color: "bg-foreground",
       cardContent: isApprovalTimeline ? approvalContent : timelineContent,
     },
+    {
+      id: "online-history",
+      title: "Online History",
+      color: "bg-foreground",
+      cardContent: onlineHistoryContent,
+    },
   ].filter((item) => visibleTabIds.includes(item.id as TabId));
 
   return (
@@ -1243,49 +1274,57 @@ export default function SiteHistoryTab({
         <div>
           <h2 className="text-lg font-semibold text-foreground">Site History</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            {isApprovalTimeline
+            {isOnlineHistoryTimeline
+              ? "View chronological online lifecycle ingestion and allocations"
+              : isApprovalTimeline
               ? "View all approval requests and their status"
               : "Track all activities and changes for this lead"}
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto w-full sm:w-auto">
-          <div className="relative flex-1 sm:flex-none">
-            <Search
-              size={13}
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-            />
-            <Input
-              placeholder={isApprovalTimeline ? "Search approvals..." : "Search history..."}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-8 pl-8 pr-7 text-xs w-full sm:w-48"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <X size={12} />
-              </button>
-            )}
+        {!isOnlineHistoryTimeline && (
+          <div className="flex items-center gap-2 self-start sm:self-auto w-full sm:w-auto">
+            <div className="relative flex-1 sm:flex-none">
+              <Search
+                size={13}
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+              />
+              <Input
+                placeholder={
+                  isApprovalTimeline ? "Search approvals..." : "Search history..."
+                }
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-8 pl-8 pr-7 text-xs w-full sm:w-48"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+            <Button
+              variant="default"
+              size="sm"
+              className="shrink-0 gap-2 h-8"
+              disabled={isExporting}
+              onClick={handleExport}
+            >
+              {isExporting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <FileSpreadsheet className="size-4" />
+              )}
+              <span className="hidden sm:inline">
+                {isExporting ? "Exporting..." : "Export"}
+              </span>
+              <span className="sm:hidden">Export</span>
+            </Button>
           </div>
-          <Button
-            variant="default"
-            size="sm"
-            className="shrink-0 gap-2 h-8"
-            disabled={isExporting}
-            onClick={handleExport}
-          >
-            {isExporting ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <FileSpreadsheet className="size-4" />
-            )}
-            <span className="hidden sm:inline">{isExporting ? "Exporting..." : "Export"}</span>
-            <span className="sm:hidden">Export</span>
-          </Button>
-        </div>
+        )}
       </div>
 
       <div className="relative mt-2">
