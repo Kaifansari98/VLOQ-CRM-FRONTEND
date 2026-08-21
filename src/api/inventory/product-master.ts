@@ -84,11 +84,20 @@ export interface ProductSupplierPayload {
   procurement_expense_pct?: number | null;
   procurement_expense_total?: number | null;
  
-  final_amount?: number | null;
 }
- 
+
 export interface ProductMastersResponse {
-  categories: { id: number; category_name: string; parent_id?: number | null }[];
+  categories: {
+    id: number;
+    category_name: string;
+    parent_id?: number | null;
+    prefix?: string | null;
+    namingStructure?: {
+      id?: number;
+      delimiter?: string;
+      fields_json?: string[];
+    } | null;
+  }[];
   brands: { id: number; brand_name: string; brand_short_name?: string | null; logo?: string | null }[];
   grades: { id: number; grade_name?: string; name?: string }[];
   finishes: { id: number; finish_name?: string; name?: string }[];

@@ -55,7 +55,7 @@ export const AddMaterialQuantityModal: React.FC<AddMaterialQuantityModalProps> =
         quantity: string;
         unit_id: number | null;
         unit_name: string;
-        supplied_by: MaterialSupplyType;
+        supplied_by: MaterialSupplyType | "";
         client_percentage: number | "";
       }
     >
@@ -116,7 +116,7 @@ export const AddMaterialQuantityModal: React.FC<AddMaterialQuantityModalProps> =
             quantity: String(editingItem.quantity),
             unit_id: editingItem.unit_id || null,
             unit_name: editingItem.unit_name || editingItem.product?.unit_of_measure || "",
-            supplied_by: editingItem.supplied_by || "Frankvin",
+            supplied_by: editingItem.supplied_by || "",
             client_percentage: editingItem.client_percentage ?? 40,
           }
         });
@@ -163,7 +163,7 @@ export const AddMaterialQuantityModal: React.FC<AddMaterialQuantityModalProps> =
           quantity: "",
           unit_id: uomId,
           unit_name: uom,
-          supplied_by: "Frankvin",
+          supplied_by: "",
           client_percentage: 40,
         },
       }));
@@ -198,7 +198,7 @@ export const AddMaterialQuantityModal: React.FC<AddMaterialQuantityModalProps> =
             quantity: "",
             unit_id: uomId,
             unit_name: uom,
-            supplied_by: "Frankvin",
+            supplied_by: "",
             client_percentage: 40,
           };
         }
@@ -575,7 +575,7 @@ export const AddMaterialQuantityModal: React.FC<AddMaterialQuantityModalProps> =
                         {/* Supplied By */}
                         <div>
                           <Select
-                            value={detail.supplied_by}
+                            value={detail.supplied_by || undefined}
                             onValueChange={(val) => {
                               setMaterialsDetails((prev) => ({
                                 ...prev,
