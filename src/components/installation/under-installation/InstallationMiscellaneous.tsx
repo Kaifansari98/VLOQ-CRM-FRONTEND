@@ -256,6 +256,8 @@ export default function InstallationMiscellaneous({
   const [showConfirm, setShowConfirm] = useState(false);
   const [showReadyConfirm, setShowReadyConfirm] = useState(false);
   const [showDeliveryConfirm, setShowDeliveryConfirm] = useState(false);
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [approveRemark, setApproveRemark] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [openDeliveryTaskModal, setOpenDeliveryTaskModal] = useState(false);
@@ -1241,19 +1243,12 @@ export default function InstallationMiscellaneous({
                       value={shouldDisableBlockedActions ? blockedTooltip : ""}
                       truncateValue={
                         <span className="inline-block">
-                          <Button
+                            <Button
                             variant="default"
                             disabled={updateApprovalMutation.isPending || shouldDisableBlockedActions}
                             onClick={() => {
                               if (!viewModalData || shouldDisableBlockedActions) return;
-                              updateApprovalMutation.mutate(
-                                { vendorId, miscId: viewModalData.id, misc_approved: true, updated_by: userId! },
-                                {
-                                  onSuccess: () => {
-                                    queryClient.invalidateQueries({ queryKey: ["miscellaneousEntries", vendorId, leadId] });
-                                  },
-                                },
-                              );
+                              setShowApproveModal(true);
                             }}
                             className="gap-2 bg-green-600 hover:bg-green-700"
                           >
@@ -1469,6 +1464,77 @@ export default function InstallationMiscellaneous({
                 <div className="flex items-end gap-2"></div>
               </DialogFooter>
             </div>
+          </div>
+        </div>
+      </BaseModal>
+
+      {/* ── Approve Modal ──────────────────────────────────────────────────── */}
+      <BaseModal
+        open={showApproveModal}
+        onOpenChange={(open) => {
+          setShowApproveModal(open);
+          if (!open) setApproveRemark("");
+        }}
+        size="md"
+        title="Approve Miscellaneous"
+        description="Please provide a remark for approving this miscellaneous request."
+      >
+        <div className="space-y-4 py-4 px-6">
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium">Remark *</label>
+            <TextAreaInput
+              value={approveRemark}
+              onChange={(value) => setApproveRemark(value)}
+              placeholder="Enter approval remark..."
+              maxLength={1000}
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowApproveModal(false);
+                setApproveRemark("");
+              }}
+              disabled={updateApprovalMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="default"
+              className="bg-green-600 hover:bg-green-700"
+              onClick={() => {
+                if (!viewModalData) return;
+                if (!approveRemark.trim()) {
+                  toastManager.add({
+                    title: "Please enter an approval remark",
+                    type: "error",
+                  });
+                  return;
+                }
+                updateApprovalMutation.mutate(
+                  {
+                    vendorId,
+                    miscId: viewModalData.id,
+                    misc_approved: true,
+                    approval_remark: approveRemark.trim(),
+                    updated_by: userId!,
+                  },
+                  {
+                    onSuccess: () => {
+                      queryClient.invalidateQueries({
+                        queryKey: ["miscellaneousEntries", vendorId, leadId],
+                      });
+                      setShowApproveModal(false);
+                      setApproveRemark("");
+                    },
+                  },
+                );
+              }}
+              disabled={updateApprovalMutation.isPending}
+            >
+              {updateApprovalMutation.isPending ? "Approving..." : "Approve"}
+            </Button>
           </div>
         </div>
       </BaseModal>

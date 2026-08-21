@@ -120,6 +120,20 @@ function normalizeRole(value?: string | null) {
     .replace(/[_\s]+/g, "-");
 }
 
+function stripTrailingRoleLabel(value?: string | null, role?: string) {
+  const text = String(value ?? "").trim();
+  const normalizedRole = String(role ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, "[-\\s]*");
+
+  if (!text || !normalizedRole) return text;
+
+  return text
+    .replace(new RegExp(`\\s*[-–—]\\s*${normalizedRole}$`, "i"), "")
+    .trim();
+}
+
 function getProductionStatusFromInstance(instance: any) {
   if (instance?.is_production_completed) return "Completed";
   if (instance?.is_post_production) return "Post Production";
@@ -1050,11 +1064,25 @@ export function UniversalTable({
             String(mapping?.status ?? "active").toLowerCase() === "active",
         )
       : undefined;
+    const siteSupervisorMapping = Array.isArray(lead.userMappings)
+      ? lead.userMappings.find(
+          (mapping: any) =>
+            String(mapping?.type ?? "").toLowerCase() === "site-supervisor" &&
+            String(mapping?.status ?? "active").toLowerCase() === "active",
+        )
+      : undefined;
 
     const designerName =
       designerMapping?.user?.user_name ??
       designerMapping?.userMaster?.user_name ??
       "";
+    const siteSupervisorName =
+      stripTrailingRoleLabel(
+        siteSupervisorMapping?.user?.user_name ??
+          siteSupervisorMapping?.userMaster?.user_name ??
+          "",
+        "site-supervisor",
+      );
 
     const requirementTypes = Array.from(
       new Set(
@@ -1102,6 +1130,7 @@ export function UniversalTable({
                 .filter(Boolean)
                 .join(", ")
             : ""),
+      siteSupervisor: siteSupervisorName,
       furnitueStructures: isB2b
         ? (Array.isArray(lead.leadProcessBriefs)
             ? lead.leadProcessBriefs
@@ -1444,6 +1473,7 @@ export function UniversalTable({
         showProductionStatusColumn,
         showPriorityColumn,
         showServicingColumn,
+        showSiteSupervisorColumn: !handlesLargeScaleProjectsFromAuth,
         showDesignerColumn: isCustomUserTypeOnlyVendor,
         isB2b,
       }),
@@ -1452,6 +1482,7 @@ export function UniversalTable({
       showProductionStatusColumn,
       showPriorityColumn,
       showServicingColumn,
+      handlesLargeScaleProjectsFromAuth,
       isCustomUserTypeOnlyVendor,
       isB2b,
     ],
