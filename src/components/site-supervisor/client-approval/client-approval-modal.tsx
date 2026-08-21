@@ -1,6 +1,6 @@
 "use client";
 
-import React, { use } from "react";
+import React, { useMemo } from "react";
 
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -54,6 +54,55 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
     pending_amount: 0,
     booking_amount: 0,
   };
+  const paymentLogs = Array.isArray(paymentData?.payment_logs)
+    ? paymentData.payment_logs
+    : [];
+  const scopedPaymentLogs = useMemo(
+    () =>
+      data?.productTypeId != null
+        ? paymentLogs.filter(
+            (log) => Number(log.product_type_id) === Number(data.productTypeId),
+          )
+        : paymentLogs,
+    [data?.productTypeId, paymentLogs],
+  );
+  const scopedBookingPayment = useMemo(
+    () =>
+      scopedPaymentLogs.reduce<(typeof scopedPaymentLogs)[number] | null>(
+        (latest, log) => {
+          if (!log.is_booking_received_amt) return latest;
+          if (!latest) return log;
+          return (log.id ?? 0) >= (latest.id ?? 0) ? log : latest;
+        },
+        null,
+      ),
+    [scopedPaymentLogs],
+  );
+  const scopedReceivedAmount = useMemo(
+    () =>
+      scopedPaymentLogs.reduce(
+        (sum, log) => sum + Number(log.amount || 0),
+        0,
+      ),
+    [scopedPaymentLogs],
+  );
+  const scopedProjectFinance = useMemo(() => {
+    if (data?.productTypeId == null) {
+      return projectFinance;
+    }
+
+    const totalProjectAmount = Number(scopedBookingPayment?.total_amount || 0);
+    return {
+      total_project_amount: totalProjectAmount,
+      pending_amount: Math.max(totalProjectAmount - scopedReceivedAmount, 0),
+      booking_amount: Number(scopedBookingPayment?.amount || 0),
+    };
+  }, [
+    data?.productTypeId,
+    projectFinance,
+    scopedBookingPayment,
+    scopedReceivedAmount,
+  ]);
 
   // ✅ Zod schema (only two required)
   const schema = z
@@ -76,14 +125,14 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
       // ✅ Rule 1: Amount should not exceed pending
       if (
         hasAmount &&
-        projectFinance.pending_amount !== undefined &&
-        values.amount_paid! > projectFinance.pending_amount
+        scopedProjectFinance.pending_amount !== undefined &&
+        values.amount_paid! > scopedProjectFinance.pending_amount
       ) {
         ctx.addIssue({
           code: "custom",
           path: ["amount_paid"],
           message: `Amount cannot exceed remaining pending amount (${formatCurrencyINR(
-            projectFinance.pending_amount,
+            scopedProjectFinance.pending_amount,
           )}).`,
         });
       }
@@ -140,8 +189,8 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
   });
 
   // ✅ Console the values
-  console.log("Total Project Amount:", projectFinance.total_project_amount);
-  console.log("Pending Amount:", projectFinance.pending_amount);
+  console.log("Total Project Amount:", scopedProjectFinance.total_project_amount);
+  console.log("Pending Amount:", scopedProjectFinance.pending_amount);
 
   const onSubmit: SubmitHandler<FormValues> = (values) => {
     if (!vendorId || !userId || !data?.id || !data?.accountId) {
@@ -280,7 +329,7 @@ const ClientApprovalModal: React.FC<ClientApprovalModalProps> = ({
           <div className="mt-1">
             <p className="text-sm text-muted-foreground">
               <span className="font-bold">
-                {formatCurrencyINR(projectFinance.pending_amount)}
+                {formatCurrencyINR(scopedProjectFinance.pending_amount)}
               </span>{" "}
               is the remaining amount.
             </p>

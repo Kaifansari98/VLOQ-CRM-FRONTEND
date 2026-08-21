@@ -286,8 +286,22 @@ export interface PaymentLogsResponse {
   project_finance: PaymentOverview;
 }
 
-export const getPaymentLogs = async (leadId: number, vendorId: number): Promise<PaymentLogsResponse> => {
-  const response = await apiClient.get(`/leads/bookingStage/payment-records/leadId/${leadId}/payments?vendorId=${vendorId}`);
+export const getPaymentLogs = async (
+  leadId: number,
+  vendorId: number,
+  productTypeId?: number | null
+): Promise<PaymentLogsResponse> => {
+  const response = await apiClient.get(
+    `/leads/bookingStage/payment-records/leadId/${leadId}/payments`,
+    {
+      params: {
+        vendorId,
+        ...(productTypeId !== undefined && productTypeId !== null
+          ? { product_type_id: productTypeId }
+          : {}),
+      },
+    }
+  );
   return response.data;
 };
 
