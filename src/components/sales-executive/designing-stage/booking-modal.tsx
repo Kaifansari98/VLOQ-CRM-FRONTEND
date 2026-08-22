@@ -1010,7 +1010,14 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
 
   const onSubmit: SubmitHandler<BookingFormValues> = async (values) => {
     if (vendorCustomUserTypeMode !== true && (!values.assign_to || values.assign_to.trim() === "")) {
-      form.setError("assign_to", { type: "manual", message: "Site supervisor is required." });
+      if (vendorUser.length === 0) {
+        toastManager.add({
+          title: "No active Head Site Supervisors found. Please activate/create a Head Site Supervisor first.",
+          type: "error",
+        });
+      } else {
+        form.setError("assign_to", { type: "manual", message: "Site supervisor is required." });
+      }
       return;
     }
 
