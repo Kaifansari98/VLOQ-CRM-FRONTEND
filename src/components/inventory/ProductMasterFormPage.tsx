@@ -478,6 +478,121 @@ export function ProductMasterFormPage({
     });
   };
 
+  // Auto-compose product name based on category structure
+  useEffect(() => {
+    if (!form.category_id || !masters?.categories) return;
+
+    const selectedCategory: any = masters.categories.find(
+      (c) => c.id === Number(form.category_id)
+    );
+    if (!selectedCategory) return;
+
+    const fieldsJson: string[] = selectedCategory.namingStructure?.fields_json || [];
+    const delimiter: string = selectedCategory.namingStructure?.delimiter || "_";
+
+    if (!fieldsJson || fieldsJson.length === 0) return;
+
+    const resolveValue = (key: string): string => {
+      switch (key) {
+        case "article_code":
+          return (form.article_code || form.item_code || "").trim();
+        case "barcode":
+          return (form.barcode || "").trim();
+        case "brand_short_name": {
+          if (!form.brand_id || !masters.brands) return "";
+          const b = masters.brands.find((item) => item.id === Number(form.brand_id));
+          return (b?.brand_short_name || b?.brand_name || "").trim();
+        }
+        case "brand_name": {
+          if (!form.brand_id || !masters.brands) return "";
+          const b = masters.brands.find((item) => item.id === Number(form.brand_id));
+          return (b?.brand_name || "").trim();
+        }
+        case "core_product": {
+          if (!form.core_product_id || !masters.coreProducts) return "";
+          const cp = masters.coreProducts.find((item) => item.id === Number(form.core_product_id));
+          return (cp?.core_product_name ?? cp?.name ?? "").trim();
+        }
+        case "finish": {
+          if (!form.finish_id || !masters.finishes) return "";
+          const f = masters.finishes.find((item) => item.id === Number(form.finish_id));
+          return (f?.finish_name ?? f?.name ?? "").trim();
+        }
+        case "p_code":
+          return (form.p_code || "").trim();
+        case "thickness":
+          return form.thickness !== null && form.thickness !== undefined && String(form.thickness).trim() !== ""
+            ? String(form.thickness).trim()
+            : "";
+        case "length":
+          return form.length !== null && form.length !== undefined && String(form.length).trim() !== ""
+            ? String(form.length).trim()
+            : "";
+        case "height":
+          return form.height !== null && form.height !== undefined && String(form.height).trim() !== ""
+            ? String(form.height).trim()
+            : "";
+        case "type": {
+          if (!form.type_id || !masters.types) return "";
+          const t = masters.types.find((item) => item.id === Number(form.type_id));
+          return (t?.type_name || "").trim();
+        }
+        case "color_name":
+          return (form.color_name || "").trim();
+        case "grade": {
+          if (!form.grade_id || !masters.grades) return "";
+          const g = masters.grades.find((item) => item.id === Number(form.grade_id));
+          return (g?.grade_name ?? g?.name ?? "").trim();
+        }
+        case "size":
+          return (form.size || "").trim();
+        case "hsn_code": {
+          if (!form.hsn_id || !(masters as any).hsns) return "";
+          const hsn = (masters as any).hsns?.find((item: any) => item.id === Number(form.hsn_id));
+          return (hsn?.hsn_code || "").trim();
+        }
+        case "unit": {
+          if (!form.primary_unit_id || !masters.units) return "";
+          const u = masters.units.find((item) => item.id === Number(form.primary_unit_id));
+          return (u?.short_name || u?.unit_name || "").trim();
+        }
+        default:
+          return "";
+      }
+    };
+
+    const parts = fieldsJson
+      .map(resolveValue)
+      .filter((v) => Boolean(v) && v.length > 0);
+
+    if (parts.length > 0) {
+      const assembledName = parts.join(delimiter);
+      setForm((prev) => ({
+        ...prev,
+        product_name: assembledName,
+      }));
+    }
+  }, [
+    form.category_id,
+    form.article_code,
+    form.item_code,
+    form.barcode,
+    form.brand_id,
+    form.core_product_id,
+    form.finish_id,
+    form.p_code,
+    form.thickness,
+    form.length,
+    form.height,
+    form.type_id,
+    form.color_name,
+    form.grade_id,
+    form.size,
+    form.hsn_id,
+    form.primary_unit_id,
+    masters,
+  ]);
+
 
   const addSupplierRow = () => {
     setSupplierRows((prev) => [
