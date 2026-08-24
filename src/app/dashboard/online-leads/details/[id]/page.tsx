@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
+import MultipleSelector, { Option } from "@/components/ui/multiselect";
 import { useParams, useRouter } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { apiClient } from "@/lib/apiClient";
@@ -101,6 +102,7 @@ import {
 
 interface OnlineLead {
   id: number;
+  vendor_id: number;
   lead_code?: string | null;
   leads_name: string;
   firstname: string | null;
@@ -199,6 +201,7 @@ export default function OnlineLeadDetailsPage() {
   const vendorId = user?.vendor_id;
   const userId = user?.id;
   const userType = user?.user_type?.user_type?.toLowerCase() || "";
+  const isAdmin = userType === "super-admin" || userType === "admin";
 
   const [lead, setLead] = useState<OnlineLead | null>(null);
   const [statuses, setStatuses] = useState<FollowupStatus[]>([]);
@@ -224,6 +227,7 @@ export default function OnlineLeadDetailsPage() {
   const [selectedStoreCaller, setSelectedStoreCaller] = useState("");
   const [requiresCallerSelect, setRequiresCallerSelect] = useState(false);
   const [submittingStore, setSubmittingStore] = useState(false);
+  const [isMovingToDraft, setIsMovingToDraft] = useState(false);
 
   // Reassign modal state
   const [isAssignOpen, setIsAssignOpen] = useState(false);
@@ -275,6 +279,7 @@ export default function OnlineLeadDetailsPage() {
   // Product Type edit states (matching Draft Leads details exactly)
   const [editProductTypeOpen, setEditProductTypeOpen] = useState(false);
   const [selectedProductTypeId, setSelectedProductTypeId] = useState<number | null>(null);
+  const [selectedProductTypeIds, setSelectedProductTypeIds] = useState<number[]>([]);
   const [confirmProductTypeSave, setConfirmProductTypeSave] = useState(false);
   const [updatingLeadType, setUpdatingLeadType] = useState(false);
 
@@ -508,6 +513,29 @@ export default function OnlineLeadDetailsPage() {
     }
   };
 
+  // Move lead to draft flow/status
+  const handleMoveToDraft = async () => {
+    setIsMovingToDraft(true);
+    try {
+      const res = await apiClient.post(`/online-leads/${id}/move-to-draft`, {
+        user_id: userId,
+      });
+
+      if (res.data?.success) {
+        fetchLeadDetails();
+        toastManager.add({ title: "Lead successfully moved to Draft.", type: "success" });
+      }
+    } catch (err: any) {
+      console.error("Move to draft error:", err);
+      toastManager.add({
+        title: err.response?.data?.error || "Failed to move lead to draft.",
+        type: "error",
+      });
+    } finally {
+      setIsMovingToDraft(false);
+    }
+  };
+
   // Assign store form submit
   const handleStoreSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -668,22 +696,53 @@ export default function OnlineLeadDetailsPage() {
   };
 
   const handleOpenProductTypeEdit = () => {
-    setSelectedProductTypeId(currentProductTypeId);
+    if (vendorId === 1 || lead?.vendor_id === 1) {
+      const ids = (lead?.product_types || []).map((label: string) => {
+        return allProductTypes.find((t: any) => t.type === label)?.id;
+      }).filter((val): val is number => val !== undefined);
+      setSelectedProductTypeIds(ids);
+    } else {
+      setSelectedProductTypeId(currentProductTypeId);
+    }
     setEditProductTypeOpen(true);
   };
 
   const handleSaveProductType = () => {
-    if (!selectedProductTypeId) {
-      toastManager.add({
-        title: "Please select a product type.",
-        type: "error",
-      });
-      return;
-    }
-    if (selectedProductTypeId === currentProductTypeId) {
-      toastManager.add({ title: "No changes to update.", type: "info" });
-      setEditProductTypeOpen(false);
-      return;
+    if (vendorId === 1 || lead?.vendor_id === 1) {
+      if (selectedProductTypeIds.length === 0) {
+        toastManager.add({
+          title: "Please select at least one product type.",
+          type: "error",
+        });
+        return;
+      }
+
+      const currentIds = (lead?.product_types || []).map((label: string) => {
+        return allProductTypes.find((t: any) => t.type === label)?.id;
+      }).filter((val): val is number => val !== undefined);
+
+      const hasChanges =
+        selectedProductTypeIds.length !== currentIds.length ||
+        !selectedProductTypeIds.every(id => currentIds.includes(id));
+
+      if (!hasChanges) {
+        toastManager.add({ title: "No changes to update.", type: "info" });
+        setEditProductTypeOpen(false);
+        return;
+      }
+    } else {
+      if (!selectedProductTypeId) {
+        toastManager.add({
+          title: "Please select a product type.",
+          type: "error",
+        });
+        return;
+      }
+      if (selectedProductTypeId === currentProductTypeId) {
+        toastManager.add({ title: "No changes to update.", type: "info" });
+        setEditProductTypeOpen(false);
+        return;
+      }
     }
     setConfirmProductTypeSave(true);
   };
@@ -692,11 +751,19 @@ export default function OnlineLeadDetailsPage() {
     setConfirmProductTypeSave(false);
     setUpdatingLeadType(true);
     try {
-      const nextTypeLabel = allProductTypes.find((t: any) => t.id === selectedProductTypeId)?.type;
-      if (!nextTypeLabel) return;
+      let nextTypes: string[] = [];
+      if (vendorId === 1 || lead?.vendor_id === 1) {
+        nextTypes = selectedProductTypeIds
+          .map(id => allProductTypes.find((t: any) => t.id === id)?.type)
+          .filter((val): val is string => val !== undefined);
+      } else {
+        const nextTypeLabel = allProductTypes.find((t: any) => t.id === selectedProductTypeId)?.type;
+        if (!nextTypeLabel) return;
+        nextTypes = [nextTypeLabel];
+      }
 
       const res = await apiClient.patch(`/online-leads/${id}`, {
-        product_types: [nextTypeLabel],
+        product_types: nextTypes,
         updated_by: userId,
       });
 
@@ -831,6 +898,22 @@ export default function OnlineLeadDetailsPage() {
           >
             <PhoneCall className="w-3.5 h-3.5" /> Follow up
           </Button>
+
+          {isAdmin && (
+            <Button
+              size="sm"
+              onClick={handleMoveToDraft}
+              disabled={isMovingToDraft}
+              className="bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-2 h-9"
+            >
+              {isMovingToDraft ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <CheckCircle2 className="w-3.5 h-3.5" />
+              )}
+              Move to Draft
+            </Button>
+          )}
 
           {isConverted && userType !== "sales-executive" && (
             <Button
@@ -2016,10 +2099,21 @@ export default function OnlineLeadDetailsPage() {
         onOpenChange={(open) => {
           if (!open) {
             setEditProductTypeOpen(false);
-            setSelectedProductTypeId(currentProductTypeId);
+            if (vendorId === 1 || lead?.vendor_id === 1) {
+              const ids = (lead?.product_types || []).map((label: string) => {
+                return allProductTypes.find((t: any) => t.type === label)?.id;
+              }).filter((val): val is number => val !== undefined);
+              setSelectedProductTypeIds(ids);
+            } else {
+              setSelectedProductTypeId(currentProductTypeId);
+            }
           }
         }}
-        title={currentProductTypeId ? "Edit Product Type" : "Set Product Type"}
+        title={
+          (vendorId === 1 || lead?.vendor_id === 1)
+            ? (lead?.product_types?.length ? "Edit Product Types" : "Set Product Types")
+            : (currentProductTypeId ? "Edit Product Type" : "Set Product Type")
+        }
         description="Select the product type for this lead."
         size="sm"
       >
@@ -2028,18 +2122,47 @@ export default function OnlineLeadDetailsPage() {
             <label className="text-xs font-medium text-muted-foreground">
               Product Type <span className="text-red-500">*</span>
             </label>
-            <div className="mt-2">
-              <AssignToPicker
-                data={
-                  allProductTypes.map((t: any) => ({
-                    id: t.id,
-                    label: t.type,
-                  })) ?? []
-                }
-                value={selectedProductTypeId ?? undefined}
-                onChange={(id) => setSelectedProductTypeId(id)}
-                placeholder="Search product type..."
-              />
+            <div className={`mt-2 ${(vendorId === 1 || lead?.vendor_id === 1) ? "pb-44" : ""}`}>
+              {vendorId === 1 || lead?.vendor_id === 1 ? (
+                <MultipleSelector
+                  value={
+                    selectedProductTypeIds
+                      .map(id => {
+                        const opt = allProductTypes.find((t: any) => t.id === id);
+                        return opt ? { value: String(opt.id), label: opt.type } : null;
+                      })
+                      .filter((val): val is Option => val !== null)
+                  }
+                  onChange={(options) => {
+                    setSelectedProductTypeIds(options.map((opt) => Number(opt.value)));
+                  }}
+                  defaultOptions={
+                    allProductTypes.map((t: any) => ({
+                      value: String(t.id),
+                      label: t.type,
+                    }))
+                  }
+                  placeholder="Select product types..."
+                  emptyIndicator={
+                    <p className="text-center text-xs leading-5 text-muted-foreground">
+                      No results found.
+                    </p>
+                  }
+                  maxSelected={10}
+                />
+              ) : (
+                <AssignToPicker
+                  data={
+                    allProductTypes.map((t: any) => ({
+                      id: t.id,
+                      label: t.type,
+                    })) ?? []
+                  }
+                  value={selectedProductTypeId ?? undefined}
+                  onChange={(id) => setSelectedProductTypeId(id)}
+                  placeholder="Search product type..."
+                />
+              )}
             </div>
           </div>
           <div className="flex justify-end gap-2">
@@ -2070,14 +2193,16 @@ export default function OnlineLeadDetailsPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {currentProductTypeId
-                ? "Confirm Product Type Change?"
-                : "Set Product Type?"}
+              {(vendorId === 1 || lead?.vendor_id === 1)
+                ? (lead?.product_types?.length ? "Confirm Product Types Change?" : "Set Product Types?")
+                : (currentProductTypeId ? "Confirm Product Type Change?" : "Set Product Type?")
+              }
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {currentProductTypeId
-                ? "This will update the product type for this lead."
-                : "This will set the product type for this lead."}
+              {(vendorId === 1 || lead?.vendor_id === 1)
+                ? (lead?.product_types?.length ? "This will update the product types for this lead." : "This will set the product types for this lead.")
+                : (currentProductTypeId ? "This will update the product type for this lead." : "This will set the product type for this lead.")
+              }
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
