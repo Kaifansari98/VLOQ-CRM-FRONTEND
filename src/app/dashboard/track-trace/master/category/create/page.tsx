@@ -274,6 +274,45 @@ function CategoryFormContent() {
       const isEditMode = isEdit;
       const targetCategory = editData || activeCategory;
       if (isEditMode && targetCategory && vendorId && userId) {
+        const categoryNameUnchanged = categoryName.trim() === targetCategory.category_name;
+        const prefixUnchanged = (prefix ? prefix.trim().toUpperCase() : null) === (targetCategory.prefix ?? null);
+        const includeInPackingUnchanged = includeInPacking === (targetCategory.include_in_packing ?? false);
+        const scanPackValidateUnchanged = scanPackValidate === (targetCategory.scan_pack_validate ?? false);
+        const useInAssembledPackingUnchanged = useInAssembledPacking === (targetCategory.use_in_assembled_packing ?? false);
+
+        const originalTypeIds = targetCategory.projectCategoriesMasterVendorMapping.map(
+          (m: any) => m.project_categories_type_master_id
+        );
+        const typeIdsUnchanged =
+          selectedTypeIds.length === originalTypeIds.length &&
+          selectedTypeIds.every((id) => originalTypeIds.includes(id));
+
+        const originalSubs = allCategories.filter((c) => c.parent_id === targetCategory.id);
+        const subCategoriesUnchanged =
+          subCategories.length === originalSubs.length &&
+          subCategories.every((sub) => {
+            if (!sub.id) return false;
+            const orig = originalSubs.find((o) => o.id === sub.id);
+            return orig && orig.category_name === sub.name.trim() && orig.status === sub.status;
+          });
+
+        const origFields = targetCategory.namingStructure?.fields_json || [];
+        const origDelimiter = targetCategory.namingStructure?.delimiter || "_";
+        const structureChanged =
+          delimiter !== origDelimiter ||
+          selectedFields.length !== origFields.length ||
+          selectedFields.some((f, idx) => f !== origFields[idx]);
+
+        const onlyStructureUpdated =
+          categoryNameUnchanged &&
+          prefixUnchanged &&
+          includeInPackingUnchanged &&
+          scanPackValidateUnchanged &&
+          useInAssembledPackingUnchanged &&
+          typeIdsUnchanged &&
+          subCategoriesUnchanged &&
+          structureChanged;
+
         await updateMutation.mutateAsync({
           id: targetCategory.id,
           vendor_id: vendorId,
@@ -291,11 +330,10 @@ function CategoryFormContent() {
             delimiter,
             fields: selectedFields,
           } : null,
+          only_naming_structure_updated: onlyStructureUpdated,
         });
 
-        const originalSubs = allCategories.filter(
-          (c) => c.parent_id === targetCategory.id
-        );
+
 
         for (const original of originalSubs) {
           const stillExists = subCategories.find((s) => s.id === original.id);
@@ -384,6 +422,7 @@ function CategoryFormContent() {
         }
       }
 
+      await new Promise((resolve) => setTimeout(resolve, 1200));
       router.push("/dashboard/track-trace/master/category");
     } finally {
       setIsSubmitting(false);
@@ -683,9 +722,7 @@ function CategoryFormContent() {
                     { key: "height", label: "Height" },
                     { key: "hsn_code", label: "HSN Code" },
                     { key: "unit", label: "Primary Unit" },
-                    { key: "custom_field_1", label: "Custom Field 1" },
-                    { key: "custom_field_2", label: "Custom Field 2" },
-                    { key: "custom_field_3", label: "Custom Field 3" },
+
                   ].map((attr) => {
                     const isSelected = selectedFields.includes(attr.key);
                     return (

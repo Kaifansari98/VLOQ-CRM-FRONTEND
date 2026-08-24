@@ -44,6 +44,7 @@ export interface CreateCategoryPayload {
   use_in_assembled_packing?: boolean;
   prefix?: string | null;
   naming_structure?: { delimiter: string; fields: string[] } | null;
+  only_naming_structure_updated?: boolean;
 }
 
 export interface UpdateCategoryPayload {
@@ -60,6 +61,7 @@ export interface UpdateCategoryPayload {
   use_in_assembled_packing?: boolean;
   prefix?: string | null;
   naming_structure?: { delimiter: string; fields: string[] } | null;
+  only_naming_structure_updated?: boolean;
 }
 
 export const getProjectCategories = async (vendorId: number) => {
