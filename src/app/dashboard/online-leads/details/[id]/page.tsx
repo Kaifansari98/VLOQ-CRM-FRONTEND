@@ -201,6 +201,7 @@ export default function OnlineLeadDetailsPage() {
   const vendorId = user?.vendor_id;
   const userId = user?.id;
   const userType = user?.user_type?.user_type?.toLowerCase() || "";
+  const isAdmin = userType === "super-admin" || userType === "admin";
 
   const [lead, setLead] = useState<OnlineLead | null>(null);
   const [statuses, setStatuses] = useState<FollowupStatus[]>([]);
@@ -226,6 +227,7 @@ export default function OnlineLeadDetailsPage() {
   const [selectedStoreCaller, setSelectedStoreCaller] = useState("");
   const [requiresCallerSelect, setRequiresCallerSelect] = useState(false);
   const [submittingStore, setSubmittingStore] = useState(false);
+  const [isMovingToDraft, setIsMovingToDraft] = useState(false);
 
   // Reassign modal state
   const [isAssignOpen, setIsAssignOpen] = useState(false);
@@ -508,6 +510,29 @@ export default function OnlineLeadDetailsPage() {
       toastManager.add({ title: err.response?.data?.error || "Failed to log call outcome.", type: "error" });
     } finally {
       setSubmittingCall(false);
+    }
+  };
+
+  // Move lead to draft flow/status
+  const handleMoveToDraft = async () => {
+    setIsMovingToDraft(true);
+    try {
+      const res = await apiClient.post(`/online-leads/${id}/move-to-draft`, {
+        user_id: userId,
+      });
+
+      if (res.data?.success) {
+        fetchLeadDetails();
+        toastManager.add({ title: "Lead successfully moved to Draft.", type: "success" });
+      }
+    } catch (err: any) {
+      console.error("Move to draft error:", err);
+      toastManager.add({
+        title: err.response?.data?.error || "Failed to move lead to draft.",
+        type: "error",
+      });
+    } finally {
+      setIsMovingToDraft(false);
     }
   };
 
@@ -873,6 +898,22 @@ export default function OnlineLeadDetailsPage() {
           >
             <PhoneCall className="w-3.5 h-3.5" /> Follow up
           </Button>
+
+          {isAdmin && (
+            <Button
+              size="sm"
+              onClick={handleMoveToDraft}
+              disabled={isMovingToDraft}
+              className="bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-2 h-9"
+            >
+              {isMovingToDraft ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <CheckCircle2 className="w-3.5 h-3.5" />
+              )}
+              Move to Draft
+            </Button>
+          )}
 
           {isConverted && userType !== "sales-executive" && (
             <Button
