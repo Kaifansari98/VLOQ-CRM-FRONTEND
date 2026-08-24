@@ -77,9 +77,15 @@ export function useCreateProjectCategory(vendorId: number) {
   return useMutation({
     mutationFn: (payload: CreateCategoryPayload) =>
       createProjectCategory(payload),
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      const hasStructure = !!variables?.naming_structure;
+      const onlyStructure = !!variables?.only_naming_structure_updated;
       toastManager.add({
-        title: "Category created successfully",
+        title: onlyStructure
+          ? "Product Name Structure saved successfully"
+          : hasStructure 
+            ? "Category and Product Name Structure created successfully"
+            : "Category created successfully",
         type: "success",
       });
       queryClient.invalidateQueries({ queryKey: KEYS.categories(vendorId) });
@@ -99,9 +105,15 @@ export function useUpdateProjectCategory(vendorId: number) {
   return useMutation({
     mutationFn: (payload: UpdateCategoryPayload) =>
       updateProjectCategory(payload),
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      const hasStructure = !!variables?.naming_structure;
+      const onlyStructure = !!variables?.only_naming_structure_updated;
       toastManager.add({
-        title: "Category updated successfully",
+        title: onlyStructure
+          ? "Product Name Structure updated successfully"
+          : hasStructure
+            ? "Category and Product Name Structure updated successfully"
+            : "Category updated successfully",
         type: "success",
       });
       queryClient.invalidateQueries({ queryKey: KEYS.categories(vendorId) });
