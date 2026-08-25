@@ -34,19 +34,58 @@ import { toastManager } from "@/components/ui/toast";
 import DocumentCard, { PreviewModal } from "@/components/utils/documentCard";
 import { z } from "zod";
 import { cn } from "@/lib/utils";
+import { PhoneInput } from "@/components/ui/phone-input";
+import { validateIndianMobileRisk } from "@/utils/phoneRiskValidator";
 
 const toast = {
   success: (message: string) => toastManager.add({ title: message, type: "success" }),
   error: (message: string) => toastManager.add({ title: message, type: "error" }),
 };
 
+const phoneZodValidator = z.string().superRefine((val, ctx) => {
+  const clean = val.replace(/\D/g, "").replace(/^91/, "");
+  if (!/^[6-9]\d{9}$/.test(clean)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Valid 10-digit mobile number required",
+    });
+    return;
+  }
+  const riskResult = validateIndianMobileRisk(clean);
+  if (!riskResult.isValid) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: riskResult.reason || "Invalid or fake phone number",
+    });
+  }
+});
+
+const optionalPhoneZodValidator = z.string().optional().or(z.literal("")).superRefine((val, ctx) => {
+  if (!val) return;
+  const clean = val.replace(/\D/g, "").replace(/^91/, "");
+  if (!/^[6-9]\d{9}$/.test(clean)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Valid 10-digit mobile number required",
+    });
+    return;
+  }
+  const riskResult = validateIndianMobileRisk(clean);
+  if (!riskResult.isValid) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: riskResult.reason || "Invalid or fake phone number",
+    });
+  }
+});
+
 const companyInfoSchema = z.object({
   vendor_code: z.string().min(1, "Company Code is mandatory"),
   company_name: z.string().min(1, "Company Name is mandatory"),
   vendor_types: z.array(z.number()).min(1, "At least one Vendor Type is required"),
   point_of_contact: z.string().min(1, "Primary Contact Person is required"),
-  contact_no: z.string().regex(/^[6-9]\d{9}$/, "Valid 10-digit number required"),
-  alternate_mobile_no: z.string().regex(/^[6-9]\d{9}$/, "Valid 10-digit number required").or(z.literal("")).optional(),
+  contact_no: phoneZodValidator,
+  alternate_mobile_no: optionalPhoneZodValidator,
   email: z.string().email("Valid email required").min(1, "Primary Email is required"),
   alternate_email: z.string().email("Valid email required").or(z.literal("")).optional(),
   payment_term_id: z.union([z.string(), z.number()]).refine(val => !!val, { message: "Payment Term is required" }),
@@ -64,7 +103,7 @@ const addressSchema = z.object({
 
 const contactSchema = z.object({
   name: z.string().min(1, "Contact Name is required"),
-  phone: z.string().regex(/^[6-9]\d{9}$/, "Valid 10-digit mobile number required"),
+  phone: phoneZodValidator,
   email: z.string().email("Valid email address required").min(1, "Email is required"),
   department: z.string().min(1, "Department is required"),
   designation: z.string().min(1, "Designation is required"),
@@ -1408,15 +1447,15 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="contact_no">Mobile No. <span className="text-red-500">*</span></Label>
-                  <Input
+                  <PhoneInput
                     id="contact_no"
+                    defaultCountry="IN"
                     value={info.contact_no}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, "").slice(0, 10);
-                      setInfo((p) => ({ ...p, contact_no: val }));
-                    }}
+                    onChange={(val) => setInfo((p) => ({ ...p, contact_no: val }))}
                     onBlur={() => touch("contact_no")}
                     placeholder="10 digit mobile"
+                    validateIndianNumber={true}
+                    showError={false}
                   />
                   {touched.contact_no && zodErrors.contact_no?._errors && <p className="text-red-500 text-[10px] mt-0.5">{zodErrors.contact_no._errors[0]}</p>}
                   {duplicateErrors.contact_no && <p className="text-red-500 text-[10px] mt-0.5">{duplicateErrors.contact_no}</p>}
@@ -1439,15 +1478,15 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5 border-t pt-5">
                 <div className="space-y-2">
                   <Label htmlFor="alternate_mobile_no">Alternate Mobile No. (Optional)</Label>
-                  <Input
+                  <PhoneInput
                     id="alternate_mobile_no"
+                    defaultCountry="IN"
                     value={info.alternate_mobile_no}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, "").slice(0, 10);
-                      setInfo((p) => ({ ...p, alternate_mobile_no: val }));
-                    }}
+                    onChange={(val) => setInfo((p) => ({ ...p, alternate_mobile_no: val }))}
                     onBlur={() => touch("alternate_mobile_no")}
                     placeholder="Alternate number"
+                    validateIndianNumber={true}
+                    showError={false}
                   />
                   {touched.alternate_mobile_no && zodErrors.alternate_mobile_no?._errors && <p className="text-red-500 text-[10px] mt-0.5">{zodErrors.alternate_mobile_no._errors[0]}</p>}
                 </div>
@@ -1809,14 +1848,13 @@ export default function CompanyVendorForm({ id }: CompanyVendorFormProps) {
                   </div>
                   <div className="space-y-2">
                     <Label>Phone No. <span className="text-red-500">*</span></Label>
-                    <Input
+                    <PhoneInput
                       value={contactForm.phone}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, "").slice(0, 10);
-                        setContactForm((p) => ({ ...p, phone: val }));
-                      }}
+                      onChange={(val) => setContactForm((p) => ({ ...p, phone: val }))}
                       onBlur={() => touchContact("phone")}
                       placeholder="Contact number"
+                      validateIndianNumber={true}
+                      showError={false}
                     />
                     {contactTouched.phone && contactErrors.phone?._errors && <p className="text-red-500 text-[10px] mt-0.5">{contactErrors.phone._errors[0]}</p>}
                   </div>

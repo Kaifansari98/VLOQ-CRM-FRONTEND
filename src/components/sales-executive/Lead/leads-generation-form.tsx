@@ -1533,7 +1533,7 @@ export default function LeadsGenerationForm({
 
         {/* Contact Numbers */}
         {!isB2b && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
             <FormField
               control={form.control}
               name="contact_no"
@@ -1633,7 +1633,7 @@ export default function LeadsGenerationForm({
 
         {/* Site Type */}
         {!isB2b && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
           <FormField
             control={form.control}
             name="site_type_id"
@@ -1704,7 +1704,7 @@ export default function LeadsGenerationForm({
         </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
           <FormField
             control={form.control}
             name="source_id"

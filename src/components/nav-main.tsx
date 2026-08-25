@@ -42,6 +42,7 @@ interface NavSubItem {
   showCount?:
   | "total_leads"
   | "total_overall_leads"
+  | "total_lead_pool"
   | "total_open_leads"
   | "total_draft_leads"
   | "total_initial_site_measurement_leads"
@@ -81,6 +82,7 @@ interface NavItem {
   showCount?:
   | "total_leads"
   | "total_overall_leads"
+  | "total_lead_pool"
   | "total_open_leads"
   | "total_draft_leads"
   | "total_initial_site_measurement_leads"

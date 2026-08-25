@@ -84,6 +84,9 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
   const vendorCustomUserTypeMode = useAppSelector(
     (s) => s.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
   );
+  const handlesLargeScaleProjects = useAppSelector(
+    (s) => s.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
 
   const [b2bReqTypes, setB2BReqTypes] = useState<{ id: number; typeName: string }[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -168,12 +171,16 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
     if (vendorCustomUserTypeMode || b2bReqTypeId) {
       try {
         setSubmitting(true);
+        const selectedDesignDoc = designDocs.find(
+          (doc) => String(doc.id) === data.design_document_id
+        );
         for (const file of data.upload_pdf) {
           await uploadRequirementDocumentApi({
             file,
             lead_id: leadId,
             vendor_id: vendorId,
             b2b_requirement_type_id: b2bReqTypeId,
+            product_type_id: selectedDesignDoc?.product_type_id || undefined,
             stage: "Quotation",
             created_by: userId,
           });
@@ -309,7 +316,7 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
             )}
           />
 
-          {vendorCustomUserTypeMode && availableDesignDocs.length > 0 && (
+          {(vendorCustomUserTypeMode || handlesLargeScaleProjects) && availableDesignDocs.length > 0 && (
             <FormField
               control={form.control}
               name="design_document_id"

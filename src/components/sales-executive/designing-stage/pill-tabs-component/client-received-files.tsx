@@ -171,7 +171,7 @@ export default function ClientReceivedFilesTab() {
           product_type_id: isB2b ? undefined : Number(selectedProductTypeId),
           b2b_requirement_type_id: isB2b ? Number(selectedProductTypeId) : undefined,
           doc_type_id: Number(selectedDocTypeId),
-          stage: isB2b ? "Designing" : undefined,
+          stage: "Requirement",
           created_by: userId!,
         })
       );
@@ -205,12 +205,6 @@ export default function ClientReceivedFilesTab() {
     }
   };
 
-  const isLoading = isB2bTypesLoading || isProductTypesLoading || isLeadLoading || isDocsLoading || isDocTypesLoading;
-
-  if (isLoading) {
-    return <Loader size={200} message="Loading Client Received Files..." />;
-  }
-
   const typesListForSelector = useMemo(() => {
     const list = (isB2b ? b2bReqTypesData?.data : productTypes?.data) || [];
     const sourceList = list.length > 0 ? list : (b2bReqTypesData?.data || productTypes?.data || []);
@@ -221,6 +215,12 @@ export default function ClientReceivedFilesTab() {
 
     return sourceList.filter((t: any) => allTypeIds.includes(t.id));
   }, [isB2b, b2bReqTypesData, productTypes, selectedProductTypeIds, allTypeIds]);
+
+  const isLoading = isB2bTypesLoading || isProductTypesLoading || isLeadLoading || isDocsLoading || isDocTypesLoading;
+
+  if (isLoading) {
+    return <Loader size={200} message="Loading Client Received Files..." />;
+  }
 
   return (
     <div className="space-y-6">

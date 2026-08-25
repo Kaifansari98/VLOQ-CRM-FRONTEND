@@ -1263,7 +1263,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
 
         {/* Contact Numbers - ✅ SIMPLIFIED */}
         {!isB2b && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
           <FormField
             control={form.control}
             name="contact_no"
@@ -1336,7 +1336,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
 
         {/* Site Type & Priority */}
         {!isB2b && (
-          <div className={`grid grid-cols-1 ${shouldShowSiteTypeField ? 'sm:grid-cols-2' : 'sm:grid-cols-1'} gap-3 items-center`}>
+          <div className={`grid grid-cols-1 ${shouldShowSiteTypeField ? 'sm:grid-cols-2' : 'sm:grid-cols-1'} gap-3 items-start`}>
             {shouldShowSiteTypeField && (
               <FormField
                 control={form.control}
@@ -1404,7 +1404,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
         )}
 
         {/* Source (+ Phone Number for B2B) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
           <FormField
             control={form.control}
             name="source_id"

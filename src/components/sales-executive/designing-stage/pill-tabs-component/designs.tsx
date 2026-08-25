@@ -104,8 +104,22 @@ const DesigningTab = () => {
       return [];
     }
 
-    const instanceMap = new Map(
-      structureInstances.map((item: any) => [String(item.id), item]),
+    const productTypeMap = new Map(
+      structureInstances
+        .map((item: any) => {
+          const productTypeId =
+            item.productType?.id ??
+            item.productItemCode?.productStructure?.productType?.id;
+          const productTypeTitle =
+            item.productType?.type?.trim() ||
+            item.productItemCode?.productStructure?.productType?.type?.trim() ||
+            "";
+
+          return productTypeId
+            ? [String(productTypeId), productTypeTitle] as const
+            : null;
+        })
+        .filter(Boolean) as readonly (readonly [string, string])[],
     );
 
     const grouped = new Map<
@@ -118,7 +132,37 @@ const DesigningTab = () => {
       }
     >();
 
-    // 1️⃣ Initialize groups for all product types in structureInstances
+    for (const doc of sortedDesignDocs) {
+      const productTypeId = doc.product_type_id;
+      if (!productTypeId) {
+        const key = UNASSIGNED_GROUP_ID;
+        if (!grouped.has(key)) {
+          grouped.set(key, {
+            id: key,
+            title: "Unassigned Documents",
+            subtitle: "No linked item group",
+            docs: [],
+          });
+        }
+        grouped.get(key)!.docs.push(doc);
+        continue;
+      }
+
+      const title = productTypeMap.get(String(productTypeId)) || `Group #${productTypeId}`;
+      const key = normalizeGroupKey(title);
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          id: key,
+          title,
+          subtitle: "Product type",
+          docs: [],
+        });
+      }
+      if (!grouped.get(key)!.docs.includes(doc)) {
+        grouped.get(key)!.docs.push(doc);
+      }
+    }
+
     for (const inst of structureInstances) {
       const title =
         inst?.productType?.type ||
@@ -132,82 +176,6 @@ const DesigningTab = () => {
           subtitle: "Product type",
           docs: [],
         });
-      }
-    }
-
-    // 2️⃣ Map design documents to their product type groups
-    for (const doc of sortedDesignDocs) {
-      let matchedTitle: string | null = null;
-
-      // Check direct product_structure_instance_id
-      if ((doc as any).product_structure_instance_id) {
-        const inst = instanceMap.get(
-          String((doc as any).product_structure_instance_id),
-        );
-        if (inst) {
-          matchedTitle =
-            inst?.productType?.type ||
-            inst?.productItemCode?.productStructure?.productType?.type ||
-            null;
-        }
-      }
-
-      // Check productType relation on doc
-      if (!matchedTitle && (doc as any).productType?.type) {
-        matchedTitle = (doc as any).productType.type;
-      }
-
-      // Check productStructureInstance relation on doc
-      if (
-        !matchedTitle &&
-        (doc as any).productStructureInstance?.productType?.type
-      ) {
-        matchedTitle = (doc as any).productStructureInstance.productType.type;
-      }
-
-      // Check productStructureInstanceMapping array if present
-      if (!matchedTitle) {
-        const links = (doc as any).productStructureInstanceMapping || [];
-        for (const link of links) {
-          const inst = instanceMap.get(
-            String(link.product_structure_instance_id),
-          );
-          if (inst) {
-            matchedTitle =
-              inst?.productType?.type ||
-              inst?.productItemCode?.productStructure?.productType?.type ||
-              null;
-            if (matchedTitle) break;
-          }
-        }
-      }
-
-      if (matchedTitle) {
-        const key = normalizeGroupKey(matchedTitle);
-        if (!grouped.has(key)) {
-          grouped.set(key, {
-            id: key,
-            title: matchedTitle,
-            subtitle: "Product type",
-            docs: [],
-          });
-        }
-        if (!grouped.get(key)!.docs.includes(doc)) {
-          grouped.get(key)!.docs.push(doc);
-        }
-      } else {
-        const key = UNASSIGNED_GROUP_ID;
-        if (!grouped.has(key)) {
-          grouped.set(key, {
-            id: key,
-            title: "Unassigned Documents",
-            subtitle: "No linked item group",
-            docs: [],
-          });
-        }
-        if (!grouped.get(key)!.docs.includes(doc)) {
-          grouped.get(key)!.docs.push(doc);
-        }
       }
     }
 
