@@ -49,6 +49,7 @@ export type ProcessedTask = {
   is_blocked?: boolean;
   lead_blocked_at?: string | null;
   isFastProductionRequestTask?: boolean;
+  isOnlineLead?: boolean;
 };
 
 export function getVendorLeadsTableColumns({
@@ -174,17 +175,20 @@ export function getVendorLeadsTableColumns({
       },
     },
 
-    // Task type
+    // Status
     {
-      accessorKey: "taskType",
+      accessorKey: "leadStage",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Task Type" />
+        <DataTableColumnHeader column={column} title="Status" />
       ),
-      meta: {
-        label: "Task Type",
+      cell: ({ row }) => {
+        const status = (row.getValue("leadStage") as string) || "-";
+        return <span className="capitalize font-medium">{status}</span>;
       },
-
-      enableSorting: false,
+      meta: {
+        label: "Status",
+      },
+      enableSorting: true,
       enableColumnFilter: true,
       enableHiding: true,
       filterFn: tableMultiValueFilter,
