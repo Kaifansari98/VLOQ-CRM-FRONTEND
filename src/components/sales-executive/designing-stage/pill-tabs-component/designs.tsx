@@ -104,8 +104,22 @@ const DesigningTab = () => {
       return [];
     }
 
-    const instanceMap = new Map(
-      structureInstances.map((item: any) => [String(item.id), item]),
+    const productTypeMap = new Map(
+      structureInstances
+        .map((item: any) => {
+          const productTypeId =
+            item.productType?.id ??
+            item.productItemCode?.productStructure?.productType?.id;
+          const productTypeTitle =
+            item.productType?.type?.trim() ||
+            item.productItemCode?.productStructure?.productType?.type?.trim() ||
+            "";
+
+          return productTypeId
+            ? [String(productTypeId), productTypeTitle] as const
+            : null;
+        })
+        .filter(Boolean) as readonly (readonly [string, string])[],
     );
 
     const grouped = new Map<
@@ -119,8 +133,8 @@ const DesigningTab = () => {
     >();
 
     for (const doc of sortedDesignDocs) {
-      const links = (doc as any).productStructureInstanceMapping || [];
-      if (links.length === 0) {
+      const productTypeId = doc.product_type_id;
+      if (!productTypeId) {
         const key = UNASSIGNED_GROUP_ID;
         if (!grouped.has(key)) {
           grouped.set(key, {
@@ -134,26 +148,18 @@ const DesigningTab = () => {
         continue;
       }
 
-      for (const link of links) {
-        const instanceId = String(link.product_structure_instance_id);
-        const inst = instanceMap.get(instanceId);
-        const title =
-          inst?.productType?.type ||
-          inst?.productItemCode?.productStructure?.productType?.type ||
-          `Group #${instanceId}`;
-
-        const key = normalizeGroupKey(title);
-        if (!grouped.has(key)) {
-          grouped.set(key, {
-            id: key,
-            title,
-            subtitle: "Product type",
-            docs: [],
-          });
-        }
-        if (!grouped.get(key)!.docs.includes(doc)) {
-          grouped.get(key)!.docs.push(doc);
-        }
+      const title = productTypeMap.get(String(productTypeId)) || `Group #${productTypeId}`;
+      const key = normalizeGroupKey(title);
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          id: key,
+          title,
+          subtitle: "Product type",
+          docs: [],
+        });
+      }
+      if (!grouped.get(key)!.docs.includes(doc)) {
+        grouped.get(key)!.docs.push(doc);
       }
     }
 
