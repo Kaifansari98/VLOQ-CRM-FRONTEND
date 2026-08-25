@@ -29,7 +29,10 @@ import { FileUploadField } from "@/components/custom/file-upload";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { toastManager } from "@/components/ui/toast";
-import { useLeadById, useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
+import {
+  useLeadById,
+  useLeadProductStructureInstances,
+} from "@/hooks/useLeadsQueries";
 
 type Props = {
   leadId: number;
@@ -56,20 +59,17 @@ const documentAccept = ".pdf";
 const imageMimeTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif"];
 const imageAccept = ".jpg,.jpeg,.png,.gif";
 
-
-
 export default function FinalMeasurementLeadDetails({ leadId }: Props) {
   // 🧩 --- Redux User Context ---
   const vendorId = useAppSelector((state) => state.auth?.user?.vendor_id) || 0;
   const userId = useAppSelector((state) => state.auth?.user?.id);
   const userType = useAppSelector(
-    (state) => state.auth?.user?.user_type?.user_type
+    (state) => state.auth?.user?.user_type?.user_type,
   );
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
-  const effectiveUserType =
-    userType === "admin" ? "sales-executive" : userType;
+  const effectiveUserType = userType === "admin" ? "sales-executive" : userType;
 
   const isCustomVendorFlowFromAuth = useAppSelector(
     (state) =>
@@ -84,14 +84,19 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
 
   const isCustomVendorFlow =
     isCustomVendorFlowFromAuth ||
-    leadById?.createdBy?.vendor?.is_this_vendor_is_custom_usertype_only === true ||
-    leadById?.assignedTo?.vendor?.is_this_vendor_is_custom_usertype_only === true;
+    leadById?.createdBy?.vendor?.is_this_vendor_is_custom_usertype_only ===
+      true ||
+    leadById?.assignedTo?.vendor?.is_this_vendor_is_custom_usertype_only ===
+      true;
   const handlesLargeScaleProjects =
     handlesLargeScaleProjectsFromAuth ||
     leadById?.createdBy?.vendor?.handlesLargeScaleProjects === true ||
     leadById?.assignedTo?.vendor?.handlesLargeScaleProjects === true;
 
-  const { data: structureInstancesData } = useLeadProductStructureInstances(leadId, vendorId);
+  const { data: structureInstancesData } = useLeadProductStructureInstances(
+    leadId,
+    vendorId,
+  );
   const structureInstances = React.useMemo(
     () =>
       Array.isArray(structureInstancesData?.data)
@@ -103,7 +108,7 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
   // 🧩 --- Data Hook ---
   const { data, isLoading, error } = useFinalMeasurementLeadById(
     vendorId,
-    leadId
+    leadId,
   );
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
@@ -122,8 +127,10 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
   const [activeInstanceId, setActiveInstanceId] = useState<number | null>(null);
 
   // 🧩 --- Permissions ---
-  const canDelete = effectiveUserType === "admin" || effectiveUserType === "super-admin";
-  const canUpload = effectiveUserType === "admin" || effectiveUserType === "super-admin";
+  const canDelete =
+    effectiveUserType === "admin" || effectiveUserType === "super-admin";
+  const canUpload =
+    effectiveUserType === "admin" || effectiveUserType === "super-admin";
   const canViewCurrentSitePhotos =
     effectiveUserType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
@@ -177,14 +184,20 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
 
   const handleFilesChange = (files: File[]) => {
     const validFiles = files.filter((file) =>
-      documentMimeTypes.includes(file.type)
+      documentMimeTypes.includes(file.type),
     );
     const rejectedCount = files.length - validFiles.length;
     if (rejectedCount > 0) {
-      toastManager.add({ title: "Only PDF or image files are allowed.", type: "error" });
+      toastManager.add({
+        title: "Only PDF or image files are allowed.",
+        type: "error",
+      });
     }
     if (files.length > 10) {
-      toastManager.add({ title: "You can upload up to 10 files.", type: "error" });
+      toastManager.add({
+        title: "You can upload up to 10 files.",
+        type: "error",
+      });
       setFilesToUpload(validFiles.slice(0, 10));
       return;
     }
@@ -193,14 +206,20 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
 
   const handleSitePhotosChange = (files: File[]) => {
     const validFiles = files.filter((file) =>
-      imageMimeTypes.includes(file.type)
+      imageMimeTypes.includes(file.type),
     );
     const rejectedCount = files.length - validFiles.length;
     if (rejectedCount > 0) {
-      toastManager.add({ title: "Only image files are allowed.", type: "error" });
+      toastManager.add({
+        title: "Only image files are allowed.",
+        type: "error",
+      });
     }
     if (files.length > 10) {
-      toastManager.add({ title: "You can upload up to 10 files.", type: "error" });
+      toastManager.add({
+        title: "You can upload up to 10 files.",
+        type: "error",
+      });
       setSitePhotosToUpload(validFiles.slice(0, 10));
       return;
     }
@@ -209,11 +228,17 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
 
   const handleAddMoreFiles = async () => {
     if (!vendorId || !userId) {
-      toastManager.add({ title: "Missing vendor, user information.", type: "error" });
+      toastManager.add({
+        title: "Missing vendor, user information.",
+        type: "error",
+      });
       return;
     }
     if (filesToUpload.length === 0) {
-      toastManager.add({ title: "Please select at least one file to upload.", type: "error" });
+      toastManager.add({
+        title: "Please select at least one file to upload.",
+        type: "error",
+      });
       return;
     }
 
@@ -224,7 +249,10 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
         createdBy: userId,
         sitePhotos: filesToUpload,
       });
-      toastManager.add({ title: "Additional files uploaded successfully.", type: "success" });
+      toastManager.add({
+        title: "Additional files uploaded successfully.",
+        type: "success",
+      });
       setFilesToUpload([]);
 
       queryClient.invalidateQueries({
@@ -246,11 +274,17 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
 
   const handleAddMoreSitePhotos = async () => {
     if (!vendorId || !userId) {
-      toastManager.add({ title: "Missing vendor, user information.", type: "error" });
+      toastManager.add({
+        title: "Missing vendor, user information.",
+        type: "error",
+      });
       return;
     }
     if (sitePhotosToUpload.length === 0) {
-      toastManager.add({ title: "Please select at least one site photo to upload.", type: "error" });
+      toastManager.add({
+        title: "Please select at least one site photo to upload.",
+        type: "error",
+      });
       return;
     }
 
@@ -261,7 +295,10 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
         createdBy: userId,
         sitePhotos: sitePhotosToUpload,
       });
-      toastManager.add({ title: "Additional site photos uploaded successfully.", type: "success" });
+      toastManager.add({
+        title: "Additional site photos uploaded successfully.",
+        type: "success",
+      });
       setSitePhotosToUpload([]);
 
       queryClient.invalidateQueries({
@@ -283,11 +320,17 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
 
   const handleAddMoreInstanceFiles = async (instanceId: number) => {
     if (!vendorId || !userId) {
-      toastManager.add({ title: "Missing vendor, user information.", type: "error" });
+      toastManager.add({
+        title: "Missing vendor, user information.",
+        type: "error",
+      });
       return;
     }
     if (filesToUpload.length === 0) {
-      toastManager.add({ title: "Please select at least one file to upload.", type: "error" });
+      toastManager.add({
+        title: "Please select at least one file to upload.",
+        type: "error",
+      });
       return;
     }
 
@@ -299,7 +342,10 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
         sitePhotos: filesToUpload,
         productStructureInstanceId: instanceId,
       });
-      toastManager.add({ title: "Additional files uploaded successfully.", type: "success" });
+      toastManager.add({
+        title: "Additional files uploaded successfully.",
+        type: "success",
+      });
       setFilesToUpload([]);
       queryClient.invalidateQueries({
         queryKey: ["finalMeasurementLead", vendorId, leadId],
@@ -320,11 +366,17 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
 
   const handleAddMoreInstanceSitePhotos = async (instanceId: number) => {
     if (!vendorId || !userId) {
-      toastManager.add({ title: "Missing vendor, user information.", type: "error" });
+      toastManager.add({
+        title: "Missing vendor, user information.",
+        type: "error",
+      });
       return;
     }
     if (sitePhotosToUpload.length === 0) {
-      toastManager.add({ title: "Please select at least one site photo to upload.", type: "error" });
+      toastManager.add({
+        title: "Please select at least one site photo to upload.",
+        type: "error",
+      });
       return;
     }
 
@@ -336,7 +388,10 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
         sitePhotos: sitePhotosToUpload,
         productStructureInstanceId: instanceId,
       });
-      toastManager.add({ title: "Additional site photos uploaded successfully.", type: "success" });
+      toastManager.add({
+        title: "Additional site photos uploaded successfully.",
+        type: "success",
+      });
       setSitePhotosToUpload([]);
       queryClient.invalidateQueries({
         queryKey: ["finalMeasurementLead", vendorId, leadId],
@@ -400,10 +455,10 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {structureInstances.map((instance: any) => {
             const instDocs = measurementDocs.filter(
-              (doc) => doc.product_structure_instance_id === instance.id
+              (doc) => doc.product_structure_instance_id === instance.id,
             );
             const instPhotos = sitePhotos.filter(
-              (photo) => photo.product_structure_instance_id === instance.id
+              (photo) => photo.product_structure_instance_id === instance.id,
             );
 
             return (
@@ -502,21 +557,23 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
             }
           }}
           title={
-            structureInstances.find((i: any) => i.id === activeInstanceId)?.title ||
-            "Manage Files"
+            structureInstances.find((i: any) => i.id === activeInstanceId)
+              ?.title || "Manage Files"
           }
           description="View and upload Final Measurement documents and site photos for this instance."
           size="xl"
         >
           {(() => {
-            const instance = structureInstances.find((i: any) => i.id === activeInstanceId);
+            const instance = structureInstances.find(
+              (i: any) => i.id === activeInstanceId,
+            );
             if (!instance) return null;
 
             const instDocs = measurementDocs.filter(
-              (doc) => doc.product_structure_instance_id === instance.id
+              (doc) => doc.product_structure_instance_id === instance.id,
             );
             const instPhotos = sitePhotos.filter(
-              (photo) => photo.product_structure_instance_id === instance.id
+              (photo) => photo.product_structure_instance_id === instance.id,
             );
 
             return (
@@ -527,39 +584,51 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
                     <h4 className="font-semibold text-sm flex items-center gap-2 text-card-foreground">
                       <Images size={16} /> Site Photos
                     </h4>
-                    <FileUploadField
-                      value={sitePhotosToUpload}
-                      onChange={(files) => {
-                        const validFiles = files.filter((f) =>
-                          imageMimeTypes.includes(f.type)
-                        );
-                        if (files.length > 10) {
-                          setSitePhotosToUpload(validFiles.slice(0, 10));
-                        } else {
-                          setSitePhotosToUpload(validFiles);
-                        }
-                      }}
-                      accept={imageAccept}
-                      multiple
-                      maxFiles={10}
-                    />
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSitePhotosToUpload([])}
-                        disabled={sitePhotosToUpload.length === 0 || addingSitePhotos}
-                      >
-                        Clear
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => handleAddMoreInstanceSitePhotos(instance.id)}
-                        disabled={sitePhotosToUpload.length === 0 || addingSitePhotos}
-                      >
-                        {addingSitePhotos ? "Uploading..." : "Upload"}
-                      </Button>
-                    </div>
+                    {canUploadCurrentSitePhotos && (
+                      <>
+                        <FileUploadField
+                          value={sitePhotosToUpload}
+                          onChange={(files) => {
+                            const validFiles = files.filter((f) =>
+                              imageMimeTypes.includes(f.type),
+                            );
+                            if (files.length > 10) {
+                              setSitePhotosToUpload(validFiles.slice(0, 10));
+                            } else {
+                              setSitePhotosToUpload(validFiles);
+                            }
+                          }}
+                          accept={imageAccept}
+                          multiple
+                          maxFiles={10}
+                        />
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSitePhotosToUpload([])}
+                            disabled={
+                              sitePhotosToUpload.length === 0 ||
+                              addingSitePhotos
+                            }
+                          >
+                            Clear
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              handleAddMoreInstanceSitePhotos(instance.id)
+                            }
+                            disabled={
+                              sitePhotosToUpload.length === 0 ||
+                              addingSitePhotos
+                            }
+                          >
+                            {addingSitePhotos ? "Uploading..." : "Upload"}
+                          </Button>
+                        </div>
+                      </>
+                    )}
 
                     <div className="pt-2 space-y-2">
                       <h5 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
@@ -569,9 +638,10 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
                         <div className="grid grid-cols-1 gap-3 w-full">
                           {instPhotos.map((photo, index) => {
                             const fileName = photo.doc_og_name || "";
-                            const isImage = /\.(jpg|jpeg|png|gif|webp|bmp|tif|tiff|heic|heif|avif|svg|jfif)$/i.test(
-                              fileName
-                            );
+                            const isImage =
+                              /\.(jpg|jpeg|png|gif|webp|bmp|tif|tiff|heic|heif|avif|svg|jfif)$/i.test(
+                                fileName,
+                              );
 
                             return isImage ? (
                               <ImageComponent
@@ -615,39 +685,45 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
                     <h4 className="font-semibold text-sm flex items-center gap-2 text-card-foreground">
                       <FileText size={16} /> Measurement Documents
                     </h4>
-                    <FileUploadField
-                      value={filesToUpload}
-                      onChange={(files) => {
-                        const validFiles = files.filter((f) =>
-                          documentMimeTypes.includes(f.type)
-                        );
-                        if (files.length > 10) {
-                          setFilesToUpload(validFiles.slice(0, 10));
-                        } else {
-                          setFilesToUpload(validFiles);
-                        }
-                      }}
-                      accept={documentAccept}
-                      multiple
-                      maxFiles={10}
-                    />
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setFilesToUpload([])}
-                        disabled={filesToUpload.length === 0 || addingFiles}
-                      >
-                        Clear
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => handleAddMoreInstanceFiles(instance.id)}
-                        disabled={filesToUpload.length === 0 || addingFiles}
-                      >
-                        {addingFiles ? "Uploading..." : "Upload"}
-                      </Button>
-                    </div>
+                    {canUploadMeasurementDocuments && (
+                      <>
+                        <FileUploadField
+                          value={filesToUpload}
+                          onChange={(files) => {
+                            const validFiles = files.filter((f) =>
+                              documentMimeTypes.includes(f.type),
+                            );
+                            if (files.length > 10) {
+                              setFilesToUpload(validFiles.slice(0, 10));
+                            } else {
+                              setFilesToUpload(validFiles);
+                            }
+                          }}
+                          accept={documentAccept}
+                          multiple
+                          maxFiles={10}
+                        />
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setFilesToUpload([])}
+                            disabled={filesToUpload.length === 0 || addingFiles}
+                          >
+                            Clear
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              handleAddMoreInstanceFiles(instance.id)
+                            }
+                            disabled={filesToUpload.length === 0 || addingFiles}
+                          >
+                            {addingFiles ? "Uploading..." : "Upload"}
+                          </Button>
+                        </div>
+                      </>
+                    )}
 
                     <div className="pt-2 space-y-2">
                       <h5 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
@@ -680,7 +756,10 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
                 </div>
 
                 <div className="flex justify-end pt-6 border-t border-border/60 mt-6">
-                  <Button type="button" onClick={() => setActiveInstanceId(null)}>
+                  <Button
+                    type="button"
+                    onClick={() => setActiveInstanceId(null)}
+                  >
                     Close
                   </Button>
                 </div>
@@ -732,121 +811,17 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
     >
       {/* -------- Current Site Photos -------- */}
       {canViewCurrentSitePhotos && (
-      <div
-        className="
+        <div
+          className="
       bg-white dark:bg-neutral-900
       rounded-2xl 
       border border-border 
       overflow-hidden
     "
-      >
-        <SectionHeader
-          title="Current Site Photos"
-          icon={<Images size={20} />}
-        />
-
-        <motion.div
-          variants={itemVariants}
-          className="p-6 bg-[#fff] dark:bg-[#0a0a0a]"
-        >
-          <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
-            {sitePhotos.length > 0 ? (
-              <>
-                {sitePhotos.map((photo, index) => {
-                  const fileName = photo.doc_og_name || "";
-                  const isImage = /\.(jpg|jpeg|png|gif|webp|bmp|tif|tiff|heic|heif|avif|svg|jfif)$/i.test(
-                    fileName
-                  );
-
-                  return isImage ? (
-                    <ImageComponent
-                      key={photo.id}
-                      doc={{
-                        id: photo.id,
-                        doc_og_name: photo.doc_og_name,
-                        signedUrl: photo.signedUrl,
-                        created_at: photo.created_at,
-                      }}
-                      index={index}
-                      canDelete={canDeleteCurrentSitePhotos}
-                      onDelete={(id) => setConfirmDelete(Number(id))}
-                    />
-                  ) : (
-                    <DocumentCard
-                      key={photo.id}
-                      doc={{
-                        id: photo.id,
-                        originalName: photo.doc_og_name,
-                        signedUrl: photo.signedUrl,
-                        created_at: photo.created_at,
-                      }}
-                      canDelete={canDeleteCurrentSitePhotos}
-                      onDelete={(id) => setConfirmDelete(Number(id))}
-                      alwaysShowText={true}
-                    />
-                  );
-                })}
-                {canUploadCurrentSitePhotos && (
-                  <button
-                    type="button"
-                    onClick={() => setAddSitePhotosOpen(true)}
-                    className="
-                      flex flex-col items-center justify-center
-                      border border-dashed border-border/70
-                      rounded-xl p-6 text-center
-                      bg-mutedBg/40 dark:bg-neutral-800/40
-                      hover:bg-muted/40 dark:hover:bg-neutral-800/60
-                      transition
-                    "
-                  >
-                    <Plus className="w-8 h-8 text-muted-foreground mb-2" />
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Add more site photos
-                    </p>
-                    <p className="text-xs text-subtle mt-1">
-                      Upload up to 10 files
-                    </p>
-                  </button>
-                )}
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-14">
-                <FileText size={42} className="text-muted-foreground mb-3" />
-                <p className="text-sm text-muted-foreground">
-                  No site photos uploaded yet.
-                </p>
-                {canUploadCurrentSitePhotos && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="mt-4"
-                    onClick={() => setAddSitePhotosOpen(true)}
-                  >
-                    Add more site photos
-                  </Button>
-                )}
-              </div>
-            )}
-          </div>
-        </motion.div>
-      </div>
-      )}
-
-      {/* -------- Measurement Documents -------- */}
-      {canViewMeasurementDocuments &&
-        (measurementDocs.length > 0 || canUploadMeasurementDocuments) && (
-        <div
-          className="
-        bg-white dark:bg-neutral-900
-        rounded-2xl 
-        border border-border 
-        overflow-hidden
-      "
         >
           <SectionHeader
-            title="Measurement Documents"
-            icon={<FileText size={20} />}
+            title="Current Site Photos"
+            icon={<Images size={20} />}
           />
 
           <motion.div
@@ -854,25 +829,130 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
             className="p-6 bg-[#fff] dark:bg-[#0a0a0a]"
           >
             <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
-              {measurementDocs.map((doc) => (
-                <DocumentCard
-                  key={doc.id}
-                  doc={{
-                    id: doc.id,
-                    originalName: doc.doc_og_name,
-                    created_at: doc.created_at,
-                    signedUrl: doc.signedUrl,
-                  }}
-                  canDelete={canDeleteMeasurementDocuments}
-                  onDelete={(id) => setConfirmDelete(id)}
-                  alwaysShowText={true}
-                />
-              ))}
-              {canUploadMeasurementDocuments && (
-                <button
-                  type="button"
-                  onClick={() => setAddFilesOpen(true)}
-                  className="
+              {sitePhotos.length > 0 ? (
+                <>
+                  {sitePhotos.map((photo, index) => {
+                    const fileName = photo.doc_og_name || "";
+                    const isImage =
+                      /\.(jpg|jpeg|png|gif|webp|bmp|tif|tiff|heic|heif|avif|svg|jfif)$/i.test(
+                        fileName,
+                      );
+
+                    return isImage ? (
+                      <ImageComponent
+                        key={photo.id}
+                        doc={{
+                          id: photo.id,
+                          doc_og_name: photo.doc_og_name,
+                          signedUrl: photo.signedUrl,
+                          created_at: photo.created_at,
+                        }}
+                        index={index}
+                        canDelete={canDeleteCurrentSitePhotos}
+                        onDelete={(id) => setConfirmDelete(Number(id))}
+                      />
+                    ) : (
+                      <DocumentCard
+                        key={photo.id}
+                        doc={{
+                          id: photo.id,
+                          originalName: photo.doc_og_name,
+                          signedUrl: photo.signedUrl,
+                          created_at: photo.created_at,
+                        }}
+                        canDelete={canDeleteCurrentSitePhotos}
+                        onDelete={(id) => setConfirmDelete(Number(id))}
+                        alwaysShowText={true}
+                      />
+                    );
+                  })}
+                  {canUploadCurrentSitePhotos && (
+                    <button
+                      type="button"
+                      onClick={() => setAddSitePhotosOpen(true)}
+                      className="
+                      flex flex-col items-center justify-center
+                      border border-dashed border-border/70
+                      rounded-xl p-6 text-center
+                      bg-mutedBg/40 dark:bg-neutral-800/40
+                      hover:bg-muted/40 dark:hover:bg-neutral-800/60
+                      transition
+                    "
+                    >
+                      <Plus className="w-8 h-8 text-muted-foreground mb-2" />
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Add more site photos
+                      </p>
+                      <p className="text-xs text-subtle mt-1">
+                        Upload up to 10 files
+                      </p>
+                    </button>
+                  )}
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-14">
+                  <FileText size={42} className="text-muted-foreground mb-3" />
+                  <p className="text-sm text-muted-foreground">
+                    No site photos uploaded yet.
+                  </p>
+                  {canUploadCurrentSitePhotos && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-4"
+                      onClick={() => setAddSitePhotosOpen(true)}
+                    >
+                      Add more site photos
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* -------- Measurement Documents -------- */}
+      {canViewMeasurementDocuments &&
+        (measurementDocs.length > 0 || canUploadMeasurementDocuments) && (
+          <div
+            className="
+        bg-white dark:bg-neutral-900
+        rounded-2xl 
+        border border-border 
+        overflow-hidden
+      "
+          >
+            <SectionHeader
+              title="Measurement Documents"
+              icon={<FileText size={20} />}
+            />
+
+            <motion.div
+              variants={itemVariants}
+              className="p-6 bg-[#fff] dark:bg-[#0a0a0a]"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
+                {measurementDocs.map((doc) => (
+                  <DocumentCard
+                    key={doc.id}
+                    doc={{
+                      id: doc.id,
+                      originalName: doc.doc_og_name,
+                      created_at: doc.created_at,
+                      signedUrl: doc.signedUrl,
+                    }}
+                    canDelete={canDeleteMeasurementDocuments}
+                    onDelete={(id) => setConfirmDelete(id)}
+                    alwaysShowText={true}
+                  />
+                ))}
+                {canUploadMeasurementDocuments && (
+                  <button
+                    type="button"
+                    onClick={() => setAddFilesOpen(true)}
+                    className="
                     flex flex-col items-center justify-center
                     border border-dashed border-border/70
                     rounded-xl p-6 text-center
@@ -880,28 +960,32 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
                     hover:bg-muted/40 dark:hover:bg-neutral-800/60
                     transition
                   "
-                >
-                  <Plus className="w-8 h-8 text-muted-foreground mb-2" />
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Add more files
-                  </p>
-                  <p className="text-xs text-subtle mt-1">
-                    Upload up to 10 files
-                  </p>
-                </button>
-              )}
-              {measurementDocs.length === 0 && !canUploadMeasurementDocuments && (
-                <div className="col-span-full flex flex-col items-center justify-center py-14">
-                  <FileText size={42} className="text-muted-foreground mb-3" />
-                  <p className="text-sm text-muted-foreground">
-                    No measurement documents uploaded yet.
-                  </p>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        </div>
-      )}
+                  >
+                    <Plus className="w-8 h-8 text-muted-foreground mb-2" />
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Add more files
+                    </p>
+                    <p className="text-xs text-subtle mt-1">
+                      Upload up to 10 files
+                    </p>
+                  </button>
+                )}
+                {measurementDocs.length === 0 &&
+                  !canUploadMeasurementDocuments && (
+                    <div className="col-span-full flex flex-col items-center justify-center py-14">
+                      <FileText
+                        size={42}
+                        className="text-muted-foreground mb-3"
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        No measurement documents uploaded yet.
+                      </p>
+                    </div>
+                  )}
+              </div>
+            </motion.div>
+          </div>
+        )}
 
       {/* -------- Discussion Note -------- */}
       <div
@@ -997,7 +1081,11 @@ export default function FinalMeasurementLeadDetails({ leadId }: Props) {
             >
               Cancel
             </Button>
-            <Button type="button" onClick={handleAddMoreFiles} disabled={addingFiles}>
+            <Button
+              type="button"
+              onClick={handleAddMoreFiles}
+              disabled={addingFiles}
+            >
               {addingFiles ? "Uploading..." : "Upload"}
             </Button>
           </div>

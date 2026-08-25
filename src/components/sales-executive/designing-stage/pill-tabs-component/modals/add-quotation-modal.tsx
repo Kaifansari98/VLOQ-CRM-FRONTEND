@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 
 import { useDetails } from "../details-context";
 import {
@@ -34,9 +34,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DesignsDocument } from "@/types/designing-stage-types";
+import { fetchLeadB2BRequirementMappingsApi } from "@/api/typesMasterApi";
+import { uploadRequirementDocumentApi } from "@/api/leadRequirementDocuments";
 
 // Schema
 const quotationSchema = z.object({
+  b2b_requirement_type_id: z.string().optional(),
   upload_pdf: z
     .array(z.instanceof(File))
     .min(1, "At least one quotation file is required"),
@@ -81,6 +84,10 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
   const vendorCustomUserTypeMode = useAppSelector(
     (s) => s.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
   );
+
+  const [b2bReqTypes, setB2BReqTypes] = useState<{ id: number; typeName: string }[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+
   const { data: designDocsResponse, isLoading: isLoadingDesignDocs } =
     useDesignsDoc(vendorId, leadId);
   const { data: quotationDocsResponse, isLoading: isLoadingQuotationDocs } =
@@ -110,12 +117,31 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
 
   const form = useForm<QuotationFormValues>({
     resolver: zodResolver(quotationSchema),
-    defaultValues: { upload_pdf: [], design_document_id: "" },
+    defaultValues: { b2b_requirement_type_id: "", upload_pdf: [], design_document_id: "" },
   });
+
+  useEffect(() => {
+    if (open && vendorId && leadId) {
+      fetchLeadB2BRequirementMappingsApi(leadId, vendorId)
+        .then((res) => {
+          if (res?.success && Array.isArray(res?.data)) {
+            const mapped = res.data.map((item: any) => ({
+              id: item.b2b_requirement_type_id,
+              typeName: item.b2bRequirementType?.type || `Requirement #${item.b2b_requirement_type_id}`,
+            }));
+            setB2BReqTypes(mapped);
+            if (mapped.length > 0) {
+              form.setValue("b2b_requirement_type_id", String(mapped[0].id));
+            }
+          }
+        })
+        .catch((err) => console.error("Error fetching B2B requirement mappings:", err));
+    }
+  }, [open, vendorId, leadId, form]);
 
   React.useEffect(() => {
     if (!open) {
-      form.reset({ upload_pdf: [], design_document_id: "" });
+      form.reset({ b2b_requirement_type_id: "", upload_pdf: [], design_document_id: "" });
     }
   }, [open, form]);
 
@@ -129,17 +155,51 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
     }
   }, [availableDesignDocs, form]);
 
-  const onSubmit = (data: QuotationFormValues) => {
+  const onSubmit = async (data: QuotationFormValues) => {
     if (!data.upload_pdf?.length) {
       toastManager.add({ title: "Please upload at least one quotation file.", type: "error" });
       return;
     }
 
-    if (vendorCustomUserTypeMode && !data.design_document_id) {
-      form.setError("design_document_id", {
-        type: "manual",
-        message: "Please select a design file",
-      });
+    const b2bReqTypeId = data.b2b_requirement_type_id
+      ? Number(data.b2b_requirement_type_id)
+      : b2bReqTypes[0]?.id;
+
+    if (vendorCustomUserTypeMode || b2bReqTypeId) {
+      try {
+        setSubmitting(true);
+        for (const file of data.upload_pdf) {
+          await uploadRequirementDocumentApi({
+            file,
+            lead_id: leadId,
+            vendor_id: vendorId,
+            b2b_requirement_type_id: b2bReqTypeId,
+            stage: "Quotation",
+            created_by: userId,
+          });
+        }
+        toastManager.add({
+          title: `${data.upload_pdf.length} quotation${
+            data.upload_pdf.length > 1 ? "s" : ""
+          } uploaded successfully!`,
+          type: "success",
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["getQuotationDoc", vendorId, leadId],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["designingStageCounts", vendorId, leadId],
+        });
+        form.reset({ b2b_requirement_type_id: "", upload_pdf: [], design_document_id: "" });
+        onOpenChange(false);
+      } catch (err: any) {
+        toastManager.add({
+          title: err?.response?.data?.message || err?.message || "Failed to upload quotation",
+          type: "error",
+        });
+      } finally {
+        setSubmitting(false);
+      }
       return;
     }
 
@@ -162,11 +222,12 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
             type: "success",
           });
           queryClient.invalidateQueries({
+            queryKey: ["getQuotationDoc", vendorId, leadId],
+          });
+          queryClient.invalidateQueries({
             queryKey: ["designingStageCounts", vendorId, leadId],
           });
           form.reset({ upload_pdf: [], design_document_id: "" });
-          onOpenChange(false);
-          form.reset({ upload_pdf: [] });
           onOpenChange(false);
         },
         onError: (err: any) => {
@@ -190,7 +251,7 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
       open={open}
       onOpenChange={(nextOpen) => {
         if (!nextOpen) {
-          form.reset({ upload_pdf: [], design_document_id: "" });
+          form.reset({ b2b_requirement_type_id: "", upload_pdf: [], design_document_id: "" });
         }
         onOpenChange(nextOpen);
       }}
@@ -200,6 +261,37 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-5">
+          {/* Requirement Type Dropdown */}
+          {b2bReqTypes.length > 0 && (
+            <FormField
+              control={form.control}
+              name="b2b_requirement_type_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Requirement Type</FormLabel>
+                  <Select
+                    value={field.value || (b2bReqTypes[0]?.id ? String(b2bReqTypes[0].id) : "")}
+                    onValueChange={field.onChange}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select Requirement Type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {b2bReqTypes.map((req) => (
+                        <SelectItem key={req.id} value={String(req.id)}>
+                          {req.typeName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
           <FormField
             control={form.control}
             name="upload_pdf"
@@ -210,7 +302,6 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
                   <DocumentsUploader
                     value={field.value}
                     onChange={field.onChange}
-                  
                   />
                 </FormControl>
                 <FormMessage />
@@ -218,7 +309,7 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
             )}
           />
 
-          {vendorCustomUserTypeMode && (
+          {vendorCustomUserTypeMode && availableDesignDocs.length > 0 && (
             <FormField
               control={form.control}
               name="design_document_id"
@@ -267,15 +358,9 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
           <div className="flex justify-end">
             <Button
               type="submit"
-              disabled={
-                isPending ||
-                (vendorCustomUserTypeMode &&
-                  (isLoadingDesignDocs ||
-                    isLoadingQuotationDocs ||
-                    availableDesignDocs.length === 0))
-              }
+              disabled={isPending || submitting}
             >
-              {isPending ? "Uploading..." : "Submit Quotation"}
+              {isPending || submitting ? "Uploading..." : "Submit Quotation"}
             </Button>
           </div>
         </form>

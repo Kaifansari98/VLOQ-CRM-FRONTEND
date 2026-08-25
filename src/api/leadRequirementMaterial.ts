@@ -41,13 +41,21 @@ export interface CreateLeadRequirementMaterialPayload {
   product_type_id: number;
   product_id?: number;
   product_ids?: number[];
-  quantity: number;
+  quantity?: number;
   unit_id?: number | null;
   unit_name?: string | null;
   supplied_by?: MaterialSupplyType;
   client_percentage?: number;
   frankvin_percentage?: number;
   created_by: number;
+  materials?: Array<{
+    quantity: number;
+    unit_id?: number | null;
+    unit_name?: string | null;
+    supplied_by: MaterialSupplyType;
+    client_percentage?: number;
+    frankvin_percentage?: number;
+  }>;
 }
 
 export const fetchLeadRequirementMaterialsApi = async (

@@ -268,6 +268,23 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type?.toLowerCase(),
+  );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
+  const isAuditor = userType === "auditor";
+
+  const canUpload =
+    !isAuditor &&
+    (userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.designing_stage.specifications.upload",
+        )
+      : true);
+
+  const effectiveReadOnly = readOnly || !canUpload;
   const { data: carcassTypesData } = useCarcassTypes();
   const { data: carcasMaterialsData } = useCarcasMaterials();
   const { data: shutterTypesData } = useShutterTypes();
@@ -706,8 +723,8 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
 
   const isRowLocked = React.useCallback(
     (section: string, row: { localId: string }) =>
-      showReviewColumns && !isRowInAmendEditMode(section, row),
-    [isRowInAmendEditMode, showReviewColumns],
+      effectiveReadOnly || (readOnly || (showReviewColumns && !isRowInAmendEditMode(section, row))),
+    [isRowInAmendEditMode, readOnly, showReviewColumns, effectiveReadOnly],
   );
 
   const isReviewPayloadComplete = React.useCallback(
@@ -906,7 +923,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                   ? "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-900"
                   : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/10 dark:text-emerald-400",
               )}
-              disabled={!isPersistable}
+              disabled={!isPersistable || readOnly}
             >
               <Check className="h-4 w-4" />
             </button>
@@ -921,7 +938,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                   ? "bg-amber-100 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:ring-amber-900"
                   : "bg-amber-50 text-amber-600 dark:bg-amber-950/10 dark:text-amber-400",
               )}
-              disabled={!isPersistable}
+              disabled={!isPersistable || readOnly}
             >
               {isAmendEditing ? (
                 <span className="text-xs font-semibold">Save changes</span>
@@ -940,7 +957,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                   ? "bg-red-100 text-red-700 ring-1 ring-red-200 dark:bg-red-950/30 dark:text-red-300 dark:ring-red-900"
                   : "bg-red-50 text-red-600 dark:bg-red-950/10 dark:text-red-400",
               )}
-              disabled={!isPersistable}
+              disabled={!isPersistable || readOnly}
             >
               <Trash2 className="h-4 w-4" />
             </button>
@@ -2485,7 +2502,8 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                         size="sm"
                         disabled={
                           !allSpecMappingsReviewed ||
-                          markSpecificationCompleted.isPending
+                          markSpecificationCompleted.isPending ||
+                          readOnly
                         }
                         onClick={handleMarkCompleted}
                       >
@@ -2551,7 +2569,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                 <h3 className="text-base font-semibold">Carcass</h3>
               </div>
             )}
-            <div className={`rounded-xl border border-border overflow-hidden mt-3 ${readOnly ? "select-none opacity-90" : ""}`}>
+            <div className={`rounded-xl border border-border overflow-hidden mt-3 ${effectiveReadOnly ? "pointer-events-none select-none opacity-80" : ""}`}>
               {/* <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
                 <h3 className="text-sm font-semibold">Carcass Specifications</h3>
                 <Button
@@ -2747,7 +2765,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                 <h3 className="text-base font-semibold">Shutter</h3>
               </div>
             )}
-            <div className={`rounded-xl border border-border overflow-hidden mt-3 ${readOnly ? "select-none opacity-90" : ""}`}>
+            <div className={`rounded-xl border border-border overflow-hidden mt-3 ${effectiveReadOnly ? "pointer-events-none select-none opacity-80" : ""}`}>
               {/* <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
                 <h3 className="text-sm font-semibold">Shutter Specifications</h3>
                 <Button
@@ -2944,7 +2962,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                 <h3 className="text-base font-semibold">Hardware</h3>
               </div>
             )}
-            <div className={`rounded-xl border border-border overflow-hidden mt-3 ${readOnly ? "select-none opacity-90" : ""}`}>
+            <div className={`rounded-xl border border-border overflow-hidden mt-3 ${effectiveReadOnly ? "pointer-events-none select-none opacity-80" : ""}`}>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-zinc-700">
@@ -3181,7 +3199,7 @@ const ViewSpecsModal: React.FC<ViewSpecsModalProps> = ({
                 <h3 className="text-base font-semibold">Others</h3>
               </div>
             )}
-            <div className={readOnly ? "select-none opacity-90" : ""}>
+            <div className={effectiveReadOnly ? "pointer-events-none select-none opacity-80" : ""}>
               <div className="flex items-center justify-between gap-3 mb-2 mt-3">
               <h3 className="text-sm font-semibold">Lights</h3>
               <Select

@@ -73,9 +73,9 @@ export default function ClientReceivedFilesTab() {
   }, [franchisesForB2b, lead?.franchise_id]);
 
   const { data: documentsData, refetch: refetchDocuments, isLoading: isDocsLoading } = useQuery({
-    queryKey: ["lead-requirement-documents", leadId, vendorId],
-    queryFn: () => fetchRequirementDocumentsApi(leadId, vendorId!),
-    enabled: !!leadId && !!vendorId,
+    queryKey: ["lead-requirement-documents", leadId, vendorId, isB2b],
+    queryFn: () => fetchRequirementDocumentsApi(leadId, vendorId!, undefined, undefined, isB2b ? "Requirement" : undefined),
+    enabled: !!leadId && !!vendorId && isB2b !== undefined,
   });
   const documents: RequirementDocumentItem[] = useMemo(() => documentsData?.data || [], [documentsData]);
 
@@ -168,8 +168,10 @@ export default function ClientReceivedFilesTab() {
           file,
           lead_id: leadId,
           vendor_id: vendorId!,
-          product_type_id: Number(selectedProductTypeId),
+          product_type_id: isB2b ? undefined : Number(selectedProductTypeId),
+          b2b_requirement_type_id: isB2b ? Number(selectedProductTypeId) : undefined,
           doc_type_id: Number(selectedDocTypeId),
+          stage: isB2b ? "Designing" : undefined,
           created_by: userId!,
         })
       );
@@ -209,9 +211,16 @@ export default function ClientReceivedFilesTab() {
     return <Loader size={200} message="Loading Client Received Files..." />;
   }
 
-  const typesListForSelector = (b2bReqTypesData?.data || productTypes?.data || []).filter((t: any) =>
-    allTypeIds.includes(t.id)
-  );
+  const typesListForSelector = useMemo(() => {
+    const list = (isB2b ? b2bReqTypesData?.data : productTypes?.data) || [];
+    const sourceList = list.length > 0 ? list : (b2bReqTypesData?.data || productTypes?.data || []);
+
+    if (selectedProductTypeIds.length > 0) {
+      return sourceList.filter((t: any) => selectedProductTypeIds.includes(t.id));
+    }
+
+    return sourceList.filter((t: any) => allTypeIds.includes(t.id));
+  }, [isB2b, b2bReqTypesData, productTypes, selectedProductTypeIds, allTypeIds]);
 
   return (
     <div className="space-y-6">
@@ -219,10 +228,23 @@ export default function ClientReceivedFilesTab() {
       {allTypeIds.length === 0 ? (
         <div className="flex flex-col items-center justify-center p-12 border border-dashed rounded-2xl bg-muted/5 border-border/70 text-center">
           <Package className="h-12 w-12 text-muted-foreground/60 mb-3" />
-          <h3 className="text-sm font-semibold text-foreground">No requirement types configured</h3>
-          <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-            Please select requirement types or process briefs in Lead Details to enable client received files.
+          <h3 className="text-sm font-semibold text-foreground">No client documents uploaded yet</h3>
+          <p className="text-xs text-muted-foreground mt-1 max-w-sm mb-4">
+            Upload client received documents by selecting a requirement type and document type.
           </p>
+          <Button
+            onClick={() => {
+              setIsUploadModalOpen(true);
+              setUploadFiles([]);
+              setSelectedProductTypeId("");
+              setSelectedDocTypeId("");
+            }}
+            size="sm"
+            className="text-xs gap-1.5"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Upload Document</span>
+          </Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6">

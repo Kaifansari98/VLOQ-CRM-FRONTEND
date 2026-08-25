@@ -120,6 +120,20 @@ function normalizeRole(value?: string | null) {
     .replace(/[_\s]+/g, "-");
 }
 
+function stripTrailingRoleLabel(value?: string | null, role?: string) {
+  const text = String(value ?? "").trim();
+  const normalizedRole = String(role ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, "[-\\s]*");
+
+  if (!text || !normalizedRole) return text;
+
+  return text
+    .replace(new RegExp(`\\s*[-–—]\\s*${normalizedRole}$`, "i"), "")
+    .trim();
+}
+
 function getProductionStatusFromInstance(instance: any) {
   if (instance?.is_production_completed) return "Completed";
   if (instance?.is_post_production) return "Post Production";
@@ -458,6 +472,9 @@ export function UniversalTable({
   );
   const reduxModuledForB2b = useAppSelector(
     (s) => s.auth.moduled_for_b2b ?? s.auth.user?.moduled_for_b2b ?? false,
+  );
+  const handlesLargeScaleProjectsFromAuth = useAppSelector(
+    (s) => s.auth.user?.vendor?.handlesLargeScaleProjects === true,
   );
   const { data: franchisesForB2b = [] } = useFranchisesByVendorId(
     vendorId,
@@ -1047,11 +1064,25 @@ export function UniversalTable({
             String(mapping?.status ?? "active").toLowerCase() === "active",
         )
       : undefined;
+    const siteSupervisorMapping = Array.isArray(lead.userMappings)
+      ? lead.userMappings.find(
+          (mapping: any) =>
+            String(mapping?.type ?? "").toLowerCase() === "site-supervisor" &&
+            String(mapping?.status ?? "active").toLowerCase() === "active",
+        )
+      : undefined;
 
     const designerName =
       designerMapping?.user?.user_name ??
       designerMapping?.userMaster?.user_name ??
       "";
+    const siteSupervisorName =
+      stripTrailingRoleLabel(
+        siteSupervisorMapping?.user?.user_name ??
+          siteSupervisorMapping?.userMaster?.user_name ??
+          "",
+        "site-supervisor",
+      );
 
     const requirementTypes = Array.from(
       new Set(
@@ -1077,6 +1108,14 @@ export function UniversalTable({
       srNo: index + 1,
       lead_code: `${lead.lead_code ?? ""}${options?.leadCodeSuffix ?? ""}`,
       name: toTitleCase(`${lead.firstname ?? ""} ${lead.lastname ?? ""}`),
+      clientName: toTitleCase(
+        lead.firstname ||
+        lead.clientMaster?.company_name ||
+        lead.clientMaster?.name ||
+        lead.client?.company_name ||
+        ""
+      ),
+      projectName: toTitleCase(lead.lastname ?? ""),
       email: lead.email ?? "",
       contact: `${lead.country_code ?? ""}${lead.contact_no ?? ""}`,
       siteAddress: lead.site_address ?? "",
@@ -1091,6 +1130,7 @@ export function UniversalTable({
                 .filter(Boolean)
                 .join(", ")
             : ""),
+      siteSupervisor: siteSupervisorName,
       furnitueStructures: isB2b
         ? (Array.isArray(lead.leadProcessBriefs)
             ? lead.leadProcessBriefs
@@ -1214,6 +1254,11 @@ export function UniversalTable({
       const expanded: LeadColumn[] = [];
 
       filteredActiveData.forEach((lead) => {
+        const handlesLargeScaleProjects =
+          handlesLargeScaleProjectsFromAuth ||
+          (lead as any)?.createdBy?.vendor?.handlesLargeScaleProjects === true ||
+          (lead as any)?.assignedTo?.vendor?.handlesLargeScaleProjects === true;
+
         const type8StatusLoggedAt = STATUS_LOG_SORTED_STAGE_TYPES.has(
           normalizedType,
         )
@@ -1222,6 +1267,33 @@ export function UniversalTable({
         const instances = Array.isArray(lead?.productStructureInstances)
           ? lead.productStructureInstances
           : [];
+
+        if (handlesLargeScaleProjects) {
+          const structureTypes = Array.from(
+            new Set(
+              instances
+                .map(
+                  (inst: any) =>
+                    inst?.title ||
+                    inst?.productType?.type ||
+                    inst?.product_type?.name ||
+                    inst?.productStructure?.type
+                )
+                .filter(Boolean)
+            )
+          ).join(", ");
+
+          expanded.push(
+            mapUniversalRow(lead, expanded.length, {
+              rowKey: String(lead.id),
+              leadCodeSuffix: "",
+              furnitureStructureOverride: structureTypes || undefined,
+              type8StatusLoggedAt,
+            })
+          );
+          return;
+        }
+
         let instanceRows = instances;
         if (isType8) {
           instanceRows = instances.filter(
@@ -1401,6 +1473,7 @@ export function UniversalTable({
         showProductionStatusColumn,
         showPriorityColumn,
         showServicingColumn,
+        showSiteSupervisorColumn: !handlesLargeScaleProjectsFromAuth,
         showDesignerColumn: isCustomUserTypeOnlyVendor,
         isB2b,
       }),
@@ -1409,6 +1482,7 @@ export function UniversalTable({
       showProductionStatusColumn,
       showPriorityColumn,
       showServicingColumn,
+      handlesLargeScaleProjectsFromAuth,
       isCustomUserTypeOnlyVendor,
       isB2b,
     ],

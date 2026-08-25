@@ -45,6 +45,7 @@ import {
 } from "@/hooks/useApprovalRequests";
 import { useSelfAssignTaskTypes } from "@/hooks/useSelfAssignTaskTypes";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { canUserShowApprovalRequest, canUserShowFollowUp } from "@/lib/approval-request-privilege";
 import FastProductionRequestModal from "@/components/sales-executive/Lead/fast-production-request-modal";
 import FastProductionTermsModal from "@/components/sales-executive/Lead/fast-production-terms-modal";
 
@@ -202,9 +203,19 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     normalizedUserType === "custom"
       ? canAssignInitialSiteMeasurementForCustomUser
       : true;
-  const canShowFollowUpOption =
-    normalizedUserType === "custom" ? canAssignFollowUpForCustomUser : true;
-  const canShowApprovalRequestOption = isApprovalTaskEnabled !== false;
+  const canShowFollowUpOption = canUserShowFollowUp({
+    isCustomUser: normalizedUserType === "custom",
+    customPrivilegeCodes,
+    lead,
+    stageProp: onlyFollowUp ? "open_leads" : undefined,
+  });
+  const canShowApprovalRequestOption = canUserShowApprovalRequest({
+    isCustomUser: normalizedUserType === "custom",
+    customPrivilegeCodes,
+    isApprovalTaskEnabled,
+    lead,
+    stageProp: onlyFollowUp ? "open_leads" : undefined,
+  });
   const allowedFastProductionRoles = ["super-admin", "admin", "sales-executive"];
   const canShowFastProductionOption = isFastProductionEnabled && allowedFastProductionRoles.includes(normalizedUserType);
   const shouldShowInitialSiteMeasurementOption = !onlyFollowUp;

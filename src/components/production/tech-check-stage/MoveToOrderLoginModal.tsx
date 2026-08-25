@@ -177,7 +177,7 @@ export default function MoveToOrderLoginModal({
       id: user.id,
       label: user.user_name,
     })) ?? [];
-  const hasSingleBackendUser = mappedUsers.length === 1;
+
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -187,16 +187,7 @@ export default function MoveToOrderLoginModal({
     },
   });
 
-  // Auto-select the only available backend user, but keep the form open
-  // because the required completion date is now collected here.
-  useEffect(() => {
-    if (open && backendUsers && backendUsers.length === 1) {
-      const single = backendUsers[0];
-      form.setValue("assign_to_user_id", single.id);
-      setSelectedUserId(single.id);
-      setSelectedUserName(single.user_name);
-    }
-  }, [open, backendUsers, form]);
+
 
   useEffect(() => {
     if (!open) {
@@ -306,11 +297,6 @@ export default function MoveToOrderLoginModal({
                         <FormLabel className="text-sm">
                           {assignUserLabel}
                         </FormLabel>
-                        {hasSingleBackendUser ? (
-                          <p className="text-sm font-medium text-foreground">
-                            {mappedUsers[0]?.label}
-                          </p>
-                        ) : (
                           <FormControl>
                             <AssignToPicker
                               data={mappedUsers}
@@ -320,7 +306,6 @@ export default function MoveToOrderLoginModal({
                               }
                             />
                           </FormControl>
-                        )}
                         <FormMessage />
                       </FormItem>
                     )}

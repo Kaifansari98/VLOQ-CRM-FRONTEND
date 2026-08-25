@@ -1,14 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAppSelector } from "@/redux/store";
 import {
-  // ClientDocDetailsResponse,
   ClientDocumentationResponse,
+  ClientDocMoveEligibilityData,
 } from "@/types/client-documentation";
 import {
   getClientDocumentationDetails,
   getClientDocumentationLeads,
   moveLeadToClientApproval,
   uploadMoreClientDocumentation,
+  getClientDocMoveEligibility,
   UploadMoreDocPayload,
 } from "@/api/client-documentation";
 import { toastManager } from "@/components/ui/toast";
@@ -79,10 +80,25 @@ export const useClientDocumentationDetails = (
   leadId: number,
   userId?: number,
   instanceId?: number,
+  productTypeId?: number,
 ) => {
   return useQuery<ClientDocDetailsResponse>({
-    queryKey: ["clientDocumentationDetails", vendorId, leadId, userId, instanceId],
-    queryFn: () => getClientDocumentationDetails(vendorId, leadId, userId, instanceId),
+    queryKey: [
+      "clientDocumentationDetails",
+      vendorId,
+      leadId,
+      userId,
+      instanceId,
+      productTypeId,
+    ],
+    queryFn: () =>
+      getClientDocumentationDetails(
+        vendorId,
+        leadId,
+        userId,
+        instanceId,
+        productTypeId,
+      ),
     enabled: !!vendorId && !!leadId && userId !== undefined && userId !== null,
     staleTime: 5 * 60 * 1000,
   });
@@ -94,7 +110,10 @@ export const useUploadMoreClientDocumentation = () => {
     mutationFn: (payload: UploadMoreDocPayload) =>
       uploadMoreClientDocumentation(payload),
     onSuccess: async (data, variables) => {
-      toastManager.add({ title: "Documents uploaded successfully!", type: "success" });
+      toastManager.add({
+        title: "Documents uploaded successfully!",
+        type: "success",
+      });
       await queryClient.refetchQueries({
         queryKey: [
           "clientDocumentationDetails",
@@ -123,7 +142,10 @@ export const useMoveLeadToClientApproval = () => {
       updatedBy: number;
     }) => moveLeadToClientApproval(payload),
     onSuccess: async (_data, variables) => {
-      toastManager.add({ title: "Lead moved to Client Approval", type: "success" });
+      toastManager.add({
+        title: "Lead moved to Client Approval",
+        type: "success",
+      });
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: ["clientDocumentationDetails"],
@@ -132,7 +154,7 @@ export const useMoveLeadToClientApproval = () => {
           queryKey: ["clientDocumentationLeads"],
           exact: false,
         }),
-         queryClient.invalidateQueries({
+        queryClient.invalidateQueries({
           queryKey: ["getSelectionData"],
           exact: false,
         }),
@@ -149,5 +171,17 @@ export const useMoveLeadToClientApproval = () => {
         "Failed to move lead";
       toastManager.add({ title: message, type: "error" });
     },
+  });
+};
+
+export const useClientDocMoveEligibility = (
+  vendorId?: number,
+  leadId?: number,
+) => {
+  return useQuery<ClientDocMoveEligibilityData>({
+    queryKey: ["clientDocMoveEligibility", vendorId, leadId],
+    queryFn: () => getClientDocMoveEligibility(vendorId!, leadId!),
+    enabled: !!vendorId && !!leadId,
+    staleTime: 1000 * 15,
   });
 };

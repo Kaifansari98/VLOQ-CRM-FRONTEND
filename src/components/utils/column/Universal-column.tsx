@@ -33,6 +33,7 @@ interface UniversalColumnOptions {
   showPriorityColumn?: boolean;
   showServicingColumn?: boolean;
   showDesignerColumn?: boolean;
+  showSiteSupervisorColumn?: boolean;
   isB2b?: boolean;
 }
 
@@ -54,6 +55,7 @@ export function getUniversalTableColumns(
     showPriorityColumn = false,
     showServicingColumn = false,
     showDesignerColumn = false,
+    showSiteSupervisorColumn = false,
     isB2b = false,
   } =
     options;
@@ -93,33 +95,92 @@ export function getUniversalTableColumns(
       enableColumnFilter: false,
     },
 
-    // 2) Name
-    {
-      accessorKey: "name",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Name" />
-      ),
-      enableSorting: true,
-      enableHiding: true,
-      enableColumnFilter: true,
-      cell: ({ row }) => {
-        const name = toTitleCase((row.getValue("name") as string) ?? "");
-        const maxLength = 25;
+    // 2) Name / Client Name & Project Name (for B2B)
+    ...(isB2b
+      ? ([
+          {
+            accessorKey: "clientName",
+            header: ({ column }) => (
+              <DataTableColumnHeader column={column} title="Client Name" />
+            ),
+            enableSorting: true,
+            enableHiding: true,
+            enableColumnFilter: true,
+            cell: ({ row }) => {
+              const clientName = toTitleCase(
+                (row.getValue("clientName") as string) || (row.original.name as string) || ""
+              );
+              const maxLength = 25;
 
-        if (name.length <= maxLength) return <span>{name}</span>;
+              if (clientName.length <= maxLength) return <span>{clientName}</span>;
 
-        return (
-          <CustomeTooltip
-            value={name}
-            truncateValue={name.slice(0, maxLength) + "..."}
-          />
-        );
-      },
+              return (
+                <CustomeTooltip
+                  value={clientName}
+                  truncateValue={clientName.slice(0, maxLength) + "..."}
+                />
+              );
+            },
+            meta: {
+              label: "Client Name",
+            },
+          },
+          {
+            accessorKey: "projectName",
+            header: ({ column }) => (
+              <DataTableColumnHeader column={column} title="Project Name" />
+            ),
+            enableSorting: true,
+            enableHiding: true,
+            enableColumnFilter: true,
+            cell: ({ row }) => {
+              const projectName = toTitleCase(
+                (row.getValue("projectName") as string) || ""
+              );
+              const maxLength = 25;
 
-      meta: {
-        label: "Name",
-      },
-    },
+              if (!projectName) return <span className="text-muted-foreground">—</span>;
+              if (projectName.length <= maxLength) return <span>{projectName}</span>;
+
+              return (
+                <CustomeTooltip
+                  value={projectName}
+                  truncateValue={projectName.slice(0, maxLength) + "..."}
+                />
+              );
+            },
+            meta: {
+              label: "Project Name",
+            },
+          },
+        ] satisfies ColumnDef<LeadColumn>[])
+      : ([
+          {
+            accessorKey: "name",
+            header: ({ column }) => (
+              <DataTableColumnHeader column={column} title="Name" />
+            ),
+            enableSorting: true,
+            enableHiding: true,
+            enableColumnFilter: true,
+            cell: ({ row }) => {
+              const name = toTitleCase((row.getValue("name") as string) ?? "");
+              const maxLength = 25;
+
+              if (name.length <= maxLength) return <span>{name}</span>;
+
+              return (
+                <CustomeTooltip
+                  value={name}
+                  truncateValue={name.slice(0, maxLength) + "..."}
+                />
+              );
+            },
+            meta: {
+              label: "Name",
+            },
+          },
+        ] satisfies ColumnDef<LeadColumn>[])),
 
     ...(showServicingColumn
       ? ([
@@ -352,10 +413,11 @@ export function getUniversalTableColumns(
         };
 
         // Group all structures by requirement type for complete hover tooltip context
+        const defaultGroupKey = isB2b ? "Process Briefs" : "Furniture Structures";
         const groupedMap: Record<string, string[]> = {};
         structures.forEach((itemStr) => {
           const parsed = parseItem(itemStr);
-          const key = parsed.reqType || "Process Briefs";
+          const key = parsed.reqType || defaultGroupKey;
           if (!groupedMap[key]) groupedMap[key] = [];
           if (!groupedMap[key].includes(parsed.briefName)) {
             groupedMap[key].push(parsed.briefName);
@@ -426,7 +488,7 @@ export function getUniversalTableColumns(
                         <p className="text-xs font-bold text-amber-400 border-b border-zinc-700 pb-1 flex items-center justify-between">
                           <span>{reqGroup}</span>
                           <span className="text-[10px] text-zinc-400 font-normal">
-                            ({briefs.length} Brief{briefs.length === 1 ? "" : "s"})
+                            ({briefs.length} {isB2b ? "Brief" : "Structure"}{briefs.length === 1 ? "" : "s"})
                           </span>
                         </p>
                         {briefs.map((bName, bIdx) => (
@@ -558,6 +620,29 @@ export function getUniversalTableColumns(
       enableHiding: true,
       enableColumnFilter: true,
     },
+
+    ...(showSiteSupervisorColumn
+      ? ([
+          {
+            accessorKey: "siteSupervisor",
+            header: ({ column }) => (
+              <DataTableColumnHeader column={column} title="Site Supervisor" />
+            ),
+            meta: {
+              label: "Site Supervisor",
+            },
+            filterFn: tableSingleValueMultiSelectFilter,
+            enableSorting: false,
+            enableHiding: true,
+            enableColumnFilter: true,
+            cell: ({ row }) => {
+              const siteSupervisor =
+                (row.getValue("siteSupervisor") as string) || "";
+              return siteSupervisor.trim() ? siteSupervisor : "—";
+            },
+          },
+        ] satisfies ColumnDef<LeadColumn>[])
+      : []),
 
     ...(showDesignerColumn
       ? ([

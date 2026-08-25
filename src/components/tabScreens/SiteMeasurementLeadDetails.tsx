@@ -3,7 +3,15 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Edit2, FileText, Plus, RefreshCcw, Receipt, Ban, Image } from "lucide-react";
+import {
+  Edit2,
+  FileText,
+  Plus,
+  RefreshCcw,
+  Receipt,
+  Ban,
+  Image,
+} from "lucide-react";
 import {
   useBookingDoneIsmDetails,
   useReplaceInitialSiteMeasurementPdf,
@@ -81,16 +89,18 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type?.user_type
+    (state) => state.auth.user?.user_type?.user_type,
   );
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
   const isCustomVendor = useAppSelector(
-    (state) => state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true
+    (state) =>
+      state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
   );
   const isCustomDocNomenclatureEnabled = useAppSelector(
-    (state) => state.auth.user?.vendor?.is_custom_doc_nomenclature_enabled === true
+    (state) =>
+      state.auth.user?.vendor?.is_custom_doc_nomenclature_enabled === true,
   );
 
   // 🧩 --- Hooks ---
@@ -98,10 +108,10 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
   const { data: structureInstancesData } = useLeadProductStructureInstances(
     leadId,
     vendorId,
-    isCustomVendor
+    isCustomVendor,
   );
 
-  console.log("product structure instance data: ", structureInstancesData)
+  console.log("product structure instance data: ", structureInstancesData);
 
   const structureInstances: LeadProductStructureInstance[] = React.useMemo(
     () =>
@@ -117,10 +127,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
   const { mutateAsync: replacePdf, isPending: replacingPdf } =
     useReplaceInitialSiteMeasurementPdf();
   const queryClient = useQueryClient();
-  const {
-    shouldDisableBlockedActions,
-    blockedTooltip,
-  } = useLeadAccessControl({
+  const { shouldDisableBlockedActions, blockedTooltip } = useLeadAccessControl({
     leadId,
     userType,
   });
@@ -139,8 +146,11 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
   const [uploadProgress, setUploadProgress] = useState(false);
   const [uploadDocsProgress, setUploadDocsProgress] = useState(false);
   const [uploadPhotosProgress, setUploadPhotosProgress] = useState(false);
-  const [viewModalInstance, setViewModalInstance] = useState<LeadProductStructureInstance | null>(null);
-  const [viewModalType, setViewModalType] = useState<'photos' | 'documents' | null>(null);
+  const [viewModalInstance, setViewModalInstance] =
+    useState<LeadProductStructureInstance | null>(null);
+  const [viewModalType, setViewModalType] = useState<
+    "photos" | "documents" | null
+  >(null);
 
   const uploadSitePhotosMutation = useUploadAdditionalSitePhotosMutation();
   const uploadDocumentsMutation = useUploadMeasurementDocumentsMutation();
@@ -175,17 +185,27 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes("leads.ism_leads.ism_details.edit")
       : userType === "admin" ||
-      userType === "super-admin" ||
-      (userType === "sales-executive" &&
-        leadStatus === "initial-site-measurement");
+        userType === "super-admin" ||
+        (userType === "sales-executive" &&
+          leadStatus === "initial-site-measurement");
 
   const canDelete =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes("leads.ism_leads.ism_details.delete")
       : userType === "admin" ||
-      userType === "super-admin" ||
-      (userType === "sales-executive" &&
-        leadStatus === "initial-site-measurement");
+        userType === "super-admin" ||
+        (userType === "sales-executive" &&
+          leadStatus === "initial-site-measurement");
+
+  const canAddSitePhotos =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes("leads.ism_leads.ism_details.add_site_photos")
+      : canEditOrUpload;
+
+  const canUploadMeasurementDoc =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes("leads.ism_leads.ism_details.upload_measurement")
+      : canEditOrUpload;
 
   // 🧩 --- Handlers ---
   const handleConfirmDelete = async () => {
@@ -210,19 +230,30 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
   const handleReplaceFilesChange = (files: File[]) => {
     if (files.length > 1) {
       setReplaceFiles([files[0]]);
-      toastManager.add({ title: "Only one file can be uploaded.", type: "error" });
+      toastManager.add({
+        title: "Only one file can be uploaded.",
+        type: "error",
+      });
       return;
     }
     setReplaceFiles(files);
   };
 
-  const handleInstanceUpload = async (instance: any, type: 'photos' | 'documents', instanceUploads: any, setInstanceUploads: any, partialInstanceMutation: any, setUploadingInstanceId: any, setMultiInstanceErrors: any) => {
+  const handleInstanceUpload = async (
+    instance: any,
+    type: "photos" | "documents",
+    instanceUploads: any,
+    setInstanceUploads: any,
+    partialInstanceMutation: any,
+    setUploadingInstanceId: any,
+    setMultiInstanceErrors: any,
+  ) => {
     const uploads = instanceUploads[instance.id] ?? {
       current_site_photos: [],
       upload_pdf: [],
     };
 
-    if (type === 'photos' && uploads.current_site_photos.length === 0) {
+    if (type === "photos" && uploads.current_site_photos.length === 0) {
       toastManager.add({
         title: `Please select Site Photos to upload for ${instance.title}.`,
         type: "error",
@@ -230,7 +261,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
       return;
     }
 
-    if (type === 'documents' && uploads.upload_pdf.length === 0) {
+    if (type === "documents" && uploads.upload_pdf.length === 0) {
       toastManager.add({
         title: `Please select Initial Site Measurement Document for ${instance.title}.`,
         type: "error",
@@ -241,12 +272,15 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
 
     const formData = new FormData();
     formData.append("lead_id", leadId?.toString() || "");
-    formData.append("account_id", data?.account?.id?.toString() || leadId?.toString() || "");
+    formData.append(
+      "account_id",
+      data?.account?.id?.toString() || leadId?.toString() || "",
+    );
     formData.append("vendor_id", vendorId?.toString() || "");
     formData.append("created_by", userId?.toString() || "");
     formData.append("user_id", userId?.toString() || "");
 
-    if (type === 'photos') {
+    if (type === "photos") {
       uploads.current_site_photos.forEach((file: File) => {
         formData.append("current_site_photos", file);
       });
@@ -256,7 +290,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
       );
     }
 
-    if (type === 'documents') {
+    if (type === "documents") {
       uploads.upload_pdf.forEach((file: File) => {
         formData.append("upload_pdf", file);
       });
@@ -275,7 +309,9 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
         ...prev,
         [instance.id]: {
           ...prev[instance.id],
-          ...(type === 'photos' ? { current_site_photos: [] } : { upload_pdf: [] }),
+          ...(type === "photos"
+            ? { current_site_photos: [] }
+            : { upload_pdf: [] }),
         },
       }));
     } finally {
@@ -286,13 +322,19 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
   const handleReplacePdf = async () => {
     if (!replaceDocId || !vendorId || !userId) return;
     if (replaceFiles.length === 0) {
-      toastManager.add({ title: "Please select a file to upload.", type: "error" });
+      toastManager.add({
+        title: "Please select a file to upload.",
+        type: "error",
+      });
       return;
     }
 
     const pdfFile = replaceFiles[0];
     if (!documentMimeTypes.includes(pdfFile.type)) {
-      toastManager.add({ title: "Only PDF or image files are allowed.", type: "error" });
+      toastManager.add({
+        title: "Only PDF or image files are allowed.",
+        type: "error",
+      });
       return;
     }
 
@@ -303,14 +345,20 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
         userId,
         pdfFile,
       });
-      toastManager.add({ title: "Document updated successfully.", type: "success" });
+      toastManager.add({
+        title: "Document updated successfully.",
+        type: "success",
+      });
       setReplaceFiles([]);
       setReplaceDocId(null);
       queryClient.invalidateQueries({
         queryKey: ["siteMeasurementLeadDetails", leadId],
       });
     } catch (error: any) {
-      toastManager.add({ title: error?.response?.data?.message || "Failed to replace document.", type: "error" });
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to replace document.",
+        type: "error",
+      });
     }
   };
 
@@ -428,12 +476,23 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
               {structureInstances.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {structureInstances.map((instance) => {
-                    const instanceDocs = pdfDocs.filter((doc) => doc.product_structure_instance_id === instance.id);
-                    const instancePhotos = currentSitePhotos.filter((doc) => doc.product_structure_instance_id === instance.id);
+                    const instanceDocs = pdfDocs.filter(
+                      (doc) =>
+                        doc.product_structure_instance_id === instance.id,
+                    );
+                    const instancePhotos = currentSitePhotos.filter(
+                      (doc) =>
+                        doc.product_structure_instance_id === instance.id,
+                    );
                     return (
-                      <div key={instance.id} className="border border-border rounded-xl p-4 flex flex-col justify-between bg-card hover:bg-muted/40 transition-colors">
+                      <div
+                        key={instance.id}
+                        className="border border-border rounded-xl p-4 flex flex-col justify-between bg-card hover:bg-muted/40 transition-colors"
+                      >
                         <div>
-                          <h4 className="font-medium text-card-foreground">{instance.title}</h4>
+                          <h4 className="font-medium text-card-foreground">
+                            {instance.title}
+                          </h4>
                           {instance.description && (
                             <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
                               {instance.description}
@@ -444,13 +503,25 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                           <div className="flex flex-col gap-1 text-[11px] border border-border rounded-lg p-2.5 bg-muted/10">
                             <div className="flex justify-between items-center text-muted-foreground">
                               <span>Measurement:</span>
-                              <span className={instanceDocs.length > 0 ? "font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded" : "font-medium"}>
+                              <span
+                                className={
+                                  instanceDocs.length > 0
+                                    ? "font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded"
+                                    : "font-medium"
+                                }
+                              >
                                 {instanceDocs.length} uploaded
                               </span>
                             </div>
                             <div className="flex justify-between items-center text-muted-foreground">
                               <span>Site Photos:</span>
-                              <span className={instancePhotos.length > 0 ? "font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded" : "font-medium"}>
+                              <span
+                                className={
+                                  instancePhotos.length > 0
+                                    ? "font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded"
+                                    : "font-medium"
+                                }
+                              >
                                 {instancePhotos.length} uploaded
                               </span>
                             </div>
@@ -474,7 +545,10 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
               ) : (
                 !canEditOrUpload && (
                   <div className="flex flex-col items-center justify-center py-10">
-                    <FileText size={42} className="text-muted-foreground mb-3" />
+                    <FileText
+                      size={42}
+                      className="text-muted-foreground mb-3"
+                    />
                     <p className="text-sm text-muted-foreground">
                       No instances available.
                     </p>
@@ -503,11 +577,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                       <CustomeTooltip
                         value={blockedTooltip}
                         truncateValue={
-                          <Button
-                            size="sm"
-                            disabled
-                            className="gap-2"
-                          >
+                          <Button size="sm" disabled className="gap-2">
                             <Edit2 size={16} />
                             <span className="text-sm">Edit</span>
                           </Button>
@@ -542,11 +612,14 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                   </p>
                   <div className="bg-muted border border-border rounded-lg px-3 py-2 text-sm">
                     {payment.payment_date
-                      ? new Date(payment.payment_date).toLocaleDateString("en-IN", {
-                        day: "2-digit",
-                        month: "long",
-                        year: "numeric",
-                      })
+                      ? new Date(payment.payment_date).toLocaleDateString(
+                          "en-IN",
+                          {
+                            day: "2-digit",
+                            month: "long",
+                            year: "numeric",
+                          },
+                        )
                       : "N/A"}
                   </div>
                 </div>
@@ -555,9 +628,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                   <p className="text-sm font-medium text-muted-foreground">
                     Payment Description
                   </p>
-                  <div
-                    className="bg-muted border border-border rounded-lg px-3 py-2 text-sm max-h-24 overflow-y-auto"
-                  >
+                  <div className="bg-muted border border-border rounded-lg px-3 py-2 text-sm max-h-24 overflow-y-auto">
                     {payment.payment_text || "N/A"}
                   </div>
                 </div>
@@ -567,7 +638,11 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
         </>
       ) : (
         <>
-          <div className={payment ? "grid grid-cols-1 md:grid-cols-2 gap-6" : "w-full"}>
+          <div
+            className={
+              payment ? "grid grid-cols-1 md:grid-cols-2 gap-6" : "w-full"
+            }
+          >
             {/* Measurement Document Section */}
             <motion.section
               variants={itemVariants}
@@ -603,7 +678,10 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-10 my-auto">
-                    <FileText size={42} className="text-muted-foreground mb-3" />
+                    <FileText
+                      size={42}
+                      className="text-muted-foreground mb-3"
+                    />
                     <p className="text-sm text-muted-foreground">
                       No measurement document found.
                     </p>
@@ -632,11 +710,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                         <CustomeTooltip
                           value={blockedTooltip}
                           truncateValue={
-                            <Button
-                              size="sm"
-                              disabled
-                              className="gap-2"
-                            >
+                            <Button size="sm" disabled className="gap-2">
                               <Edit2 size={16} />
                               <span className="text-sm">Edit</span>
                             </Button>
@@ -671,11 +745,14 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                     </p>
                     <div className="bg-muted border border-border rounded-lg px-3 py-2 text-sm">
                       {payment.payment_date
-                        ? new Date(payment.payment_date).toLocaleDateString("en-IN", {
-                          day: "2-digit",
-                          month: "long",
-                          year: "numeric",
-                        })
+                        ? new Date(payment.payment_date).toLocaleDateString(
+                            "en-IN",
+                            {
+                              day: "2-digit",
+                              month: "long",
+                              year: "numeric",
+                            },
+                          )
                         : "N/A"}
                     </div>
                   </div>
@@ -684,9 +761,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                     <p className="text-sm font-medium text-muted-foreground">
                       Payment Description
                     </p>
-                    <div
-                      className="bg-muted border border-border rounded-lg px-3 py-2 text-sm max-h-24 overflow-y-auto"
-                    >
+                    <div className="bg-muted border border-border rounded-lg px-3 py-2 text-sm max-h-24 overflow-y-auto">
                       {payment.payment_text || "N/A"}
                     </div>
                   </div>
@@ -736,10 +811,11 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                     <CustomeTooltip
                       value={blockedTooltip}
                       truncateValue={
-                        <div
-                          className="flex flex-col items-center justify-center h-28 border-2 border-dashed border-border rounded-xl opacity-60 cursor-not-allowed"
-                        >
-                          <Plus size={26} className="text-muted-foreground mb-1" />
+                        <div className="flex flex-col items-center justify-center h-28 border-2 border-dashed border-border rounded-xl opacity-60 cursor-not-allowed">
+                          <Plus
+                            size={26}
+                            className="text-muted-foreground mb-1"
+                          />
                           <span className="text-xs font-medium text-muted-foreground">
                             Add Photos
                           </span>
@@ -839,9 +915,7 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                       </span>
                     </div>
                     <div className="space-y-1">
-                      <span className="text-muted-foreground">
-                        Description
-                      </span>
+                      <span className="text-muted-foreground">Description</span>
                       <div className="bg-background border border-border rounded-lg px-3 py-2 text-sm">
                         {bookingDoneIsmPaymentInfo.payment_text || "N/A"}
                       </div>
@@ -886,17 +960,19 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                   </h2>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
-                  {bookingDoneIsmCurrentSitePhotos.map((doc: any, index: any) => {
-                    return renderFileCard(
-                      {
-                        id: doc.id,
-                        originalName: doc.originalName,
-                        createdAt: doc.createdAt,
-                        signedUrl: doc.signedUrl,
-                      },
-                      index,
-                    );
-                  })}
+                  {bookingDoneIsmCurrentSitePhotos.map(
+                    (doc: any, index: any) => {
+                      return renderFileCard(
+                        {
+                          id: doc.id,
+                          originalName: doc.originalName,
+                          createdAt: doc.createdAt,
+                          signedUrl: doc.signedUrl,
+                        },
+                        index,
+                      );
+                    },
+                  )}
                 </div>
               </div>
             )}
@@ -1023,7 +1099,11 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
             >
               Cancel
             </Button>
-            <Button type="button" onClick={handleReplacePdf} disabled={replacingPdf}>
+            <Button
+              type="button"
+              onClick={handleReplacePdf}
+              disabled={replacingPdf}
+            >
               {replacingPdf ? "Updating..." : "Update"}
             </Button>
           </div>
@@ -1040,24 +1120,21 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
             setUploadModalPhotos([]);
           }
         }}
-        title={`Manage Files - ${viewModalInstance?.title || ''}`}
+        title={`Manage Files - ${viewModalInstance?.title || ""}`}
         description={`Upload documents & photos or view/delete saved files for this instance.`}
         size="xl"
       >
         <div className="px-5 py-4 max-h-[85vh] overflow-y-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
             {/* Left Column: Photos */}
             <div className="space-y-2">
-
               <h4 className="font-semibold text-base flex items-center gap-2">
                 <Image size={18} />
                 Site Photos
               </h4>
 
-
               {/* Photos Upload Area */}
-              {canEditOrUpload && (
+              {canAddSitePhotos && (
                 <div className="space-y-3">
                   <FileUploadField
                     value={uploadModalPhotos}
@@ -1079,7 +1156,11 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                       type="button"
                       size="sm"
                       onClick={async () => {
-                        if (uploadModalPhotos.length === 0 || !viewModalInstance) return;
+                        if (
+                          uploadModalPhotos.length === 0 ||
+                          !viewModalInstance
+                        )
+                          return;
                         setUploadPhotosProgress(true);
                         const formData = new FormData();
                         formData.append("lead_id", leadId.toString());
@@ -1087,21 +1168,38 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                         formData.append("vendor_id", vendorId!.toString());
                         formData.append("updated_by", userId!.toString());
 
-                        uploadModalPhotos.forEach((file) => formData.append("current_site_photos", file));
-                        formData.append("site_photo_instance_ids", JSON.stringify(uploadModalPhotos.map(() => viewModalInstance.id)));
+                        uploadModalPhotos.forEach((file) =>
+                          formData.append("current_site_photos", file),
+                        );
+                        formData.append(
+                          "site_photo_instance_ids",
+                          JSON.stringify(
+                            uploadModalPhotos.map(() => viewModalInstance.id),
+                          ),
+                        );
 
                         try {
                           await uploadSitePhotosMutation.mutateAsync(formData);
-                          toastManager.add({ title: "Photos uploaded successfully!", type: "success" });
+                          toastManager.add({
+                            title: "Photos uploaded successfully!",
+                            type: "success",
+                          });
                           setUploadModalPhotos([]);
-                          queryClient.invalidateQueries({ queryKey: ["siteMeasurementLeadDetails", leadId] });
+                          queryClient.invalidateQueries({
+                            queryKey: ["siteMeasurementLeadDetails", leadId],
+                          });
                         } catch (e: any) {
-                          toastManager.add({ title: e?.message || "Upload failed", type: "error" });
+                          toastManager.add({
+                            title: e?.message || "Upload failed",
+                            type: "error",
+                          });
                         } finally {
                           setUploadPhotosProgress(false);
                         }
                       }}
-                      disabled={uploadPhotosProgress || uploadModalPhotos.length === 0}
+                      disabled={
+                        uploadPhotosProgress || uploadModalPhotos.length === 0
+                      }
                     >
                       {uploadPhotosProgress ? "Uploading..." : "Upload"}
                     </Button>
@@ -1111,10 +1209,16 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
 
               {/* Saved Photos List */}
               <div className="space-y-3">
-                <h5 className="text-xs font-semibold text-muted-foreground">Saved Photos</h5>
+                <h5 className="text-xs font-semibold text-muted-foreground">
+                  Saved Photos
+                </h5>
                 {(() => {
                   if (!viewModalInstance) return null;
-                  const instancePhotos = currentSitePhotos.filter((doc) => doc.product_structure_instance_id === viewModalInstance.id);
+                  const instancePhotos = currentSitePhotos.filter(
+                    (doc) =>
+                      doc.product_structure_instance_id ===
+                      viewModalInstance.id,
+                  );
                   return instancePhotos.length > 0 ? (
                     <div className="space-y-2">
                       {instancePhotos.map((doc, index) => (
@@ -1127,13 +1231,15 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                               signedUrl: doc.signedUrl,
                             },
                             index,
-                            shouldDisableBlockedActions
+                            shouldDisableBlockedActions,
                           )}
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-muted-foreground italic">No photos uploaded for this instance.</p>
+                    <p className="text-xs text-muted-foreground italic">
+                      No photos uploaded for this instance.
+                    </p>
                   );
                 })()}
               </div>
@@ -1141,15 +1247,13 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
 
             {/* Right Column: Documents */}
             <div className="space-y-2">
-
               <h4 className="font-semibold text-base flex items-center gap-2">
                 <FileText size={18} />
                 Measurement Documents
               </h4>
 
-
               {/* Docs Upload Area */}
-              {canEditOrUpload && (
+              {canUploadMeasurementDoc && (
                 <div className="space-y-3">
                   <FileUploadField
                     value={uploadModalDocs}
@@ -1171,7 +1275,8 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                       type="button"
                       size="sm"
                       onClick={async () => {
-                        if (uploadModalDocs.length === 0 || !viewModalInstance) return;
+                        if (uploadModalDocs.length === 0 || !viewModalInstance)
+                          return;
                         setUploadDocsProgress(true);
                         const formData = new FormData();
                         formData.append("lead_id", leadId.toString());
@@ -1179,21 +1284,38 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                         formData.append("vendor_id", vendorId!.toString());
                         formData.append("updated_by", userId!.toString());
 
-                        uploadModalDocs.forEach((file) => formData.append("upload_pdf", file));
-                        formData.append("upload_pdf_instance_ids", JSON.stringify(uploadModalDocs.map(() => viewModalInstance.id)));
+                        uploadModalDocs.forEach((file) =>
+                          formData.append("upload_pdf", file),
+                        );
+                        formData.append(
+                          "upload_pdf_instance_ids",
+                          JSON.stringify(
+                            uploadModalDocs.map(() => viewModalInstance.id),
+                          ),
+                        );
 
                         try {
                           await uploadDocumentsMutation.mutateAsync(formData);
-                          toastManager.add({ title: "Documents uploaded successfully!", type: "success" });
+                          toastManager.add({
+                            title: "Documents uploaded successfully!",
+                            type: "success",
+                          });
                           setUploadModalDocs([]);
-                          queryClient.invalidateQueries({ queryKey: ["siteMeasurementLeadDetails", leadId] });
+                          queryClient.invalidateQueries({
+                            queryKey: ["siteMeasurementLeadDetails", leadId],
+                          });
                         } catch (e: any) {
-                          toastManager.add({ title: e?.message || "Upload failed", type: "error" });
+                          toastManager.add({
+                            title: e?.message || "Upload failed",
+                            type: "error",
+                          });
                         } finally {
                           setUploadDocsProgress(false);
                         }
                       }}
-                      disabled={uploadDocsProgress || uploadModalDocs.length === 0}
+                      disabled={
+                        uploadDocsProgress || uploadModalDocs.length === 0
+                      }
                     >
                       {uploadDocsProgress ? "Uploading..." : "Upload"}
                     </Button>
@@ -1203,10 +1325,16 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
 
               {/* Saved Docs List */}
               <div className="space-y-3">
-                <h5 className="text-xs font-semibold text-muted-foreground">Saved Documents</h5>
+                <h5 className="text-xs font-semibold text-muted-foreground">
+                  Saved Documents
+                </h5>
                 {(() => {
                   if (!viewModalInstance) return null;
-                  const instanceDocs = pdfDocs.filter((doc) => doc.product_structure_instance_id === viewModalInstance.id);
+                  const instanceDocs = pdfDocs.filter(
+                    (doc) =>
+                      doc.product_structure_instance_id ===
+                      viewModalInstance.id,
+                  );
                   return instanceDocs.length > 0 ? (
                     <div className="space-y-2">
                       {instanceDocs.map((doc, index) => (
@@ -1219,18 +1347,19 @@ export default function SiteMeasurementLeadDetails({ leadId }: Props) {
                               signedUrl: doc.signedUrl,
                             },
                             index,
-                            shouldDisableBlockedActions
+                            shouldDisableBlockedActions,
                           )}
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-muted-foreground italic">No documents uploaded for this instance.</p>
+                    <p className="text-xs text-muted-foreground italic">
+                      No documents uploaded for this instance.
+                    </p>
                   );
                 })()}
               </div>
             </div>
-
           </div>
         </div>
       </BaseModal>

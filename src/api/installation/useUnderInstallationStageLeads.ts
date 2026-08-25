@@ -775,12 +775,14 @@ export const updateMiscApproval = async ({
   miscId,
   misc_approved,
   exp_of_rejection,
+  approval_remark,
   updated_by,
 }: {
   vendorId: number;
   miscId: number;
   misc_approved: boolean;
   exp_of_rejection?: string;
+  approval_remark?: string;
   updated_by: number;
 }) => {
   const response = await apiClient.put(
@@ -788,6 +790,7 @@ export const updateMiscApproval = async ({
     {
       misc_approved,
       exp_of_rejection,
+      approval_remark,
       updated_by,
     },
   );

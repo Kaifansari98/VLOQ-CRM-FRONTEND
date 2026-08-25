@@ -15,6 +15,7 @@ export const getClientDocumentationDetails = async (
   leadId: number,
   userId?: number,
   instanceId?: number,
+  productTypeId?: number,
 ) => {
   const { data } = await apiClient.get(
     `/leads/client-documentation/vendorId/${vendorId}/leadId/${leadId}`,
@@ -22,6 +23,7 @@ export const getClientDocumentationDetails = async (
       params: {
         userId,
         instanceId,
+        productTypeId,
       },
     },
   );
@@ -85,4 +87,14 @@ export const moveLeadToClientApproval = async (payload: {
     },
   );
   return data;
+};
+
+export const getClientDocMoveEligibility = async (
+  vendorId: number,
+  leadId: number,
+) => {
+  const { data } = await apiClient.get(
+    `/leads/client-documentation/move-eligibility/vendorId/${vendorId}/leadId/${leadId}`,
+  );
+  return data.data;
 };

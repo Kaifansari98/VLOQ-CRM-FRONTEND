@@ -29,6 +29,9 @@ import BaseModal from "@/components/utils/baseModal";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { toastManager } from "@/components/ui/toast";
 import { canUploadClientApproval } from "@/components/utils/privileges";
+import ClientApprovalItemGroups from "./ClientApprovalItemGroups";
+import ClientApprovalModal from "./client-approval-modal";
+import ClientApprovalViewModal from "./ClientApprovalViewModal";
 
 interface Props {
   leadId: number;
@@ -39,7 +42,7 @@ export default function ClientApprovalDetails({ leadId }: Props) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type?.user_type
+    (state) => state.auth.user?.user_type?.user_type,
   );
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
@@ -48,9 +51,17 @@ export default function ClientApprovalDetails({ leadId }: Props) {
   // 🧩 Hooks
   const { data, isLoading, isError, refetch } = useClientApprovalDetails(
     vendorId,
-    leadId
+    leadId,
   );
   const { data: leadDetails } = useLeadById(leadId, vendorId, userId);
+
+  const handlesLargeScaleProjectsFromAuth = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const handlesLargeScaleProjects =
+    handlesLargeScaleProjectsFromAuth ||
+    leadDetails?.data?.lead?.createdBy?.vendor?.handlesLargeScaleProjects === true ||
+    leadDetails?.data?.lead?.assignedTo?.vendor?.handlesLargeScaleProjects === true;
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
@@ -63,6 +74,10 @@ export default function ClientApprovalDetails({ leadId }: Props) {
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
   const [openUploadMore, setOpenUploadMore] = useState(false);
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+  const [selectedInstanceForApproval, setSelectedInstanceForApproval] =
+    useState<any | null>(null);
+  const [viewInstanceForApproval, setViewInstanceForApproval] =
+    useState<any | null>(null);
 
   //🧩 Permissions
   const canDelete =
@@ -147,23 +162,35 @@ export default function ClientApprovalDetails({ leadId }: Props) {
         documents: uploadFiles,
       }),
     onSuccess: () => {
-      toastManager.add({ title: "Screenshots uploaded successfully", type: "success" });
+      toastManager.add({
+        title: "Screenshots uploaded successfully",
+        type: "success",
+      });
       setUploadFiles([]);
       setOpenUploadMore(false);
       refetch();
     },
     onError: (error: any) => {
-      toastManager.add({ title: error?.response?.data?.message || "Failed to upload screenshots", type: "error" });
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to upload screenshots",
+        type: "error",
+      });
     },
   });
 
   const handleUploadMore = () => {
     if (!vendorId || !userId || !accountId) {
-      toastManager.add({ title: "Missing required identifiers", type: "error" });
+      toastManager.add({
+        title: "Missing required identifiers",
+        type: "error",
+      });
       return;
     }
     if (uploadFiles.length === 0) {
-      toastManager.add({ title: "Please select at least one file", type: "error" });
+      toastManager.add({
+        title: "Please select at least one file",
+        type: "error",
+      });
       return;
     }
     uploadMoreMutation.mutate();
@@ -204,8 +231,18 @@ export default function ClientApprovalDetails({ leadId }: Props) {
       transition={{ duration: 0.4, ease: "easeOut" }}
       className="rounded-lg w-full h-full py-4 space-y-6 bg-[#fff] dark:bg-[#0a0a0a]"
     >
-      {/* -------- Payment Details Section -------- */}
-      {paymentInfo && (
+      {/* -------- Item Groups Section (Large Scale Projects) -------- */}
+      {handlesLargeScaleProjects && (
+        <ClientApprovalItemGroups
+          leadId={leadId}
+          accountId={accountId}
+          onUploadClick={(instance) => setSelectedInstanceForApproval(instance)}
+          onViewClick={(instance) => setViewInstanceForApproval(instance)}
+        />
+      )}
+
+      {/* -------- Payment Details Section (Non-Large Scale Projects) -------- */}
+      {paymentInfo && !handlesLargeScaleProjects && (
         <div
           className="
     bg-white dark:bg-neutral-900 
@@ -259,7 +296,7 @@ export default function ClientApprovalDetails({ leadId }: Props) {
                   Payment Proof
                 </p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <ImageComponent
                     doc={{
                       id: paymentFile.id,
@@ -300,8 +337,8 @@ export default function ClientApprovalDetails({ leadId }: Props) {
         </div>
       )}
 
-      {/* -------- Approval Screenshots Section -------- */}
-      {canViewClientApprovalScreenshots && (
+      {/* -------- Approval Screenshots Section (Non-Large Scale Projects) -------- */}
+      {canViewClientApprovalScreenshots && !handlesLargeScaleProjects && (
         <div
           className="
     bg-[#fff] dark:bg-[#0a0a0a]
@@ -345,14 +382,16 @@ export default function ClientApprovalDetails({ leadId }: Props) {
           {/* Body */}
           <div className="p-6">
             {screenshots && screenshots.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {screenshots.map((img: any, index: any) => (
                   <ImageComponent
                     key={img.id}
                     doc={{
                       id: img.id,
                       doc_og_name:
-                        img.doc_original_name || img.doc_og_name || "Screenshot",
+                        img.doc_original_name ||
+                        img.doc_og_name ||
+                        "Screenshot",
                       signedUrl: img.signedUrl || img.doc_sys_name,
                       created_at: img.created_at,
                     }}
@@ -453,6 +492,40 @@ export default function ClientApprovalDetails({ leadId }: Props) {
           </div>
         </BaseModal>
       ) : null}
+
+      {/* -------- Client Approval Modal for Selected Item Group -------- */}
+      {selectedInstanceForApproval && (
+        <ClientApprovalModal
+          open={!!selectedInstanceForApproval}
+          onOpenChange={(open) => {
+            if (!open) setSelectedInstanceForApproval(null);
+          }}
+          data={{
+            id: leadId,
+            accountId: accountId,
+            productTypeId:
+              selectedInstanceForApproval.product_type_id ||
+              selectedInstanceForApproval.product_type?.id,
+            instanceName:
+              selectedInstanceForApproval.product_type?.name ||
+              selectedInstanceForApproval.name ||
+              selectedInstanceForApproval.code,
+          }}
+        />
+      )}
+
+      {/* -------- Client Approval View Modal for Uploaded Item Group -------- */}
+      {viewInstanceForApproval && (
+        <ClientApprovalViewModal
+          open={!!viewInstanceForApproval}
+          onOpenChange={(open) => {
+            if (!open) setViewInstanceForApproval(null);
+          }}
+          leadId={leadId}
+          accountId={accountId}
+          instance={viewInstanceForApproval}
+        />
+      )}
     </motion.div>
   );
 }

@@ -141,7 +141,7 @@ export default function PaymentInformation({
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div className={cn("border-b border-border/70", !shouldShowProductTabs && "flex-1")}>
+        <div className={cn(!shouldShowProductTabs && "flex-1")}>
           <div className="flex space-x-6 overflow-x-auto pb-px scrollbar-none">
             {(shouldShowProductTabs
               ? [
@@ -222,6 +222,8 @@ export default function PaymentInformation({
           onOpenChange={setBillingModalOpen}
           leadId={finalLeadId}
           vendorId={vendorId}
+          productTypeTabs={productTypeTabs}
+          activeProductTypeId={activeProductTypeId}
         />
       )}
     </div>

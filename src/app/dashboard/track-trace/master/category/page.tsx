@@ -100,8 +100,10 @@ function IOSSwitch({
 
 export default function ProjectCategoriesPage() {
   const router = useRouter();
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-  const userId = useAppSelector((state) => state.auth.user?.id);
+  const user = useAppSelector((state) => state.auth.user);
+  const isScanPackEnabled = user?.vendor?.is_scanpack_enabled === true;
+  const vendorId = user?.vendor_id;
+  const userId = user?.id;
 
   const {
     data: categories = [],
@@ -161,7 +163,8 @@ export default function ProjectCategoriesPage() {
   };
 
   const columns = useMemo<ColumnDef<ProjectCategory>[]>(
-    () => [
+    () => {
+      const cols: ColumnDef<ProjectCategory>[] = [
       {
         id: "index",
         header: "#",
@@ -218,6 +221,19 @@ export default function ProjectCategoriesPage() {
                 </p>
               )}
             </div>
+          );
+        },
+      },
+      {
+        accessorKey: "prefix",
+        header: "Prefix / Code Group",
+        size: 150,
+        cell: ({ row }) => {
+          const prefix = row.original.prefix;
+          return (
+            <span className="font-mono font-semibold text-xs text-foreground bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded border">
+              {prefix || "-"}
+            </span>
           );
         },
       },
@@ -364,9 +380,13 @@ export default function ProjectCategoriesPage() {
           );
         },
       },
-    ],
-    [handleEdit, handleToggle, toggleStatus.isPending]
-  );
+    ];
+    return isScanPackEnabled
+      ? cols
+      : cols.filter((col) => col.id !== "packing_options");
+  },
+  [handleEdit, handleToggle, toggleStatus.isPending, isScanPackEnabled]
+);
 
   const table = useReactTable({
     data: categories,

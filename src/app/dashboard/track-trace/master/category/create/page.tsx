@@ -43,6 +43,7 @@ import {
   ChevronDown,
   Check,
   Save,
+  GripVertical,
 } from "lucide-react";
 import {
   useCreateProjectCategory,
@@ -67,8 +68,10 @@ function CategoryFormContent() {
   const editIdParam = searchParams.get("id");
   const editId = editIdParam ? Number(editIdParam) : null;
 
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
-  const userId = useAppSelector((state) => state.auth.user?.id);
+  const user = useAppSelector((state) => state.auth.user);
+  const isScanPackEnabled = user?.vendor?.is_scanpack_enabled === true;
+  const vendorId = user?.vendor_id;
+  const userId = user?.id;
 
   const { data: allCategories = [], isLoading: categoriesLoading } =
     useProjectCategories(vendorId);
@@ -80,6 +83,7 @@ function CategoryFormContent() {
 
   // Form States
   const [categoryName, setCategoryName] = useState("");
+  const [prefix, setPrefix] = useState("");
   const [selectedTypeIds, setSelectedTypeIds] = useState<number[]>([]);
   const [subCategories, setSubCategories] = useState<SubCategoryEntry[]>([]);
   const [includeInPacking, setIncludeInPacking] = useState(false);
@@ -92,6 +96,42 @@ function CategoryFormContent() {
   const [activeCategory, setActiveCategory] = useState<ProjectCategory | null>(
     null
   );
+  const [selectedFields, setSelectedFields] = useState<string[]>([
+    "article_code",
+    "brand_short_name",
+    "core_product",
+    "finish",
+    "p_code",
+    "thickness",
+  ]);
+  const [delimiter, setDelimiter] = useState<string>("_");
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.setData("text/plain", index.toString());
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    const sourceIndexStr = e.dataTransfer.getData("text/plain");
+    const sourceIndex = sourceIndexStr !== "" ? Number(sourceIndexStr) : draggedIndex;
+    if (sourceIndex === null || sourceIndex === undefined || sourceIndex === targetIndex) {
+      setDraggedIndex(null);
+      return;
+    }
+    const updated = [...selectedFields];
+    const [movedItem] = updated.splice(sourceIndex, 1);
+    updated.splice(targetIndex, 0, movedItem);
+    setSelectedFields(updated);
+    setDraggedIndex(null);
+  };
 
   const editData = useMemo(() => {
     if (!editId) return null;
@@ -133,6 +173,7 @@ function CategoryFormContent() {
     if (editData) {
       setActiveCategory(editData);
       setCategoryName(editData.category_name);
+      setPrefix(editData.prefix ?? "");
       setIncludeInPacking(editData.include_in_packing ?? false);
       setScanPackValidate(editData.scan_pack_validate ?? false);
       setUseInAssembledPacking(editData.use_in_assembled_packing ?? false);
@@ -141,6 +182,13 @@ function CategoryFormContent() {
           (m) => m.project_categories_type_master_id
         )
       );
+
+      if (editData.namingStructure?.fields_json && Array.isArray(editData.namingStructure.fields_json)) {
+        setSelectedFields(editData.namingStructure.fields_json);
+        if (editData.namingStructure.delimiter) {
+          setDelimiter(editData.namingStructure.delimiter);
+        }
+      }
 
       const existingSubs = allCategories
         .filter((c) => c.parent_id === editData.id)
@@ -161,6 +209,7 @@ function CategoryFormContent() {
     if (selected) {
       setActiveCategory(selected);
       setCategoryName(selected.category_name);
+      setPrefix(selected.prefix ?? "");
       setIncludeInPacking(selected.include_in_packing ?? false);
       setScanPackValidate(selected.scan_pack_validate ?? false);
       setUseInAssembledPacking(selected.use_in_assembled_packing ?? false);
@@ -169,6 +218,12 @@ function CategoryFormContent() {
           (m) => m.project_categories_type_master_id
         )
       );
+      if (selected.namingStructure?.fields_json && Array.isArray(selected.namingStructure.fields_json)) {
+        setSelectedFields(selected.namingStructure.fields_json);
+        if (selected.namingStructure.delimiter) {
+          setDelimiter(selected.namingStructure.delimiter);
+        }
+      }
       const existingSubs = allCategories
         .filter((c) => c.parent_id === selected.id)
         .map((c) => ({
@@ -219,6 +274,45 @@ function CategoryFormContent() {
       const isEditMode = isEdit;
       const targetCategory = editData || activeCategory;
       if (isEditMode && targetCategory && vendorId && userId) {
+        const categoryNameUnchanged = categoryName.trim() === targetCategory.category_name;
+        const prefixUnchanged = (prefix ? prefix.trim().toUpperCase() : null) === (targetCategory.prefix ?? null);
+        const includeInPackingUnchanged = includeInPacking === (targetCategory.include_in_packing ?? false);
+        const scanPackValidateUnchanged = scanPackValidate === (targetCategory.scan_pack_validate ?? false);
+        const useInAssembledPackingUnchanged = useInAssembledPacking === (targetCategory.use_in_assembled_packing ?? false);
+
+        const originalTypeIds = targetCategory.projectCategoriesMasterVendorMapping.map(
+          (m: any) => m.project_categories_type_master_id
+        );
+        const typeIdsUnchanged =
+          selectedTypeIds.length === originalTypeIds.length &&
+          selectedTypeIds.every((id) => originalTypeIds.includes(id));
+
+        const originalSubs = allCategories.filter((c) => c.parent_id === targetCategory.id);
+        const subCategoriesUnchanged =
+          subCategories.length === originalSubs.length &&
+          subCategories.every((sub) => {
+            if (!sub.id) return false;
+            const orig = originalSubs.find((o) => o.id === sub.id);
+            return orig && orig.category_name === sub.name.trim() && orig.status === sub.status;
+          });
+
+        const origFields = targetCategory.namingStructure?.fields_json || [];
+        const origDelimiter = targetCategory.namingStructure?.delimiter || "_";
+        const structureChanged =
+          delimiter !== origDelimiter ||
+          selectedFields.length !== origFields.length ||
+          selectedFields.some((f, idx) => f !== origFields[idx]);
+
+        const onlyStructureUpdated =
+          categoryNameUnchanged &&
+          prefixUnchanged &&
+          includeInPackingUnchanged &&
+          scanPackValidateUnchanged &&
+          useInAssembledPackingUnchanged &&
+          typeIdsUnchanged &&
+          subCategoriesUnchanged &&
+          structureChanged;
+
         await updateMutation.mutateAsync({
           id: targetCategory.id,
           vendor_id: vendorId,
@@ -231,11 +325,15 @@ function CategoryFormContent() {
           include_in_packing: includeInPacking,
           scan_pack_validate: scanPackValidate,
           use_in_assembled_packing: useInAssembledPacking,
+          prefix: prefix ? prefix.trim().toUpperCase() : null,
+          naming_structure: selectedFields.length > 0 ? {
+            delimiter,
+            fields: selectedFields,
+          } : null,
+          only_naming_structure_updated: onlyStructureUpdated,
         });
 
-        const originalSubs = allCategories.filter(
-          (c) => c.parent_id === targetCategory.id
-        );
+
 
         for (const original of originalSubs) {
           const stillExists = subCategories.find((s) => s.id === original.id);
@@ -292,9 +390,15 @@ function CategoryFormContent() {
           category_name: categoryName.trim(),
           type_ids: selectedTypeIds,
           created_by: userId,
+          parent_id: null,
           include_in_packing: includeInPacking,
           scan_pack_validate: scanPackValidate,
           use_in_assembled_packing: useInAssembledPacking,
+          prefix: prefix ? prefix.trim().toUpperCase() : null,
+          naming_structure: selectedFields.length > 0 ? {
+            delimiter,
+            fields: selectedFields,
+          } : null,
         });
 
         const parentId =
@@ -318,6 +422,7 @@ function CategoryFormContent() {
         }
       }
 
+      await new Promise((resolve) => setTimeout(resolve, 1200));
       router.push("/dashboard/track-trace/master/category");
     } finally {
       setIsSubmitting(false);
@@ -386,8 +491,8 @@ function CategoryFormContent() {
 
         {/* ── Direct Form Inputs (No outer Card wrappers) ── */}
         <div className="flex flex-col gap-6">
-          {/* Row 1: Category Name & Assign Modules (Side by side in 1 row) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+          {/* Row 1: Category Name, Prefix, & Assign Modules */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
             {/* Left Col: Category Name */}
             <div className="flex flex-col gap-2">
               <Label htmlFor="category_name" className="text-sm font-semibold">
@@ -489,6 +594,7 @@ function CategoryFormContent() {
                       setIsNewCategory(!isNewCategory);
                       setActiveCategory(null);
                       setCategoryName("");
+                      setPrefix("");
                       setIncludeInPacking(false);
                       setScanPackValidate(false);
                       setSelectedTypeIds([]);
@@ -516,8 +622,25 @@ function CategoryFormContent() {
               )}
             </div>
 
+            {/* Middle Col: Prefix */}
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="prefix" className="text-sm font-semibold">
+                Prefix / Item Code Group <span className="text-muted-foreground">(e.g. PNT)</span>
+              </Label>
+              <Input
+                id="prefix"
+                placeholder="Auto-derived if empty"
+                maxLength={5}
+                value={prefix}
+                onChange={(e) => {
+                  setPrefix(e.target.value.toUpperCase().replace(/[^A-Z]/g, ""));
+                }}
+                className="h-10 text-sm"
+              />
+            </div>
+
             {/* Right Col: Assign Modules (MultipleSelector dropdown) */}
-            {(!activeCategory || !activeCategory.parent_id) && (
+            {(!editData?.parent_id) && (
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <Label className="text-sm font-semibold text-foreground">
@@ -555,8 +678,167 @@ function CategoryFormContent() {
             )}
           </div>
 
+          {/* Product Name Structure Builder */}
+          {(!editData?.parent_id) && (
+            <div className="rounded-2xl border bg-card p-5 space-y-4 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
+                <div>
+                  <h4 className="text-sm font-bold text-foreground">Product Name Structure (Material Code Format)</h4>
+                  <p className="text-xs text-muted-foreground">Select and sequence attributes to auto-compose item names (e.g. TAPE001_E3_TAPE_MATT_1000SR_0.8).</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs font-semibold">Delimiter:</Label>
+                  <select
+                    value={delimiter}
+                    onChange={(e) => setDelimiter(e.target.value)}
+                    className="h-8 text-xs rounded-md border bg-background px-2"
+                  >
+                    <option value="_">Underscore (_)</option>
+                    <option value="-">Hyphen (-)</option>
+                    <option value="/">Slash (/)</option>
+                    <option value=" ">Space ( )</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Token Badges Selector */}
+              <div>
+                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Toggle Attributes</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { key: "article_code", label: "Item Code" },
+                    { key: "barcode", label: "Barcode" },
+                    { key: "brand_short_name", label: "Brand Short Name" },
+                    { key: "brand_name", label: "Brand Full Name" },
+                    { key: "core_product", label: "Core Product" },
+                    { key: "type", label: "Type" },
+                    { key: "finish", label: "Finish" },
+                    { key: "p_code", label: "Product Code" },
+                    { key: "color_name", label: "Color Name" },
+                    { key: "grade", label: "Grade" },
+                    { key: "thickness", label: "Thickness" },
+                    { key: "size", label: "Size" },
+                    { key: "length", label: "Length" },
+                    { key: "height", label: "Height" },
+                    { key: "hsn_code", label: "HSN Code" },
+                    { key: "unit", label: "Primary Unit" },
+
+                  ].map((attr) => {
+                    const isSelected = selectedFields.includes(attr.key);
+                    return (
+                      <button
+                        key={attr.key}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedFields(selectedFields.filter((f) => f !== attr.key));
+                          } else {
+                            setSelectedFields([...selectedFields, attr.key]);
+                          }
+                        }}
+                        className={cn(
+                          "px-2.5 py-1 rounded-lg text-xs font-semibold transition-all border",
+                          isSelected
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                            : "bg-muted/40 text-muted-foreground border-transparent hover:bg-muted"
+                        )}
+                      >
+                        {isSelected ? `✓ ${attr.label}` : `+ ${attr.label}`}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Active Sequence Order Bar */}
+              {selectedFields.length > 0 && (
+                <div className="rounded-xl border bg-muted/20 p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-600">Active Field Sequence</span>
+                    <span className="text-[10px] text-muted-foreground italic"> Drag & drop badges to reorder</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                    {selectedFields.map((fieldKey, idx) => {
+                      const label = [
+                        { key: "article_code", label: "Item Code" },
+                        { key: "barcode", label: "Barcode" },
+                        { key: "brand_short_name", label: "Brand Short Name" },
+                        { key: "brand_name", label: "Brand Full Name" },
+                        { key: "core_product", label: "Core Product" },
+                        { key: "type", label: "Type" },
+                        { key: "finish", label: "Finish" },
+                        { key: "p_code", label: "Product Code" },
+                        { key: "color_name", label: "Color Name" },
+                        { key: "grade", label: "Grade" },
+                        { key: "thickness", label: "Thickness" },
+                        { key: "size", label: "Size" },
+                        { key: "length", label: "Length" },
+                        { key: "height", label: "Height" },
+                        { key: "hsn_code", label: "HSN Code" },
+                        { key: "unit", label: "Primary Unit" },
+                        { key: "custom_field_1", label: "Custom Field 1" },
+                        { key: "custom_field_2", label: "Custom Field 2" },
+                        { key: "custom_field_3", label: "Custom Field 3" },
+                      ].find((a) => a.key === fieldKey)?.label || fieldKey;
+
+                      return (
+                        <div
+                          key={fieldKey}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, idx)}
+                          onDragOver={handleDragOver}
+                          onDrop={(e) => handleDrop(e, idx)}
+                          onDragEnd={() => setDraggedIndex(null)}
+                          className={cn(
+                            "flex items-center gap-1.5 bg-background border rounded-lg px-2.5 py-1 text-xs font-semibold shadow-xs cursor-grab active:cursor-grabbing transition-all select-none hover:border-indigo-300",
+                            draggedIndex === idx && "opacity-40 border-dashed border-indigo-500 scale-95"
+                          )}
+                        >
+                          <GripVertical className="size-3 text-muted-foreground/60" />
+                          <span>{label}</span>
+                          <div className="flex items-center gap-0.5 ml-1 text-[10px] text-muted-foreground">
+                            {idx > 0 && (
+                              <button
+                                type="button"
+                                className="hover:text-indigo-600 font-bold px-0.5"
+                                onClick={() => {
+                                  const arr = [...selectedFields];
+                                  const temp = arr[idx - 1];
+                                  arr[idx - 1] = arr[idx];
+                                  arr[idx] = temp;
+                                  setSelectedFields(arr);
+                                }}
+                              >
+                                ◄
+                              </button>
+                            )}
+                            {idx < selectedFields.length - 1 && (
+                              <button
+                                type="button"
+                                className="hover:text-indigo-600 font-bold px-0.5"
+                                onClick={() => {
+                                  const arr = [...selectedFields];
+                                  const temp = arr[idx + 1];
+                                  arr[idx + 1] = arr[idx];
+                                  arr[idx] = temp;
+                                  setSelectedFields(arr);
+                                }}
+                              >
+                                ►
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Row 2: Packing & Scan Validation Options */}
-          {(!activeCategory || !activeCategory.parent_id) && (
+          {isScanPackEnabled && (!activeCategory || !activeCategory.parent_id) && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <label
                 className={cn(

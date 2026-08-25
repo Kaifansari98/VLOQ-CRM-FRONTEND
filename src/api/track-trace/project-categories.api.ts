@@ -12,6 +12,12 @@ export interface CategoryMapping {
   projectCategoriesTypeMaster: CategoryType;
 }
 
+export interface CategoryNamingStructureData {
+  id?: number;
+  delimiter?: string;
+  fields_json?: string[];
+}
+
 export interface ProjectCategory {
   id: number;
   category_name: string;
@@ -23,6 +29,8 @@ export interface ProjectCategory {
   include_in_packing?: boolean;
   scan_pack_validate?: boolean;
   use_in_assembled_packing?: boolean;
+  prefix?: string | null;
+  namingStructure?: CategoryNamingStructureData | null;
 }
 
 export interface CreateCategoryPayload {
@@ -34,6 +42,9 @@ export interface CreateCategoryPayload {
   include_in_packing?: boolean;
   scan_pack_validate?: boolean;
   use_in_assembled_packing?: boolean;
+  prefix?: string | null;
+  naming_structure?: { delimiter: string; fields: string[] } | null;
+  only_naming_structure_updated?: boolean;
 }
 
 export interface UpdateCategoryPayload {
@@ -48,6 +59,9 @@ export interface UpdateCategoryPayload {
   include_in_packing?: boolean;
   scan_pack_validate?: boolean;
   use_in_assembled_packing?: boolean;
+  prefix?: string | null;
+  naming_structure?: { delimiter: string; fields: string[] } | null;
+  only_naming_structure_updated?: boolean;
 }
 
 export const getProjectCategories = async (vendorId: number) => {

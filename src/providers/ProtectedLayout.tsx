@@ -6,17 +6,21 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
 
+const PUBLIC_PATHS = ["/login", "/privacy-policy", "/terms", "/data-deletion"];
+
 export function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const dispatch = useAppDispatch();
   const authUser = useAppSelector((state) => state.auth.user);
   const authToken = useAppSelector((state) => state.auth.token);
-  const [isReady, setIsReady] = useState(false);
+
+  const isPublicPath = PUBLIC_PATHS.includes(pathname);
+  const [isReady, setIsReady] = useState(isPublicPath);
   const hasReduxSession = Boolean(authUser && authToken);
 
   useEffect(() => {
-    if (pathname === "/login") {
+    if (isPublicPath) {
       setIsReady(true);
       return;
     }
@@ -52,9 +56,9 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [dispatch, pathname, router]);
+  }, [dispatch, pathname, router, isPublicPath]);
 
-  if (pathname !== "/login" && !hasReduxSession) {
+  if (!isPublicPath && !hasReduxSession) {
     return null;
   }
 

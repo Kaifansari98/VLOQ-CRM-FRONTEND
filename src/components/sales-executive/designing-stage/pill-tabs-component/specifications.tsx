@@ -31,6 +31,22 @@ export default function SpecificationsTab() {
   const { leadId } = useDetails();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type?.toLowerCase(),
+  );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
+  const isAuditor = userType === "auditor";
+
+  const canUpload =
+    !isAuditor &&
+    (userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.designing_stage.specifications.upload",
+        )
+      : true);
+
   const handlesLargeScaleProjects = useAppSelector(
     (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
   );
@@ -201,10 +217,12 @@ export default function SpecificationsTab() {
               Back
             </Button>
           )}
-          <Button size="sm" onClick={() => setOpenCreateConfirm(true)}>
-            <Plus size={16} className="mr-1" />
-            <span>Add Specs</span>
-          </Button>
+          {canUpload && (
+            <Button size="sm" onClick={() => setOpenCreateConfirm(true)}>
+              <Plus size={16} className="mr-1" />
+              <span>Add Specs</span>
+            </Button>
+          )}
         </div>
       </div>
 

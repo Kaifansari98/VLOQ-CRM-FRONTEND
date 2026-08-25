@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { validateIndianMobileRisk } from "@/utils/phoneRiskValidator";
 
 type PhoneInputProps = Omit<
   React.ComponentProps<"input">,
@@ -29,6 +30,7 @@ type PhoneInputProps = Omit<
     onChange?: (value: RPNInput.Value) => void;
     validateIndianNumber?: boolean; // ✅ NEW PROP
     onValidationChange?: (isValid: boolean) => void;
+    showError?: boolean;
   };
 
 const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> =
@@ -40,6 +42,8 @@ const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> =
         value,
         validateIndianNumber = false,
         onValidationChange,
+        showError = true,
+        international,
         ...props
       },
       ref,
@@ -47,7 +51,12 @@ const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> =
       const [error, setError] = React.useState<string>("");
 
       const handleChange = (val: RPNInput.Value | undefined) => {
-        const finalVal = val || ("" as RPNInput.Value);
+        let finalVal = val || ("" as RPNInput.Value);
+
+        // Strip leading 0 from Indian numbers (+910... -> +91...)
+        if (finalVal.startsWith("+910")) {
+          finalVal = ("+91" + finalVal.slice(4)) as RPNInput.Value;
+        }
 
         if (validateIndianNumber) {
           const digitsOnly = finalVal.replace(/\D/g, "");
@@ -64,8 +73,14 @@ const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> =
             setError("Enter a 10 digit mobile number");
             onValidationChange?.(false);
           } else {
-            setError("");
-            onValidationChange?.(true);
+            const riskResult = validateIndianMobileRisk(nationalNumber);
+            if (!riskResult.isValid) {
+              setError(riskResult.reason || "Invalid or fake phone number");
+              onValidationChange?.(false);
+            } else {
+              setError("");
+              onValidationChange?.(true);
+            }
           }
         }
 
@@ -93,10 +108,11 @@ const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> =
             smartCaret={true}
             value={formattedValue}
             onChange={handleChange}
+            international={international}
             {...props}
           />
           {/* ✅ Error message yahan dikhega */}
-          {error && <p className="text-xs text-red-500">{error}</p>}
+          {showError && error && <p className="text-xs text-red-500">{error}</p>}
         </div>
       );
     },

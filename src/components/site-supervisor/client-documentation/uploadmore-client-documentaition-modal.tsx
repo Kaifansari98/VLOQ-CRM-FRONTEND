@@ -84,8 +84,28 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
   const createdBy = useAppSelector((state) => state.auth.user?.id) || 0;
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type?.user_type
+    (state) => state.auth.user?.user_type?.user_type,
   )?.toLowerCase();
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
+
+  const canUploadPresentationFile =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.client_documentation.presentation_file.upload",
+        )
+      : true;
+
+  const canUploadPythaFile =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.client_documentation.pytha_file.upload",
+        )
+      : true;
 
   const leadId = data?.leadId ?? 0;
   const accountId = data?.accountId ?? 0;
@@ -98,38 +118,64 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
 
   const { data: structureInstancesData } = useLeadProductStructureInstances(
     leadId,
-    vendorId
-  );
-  const { data: docsDetails, isLoading: docsLoading } = useClientDocumentationDetails(
     vendorId,
-    leadId,
-    createdBy,
   );
+  const { data: docsDetails, isLoading: docsLoading } =
+    useClientDocumentationDetails(vendorId, leadId, createdBy);
   const { mutateAsync: uploadDocs, isPending: uploading } =
     useUploadMoreClientDocumentation();
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
 
   const structureInstances: LeadProductStructureInstance[] = Array.isArray(
-    structureInstancesData?.data
+    structureInstancesData?.data,
   )
     ? structureInstancesData.data
     : [];
+  const rejectedInstanceIds = useMemo(() => {
+    if (!handlesLargeScaleProjects) return null;
+
+    const groupedDocs = docsDetails?.documents_by_instance ?? [];
+    return new Set(
+      groupedDocs
+        .filter((group) => {
+          const docs = [
+            ...(group.documents?.ppt ?? []),
+            ...(group.documents?.pytha ?? []),
+          ];
+          return docs.some((doc) => doc.tech_check_status === "REJECTED");
+        })
+        .map((group) => Number(group.instance_id))
+        .filter((instanceId) => Number.isFinite(instanceId)),
+    );
+  }, [docsDetails?.documents_by_instance, handlesLargeScaleProjects]);
   const displayInstances = useMemo(
     () =>
-      validUrlInstanceId
-        ? structureInstances.filter((item) => item.id === validUrlInstanceId)
-        : structureInstances,
-    [structureInstances, validUrlInstanceId]
+      (
+        validUrlInstanceId
+          ? structureInstances.filter((item) => item.id === validUrlInstanceId)
+          : structureInstances
+      ).filter((item) =>
+        handlesLargeScaleProjects && rejectedInstanceIds
+          ? rejectedInstanceIds.has(Number(item.id))
+          : true,
+      ),
+    [
+      structureInstances,
+      validUrlInstanceId,
+      handlesLargeScaleProjects,
+      rejectedInstanceIds,
+    ],
   );
   const hasMultipleInstances = displayInstances.length > 1;
+  const leadHasMultipleInstances = structureInstances.length > 1;
   const canDelete =
     userType === "admin" ||
     userType === "super-admin" ||
     userType === "super admin";
 
   const [activeInstanceId, setActiveInstanceId] = useState<number | undefined>(
-    validUrlInstanceId ?? selectedInstanceId ?? undefined
+    validUrlInstanceId ?? selectedInstanceId ?? undefined,
   );
   const [activeSection, setActiveSection] = useState<Section | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -144,7 +190,8 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
 
     const hasActive = !!activeInstanceId;
     const activeExists =
-      hasActive && displayInstances.some((item) => item.id === activeInstanceId);
+      hasActive &&
+      displayInstances.some((item) => item.id === activeInstanceId);
     const urlExists =
       validUrlInstanceId &&
       displayInstances.some((item) => item.id === validUrlInstanceId);
@@ -154,7 +201,7 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
     let nextId: number | undefined;
     if (urlExists) {
       nextId = validUrlInstanceId ?? undefined;
-    } else if (hasMultipleInstances) {
+    } else if (displayInstances.length > 0) {
       nextId = displayInstances[0]?.id;
     } else {
       nextId = validUrlInstanceId ?? selectedInstanceId ?? undefined;
@@ -177,7 +224,7 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
       activeInstanceId ??
       validUrlInstanceId ??
       selectedInstanceId ??
-      (hasMultipleInstances ? displayInstances[0]?.id : undefined);
+      displayInstances[0]?.id;
 
     const flatProject = docsDetails?.documents?.ppt || [];
     const flatPytha = docsDetails?.documents?.pytha || [];
@@ -185,14 +232,17 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
     const getBySection = (sectionId: SectionId) => {
       const grouped = docsDetails?.documents_by_instance || [];
       const targetGroup = hasMultipleInstances
-        ? grouped.find((g) => Number(g.instance_id) === Number(resolvedInstanceId))
+        ? grouped.find(
+            (g) => Number(g.instance_id) === Number(resolvedInstanceId),
+          )
         : null;
 
       // Fallback to filtering flat docs when grouped payload is missing/stale
       const filteredFromFlat = (docs: any[]) =>
         docs.filter(
           (doc: any) =>
-            Number(doc.product_structure_instance_id) === Number(resolvedInstanceId)
+            Number(doc.product_structure_instance_id) ===
+            Number(resolvedInstanceId),
         );
 
       if (sectionId === "project") {
@@ -211,7 +261,14 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
       project: getBySection("project"),
       pytha: getBySection("pytha"),
     };
-  }, [docsDetails, hasMultipleInstances, activeInstanceId, displayInstances, validUrlInstanceId, selectedInstanceId]);
+  }, [
+    docsDetails,
+    hasMultipleInstances,
+    activeInstanceId,
+    displayInstances,
+    validUrlInstanceId,
+    selectedInstanceId,
+  ]);
 
   const handleUpload = async () => {
     if (!activeSection) return;
@@ -220,13 +277,19 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
       activeInstanceId ??
       validUrlInstanceId ??
       selectedInstanceId ??
-      (hasMultipleInstances ? displayInstances[0]?.id : undefined);
-    if (hasMultipleInstances && !resolvedInstanceId) {
-      toastManager.add({ title: "Please select an instance before upload", type: "error" });
+      displayInstances[0]?.id;
+    if (leadHasMultipleInstances && !resolvedInstanceId) {
+      toastManager.add({
+        title: "Please select an instance before upload",
+        type: "error",
+      });
       return;
     }
     if (selectedFiles.length === 0) {
-      toastManager.add({ title: "Please select at least one file to upload", type: "error" });
+      toastManager.add({
+        title: "Please select at least one file to upload",
+        type: "error",
+      });
       return;
     }
 
@@ -289,7 +352,9 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
       <div className="space-y-6 py-4 px-5">
         {(hasMultipleInstances || validUrlInstanceId) && (
           <div>
-            <p className="text-sm font-medium mb-3">Product Instance</p>
+            <p className="text-sm font-medium mb-3">
+              {handlesLargeScaleProjects ? "Item Group" : "Product Instance"}
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {displayInstances.map((instance) => {
                 const isActive = activeInstanceId === instance.id;
@@ -303,9 +368,12 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
                   >
                     <CardContent className="px-4 py-3 flex items-start justify-between">
                       <div>
-                        <p className="text-sm font-semibold">{instance.title}</p>
+                        <p className="text-sm font-semibold">
+                          {instance.title}
+                        </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {instance.productStructure?.type || "Product Structure"}
+                          {instance.productStructure?.type ||
+                            "Product Structure"}
                         </p>
                       </div>
                       <FolderOpen className="size-4 text-muted-foreground" />
@@ -314,6 +382,11 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
                 );
               })}
             </div>
+            {handlesLargeScaleProjects && displayInstances.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                No rejected client documentation item groups found.
+              </p>
+            )}
           </div>
         )}
 
@@ -343,7 +416,9 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
                           {section.icon}
                         </div>
                         <div>
-                          <h3 className="font-semibold text-sm">{section.title}</h3>
+                          <h3 className="font-semibold text-sm">
+                            {section.title}
+                          </h3>
                           <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
                             {section.description}
                           </p>
@@ -418,40 +493,52 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
               size="lg"
             >
               <div className="space-y-6 py-4 px-5">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold">Upload New Files</h4>
+                {((activeSection.id === "project" &&
+                  canUploadPresentationFile) ||
+                  (activeSection.id === "pytha" && canUploadPythaFile)) && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-semibold">
+                        Upload New Files
+                      </h4>
+                      {selectedFiles.length > 0 && (
+                        <Badge variant="secondary">
+                          {selectedFiles.length} selected
+                        </Badge>
+                      )}
+                    </div>
+
+                    <FileUploadField
+                      value={selectedFiles}
+                      onChange={setSelectedFiles}
+                      accept={activeSection.accept}
+                      multiple
+                    />
+
                     {selectedFiles.length > 0 && (
-                      <Badge variant="secondary">{selectedFiles.length} selected</Badge>
+                      <div className="flex justify-end">
+                        <Button
+                          onClick={handleUpload}
+                          disabled={uploading}
+                          className="gap-2"
+                        >
+                          {uploading ? (
+                            <>
+                              <Loader2 className="animate-spin w-4 h-4" />
+                              Uploading...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-4 h-4" />
+                              Upload {selectedFiles.length} file
+                              {selectedFiles.length > 1 ? "s" : ""}
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     )}
                   </div>
-
-                  <FileUploadField
-                    value={selectedFiles}
-                    onChange={setSelectedFiles}
-                    accept={activeSection.accept}
-                    multiple
-                  />
-
-                  {selectedFiles.length > 0 && (
-                    <div className="flex justify-end">
-                      <Button onClick={handleUpload} disabled={uploading} className="gap-2">
-                        {uploading ? (
-                          <>
-                            <Loader2 className="animate-spin w-4 h-4" />
-                            Uploading...
-                          </>
-                        ) : (
-                          <>
-                            <Upload className="w-4 h-4" />
-                            Upload {selectedFiles.length} file
-                            {selectedFiles.length > 1 ? "s" : ""}
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  )}
-                </div>
+                )}
 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
@@ -528,12 +615,16 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Document?</AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. The selected document will be permanently removed.
+                This action cannot be undone. The selected document will be
+                permanently removed.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleConfirmDelete} disabled={deleting}>
+              <AlertDialogAction
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+              >
                 {deleting ? "Deleting..." : "Delete"}
               </AlertDialogAction>
             </AlertDialogFooter>

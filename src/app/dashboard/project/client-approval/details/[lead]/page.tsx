@@ -13,7 +13,7 @@ import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 import LeadDetailsUtil from "@/components/utils/lead-details-tabs";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 
 import {
   DropdownMenu,
@@ -86,7 +86,9 @@ import { NotificationBell } from "@/components/notifications/NotificationBell";
 import LeadWiseChatScreen from "@/components/tabScreens/LeadWiseChatScreen";
 
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
-import { useBlockLead, useUnblockLead, useRevokeFastProductionRequest } from "@/hooks/useLeadsQueries";
+import { useBlockLead, useUnblockLead, useRevokeFastProductionRequest, useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
+import { useClientApprovalDetails } from "@/api/client-approval";
+import { LeadProductStructureInstance } from "@/api/leads";
 import CancelFastProductionModal from "@/components/generics/CancelFastProductionModal";
 import { Lock, LockOpen } from "lucide-react";
 import {
@@ -193,7 +195,62 @@ export default function ClientApprovalLeadDetails() {
   const isChatNotification = useIsChatNotification();
   const [previousTab, setPreviousTab] = useState("details");
 
+  const handlesLargeScaleProjectsFromAuth = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const handlesLargeScaleProjects =
+    handlesLargeScaleProjectsFromAuth ||
+    lead?.createdBy?.vendor?.handlesLargeScaleProjects === true ||
+    lead?.assignedTo?.vendor?.handlesLargeScaleProjects === true;
+
   const is_client_approval_submitted = lead?.is_client_approval_submitted;
+
+  const { data: structureInstancesData } =
+    useLeadProductStructureInstances(leadIdNum, vendorId);
+
+  const { data: approvalDetails } =
+    useClientApprovalDetails(vendorId!, leadIdNum);
+
+  const areAllItemGroupsUploaded = useMemo(() => {
+    if (!handlesLargeScaleProjects) return true;
+
+    const rawInstances: LeadProductStructureInstance[] =
+      Array.isArray(structureInstancesData?.data)
+        ? structureInstancesData.data
+        : [];
+
+    if (rawInstances.length === 0) return false;
+
+    const uniqueProductTypeIds = new Set<number>();
+    rawInstances.forEach((inst) => {
+      const typeId = inst.product_type_id || (inst as any).product_type?.id;
+      if (typeId) {
+        uniqueProductTypeIds.add(Number(typeId));
+      }
+    });
+
+    if (uniqueProductTypeIds.size === 0) return false;
+
+    for (const productTypeId of Array.from(uniqueProductTypeIds)) {
+      const hasScreenshots = approvalDetails?.screenshots?.some(
+        (s: any) => Number(s.product_type_id) === Number(productTypeId)
+      );
+
+      const hasPayment =
+        approvalDetails?.paymentInfo &&
+        Number(approvalDetails.paymentInfo.product_type_id) === Number(productTypeId);
+
+      if (!hasScreenshots && !hasPayment) {
+        return false;
+      }
+    }
+
+    return true;
+  }, [handlesLargeScaleProjects, structureInstancesData?.data, approvalDetails]);
+
+  const isClientApprovalComplete = handlesLargeScaleProjects
+    ? Boolean(is_client_approval_submitted && areAllItemGroupsUploaded)
+    : Boolean(is_client_approval_submitted);
 
 
   const {
@@ -218,15 +275,18 @@ export default function ClientApprovalLeadDetails() {
 
     // Auto-open only for Sales Executive
     if (userType === "sales-executive" && !isLeadBlocked && !lead.is_draft) {
-      if (is_client_approval_submitted) {
-        setOpenRequestToTechCheckModal(true);
+      if (handlesLargeScaleProjects) {
+        setActiveTab("details");
       } else {
-        setOpenClientApprovalModal(true);
+        if (isClientApprovalComplete) {
+          setOpenRequestToTechCheckModal(true);
+        } else {
+          setOpenClientApprovalModal(true);
+        }
+        setActiveTab("todo");
       }
-
-      setActiveTab("todo");
     }
-  }, [isLoading, isLeadBlockStatusLoading, lead, isChatNotification, userType, is_client_approval_submitted, isLeadBlocked]);
+  }, [isLoading, isLeadBlockStatusLoading, lead, isChatNotification, userType, isClientApprovalComplete, isLeadBlocked, handlesLargeScaleProjects]);
 
   const deleteLeadMutation = useDeleteLead();
   const handleDeleteLead = () => {
@@ -335,12 +395,22 @@ export default function ClientApprovalLeadDetails() {
         "project.client_approval.client_approval_form.enable_disable",
       )
       : canUploadClientApproval(userType);
-  const isCustomUser = userType === "custom";
+  const isCustomUser = userType?.toLowerCase() === "custom";
   const canRequestToTechCheckAccess = isCustomUser
     ? customPrivilegeCodes.includes(
-      "project.client_approval.client_approval_screenshots.upload",
-    )
+        "project.c  lient_documentation.request_to_techcheck.enable_disable",
+      )
     : canRequestToTeckCheck(userType);
+
+  const requestToTechCheckTooltip = shouldDisableBlockedActions
+    ? blockedTooltip
+    : !isClientApprovalComplete
+    ? handlesLargeScaleProjects
+      ? "Submit client approval for all item groups first"
+      : "Submit client approval first"
+    : !canRequestToTechCheckAccess
+    ? "Only Sales Executive can request to Tech Check"
+    : "";
 
   return (
     <>
@@ -367,66 +437,33 @@ export default function ClientApprovalLeadDetails() {
         {/* ACTION BUTTONS */}
         <div className="flex items-center space-x-2">
           {/* Tech Check */}
-{!isAuditor && (shouldDisableBlockedActions ? (
-  <CustomeTooltip
-    value={blockedTooltip}
-    truncateValue={
-      <Button
-        className="hidden lg:block"
-        size="sm"
-        disabled
-        variant="secondary"
-      >
-        Request To Tech Check
-      </Button>
-    }
-  />
-) : !is_client_approval_submitted ? (
-  <CustomeTooltip
-    truncateValue={
-      <Button
-        className="hidden lg:block"
-        size="sm"
-        disabled
-        variant="secondary"
-      >
-        Request To Tech Check
-      </Button>
-    }
-    value="Submit approval first"
-  />
-) : canRequestToTechCheckAccess ? (
-  <Button
-    size="sm"
-    className="hidden lg:block"
-    onClick={() => setOpenRequestToTechCheckModal(true)}
-  >
-    Request To Tech Check
-  </Button>
-) : isCustomUser ? (
-  <Button
-    className="hidden lg:block"
-    size="sm"
-    disabled
-    variant="secondary"
-  >
-    Request To Tech Check
-  </Button>
-) : (
-  <CustomeTooltip
-    truncateValue={
-      <Button
-        className="hidden lg:block"
-        size="sm"
-        disabled
-        variant="secondary"
-      >
-        Request To Tech Check
-      </Button>
-    }
-    value="Only Sales Executive can request to Tech Check"
-  />
-))}
+          {!isAuditor && (
+            canRequestToTechCheckAccess &&
+            !shouldDisableBlockedActions &&
+            isClientApprovalComplete ? (
+              <Button
+                size="sm"
+                className="hidden lg:block"
+                onClick={() => setOpenRequestToTechCheckModal(true)}
+              >
+                Request To Tech Check
+              </Button>
+            ) : isCustomUser && !canRequestToTechCheckAccess ? null : (
+              <CustomeTooltip
+                value={requestToTechCheckTooltip}
+                truncateValue={
+                  <Button
+                    className="hidden lg:block"
+                    size="sm"
+                    disabled
+                    variant="secondary"
+                  >
+                    Request To Tech Check
+                  </Button>
+                }
+              />
+            )
+          )}
 
           {!isAuditor && (
             <Button
@@ -555,19 +592,12 @@ export default function ClientApprovalLeadDetails() {
                     }
                   />
                 )
-              ) : canRequestToTechCheckAccess ? (
-                // Lead block handling added for DropdownMenu action
-                shouldDisableBlockedActions ? (
-                  <CustomeTooltip
-                    value={blockedTooltip}
-                    truncateValue={
-                      <DropdownMenuItem className="lg:hidden" disabled>
-                        <FileText size={20} />
-                        Request To Tech Check
-                      </DropdownMenuItem>
-                    }
-                  />
-                ) : (
+              ) : null}
+
+              {!isAuditor && (
+                canRequestToTechCheckAccess &&
+                !shouldDisableBlockedActions &&
+                isClientApprovalComplete ? (
                   <DropdownMenuItem
                     className="lg:hidden"
                     onClick={() => setOpenRequestToTechCheckModal(true)}
@@ -575,31 +605,17 @@ export default function ClientApprovalLeadDetails() {
                     <FileText size={20} />
                     Request To Tech Check
                   </DropdownMenuItem>
+                ) : isCustomUser && !canRequestToTechCheckAccess ? null : (
+                  <CustomeTooltip
+                    value={requestToTechCheckTooltip}
+                    truncateValue={
+                      <DropdownMenuItem className="lg:hidden" disabled>
+                        <FileText size={20} />
+                        Request To Tech Check
+                      </DropdownMenuItem>
+                    }
+                  />
                 )
-              ) : isCustomUser ? (
-                <CustomeTooltip
-                  value={shouldDisableBlockedActions ? blockedTooltip : ""}
-                  truncateValue={
-                    <DropdownMenuItem className="lg:hidden" disabled>
-                      <FileText size={20} />
-                      Request To Tech Check
-                    </DropdownMenuItem>
-                  }
-                />
-              ) : (
-                <CustomeTooltip
-                  truncateValue={
-                    <DropdownMenuItem className="lg:hidden" disabled>
-                      <FileText size={20} />
-                      Request To Tech Check
-                    </DropdownMenuItem>
-                  }
-                  value={
-                    shouldDisableBlockedActions
-                      ? blockedTooltip
-                      : "Only Sales Executive can request to Tech Check"
-                  }
-                />
               )}
 
               {/* EDIT */}
@@ -680,23 +696,25 @@ export default function ClientApprovalLeadDetails() {
         onValueChange={(val) => {
           // When user selects "todo"
           if (val === "todo") {
-            // Save previous tab (common in both functions)
             setPreviousTab(activeTab);
 
-            // First logic: access privilege + tech-check flow
+            if (handlesLargeScaleProjects) {
+              // Large Scale Project: Open clientApproval tab in LeadDetailsUtil directly on page (no modal)
+              setActiveTab("todo");
+              return;
+            }
+
+            // Normal Project (handlesLargeScaleProjects is false): Open modal!
             if (canRequestToTechCheckAccess) {
-              if (!is_client_approval_submitted) {
+              if (!isClientApprovalComplete) {
                 setOpenClientApprovalModal(true);
               } else {
                 setOpenRequestToTechCheckModal(true);
               }
             } else {
-              // Second logic: open client document modal
               setOpenClientApprovalModal(true);
             }
 
-            // Keep tab on "todo"
-            setActiveTab("todo");
             return;
           }
 
@@ -771,18 +789,37 @@ export default function ClientApprovalLeadDetails() {
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
 
-        <TabsContent value="details">
+        <TabsContent value="todo">
           <main className="flex-1 h-fit">
             <LeadDetailsUtil
               status={
-                is_client_approval_submitted
+                handlesLargeScaleProjects || is_client_approval_submitted
                   ? "clientApproval"
                   : "clientdocumentation"
               }
               leadId={leadIdNum}
               accountId={accountId}
               defaultTab={
-                is_client_approval_submitted
+                handlesLargeScaleProjects || is_client_approval_submitted
+                  ? "clientApproval"
+                  : "clientdocumentation"
+              }
+            />
+          </main>
+        </TabsContent>
+
+        <TabsContent value="details">
+          <main className="flex-1 h-fit">
+            <LeadDetailsUtil
+              status={
+                handlesLargeScaleProjects || is_client_approval_submitted
+                  ? "clientApproval"
+                  : "clientdocumentation"
+              }
+              leadId={leadIdNum}
+              accountId={accountId}
+              defaultTab={
+                handlesLargeScaleProjects || is_client_approval_submitted
                   ? "clientApproval"
                   : "clientdocumentation"
               }

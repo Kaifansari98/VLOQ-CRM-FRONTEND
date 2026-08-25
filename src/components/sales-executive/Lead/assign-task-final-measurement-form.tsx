@@ -48,6 +48,7 @@ import {
 import { useSelfAssignTaskTypes } from "@/hooks/useSelfAssignTaskTypes";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 import CustomeTooltip from "@/components/custom-tooltip";
+import { canUserShowApprovalRequest, canUserShowFollowUp } from "@/lib/approval-request-privilege";
 import FastProductionRequestModal from "@/components/sales-executive/Lead/fast-production-request-modal";
 import FastProductionTermsModal from "@/components/sales-executive/Lead/fast-production-terms-modal";
 
@@ -391,15 +392,22 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
       "leads.booking_done.assign_task.final_measurement",
     )
     : true;
-  const hasFollowUpPrivilege = isCustomUser
-    ? customPrivilegeCodes.includes("leads.booking_done.assign_task.follow_up")
-    : true;
+  const hasFollowUpPrivilege = canUserShowFollowUp({
+    isCustomUser,
+    customPrivilegeCodes,
+    lead,
+  });
   const hasBookingDoneIsmPrivilege = isCustomUser
     ? customPrivilegeCodes.includes(
       "leads.booking_done.assign_task.bookingdone_ism",
     )
     : true;
-  const canShowApprovalRequestOption = isApprovalTaskEnabled !== false;
+  const canShowApprovalRequestOption = canUserShowApprovalRequest({
+    isCustomUser,
+    customPrivilegeCodes,
+    isApprovalTaskEnabled,
+    lead,
+  });
   const allowedFastProductionRoles = ["super-admin", "admin", "sales-executive"];
   const canShowFastProductionOption = isFastProductionEnabled && allowedFastProductionRoles.includes(normalizedUserRole);
 
