@@ -123,10 +123,14 @@ export const useISMPaymentInfo = (leadId?: number) => {
   });
 };
 
-export const usePaymentLogs = (leadId: number, vendorId: number) => {
+export const usePaymentLogs = (
+  leadId: number,
+  vendorId: number,
+  productTypeId?: number | null
+) => {
   return useQuery<PaymentLogsResponse>({
-    queryKey: ["paymentLogs", leadId, vendorId],
-    queryFn: () => getPaymentLogs(leadId, vendorId),
+    queryKey: ["paymentLogs", leadId, vendorId, productTypeId ?? null],
+    queryFn: () => getPaymentLogs(leadId, vendorId, productTypeId),
     enabled: !!leadId && !!vendorId,
     staleTime: 5 * 60 * 1000,
   });

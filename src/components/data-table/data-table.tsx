@@ -1,5 +1,5 @@
 import { flexRender, type Table as TanstackTable } from "@tanstack/react-table";
-import type * as React from "react";
+import * as React from "react";
 
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import {
@@ -40,6 +40,8 @@ export function DataTable<TData>({
   showPagination = true, // ✅ Default to true for backward compatibility
   ...props
 }: DataTableProps<TData>) {
+  const lastClickRef = React.useRef<Record<string, number>>({});
+
   return (
     <div
       className={cn("flex w-full flex-col gap-2.5", className)}
@@ -83,24 +85,22 @@ export function DataTable<TData>({
                         event.target instanceof HTMLElement &&
                         (event.target.closest('[data-slot="action-button"]') ||
                           event.target.closest("button") ||
+                          event.target.closest("a") ||
                           event.target.closest('[role="button"]') ||
                           event.target.closest("[data-radix-menu-content]"))
                       ) {
                         return;
                       }
-                      onRowClick?.(row.original);
-                    }}
-                    onDoubleClick={(event) => {
-                      if (
-                        event.target instanceof HTMLElement &&
-                        (event.target.closest('[data-slot="action-button"]') ||
-                          event.target.closest("button") ||
-                          event.target.closest('[role="button"]') ||
-                          event.target.closest("[data-radix-menu-content]"))
-                      ) {
-                        return;
+
+                      const now = Date.now();
+                      const lastClick = lastClickRef.current[row.id] || 0;
+                      if (now - lastClick < 300) {
+                        onRowDoubleClick?.(row.original);
+                        lastClickRef.current[row.id] = 0;
+                      } else {
+                        lastClickRef.current[row.id] = now;
+                        onRowClick?.(row.original);
                       }
-                      onRowDoubleClick?.(row.original);
                     }}
                     className={cn(
                       onRowClick || onRowDoubleClick || renderRowContextMenu

@@ -36,6 +36,7 @@ interface LeadTrackingReportRow {
   client_approval_date: string | null;
   tc_req_date: string | null;
   tc_approval_date: string | null;
+  ol_req_date: string | null;
   ol_date: string | null;
   production_start_date: string | null;
   production_completion_date: string | null;
@@ -129,6 +130,7 @@ function buildLeadTrackingSheet(
     "Client Approval Date",
     "TC Req Date",
     "TC Approval Date",
+    "OL Req Date",
     "OL Date",
     "Production Start Date",
     "Production ERD Date",
@@ -165,6 +167,7 @@ function buildLeadTrackingSheet(
     { key: "clientApprovalDate", width: 18 },
     { key: "tcReqDate", width: 18 },
     { key: "tcApprovalDate", width: 18 },
+    { key: "olReqDate", width: 18 },
     { key: "olDate", width: 18 },
     { key: "productionStartDate", width: 18 },
     { key: "productionErdDate", width: 18 },
@@ -238,6 +241,7 @@ function buildLeadTrackingSheet(
       formatDate(entry.client_approval_date),
       formatDate(entry.tc_req_date),
       formatDate(entry.tc_approval_date),
+      formatDate(entry.ol_req_date),
       formatDate(entry.ol_date),
       formatDate(entry.production_start_date),
       formatDate(entry.production_erd_date),

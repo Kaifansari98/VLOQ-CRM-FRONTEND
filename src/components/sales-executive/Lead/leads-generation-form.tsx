@@ -301,10 +301,13 @@ const draftFormSchema = (
 
 interface LeadsGenerationFormProps {
   onClose: () => void;
+  mode?: "standard" | "lead-pool";
 }
 export default function LeadsGenerationForm({
   onClose,
+  mode = "standard",
 }: LeadsGenerationFormProps) {
+  void mode;
   const [files, setFiles] = useState<File[]>([]);
   const vendorId = useAppSelector((state: any) => state.auth.user?.vendor_id);
   const franchiseId = useAppSelector((state: any) => state.auth.user?.franchise_id);

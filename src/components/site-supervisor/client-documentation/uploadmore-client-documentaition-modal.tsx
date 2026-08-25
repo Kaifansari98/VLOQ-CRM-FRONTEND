@@ -86,6 +86,9 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type,
   )?.toLowerCase();
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
@@ -129,14 +132,43 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
   )
     ? structureInstancesData.data
     : [];
+  const rejectedInstanceIds = useMemo(() => {
+    if (!handlesLargeScaleProjects) return null;
+
+    const groupedDocs = docsDetails?.documents_by_instance ?? [];
+    return new Set(
+      groupedDocs
+        .filter((group) => {
+          const docs = [
+            ...(group.documents?.ppt ?? []),
+            ...(group.documents?.pytha ?? []),
+          ];
+          return docs.some((doc) => doc.tech_check_status === "REJECTED");
+        })
+        .map((group) => Number(group.instance_id))
+        .filter((instanceId) => Number.isFinite(instanceId)),
+    );
+  }, [docsDetails?.documents_by_instance, handlesLargeScaleProjects]);
   const displayInstances = useMemo(
     () =>
-      validUrlInstanceId
-        ? structureInstances.filter((item) => item.id === validUrlInstanceId)
-        : structureInstances,
-    [structureInstances, validUrlInstanceId],
+      (
+        validUrlInstanceId
+          ? structureInstances.filter((item) => item.id === validUrlInstanceId)
+          : structureInstances
+      ).filter((item) =>
+        handlesLargeScaleProjects && rejectedInstanceIds
+          ? rejectedInstanceIds.has(Number(item.id))
+          : true,
+      ),
+    [
+      structureInstances,
+      validUrlInstanceId,
+      handlesLargeScaleProjects,
+      rejectedInstanceIds,
+    ],
   );
   const hasMultipleInstances = displayInstances.length > 1;
+  const leadHasMultipleInstances = structureInstances.length > 1;
   const canDelete =
     userType === "admin" ||
     userType === "super-admin" ||
@@ -169,7 +201,7 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
     let nextId: number | undefined;
     if (urlExists) {
       nextId = validUrlInstanceId ?? undefined;
-    } else if (hasMultipleInstances) {
+    } else if (displayInstances.length > 0) {
       nextId = displayInstances[0]?.id;
     } else {
       nextId = validUrlInstanceId ?? selectedInstanceId ?? undefined;
@@ -192,7 +224,7 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
       activeInstanceId ??
       validUrlInstanceId ??
       selectedInstanceId ??
-      (hasMultipleInstances ? displayInstances[0]?.id : undefined);
+      displayInstances[0]?.id;
 
     const flatProject = docsDetails?.documents?.ppt || [];
     const flatPytha = docsDetails?.documents?.pytha || [];
@@ -245,8 +277,8 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
       activeInstanceId ??
       validUrlInstanceId ??
       selectedInstanceId ??
-      (hasMultipleInstances ? displayInstances[0]?.id : undefined);
-    if (hasMultipleInstances && !resolvedInstanceId) {
+      displayInstances[0]?.id;
+    if (leadHasMultipleInstances && !resolvedInstanceId) {
       toastManager.add({
         title: "Please select an instance before upload",
         type: "error",
@@ -320,7 +352,9 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
       <div className="space-y-6 py-4 px-5">
         {(hasMultipleInstances || validUrlInstanceId) && (
           <div>
-            <p className="text-sm font-medium mb-3">Product Instance</p>
+            <p className="text-sm font-medium mb-3">
+              {handlesLargeScaleProjects ? "Item Group" : "Product Instance"}
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {displayInstances.map((instance) => {
                 const isActive = activeInstanceId === instance.id;
@@ -348,6 +382,11 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
                 );
               })}
             </div>
+            {handlesLargeScaleProjects && displayInstances.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                No rejected client documentation item groups found.
+              </p>
+            )}
           </div>
         )}
 

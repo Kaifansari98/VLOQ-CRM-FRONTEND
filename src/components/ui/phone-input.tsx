@@ -50,7 +50,12 @@ const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> =
       const [error, setError] = React.useState<string>("");
 
       const handleChange = (val: RPNInput.Value | undefined) => {
-        const finalVal = val || ("" as RPNInput.Value);
+        let finalVal = val || ("" as RPNInput.Value);
+
+        // Strip leading 0 from Indian numbers (+910... -> +91...)
+        if (finalVal.startsWith("+910")) {
+          finalVal = ("+91" + finalVal.slice(4)) as RPNInput.Value;
+        }
 
         if (validateIndianNumber) {
           const digitsOnly = finalVal.replace(/\D/g, "");
@@ -102,6 +107,7 @@ const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> =
             smartCaret={true}
             value={formattedValue}
             onChange={handleChange}
+            international={international}
             {...props}
           />
           {/* ✅ Error message yahan dikhega */}
