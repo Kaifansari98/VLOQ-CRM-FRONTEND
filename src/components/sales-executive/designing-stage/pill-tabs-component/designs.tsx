@@ -118,45 +118,7 @@ const DesigningTab = () => {
       }
     >();
 
-    for (const doc of sortedDesignDocs) {
-      const links = (doc as any).productStructureInstanceMapping || [];
-      if (links.length === 0) {
-        const key = UNASSIGNED_GROUP_ID;
-        if (!grouped.has(key)) {
-          grouped.set(key, {
-            id: key,
-            title: "Unassigned Documents",
-            subtitle: "No linked item group",
-            docs: [],
-          });
-        }
-        grouped.get(key)!.docs.push(doc);
-        continue;
-      }
-
-      for (const link of links) {
-        const instanceId = String(link.product_structure_instance_id);
-        const inst = instanceMap.get(instanceId);
-        const title =
-          inst?.productType?.type ||
-          inst?.productItemCode?.productStructure?.productType?.type ||
-          `Group #${instanceId}`;
-
-        const key = normalizeGroupKey(title);
-        if (!grouped.has(key)) {
-          grouped.set(key, {
-            id: key,
-            title,
-            subtitle: "Product type",
-            docs: [],
-          });
-        }
-        if (!grouped.get(key)!.docs.includes(doc)) {
-          grouped.get(key)!.docs.push(doc);
-        }
-      }
-    }
-
+    // 1️⃣ Initialize groups for all product types in structureInstances
     for (const inst of structureInstances) {
       const title =
         inst?.productType?.type ||
@@ -170,6 +132,82 @@ const DesigningTab = () => {
           subtitle: "Product type",
           docs: [],
         });
+      }
+    }
+
+    // 2️⃣ Map design documents to their product type groups
+    for (const doc of sortedDesignDocs) {
+      let matchedTitle: string | null = null;
+
+      // Check direct product_structure_instance_id
+      if ((doc as any).product_structure_instance_id) {
+        const inst = instanceMap.get(
+          String((doc as any).product_structure_instance_id),
+        );
+        if (inst) {
+          matchedTitle =
+            inst?.productType?.type ||
+            inst?.productItemCode?.productStructure?.productType?.type ||
+            null;
+        }
+      }
+
+      // Check productType relation on doc
+      if (!matchedTitle && (doc as any).productType?.type) {
+        matchedTitle = (doc as any).productType.type;
+      }
+
+      // Check productStructureInstance relation on doc
+      if (
+        !matchedTitle &&
+        (doc as any).productStructureInstance?.productType?.type
+      ) {
+        matchedTitle = (doc as any).productStructureInstance.productType.type;
+      }
+
+      // Check productStructureInstanceMapping array if present
+      if (!matchedTitle) {
+        const links = (doc as any).productStructureInstanceMapping || [];
+        for (const link of links) {
+          const inst = instanceMap.get(
+            String(link.product_structure_instance_id),
+          );
+          if (inst) {
+            matchedTitle =
+              inst?.productType?.type ||
+              inst?.productItemCode?.productStructure?.productType?.type ||
+              null;
+            if (matchedTitle) break;
+          }
+        }
+      }
+
+      if (matchedTitle) {
+        const key = normalizeGroupKey(matchedTitle);
+        if (!grouped.has(key)) {
+          grouped.set(key, {
+            id: key,
+            title: matchedTitle,
+            subtitle: "Product type",
+            docs: [],
+          });
+        }
+        if (!grouped.get(key)!.docs.includes(doc)) {
+          grouped.get(key)!.docs.push(doc);
+        }
+      } else {
+        const key = UNASSIGNED_GROUP_ID;
+        if (!grouped.has(key)) {
+          grouped.set(key, {
+            id: key,
+            title: "Unassigned Documents",
+            subtitle: "No linked item group",
+            docs: [],
+          });
+        }
+        if (!grouped.get(key)!.docs.includes(doc)) {
+          grouped.get(key)!.docs.push(doc);
+        }
       }
     }
 
