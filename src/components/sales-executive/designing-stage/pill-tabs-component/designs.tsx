@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import ComingSoon from "@/components/generics/ComingSoon";
 import { Badge } from "@/components/ui/badge";
 import ViewSpecsModal from "./modals/view-specs-modal";
-import { useB2BRequirementTypes } from "@/hooks/useTypesMaster";
+import { useB2BRequirementTypes, useProductTypes } from "@/hooks/useTypesMaster";
 import { useFranchisesByVendorId } from "@/api/franchise";
 
 const getSortedLatestFirst = <T extends { created_at?: string; id: number }>(
@@ -76,6 +76,9 @@ const DesigningTab = () => {
   const { data: b2bReqTypesData } = useB2BRequirementTypes(vendorId);
   const b2bReqTypes = useMemo(() => b2bReqTypesData?.data || [], [b2bReqTypesData]);
 
+  const { data: productTypesData } = useProductTypes();
+  const productTypes = useMemo(() => productTypesData?.data || [], [productTypesData]);
+
   // ✅ Fetch design documents
   const { data, error, isLoading } = useDesignsDoc(vendorId!, leadId);
   const { data: structureInstancesData, isLoading: isInstancesLoading } =
@@ -104,22 +107,20 @@ const DesigningTab = () => {
       return [];
     }
 
-    const productTypeMap = new Map(
+    const productTypeMap = new Map<string, string>(
+      productTypes.map((item: any) => [String(item.id), String(item.type || "").trim()])
+    );
+
+    const instanceToProductTypeMap = new Map<string, string>(
       structureInstances
         .map((item: any) => {
           const productTypeId =
+            item.product_type_id ??
             item.productType?.id ??
             item.productItemCode?.productStructure?.productType?.id;
-          const productTypeTitle =
-            item.productType?.type?.trim() ||
-            item.productItemCode?.productStructure?.productType?.type?.trim() ||
-            "";
-
-          return productTypeId
-            ? [String(productTypeId), productTypeTitle] as const
-            : null;
+          return productTypeId ? [String(item.id), String(productTypeId)] as const : null;
         })
-        .filter(Boolean) as readonly (readonly [string, string])[],
+        .filter(Boolean) as readonly (readonly [string, string])[]
     );
 
     const grouped = new Map<
@@ -133,7 +134,15 @@ const DesigningTab = () => {
     >();
 
     for (const doc of sortedDesignDocs) {
-      const productTypeId = doc.product_type_id;
+      let productTypeId = doc.product_type_id;
+
+      if (!productTypeId && doc.product_structure_instance_id) {
+        const resolvedId = instanceToProductTypeMap.get(String(doc.product_structure_instance_id));
+        if (resolvedId) {
+          productTypeId = Number(resolvedId);
+        }
+      }
+
       if (!productTypeId) {
         const key = UNASSIGNED_GROUP_ID;
         if (!grouped.has(key)) {
@@ -182,7 +191,7 @@ const DesigningTab = () => {
     return Array.from(grouped.values()).sort((a, b) =>
       a.title.localeCompare(b.title),
     );
-  }, [handlesLargeScaleProjects, structureInstances, sortedDesignDocs]);
+  }, [handlesLargeScaleProjects, structureInstances, sortedDesignDocs, productTypes]);
 
   const selectedGroup = useMemo(
     () =>
