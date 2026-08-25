@@ -258,7 +258,7 @@ export default function TrackTraceProjectsPage() {
         window.alert(
           "Vendor information is missing."
         );
-
+        return;
       }
 
       if (!userId) {
@@ -280,7 +280,7 @@ export default function TrackTraceProjectsPage() {
 
       try {
         await deleteProject({
-          vendorId,
+          vendorId: Number(vendorId),
           projectId:
             row.id,
           userId,
