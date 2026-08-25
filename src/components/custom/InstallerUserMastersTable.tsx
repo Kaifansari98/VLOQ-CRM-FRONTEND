@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type InstallerMasterRow = {
@@ -161,6 +162,7 @@ export default function InstallerUserMastersTable({
   const [openConfirmStatusModal, setOpenConfirmStatusModal] = React.useState(false);
   const [installerName, setInstallerName] = React.useState("");
   const [contactNumber, setContactNumber] = React.useState("");
+  const [isPhoneValid, setIsPhoneValid] = React.useState(true);
   const [editingRow, setEditingRow] = React.useState<InstallerMasterRow | null>(null);
   const [statusTargetRow, setStatusTargetRow] = React.useState<InstallerMasterRow | null>(null);
 
@@ -218,6 +220,7 @@ export default function InstallerUserMastersTable({
   const resetForm = () => {
     setInstallerName("");
     setContactNumber("");
+    setIsPhoneValid(true);
   };
 
   const handleCreate = () => {
@@ -355,11 +358,14 @@ export default function InstallerUserMastersTable({
 
           <div className="space-y-2">
             <Label htmlFor="installer-contact">Contact Number</Label>
-            <Input
+            <PhoneInput
               id="installer-contact"
+              defaultCountry="IN"
               value={contactNumber}
-              onChange={(e) => setContactNumber(e.target.value)}
+              onChange={(val) => setContactNumber(val || "")}
               placeholder="Enter contact number"
+              validateIndianNumber={true}
+              onValidationChange={(isValid) => setIsPhoneValid(isValid)}
             />
           </div>
 
@@ -375,7 +381,13 @@ export default function InstallerUserMastersTable({
             </Button>
             <Button
               onClick={handleCreate}
-              disabled={!installerName.trim() || !vendorId || !userId || createInstallerMutation.isPending}
+              disabled={
+                !installerName.trim() ||
+                !vendorId ||
+                !userId ||
+                createInstallerMutation.isPending ||
+                (!isPhoneValid && contactNumber.trim() !== "")
+              }
             >
               {createInstallerMutation.isPending ? "Creating..." : "Create"}
             </Button>
@@ -413,11 +425,14 @@ export default function InstallerUserMastersTable({
 
           <div className="space-y-2">
             <Label htmlFor="edit-installer-contact">Contact Number</Label>
-            <Input
+            <PhoneInput
               id="edit-installer-contact"
+              defaultCountry="IN"
               value={contactNumber}
-              onChange={(e) => setContactNumber(e.target.value)}
+              onChange={(val) => setContactNumber(val || "")}
               placeholder="Enter contact number"
+              validateIndianNumber={true}
+              onValidationChange={(isValid) => setIsPhoneValid(isValid)}
             />
           </div>
 
@@ -434,7 +449,12 @@ export default function InstallerUserMastersTable({
             </Button>
             <Button
               onClick={handleEdit}
-              disabled={!installerName.trim() || !editingRow || updateInstallerMutation.isPending}
+              disabled={
+                !installerName.trim() ||
+                !editingRow ||
+                updateInstallerMutation.isPending ||
+                (!isPhoneValid && contactNumber.trim() !== "")
+              }
             >
               {updateInstallerMutation.isPending ? "Saving..." : "Save"}
             </Button>
