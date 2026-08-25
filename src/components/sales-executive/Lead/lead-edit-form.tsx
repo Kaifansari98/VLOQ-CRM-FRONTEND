@@ -1447,7 +1447,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                       value={field.value}
                       onChange={(val) => field.onChange(val)}
                       onBlur={field.onBlur}
-                      validateIndianNumber={true}
+                      validateIndianNumber={!isB2b}
                     />
                   </FormControl>
                   <FormMessage />
@@ -1741,7 +1741,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                       value={field.value}
                       onChange={(val) => field.onChange(val)}
                       onBlur={field.onBlur}
-                      validateIndianNumber={true}
+                      validateIndianNumber={!isB2b}
                     />
                   </FormControl>
                   <FormMessage />

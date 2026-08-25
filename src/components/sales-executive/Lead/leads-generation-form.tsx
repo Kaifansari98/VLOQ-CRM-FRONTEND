@@ -1752,7 +1752,7 @@ export default function LeadsGenerationForm({
                         field.onBlur();
                         handleDuplicateCheck("alt_contact_no");
                       }}
-                      validateIndianNumber={true}
+                      validateIndianNumber={!isB2b}
                     />
                   </FormControl>
                   <FormMessage />
@@ -2260,7 +2260,7 @@ export default function LeadsGenerationForm({
                       className="text-sm"
                       value={field.value}
                       onChange={(val) => field.onChange(val)}
-                      validateIndianNumber={true}
+                      validateIndianNumber={!isB2b}
                     />
                   </FormControl>
                   <FormMessage />
