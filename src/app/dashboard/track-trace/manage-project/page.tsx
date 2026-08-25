@@ -269,6 +269,9 @@ export default function TrackTraceProjectsPage() {
         return;
       }
 
+      const resolvedVendorId: number =
+        vendorId;
+
       const confirmed =
         window.confirm(
           `Are you sure you want to delete "${row.project_name}"?\n\n Deleted projects will be deleted permenantly .`
@@ -280,7 +283,8 @@ export default function TrackTraceProjectsPage() {
 
       try {
         await deleteProject({
-          vendorId: Number(vendorId),
+          vendorId:
+            resolvedVendorId,
           projectId:
             row.id,
           userId,
