@@ -571,6 +571,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         if (hidesProject && userType !== "site-supervisor") return false;
       }
 
+      if (item.title === "Production" || item.title === "Execution" || item.title === "Servicing") {
+        const hidesProdExecServ =
+          userType === "telecaller" ||
+          userType === "telecaller-team-lead";
+        if (hidesProdExecServ) return false;
+      }
+
       return true;
     });
 

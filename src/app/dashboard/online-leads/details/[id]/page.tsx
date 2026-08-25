@@ -78,6 +78,7 @@ import {
 import Link from "next/link";
 import CustomeDatePicker from "@/components/date-picker";
 import { toastManager } from "@/components/ui/toast";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import BaseModal from "@/components/utils/baseModal";
 import AssignToPicker from "@/components/assign-to-picker";
 import {
@@ -900,19 +901,32 @@ export default function OnlineLeadDetailsPage() {
           </Button>
 
           {isAdmin && (
-            <Button
-              size="sm"
-              onClick={handleMoveToDraft}
-              disabled={isMovingToDraft}
-              className="bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-2 h-9"
-            >
-              {isMovingToDraft ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <CheckCircle2 className="w-3.5 h-3.5" />
-              )}
-              Move to Draft
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button
+                      size="sm"
+                      onClick={handleMoveToDraft}
+                      disabled={isMovingToDraft || !lead?.call_log || lead.call_log.length === 0}
+                      className="bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-2 h-9"
+                    >
+                      {isMovingToDraft ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                      )}
+                      Move to Draft
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {(!lead?.call_log || lead.call_log.length === 0) && (
+                  <TooltipContent>
+                    <p>Add a call log before moving to Draft.</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
           )}
 
           {isConverted && userType !== "sales-executive" && (

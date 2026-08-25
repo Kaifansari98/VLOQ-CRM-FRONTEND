@@ -123,7 +123,7 @@ export default function OnlineLeadsPage() {
   const isSuperAdminOrAdmin = userType === "super-admin" || userType === "admin" || userType === "sales admin" || userType === "sales-admin";
 
   const canAssign = userType === "super-admin" || userType === "admin" || userType === "telecaller team lead" || userType === "telecaller-team-lead";
-  const canAddWalkIn = userType === "store-manager" || userType === "store manager" || userType === "super-admin" || userType === "admin";
+  const canAddWalkIn = userType === "store-manager" || userType === "store manager" || userType === "super-admin" || userType === "admin" || userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead";
 
   const [rawLeads, setRawLeads] = useState<OnlineLead[]>([]);
   const [statusTab, setStatusTab] = useState<"active" | "pending" | "lost">("active");
