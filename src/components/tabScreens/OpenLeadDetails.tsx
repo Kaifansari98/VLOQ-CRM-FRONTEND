@@ -583,12 +583,18 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         ? isWithinStageRange(4)
         : isOpenStage;
 
+  const isCaller = normalizedUserType === "telecaller" || normalizedUserType === "telecaller-team-lead" || normalizedUserType === "telecaller team lead";
+  const isDraftLead = !!lead?.is_draft;
+  const isCallerAndDraft = isCaller && isDraftLead;
+
   const canEditStructures =
+    !isCallerAndDraft &&
     !isAuditor &&
     (normalizedUserType === "custom"
       ? canEditLeadDetailsForCustomUser
       : canEditAtCurrentStage);
   const canEditProductType =
+    !isCallerAndDraft &&
     !isAuditor &&
     (normalizedUserType === "custom"
       ? canEditLeadDetailsForCustomUser

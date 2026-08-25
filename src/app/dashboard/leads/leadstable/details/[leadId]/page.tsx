@@ -290,45 +290,54 @@ export default function LeadDetails() {
   const normalizedUserType = userType?.trim().toLowerCase();
   const isAuditor = normalizedUserType === "auditor";
   const isSuperAdmin = normalizedUserType === "super-admin";
+  const isCaller = normalizedUserType === "telecaller" || normalizedUserType === "telecaller-team-lead" || normalizedUserType === "telecaller team lead";
+  const isCallerAndDraft = isCaller && isDraftLead;
+
   const shouldDirectlyMarkLost =
     normalizedUserType === "admin" ||
     normalizedUserType === "super-admin" ||
     normalizedUserType === "sales-executive";
   const canReassign =
-    normalizedUserType === "custom"
+    !isCallerAndDraft &&
+    (normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
         "leads.open_leads.details_of_lead.reassign_lead",
       )
-      : canReassignLeadButton(userType);
+      : canReassignLeadButton(userType));
   const canAccessAssignTask =
-    normalizedUserType === "custom"
+    !isCallerAndDraft &&
+    (normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
         "leads.open_leads.assign_task.ism_assign_task",
       ) ||
       customPrivilegeCodes.includes(
         "leads.open_leads.assign_task.follow_up_task",
       )
-      : canAssignISM(userType);
+      : canAssignISM(userType));
   const canDelete =
-    normalizedUserType === "custom"
+    !isCallerAndDraft &&
+    (normalizedUserType === "custom"
       ? customPrivilegeCodes.includes("leads.open_leads.details_of_lead.delete")
-      : canDeleteLedForSalesExecutiveButton(userType);
+      : canDeleteLedForSalesExecutiveButton(userType));
   const canMarkOnHold =
-    normalizedUserType === "custom"
+    !isCallerAndDraft &&
+    (normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
         "leads.open_leads.details_of_lead.mark_on_hold",
       )
-      : true;
+      : true);
   const canMarkAsLost =
-    normalizedUserType === "custom"
+    !isCallerAndDraft &&
+    (normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
         "leads.open_leads.details_of_lead.mark_as_lost",
       )
-      : true;
+      : true);
   const canEdit =
-    normalizedUserType === "custom"
+    !isCallerAndDraft &&
+    (normalizedUserType === "custom"
       ? customPrivilegeCodes.includes("leads.open_leads.details_of_lead.edit")
-      : canEditLeadForSalesExecutiveButton(userType);
+      : canEditLeadForSalesExecutiveButton(userType));
   const canViewPayment =
     isAuditor ||
     (normalizedUserType === "custom"
@@ -356,11 +365,12 @@ export default function LeadDetails() {
         )
       : true;
   const canAddVisit =
-    normalizedUserType === "custom"
+    !isCallerAndDraft &&
+    (normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
           "leads.open_leads.details_of_lead.add_visit",
         )
-      : true;
+      : true);
 
   const handleToggleLeadBlock = () => {
     if (!vendorId || !userId || !leadIdNum) {
@@ -574,7 +584,7 @@ export default function LeadDetails() {
           <AnimatedThemeToggler />
 
           {/* Dropdown */}
-          {!isAuditor && (
+          {!isAuditor && !isCallerAndDraft && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
               <Button
