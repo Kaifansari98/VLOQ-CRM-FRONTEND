@@ -171,7 +171,7 @@ export default function ClientReceivedFilesTab() {
           product_type_id: isB2b ? undefined : Number(selectedProductTypeId),
           b2b_requirement_type_id: isB2b ? Number(selectedProductTypeId) : undefined,
           doc_type_id: Number(selectedDocTypeId),
-          stage: isB2b ? "Designing" : undefined,
+          stage: "Requirement",
           created_by: userId!,
         })
       );
