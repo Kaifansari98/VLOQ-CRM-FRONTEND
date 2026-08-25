@@ -482,7 +482,6 @@ export default function OnlineLeadsPage() {
                 e.stopPropagation();
                 setSelectedLeadId(row.original.id);
                 setAssigneeId(row.original.assign_to ? row.original.assign_to.toString() : "none");
-                setSalesExecutiveId(row.original.final_assigned_leads ? row.original.final_assigned_leads.toString() : "none");
                 setIsAssignOpen(true);
               }}
               size="sm"
@@ -533,7 +532,6 @@ export default function OnlineLeadsPage() {
   const [isAssignOpen, setIsAssignOpen] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState<number | null>(null);
   const [assigneeId, setAssigneeId] = useState("");
-  const [salesExecutiveId, setSalesExecutiveId] = useState("");
   const [assignRemark, setAssignRemark] = useState("");
   const [assigning, setAssigning] = useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
@@ -632,7 +630,6 @@ export default function OnlineLeadsPage() {
     try {
       const res = await apiClient.put(`/online-leads/${selectedLeadId}/assign`, {
         assign_to: assigneeId && assigneeId !== "none" ? Number(assigneeId) : null,
-        sales_executive_id: salesExecutiveId && salesExecutiveId !== "none" ? Number(salesExecutiveId) : null,
         remark: assignRemark,
         created_by: userId,
       });
@@ -642,15 +639,8 @@ export default function OnlineLeadsPage() {
         setSelectedLeadId(null);
         
         const assignedCaller = telecallers.find((tc) => String(tc.id) === String(assigneeId));
-        const assignedSales = telecallers.find((tc) => String(tc.id) === String(salesExecutiveId));
-        
-        const names = [];
-        if (assignedCaller) names.push(`Caller: ${assignedCaller.user_name}`);
-        if (assignedSales) names.push(`Sales: ${assignedSales.user_name}`);
-        
-        setAssignedToName(names.join(" & ") || "Unassigned");
+        setAssignedToName(assignedCaller ? `Caller: ${assignedCaller.user_name}` : "Unassigned");
         setAssigneeId("");
-        setSalesExecutiveId("");
         setAssignRemark("");
         fetchLeadsData();
         setIsSuccessOpen(true);
@@ -1016,63 +1006,32 @@ export default function OnlineLeadsPage() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAssignSubmit} className="space-y-5 mt-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground/80 flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5 text-slate-500" /> Caller
-                </label>
-                <div className="relative">
-                  <Select
-                    value={assigneeId || "none"}
-                    onValueChange={(val) => setAssigneeId(val)}
-                  >
-                    <SelectTrigger className="w-full h-10 rounded-xl border border-input bg-background/50 hover:bg-background/85 focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition duration-200 cursor-pointer text-sm text-foreground focus:outline-none">
-                      <SelectValue placeholder="Select Caller" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-popover/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl">
-                      <SelectItem value="none">Unassigned</SelectItem>
-                      {telecallers
-                        .filter((tc) => {
-                          const role = tc.user_type?.user_type?.toLowerCase() || "";
-                          return role === "telecaller" || role === "telecaller-team-lead" || role === "telecaller team lead";
-                        })
-                        .map((tc) => (
-                          <SelectItem key={tc.id} value={tc.id.toString()}>
-                            {tc.user_name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground/80 flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5 text-slate-500" /> Sales Executive
-                </label>
-                <div className="relative">
-                  <Select
-                    value={salesExecutiveId || "none"}
-                    onValueChange={(val) => setSalesExecutiveId(val)}
-                  >
-                    <SelectTrigger className="w-full h-10 rounded-xl border border-input bg-background/50 hover:bg-background/85 focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition duration-200 cursor-pointer text-sm text-foreground focus:outline-none">
-                      <SelectValue placeholder="Select Sales Exec" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-popover/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl">
-                      <SelectItem value="none">Unassigned</SelectItem>
-                      {telecallers
-                        .filter((tc) => {
-                          const role = tc.user_type?.user_type?.toLowerCase() || "";
-                          return role === "sales-executive" || role === "sales executive";
-                        })
-                        .map((tc) => (
-                          <SelectItem key={tc.id} value={tc.id.toString()}>
-                            {tc.user_name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-foreground/80 flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-slate-500" /> Caller
+              </label>
+              <div className="relative">
+                <Select
+                  value={assigneeId || "none"}
+                  onValueChange={(val) => setAssigneeId(val)}
+                >
+                  <SelectTrigger className="w-full h-10 rounded-xl border border-input bg-background/50 hover:bg-background/85 focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition duration-200 cursor-pointer text-sm text-foreground focus:outline-none">
+                    <SelectValue placeholder="Select Caller" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl">
+                    <SelectItem value="none">Unassigned</SelectItem>
+                    {telecallers
+                      .filter((tc) => {
+                        const role = tc.user_type?.user_type?.toLowerCase() || "";
+                        return role === "telecaller" || role === "telecaller-team-lead" || role === "telecaller team lead";
+                      })
+                      .map((tc) => (
+                        <SelectItem key={tc.id} value={tc.id.toString()}>
+                          {tc.user_name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

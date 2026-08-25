@@ -84,6 +84,7 @@ const data = {
       title: "Lead Pool",
       url: "/dashboard/online-leads",
       icon: NotebookPen,
+      showCount: "total_lead_pool" as const,
     },
     {
       title: "Leads",
@@ -242,6 +243,7 @@ const data = {
       title: "Lead Pool",
       url: "/dashboard/online-leads",
       icon: NotebookPen,
+      showCount: "total_lead_pool" as const,
     },
     {
       title: "Open Leads",
@@ -552,6 +554,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         userType === "pre-prod";
 
     const baseItems = withoutOverall.filter((item) => {
+      if (item.title === "Lead Pool") {
+        if (hideSectionsForRole) return false;
+      }
+
       if (item.title === "Leads") {
         const hidesLeads =
           hideSectionsForRole || userType === "store-manager";

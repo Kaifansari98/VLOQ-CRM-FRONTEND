@@ -203,8 +203,14 @@ export default function OnlineLeadDetailsPage() {
   const userId = user?.id;
   const userType = user?.user_type?.user_type?.toLowerCase() || "";
   const isAdmin = userType === "super-admin" || userType === "admin";
+  const isCaller = userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead";
+  const canMoveToDraft = isAdmin || isCaller;
 
   const [lead, setLead] = useState<OnlineLead | null>(null);
+  const isProductInfoMissing = useMemo(() => {
+    return !lead?.product_types || lead.product_types.length === 0 || !lead?.product_structures || lead.product_structures.length === 0;
+  }, [lead]);
+
   const [statuses, setStatuses] = useState<FollowupStatus[]>([]);
   const [stores, setStores] = useState<Franchise[]>([]);
   const [loading, setLoading] = useState(true);
@@ -217,7 +223,6 @@ export default function OnlineLeadDetailsPage() {
   const [callDurationSec, setCallDurationSec] = useState("");
   const [callRemark, setCallRemark] = useState("");
   const [followUpDate, setFollowUpDate] = useState("");
-  const [storePreference, setStorePreference] = useState("");
   const [preferredStoreId, setPreferredStoreId] = useState("");
   const [submittingCall, setSubmittingCall] = useState(false);
 
@@ -483,6 +488,11 @@ export default function OnlineLeadDetailsPage() {
       return;
     }
 
+    if (!preferredStoreId) {
+      toastManager.add({ title: "Store selection is required", type: "error" });
+      return;
+    }
+
     setSubmittingCall(true);
     try {
       const res = await apiClient.post(`/online-leads/${id}/call`, {
@@ -491,7 +501,7 @@ export default function OnlineLeadDetailsPage() {
         online_lead_status_id: callStatus,
         remark: callRemark,
         follow_up_date: followUpDate || undefined,
-        store_preference_option: storePreference || undefined,
+        store_preference_option: preferredStoreId ? "Another Store" : "No Preference",
         store_id: preferredStoreId ? Number(preferredStoreId) : undefined,
       });
 
@@ -502,7 +512,6 @@ export default function OnlineLeadDetailsPage() {
         setCallDurationSec("");
         setCallRemark("");
         setFollowUpDate("");
-        setStorePreference("");
         setPreferredStoreId("");
         fetchLeadDetails();
         toastManager.add({ title: "Call outcome logged successfully", type: "success" });
@@ -615,7 +624,7 @@ export default function OnlineLeadDetailsPage() {
     e.preventDefault();
     let valid = true;
     if (!furnitureTitle.trim()) {
-      setFurnitureTitleError("Title is required.");
+      setFurnitureTitleError("Product Type is required.");
       valid = false;
     }
     if (!furnitureStructureId) {
@@ -892,15 +901,32 @@ export default function OnlineLeadDetailsPage() {
           </Breadcrumb>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            onClick={() => setIsCallOpen(true)}
-            className="bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-2 h-9"
-          >
-            <PhoneCall className="w-3.5 h-3.5" /> Follow up
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setIsCallOpen(true);
+                      setPreferredStoreId(lead?.store_id?.toString() || "");
+                    }}
+                    disabled={isProductInfoMissing}
+                    className="bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-2 h-9"
+                  >
+                    <PhoneCall className="w-3.5 h-3.5" /> Follow up
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {isProductInfoMissing && (
+                <TooltipContent>
+                  <p>Add Product Types and Product Structures before performing follow-up.</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
 
-          {isAdmin && (
+          {canMoveToDraft && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -1555,50 +1581,24 @@ export default function OnlineLeadDetailsPage() {
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className={storePreference === "Another Store" ? "col-span-1 space-y-1.5" : "col-span-2 space-y-1.5"}>
-                <label className="text-xs font-semibold text-foreground">Store Preference</label>
-                <Select
-                  value={
-                    storePreference === "" || storePreference === "No Preference"
-                      ? "none"
-                      : storePreference
-                  }
-                  onValueChange={(val) =>
-                    setStorePreference(val === "none" ? "No Preference" : val)
-                  }
-                >
-                  <SelectTrigger className="w-full h-10 bg-background text-sm">
-                    <SelectValue placeholder="No preference" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-popover text-popover-foreground">
-                    <SelectItem value="none">No preference</SelectItem>
-                    <SelectItem value="Current Store">Current Store</SelectItem>
-                    <SelectItem value="Another Store">Another Store</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {storePreference === "Another Store" && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">Select Store</label>
-                  <Select
-                    value={preferredStoreId}
-                    onValueChange={(val) => setPreferredStoreId(val)}
-                  >
-                    <SelectTrigger className="w-full h-10 bg-background text-sm">
-                      <SelectValue placeholder="Select Store" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-popover text-popover-foreground">
-                      {stores.map((s) => (
-                        <SelectItem key={s.id} value={s.id.toString()}>
-                          {s.franchise_name.replace(/vloq|furnix/gi, "").trim()}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-foreground">Select Store</label>
+              <Select
+                value={preferredStoreId || "none"}
+                onValueChange={(val) => setPreferredStoreId(val === "none" ? "" : val)}
+              >
+                <SelectTrigger className="w-full h-10 bg-background text-sm">
+                  <SelectValue placeholder="Select Store" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover text-popover-foreground">
+                  <SelectItem value="none">No preference</SelectItem>
+                  {stores.map((s) => (
+                    <SelectItem key={s.id} value={s.id.toString()}>
+                      {s.franchise_name.replace(/vloq|furnix/gi, "").trim()}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-1.5">
@@ -2014,20 +2014,31 @@ export default function OnlineLeadDetailsPage() {
         <form onSubmit={handleFurnitureSubmit}>
           <div className="space-y-4 px-6 pb-6 pt-4">
 
-            {/* Title */}
+            {/* Product Type */}
             <div>
               <label className="text-xs font-medium text-muted-foreground">
-                Title <span className="text-red-500">*</span>
+                Product Type <span className="text-red-500">*</span>
               </label>
-              <Input
-                value={furnitureTitle}
-                onChange={(e) => {
-                  setFurnitureTitle(e.target.value);
-                  if (furnitureTitleError) setFurnitureTitleError("");
-                }}
-                placeholder="Enter title"
-                className="mt-1"
-              />
+              <div className="mt-1">
+                <Select
+                  value={furnitureTitle}
+                  onValueChange={(val) => {
+                    setFurnitureTitle(val);
+                    if (val && furnitureTitleError) setFurnitureTitleError("");
+                  }}
+                >
+                  <SelectTrigger className="w-full h-10 bg-background text-sm">
+                    <SelectValue placeholder="Select Product Type" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover text-popover-foreground">
+                    {allProductTypes.map((pt) => (
+                      <SelectItem key={pt.id} value={pt.type}>
+                        {pt.type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               {furnitureTitleError && (
                 <p className="mt-1 text-xs text-red-500">{furnitureTitleError}</p>
               )}
