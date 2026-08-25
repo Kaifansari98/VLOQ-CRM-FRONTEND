@@ -67,7 +67,7 @@ export function DataTableColumnHeader<TData, TValue>({
   const isSourceColumn = column.id === "source";
   const isSiteMapColumn = column.id === "site_map_link";
   const isSalesExecutiveColumn = column.id === "sales_executive";
-  const isStageColumn = column.id === "status";
+  const isStageColumn = false;
   const isTastTypeColumn = column.id === "taskType";
   const isPriorityColumn = column.id === "priority";
   const adminTaskStatusFilter = meta.adminTaskStatusFilter as
