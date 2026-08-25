@@ -43,6 +43,7 @@ const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> =
         validateIndianNumber = false,
         onValidationChange,
         showError = true,
+        international,
         ...props
       },
       ref,
