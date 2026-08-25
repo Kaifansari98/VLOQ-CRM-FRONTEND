@@ -138,10 +138,16 @@ export default function LeadsGenerationPage() {
   };
   const [openPopover, setOpenPopover] = useState(false);
 
+  const isFilterByUser =
+    normalizedUserType === "sales-executive" ||
+    normalizedUserType === "telecaller" ||
+    normalizedUserType === "telecaller-team-lead" ||
+    normalizedUserType === "telecaller team lead";
+
   const { data: counts } = useActivityStatusCounts(
     vendorId,
     franchiseId,
-    normalizedUserType === "sales-executive" ? userId : undefined,
+    isFilterByUser ? userId : undefined,
   );
   const customOpenTabPayload = useMemo(
     () => ({

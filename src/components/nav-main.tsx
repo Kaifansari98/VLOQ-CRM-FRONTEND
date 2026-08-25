@@ -193,11 +193,17 @@ export function NavMain({
     userId,
     franchiseId
   );
+  const isFilterByUser =
+    normalizedUserType === "sales-executive" ||
+    normalizedUserType === "telecaller" ||
+    normalizedUserType === "telecaller-team-lead" ||
+    normalizedUserType === "telecaller team lead";
+
   const { data: activityStatusCounts, isLoading: isActivityStatusCountsLoading } =
     useActivityStatusCounts(
       vendorId,
       franchiseId,
-      normalizedUserType === "sales-executive" ? userId : undefined,
+      isFilterByUser ? userId : undefined,
     );
   const { data: vendorFranchises = [], isLoading: isFranchisesLoading } =
     useFranchisesByVendorId(
