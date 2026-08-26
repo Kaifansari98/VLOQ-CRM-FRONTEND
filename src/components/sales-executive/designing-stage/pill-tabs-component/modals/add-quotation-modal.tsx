@@ -168,7 +168,7 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
       ? Number(data.b2b_requirement_type_id)
       : b2bReqTypes[0]?.id;
 
-    if (vendorCustomUserTypeMode || b2bReqTypeId) {
+    if (b2bReqTypeId) {
       try {
         setSubmitting(true);
         const selectedDesignDoc = designDocs.find(
@@ -206,6 +206,21 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
         });
       } finally {
         setSubmitting(false);
+      }
+      return;
+    }
+
+    if ((vendorCustomUserTypeMode || handlesLargeScaleProjects) && !data.design_document_id) {
+      if (availableDesignDocs.length === 0) {
+        toastManager.add({
+          title: "No design files available. Please upload a design file first.",
+          type: "error",
+        });
+      } else {
+        toastManager.add({
+          title: "Please select a design file for this quotation.",
+          type: "error",
+        });
       }
       return;
     }
@@ -316,7 +331,7 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
             )}
           />
 
-          {(vendorCustomUserTypeMode || handlesLargeScaleProjects) && availableDesignDocs.length > 0 && (
+          {(vendorCustomUserTypeMode || handlesLargeScaleProjects) && (
             <FormField
               control={form.control}
               name="design_document_id"
