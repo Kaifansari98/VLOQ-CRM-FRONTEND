@@ -35,6 +35,9 @@ export default function DraftLeadsPage() {
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
 
   const normalizedUserType = userType?.trim().toLowerCase();
   const canShowAddNewLeadButton =
@@ -60,7 +63,7 @@ export default function DraftLeadsPage() {
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
-                <BreadcrumbPage>Draft Leads</BreadcrumbPage>
+                <BreadcrumbPage>{handlesLargeScaleProjects ? "Draft Leads" : "Online Leads"}</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
@@ -106,7 +109,14 @@ export default function DraftLeadsPage() {
       </header>
 
       <main className="flex-1 overflow-x-hidden">
-        <DraftLeadsTable />
+        <DraftLeadsTable
+          stageTitle={handlesLargeScaleProjects ? "Draft Leads" : "Online Leads"}
+          stageDescription={
+            handlesLargeScaleProjects
+              ? "Leads that are saved as draft and not yet submitted."
+              : "Leads that are online and not yet submitted."
+          }
+        />
       </main>
     </>
   );

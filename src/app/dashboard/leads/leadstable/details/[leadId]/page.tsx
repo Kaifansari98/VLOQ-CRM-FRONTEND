@@ -298,14 +298,14 @@ export default function LeadDetails() {
     normalizedUserType === "super-admin" ||
     normalizedUserType === "sales-executive";
   const canReassign =
-    !isCallerAndDraft &&
+    !isCaller &&
     (normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
         "leads.open_leads.details_of_lead.reassign_lead",
       )
       : canReassignLeadButton(userType));
   const canAccessAssignTask =
-    !isCallerAndDraft &&
+    !isCaller &&
     (normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
         "leads.open_leads.assign_task.ism_assign_task",
@@ -315,26 +315,26 @@ export default function LeadDetails() {
       )
       : canAssignISM(userType));
   const canDelete =
-    !isCallerAndDraft &&
+    !isCaller &&
     (normalizedUserType === "custom"
       ? customPrivilegeCodes.includes("leads.open_leads.details_of_lead.delete")
       : canDeleteLedForSalesExecutiveButton(userType));
   const canMarkOnHold =
-    !isCallerAndDraft &&
+    !isCaller &&
     (normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
         "leads.open_leads.details_of_lead.mark_on_hold",
       )
       : true);
   const canMarkAsLost =
-    !isCallerAndDraft &&
+    !isCaller &&
     (normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
         "leads.open_leads.details_of_lead.mark_as_lost",
       )
       : true);
   const canEdit =
-    !isCallerAndDraft &&
+    !isCaller &&
     (normalizedUserType === "custom"
       ? customPrivilegeCodes.includes("leads.open_leads.details_of_lead.edit")
       : canEditLeadForSalesExecutiveButton(userType));
@@ -365,7 +365,7 @@ export default function LeadDetails() {
         )
       : true;
   const canAddVisit =
-    !isCallerAndDraft &&
+    !isCaller &&
     (normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
           "leads.open_leads.details_of_lead.add_visit",
@@ -584,7 +584,7 @@ export default function LeadDetails() {
           <AnimatedThemeToggler />
 
           {/* Dropdown */}
-          {!isAuditor && !isCallerAndDraft && (
+          {!isAuditor && !isCaller && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
               <Button
