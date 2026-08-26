@@ -280,6 +280,8 @@ export default function OnlineLeadDetailsPage() {
   const [furnitureDescription, setFurnitureDescription] = useState("");
   const [furnitureTitleError, setFurnitureTitleError] = useState("");
   const [furnitureStructureError, setFurnitureStructureError] = useState("");
+  const [furnitureCustomTitle, setFurnitureCustomTitle] = useState("");
+  const [furnitureCustomTitleError, setFurnitureCustomTitleError] = useState("");
   const [allProductTypes, setAllProductTypes] = useState<{ id: number; type: string }[]>([]);
   const [allProductStructures, setAllProductStructures] = useState<{ id: number; type: string }[]>([]);
   const [submittingFurniture, setSubmittingFurniture] = useState(false);
@@ -368,9 +370,14 @@ export default function OnlineLeadDetailsPage() {
     const maxLength = Math.max(types.length, structures.length);
     const items = [];
     for (let i = 0; i < maxLength; i++) {
+      const rawType = types[i] || "—";
+      const hasPrefix = rawType.includes(" | ");
+      const title = hasPrefix ? rawType.split(" | ")[0].trim() : rawType;
+      const type = hasPrefix ? rawType.split(" | ")[1].trim() : rawType;
       items.push({
         index: i,
-        title: types[i] || "—",
+        title: title,
+        type: type,
         structure: structures[i] || "—",
       });
     }
@@ -565,7 +572,7 @@ export default function OnlineLeadDetailsPage() {
     }
   };
 
-  // Move lead to draft flow/status
+  // Move lead to Online Leads flow/status
   const handleMoveToDraft = async () => {
     setIsMovingToDraft(true);
     try {
@@ -574,13 +581,13 @@ export default function OnlineLeadDetailsPage() {
       });
 
       if (res.data?.success) {
-        fetchLeadDetails();
-        toastManager.add({ title: "Lead successfully moved to Draft.", type: "success" });
+        toastManager.add({ title: "Lead successfully moved to Online Leads.", type: "success" });
+        window.location.href = "/dashboard/leads/draft-lead";
       }
     } catch (err: any) {
-      console.error("Move to draft error:", err);
+      console.error("Move to Online Leads error:", err);
       toastManager.add({
-        title: err.response?.data?.error || "Failed to move lead to draft.",
+        title: err.response?.data?.error || "Failed to move lead to Online Leads.",
         type: "error",
       });
     } finally {
@@ -665,6 +672,10 @@ export default function OnlineLeadDetailsPage() {
   const handleFurnitureSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     let valid = true;
+    if (!furnitureCustomTitle.trim()) {
+      setFurnitureCustomTitleError("Title is required.");
+      valid = false;
+    }
     if (!furnitureTitle.trim()) {
       setFurnitureTitleError("Product Type is required.");
       valid = false;
@@ -687,19 +698,16 @@ export default function OnlineLeadDetailsPage() {
       
       let newStructures = [];
       let newTypes = [];
+      const rawTypeValue = `${furnitureCustomTitle.trim()} | ${furnitureTitle.trim()}`;
       
       if (editingIndex !== null) {
         newStructures = [...currentStructures];
         newTypes = [...currentTypes];
         newStructures[editingIndex] = selectedStructure.type;
-        newTypes[editingIndex] = furnitureTitle.trim();
+        newTypes[editingIndex] = rawTypeValue;
       } else {
-        newStructures = currentStructures.includes(selectedStructure.type)
-          ? currentStructures
-          : [...currentStructures, selectedStructure.type];
-        newTypes = currentTypes.includes(furnitureTitle.trim())
-          ? currentTypes
-          : [...currentTypes, furnitureTitle.trim()];
+        newStructures = [...currentStructures, selectedStructure.type];
+        newTypes = [...currentTypes, rawTypeValue];
       }
 
       const res = await apiClient.patch(`/online-leads/${id}`, {
@@ -712,6 +720,7 @@ export default function OnlineLeadDetailsPage() {
         setFurnitureTitle("");
         setFurnitureStructureId("");
         setFurnitureDescription("");
+        setFurnitureCustomTitle("");
         setEditingIndex(null);
         fetchLeadDetails();
         toastManager.add({ title: "Furniture structure saved successfully", type: "success" });
@@ -955,30 +964,16 @@ export default function OnlineLeadDetailsPage() {
         </div>
         <div className="flex items-center gap-2">
           {!isLost && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        setIsCallOpen(true);
-                        setPreferredStoreId(lead?.store_id?.toString() || "");
-                      }}
-                      disabled={isProductInfoMissing}
-                      className="bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-2 h-9"
-                    >
-                      <PhoneCall className="w-3.5 h-3.5" /> Follow up
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                {isProductInfoMissing && (
-                  <TooltipContent>
-                    <p>Add Product Types and Product Structures before performing follow-up.</p>
-                  </TooltipContent>
-                )}
-              </Tooltip>
-            </TooltipProvider>
+            <Button
+              size="sm"
+              onClick={() => {
+                setIsCallOpen(true);
+                setPreferredStoreId(lead?.store_id?.toString() || "");
+              }}
+              className="bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-2 h-9"
+            >
+              <PhoneCall className="w-3.5 h-3.5" /> Follow up
+            </Button>
           )}
 
           {canMoveToDraft && (
@@ -997,13 +992,13 @@ export default function OnlineLeadDetailsPage() {
                       ) : (
                         <CheckCircle2 className="w-3.5 h-3.5" />
                       )}
-                      Move to Draft
+                      Move to Online Leads
                     </Button>
                   </span>
                 </TooltipTrigger>
                 {(!lead?.call_log || lead.call_log.length === 0) && (
                   <TooltipContent>
-                    <p>Add a call log before moving to Draft.</p>
+                    <p>Add a call log before moving to Online Leads.</p>
                   </TooltipContent>
                 )}
               </Tooltip>
@@ -1112,11 +1107,13 @@ export default function OnlineLeadDetailsPage() {
                     <Button
                       size="sm"
                       onClick={() => {
+                        setFurnitureCustomTitle("");
                         setFurnitureTitle("");
                         setFurnitureStructureId("");
                         setFurnitureDescription("");
                         setFurnitureTitleError("");
                         setFurnitureStructureError("");
+                        setFurnitureCustomTitleError("");
                         setEditingIndex(null);
                         setIsFurnitureOpen(true);
                       }}
@@ -1134,7 +1131,7 @@ export default function OnlineLeadDetailsPage() {
                         <p className="text-sm text-muted-foreground font-medium">Product Types</p>
                       </div>
                       <p className="text-[15px] font-semibold text-foreground mt-0.5">
-                        {lead.product_types?.length > 0 ? lead.product_types.join(", ") : "—"}
+                        {lead.product_types?.length > 0 ? lead.product_types.map(t => t.includes(" | ") ? t.split(" | ")[1] : t).join(", ") : "—"}
                       </p>
                     </div>
                   </div>
@@ -1165,7 +1162,8 @@ export default function OnlineLeadDetailsPage() {
                                         className="text-muted-foreground/70 hover:text-foreground inline-flex size-7 items-center justify-center rounded-md border border-transparent transition-[color,box-shadow] outline-none"
                                         onClick={() => {
                                           setEditingIndex(item.index);
-                                          setFurnitureTitle(item.title);
+                                          setFurnitureCustomTitle(item.title);
+                                          setFurnitureTitle(item.type || item.title);
                                           const structObj = allProductStructures.find(
                                             (s) => s.type === item.structure
                                           );
@@ -1910,6 +1908,7 @@ export default function OnlineLeadDetailsPage() {
             setIsFurnitureOpen(false);
             setFurnitureTitleError("");
             setFurnitureStructureError("");
+            setFurnitureCustomTitleError("");
             setEditingIndex(null);
           }
         }}
@@ -1919,6 +1918,27 @@ export default function OnlineLeadDetailsPage() {
       >
         <form onSubmit={handleFurnitureSubmit}>
           <div className="space-y-4 px-6 pb-6 pt-4">
+
+            {/* Title */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">
+                Title <span className="text-red-500">*</span>
+              </label>
+              <div className="mt-1">
+                <Input
+                  value={furnitureCustomTitle}
+                  onChange={(e) => {
+                    setFurnitureCustomTitle(e.target.value);
+                    if (e.target.value && furnitureCustomTitleError) setFurnitureCustomTitleError("");
+                  }}
+                  placeholder="Enter title"
+                  className="h-10 text-sm bg-background"
+                />
+              </div>
+              {furnitureCustomTitleError && (
+                <p className="mt-1 text-xs text-red-500">{furnitureCustomTitleError}</p>
+              )}
+            </div>
 
             {/* Product Type */}
             <div>
@@ -2031,6 +2051,7 @@ export default function OnlineLeadDetailsPage() {
                   setIsFurnitureOpen(false);
                   setFurnitureTitleError("");
                   setFurnitureStructureError("");
+                  setFurnitureCustomTitleError("");
                   setEditingIndex(null);
                 }}
                 disabled={submittingFurniture}

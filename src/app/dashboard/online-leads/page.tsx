@@ -361,46 +361,10 @@ export default function OnlineLeadsPage() {
         const currentStatus = row.original.followupStatus;
         return (
           <div>
-            <Select
-              disabled={updatingLeadId === row.original.id}
-              value={currentStatus?.id?.toString() || ""}
-              onValueChange={(val) => handleStatusChange(row.original.id, Number(val))}
-            >
-              <SelectTrigger className="border-0 shadow-none p-0 h-auto bg-transparent focus:ring-0 focus:ring-offset-0 focus:outline-none cursor-pointer flex items-center justify-start w-fit">
-                <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200/50 inline-flex items-center gap-1">
-                  {updatingLeadId === row.original.id ? (
-                    <Loader2 className="w-3 h-3 text-blue-600 dark:text-blue-400 animate-spin" />
-                  ) : (
-                    <Activity className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                  )}
-                  {currentStatus?.status_name || "New Lead"}
-                </span>
-              </SelectTrigger>
-              <SelectContent>
-                {statuses
-                  .filter((st) => st.status_name.toLowerCase() !== "pending")
-                  .map((st) => {
-                    const statusNameLower = st.status_name.toLowerCase();
-                    const isStoreStatus =
-                      statusNameLower === "store assigned" ||
-                      statusNameLower === "store visit done";
-                    const hasNoStore = !row.original.franchise && !row.original.store_id;
-                    const isDisabled = isStoreStatus && hasNoStore;
-
-                    return (
-                      <SelectItem
-                        key={st.id}
-                        value={st.id.toString()}
-                        disabled={isDisabled}
-                        title={isDisabled ? "Please assign a store to this lead first." : undefined}
-                        style={isDisabled ? { pointerEvents: "auto", cursor: "not-allowed" } : undefined}
-                      >
-                        {st.status_name}
-                      </SelectItem>
-                    );
-                  })}
-              </SelectContent>
-            </Select>
+            <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200/50 inline-flex items-center gap-1">
+              <Activity className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+              {currentStatus?.status_name || "New Lead"}
+            </span>
           </div>
         );
       },

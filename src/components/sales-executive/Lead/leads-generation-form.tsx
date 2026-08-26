@@ -612,7 +612,7 @@ export default function LeadsGenerationForm({
   }, [isB2b, selectedClient, form]);
 
   useEffect(() => {
-    if (sourceTypes?.data && !form.getValues("source_id")) {
+    if (sourceTypes?.data && !form.getValues("source_id") && !handlesLargeScaleProjects) {
       const onlineSource = sourceTypes.data.find(
         (s: any) => s.type?.toLowerCase() === "online"
       );
@@ -620,7 +620,7 @@ export default function LeadsGenerationForm({
         form.setValue("source_id", String(onlineSource.id));
       }
     }
-  }, [sourceTypes?.data, form]);
+  }, [sourceTypes?.data, form, handlesLargeScaleProjects]);
 
   const selectedProductTypes = form.watch("product_types");
   const selectedProductStructures = form.watch("product_structures");
@@ -2008,11 +2008,14 @@ export default function LeadsGenerationForm({
                   control={form.control}
                   name="product_types"
                   render={({ field }) => {
-                    const pickerData =
-                      productTypes?.data?.map((p: any) => ({
-                        id: p.id,
-                        label: p.type,
-                      })) || [];
+                    const list = productTypes?.data || [];
+                    const filteredList = handlesLargeScaleProjects
+                      ? list
+                      : list.filter((p: any) => p.type?.trim().toLowerCase() !== "small order");
+                    const pickerData = filteredList.map((p: any) => ({
+                      id: p.id,
+                      label: p.type,
+                    }));
 
                     return (
                       <FormItem data-name={field?.name || ""} >
