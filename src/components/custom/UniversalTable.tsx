@@ -1475,6 +1475,9 @@ export function UniversalTable({
         showServicingColumn,
         showSiteSupervisorColumn: !handlesLargeScaleProjectsFromAuth,
         showDesignerColumn: isCustomUserTypeOnlyVendor,
+        hideFurnitureTypeColumn: handlesLargeScaleProjectsFromAuth,
+        renameFurnitureStructureToItemGroup:
+          handlesLargeScaleProjectsFromAuth,
         isB2b,
       }),
     [
