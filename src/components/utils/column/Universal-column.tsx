@@ -34,6 +34,8 @@ interface UniversalColumnOptions {
   showServicingColumn?: boolean;
   showDesignerColumn?: boolean;
   showSiteSupervisorColumn?: boolean;
+  hideFurnitureTypeColumn?: boolean;
+  renameFurnitureStructureToItemGroup?: boolean;
   isB2b?: boolean;
 }
 
@@ -56,6 +58,8 @@ export function getUniversalTableColumns(
     showServicingColumn = false,
     showDesignerColumn = false,
     showSiteSupervisorColumn = false,
+    hideFurnitureTypeColumn = false,
+    renameFurnitureStructureToItemGroup = false,
     isB2b = false,
   } =
     options;
@@ -304,7 +308,8 @@ export function getUniversalTableColumns(
 
     // 4) Product Types / Requirement Types
 
-    {
+    ...(!hideFurnitureTypeColumn
+      ? [{
       accessorKey: "furnitureType",
       filterFn: tableMultiValueFilter,
       header: ({ column, table }) => (
@@ -365,7 +370,8 @@ export function getUniversalTableColumns(
           </div>
         );
       },
-    },
+    }] satisfies ColumnDef<LeadColumn>[]
+      : []),
 
     // 4.1) Furniture Structures / Process Brief
     {
@@ -376,12 +382,22 @@ export function getUniversalTableColumns(
         <DataTableColumnHeader
           column={column}
           table={table}
-          title={isB2b ? "Process Brief" : "Furniture Structures"}
+          title={
+            isB2b
+              ? "Process Brief"
+              : renameFurnitureStructureToItemGroup
+                ? "Item Group"
+                : "Furniture Structures"
+          }
         />
       ),
 
       meta: {
-        label: isB2b ? "Process Brief" : "Furniture Structures",
+        label: isB2b
+          ? "Process Brief"
+          : renameFurnitureStructureToItemGroup
+            ? "Item Group"
+            : "Furniture Structures",
       },
 
       enableSorting: false,
@@ -413,7 +429,11 @@ export function getUniversalTableColumns(
         };
 
         // Group all structures by requirement type for complete hover tooltip context
-        const defaultGroupKey = isB2b ? "Process Briefs" : "Furniture Structures";
+        const defaultGroupKey = isB2b
+          ? "Process Briefs"
+          : renameFurnitureStructureToItemGroup
+            ? "Item Groups"
+            : "Furniture Structures";
         const groupedMap: Record<string, string[]> = {};
         structures.forEach((itemStr) => {
           const parsed = parseItem(itemStr);

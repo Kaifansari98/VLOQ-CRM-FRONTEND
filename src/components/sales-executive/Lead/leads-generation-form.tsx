@@ -611,6 +611,18 @@ export default function LeadsGenerationForm({
       form.setValue("email", clientEmail, { shouldValidate: false });
     }
   }, [isB2b, selectedClient, form]);
+
+  useEffect(() => {
+    if (sourceTypes?.data && !form.getValues("source_id")) {
+      const onlineSource = sourceTypes.data.find(
+        (s: any) => s.type?.toLowerCase() === "online"
+      );
+      if (onlineSource) {
+        form.setValue("source_id", String(onlineSource.id));
+      }
+    }
+  }, [sourceTypes?.data, form]);
+
   const selectedProductTypes = form.watch("product_types");
   const selectedProductStructures = form.watch("product_structures");
   const { data: productStructures, isLoading: isStructuresLoading } =

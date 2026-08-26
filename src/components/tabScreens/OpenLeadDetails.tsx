@@ -583,12 +583,18 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         ? isWithinStageRange(4)
         : isOpenStage;
 
+  const isCaller = normalizedUserType === "telecaller" || normalizedUserType === "telecaller-team-lead" || normalizedUserType === "telecaller team lead";
+  const isDraftLead = !!lead?.is_draft;
+  const isCallerAndDraft = isCaller && isDraftLead;
+
   const canEditStructures =
+    !isCallerAndDraft &&
     !isAuditor &&
     (normalizedUserType === "custom"
       ? canEditLeadDetailsForCustomUser
       : canEditAtCurrentStage);
   const canEditProductType =
+    !isCallerAndDraft &&
     !isAuditor &&
     (normalizedUserType === "custom"
       ? canEditLeadDetailsForCustomUser
@@ -713,12 +719,32 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         label: structure.type,
         parent: structure.parent,
       })) || [];
-    if (!parentFilter) return options;
-    return options.filter((structure: any) => {
+
+    const uniqueOptions: any[] = [];
+    const seen = new Set();
+    for (const opt of options) {
+      const norm = String(opt.label).trim().toLowerCase();
+      if (!seen.has(norm)) {
+        seen.add(norm);
+        uniqueOptions.push(opt);
+      }
+    }
+
+    if (!parentFilter) return uniqueOptions;
+    return uniqueOptions.filter((structure: any) => {
+      const normLabel = String(structure.label || "").toLowerCase();
       const parent = String(structure.parent || "").toLowerCase();
-      if (parentFilter === "Kitchen") return parent === "kitchen";
-      if (parentFilter === "Wardrobe") return parent === "wardrobe";
-      return parent !== "kitchen" && parent !== "wardrobe";
+
+      if (parentFilter === "Kitchen") {
+        // Only kitchen-specific structures, no Others
+        return normLabel.includes("kitchen") || parent === "kitchen";
+      }
+      if (parentFilter === "Wardrobe") {
+        // Only wardrobe-specific structures, no Others
+        return normLabel.includes("wardrobe") || parent === "wardrobe";
+      }
+      // For all other types (Consoles, Small Order, Office Furniture, etc.) → only Others
+      return normLabel === "others";
     });
   };
 

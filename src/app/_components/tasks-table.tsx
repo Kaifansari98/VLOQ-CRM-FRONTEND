@@ -18,7 +18,7 @@ import {
   ColumnFiltersState,
   VisibilityState,
 } from "@tanstack/react-table";
-import { useQueries } from "@tanstack/react-query";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
 
 import { DataTable } from "@/components/data-table/data-table";
 import { Button } from "@/components/ui/button";
@@ -166,6 +166,7 @@ const MyTaskTable = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const franchiseId = useAppSelector((state) => state.auth.franchise_id ?? state.auth.user?.franchise_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const queryClient = useQueryClient();
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type as string | undefined,
   );
@@ -201,13 +202,18 @@ const MyTaskTable = () => {
   >(franchiseId ?? undefined);
   const showFranchiseFilter =
     isSuperAdmin && franchiseOptions.length > 1;
-
+ 
   useEffect(() => {
     if (defaultFranchiseId == null) return;
     setSelectedFranchiseId((current) =>
       current === defaultFranchiseId ? current : defaultFranchiseId,
     );
   }, [defaultFranchiseId]);
+ 
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ["vendorUserTasks"] });
+    queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
+  }, [queryClient]);
 
   const [openMeasurement, setOpenMeasurement] = useState(false);
   const [openMeasurementTaskModal, setOpenMeasurementTaskModal] =
@@ -480,6 +486,11 @@ const MyTaskTable = () => {
 
   const handleRowDoubleClick = useCallback(
     (row: ProcessedTask) => {
+      if (row.isOnlineLead) {
+        router.push(`/dashboard/online-leads/details/${row.leadId}`);
+        return;
+      }
+
       if (row.leadStatus?.toLowerCase() === "completed" || isCompletedTabActive) {
         setRowAction({
           row: { original: row } as any,
@@ -744,6 +755,7 @@ const MyTaskTable = () => {
       lead_blocked_at: (task.leadMaster as any).lead_blocked_at ?? null,
       isFastProductionRequestTask:
         task.userLeadTask.task_type === "Request Fast Production",
+      isOnlineLead: (task.leadMaster as any).isOnlineLead ?? false,
     }));
 
     return prioritizeFastProductionTasks(rows).map((row, index) => ({
