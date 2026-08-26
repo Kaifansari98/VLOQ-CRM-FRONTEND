@@ -31,7 +31,7 @@ import { Button } from "@/components/ui/button";
 import ComingSoon from "@/components/generics/ComingSoon";
 import Loader from "@/components/utils/loader";
 import { Badge } from "@/components/ui/badge";
-import { useB2BRequirementTypes } from "@/hooks/useTypesMaster";
+import { useB2BRequirementTypes, useProductTypes } from "@/hooks/useTypesMaster";
 import { useFranchisesByVendorId } from "@/api/franchise";
 
 const getSortedLatestFirst = <T extends { created_at?: string; id: number }>(
@@ -80,6 +80,9 @@ const QuotationTab = () => {
   const { data: b2bReqTypesData } = useB2BRequirementTypes(vendorId);
   const b2bReqTypes = useMemo(() => b2bReqTypesData?.data || [], [b2bReqTypesData]);
 
+  const { data: productTypesData } = useProductTypes();
+  const productTypes = useMemo(() => productTypesData?.data || [], [productTypesData]);
+
   const { data, error, isLoading } = useQuotationDoc(vendorId, leadId);
   const { data: structureInstancesData, isLoading: isInstancesLoading } =
     useLeadProductStructureInstances(
@@ -117,22 +120,8 @@ const QuotationTab = () => {
     const instanceMap = new Map(
       structureInstances.map((item: any) => [String(item.id), item]),
     );
-    const productTypeMap = new Map(
-      structureInstances
-        .map((item: any) => {
-          const productTypeId =
-            item.productType?.id ??
-            item.productItemCode?.productStructure?.productType?.id;
-          const productTypeTitle =
-            item.productType?.type?.trim() ||
-            item.productItemCode?.productStructure?.productType?.type?.trim() ||
-            "";
-
-          return productTypeId
-            ? [String(productTypeId), productTypeTitle] as const
-            : null;
-        })
-        .filter(Boolean) as readonly (readonly [string, string])[],
+    const productTypeMap = new Map<string, string>(
+      productTypes.map((item: any) => [String(item.id), String(item.type || "").trim()])
     );
 
     const grouped = new Map<
@@ -210,7 +199,7 @@ const QuotationTab = () => {
     return Array.from(grouped.values()).sort((a, b) =>
       a.title.localeCompare(b.title),
     );
-  }, [handlesLargeScaleProjects, sortedQuotationDocs, structureInstances]);
+  }, [handlesLargeScaleProjects, sortedQuotationDocs, structureInstances, productTypes]);
 
   const selectedGroup = useMemo(
     () =>

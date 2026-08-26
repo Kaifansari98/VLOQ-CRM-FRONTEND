@@ -20,6 +20,7 @@ import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -204,7 +205,6 @@ export default function OnlineLeadDetailsPage() {
   const userType = user?.user_type?.user_type?.toLowerCase() || "";
   const isAdmin = userType === "super-admin" || userType === "admin";
   const isCaller = userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead";
-  const canMoveToDraft = isAdmin || isCaller;
 
   const [lead, setLead] = useState<OnlineLead | null>(null);
   const isProductInfoMissing = useMemo(() => {
@@ -225,6 +225,12 @@ export default function OnlineLeadDetailsPage() {
   const [followUpDate, setFollowUpDate] = useState("");
   const [preferredStoreId, setPreferredStoreId] = useState("");
   const [submittingCall, setSubmittingCall] = useState(false);
+ 
+  const selectedStatusName = useMemo(() => {
+    if (!callStatus || !statuses.length) return "";
+    const st = statuses.find((s) => s.id.toString() === callStatus);
+    return st ? st.status_name.toLowerCase() : "";
+  }, [callStatus, statuses]);
 
   const [isStoreOpen, setIsStoreOpen] = useState(false);
   const [assignStoreId, setAssignStoreId] = useState("");
@@ -277,6 +283,37 @@ export default function OnlineLeadDetailsPage() {
   const [allProductTypes, setAllProductTypes] = useState<{ id: number; type: string }[]>([]);
   const [allProductStructures, setAllProductStructures] = useState<{ id: number; type: string }[]>([]);
   const [submittingFurniture, setSubmittingFurniture] = useState(false);
+
+  const filteredProductStructures = useMemo(() => {
+    const uniqueMap = new Map<string, { id: number; type: string }>();
+    allProductStructures.forEach((ps) => {
+      const normName = ps.type.trim().toLowerCase();
+      if (!uniqueMap.has(normName)) {
+        uniqueMap.set(normName, ps);
+      }
+    });
+    const uniqueStructures = Array.from(uniqueMap.values());
+
+    if (!furnitureTitle) return uniqueStructures;
+
+    const normTitle = furnitureTitle.trim().toLowerCase();
+    const isKitchen = normTitle.includes("kitchen");
+    const isWardrobe = normTitle.includes("wardrobe");
+
+    return uniqueStructures.filter((ps) => {
+      const normType = ps.type.trim().toLowerCase();
+      if (isKitchen) {
+        // Only kitchen-specific structures, no Others
+        return normType.includes("kitchen");
+      }
+      if (isWardrobe) {
+        // Only wardrobe-specific structures, no Others
+        return normType.includes("wardrobe");
+      }
+      // For all other product types (Consoles, Small Order, Office Furniture, etc.) → only Others
+      return normType === "others";
+    });
+  }, [allProductStructures, furnitureTitle]);
   // Keep these for edit modal product type/structure arrays
   const [editProductTypes, setEditProductTypes] = useState<string[]>([]);
   const [editProductStructures, setEditProductStructures] = useState<string[]>([]);
@@ -488,8 +525,13 @@ export default function OnlineLeadDetailsPage() {
       return;
     }
 
-    if (!preferredStoreId) {
+    if (selectedStatusName !== "lost" && !preferredStoreId) {
       toastManager.add({ title: "Store selection is required", type: "error" });
+      return;
+    }
+
+    if (!callRemark || !callRemark.trim()) {
+      toastManager.add({ title: "Call log remark is required", type: "error" });
       return;
     }
 
@@ -501,8 +543,8 @@ export default function OnlineLeadDetailsPage() {
         online_lead_status_id: callStatus,
         remark: callRemark,
         follow_up_date: followUpDate || undefined,
-        store_preference_option: preferredStoreId ? "Another Store" : "No Preference",
-        store_id: preferredStoreId ? Number(preferredStoreId) : undefined,
+        store_preference_option: selectedStatusName === "lost" ? undefined : (preferredStoreId ? "Another Store" : "No Preference"),
+        store_id: selectedStatusName === "lost" ? undefined : (preferredStoreId ? Number(preferredStoreId) : undefined),
       });
 
       if (res.data?.success) {
@@ -856,6 +898,17 @@ export default function OnlineLeadDetailsPage() {
     return name === "converted" || name === "store assigned" || lead.store_id !== null;
   }, [lead]);
 
+  // Check if lead is marked as lost
+  const isLost = useMemo(() => {
+    if (!lead || !lead.followupStatus) return false;
+    const name = lead.followupStatus.status_name.toLowerCase();
+    return name === "lost";
+  }, [lead]);
+
+  const canMoveToDraft = useMemo(() => {
+    return (isAdmin || isCaller) && !isLost;
+  }, [isAdmin, isCaller, isLost]);
+
   if (loading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center space-y-3 bg-background">
@@ -901,30 +954,32 @@ export default function OnlineLeadDetailsPage() {
           </Breadcrumb>
         </div>
         <div className="flex items-center gap-2">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setIsCallOpen(true);
-                      setPreferredStoreId(lead?.store_id?.toString() || "");
-                    }}
-                    disabled={isProductInfoMissing}
-                    className="bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-2 h-9"
-                  >
-                    <PhoneCall className="w-3.5 h-3.5" /> Follow up
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              {isProductInfoMissing && (
-                <TooltipContent>
-                  <p>Add Product Types and Product Structures before performing follow-up.</p>
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </TooltipProvider>
+          {!isLost && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setIsCallOpen(true);
+                        setPreferredStoreId(lead?.store_id?.toString() || "");
+                      }}
+                      disabled={isProductInfoMissing}
+                      className="bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-2 h-9"
+                    >
+                      <PhoneCall className="w-3.5 h-3.5" /> Follow up
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {isProductInfoMissing && (
+                  <TooltipContent>
+                    <p>Add Product Types and Product Structures before performing follow-up.</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
+          )}
 
           {canMoveToDraft && (
             <TooltipProvider>
@@ -955,66 +1010,60 @@ export default function OnlineLeadDetailsPage() {
             </TooltipProvider>
           )}
 
-          {isConverted && userType !== "sales-executive" && (
-            <Button
-              size="sm"
-              onClick={() => setIsStoreOpen(true)}
-              className="bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-2 h-9"
-            >
-              <Store className="w-3.5 h-3.5" /> Store Assignment
-            </Button>
-          )}
+
 
           <NotificationBell />
           <AnimatedThemeToggler />
 
-          {/* ⋮ Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="relative bg-accent p-1.5 rounded-sm"
-              >
-                <EllipsisVertical size={22} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => {
-                  if (!lead) return;
-                  setEditName(lead.leads_name || "");
-                  setEditEmail(lead.email || "");
-                  setEditContact(lead.contact || "");
-                  setEditAltContact(lead.alt_contact_no || "");
-                  setEditSiteAddress(lead.site_address || "");
-                  setEditRemark(lead.remark || "");
-                  setEditPriority(lead.priority || "");
-                  setEditSourceId(lead.sourceRelation?.id?.toString() || "");
-                  setEditSiteTypeId(lead.siteTypeRelation?.id?.toString() || "");
-                  setEditArchName(lead.archetech_name || "");
-                  setEditArchNumber(lead.archetech_number || "");
-                  setEditReferedBy(lead.refered_by || "");
-                  setIsEditOpen(true);
-                }}
-              >
-                <PencilLine className="w-4 h-4 mr-2" /> Edit
-              </DropdownMenuItem>
-              {canAssign && (
+          {!isLost && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="relative bg-accent p-1.5 rounded-sm"
+                >
+                  <EllipsisVertical size={22} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
                 <DropdownMenuItem
                   onClick={() => {
-                    if (lead) {
-                      setAssigneeId(lead.assign_to ? lead.assign_to.toString() : "none");
-                      setSalesExecutiveId(lead.final_assigned_leads ? lead.final_assigned_leads.toString() : "none");
-                    }
-                    setIsAssignOpen(true);
+                    if (!lead) return;
+                    setEditName(lead.leads_name || "");
+                    setEditEmail(lead.email || "");
+                    setEditContact(lead.contact || "");
+                    setEditAltContact(lead.alt_contact_no || "");
+                    setEditSiteAddress(lead.site_address || "");
+                    setEditRemark(lead.remark || "");
+                    setEditPriority(lead.priority || "");
+                    const onlineSrc = sourceTypes.find((s) => s.type?.toLowerCase() === "online");
+                    setEditSourceId(lead.sourceRelation?.id?.toString() || onlineSrc?.id?.toString() || "");
+                    setEditSiteTypeId(lead.siteTypeRelation?.id?.toString() || "");
+                    setEditArchName(lead.archetech_name || "");
+                    setEditArchNumber(lead.archetech_number || "");
+                    setEditReferedBy(lead.refered_by || "");
+                    setIsEditOpen(true);
                   }}
                 >
-                  <Users className="w-4 h-4 mr-2" /> Reassign Lead
+                  <PencilLine className="w-4 h-4 mr-2" /> Edit
                 </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                {canAssign && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (lead) {
+                        setAssigneeId(lead.assign_to ? lead.assign_to.toString() : "none");
+                        setSalesExecutiveId(lead.final_assigned_leads ? lead.final_assigned_leads.toString() : "none");
+                      }
+                      setIsAssignOpen(true);
+                    }}
+                  >
+                    <Users className="w-4 h-4 mr-2" /> Reassign Lead
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </header>
 
@@ -1035,10 +1084,7 @@ export default function OnlineLeadDetailsPage() {
               <PhoneCall size={16} className="mr-1 opacity-60" />
               Call Logs
             </TabsTrigger>
-            <TabsTrigger value="stores">
-              <Store size={16} className="mr-1 opacity-60" />
-              Store Movements
-            </TabsTrigger>
+
           </TabsList>
 
           <TabsContent value="details" className="mt-0 space-y-6">
@@ -1062,21 +1108,23 @@ export default function OnlineLeadDetailsPage() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-5">
                   <h3 className="text-base font-semibold text-foreground">Product Information</h3>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setFurnitureTitle("");
-                      setFurnitureStructureId("");
-                      setFurnitureDescription("");
-                      setFurnitureTitleError("");
-                      setFurnitureStructureError("");
-                      setEditingIndex(null);
-                      setIsFurnitureOpen(true);
-                    }}
-                    className="flex items-center gap-1.5 text-xs font-semibold"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Add Furniture Structure
-                  </Button>
+                  {!isLost && (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setFurnitureTitle("");
+                        setFurnitureStructureId("");
+                        setFurnitureDescription("");
+                        setFurnitureTitleError("");
+                        setFurnitureStructureError("");
+                        setEditingIndex(null);
+                        setIsFurnitureOpen(true);
+                      }}
+                      className="flex items-center gap-1.5 text-xs font-semibold"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add Furniture Structure
+                    </Button>
+                  )}
                 </div>
                 <div className="space-y-6">
                   <div className="flex items-start gap-3">
@@ -1084,14 +1132,6 @@ export default function OnlineLeadDetailsPage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="text-sm text-muted-foreground font-medium">Product Types</p>
-                        <button
-                          type="button"
-                          onClick={handleOpenProductTypeEdit}
-                          className="text-muted-foreground/70 hover:text-foreground inline-flex size-7 items-center justify-center rounded-md transition"
-                          aria-label="Edit Product Type"
-                        >
-                          <PencilLine className="h-4 w-4" />
-                        </button>
                       </div>
                       <p className="text-[15px] font-semibold text-foreground mt-0.5">
                         {lead.product_types?.length > 0 ? lead.product_types.join(", ") : "—"}
@@ -1118,32 +1158,34 @@ export default function OnlineLeadDetailsPage() {
                                   <p className="flex-1 min-w-0 line-clamp-2 text-base font-semibold leading-tight text-foreground transition-colors group-hover:text-foreground dark:text-neutral-200 text-wrap break-words">
                                     {item.title}
                                   </p>
-                                  <div className="flex items-center gap-1 shrink-0">
-                                    <button
-                                      type="button"
-                                      className="text-muted-foreground/70 hover:text-foreground inline-flex size-7 items-center justify-center rounded-md border border-transparent transition-[color,box-shadow] outline-none"
-                                      onClick={() => {
-                                        setEditingIndex(item.index);
-                                        setFurnitureTitle(item.title);
-                                        const structObj = allProductStructures.find(
-                                          (s) => s.type === item.structure
-                                        );
-                                        setFurnitureStructureId(structObj ? structObj.id.toString() : "");
-                                        setIsFurnitureOpen(true);
-                                      }}
-                                      aria-label="Edit"
-                                    >
-                                      <PencilLine className="h-4 w-4" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeleteStructure(item.index)}
-                                      className="text-muted-foreground/70 hover:text-destructive inline-flex size-7 items-center justify-center rounded-md transition-colors"
-                                      aria-label="Delete"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </button>
-                                  </div>
+                                  {!isLost && (
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <button
+                                        type="button"
+                                        className="text-muted-foreground/70 hover:text-foreground inline-flex size-7 items-center justify-center rounded-md border border-transparent transition-[color,box-shadow] outline-none"
+                                        onClick={() => {
+                                          setEditingIndex(item.index);
+                                          setFurnitureTitle(item.title);
+                                          const structObj = allProductStructures.find(
+                                            (s) => s.type === item.structure
+                                          );
+                                          setFurnitureStructureId(structObj ? structObj.id.toString() : "");
+                                          setIsFurnitureOpen(true);
+                                        }}
+                                        aria-label="Edit"
+                                      >
+                                        <PencilLine className="h-4 w-4" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteStructure(item.index)}
+                                        className="text-muted-foreground/70 hover:text-destructive inline-flex size-7 items-center justify-center rounded-md transition-colors"
+                                        aria-label="Delete"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                                 <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
                                   {item.structure}
@@ -1472,50 +1514,7 @@ export default function OnlineLeadDetailsPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="stores" className="mt-0">
-            <Card className="shadow border w-full">
-              <CardHeader className="border-b">
-                <CardTitle className="text-base font-bold flex items-center gap-2">
-                  <Store className="w-5 h-5 text-slate-800 dark:text-slate-200" /> Store Movements
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0 overflow-y-auto">
-                {lead.store_logs.length === 0 ? (
-                  <div className="p-8 text-center text-muted-foreground text-sm italic">
-                    No store logs registered.
-                  </div>
-                ) : (
-                  <div className="divide-y">
-                    {lead.store_logs.map((log) => (
-                      <div key={log.id} className="p-3 space-y-1 text-xs">
-                        <div className="flex justify-between items-center flex-wrap">
-                          <span className="font-bold text-foreground">
-                            {log.action_type === "PREFERENCE"
-                              ? "First Preference"
-                              : log.action_type === "ASSIGNED"
-                              ? "Assigned Store"
-                              : "Transferred"}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground">
-                            {new Date(log.created_at).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <p className="text-muted-foreground">
-                          {log.fromFranchise ? `${log.fromFranchise.franchise_name.replace(/vloq|furnix/gi, "").trim()} ➔ ` : ""}
-                          <span className="font-semibold text-foreground">{log.toFranchise.franchise_name.replace(/vloq|furnix/gi, "").trim()}</span>
-                        </p>
-                        {log.remark && <p className="text-[11px] text-slate-700 dark:text-slate-300 italic">Remark: {log.remark}</p>}
-                        <div className="text-[10px] text-muted-foreground flex justify-between pt-0.5">
-                          <span>By: {log.selectedBy.user_name}</span>
-                          {log.assignedTo && <span>Assigned Caller: {log.assignedTo.user_name}</span>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+
         </Tabs>
       </div>
 
@@ -1532,7 +1531,7 @@ export default function OnlineLeadDetailsPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className={isFollowUpDateRequired ? "col-span-1 space-y-1.5" : "col-span-2 space-y-1.5"}>
-                <label className="text-xs font-semibold text-foreground">New Status Outcome</label>
+                <label className="text-xs font-semibold text-foreground">New Status Outcome <span className="text-red-500">*</span></label>
                 <Select
                   value={callStatus}
                   onValueChange={(val) => setCallStatus(val)}
@@ -1581,32 +1580,35 @@ export default function OnlineLeadDetailsPage() {
               )}
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">Select Store</label>
-              <Select
-                value={preferredStoreId || "none"}
-                onValueChange={(val) => setPreferredStoreId(val === "none" ? "" : val)}
-              >
-                <SelectTrigger className="w-full h-10 bg-background text-sm">
-                  <SelectValue placeholder="Select Store" />
-                </SelectTrigger>
-                <SelectContent className="bg-popover text-popover-foreground">
-                  <SelectItem value="none">No preference</SelectItem>
-                  {stores.map((s) => (
-                    <SelectItem key={s.id} value={s.id.toString()}>
-                      {s.franchise_name.replace(/vloq|furnix/gi, "").trim()}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {selectedStatusName !== "lost" && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground">Select Store <span className="text-red-500">*</span></label>
+                <Select
+                  value={preferredStoreId || "none"}
+                  onValueChange={(val) => setPreferredStoreId(val === "none" ? "" : val)}
+                >
+                  <SelectTrigger className="w-full h-10 bg-background text-sm">
+                    <SelectValue placeholder="Select Store" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover text-popover-foreground">
+                    <SelectItem value="none">No preference</SelectItem>
+                    {stores.map((s) => (
+                      <SelectItem key={s.id} value={s.id.toString()}>
+                        {s.franchise_name.replace(/vloq|furnix/gi, "").trim()}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">Call Log Remark</label>
-              <Input
+              <label className="text-xs font-semibold text-foreground">Call Log Remark <span className="text-red-500">*</span></label>
+              <Textarea
                 placeholder="Log notes about what was discussed..."
                 value={callRemark}
                 onChange={(e) => setCallRemark(e.target.value)}
+                className="h-20 resize-none text-sm bg-background"
               />
             </div>
 
@@ -1626,102 +1628,6 @@ export default function OnlineLeadDetailsPage() {
               >
                 {submittingCall && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Log Call Outcome
-              </Button>
-            </DialogFooter>
-          </form>
-      </BaseModal>
-
-      {/* Assign Store Modal */}
-      <BaseModal
-        open={isStoreOpen}
-        onOpenChange={setIsStoreOpen}
-        title="Assign Lead to Store"
-        description="Assign or transfer this lead to a physical store location and trigger caller auto-assignment rules."
-        size="md"
-      >
-        <form onSubmit={handleStoreSubmit} className="space-y-4 px-6 pb-6 pt-4">
-            {!requiresCallerSelect ? (
-              <>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">Select Store</label>
-                  <Select
-                    value={assignStoreId}
-                    onValueChange={(val) => setAssignStoreId(val)}
-                  >
-                    <SelectTrigger className="w-full h-10 bg-background text-sm">
-                      <SelectValue placeholder="Choose Store" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-popover text-popover-foreground">
-                      {stores.map((s) => (
-                        <SelectItem key={s.id} value={s.id.toString()}>
-                          {s.franchise_name.replace(/vloq|furnix/gi, "").trim()}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">Transfer / Assignment Remark</label>
-                  <Input
-                    placeholder="E.g., Customer ready for design meeting at store..."
-                    value={storeRemark}
-                    onChange={(e) => setStoreRemark(e.target.value)}
-                  />
-                </div>
-              </>
-            ) : (
-              <div className="space-y-4">
-                <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-xs text-amber-700 dark:text-amber-300">
-                  There is no registered Store Admin (Manager) for this location and multiple callers exist. Please manually allocate the lead to a specific caller:
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">Select Caller</label>
-                  <Select
-                    value={selectedStoreCaller}
-                    onValueChange={(val) => setSelectedStoreCaller(val)}
-                  >
-                    <SelectTrigger className="w-full h-10 bg-background text-sm">
-                      <SelectValue placeholder="-- Select Caller --" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-popover text-popover-foreground">
-                      {storeCallers.map((c) => (
-                        <SelectItem key={c.id} value={c.id.toString()}>
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            )}
-
-            <DialogFooter>
-              {requiresCallerSelect && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setRequiresCallerSelect(false)}
-                  className="h-9 text-xs mr-auto"
-                >
-                  Back
-                </Button>
-              )}
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsStoreOpen(false)}
-                className="h-9 text-xs"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={submittingStore}
-                className="h-9 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-              >
-                {submittingStore && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {requiresCallerSelect ? "Assign Caller" : "Assign Store"}
               </Button>
             </DialogFooter>
           </form>
@@ -2025,6 +1931,29 @@ export default function OnlineLeadDetailsPage() {
                   onValueChange={(val) => {
                     setFurnitureTitle(val);
                     if (val && furnitureTitleError) setFurnitureTitleError("");
+
+                    const normTitle = val.trim().toLowerCase();
+                    const isKitchen = normTitle.includes("kitchen");
+                    const isWardrobe = normTitle.includes("wardrobe");
+
+                    const validStructures = allProductStructures.filter((ps) => {
+                      const normType = ps.type.trim().toLowerCase();
+                      if (isKitchen) return normType.includes("kitchen");
+                      if (isWardrobe) return normType.includes("wardrobe");
+                      return normType === "others";
+                    });
+
+                    const isCurrentValid = validStructures.some(
+                      (ps) => ps.id.toString() === furnitureStructureId
+                    );
+
+                    if (!isCurrentValid) {
+                      if (validStructures.length === 1) {
+                        setFurnitureStructureId(validStructures[0].id.toString());
+                      } else {
+                        setFurnitureStructureId("");
+                      }
+                    }
                   }}
                 >
                   <SelectTrigger className="w-full h-10 bg-background text-sm">
@@ -2051,19 +1980,17 @@ export default function OnlineLeadDetailsPage() {
               </label>
               <div className="mt-1">
                 <Select
-                  value={furnitureStructureId || "none"}
+                  value={furnitureStructureId || undefined}
                   onValueChange={(v) => {
-                    const val = v === "none" ? "" : v;
-                    setFurnitureStructureId(val);
-                    if (val && furnitureStructureError) setFurnitureStructureError("");
+                    setFurnitureStructureId(v);
+                    if (v && furnitureStructureError) setFurnitureStructureError("");
                   }}
                 >
                   <SelectTrigger className="w-full h-10 bg-background text-sm">
-                    <SelectValue placeholder="Select an option" />
+                    <SelectValue placeholder="Select Structure Type" />
                   </SelectTrigger>
                   <SelectContent className="bg-popover text-popover-foreground">
-                    <SelectItem value="none">Select an option</SelectItem>
-                    {allProductStructures.map((ps) => (
+                    {filteredProductStructures.map((ps) => (
                       <SelectItem key={ps.id} value={ps.id.toString()}>
                         {ps.type}
                       </SelectItem>

@@ -213,11 +213,11 @@ export const useVendorUserTasksFilter = (
     ],
     queryFn: () => postVendorUserTasks(vendorId, userId, payload),
     enabled: !!vendorId && !!userId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
     refetchOnWindowFocus: false,
   });
 };
-
+ 
 export const useVendorAllTasksFilter = (
   vendorId: number,
   payload: TaskFilterPayload,
@@ -247,7 +247,7 @@ export const useVendorAllTasksFilter = (
     ],
     queryFn: () => postVendorAllTasksFilter(vendorId, payload),
     enabled: !!vendorId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
     refetchOnWindowFocus: false,
   });
 };
