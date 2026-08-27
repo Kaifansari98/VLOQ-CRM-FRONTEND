@@ -500,16 +500,6 @@ export default function ProcessBriefsTable({ vendorIdOverride }: ProcessBriefsTa
 
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Workstation Categories</Label>
-              <MultiSelect
-                options={machineTypeOptions}
-                selected={selectedMachineTypeIds}
-                onChange={setSelectedMachineTypeIds}
-                placeholder="Select categories..."
-              />
-            </div>
-
-            <div className="space-y-1.5">
               <Label className="text-sm font-medium">Specific Workstations</Label>
               <MultiSelect
                 options={machineOptions}
