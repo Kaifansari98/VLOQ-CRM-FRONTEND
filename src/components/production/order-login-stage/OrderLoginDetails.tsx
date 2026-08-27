@@ -10,7 +10,11 @@ import OrderLoginTab from "./OrderloginTab";
 import { useTechCheckInstanceStatus } from "@/api/tech-check";
 import { useAppSelector } from "@/redux/store";
 import { useClientDocumentationDetails } from "@/hooks/client-documentation/use-clientdocumentation";
-import { useLeadById, useLeadSuperAdminApprovalLockIns } from "@/hooks/useLeadsQueries";
+import {
+  useLeadById,
+  useLeadProductStructureInstances,
+  useLeadSuperAdminApprovalLockIns,
+} from "@/hooks/useLeadsQueries";
 import { useUpdateSoValueReceivedStatus } from "@/api/production/order-login";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
@@ -62,11 +66,18 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     (state) => state.customPrivileges.codes,
   );
   const updateSoValueReceived = useUpdateSoValueReceivedStatus(vendorId, leadId);
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
   const {
     data: orderLoginLockIns = [],
     isLoading: orderLoginLockInsLoading,
   } = useLeadSuperAdminApprovalLockIns(vendorId, leadId, "order_login");
   const { data: leadResponse } = useLeadById(leadId, vendorId, userId);
+  const { data: structureInstancesData } = useLeadProductStructureInstances(
+    leadId,
+    vendorId,
+  );
 
   const { data: clientDocs } = useClientDocumentationDetails(
     vendorId,
@@ -77,6 +88,66 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   const isSmallOrderRequestLead =
     leadResponse?.data?.lead?.is_small_order_request === true;
   const instances = clientDocs?.product_structure_instances ?? [];
+  const largeScaleGroups = React.useMemo(() => {
+    if (!handlesLargeScaleProjects) return [];
+
+    const rawInstances = Array.isArray(structureInstancesData?.data)
+      ? structureInstancesData.data
+      : [];
+
+    const map = new Map<
+      number,
+      { productTypeId: number; title: string; subtitle?: string }
+    >();
+
+    rawInstances.forEach((inst: any) => {
+      const typeId =
+        inst.product_type_id ||
+        inst.product_type?.id ||
+        inst.productType?.id ||
+        inst.productItemCode?.productStructure?.productType?.id;
+
+      if (!typeId || map.has(Number(typeId))) return;
+
+      map.set(Number(typeId), {
+        productTypeId: Number(typeId),
+        title:
+          inst.product_type?.name ||
+          inst.productType?.type ||
+          inst.productItemCode?.productStructure?.productType?.type ||
+          inst.title ||
+          "Item Group",
+        subtitle:
+          inst.productItemCode?.item_code ||
+          inst.productStructure?.type ||
+          undefined,
+      });
+    });
+
+    return Array.from(map.values());
+  }, [handlesLargeScaleProjects, structureInstancesData?.data]);
+  const instanceToProductTypeEntries = React.useMemo(() => {
+    const rawInstances = Array.isArray(structureInstancesData?.data)
+      ? structureInstancesData.data
+      : [];
+
+    return rawInstances
+      .map((inst: any) => {
+        const productTypeId =
+          inst.product_type_id ||
+          inst.product_type?.id ||
+          inst.productType?.id ||
+          inst.productItemCode?.productStructure?.productType?.id;
+
+        if (!inst.id || !productTypeId) return null;
+
+        return {
+          instanceId: Number(inst.id),
+          productTypeId: Number(productTypeId),
+        };
+      })
+      .filter(Boolean) as Array<{ instanceId: number; productTypeId: number }>;
+  }, [structureInstancesData?.data]);
   const hasMultipleInstances = (clientDocs?.instance_count ?? 0) > 1;
   const [activeInstanceId, setActiveInstanceId] = useState<number | null>(
     resolvedInstanceId,
@@ -183,6 +254,8 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
         <ApprovedDocsSection
           leadId={leadId}
           instanceId={scopedInstanceId}
+          itemGroups={largeScaleGroups}
+          instanceToProductTypeEntries={instanceToProductTypeEntries}
           isSmallOrderRequestLead={isSmallOrderRequestLead}
           smallOrderRequestDocuments={smallOrderRequestDocuments}
         />

@@ -12,6 +12,13 @@ import DocumentCard from "@/components/utils/documentCard";
 import { Ban } from "lucide-react";
 import { getFileExtension, isImageExt } from "@/components/utils/filehelper";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   AlertDialog,
   AlertDialogContent,
   AlertDialogHeader,
@@ -25,6 +32,15 @@ import {
 interface ApprovedDocsSectionProps {
   leadId: number;
   instanceId?: number | null;
+  itemGroups?: Array<{
+    productTypeId: number;
+    title: string;
+    subtitle?: string;
+  }>;
+  instanceToProductTypeEntries?: Array<{
+    instanceId: number;
+    productTypeId: number;
+  }>;
   isSmallOrderRequestLead?: boolean;
   smallOrderRequestDocuments?: Array<{
     id: number;
@@ -38,12 +54,17 @@ interface ApprovedDocsSectionProps {
 export default function ApprovedDocsSection({
   leadId,
   instanceId,
+  itemGroups = [],
+  instanceToProductTypeEntries = [],
   isSmallOrderRequestLead = false,
   smallOrderRequestDocuments = [],
 }: ApprovedDocsSectionProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const handlesLargeScaleProjects = useAppSelector(
+    (s) => s.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
 
   // ✅ Fetch approved docs
   const { data, isLoading, isError } = useApprovedTechCheckDocuments(
@@ -55,6 +76,9 @@ export default function ApprovedDocsSection({
     useDeleteDocument(leadId);
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
+  const [selectedProductTypeId, setSelectedProductTypeId] = useState<
+    number | null
+  >(null);
 
   const getDocName = (file: any) =>
     file?.doc_og_name ||
@@ -65,17 +89,95 @@ export default function ApprovedDocsSection({
 
   const scopedDocs = isSmallOrderRequestLead
     ? smallOrderRequestDocuments
-    : instanceId != null
+    : !handlesLargeScaleProjects && instanceId != null
       ? (data || []).filter(
           (file: any) => file?.product_structure_instance_id === instanceId
         )
       : data || [];
 
+  const groupedLargeScaleDocs = useMemo(() => {
+    if (!handlesLargeScaleProjects || isSmallOrderRequestLead) return [];
+
+    const instanceToProductTypeMap = new Map<number, number>();
+    instanceToProductTypeEntries.forEach((entry) => {
+      if (entry?.instanceId && entry?.productTypeId) {
+        instanceToProductTypeMap.set(
+          Number(entry.instanceId),
+          Number(entry.productTypeId),
+        );
+      }
+    });
+
+    const grouped = new Map<
+      number,
+      {
+        productTypeId: number;
+        title: string;
+        subtitle?: string;
+        docs: any[];
+      }
+    >();
+
+    scopedDocs.forEach((file: any) => {
+      const productTypeId = Number(
+        file?.product_type_id ||
+          (file?.product_structure_instance_id
+            ? instanceToProductTypeMap.get(
+                Number(file.product_structure_instance_id),
+              )
+            : 0) ||
+          0,
+      );
+      if (!productTypeId) return;
+
+      const existingGroup = grouped.get(productTypeId);
+      const itemGroup = itemGroups.find(
+        (group) => Number(group.productTypeId) === productTypeId,
+      );
+
+      if (existingGroup) {
+        existingGroup.docs.push(file);
+        return;
+      }
+
+      grouped.set(productTypeId, {
+        productTypeId,
+        title: itemGroup?.title || `Item Group ${productTypeId}`,
+        subtitle: itemGroup?.subtitle,
+        docs: [file],
+      });
+    });
+
+    return Array.from(grouped.values()).sort((a, b) =>
+      a.title.localeCompare(b.title),
+    );
+  }, [
+    handlesLargeScaleProjects,
+    instanceToProductTypeEntries,
+    isSmallOrderRequestLead,
+    itemGroups,
+    scopedDocs,
+  ]);
+
+  const selectedLargeScaleGroup = useMemo(
+    () =>
+      groupedLargeScaleDocs.find(
+        (group) => group.productTypeId === selectedProductTypeId,
+      ) ?? null,
+    [groupedLargeScaleDocs, selectedProductTypeId],
+  );
+
+  const selectedLargeScaleDocs = selectedLargeScaleGroup?.docs ?? [];
+
   const { approvedImages, approvedDocuments } = useMemo(() => {
     const images: any[] = [];
     const documents: any[] = [];
 
-    scopedDocs.forEach((file: any) => {
+    const docsToSplit = handlesLargeScaleProjects && !isSmallOrderRequestLead
+      ? selectedLargeScaleDocs
+      : scopedDocs;
+
+    docsToSplit.forEach((file: any) => {
       const name = getDocName(file);
       const ext = getFileExtension(name);
       if (isImageExt(ext)) {
@@ -86,7 +188,12 @@ export default function ApprovedDocsSection({
     });
 
     return { approvedImages: images, approvedDocuments: documents };
-  }, [scopedDocs]);
+  }, [
+    handlesLargeScaleProjects,
+    isSmallOrderRequestLead,
+    scopedDocs,
+    selectedLargeScaleDocs,
+  ]);
 
   const handleConfirmDelete = () => {
     if (confirmDelete) {
@@ -123,6 +230,8 @@ export default function ApprovedDocsSection({
   }
 
   const totalDocs = approvedImages.length + approvedDocuments.length;
+  const shouldShowLargeScaleGrouping =
+    handlesLargeScaleProjects && !isSmallOrderRequestLead;
 
   return (
     <motion.div
@@ -132,7 +241,54 @@ export default function ApprovedDocsSection({
       className="rounded-xl bg-background overflow-hidden shadow-sm"
     >
       {/* 🌟 Empty State */}
-      {totalDocs === 0 ? (
+      {shouldShowLargeScaleGrouping ? (
+        groupedLargeScaleDocs.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-[40vh] px-4">
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+              <Ban size={32} className="text-muted-foreground" />
+            </div>
+            <h3 className="font-semibold text-lg text-foreground mb-1">
+              No Approved Documents Found
+            </h3>
+            <p className="text-xs text-muted-foreground text-center max-w-sm leading-relaxed">
+              Once documents are approved, you can view them item-group wise
+              here.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="border rounded-xl overflow-hidden bg-[#fff] dark:bg-[#0a0a0a]">
+              <SectionHeader
+                title="Approved Item Groups"
+                docCount={groupedLargeScaleDocs.length}
+              />
+              <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3">
+                {groupedLargeScaleDocs.map((group) => (
+                  <button
+                    key={group.productTypeId}
+                    type="button"
+                    onClick={() => setSelectedProductTypeId(group.productTypeId)}
+                    className="rounded-xl border bg-background p-4 text-left transition hover:border-foreground/30 hover:shadow-sm"
+                  >
+                    <p className="text-sm font-semibold text-foreground">
+                      {group.title}
+                    </p>
+                    {group.subtitle ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {group.subtitle}
+                      </p>
+                    ) : null}
+                    <p className="mt-3 text-xs font-medium text-muted-foreground">
+                      {group.docs.length} approved document
+                      {group.docs.length === 1 ? "" : "s"}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )
+      ) : totalDocs === 0 ? (
         <div className="flex flex-col items-center justify-center h-[40vh] px-4">
           <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
             <Ban size={32} className="text-muted-foreground" />
@@ -204,6 +360,83 @@ export default function ApprovedDocsSection({
           )}
         </div>
       )}
+
+      <Dialog
+        open={shouldShowLargeScaleGrouping && !!selectedLargeScaleGroup}
+        onOpenChange={(open) => {
+          if (!open) setSelectedProductTypeId(null);
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-5xl">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedLargeScaleGroup?.title || "Item Group"}
+            </DialogTitle>
+            <DialogDescription>
+              View all approved documents for this item group.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedLargeScaleDocs.length === 0 ? (
+            <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+              No approved documents found for this item group.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {approvedImages.length > 0 && (
+                <div className="border rounded-xl overflow-hidden bg-[#fff] dark:bg-[#0a0a0a]">
+                  <SectionHeader
+                    title="Approved Images"
+                    docCount={approvedImages.length}
+                  />
+
+                  <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {approvedImages.map((doc: any, index: number) => (
+                      <ImageComponent
+                        key={doc.id}
+                        doc={{
+                          id: doc.document_id ?? doc.id,
+                          doc_og_name: getDocName(doc),
+                          signedUrl: doc.signed_url,
+                          created_at: doc.created_at,
+                        }}
+                        index={index}
+                        canDelete={canDelete}
+                        onDelete={(id) => setConfirmDelete(Number(id))}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {approvedDocuments.length > 0 && (
+                <div className="border rounded-xl overflow-hidden bg-[#fff] dark:bg-[#0a0a0a]">
+                  <SectionHeader
+                    title="Approved Files"
+                    docCount={approvedDocuments.length}
+                  />
+
+                  <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {approvedDocuments.map((doc: any) => (
+                      <DocumentCard
+                        key={doc.id}
+                        doc={{
+                          id: doc.document_id ?? doc.id,
+                          originalName: getDocName(doc),
+                          signedUrl: doc.signed_url,
+                          created_at: doc.created_at,
+                        }}
+                        canDelete={canDelete}
+                        onDelete={(id) => setConfirmDelete(id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* 🌟 Delete Confirmation Modal */}
       <AlertDialog
