@@ -33,6 +33,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
@@ -255,10 +256,9 @@ function BoxCard({
 
   if (viewMode === "compact") {
     return (
-      <button
-        type="button"
+      <div
         onClick={onClick}
-        className="group grid w-full grid-cols-1 gap-3 rounded-xl border bg-card p-3 text-left transition-all hover:border-indigo-300 hover:bg-indigo-50/30 hover:shadow-sm md:grid-cols-[minmax(130px,1fr)_130px_130px_170px_44px]"
+        className="cursor-pointer group grid w-full grid-cols-1 gap-3 rounded-xl border bg-card p-3 text-left transition-all hover:border-indigo-300 hover:bg-indigo-50/30 hover:shadow-sm md:grid-cols-[minmax(130px,1fr)_130px_130px_170px_44px]"
       >
         <div className="flex min-w-0 items-center gap-3">
           <div
@@ -312,17 +312,6 @@ function BoxCard({
           >
             {itemCount} item{itemCount === 1 ? "" : "s"}
           </span>
-
-          {/* <span
-            className={cn(
-              "rounded-full px-2.5 py-1 text-xs font-bold",
-              hasItems
-                ? "bg-emerald-50 text-emerald-700"
-                : "bg-slate-100 text-slate-600"
-            )}
-          >
-            {hasItems ? "With Items" : "Empty"}
-          </span> */}
         </div>
 
         <div className="flex items-center gap-2 md:justify-center">
@@ -384,7 +373,7 @@ function BoxCard({
             className="text-muted-foreground transition-colors group-hover:text-indigo-500"
           />
         </div>
-      </button>
+      </div>
     );
   }
 
@@ -592,6 +581,7 @@ type BoxSort =
 
 function BoxesSection({
   boxes,
+  boxesPagination,
   filterOptions: serverFilterOptions,
   downloadingBoxId,
   downloadingAll,
@@ -601,6 +591,7 @@ function BoxesSection({
   onFilterChange,
 }: {
   boxes: ProjectDetailData["boxes"];
+  boxesPagination?: ProjectDetailData["boxes_pagination"];
   filterOptions?: ProjectDetailData["filterOptions"];
   downloadingBoxId: number | null;
   downloadingAll: boolean;
@@ -613,6 +604,8 @@ function BoxesSection({
     category?: string;
     machine_id?: string;
     box_status?: string;
+    page?: number;
+    limit?: number;
   }) => void;
 }) {
   const [search, setSearch] = useState("");
@@ -623,6 +616,8 @@ function BoxesSection({
   const [boxSort, setBoxSort] = useState<BoxSort>("sequence_asc");
   const [viewMode, setViewMode] = useState<BoxViewMode>("compact");
   const [collapsed, setCollapsed] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     if (!onFilterChange) return;
@@ -1029,6 +1024,75 @@ function BoxesSection({
               ))}
             </div>
           )}
+
+          {/* Boxes Pagination UI */}
+          {boxesPagination && boxesPagination.total > 0 && (
+            <div className="mt-4 flex flex-col gap-3 border-t bg-muted/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between rounded-b-xl">
+              <div className="flex flex-wrap items-center gap-3">
+                <p className="text-xs text-muted-foreground">
+                  Showing{" "}
+                  <span className="font-bold text-foreground">
+                    {boxesPagination.from}
+                  </span>
+                  {" - "}
+                  <span className="font-bold text-foreground">
+                    {boxesPagination.to}
+                  </span>
+                  {" of "}
+                  <span className="font-bold text-foreground">
+                    {boxesPagination.total}
+                  </span>
+                  {" boxes"}
+                </p>
+
+                <select
+                  value={pageSize}
+                  onChange={(event) => {
+                    setPageSize(Number(event.target.value));
+                    setPage(1);
+                  }}
+                  className="h-8 rounded-lg border bg-background px-2 text-xs font-semibold"
+                >
+                  <option value={10}>10 / page</option>
+                  <option value={25}>25 / page</option>
+                  <option value={50}>50 / page</option>
+                  <option value={100}>100 / page</option>
+                </select>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={!boxesPagination.has_previous}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  className="h-8 px-3 text-xs font-semibold"
+                >
+                  Previous
+                </Button>
+
+                <div className="flex items-center gap-1 px-3 text-xs font-bold text-muted-foreground">
+                  Page {boxesPagination.page} of {boxesPagination.total_pages}
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={!boxesPagination.has_next}
+                  onClick={() =>
+                    setPage((p) =>
+                      Math.min(boxesPagination.total_pages, p + 1),
+                    )
+                  }
+                  className="h-8 px-3 text-xs font-semibold"
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -1066,6 +1130,40 @@ function BoxItemsDialog({
       .finally(() => setLoading(false));
   }, [open, boxId]);
 
+  const { totalQty, totalWeight } = useMemo(() => {
+    if (!data?.items) return { totalQty: 0, totalWeight: 0 };
+
+    let qtySum = 0;
+    let weightSum = 0;
+
+    for (const item of data.items) {
+      const qty = Number((item as any).qty || 1);
+      qtySum += qty;
+
+      const mappedWeight = Number((item as any).weight || 0);
+      const cutListTotalWeight = Number((item.cut_list as any)?.weight || 0);
+      const cutListTotalQty = Math.max(1, Number(item.cut_list?.qty || 1));
+
+      let itemWeight = mappedWeight > 0 ? mappedWeight : 0;
+      if (itemWeight === 0 && cutListTotalWeight > 0) {
+        itemWeight = (cutListTotalWeight / cutListTotalQty) * qty;
+      }
+
+      if (itemWeight === 0 && item.cut_list) {
+        const l = Number(item.cut_list.length || 0);
+        const w = Number(item.cut_list.width || 0);
+        const t = Number(item.cut_list.thickness || 0);
+        if (l > 0 && w > 0 && t > 0) {
+          itemWeight = l * w * t * 0.00000075 * qty;
+        }
+      }
+
+      weightSum += itemWeight;
+    }
+
+    return { totalQty: qtySum, totalWeight: weightSum };
+  }, [data]);
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="sm:max-w-6xl md:max-w-7xl lg:max-w-[90vw] xl:max-w-[1300px] w-full max-h-[88vh] flex flex-col p-0 overflow-hidden shadow-2xl rounded-2xl border">
@@ -1089,9 +1187,9 @@ function BoxItemsDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
+        <div className="flex-1 overflow-y-auto p-0 bg-background">
           {loading ? (
-            <div className="space-y-3">
+            <div className="p-6 space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Skeleton key={i} className="h-12 w-full rounded-lg" />
               ))}
@@ -1109,129 +1207,175 @@ function BoxItemsDialog({
               </p>
             </div>
           ) : (
-            <div className="w-full overflow-x-auto rounded-xl border bg-background shadow-xs">
+            <div className="w-full overflow-x-auto border-0 bg-background">
               <Table className="w-full">
-                <TableHeader>
+                <TableHeader className="sticky top-0 z-10 bg-slate-100 shadow-xs">
                   <TableRow className="bg-muted/60 hover:bg-muted/60">
-                    <TableHead className="text-xs font-bold uppercase text-foreground py-3.5 whitespace-nowrap">
+                    <TableHead className="text-xs font-bold uppercase text-foreground py-3.5 whitespace-nowrap px-4">
                       Item
                     </TableHead>
-                    <TableHead className="text-xs font-bold uppercase text-foreground whitespace-nowrap">
+                    <TableHead className="text-xs font-bold uppercase text-foreground whitespace-nowrap px-4">
                       Code
                     </TableHead>
-                    <TableHead className="text-xs font-bold uppercase text-foreground whitespace-nowrap">
+                    <TableHead className="text-xs font-bold uppercase text-foreground whitespace-nowrap px-4">
                       Size (L×W×T)
                     </TableHead>
-                    <TableHead className="text-xs font-bold uppercase text-foreground text-center whitespace-nowrap">
+                    <TableHead className="text-xs font-bold uppercase text-foreground text-center whitespace-nowrap px-4">
                       Qty
                     </TableHead>
-                    <TableHead className="text-xs font-bold uppercase text-foreground whitespace-nowrap">
+                    <TableHead className="text-xs font-bold uppercase text-foreground whitespace-nowrap px-4">
                       Weight
                     </TableHead>
-                    <TableHead className="text-xs font-bold uppercase text-foreground whitespace-nowrap">
+                    <TableHead className="text-xs font-bold uppercase text-foreground whitespace-nowrap px-4">
                       Category
                     </TableHead>
-                    <TableHead className="text-xs font-bold uppercase text-foreground whitespace-nowrap">
+                    <TableHead className="text-xs font-bold uppercase text-foreground whitespace-nowrap px-4">
                       Machine
                     </TableHead>
-                    <TableHead className="text-xs font-bold uppercase text-foreground whitespace-nowrap">
+                    <TableHead className="text-xs font-bold uppercase text-foreground whitespace-nowrap px-4">
                       Scanned At
                     </TableHead>
-                    <TableHead className="text-xs font-bold uppercase text-foreground whitespace-nowrap">
+                    <TableHead className="text-xs font-bold uppercase text-foreground whitespace-nowrap px-4">
                       Scanned By
                     </TableHead>
-                    <TableHead className="text-xs font-bold uppercase text-foreground whitespace-nowrap">
+                    <TableHead className="text-xs font-bold uppercase text-foreground whitespace-nowrap px-4">
                       Site In
                     </TableHead>
-                    <TableHead className="text-xs font-bold uppercase text-foreground whitespace-nowrap">
+                    <TableHead className="text-xs font-bold uppercase text-foreground whitespace-nowrap px-4">
                       Site By
                     </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data.items.map((item, idx) => (
-                    <TableRow
-                      key={item.id}
-                      className={
-                        idx % 2 === 0
-                          ? "bg-background hover:bg-muted/30"
-                          : "bg-muted/15 hover:bg-muted/30"
+                  {data.items.map((item, idx) => {
+                    const qty = Number((item as any).qty || 1);
+                    const mappedWeight = Number((item as any).weight || 0);
+                    const cutListTotalWeight = Number(
+                      (item.cut_list as any)?.weight || 0,
+                    );
+                    const cutListTotalQty = Math.max(
+                      1,
+                      Number(item.cut_list?.qty || 1),
+                    );
+
+                    let itemWeight = mappedWeight > 0 ? mappedWeight : 0;
+                    if (itemWeight === 0 && cutListTotalWeight > 0) {
+                      itemWeight =
+                        (cutListTotalWeight / cutListTotalQty) * qty;
+                    }
+
+                    if (itemWeight === 0 && item.cut_list) {
+                      const l = Number(item.cut_list.length || 0);
+                      const w = Number(item.cut_list.width || 0);
+                      const t = Number(item.cut_list.thickness || 0);
+                      if (l > 0 && w > 0 && t > 0) {
+                        itemWeight = l * w * t * 0.00000075 * qty;
                       }
-                    >
-                      <TableCell className="font-semibold text-sm whitespace-nowrap">
-                        {item.cut_list.item_name}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground whitespace-nowrap">
-                        {item.cut_list.unique_code}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                        {item.cut_list.length} × {item.cut_list.width} ×{" "}
-                        {item.cut_list.thickness}
-                      </TableCell>
-                      <TableCell className="text-xs font-bold text-center whitespace-nowrap">
-                        {Number((item as any).qty || 1)}
-                      </TableCell>
-                      <TableCell className="text-xs font-bold text-purple-700 whitespace-nowrap">
-                        {formatWeight(
-                          Number(
-                            (item as any).weight ||
-                              Number((item.cut_list as any).weight || 0) /
-                                Math.max(1, Number(item.cut_list.qty || 1)) ||
-                              0,
-                          ) * Number((item as any).qty || 1),
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs text-slate-700 whitespace-nowrap">
-                        {item.cut_list.category_name}
-                      </TableCell>
-                      <TableCell className="text-xs text-slate-700 whitespace-nowrap">
-                        {item.machine.machine_name}
-                      </TableCell>
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {item.actual_in_at ? (
-                          <span className="text-emerald-700 font-medium inline-flex items-center gap-1">
-                            <CheckCircle2 size={12} />
-                            {fmtDateTime(item.actual_in_at)}
-                          </span>
-                        ) : (
-                          <span className="text-amber-600 font-medium bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 text-[11px]">
-                            Pending
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {item.inOperator ? (
-                          <span className="flex items-center gap-1.5 font-medium text-slate-700">
-                            <User size={11} className="text-slate-400" />
-                            {item.inOperator.name}
-                          </span>
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {item.site_in_at ? (
-                          <span className="text-blue-700 font-medium inline-flex items-center gap-1">
-                            <CheckCircle2 size={12} />
-                            {fmtDateTime(item.site_in_at)}
-                          </span>
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs whitespace-nowrap">
-                        {item.siteInByUser ? (
-                          <span className="flex items-center gap-1.5 font-medium text-slate-700">
-                            <User size={11} className="text-slate-400" />
-                            {item.siteInByUser.name}
-                          </span>
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                    }
+
+                    return (
+                      <TableRow
+                        key={item.id}
+                        className={
+                          idx % 2 === 0
+                            ? "bg-background hover:bg-muted/30"
+                            : "bg-muted/15 hover:bg-muted/30"
+                        }
+                      >
+                        <TableCell className="font-semibold text-sm whitespace-nowrap px-4">
+                          {item.cut_list.item_name}
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground whitespace-nowrap px-4">
+                          {item.cut_list.unique_code}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap px-4">
+                          {item.cut_list.length} × {item.cut_list.width} ×{" "}
+                          {item.cut_list.thickness}
+                        </TableCell>
+                        <TableCell className="text-xs font-bold text-center whitespace-nowrap px-4">
+                          {qty}
+                        </TableCell>
+                        <TableCell className="text-xs font-bold text-purple-700 whitespace-nowrap px-4">
+                          {formatWeight(itemWeight)}
+                        </TableCell>
+                        <TableCell className="text-xs text-slate-700 whitespace-nowrap px-4">
+                          {item.cut_list.category_name}
+                        </TableCell>
+                        <TableCell className="text-xs text-slate-700 whitespace-nowrap px-4">
+                          {item.machine.machine_name}
+                        </TableCell>
+                        <TableCell className="text-xs whitespace-nowrap px-4">
+                          {item.actual_in_at ? (
+                            <span className="text-emerald-700 font-medium inline-flex items-center gap-1">
+                              <CheckCircle2 size={12} />
+                              {fmtDateTime(item.actual_in_at)}
+                            </span>
+                          ) : (
+                            <span className="text-amber-600 font-medium bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 text-[11px]">
+                              Pending
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs whitespace-nowrap px-4">
+                          {item.inOperator ? (
+                            <span className="flex items-center gap-1.5 font-medium text-slate-700">
+                              <User size={11} className="text-slate-400" />
+                              {item.inOperator.name}
+                            </span>
+                          ) : (
+                            "—"
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs whitespace-nowrap px-4">
+                          {item.site_in_at ? (
+                            <span className="text-blue-700 font-medium inline-flex items-center gap-1">
+                              <CheckCircle2 size={12} />
+                              {fmtDateTime(item.site_in_at)}
+                            </span>
+                          ) : (
+                            "—"
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs whitespace-nowrap px-4">
+                          {item.siteInByUser ? (
+                            <span className="flex items-center gap-1.5 font-medium text-slate-700">
+                              <User size={11} className="text-slate-400" />
+                              {item.siteInByUser.name}
+                            </span>
+                          ) : (
+                            "—"
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
+                <TableFooter className="bg-slate-100 text-slate-900 font-bold sticky bottom-0 z-10 shadow-md border-t-2 border-slate-300">
+                  <TableRow className="hover:bg-slate-100 border-0">
+                    <TableCell
+                      colSpan={3}
+                      className="py-3.5 px-4 text-xs font-bold uppercase tracking-wider text-slate-800"
+                    >
+                      Total Box Summary ({data.items.length}{" "}
+                      {data.items.length === 1 ? "Item" : "Items"})
+                    </TableCell>
+                    <TableCell className="py-3.5 px-4 text-sm font-black text-center text-slate-900">
+                      {totalQty}
+                    </TableCell>
+                    <TableCell className="py-3.5 px-4 text-sm font-black text-purple-700">
+                      {formatWeight(totalWeight)}
+                    </TableCell>
+                    <TableCell
+                      colSpan={6}
+                      className="py-3.5 px-4 text-xs text-slate-600 text-right pr-6"
+                    >
+                      Total Weight:{" "}
+                      <span className="font-extrabold text-purple-800 text-sm ml-1.5 bg-purple-100 px-2.5 py-1 rounded-md border border-purple-300">
+                        {formatWeight(totalWeight)}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                </TableFooter>
               </Table>
             </div>
           )}
@@ -3195,9 +3339,10 @@ export default function ProjectDetailPage() {
             )}
 
             {/* ── Boxes ── */}
-            {data.boxes.length > 0 && (
+            {data && (
               <BoxesSection
                 boxes={data.boxes}
+                boxesPagination={data.boxes_pagination}
                 filterOptions={data.filterOptions}
                 downloadingBoxId={downloadingBoxId}
                 downloadingAll={downloadingAll}
