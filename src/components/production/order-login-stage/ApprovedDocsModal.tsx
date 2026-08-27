@@ -9,8 +9,10 @@ import { useDeleteDocument } from "@/api/leads";
 import SectionHeader from "@/utils/sectionHeader";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
-import { Ban } from "lucide-react";
+import { Ban, File, FileText, FolderOpen, ImageIcon } from "lucide-react";
 import { getFileExtension, isImageExt } from "@/components/utils/filehelper";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -238,7 +240,7 @@ export default function ApprovedDocsSection({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="rounded-xl bg-background overflow-hidden shadow-sm"
+      className="rounded-xl bg-background overflow-hidden"
     >
       {/* 🌟 Empty State */}
       {shouldShowLargeScaleGrouping ? (
@@ -257,32 +259,89 @@ export default function ApprovedDocsSection({
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="border rounded-xl overflow-hidden bg-[#fff] dark:bg-[#0a0a0a]">
-              <SectionHeader
-                title="Approved Item Groups"
+            <div className="overflow-hidden bg-[#fff] dark:bg-[#0a0a0a]">
+              {/* <SectionHeader
+                title="Approved Item Groups Documents"
                 docCount={groupedLargeScaleDocs.length}
-              />
-              <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3">
+              /> */}
+              <div className="flex items-center gap-2">
+              <File size={18}/>
+              <p className="text-lg font-medium">Approved Item Groups Documents</p>
+              </div>
+              <div className="grid grid-cols-1 gap-4 py-4 sm:grid-cols-2 xl:grid-cols-3">
                 {groupedLargeScaleDocs.map((group) => (
-                  <button
+                  <Card
                     key={group.productTypeId}
-                    type="button"
+                    className="cursor-pointer border border-border/60 shadow-none transition hover:border-foreground/20 hover:shadow-sm"
                     onClick={() => setSelectedProductTypeId(group.productTypeId)}
-                    className="rounded-xl border bg-background p-4 text-left transition hover:border-foreground/30 hover:shadow-sm"
                   >
-                    <p className="text-sm font-semibold text-foreground">
-                      {group.title}
-                    </p>
-                    {group.subtitle ? (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {group.subtitle}
-                      </p>
-                    ) : null}
-                    <p className="mt-3 text-xs font-medium text-muted-foreground">
-                      {group.docs.length} approved document
-                      {group.docs.length === 1 ? "" : "s"}
-                    </p>
-                  </button>
+                    <CardContent className="px-6">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-xl border bg-neutral-50 text-blue-600 dark:bg-neutral-800">
+                            <ImageIcon className="h-6 w-6" />
+                          </div>
+
+                          <div>
+                            <h3 className="font-semibold text-sm">
+                              {group.title}
+                            </h3>
+                            <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+                              {group.subtitle || "View approved documents for this item group"}
+                            </p>
+                          </div>
+                        </div>
+
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-xs text-muted-foreground hover:text-foreground"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedProductTypeId(group.productTypeId);
+                          }}
+                        >
+                          View
+                        </Button>
+                      </div>
+
+                      <div className="my-4 border-t" />
+
+                      <div className="mb-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm">
+                          <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">
+                            {group.docs.length} file
+                            {group.docs.length === 1 ? "" : "s"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {group.docs.length > 0 ? (
+                        <div className="flex -space-x-2">
+                          {group.docs.slice(0, 4).map((doc: any, idx: number) => (
+                            <div
+                              key={doc.id}
+                              className="flex h-10 w-10 items-center justify-center rounded-lg border bg-neutral-100 dark:bg-neutral-800"
+                              style={{ zIndex: 4 - idx }}
+                            >
+                              <FileText className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                          ))}
+
+                          {group.docs.length > 4 ? (
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-200 text-xs font-medium text-muted-foreground dark:bg-neutral-700">
+                              +{group.docs.length - 4}
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          No files uploaded yet
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             </div>
