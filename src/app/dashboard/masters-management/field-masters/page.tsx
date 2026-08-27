@@ -22,8 +22,12 @@ import CompanyVendorMastersTable from "@/components/custom/CompanyVendorMastersT
 import ArchitectureMastersTable from "@/components/custom/ArchitectureMastersTable";
 import BroadcastCategoryMastersTable from "@/components/custom/BroadcastCategoryMastersTable";
 import SpecsMasterTable from "@/components/custom/SpecsMasterTable";
+import * as React from "react";
+import { useMemo } from "react";
+import ProcessBriefsTable from "@/components/custom/ProcessBriefsTable";
 import { useSearchParams } from "next/navigation";
 import { useVendorById } from "@/api/vendors";
+import { useFranchisesByVendorId } from "@/api/franchise";
 import { useAppSelector } from "@/redux/store";
 
 export default function FieldMastersPage() {
@@ -36,7 +40,21 @@ export default function FieldMastersPage() {
     (state) => state.auth.user?.vendor?.is_broadcast_enabled === true,
   );
   const isVendorUser = useAppSelector((state) => Boolean(state.auth.user?.vendor_id));
+  const sessionVendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const vendorId = vendorIdOverride ?? sessionVendorId;
+
+  const franchiseId = useAppSelector(
+    (s) => s.auth.franchise_id ?? s.auth.user?.franchise_id,
+  );
+  const reduxModuledForB2b = useAppSelector(
+    (state) => (state.auth as any)?.moduled_for_b2b ?? (state.auth.user as any)?.moduled_for_b2b ?? false,
+  );
   const { data: vendorResponse } = useVendorById(vendorIdOverride);
+  const { data: franchisesForB2b = [] } = useFranchisesByVendorId(
+    vendorId ?? 0,
+    !!vendorId,
+  );
+
   const showArchitectureMaster = vendorIdOverride
     ? vendorResponse?.data?.handlesLargeScaleProjects === true
     : sessionVendorAllowsLargeScale;
@@ -44,6 +62,19 @@ export default function FieldMastersPage() {
     ? (vendorResponse?.data as any)?.is_broadcast_enabled === true
     : sessionVendorAllowsBroadcast;
   const showSpecsMaster = isVendorUser && !vendorIdOverride && !sessionVendorAllowsLargeScale;
+
+  const showProcessBriefMaster = useMemo(() => {
+    if (vendorIdOverride && vendorResponse?.data) {
+      return (vendorResponse.data as any)?.moduled_for_b2b === true;
+    }
+    if (franchiseId && franchisesForB2b.length > 0) {
+      const activeFranchise = franchisesForB2b.find((f: any) => f.id === franchiseId);
+      if (activeFranchise) {
+        return activeFranchise.moduled_for_b2b ?? false;
+      }
+    }
+    return reduxModuledForB2b;
+  }, [vendorIdOverride, vendorResponse, franchiseId, franchisesForB2b, reduxModuledForB2b]);
 
   const rawTabItems = [
     {
@@ -88,6 +119,16 @@ export default function FieldMastersPage() {
       color: "bg-black hover:bg-black",
       cardContent: <CompanyVendorMastersTable vendorIdOverride={vendorIdOverride} />,
     },
+    ...(showProcessBriefMaster
+      ? [
+          {
+            id: "process-brief-master",
+            title: "Process Briefs",
+            color: "bg-black hover:bg-black",
+            cardContent: <ProcessBriefsTable vendorIdOverride={vendorIdOverride} />,
+          },
+        ]
+      : []),
     ...(showSpecsMaster
       ? [
           {

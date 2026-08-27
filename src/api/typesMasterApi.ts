@@ -1339,6 +1339,38 @@ export const fetchLeadProcessBriefsApi = async (leadId: number, vendorId: number
   return res.data;
 };
 
+export const createProcessBriefApi = async (payload: { vendor_id: number; name: string; created_by: number }) => {
+  const res = await apiClient.post("/leads/create-process-brief", payload);
+  return res.data;
+};
+
+export const updateProcessBriefApi = async (id: number, payload: { name: string }) => {
+  const res = await apiClient.put(`/leads/update-process-brief/${id}`, payload);
+  return res.data;
+};
+
+export const toggleProcessBriefStatusApi = async (id: number, payload: { is_active: boolean }) => {
+  const res = await apiClient.patch(`/leads/toggle-process-brief-status/${id}`, payload);
+  return res.data;
+};
+
+export const fetchProcessBriefMachineMappingsApi = async (processBriefId: number, vendorId: number) => {
+  const res = await apiClient.get(`/leads/get-process-brief-machine-mappings/${processBriefId}?vendor_id=${vendorId}`);
+  return res.data;
+};
+
+export const saveProcessBriefMachineMappingsApi = async (payload: {
+  process_brief_id: number;
+  vendor_id: number;
+  machine_ids: number[];
+  machine_type_ids: number[];
+  created_by: number;
+}) => {
+  const res = await apiClient.post("/leads/save-process-brief-machine-mappings", payload);
+  return res.data;
+};
+
+
 export const createProductType = async (
   payload: CreateProductTypeMasterPayload,
 ) => {

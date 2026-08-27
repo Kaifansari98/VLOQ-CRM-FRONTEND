@@ -89,6 +89,11 @@ import {
   updateUser,
   updateUserPrivileges,
   type UpdateUserMasterPayload,
+  createProcessBriefApi,
+  updateProcessBriefApi,
+  toggleProcessBriefStatusApi,
+  fetchProcessBriefMachineMappingsApi,
+  saveProcessBriefMachineMappingsApi,
 } from "@/api/typesMasterApi"
 import { useAppSelector } from "@/redux/store" // assuming you have typed hooks
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -1825,3 +1830,110 @@ export const useUpdateUserPrivileges = (vendorIdOverride?: number) => {
     },
   });
 }
+
+export const useCreateProcessBrief = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: createProcessBriefApi,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["processBriefs", vendorId] });
+      toastManager.add({
+        title: "Process brief created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to create process brief.",
+        type: "error",
+      });
+    },
+  });
+};
+
+export const useUpdateProcessBrief = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: ({ id, name }: { id: number; name: string }) =>
+      updateProcessBriefApi(id, { name }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["processBriefs", vendorId] });
+      toastManager.add({
+        title: "Process brief updated successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to update process brief.",
+        type: "error",
+      });
+    },
+  });
+};
+
+export const useToggleProcessBriefStatus = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: ({ id, is_active }: { id: number; is_active: boolean }) =>
+      toggleProcessBriefStatusApi(id, { is_active }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["processBriefs", vendorId] });
+      toastManager.add({
+        title: "Process brief status updated successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to update process brief status.",
+        type: "error",
+      });
+    },
+  });
+};
+
+export const useProcessBriefMachineMappings = (processBriefId: number, vendorIdOverride?: number) => {
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+  return useQuery({
+    queryKey: ["processBriefMachineMappings", processBriefId, vendorId],
+    queryFn: () => fetchProcessBriefMachineMappingsApi(processBriefId, vendorId!),
+    enabled: !!processBriefId && !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+};
+
+export const useSaveProcessBriefMachineMappings = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: saveProcessBriefMachineMappingsApi,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["processBriefMachineMappings", variables.process_brief_id, vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["processBriefs", vendorId],
+      });
+      toastManager.add({
+        title: "Process brief machine mappings saved successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to save machine mappings.",
+        type: "error",
+      });
+    },
+  });
+};
+
