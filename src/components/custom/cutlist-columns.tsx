@@ -10,11 +10,14 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
+import { cn } from "@/lib/utils";
+
 export function getCutListColumns(
   machineColumns: string[],
   onMachineHeaderClick?: (machineName: string) => void,
   onMachineCellClick?: (cutListId: number, machineId: number, machineName: string, currentlyAssigned: boolean) => void,
-  data?: any[]  // ✅ add this
+  data?: any[],  // ✅ add this
+  isAssignmentDisabled?: boolean,
 ): ColumnDef<any>[] {
   // ✅ Build unique option lists from data
   const uniqueGroups = Array.from(
@@ -632,7 +635,17 @@ export function getCutListColumns(
         <div className="flex items-center gap-2 justify-between">
           <Button
             variant="ghost"
-            className="h-auto p-0 font-extrabold hover:bg-transparent hover:text-primary flex-1"
+            className={cn(
+              "h-auto p-0 font-extrabold flex-1",
+              isAssignmentDisabled
+                ? "cursor-not-allowed opacity-70 hover:bg-transparent"
+                : "hover:bg-transparent hover:text-primary"
+            )}
+            title={
+              isAssignmentDisabled
+                ? "Project Started: You cannot assign. Only Super Admin can do this."
+                : `Click to assign ${machineName}`
+            }
             onClick={() => onMachineHeaderClick?.(machineName)}
           >
             {machineName}
@@ -676,13 +689,24 @@ export function getCutListColumns(
 
         return (
           <div
-            className="flex items-center justify-center cursor-pointer hover:bg-accent rounded p-1 transition-colors"
+            className={cn(
+              "flex items-center justify-center rounded p-1 transition-colors",
+              isAssignmentDisabled
+                ? "cursor-not-allowed opacity-50"
+                : "cursor-pointer hover:bg-accent"
+            )}
             onClick={() => {
               if (machineId && onMachineCellClick) {
                 onMachineCellClick(cutListId, machineId, machineName, isAssigned);
               }
             }}
-            title={isAssigned ? `Click to unassign ${machineName}` : `Click to assign ${machineName}`}
+            title={
+              isAssignmentDisabled
+                ? "Project Started: You cannot assign. Only Super Admin can do this."
+                : isAssigned
+                ? `Click to unassign ${machineName}`
+                : `Click to assign ${machineName}`
+            }
           >
             {isAssigned ? (
               <Check className="h-5 w-5 text-green-600" />

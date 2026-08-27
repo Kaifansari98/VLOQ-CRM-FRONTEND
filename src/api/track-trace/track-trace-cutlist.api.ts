@@ -8,6 +8,7 @@ export interface CutListSavePayload {
   machine_id: number;
   machine_name: string;
   assigned: boolean;
+  user_role?: string;
 }
 
 export const getProjectCutList = async (
@@ -230,6 +231,16 @@ export interface ProjectDetailData {
     categories: string[];
     machines: { id: number; name: string }[];
   };
+  boxes_pagination?: {
+    total: number;
+    page: number;
+    limit: number;
+    total_pages: number;
+    has_previous: boolean;
+    has_next: boolean;
+    from: number;
+    to: number;
+  };
 }
 
 export const getProjectDetail = async (
@@ -242,6 +253,8 @@ export const getProjectDetail = async (
     machine_id?: string;
     box_id?: string;
     box_status?: string;
+    page?: number;
+    limit?: number;
   }
 ) => {
   const { data } = await apiClient.get(

@@ -37,7 +37,8 @@ export type CutListRow = Record<string, any>;
 
 // In your page component
 export default function CutListPage() {
-    const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+    const user = useAppSelector((state) => state.auth.user);
+    const vendorId = user?.vendor_id;
     const { uniqueProjectId } = useParams();
     const {
         data: response,
@@ -48,6 +49,42 @@ export default function CutListPage() {
 
     const data = response?.data ?? [];
     const machineColumns = response?.machineColumns ?? [];
+    const project = response?.project;
+
+    const userRole = useMemo(() => {
+        return (
+            user?.user_type?.user_type ||
+            user?.user_role ||
+            ""
+        );
+    }, [user]);
+
+    const isSuperAdmin = useMemo(() => {
+        if (!user) return false;
+        const roleName = userRole.toLowerCase().trim();
+        return (
+            roleName === "super-admin" ||
+            roleName === "superadmin" ||
+            roleName === "super admin" ||
+            roleName === "super_admin"
+        );
+    }, [user, userRole]);
+
+    const isProjectStarted = useMemo(() => {
+        if (!response) return false;
+        if (typeof response.is_project_started === "boolean") {
+            return response.is_project_started;
+        }
+        if (typeof response.project?.is_started === "boolean") {
+            return response.project.is_started;
+        }
+        if (typeof response.scanned_mapping_count === "number") {
+            return response.scanned_mapping_count > 0;
+        }
+        return false;
+    }, [response]);
+
+    const isAssignmentDisabled = isProjectStarted && !isSuperAdmin;
 
     // ✅ Handler for machine assignment
     const handleMachineAssign = async (
@@ -64,6 +101,7 @@ export default function CutListPage() {
                 machine_id: machineId,
                 machine_name: machineName,
                 assigned: assigned,
+                user_role: userRole,
             };
             const reponse = await useCutListMachine(payload);
 
@@ -170,6 +208,7 @@ export default function CutListPage() {
                         data={data}
                         machineColumns={machineColumns}
                         className="pt-3 px-4"
+                        isAssignmentDisabled={isAssignmentDisabled}
                         onMachineAssign={handleMachineAssign}
                         onDownloadLabels={handleDownloadLabels}
                         onDownloadExcel={handleDownloadExcel}
