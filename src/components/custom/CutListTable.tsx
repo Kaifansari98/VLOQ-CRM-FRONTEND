@@ -44,6 +44,7 @@ interface Props {
   data: CutListRow[];
   machineColumns: string[];
   className?: string;
+  isAssignmentDisabled?: boolean;
   onMachineAssign?: (
     cutListIds: number[],
     machineId: number,
@@ -59,6 +60,7 @@ export default function CutListTable({
   data,
   machineColumns,
   className,
+  isAssignmentDisabled = false,
   onMachineAssign,
   onDownloadLabels,
   onDownloadExcel,
@@ -195,6 +197,14 @@ export default function CutListTable({
     machineName: string,
     currentlyAssigned: boolean,
   ) => {
+    if (isAssignmentDisabled) {
+      toastManager.add({
+        title: "Project Started: You cannot assign. Only Super Admin can do this.",
+        type: "error",
+      });
+      return;
+    }
+
     if (!onMachineAssign) return;
 
     try {
@@ -213,6 +223,14 @@ export default function CutListTable({
   };
 
   function handleMachineHeaderClick(machineName: string) {
+    if (isAssignmentDisabled) {
+      toastManager.add({
+        title: "Project Started: You cannot assign. Only Super Admin can do this.",
+        type: "error",
+      });
+      return;
+    }
+
     const currentSelectedRows = table.getFilteredSelectedRowModel().rows;
 
     if (currentSelectedRows.length === 0) {
@@ -250,8 +268,9 @@ export default function CutListTable({
       handleMachineHeaderClick,
       handleMachineCellClick,
       data,  // ✅ pass data here
+      isAssignmentDisabled,
     ),
-  [machineColumns, data, onMachineAssign],
+  [machineColumns, data, onMachineAssign, isAssignmentDisabled],
 );
 
   const table = useReactTable({
@@ -315,8 +334,18 @@ export default function CutListTable({
           variant="default"
           size="sm"
           className="gap-2"
-          disabled={uploadMachineExcelMutation.isPending}
-          onClick={() => fileInputRef.current?.click()}
+          disabled={uploadMachineExcelMutation.isPending || isAssignmentDisabled}
+          title={isAssignmentDisabled ? "Project Started: You cannot assign. Only Super Admin can do this." : "Upload Cutlist"}
+          onClick={() => {
+            if (isAssignmentDisabled) {
+              toastManager.add({
+                title: "Project Started: You cannot assign. Only Super Admin can do this.",
+                type: "error",
+              });
+              return;
+            }
+            fileInputRef.current?.click();
+          }}
         >
           {uploadMachineExcelMutation.isPending ? (
             <>
