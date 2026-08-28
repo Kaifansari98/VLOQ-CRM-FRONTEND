@@ -108,11 +108,12 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
     [quotationDocs],
   );
   const availableDesignDocs = React.useMemo(
-    () =>
-      designDocs.filter((doc) => {
+    () => {
+      return designDocs.filter((doc) => {
         const designKey = getDesignRevisionKey(doc.doc_og_name);
         return !designKey || !usedQuotationKeys.has(designKey);
-      }),
+      });
+    },
     [designDocs, usedQuotationKeys],
   );
 
@@ -219,6 +220,11 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
           title: "No design files available. Please upload a design file first.",
           type: "error",
         });
+      } else if (availableDesignDocs.length === 0) {
+        toastManager.add({
+          title: "All designs are already linked to a quotation. Please upload a new design file.",
+          type: "error",
+        });
       } else {
         toastManager.add({
           title: "Please select a design file for this quotation.",
@@ -271,7 +277,7 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
     );
   };
 
-  const displayDesignDocs = availableDesignDocs.length > 0 ? availableDesignDocs : designDocs;
+  const displayDesignDocs = availableDesignDocs;
 
   return (
     <BaseModal
@@ -350,7 +356,7 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
                       disabled={
                         isLoadingDesignDocs ||
                         isLoadingQuotationDocs ||
-                        availableDesignDocs.length === 0
+                        displayDesignDocs.length === 0
                       }
                     >
                       <SelectTrigger className="w-full">
@@ -358,14 +364,14 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
                           placeholder={
                             isLoadingDesignDocs || isLoadingQuotationDocs
                               ? "Loading design files..."
-                              : availableDesignDocs.length === 0
+                              : displayDesignDocs.length === 0
                                 ? "No design files available"
                                 : "Select one design file"
                           }
                         />
                       </SelectTrigger>
                       <SelectContent>
-                        {availableDesignDocs.map((doc) => (
+                        {displayDesignDocs.map((doc) => (
                           <SelectItem key={doc.id} value={String(doc.id)}>
                             {doc.doc_og_name}
                           </SelectItem>
