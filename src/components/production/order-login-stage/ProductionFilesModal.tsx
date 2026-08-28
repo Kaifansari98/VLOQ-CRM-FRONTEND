@@ -67,6 +67,9 @@ export default function ProductionFilesSection({
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
   const userId = useAppSelector((s) => s.auth.user?.id);
+  const handlesLargeScaleProjects = useAppSelector(
+    (s) => s.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
   const customPrivilegeCodes = useAppSelector(
     (s) => s.customPrivileges.codes,
   );
@@ -315,58 +318,61 @@ export default function ProductionFilesSection({
         )}
 
 
-        {/* -------------------------------- REMARK SECTION -------------------------------- */}
-        <div className="p-6 border-b space-y-2">
-          <p className="text-sm font-semibold tracking-tight">Remark</p>
-          {shouldDisableActions ? (
-            <CustomeTooltip
-              value={effectiveBlockedTooltip}
-              truncateValue={
-                <div>
-                  <TextAreaInput
-                    value={remark}
-                    onChange={() => { }}
-                    disabled
-                    maxLength={500}
-                    placeholder="Add any notes related to production files..."
-                    className="h-[130px] bg-muted/20 rounded-lg"
-                  />
-                </div>
-              }
-            />
-          ) : (
-            <TextAreaInput
-              value={remark}
-              onChange={setRemark}
-              maxLength={500}
-              disabled={!canUploadProductionFiles}
-              placeholder="Add any notes related to production files..."
-              className="h-[130px] bg-muted/20 rounded-lg"
-            />
-          )}
-          <div className="flex justify-end">
-            <Button
-              size="sm"
-              onClick={handleRemarkSave}
-              disabled={
-                !remark.trim() || !canUploadProductionFiles || savingRemark
-              }
-              className="flex items-center gap-2"
-            >
-              {savingRemark ? (
-                <>
-                  <Loader2 className="animate-spin size-4" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Paperclip size={16} />
-                  {savedRemark && savedRemark !== "N/A" ? "Update Remark" : "Add Remark"}
-                </>
-              )}
-            </Button>
+        {!handlesLargeScaleProjects && (
+          <div className="p-6 border-b space-y-2">
+            <p className="text-sm font-semibold tracking-tight">Remark</p>
+            {shouldDisableActions ? (
+              <CustomeTooltip
+                value={effectiveBlockedTooltip}
+                truncateValue={
+                  <div>
+                    <TextAreaInput
+                      value={remark}
+                      onChange={() => { }}
+                      disabled
+                      maxLength={500}
+                      placeholder="Add any notes related to production files..."
+                      className="h-[130px] bg-muted/20 rounded-lg"
+                    />
+                  </div>
+                }
+              />
+            ) : (
+              <TextAreaInput
+                value={remark}
+                onChange={setRemark}
+                maxLength={500}
+                disabled={!canUploadProductionFiles}
+                placeholder="Add any notes related to production files..."
+                className="h-[130px] bg-muted/20 rounded-lg"
+              />
+            )}
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                onClick={handleRemarkSave}
+                disabled={
+                  !remark.trim() || !canUploadProductionFiles || savingRemark
+                }
+                className="flex items-center gap-2"
+              >
+                {savingRemark ? (
+                  <>
+                    <Loader2 className="animate-spin size-4" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Paperclip size={16} />
+                    {savedRemark && savedRemark !== "N/A"
+                      ? "Update Remark"
+                      : "Add Remark"}
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* -------------------------------- FILE LIST SECTION -------------------------------- */}
         <div className="p-6 space-y-4">

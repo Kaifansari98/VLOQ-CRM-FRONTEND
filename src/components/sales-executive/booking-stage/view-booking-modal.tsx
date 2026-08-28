@@ -29,8 +29,9 @@ import UploadFinalDoc from "./add-final-doc";
 import {
   useLeadById,
   useCheckSiteSupervisorAssigned,
+  useLeadProductStructureInstances,
+  useLeadUniqueProductTypes,
 } from "@/hooks/useLeadsQueries";
-import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import DocumentCard from "@/components/utils/documentCard";
 import { Button } from "@/components/ui/button";
@@ -162,6 +163,7 @@ type BookingAmountFormValues = z.infer<typeof bookingAmountSchema>;
 
 const designsSchema = z.object({
   design_type: z.enum(["2D", "3D", "2D + 3D"]).optional(),
+  product_type: z.string().optional(),
   upload_pdf: z
     .any()
     .refine((files) => files && files.length > 0, {
@@ -192,9 +194,9 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   const vendorCustomUserTypeMode = useAppSelector(
     (state) =>
       state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only as
-      | boolean
-      | null
-      | undefined,
+        | boolean
+        | null
+        | undefined,
   );
   const userName = useAppSelector((state) => state.auth.user?.user_name);
   const userEmail = useAppSelector((state) => state.auth.user?.user_email);
@@ -229,7 +231,9 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
     id: number;
     user_name: string;
   } | null>(null);
-  const [selectedBookingGroupId, setSelectedBookingGroupId] = useState<number | null>(null);
+  const [selectedBookingGroupId, setSelectedBookingGroupId] = useState<
+    number | null
+  >(null);
   const [cspUploadOpen, setCspUploadOpen] = useState(false);
   const [cspFiles, setCspFiles] = useState<File[]>([]);
 
@@ -286,7 +290,11 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
 
   const designsForm = useForm<DesignsFormValues>({
     resolver: zodResolver(designsSchema),
-    defaultValues: { upload_pdf: [] },
+    defaultValues: {
+      design_type: undefined,
+      product_type: "",
+      upload_pdf: [],
+    },
   });
 
   const { data: cspBookingData, isLoading: cspLoading } = useCSPBookingPhotos(
@@ -299,17 +307,42 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
     vendorId,
   );
   const { data: designDocsData } = useDesignsDoc(vendorId!, leadId);
-
-
-
-  const {
-    isLeadBlocked,
-    blockedTooltip,
-    shouldDisableBlockedActions,
-  } = useLeadAccessControl({
+  const { data: uniqueProductTypes } = useLeadUniqueProductTypes(
     leadId,
-    userType,
-  });
+    vendorId,
+    designsModalOpen,
+  );
+
+  const productTypes = uniqueProductTypes?.data ?? [];
+  const shouldRenderProductTypeField =
+    isCustomVendor || handlesLargeScaleProjects;
+  const showProductTypeSelect =
+    shouldRenderProductTypeField &&
+    (!productTypes || productTypes.length > 1);
+
+  React.useEffect(() => {
+    if (productTypes && productTypes.length === 1) {
+      designsForm.setValue("product_type", productTypes[0].type, {
+        shouldValidate: true,
+      });
+    }
+  }, [designsForm, productTypes]);
+
+  React.useEffect(() => {
+    if (!designsModalOpen) {
+      designsForm.reset({
+        design_type: undefined,
+        product_type: "",
+        upload_pdf: [],
+      });
+    }
+  }, [designsModalOpen, designsForm]);
+
+  const { isLeadBlocked, blockedTooltip, shouldDisableBlockedActions } =
+    useLeadAccessControl({
+      leadId,
+      userType,
+    });
 
   const bookingStagePhotos = cspBookingData?.documents ?? [];
   const initialMeasurementDocs =
@@ -336,14 +369,14 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   const canAssignSiteSupervisor =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.booking_done.assign_site_supervisor.assign",
-      )
+          "leads.booking_done.assign_site_supervisor.assign",
+        )
       : userType === "head-site-supervisor" || userType === "super-admin";
   const canReassignSiteSupervisor =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.booking_done.assign_site_supervisor.reassign",
-      )
+          "leads.booking_done.assign_site_supervisor.reassign",
+        )
       : userType === "head-site-supervisor" || userType === "super-admin";
   const isSupervisorAssigned =
     siteSupervisorCheck?.isSiteSupervisorAssigned ?? false;
@@ -481,7 +514,7 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   }, [bookingPaymentDocs, selectedBookingGroup]);
 
   const selectedBookingGroupPayment = selectedBookingGroup
-    ? paymentByProductType.get(selectedBookingGroup.productTypeId) ?? null
+    ? (paymentByProductType.get(selectedBookingGroup.productTypeId) ?? null)
     : null;
 
   const status = leadStatus?.status;
@@ -504,14 +537,14 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   const canViewTotalBookingValue =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.booking_done.total_booking_value.view",
-      )
+          "leads.booking_done.total_booking_value.view",
+        )
       : true;
   const canEditTotalBookingValue =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.booking_done.total_booking_value.edit",
-      )
+          "leads.booking_done.total_booking_value.edit",
+        )
       : canEditBookingValues;
   const canViewBookingAmount =
     userType?.toLowerCase() === "custom"
@@ -524,122 +557,122 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   const canViewBookingStageCurrentSitePhotos =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.booking_done.current_site_photos.view",
-      )
+          "leads.booking_done.current_site_photos.view",
+        )
       : true;
   const canUploadBookingStageCurrentSitePhotos =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.booking_done.current_site_photos.upload",
-      )
+          "leads.booking_done.current_site_photos.upload",
+        )
       : canEditBookingValues;
   const canDeleteBookingStageCurrentSitePhotos =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.booking_done.current_site_photos.delete",
-      )
+          "leads.booking_done.current_site_photos.delete",
+        )
       : canDelete;
   const canViewBookingDocuments =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.booking_done.booking_documents.view",
-      )
+          "leads.booking_done.booking_documents.view",
+        )
       : true;
   const canUploadBookingDocuments =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.booking_done.booking_documents.upload",
-      )
+          "leads.booking_done.booking_documents.upload",
+        )
       : canDelete;
   const canDeleteBookingDocuments =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.booking_done.booking_documents.delete",
-      )
+          "leads.booking_done.booking_documents.delete",
+        )
       : canDelete;
   const canViewBookingPaymentProofs =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.booking_done.booking_payment_proofs.view",
-      )
+          "leads.booking_done.booking_payment_proofs.view",
+        )
       : true;
   const canDeleteBookingPaymentProofs =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.booking_done.booking_payment_proofs.delete",
-      )
+          "leads.booking_done.booking_payment_proofs.delete",
+        )
       : canDelete;
   const canViewConsolidatedIsmPhotos =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.booking_done.consolidated_view.ism_photos_view",
-      )
+          "leads.booking_done.consolidated_view.ism_photos_view",
+        )
       : true;
   const canDeleteConsolidatedIsmPhotos =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.booking_done.consolidated_view.ism_photos_delete",
-      )
+          "leads.booking_done.consolidated_view.ism_photos_delete",
+        )
       : canDelete;
   const canUploadConsolidatedIsmPhotos =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.booking_done.consolidated_view.ism_photos_upload",
-      )
+          "leads.booking_done.consolidated_view.ism_photos_upload",
+        )
       : canEditBookingValues;
   const canViewConsolidatedIsmMeasurementDocs =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.booking_done.consolidated_view.ism_measurement_document_view",
-      )
+          "leads.booking_done.consolidated_view.ism_measurement_document_view",
+        )
       : true;
   const canDeleteConsolidatedIsmMeasurementDocs =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.booking_done.consolidated_view.ism_measurement_document_delete",
-      )
+          "leads.booking_done.consolidated_view.ism_measurement_document_delete",
+        )
       : canDelete;
   const canUploadConsolidatedIsmMeasurementDocs =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.booking_done.consolidated_view.ism_measurement_document_upload",
-      )
+          "leads.booking_done.consolidated_view.ism_measurement_document_upload",
+        )
       : canEditBookingValues;
   const canViewConsolidatedDesignDocuments =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.booking_done.consolidated_view.design_document_view",
-      )
+          "leads.booking_done.consolidated_view.design_document_view",
+        )
       : true;
   const canDeleteConsolidatedDesignDocuments =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.booking_done.consolidated_view.design_document_delete",
-      )
+          "leads.booking_done.consolidated_view.design_document_delete",
+        )
       : canDelete;
   const canUploadConsolidatedDesignDocuments =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.booking_done.consolidated_view.design_document_upload",
-      )
+          "leads.booking_done.consolidated_view.design_document_upload",
+        )
       : canEditBookingValues;
   const canViewConsolidatedFinalMeasurementAssignmentDocs =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.booking_done.consolidated_view.final_measurement_assignement_docs_view",
-      )
+          "leads.booking_done.consolidated_view.final_measurement_assignement_docs_view",
+        )
       : true;
   const canDeleteConsolidatedFinalMeasurementAssignmentDocs =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.booking_done.consolidated_view.final_measurement_assignement_docs_delete",
-      )
+          "leads.booking_done.consolidated_view.final_measurement_assignement_docs_delete",
+        )
       : canDelete;
   const canUploadConsolidatedFinalMeasurementAssignmentDocs =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-        "leads.booking_done.consolidated_view.final_measurement_assignement_docs_upload",
-      )
+          "leads.booking_done.consolidated_view.final_measurement_assignement_docs_upload",
+        )
       : canEditBookingValues;
 
   console.log("Lead Status: ", status);
@@ -880,13 +913,49 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
   const handleUploadDesigns = async (values: DesignsFormValues) => {
     if (!vendorId || !userId) return;
 
+    if (isCustomVendor && !values.design_type) {
+      designsForm.setError("design_type", {
+        type: "manual",
+        message: "Design type is required",
+      });
+      return;
+    }
+
+    if (
+      (isCustomVendor || handlesLargeScaleProjects) &&
+      showProductTypeSelect &&
+      !values.product_type
+    ) {
+      designsForm.setError("product_type", {
+        type: "manual",
+        message: "Product type is required",
+      });
+      return;
+    }
+
     try {
+      let productStructureInstanceIds: number[] = [];
+
+      if (values.product_type && structureInstances.length > 0) {
+        productStructureInstanceIds = structureInstances
+          .filter((inst: any) => {
+            const type1 = inst.productType?.type;
+            const type2 =
+              inst.productItemCode?.productStructure?.productType?.type;
+            return (
+              type1 === values.product_type || type2 === values.product_type
+            );
+          })
+          .map((inst: any) => inst.id);
+      }
+
       await submitDesignsMutation.mutateAsync({
         files: Array.from(values.upload_pdf),
         vendorId,
         leadId,
         userId,
         designType: values.design_type,
+        productStructureInstanceIds,
       });
 
       toastManager.add({
@@ -900,11 +969,19 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
         queryKey: ["designingStageCounts", vendorId, leadId],
       });
 
-      designsForm.reset();
+      designsForm.reset({
+        design_type: undefined,
+        product_type: "",
+        upload_pdf: [],
+      });
       setDesignsModalOpen(false);
     } catch (error: any) {
       toastManager.add({
-        title: error?.message || "Failed to upload design files.",
+        title:
+          error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          error?.message ||
+          "Failed to upload design files.",
         type: "error",
       });
     }
@@ -1012,252 +1089,264 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
         <div className="space-y-6">
           {/* -------- Top Summary Cards -------- */}
           {!handlesLargeScaleProjects && (
-          <div
-            className={`grid grid-cols-1 gap-5 pt-2 md:grid-cols-2 ${
-              vendorCustomUserTypeMode ? "lg:grid-cols-3" : "lg:grid-cols-4"
-            }`}
-          >
-            {/* Site Supervisor / Assigned User — hidden for custom usertype vendors */}
-            {!vendorCustomUserTypeMode && !handlesLargeScaleProjects && (
             <div
-              className="
+              className={`grid grid-cols-1 gap-5 pt-2 md:grid-cols-2 ${
+                vendorCustomUserTypeMode ? "lg:grid-cols-3" : "lg:grid-cols-4"
+              }`}
+            >
+              {/* Site Supervisor / Assigned User — hidden for custom usertype vendors */}
+              {!vendorCustomUserTypeMode && !handlesLargeScaleProjects && (
+                <div
+                  className="
     bg-white dark:bg-neutral-900
     border border-border rounded-2xl 
     p-5 flex items-center gap-4
 
   "
-            >
-              {/* Icon Container */}
-              <div
-                className="
+                >
+                  {/* Icon Container */}
+                  <div
+                    className="
       w-7 h-7 rounded-xl flex items-center justify-center
       bg-[#fff] dark:bg-[#0a0a0a] 
       text-gray-600 dark:text-gray-400
     "
-              >
-                <User className="w-6 h-6" />
-              </div>
-
-              {/* Text */}
-              <div className="flex-1">
-                <p className="text-sm text-muted-foreground font-medium mb-1">
-                  Site Supervisor
-                </p>
-
-                {currentSupervisor?.userName ? (
-                  <p className="text-xs font-semibold tracking-tight text-heading dark:text-neutral-100">
-                    {currentSupervisor.userName}
-                  </p>
-                ) : canAssignSiteSupervisor ? (
-                  <div className="w-fit">
-                    <CustomeTooltip
-                      value={shouldDisableBlockedActions ? blockedTooltip : ""}
-                      truncateValue={
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          disabled={shouldDisableBlockedActions}
-                          onClick={() => setReassignOpen(true)}
-                        >
-                          Assign Site Supervisor
-                        </Button>
-                      }
-                    />
+                  >
+                    <User className="w-6 h-6" />
                   </div>
-                ) : (
-                  <p className="text-xs font-medium text-muted-foreground italic">
-                    Not Assigned Yet
-                  </p>
-                )}
-              </div>
 
-              {isSupervisorAssigned &&
-                canReassignSiteSupervisor && (
-                  <div className="shrink-0">
-                    <CustomeTooltip
-                      value={shouldDisableBlockedActions ? blockedTooltip : ""}
-                      truncateValue={
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={shouldDisableBlockedActions}
-                          onClick={() => setReassignOpen(true)}
-                        >
-                          <UserPen />
-                        </Button>
-                      }
-                    />
+                  {/* Text */}
+                  <div className="flex-1">
+                    <p className="text-sm text-muted-foreground font-medium mb-1">
+                      Site Supervisor
+                    </p>
+
+                    {currentSupervisor?.userName ? (
+                      <p className="text-xs font-semibold tracking-tight text-heading dark:text-neutral-100">
+                        {currentSupervisor.userName}
+                      </p>
+                    ) : canAssignSiteSupervisor ? (
+                      <div className="w-fit">
+                        <CustomeTooltip
+                          value={
+                            shouldDisableBlockedActions ? blockedTooltip : ""
+                          }
+                          truncateValue={
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              disabled={shouldDisableBlockedActions}
+                              onClick={() => setReassignOpen(true)}
+                            >
+                              Assign Site Supervisor
+                            </Button>
+                          }
+                        />
+                      </div>
+                    ) : (
+                      <p className="text-xs font-medium text-muted-foreground italic">
+                        Not Assigned Yet
+                      </p>
+                    )}
                   </div>
-                )}
+
+                  {isSupervisorAssigned && canReassignSiteSupervisor && (
+                    <div className="shrink-0">
+                      <CustomeTooltip
+                        value={
+                          shouldDisableBlockedActions ? blockedTooltip : ""
+                        }
+                        truncateValue={
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={shouldDisableBlockedActions}
+                            onClick={() => setReassignOpen(true)}
+                          >
+                            <UserPen />
+                          </Button>
+                        }
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* MRP Value */}
+              {canViewMrpValue && (
+                <div
+                  className="
+    bg-white dark:bg-neutral-900
+    border border-border rounded-2xl 
+    p-5 flex items-center justify-between gap-4
+    transition-all duration-200 
+    hover:ring-1 hover:ring-primary/30
+  "
+                >
+                  <div className="flex items-center gap-4">
+                    <div
+                      className="
+      w-7 h-7 rounded-xl flex items-center justify-center
+      bg-[#fff] dark:bg-[#0a0a0a]
+      text-gray-600 dark:text-gray-400
+    "
+                    >
+                      <IndianRupee className="w-6 h-6" />
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-muted-foreground font-medium">
+                        MRP Value
+                      </p>
+
+                      <p className="text-xl font-semibold tracking-tight text-heading dark:text-neutral-100">
+                        ₹{leadData?.mrpValue?.toLocaleString("en-IN") || "0"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {canEditMrpValue && (
+                    <div className="shrink-0">
+                      <CustomeTooltip
+                        value={
+                          shouldDisableBlockedActions ? blockedTooltip : ""
+                        }
+                        truncateValue={
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={shouldDisableBlockedActions}
+                            onClick={() => setMrpModalOpen(true)}
+                          >
+                            <UserPen className="w-4 h-4" />
+                          </Button>
+                        }
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Total Booking Value */}
+              {canViewTotalBookingValue && (
+                <div
+                  className="
+    bg-white dark:bg-neutral-900
+    border border-border rounded-2xl 
+    p-5 flex items-center justify-between gap-4
+    transition-all duration-200 
+    hover:ring-1 hover:ring-primary/30
+  "
+                >
+                  <div className="flex items-center gap-4">
+                    <div
+                      className="
+      w-7 h-7 rounded-xl flex items-center justify-center
+      bg-[#fff] dark:bg-[#0a0a0a]
+      text-gray-600 dark:text-gray-400
+    "
+                    >
+                      <CreditCard className="w-6 h-6" />
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-muted-foreground font-medium">
+                        Total Booking Value
+                      </p>
+
+                      <p className="text-xl font-semibold tracking-tight text-heading dark:text-neutral-100">
+                        ₹
+                        {leadData?.finalBookingAmount?.toLocaleString(
+                          "en-IN",
+                        ) || "0"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {canEditTotalBookingValue && (
+                    <div className="shrink-0">
+                      <CustomeTooltip
+                        value={
+                          shouldDisableBlockedActions ? blockedTooltip : ""
+                        }
+                        truncateValue={
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={shouldDisableBlockedActions}
+                            onClick={() => setTotalProjectModalOpen(true)}
+                          >
+                            <UserPen className="w-4 h-4" />
+                          </Button>
+                        }
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Amount Received */}
+              {canViewBookingAmount && (
+                <div
+                  className="
+    bg-white dark:bg-neutral-900
+    border border-border rounded-2xl 
+    p-5 flex items-center justify-between gap-4
+    transition-all duration-200 
+    hover:ring-1 hover:ring-primary/30
+  "
+                >
+                  <div className="flex items-center gap-4">
+                    <div
+                      className="
+      w-7 h-7 rounded-xl flex items-center justify-center
+      bg-[#fff] dark:bg-[#0a0a0a]
+      text-gray-600 dark:text-gray-400
+    "
+                    >
+                      <IndianRupee className="w-6 h-6" />
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-muted-foreground font-medium">
+                        Booking Amount
+                      </p>
+
+                      <p className="text-xl font-semibold tracking-tight text-heading dark:text-neutral-100">
+                        ₹
+                        {leadData?.bookingAmount?.toLocaleString("en-IN") ||
+                          "0"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {canEditBookingAmount && (
+                    <div className="shrink-0">
+                      <CustomeTooltip
+                        value={
+                          shouldDisableBlockedActions ? blockedTooltip : ""
+                        }
+                        truncateValue={
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={shouldDisableBlockedActions}
+                            onClick={() => setBookingAmountModalOpen(true)}
+                          >
+                            <UserPen className="w-4 h-4" />
+                          </Button>
+                        }
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            )}
-
-            {/* MRP Value */}
-            {canViewMrpValue && (
-              <div
-                className="
-    bg-white dark:bg-neutral-900
-    border border-border rounded-2xl 
-    p-5 flex items-center justify-between gap-4
-    transition-all duration-200 
-    hover:ring-1 hover:ring-primary/30
-  "
-              >
-                <div className="flex items-center gap-4">
-                  <div
-                    className="
-      w-7 h-7 rounded-xl flex items-center justify-center
-      bg-[#fff] dark:bg-[#0a0a0a]
-      text-gray-600 dark:text-gray-400
-    "
-                  >
-                    <IndianRupee className="w-6 h-6" />
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-muted-foreground font-medium">
-                      MRP Value
-                    </p>
-
-                    <p className="text-xl font-semibold tracking-tight text-heading dark:text-neutral-100">
-                      ₹{leadData?.mrpValue?.toLocaleString("en-IN") || "0"}
-                    </p>
-                  </div>
-                </div>
-
-                {canEditMrpValue && (
-                  <div className="shrink-0">
-                    <CustomeTooltip
-                      value={shouldDisableBlockedActions ? blockedTooltip : ""}
-                      truncateValue={
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={shouldDisableBlockedActions}
-                          onClick={() => setMrpModalOpen(true)}
-                        >
-                          <UserPen className="w-4 h-4" />
-                        </Button>
-                      }
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Total Booking Value */}
-            {canViewTotalBookingValue && (
-              <div
-                className="
-    bg-white dark:bg-neutral-900
-    border border-border rounded-2xl 
-    p-5 flex items-center justify-between gap-4
-    transition-all duration-200 
-    hover:ring-1 hover:ring-primary/30
-  "
-              >
-                <div className="flex items-center gap-4">
-                  <div
-                    className="
-      w-7 h-7 rounded-xl flex items-center justify-center
-      bg-[#fff] dark:bg-[#0a0a0a]
-      text-gray-600 dark:text-gray-400
-    "
-                  >
-                    <CreditCard className="w-6 h-6" />
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-muted-foreground font-medium">
-                      Total Booking Value
-                    </p>
-
-                    <p className="text-xl font-semibold tracking-tight text-heading dark:text-neutral-100">
-                      ₹
-                      {leadData?.finalBookingAmount?.toLocaleString("en-IN") ||
-                        "0"}
-                    </p>
-                  </div>
-                </div>
-
-                {canEditTotalBookingValue && (
-                  <div className="shrink-0">
-                    <CustomeTooltip
-                      value={shouldDisableBlockedActions ? blockedTooltip : ""}
-                      truncateValue={
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={shouldDisableBlockedActions}
-                          onClick={() => setTotalProjectModalOpen(true)}
-                        >
-                          <UserPen className="w-4 h-4" />
-                        </Button>
-                      }
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Amount Received */}
-            {canViewBookingAmount && (
-              <div
-                className="
-    bg-white dark:bg-neutral-900
-    border border-border rounded-2xl 
-    p-5 flex items-center justify-between gap-4
-    transition-all duration-200 
-    hover:ring-1 hover:ring-primary/30
-  "
-              >
-                <div className="flex items-center gap-4">
-                  <div
-                    className="
-      w-7 h-7 rounded-xl flex items-center justify-center
-      bg-[#fff] dark:bg-[#0a0a0a]
-      text-gray-600 dark:text-gray-400
-    "
-                  >
-                    <IndianRupee className="w-6 h-6" />
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-muted-foreground font-medium">
-                      Booking Amount
-                    </p>
-
-                    <p className="text-xl font-semibold tracking-tight text-heading dark:text-neutral-100">
-                      ₹{leadData?.bookingAmount?.toLocaleString("en-IN") || "0"}
-                    </p>
-                  </div>
-                </div>
-
-                {canEditBookingAmount && (
-                  <div className="shrink-0">
-                    <CustomeTooltip
-                      value={shouldDisableBlockedActions ? blockedTooltip : ""}
-                      truncateValue={
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={shouldDisableBlockedActions}
-                          onClick={() => setBookingAmountModalOpen(true)}
-                        >
-                          <UserPen className="w-4 h-4" />
-                        </Button>
-                      }
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
           )}
 
           {handlesLargeScaleProjects && billSummaryRows.length > 0 && (
@@ -1303,20 +1392,26 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
 
                   <div className="ml-auto mt-4 w-full max-w-md rounded-xl border bg-muted/20 p-4">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Total Basic Amount</span>
+                      <span className="text-muted-foreground">
+                        Total Basic Amount
+                      </span>
                       <span className="font-medium">
                         {formatCurrencyINR(billSummaryTotals.totalBasicAmount)}
                       </span>
                     </div>
                     <div className="mt-2 flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Total GST Amount</span>
+                      <span className="text-muted-foreground">
+                        Total GST Amount
+                      </span>
                       <span className="font-medium">
                         {formatCurrencyINR(billSummaryTotals.totalGstAmount)}
                       </span>
                     </div>
                     <div className="mt-3 flex items-center justify-between border-t pt-3 text-base font-semibold">
                       <span>Grand Total</span>
-                      <span>{formatCurrencyINR(billSummaryTotals.totalAmount)}</span>
+                      <span>
+                        {formatCurrencyINR(billSummaryTotals.totalAmount)}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -1329,12 +1424,15 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                       Product Types
                     </h2>
                     <p className="text-xs text-muted-foreground">
-                      Open a product type to view its booking documents, received amount and payment proofs.
+                      Open a product type to view its booking documents,
+                      received amount and payment proofs.
                     </p>
                   </div>
                   <span className="text-xs font-medium text-muted-foreground">
                     {productTypeGroups.length}{" "}
-                    {productTypeGroups.length === 1 ? "Item Group" : "Item Groups"}
+                    {productTypeGroups.length === 1
+                      ? "Item Group"
+                      : "Item Groups"}
                   </span>
                 </div>
 
@@ -1343,7 +1441,9 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                     <button
                       key={row.productTypeId}
                       type="button"
-                      onClick={() => setSelectedBookingGroupId(row.productTypeId)}
+                      onClick={() =>
+                        setSelectedBookingGroupId(row.productTypeId)
+                      }
                       className="group rounded-xl border bg-white/60 p-5 text-left transition-all hover:border-border/80 dark:bg-[#0a0a0a] min-w-0"
                     >
                       <div className="flex items-start justify-between gap-4">
@@ -1358,7 +1458,8 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                             {row.label}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            Received: {formatCurrencyINR(row.bookingAmountReceived)}
+                            Received:{" "}
+                            {formatCurrencyINR(row.bookingAmountReceived)}
                           </p>
                         </div>
                         <div className="rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground">
@@ -1409,7 +1510,9 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                     ))}
                     {canUploadBookingStageCurrentSitePhotos && (
                       <CustomeTooltip
-                        value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                        value={
+                          shouldDisableBlockedActions ? blockedTooltip : ""
+                        }
                         truncateValue={
                           <div
                             onClick={() => {
@@ -1424,10 +1527,11 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
         rounded-xl
         transition-all duration-200
 
-        ${shouldDisableBlockedActions
-                                ? "cursor-not-allowed opacity-50"
-                                : "cursor-pointer hover:bg-mutedBg dark:hover:bg-neutral-800"
-                              }
+        ${
+          shouldDisableBlockedActions
+            ? "cursor-not-allowed opacity-50"
+            : "cursor-pointer hover:bg-mutedBg dark:hover:bg-neutral-800"
+        }
       `}
                           >
                             <Plus
@@ -1437,7 +1541,6 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                             <span className="text-xs font-medium text-muted-foreground">
                               Add Photos
                             </span>
-
 
                             {shouldDisableBlockedActions && (
                               <span className="text-[10px] italic text-red-500 mt-1">
@@ -1455,13 +1558,13 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
 
           {/* -------- Design Remarks -------- */}
           {!handlesLargeScaleProjects && (
-          <div className="space-y-3 mb-6">
-            <h2 className="text-sm font-semibold tracking-tight">
-              Design Remarks
-            </h2>
+            <div className="space-y-3 mb-6">
+              <h2 className="text-sm font-semibold tracking-tight">
+                Design Remarks
+              </h2>
 
-            <div
-              className="
+              <div
+                className="
       bg-[#fff] dark:bg-[#0a0a0a] 
       border border-border 
       rounded-xl 
@@ -1469,10 +1572,10 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
       text-sm leading-relaxed 
       max-h-[250px] overflow-y-auto
     "
-            >
-              {leadData?.payments?.[0]?.text || "N/A"}
+              >
+                {leadData?.payments?.[0]?.text || "N/A"}
+              </div>
             </div>
-          </div>
           )}
 
           {/* -------- Booking Documents Section -------- */}
@@ -1532,10 +1635,11 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
           rounded-xl
           transition-all
 
-          ${shouldDisableBlockedActions
-                              ? "cursor-not-allowed opacity-50"
-                              : "cursor-pointer hover:bg-mutedBg/40 dark:hover:bg-neutral-800/40"
-                            }
+          ${
+            shouldDisableBlockedActions
+              ? "cursor-not-allowed opacity-50"
+              : "cursor-pointer hover:bg-mutedBg/40 dark:hover:bg-neutral-800/40"
+          }
         `}
                         >
                           <Plus
@@ -1631,12 +1735,12 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
           {/* -------- Consolidated Documents -------- */}
           {!handlesLargeScaleProjects &&
             (initialMeasurementDocs.length > 0 ||
-            initialCurrentSitePhotos.length > 0 ||
-            bookingDoneIsmDocs.length > 0 ||
-            bookingDoneIsmCurrentSite.length > 0 ||
-            bookingDoneIsmPaymentImages.length > 0 ||
-            designDocs.length > 0 ||
-            bookingStagePhotos.length > 0) && (
+              initialCurrentSitePhotos.length > 0 ||
+              bookingDoneIsmDocs.length > 0 ||
+              bookingDoneIsmCurrentSite.length > 0 ||
+              bookingDoneIsmPaymentImages.length > 0 ||
+              designDocs.length > 0 ||
+              bookingStagePhotos.length > 0) && (
               <div className="">
                 <div
                   className="
@@ -1656,247 +1760,264 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                       initialMeasurementDocs.length > 0) ||
                       (canViewConsolidatedIsmPhotos &&
                         initialCurrentSitePhotos.length > 0)) && (
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2">
-                            <FileText size={18} />
-                            <h2 className="text-base font-semibold">
-                              Initial Site Measurement
-                            </h2>
-                          </div>
-                          <div className="grid grid-cols-1 lg:grid-cols-1 gap-4">
-                            {canViewConsolidatedIsmPhotos &&
-                              initialCurrentSitePhotos.length > 0 && (
-                                <div className="space-y-2">
-                                  <p className="text-sm font-medium text-muted-foreground">
-                                    Current Site Photos (
-                                    {initialCurrentSitePhotos.length})
-                                  </p>
-                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                    {initialCurrentSitePhotos.map(
-                                      (photo: any, index: any) => (
-                                        <ImageComponent
-                                          key={photo.id}
-                                          doc={{
-                                            id: photo.id,
-                                            doc_og_name: photo.originalName,
-                                            signedUrl: photo.signedUrl,
-                                            created_at: photo.uploadedAt,
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <FileText size={18} />
+                          <h2 className="text-base font-semibold">
+                            Initial Site Measurement
+                          </h2>
+                        </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-1 gap-4">
+                          {canViewConsolidatedIsmPhotos &&
+                            initialCurrentSitePhotos.length > 0 && (
+                              <div className="space-y-2">
+                                <p className="text-sm font-medium text-muted-foreground">
+                                  Current Site Photos (
+                                  {initialCurrentSitePhotos.length})
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                  {initialCurrentSitePhotos.map(
+                                    (photo: any, index: any) => (
+                                      <ImageComponent
+                                        key={photo.id}
+                                        doc={{
+                                          id: photo.id,
+                                          doc_og_name: photo.originalName,
+                                          signedUrl: photo.signedUrl,
+                                          created_at: photo.uploadedAt,
+                                        }}
+                                        index={index}
+                                        canDelete={
+                                          canDeleteConsolidatedIsmPhotos
+                                        }
+                                        onDelete={(id) =>
+                                          setConfirmDelete(Number(id))
+                                        }
+                                      />
+                                    ),
+                                  )}
+                                  {canUploadConsolidatedIsmPhotos && (
+                                    <CustomeTooltip
+                                      value={
+                                        shouldDisableBlockedActions
+                                          ? blockedTooltip
+                                          : ""
+                                      }
+                                      truncateValue={
+                                        <div
+                                          onClick={() => {
+                                            if (shouldDisableBlockedActions)
+                                              return;
+                                            setInitialSitePhotosOpen(true);
                                           }}
-                                          index={index}
-                                          canDelete={canDeleteConsolidatedIsmPhotos}
-                                          onDelete={(id) =>
-                                            setConfirmDelete(Number(id))
-                                          }
-                                        />
-                                      ),
-                                    )}
-                                    {canUploadConsolidatedIsmPhotos && (
-                                      <CustomeTooltip
-                                        value={shouldDisableBlockedActions ? blockedTooltip : ""}
-                                        truncateValue={
-                                          <div
-                                            onClick={() => {
-                                              if (shouldDisableBlockedActions) return;
-                                              setInitialSitePhotosOpen(true);
-                                            }}
-                                            className={`
+                                          className={`
                                               flex flex-col items-center justify-center
                                               h-28
                                               border-2 border-dashed border-border
                                               rounded-xl transition-all duration-200
-                                              ${shouldDisableBlockedActions
-                                                ? "opacity-50 cursor-not-allowed"
-                                                : "cursor-pointer hover:bg-mutedBg dark:hover:bg-neutral-800"
+                                              ${
+                                                shouldDisableBlockedActions
+                                                  ? "opacity-50 cursor-not-allowed"
+                                                  : "cursor-pointer hover:bg-mutedBg dark:hover:bg-neutral-800"
                                               }
                                             `}
-                                          >
-                                            <Plus
-                                              size={26}
-                                              className="text-muted-foreground mb-1"
-                                            />
-                                            <span className="text-xs font-medium text-muted-foreground">
-                                              Add Photos
+                                        >
+                                          <Plus
+                                            size={26}
+                                            className="text-muted-foreground mb-1"
+                                          />
+                                          <span className="text-xs font-medium text-muted-foreground">
+                                            Add Photos
+                                          </span>
+                                          {shouldDisableBlockedActions && (
+                                            <span className="text-[10px] italic text-red-500 mt-1">
+                                              (blocked)
                                             </span>
-                                            {shouldDisableBlockedActions && (
-                                              <span className="text-[10px] italic text-red-500 mt-1">
-                                                (blocked)
-                                              </span>
-                                            )}
-                                          </div>
+                                          )}
+                                        </div>
+                                      }
+                                    />
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                          {canViewConsolidatedIsmMeasurementDocs &&
+                            initialMeasurementDocs.length > 0 && (
+                              <div className="space-y-2">
+                                <p className="text-sm font-medium text-muted-foreground">
+                                  Measurement Documents (
+                                  {initialMeasurementDocs.length})
+                                </p>
+                                <div className="space-y-3 ">
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                    {initialMeasurementDocs.map((doc: any) => (
+                                      <DocumentCard
+                                        key={doc.id}
+                                        doc={{
+                                          id: doc.id,
+                                          originalName: doc.originalName,
+                                          signedUrl: doc.signedUrl,
+                                          created_at: doc.uploadedAt,
+                                        }}
+                                        canDelete={
+                                          canDeleteConsolidatedIsmMeasurementDocs
+                                        }
+                                        onDelete={(id) =>
+                                          setConfirmDelete(Number(id))
                                         }
                                       />
-                                    )}
+                                    ))}
                                   </div>
-                                </div>
-                              )}
-
-                            {canViewConsolidatedIsmMeasurementDocs &&
-                              initialMeasurementDocs.length > 0 && (
-                                <div className="space-y-2">
-                                  <p className="text-sm font-medium text-muted-foreground">
-                                    Measurement Documents (
-                                    {initialMeasurementDocs.length})
-                                  </p>
-                                  <div className="space-y-3 ">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                      {initialMeasurementDocs.map((doc: any) => (
-                                        <DocumentCard
-                                          key={doc.id}
-                                          doc={{
-                                            id: doc.id,
-                                            originalName: doc.originalName,
-                                            signedUrl: doc.signedUrl,
-                                            created_at: doc.uploadedAt,
+                                  {canUploadConsolidatedIsmMeasurementDocs && (
+                                    <CustomeTooltip
+                                      value={
+                                        shouldDisableBlockedActions
+                                          ? blockedTooltip
+                                          : ""
+                                      }
+                                      truncateValue={
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            if (shouldDisableBlockedActions)
+                                              return;
+                                            if (
+                                              !initialMeasurementDocs.length
+                                            ) {
+                                              toastManager.add({
+                                                title:
+                                                  "No document available to replace.",
+                                                type: "error",
+                                              });
+                                              return;
+                                            }
+                                            setReplaceInitialDocId(
+                                              initialMeasurementDocs[0].id,
+                                            );
                                           }}
-                                          canDelete={
-                                            canDeleteConsolidatedIsmMeasurementDocs
-                                          }
-                                          onDelete={(id) =>
-                                            setConfirmDelete(Number(id))
-                                          }
-                                        />
-                                      ))}
-                                    </div>
-                                    {canUploadConsolidatedIsmMeasurementDocs && (
-                                      <CustomeTooltip
-                                        value={shouldDisableBlockedActions ? blockedTooltip : ""}
-                                        truncateValue={
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              if (shouldDisableBlockedActions) return;
-                                              if (!initialMeasurementDocs.length) {
-                                                toastManager.add({
-                                                  title: "No document available to replace.",
-                                                  type: "error",
-                                                });
-                                                return;
-                                              }
-                                              setReplaceInitialDocId(
-                                                initialMeasurementDocs[0].id,
-                                              );
-                                            }}
-                                            disabled={shouldDisableBlockedActions}
-                                            className={`
+                                          disabled={shouldDisableBlockedActions}
+                                          className={`
                                               flex items-center gap-2
                                               rounded-md border border-dashed border-border
                                               px-3 py-2 text-xs text-muted-foreground
                                               transition
-                                              ${shouldDisableBlockedActions
-                                                ? "opacity-50 cursor-not-allowed"
-                                                : "hover:bg-mutedBg dark:hover:bg-neutral-800"
+                                              ${
+                                                shouldDisableBlockedActions
+                                                  ? "opacity-50 cursor-not-allowed"
+                                                  : "hover:bg-mutedBg dark:hover:bg-neutral-800"
                                               }
                                             `}
-                                          >
-                                            <Plus size={14} />
-                                            Replace Document
-                                          </button>
-                                        }
-                                      />
-                                    )}
-                                  </div>
+                                        >
+                                          <Plus size={14} />
+                                          Replace Document
+                                        </button>
+                                      }
+                                    />
+                                  )}
                                 </div>
-                              )}
-                          </div>
+                              </div>
+                            )}
                         </div>
-                      )}
+                      </div>
+                    )}
 
                     {(bookingDoneIsmDocs.length > 0 ||
                       bookingDoneIsmCurrentSite.length > 0 ||
                       bookingDoneIsmPaymentImages.length > 0) && (
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2">
-                            <FileText size={18} />
-                            <h2 className="text-base font-semibold">
-                              Booking Done – ISM
-                            </h2>
-                          </div>
-                          <div className="space-y-4">
-                            {bookingDoneIsmDocs.length > 0 && (
-                              <div className="space-y-2">
-                                <p className="text-sm font-medium text-muted-foreground">
-                                  Documents ({bookingDoneIsmDocs.length})
-                                </p>
-                                <div className="space-y-3 w-fit">
-                                  {bookingDoneIsmDocs.map((doc: any) => (
-                                    <DocumentCard
-                                      key={doc.id}
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <FileText size={18} />
+                          <h2 className="text-base font-semibold">
+                            Booking Done – ISM
+                          </h2>
+                        </div>
+                        <div className="space-y-4">
+                          {bookingDoneIsmDocs.length > 0 && (
+                            <div className="space-y-2">
+                              <p className="text-sm font-medium text-muted-foreground">
+                                Documents ({bookingDoneIsmDocs.length})
+                              </p>
+                              <div className="space-y-3 w-fit">
+                                {bookingDoneIsmDocs.map((doc: any) => (
+                                  <DocumentCard
+                                    key={doc.id}
+                                    doc={{
+                                      id: doc.id,
+                                      originalName: doc.originalName,
+                                      signedUrl: doc.signedUrl,
+                                      created_at: doc.createdAt,
+                                    }}
+                                    canDelete={canDelete}
+                                    onDelete={(id) =>
+                                      setConfirmDelete(Number(id))
+                                    }
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {bookingDoneIsmCurrentSite.length > 0 && (
+                            <div className="space-y-2">
+                              <p className="text-sm font-medium text-muted-foreground">
+                                Current Site Photos (
+                                {bookingDoneIsmCurrentSite.length})
+                              </p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {bookingDoneIsmCurrentSite.map(
+                                  (photo: any, index: any) => (
+                                    <ImageComponent
+                                      key={photo.id}
                                       doc={{
-                                        id: doc.id,
-                                        originalName: doc.originalName,
-                                        signedUrl: doc.signedUrl,
-                                        created_at: doc.createdAt,
+                                        id: photo.id,
+                                        doc_og_name: photo.originalName,
+                                        signedUrl: photo.signedUrl,
+                                        created_at: photo.createdAt,
                                       }}
+                                      index={index}
                                       canDelete={canDelete}
                                       onDelete={(id) =>
                                         setConfirmDelete(Number(id))
                                       }
                                     />
-                                  ))}
-                                </div>
+                                  ),
+                                )}
                               </div>
-                            )}
+                            </div>
+                          )}
 
-                            {bookingDoneIsmCurrentSite.length > 0 && (
-                              <div className="space-y-2">
-                                <p className="text-sm font-medium text-muted-foreground">
-                                  Current Site Photos (
-                                  {bookingDoneIsmCurrentSite.length})
-                                </p>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                  {bookingDoneIsmCurrentSite.map(
-                                    (photo: any, index: any) => (
-                                      <ImageComponent
-                                        key={photo.id}
-                                        doc={{
-                                          id: photo.id,
-                                          doc_og_name: photo.originalName,
-                                          signedUrl: photo.signedUrl,
-                                          created_at: photo.createdAt,
-                                        }}
-                                        index={index}
-                                        canDelete={canDelete}
-                                        onDelete={(id) =>
-                                          setConfirmDelete(Number(id))
-                                        }
-                                      />
-                                    ),
-                                  )}
-                                </div>
+                          {bookingDoneIsmPaymentImages.length > 0 && (
+                            <div className="space-y-2">
+                              <p className="text-sm font-medium text-muted-foreground">
+                                Payment Images (
+                                {bookingDoneIsmPaymentImages.length})
+                              </p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {bookingDoneIsmPaymentImages.map(
+                                  (photo: any, index: any) => (
+                                    <ImageComponent
+                                      key={photo.id}
+                                      doc={{
+                                        id: photo.id,
+                                        doc_og_name: photo.originalName,
+                                        signedUrl: photo.signedUrl,
+                                        created_at: photo.createdAt,
+                                      }}
+                                      index={index}
+                                      canDelete={canDelete}
+                                      onDelete={(id) =>
+                                        setConfirmDelete(Number(id))
+                                      }
+                                    />
+                                  ),
+                                )}
                               </div>
-                            )}
-
-                            {bookingDoneIsmPaymentImages.length > 0 && (
-                              <div className="space-y-2">
-                                <p className="text-sm font-medium text-muted-foreground">
-                                  Payment Images (
-                                  {bookingDoneIsmPaymentImages.length})
-                                </p>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                  {bookingDoneIsmPaymentImages.map(
-                                    (photo: any, index: any) => (
-                                      <ImageComponent
-                                        key={photo.id}
-                                        doc={{
-                                          id: photo.id,
-                                          doc_og_name: photo.originalName,
-                                          signedUrl: photo.signedUrl,
-                                          created_at: photo.createdAt,
-                                        }}
-                                        index={index}
-                                        canDelete={canDelete}
-                                        onDelete={(id) =>
-                                          setConfirmDelete(Number(id))
-                                        }
-                                      />
-                                    ),
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
+                            </div>
+                          )}
                         </div>
-                      )}
+                      </div>
+                    )}
 
                     {canViewConsolidatedDesignDocuments &&
                       designDocs.length > 0 && (
@@ -1931,8 +2052,8 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                                   shouldDisableBlockedActions
                                     ? blockedTooltip
                                     : !isDesignerAssignedIfRequired
-                                    ? "Please assign a designer before uploading designs."
-                                    : ""
+                                      ? "Please assign a designer before uploading designs."
+                                      : ""
                                 }
                                 truncateValue={
                                   <div
@@ -1940,7 +2061,8 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                                       if (shouldDisableBlockedActions) return;
                                       if (!isDesignerAssignedIfRequired) {
                                         toastManager.add({
-                                          title: "Please assign a designer before uploading designs.",
+                                          title:
+                                            "Please assign a designer before uploading designs.",
                                           type: "error",
                                         });
                                         return;
@@ -1952,9 +2074,11 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                                       border border-dashed border-border/70
                                       rounded-xl p-6 text-center
                                       transition
-                                      ${(shouldDisableBlockedActions || !isDesignerAssignedIfRequired)
-                                        ? "opacity-50 cursor-not-allowed bg-mutedBg/20 dark:bg-neutral-800/20"
-                                        : "cursor-pointer bg-mutedBg/40 dark:bg-neutral-800/40 hover:bg-mutedBg/60"
+                                      ${
+                                        shouldDisableBlockedActions ||
+                                        !isDesignerAssignedIfRequired
+                                          ? "opacity-50 cursor-not-allowed bg-mutedBg/20 dark:bg-neutral-800/20"
+                                          : "cursor-pointer bg-mutedBg/40 dark:bg-neutral-800/40 hover:bg-mutedBg/60"
                                       }
                                     `}
                                   >
@@ -1962,7 +2086,8 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                                     <p className="text-sm font-medium text-muted-foreground">
                                       Upload Designs
                                     </p>
-                                    {(shouldDisableBlockedActions || !isDesignerAssignedIfRequired) && (
+                                    {(shouldDisableBlockedActions ||
+                                      !isDesignerAssignedIfRequired) && (
                                       <span className="text-[10px] italic text-red-500 mt-1">
                                         (blocked)
                                       </span>
@@ -2004,7 +2129,11 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                             ))}
                             {canUploadConsolidatedIsmPhotos && (
                               <CustomeTooltip
-                                value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                                value={
+                                  shouldDisableBlockedActions
+                                    ? blockedTooltip
+                                    : ""
+                                }
                                 truncateValue={
                                   <div
                                     onClick={() => {
@@ -2016,9 +2145,10 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                                       h-28
                                       border-2 border-dashed border-border
                                       rounded-xl transition-all duration-200
-                                      ${shouldDisableBlockedActions
-                                        ? "opacity-50 cursor-not-allowed"
-                                        : "cursor-pointer hover:bg-mutedBg dark:hover:bg-neutral-800"
+                                      ${
+                                        shouldDisableBlockedActions
+                                          ? "opacity-50 cursor-not-allowed"
+                                          : "cursor-pointer hover:bg-mutedBg dark:hover:bg-neutral-800"
                                       }
                                     `}
                                   >
@@ -2178,7 +2308,16 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
 
         <BaseModal
           open={designsModalOpen}
-          onOpenChange={setDesignsModalOpen}
+          onOpenChange={(state) => {
+            if (!state) {
+              designsForm.reset({
+                design_type: undefined,
+                product_type: "",
+                upload_pdf: [],
+              });
+            }
+            setDesignsModalOpen(state);
+          }}
           title="Add Designs"
           description="Upload design files in supported CAD or document formats."
           size="smd"
@@ -2188,29 +2327,88 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
               onSubmit={designsForm.handleSubmit(handleUploadDesigns)}
               className="space-y-6 p-5"
             >
-              {isCustomVendor && (
-                <FormField
-                  control={designsForm.control}
-                  name="design_type"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Design Type *</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select design type" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="2D">2D Design</SelectItem>
-                          <SelectItem value="3D">3D Design</SelectItem>
-                          <SelectItem value="2D + 3D">2D + 3D Design</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
+              {(isCustomVendor || shouldRenderProductTypeField) && (
+                <div
+                  className={
+                    isCustomVendor && showProductTypeSelect
+                      ? "grid grid-cols-2 gap-4"
+                      : "grid grid-cols-1 gap-4"
+                  }
+                >
+                  {isCustomVendor && (
+                    <FormField
+                      control={designsForm.control}
+                      name="design_type"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Design Type *</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select design type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="2D">2D Design</SelectItem>
+                              <SelectItem value="3D">3D Design</SelectItem>
+                              <SelectItem value="2D + 3D">
+                                2D + 3D Design
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   )}
-                />
+
+                  {showProductTypeSelect && (
+                    <FormField
+                      control={designsForm.control}
+                      name="product_type"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            Product Type{" "}
+                            {isCustomVendor || handlesLargeScaleProjects
+                              ? "*"
+                              : ""}
+                          </FormLabel>
+                          <Select
+                            value={field.value || ""}
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              designsForm.clearErrors("product_type");
+                            }}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select product type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {productTypes.length > 0 ? (
+                                productTypes.map((pt: any) => (
+                                  <SelectItem key={pt.id} value={pt.type}>
+                                    {pt.type}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <SelectItem value="none" disabled>
+                                  No product types available
+                                </SelectItem>
+                              )}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
               )}
               <FormField
                 control={designsForm.control}
@@ -2271,7 +2469,9 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
                 Booking Amount Received
               </p>
               <p className="mt-2 text-2xl font-semibold">
-                {formatCurrencyINR(Number(selectedBookingGroupPayment?.amount || 0))}
+                {formatCurrencyINR(
+                  Number(selectedBookingGroupPayment?.amount || 0),
+                )}
               </p>
             </div>
 

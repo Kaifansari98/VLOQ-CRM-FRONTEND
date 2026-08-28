@@ -1,7 +1,6 @@
 // track-trace-cutlist.api.ts
 import { apiClient } from "@/lib/apiClient";
 
-
 export interface CutListSavePayload {
   project_id: string;
   vendor_id: number;
@@ -9,104 +8,108 @@ export interface CutListSavePayload {
   machine_id: number;
   machine_name: string;
   assigned: boolean;
+  user_role?: string;
 }
 
-export const getProjectCutList = async (vendorId: Number, projectId: string) => {
+export const getProjectCutList = async (
+  vendorId: Number,
+  projectId: string,
+) => {
   const { data } = await apiClient.get(
-    `/track-trace/cut-list-machine/${vendorId}/${projectId}`
+    `/track-trace/cut-list-machine/${vendorId}/${projectId}`,
   );
 
   return data.data.cutlist;
 };
 
-
 export const updateCutListMachine = async (payload: CutListSavePayload) => {
-  const response = await apiClient.post(
-    `/track-trace/assign-machine`,
-    payload,
-  );
+  const response = await apiClient.post(`/track-trace/assign-machine`, payload);
   return response.data;
 };
 
-
-
-export const generateQRLabels = async (vendorId: number, projectId: string, cutListIds?: number[]) => {
-  const { data } = await apiClient.post(
-    `/track-trace/create-qr-code`,
-    {
-      vendorId,
-      projectId,
-      cutListIds
-    }
-  );
+export const generateQRLabels = async (
+  vendorId: number,
+  projectId: string,
+  cutListIds?: number[],
+) => {
+  const { data } = await apiClient.post(`/track-trace/create-qr-code`, {
+    vendorId,
+    projectId,
+    cutListIds,
+  });
   return data.data; // Returns the PDF URL
 };
 
-
-
-export const downloadCutListExcel = async (vendorId: number, unique_project_id: string) => {
+export const downloadCutListExcel = async (
+  vendorId: number,
+  unique_project_id: string,
+) => {
   const { data } = await apiClient.post(
     `/track-trace/download-cut-list-excel`,
     {
       vendorId,
       unique_project_id,
-    }
+    },
   );
   return data.data; // Returns the PDF URL
 };
 
-export const downloadCutListBasicExcel = async (vendorId: number, unique_project_id: string) => {
+export const downloadCutListBasicExcel = async (
+  vendorId: number,
+  unique_project_id: string,
+) => {
   const { data } = await apiClient.post(
     `/track-trace/download-cut-list-basic-excel`,
     {
       vendorId,
       unique_project_id,
-    }
+    },
   );
   return data.data; // Returns the file URL
 };
-
 
 export interface Lead {
   id: number;
   lead_code: string;
   lead_name?: string;
-  firstname:string;
-  lastname:string;
+  firstname: string;
+  lastname: string;
   [key: string]: unknown;
 }
 
 // Search leads by query string
-export const searchLeads = async (query: string, vendorId: Number): Promise<Lead[]> => {
-  const { data } = await apiClient.get(`/track-trace/leads/search/${vendorId}/${query}`, {    
-  });
-  console.log(data.data)
+export const searchLeads = async (
+  query: string,
+  vendorId: Number,
+): Promise<Lead[]> => {
+  const { data } = await apiClient.get(
+    `/track-trace/leads/search/${vendorId}/${query}`,
+    {},
+  );
+  console.log(data.data);
   return data.data.leads; // ✏️ adjust to match your actual response shape
 };
-
 
 export interface LinkLeadPayload {
   project_id: number;
   lead_id: number;
-  vendor_id:number;
+  vendor_id: number;
 }
 
 // Link a lead to a project
 export const linkLeadToProject = async (payload: LinkLeadPayload) => {
   const { data } = await apiClient.post(
     `/track-trace/link-lead/${payload.project_id}/lead`,
-    { lead_id: payload.lead_id,vendor_id:payload.vendor_id }
+    { lead_id: payload.lead_id, vendor_id: payload.vendor_id },
   );
   return data.data; // ✏️ adjust to match your actual response shape
 };
-
-
 
 export const uploadMachineAssignApi = async (
   vendorId: number,
   projectToken: string,
   file: File,
-  userId: number
+  userId: number,
 ) => {
   const formData = new FormData();
 
@@ -120,13 +123,11 @@ export const uploadMachineAssignApi = async (
       headers: {
         "Content-Type": "multipart/form-data",
       },
-    }
+    },
   );
 
   return response.data;
 };
-
-
 
 export interface ProjectDetailData {
   project: {
@@ -135,10 +136,20 @@ export interface ProjectDetailData {
     project_status: string;
     track_trace_status: string;
     lead_id: number | null;
-    lead: { id: number; lead_name: string; lead_email: string; lead_phone: string; lead_address: string } | null;
+    lead: {
+      id: number;
+      lead_name: string;
+      lead_email: string;
+      lead_phone: string;
+      lead_address: string;
+    } | null;
     details: {
-      total_items: number; total_packed: number; total_unpacked: number;
-      estimated_completion_date: string | null; start_date: string | null; room_name: string | null;
+      total_items: number;
+      total_packed: number;
+      total_unpacked: number;
+      estimated_completion_date: string | null;
+      start_date: string | null;
+      room_name: string | null;
     } | null;
   };
   stats: {
@@ -183,64 +194,88 @@ export interface ProjectDetailData {
     machine_completion_pct: number;
   };
   machines: {
-    machine_id: number; machine_name: string; machine_type: string | null;
+    machine_id: number;
+    machine_name: string;
+    machine_type: string | null;
     sequence_no: number;
-    total: number; scanned: number; pending: number; pct: number;
+    total: number;
+    scanned: number;
+    pending: number;
+    pct: number;
   }[];
   boxes: {
-  id: number;
-  box_name: string;
-  box_status: string;
-  items_count: number;
-  total_weight: number;
+    id: number;
+    box_name: string;
+    box_status: string;
+    items_count: number;
+    total_weight: number;
 
-  factory_out_at: string | null;
-  factory_out_by: string | null;
-  site_in_at: string | null;
-  site_in_by: string | null;
+    factory_out_at: string | null;
+    factory_out_by: string | null;
+    site_in_at: string | null;
+    site_in_by: string | null;
 
-  box_info_values: {
-    id?: number;
-    field_id: number;
-    field_label: string;
-    field_key: string;
-    field_type: string;
-    field_value: string;
-    is_required?: boolean;
-    sort_order?: number;
+    box_info_values: {
+      id?: number;
+      field_id: number;
+      field_label: string;
+      field_key: string;
+      field_type: string;
+      field_value: string;
+      is_required?: boolean;
+      sort_order?: number;
+    }[];
   }[];
-}[];
+  filterOptions?: {
+    groups: string[];
+    categories: string[];
+    machines: { id: number; name: string }[];
+  };
+  boxes_pagination?: {
+    total: number;
+    page: number;
+    limit: number;
+    total_pages: number;
+    has_previous: boolean;
+    has_next: boolean;
+    from: number;
+    to: number;
+  };
 }
- 
-export const getProjectDetail = async (vendorId: number, projectId: string) => {
-  
+
+export const getProjectDetail = async (
+  vendorId: number,
+  projectId: string,
+  params?: {
+    search?: string;
+    group?: string;
+    category?: string;
+    machine_id?: string;
+    box_id?: string;
+    box_status?: string;
+    page?: number;
+    limit?: number;
+  }
+) => {
   const { data } = await apiClient.get(
-    `/track-trace/project-detail/${vendorId}/${projectId}`
+    `/track-trace/project-detail/${vendorId}/${projectId}`,
+    { params }
   );
- 
+
   return data.data as ProjectDetailData;
 };
- 
+
 /*
 |--------------------------------------------------------------------------
 | Server-side Project Cut List
 |--------------------------------------------------------------------------
 */
 
-export type ProjectCutListMachineStatus =
-  | "all"
-  | "done"
-  | "pending";
+export type ProjectCutListMachineStatus = "all" | "done" | "pending";
 
-export type ProjectCutListPackingStatus =
-  | "all"
-  | "packed"
-  | "pending";
+export type ProjectCutListPackingStatus = "all" | "packed" | "pending";
 
-export type ProjectCutListPackingMethod =
-  | "all"
-  | "manual"
-  | "scanned";
+export type ProjectCutListPackingMethod = "all" | "manual" | "scanned";
 
 export type ProjectCutListSortBy =
   | "row_number"
@@ -251,9 +286,7 @@ export type ProjectCutListSortBy =
   | "weight"
   | "box";
 
-export type ProjectCutListSortOrder =
-  | "asc"
-  | "desc";
+export type ProjectCutListSortOrder = "asc" | "desc";
 
 export interface ProjectCutListQuery {
   page?: number;
@@ -343,9 +376,7 @@ export interface ProjectCutListItem {
     | "Pending Verification"
     | "Received";
 
-  receipt_method:
-    | "Manual Verification"
-    | "QR Scan";
+  receipt_method: "Manual Verification" | "QR Scan";
 
   received_at: string | null;
   received_by_id: number | null;
@@ -424,7 +455,7 @@ export interface ProjectCutListResponse {
 export const getProjectCutListPaginated = async (
   vendorId: number,
   projectId: string,
-  query: ProjectCutListQuery = {}
+  query: ProjectCutListQuery = {},
 ): Promise<ProjectCutListResponse> => {
   const params: Record<string, string | number> = {};
 
@@ -440,101 +471,77 @@ export const getProjectCutListPaginated = async (
     params.search = query.search.trim();
   }
 
-  if (
-    query.group &&
-    query.group !== "all"
-  ) {
+  if (query.group && query.group !== "all") {
     params.group = query.group;
   }
 
-  if (
-    query.category &&
-    query.category !== "all"
-  ) {
+  if (query.category && query.category !== "all") {
     params.category = query.category;
   }
 
-  if (
-    query.machine_id !== undefined &&
-    query.machine_id !== null
-  ) {
+  if (query.machine_id !== undefined && query.machine_id !== null) {
     params.machine_id = query.machine_id;
   }
 
-  if (
-    query.machine_status &&
-    query.machine_status !== "all"
-  ) {
-    params.machine_status =
-      query.machine_status;
+  if (query.machine_status && query.machine_status !== "all") {
+    params.machine_status = query.machine_status;
   }
 
-  if (
-    query.packing_status &&
-    query.packing_status !== "all"
-  ) {
-    params.packing_status =
-      query.packing_status;
+  if (query.packing_status && query.packing_status !== "all") {
+    params.packing_status = query.packing_status;
   }
 
-  if (
-    query.packing_method &&
-    query.packing_method !== "all"
-  ) {
-    params.packing_method =
-      query.packing_method;
+  if (query.packing_method && query.packing_method !== "all") {
+    params.packing_method = query.packing_method;
   }
 
-  if (
-    query.box_id !== undefined &&
-    query.box_id !== null
-  ) {
+  if (query.box_id !== undefined && query.box_id !== null) {
     params.box_id = query.box_id;
   }
 
-  if (
-    query.min_weight !== undefined &&
-    query.min_weight !== null
-  ) {
-    params.min_weight =
-      query.min_weight;
+  if (query.min_weight !== undefined && query.min_weight !== null) {
+    params.min_weight = query.min_weight;
   }
 
-  if (
-    query.max_weight !== undefined &&
-    query.max_weight !== null
-  ) {
-    params.max_weight =
-      query.max_weight;
+  if (query.max_weight !== undefined && query.max_weight !== null) {
+    params.max_weight = query.max_weight;
   }
 
   if (query.sort_by) {
-    params.sort_by =
-      query.sort_by;
+    params.sort_by = query.sort_by;
   }
 
   if (query.sort_order) {
-    params.sort_order =
-      query.sort_order;
+    params.sort_order = query.sort_order;
   }
 
-  const { data } =
-    await apiClient.get(
-      `/track-trace/project-detail/${vendorId}/${projectId}/cut-list`,
-      {
-        params,
-      }
-    );
+  const { data } = await apiClient.get(
+    `/track-trace/project-detail/${vendorId}/${projectId}/cut-list`,
+    {
+      params,
+    },
+  );
 
   return data.data as ProjectCutListResponse;
 };
 
-export const getBoxItems = async (vendorId: number, projectId: string, boxId: number) => {
+export const getBoxItems = async (
+  vendorId: number,
+  projectId: string,
+  boxId: number,
+) => {
   const { data } = await apiClient.get(
-    `/track-trace/project-detail/${vendorId}/${projectId}/box/${boxId}`
+    `/track-trace/project-detail/${vendorId}/${projectId}/box/${boxId}`,
   );
   return data.data as {
-    box: { id: number; box_name: string; box_status: string; factory_out_at: string | null; site_in_at: string | null; total_weight?: number };
+    box: {
+      id: number;
+      box_name: string;
+      box_status: string;
+      factory_out_at: string | null;
+      site_in_at: string | null;
+      total_weight?: number;
+    };
     items: {
       id: number;
       machine: { machine_name: string };
@@ -546,22 +553,28 @@ export const getBoxItems = async (vendorId: number, projectId: string, boxId: nu
       inOperator: { id: number; name: string } | null;
       siteInByUser: { id: number; name: string } | null;
       cut_list: {
-        id: number; item_name: string; unique_code: string;
-        qty: number; category_name: string; group_name: string;
-        length: string; width: string; thickness: string;
+        id: number;
+        item_name: string;
+        unique_code: string;
+        qty: number;
+        category_name: string;
+        group_name: string;
+        length: string;
+        width: string;
+        thickness: string;
         weight?: number;
       };
     }[];
   };
 };
- 
+
 export const downloadBoxPdf = async (
   boxId: number,
   projectId: string | number,
-  vendorId: number
+  vendorId: number,
 ) => {
   const { data } = await apiClient.get(
-    `/boxes/boxes/pdf/${boxId}/${projectId}/${vendorId}/web`
+    `/boxes/boxes/pdf/${boxId}/${projectId}/${vendorId}/web`,
   );
 
   return data;
@@ -569,10 +582,10 @@ export const downloadBoxPdf = async (
 
 export const downloadProjectFullReport = async (
   projectId: string | number,
-  vendorId: number
+  vendorId: number,
 ) => {
   const { data } = await apiClient.get(
-    `/boxes/project-full-report/${projectId}/${vendorId}/web`
+    `/boxes/project-full-report/${projectId}/${vendorId}/web`,
   );
 
   return data;

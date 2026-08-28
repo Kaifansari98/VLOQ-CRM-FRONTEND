@@ -81,13 +81,20 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toastManager } from "@/components/ui/toast";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   useProductItemCodes,
   useProductStructureTypes,
   useProductTypes,
   useB2BRequirementTypes,
   useProcessBriefs,
 } from "@/hooks/useTypesMaster";
-import { updateLeadProductType, clearLeadProductStructures } from "@/api/leads";
+import { updateLeadProductType, clearLeadProductStructures, updateLead } from "@/api/leads";
 import { saveLeadProcessBriefsApi, fetchLeadProcessBriefsApi, saveLeadB2BRequirementMappingsApi } from "@/api/typesMasterApi";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 import { useFranchisesByVendorId } from "@/api/franchise";
@@ -473,6 +480,38 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         });
       },
     });
+
+  const { mutate: updatePriority, isPending: updatingPriority } = useMutation({
+    mutationFn: async (priority: string) => {
+      return updateLead(
+        { priority, updated_by: userId! },
+        leadId,
+        userId!
+      );
+    },
+    onSuccess: () => {
+      toastManager.add({
+        title: "Lead priority updated successfully.",
+        type: "success",
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["lead", leadId, vendorId, userId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["leads"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["draft-lead-table-data"],
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to update priority.",
+        type: "error",
+      });
+    },
+  });
+
   // ✅ 6. DERIVED VALUES (non-hook)
   const lead = data?.data?.lead;
   const isB2b = useMemo(() => {
@@ -534,6 +573,21 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const { mutateAsync: uploadMoreSitePhotos, isPending: uploading } =
     useUploadMoreSitePhotos();
   const structureInstances = structureInstancesData?.data || [];
+  const displayInstances = useMemo(() => {
+    if (structureInstances && structureInstances.length > 0) {
+      return structureInstances;
+    }
+    return (lead?.leadProductStructureMapping || []).map((ps: any, index: number) => ({
+      id: ps.id || index,
+      product_structure_id: ps.product_structure_id,
+      quantity_index: index + 1,
+      title: ps.productStructure?.type || "—",
+      productStructure: {
+        type: ps.productStructure?.type || "—"
+      },
+      description: null
+    }));
+  }, [structureInstances, lead?.leadProductStructureMapping]);
   const productItemCodes = productItemCodesData?.data || [];
   const leadDocuments = lead?.documents || [];
   const imageDocuments = leadDocuments.filter((doc: any) =>
@@ -588,13 +642,13 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const isCallerAndDraft = isCaller && isDraftLead;
 
   const canEditStructures =
-    !isCallerAndDraft &&
+    !isCaller &&
     !isAuditor &&
     (normalizedUserType === "custom"
       ? canEditLeadDetailsForCustomUser
       : canEditAtCurrentStage);
   const canEditProductType =
-    !isCallerAndDraft &&
+    !isCaller &&
     !isAuditor &&
     (normalizedUserType === "custom"
       ? canEditLeadDetailsForCustomUser
@@ -750,20 +804,28 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 
   // ✅ 8. ALL useMemo HOOKS
   const structureSummary = useMemo(() => {
-    const total = structureInstances.length;
+    const total = displayInstances.length;
     const uniqueStructures = new Set(
-      structureInstances.map((item: any) => item.product_structure_id),
+      displayInstances.map((item: any) => item.product_structure_id),
     ).size;
     return { total, uniqueStructures };
-  }, [structureInstances]);
+  }, [displayInstances]);
 
   const currentProductTypeLabel = useMemo(() => {
-    return (
+    // Primary: from productMappings join
+    const fromMapping =
       lead?.productMappings?.[0]?.productType?.type ||
-      lead?.productMappings?.[0]?.product_type?.type ||
-      ""
-    );
-  }, [lead?.productMappings]);
+      lead?.productMappings?.[0]?.product_type?.type;
+    if (fromMapping) return fromMapping;
+    // Fallback 1: from structureInstances (draft leads from Lead Pool with instances created)
+    const fromInstance = structureInstances?.[0]?.productType?.type ||
+      structureInstances?.[0]?.product_type?.type;
+    if (fromInstance) return fromInstance;
+    // Fallback 2: from leadProductStructureMapping
+    const fromMapping2 = lead?.leadProductStructureMapping?.[0]?.productStructure?.productType?.type;
+    if (fromMapping2) return fromMapping2;
+    return "";
+  }, [lead?.productMappings, lead?.leadProductStructureMapping, structureInstances]);
 
   const isModularKitchenType = useMemo(() => {
     const label = String(currentProductTypeLabel).toLowerCase();
@@ -811,8 +873,12 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     if (isB2b) {
       return b2bReqTypesData?.data || [];
     }
-    return productTypes?.data || [];
-  }, [isB2b, b2bReqTypesData?.data, productTypes?.data]);
+    const list = productTypes?.data || [];
+    if (!handlesLargeScaleProjects) {
+      return list.filter((pt: any) => pt.type?.trim().toLowerCase() !== "small order");
+    }
+    return list;
+  }, [isB2b, b2bReqTypesData?.data, productTypes?.data, handlesLargeScaleProjects]);
 
   useEffect(() => {
     if (!lead) return;
@@ -1611,10 +1677,30 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                         )}
                       </span>
                     }
-                    value={lead.productMappings
-                      ?.map((pm: any) => pm.productType?.type)
-                      ?.filter(Boolean)
-                      ?.join(", ")}
+                    value={
+                      (() => {
+                        // Primary: from productMappings
+                        const fromMappings = lead.productMappings
+                          ?.map((pm: any) => pm.productType?.type || pm.product_type?.type)
+                          ?.filter(Boolean)
+                          ?.join(", ");
+                        if (fromMappings) return fromMappings;
+                        // Fallback 1: from structureInstances (draft leads coming from Lead Pool with instances)
+                        const fromInstances = [...new Set(
+                          (structureInstances || [])
+                            .map((si: any) => si.productType?.type || si.product_type?.type)
+                            .filter(Boolean)
+                        )].join(", ");
+                        if (fromInstances) return fromInstances;
+                        // Fallback 2: from leadProductStructureMapping (older leads from Lead Pool)
+                        const fromStructureMapping = [...new Set(
+                          (lead.leadProductStructureMapping || [])
+                            .map((ps: any) => ps.productStructure?.productType?.type)
+                            .filter(Boolean)
+                        )].join(", ");
+                        return fromStructureMapping || undefined;
+                      })()
+                    }
                   />
                   {(structureSummary.total > 0 ||
                     structureSummary.uniqueStructures > 0) && (
@@ -1642,18 +1728,15 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
                     Loading product information...
                   </div>
-                ) : structureInstances.length === 0 ? (
+                ) : displayInstances.length === 0 ? (
                   <InfoRow
                     icon={Package}
                     label="Product Structures"
-                    value={lead.leadProductStructureMapping
-                      ?.map((ps: any) => ps.productStructure?.type)
-                      ?.filter(Boolean)
-                      ?.join(", ")}
+                    value="—"
                   />
                 ) : (
                   <div className="grid gap-4 md:grid-cols-2">
-                    {structureInstances.map((item: any) => (
+                    {displayInstances.map((item: any) => (
                       <div
                         key={`${item.product_structure_id}-${item.quantity_index}`}
                         className="group rounded-xl border bg-white/60 p-5 transition-all hover:border-border/80 dark:bg-[#0a0a0a] min-w-0"
@@ -1665,7 +1748,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                                 {item.title || item.productStructure?.type || "—"}
                               </p>
                               <div className="flex items-center gap-1 shrink-0">
-                                {canEditStructures && (
+                                {canEditStructures && structureInstances.length > 0 && (
                                   <>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
@@ -2446,8 +2529,38 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   label="Site Type"
                   value={lead.siteType?.type}
                 />
-                <InfoRow icon={Magnet} label="Source" value={lead.source?.type} />
-                <InfoRow icon={Package} label="Priority" value={lead.priority} />
+                <InfoRow icon={Magnet} label="Source" value={lead?.source?.type} />
+                <InfoRow
+                  icon={Package}
+                  label="Priority"
+                  value={
+                    (() => {
+                      const tagNum = Number(lead?.statusType?.tag?.replace("Type ", ""));
+                      const isAdminOrSuperAdmin =
+                        userType?.toLowerCase() === "admin" ||
+                        userType?.toLowerCase() === "super-admin";
+                      const isEditable = isAdminOrSuperAdmin && !isNaN(tagNum) && tagNum <= 4;
+                      return isEditable ? (
+                        <Select
+                          value={lead?.priority || "Medium"}
+                          disabled={updatingPriority}
+                          onValueChange={(val) => updatePriority(val)}
+                        >
+                          <SelectTrigger className="h-auto w-auto border-none shadow-none focus:ring-0 p-0 bg-transparent flex items-center gap-1.5 text-[15px] font-medium text-heading dark:text-neutral-200 cursor-pointer select-none">
+                            <SelectValue placeholder="Select Priority" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="High">High</SelectItem>
+                            <SelectItem value="Medium">Medium</SelectItem>
+                            <SelectItem value="Low">Low</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        lead?.priority || "—"
+                      );
+                    })()
+                  }
+                />
               </div>
             </SectionCard>
           )}

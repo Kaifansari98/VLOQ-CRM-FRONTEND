@@ -20,7 +20,10 @@ import { useDetails } from "../details-context";
 import { useAppSelector } from "@/redux/store";
 import { useSubmitDesigns } from "@/api/designingStageQueries";
 import { useQueryClient } from "@tanstack/react-query";
-import { useLeadUniqueProductTypes, useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
+import {
+  useLeadUniqueProductTypes,
+  useLeadProductStructureInstances,
+} from "@/hooks/useLeadsQueries";
 import {
   useDesignsDoc,
   useLeadSpecifications,
@@ -53,12 +56,12 @@ const designsSchema = z.object({
       (files: File[]) =>
         files.every((f) =>
           /\.(pdf|zip|pyo|pytha|dwg|dxf|stl|step|stp|iges|igs|3ds|obj|skp|sldprt|sldasm|prt|catpart|catproduct)$/i.test(
-            f.name
-          )
+            f.name,
+          ),
         ),
       {
         message: "Only PDF, ZIP or supported design formats are allowed.",
-      }
+      },
     ),
 });
 
@@ -86,7 +89,9 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
     (s) => s.auth.user?.vendor?.handlesLargeScaleProjects === true,
   );
 
-  const [b2bReqTypes, setB2BReqTypes] = useState<{ id: number; typeName: string }[]>([]);
+  const [b2bReqTypes, setB2BReqTypes] = useState<
+    { id: number; typeName: string }[]
+  >([]);
   const [submitting, setSubmitting] = useState(false);
 
   const queryClient = useQueryClient();
@@ -103,7 +108,9 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
           if (res?.success && Array.isArray(res?.data)) {
             const mapped = res.data.map((item: any) => ({
               id: item.b2b_requirement_type_id,
-              typeName: item.b2bRequirementType?.type || `Requirement #${item.b2b_requirement_type_id}`,
+              typeName:
+                item.b2bRequirementType?.type ||
+                `Requirement #${item.b2b_requirement_type_id}`,
             }));
             setB2BReqTypes(mapped);
             if (mapped.length > 0) {
@@ -111,7 +118,9 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
             }
           }
         })
-        .catch((err) => console.error("Error fetching B2B requirement mappings:", err));
+        .catch((err) =>
+          console.error("Error fetching B2B requirement mappings:", err),
+        );
     }
   }, [open, vendorId, leadId, handlesLargeScaleProjects, form]);
 
@@ -123,16 +132,23 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
 
   const submitDesignsMutation = useSubmitDesigns();
 
-  const { data: uniqueProductTypes } = useLeadUniqueProductTypes(leadId, vendorId, open);
-  const { data: structureInstancesData } = useLeadProductStructureInstances(leadId, vendorId, open);
+  const { data: uniqueProductTypes } = useLeadUniqueProductTypes(
+    leadId,
+    vendorId,
+    open,
+  );
+  const { data: structureInstancesData } = useLeadProductStructureInstances(
+    leadId,
+    vendorId,
+    open,
+  );
   const { data: specifications = [] } = useLeadSpecifications(vendorId, leadId);
 
   const productTypes = uniqueProductTypes?.data ?? [];
   const shouldRenderProductTypeField =
     isCustomVendor || handlesLargeScaleProjects;
   const showProductTypeSelect =
-    shouldRenderProductTypeField &&
-    (!productTypes || productTypes.length > 1);
+    shouldRenderProductTypeField && (!productTypes || productTypes.length > 1);
   const selectedProductType = form.watch("product_type");
   const structureInstances = Array.isArray(structureInstancesData?.data)
     ? structureInstancesData.data
@@ -210,7 +226,10 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
             created_by: userId,
           });
         }
-        toastManager.add({ title: "Design files uploaded successfully!", type: "success" });
+        toastManager.add({
+          title: "Design files uploaded successfully!",
+          type: "success",
+        });
 
         queryClient.invalidateQueries({
           queryKey: ["getDesignsDoc", vendorId, leadId],
@@ -223,7 +242,10 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
         onOpenChange(false);
       } catch (error: any) {
         toastManager.add({
-          title: error?.response?.data?.message || error?.message || "Failed to upload design files",
+          title:
+            error?.response?.data?.message ||
+            error?.message ||
+            "Failed to upload design files",
           type: "error",
         });
       } finally {
@@ -281,7 +303,10 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
         specificationId,
       });
 
-      toastManager.add({ title: "Design files uploaded successfully!", type: "success" });
+      toastManager.add({
+        title: "Design files uploaded successfully!",
+        type: "success",
+      });
 
       queryClient.invalidateQueries({
         queryKey: ["getDesignsDoc", vendorId, leadId],
@@ -331,7 +356,10 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
                 <FormItem>
                   <FormLabel>Requirement Type</FormLabel>
                   <Select
-                    value={field.value || (b2bReqTypes[0]?.id ? String(b2bReqTypes[0].id) : "")}
+                    value={
+                      field.value ||
+                      (b2bReqTypes[0]?.id ? String(b2bReqTypes[0].id) : "")
+                    }
                     onValueChange={field.onChange}
                   >
                     <FormControl>
@@ -383,7 +411,9 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
                         <SelectContent>
                           <SelectItem value="2D">2D Design</SelectItem>
                           <SelectItem value="3D">3D Design</SelectItem>
-                          <SelectItem value="2D + 3D">2D + 3D Design</SelectItem>
+                          <SelectItem value="2D + 3D">
+                            2D + 3D Design
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />

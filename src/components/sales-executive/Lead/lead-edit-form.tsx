@@ -1554,11 +1554,14 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
                     control={form.control}
                     name="product_types"
                     render={({ field }) => {
-                      const pickerData =
-                        productTypes?.data?.map((p: any) => ({
-                          id: p.id,
-                          label: p.type,
-                        })) || [];
+                      const list = productTypes?.data || [];
+                      const filteredList = handlesLargeScaleProjects
+                        ? list
+                        : list.filter((p: any) => p.type?.trim().toLowerCase() !== "small order");
+                      const pickerData = filteredList.map((p: any) => ({
+                        id: p.id,
+                        label: p.type,
+                      }));
 
                       return (
                         <FormItem>

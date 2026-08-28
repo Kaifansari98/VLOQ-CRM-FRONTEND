@@ -1268,7 +1268,7 @@ export function UniversalTable({
           ? lead.productStructureInstances
           : [];
 
-        if (handlesLargeScaleProjects) {
+        if (handlesLargeScaleProjects && !isType9) {
           const structureTypes = Array.from(
             new Set(
               instances

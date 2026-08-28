@@ -434,6 +434,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const isOnlineLeadFeatureEnabled =
     user?.vendor?.is_online_lead_feature_enabled === true;
   const isScanPackEnabled = user?.vendor?.is_scanpack_enabled === true;
+  const handlesLargeScaleProjects =
+    user?.vendor?.handlesLargeScaleProjects === true;
   const canSeeOverallLeads =
     userType === "admin" ||
     userType === "super-admin" ||
@@ -746,6 +748,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       };
 
     const finalNavItemsSource = customFilteredItems.map((item) => {
+      if (item.title === "Leads" && item.items) {
+        const updatedItems = item.items.map((subItem) => {
+          if (subItem.title === "Draft Lead" && !handlesLargeScaleProjects) {
+            return {
+              ...subItem,
+              title: "Online Lead",
+            };
+          }
+          return subItem;
+        });
+        return { ...item, items: updatedItems };
+      }
       if (item.title === "Execution" && item.items) {
         const underInstallationIndex = item.items.findIndex(
           (subItem) => subItem.title === "Installation",
@@ -830,6 +844,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     isScanPackEnabled,
     customPrivilegeCodes,
     isActiveFranchiseB2b,
+    handlesLargeScaleProjects,
   ]);
 
   const teams = React.useMemo(() => {
