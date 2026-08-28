@@ -1,4 +1,5 @@
 import {
+  keepPreviousData,
   useMutation,
   useQuery,
   useQueryClient,
@@ -32,6 +33,7 @@ export function useTrackTraceProjects(
       ),
 
     enabled: !!vendorId,
+    placeholderData: keepPreviousData,
   });
 }
 
