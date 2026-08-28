@@ -27,7 +27,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-export type DraftLeadRow = LeadColumn;
+import { Button } from "@/components/ui/button";
+import { CheckCircle2, XCircle, Loader2, AlertCircle } from "lucide-react";
 
 function toTitleCase(value: string) {
   return value
@@ -38,7 +39,23 @@ function toTitleCase(value: string) {
     .join(" ");
 }
 
-export function getDraftLeadsColumns(): ColumnDef<DraftLeadRow>[] {
+export type DraftLeadRow = LeadColumn & {
+  approval_status?: string;
+  pending_store_id?: number;
+  is_online_lead?: boolean;
+  franchiseId?: number;
+};
+
+export interface DraftLeadsColumnsOptions {
+  onApprove?: (id: number) => void;
+  onReject?: (id: number) => void;
+  actingLeadId?: number | null;
+  userType?: string;
+  userFranchiseId?: number;
+  isSuperAdminOrAdmin?: boolean;
+}
+
+export function getDraftLeadsColumns(options?: DraftLeadsColumnsOptions): ColumnDef<DraftLeadRow>[] {
   const columns: ColumnDef<DraftLeadRow>[] = [
     // 1) Lead Code
     {
@@ -523,6 +540,76 @@ export function getDraftLeadsColumns(): ColumnDef<DraftLeadRow>[] {
       },
       meta: {
         label: "Designer Remark",
+      },
+    },
+
+    // 15) Actions (Approve / Reject for Pending Leads)
+    {
+      id: "actions",
+      header: () => (
+        <div className="w-full text-center font-medium text-foreground">
+          Actions
+        </div>
+      ),
+      cell: ({ row }) => {
+        const isPending = row.original.approval_status === "PENDING";
+        const isAuthorized =
+          options?.isSuperAdminOrAdmin ||
+          (options?.userFranchiseId != null &&
+            options.userFranchiseId === (row.original.pending_store_id || row.original.franchiseId));
+        const isActing = options?.actingLeadId === row.original.id;
+
+        if (isPending) {
+          if (isAuthorized) {
+            return (
+              <div className="flex items-center justify-center gap-2">
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    options?.onApprove?.(row.original.id);
+                  }}
+                  disabled={isActing}
+                  size="sm"
+                  className="h-8 text-xs w-28 bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-medium flex items-center justify-center gap-1"
+                >
+                  {isActing ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                  )}
+                  Approve
+                </Button>
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    options?.onReject?.(row.original.id);
+                  }}
+                  disabled={isActing}
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs w-28 border-slate-200 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900 font-medium flex items-center justify-center gap-1"
+                >
+                  {isActing ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <XCircle className="w-3.5 h-3.5" />
+                  )}
+                  Reject
+                </Button>
+              </div>
+            );
+          } else {
+            return (
+              <div className="flex items-center justify-center gap-1">
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold italic flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5" /> Approval Pending
+                </span>
+              </div>
+            );
+          }
+        }
+
+        return <span className="text-xs text-muted-foreground italic">—</span>;
       },
     },
   ];

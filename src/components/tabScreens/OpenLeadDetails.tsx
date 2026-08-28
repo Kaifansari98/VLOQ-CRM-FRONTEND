@@ -3305,7 +3305,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
             <div className="space-y-4 p-5">
               <div>
                 <label className="text-xs font-medium text-muted-foreground">
-                  Title <span className="text-red-500">*</span>
+                  Title (optional)
                 </label>
                 <Input
                   value={addStructure?.title || ""}
@@ -3324,7 +3324,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground">
-                  Product Structure <span className="text-red-500">*</span>
+                  Product Structure (optional)
                 </label>
                 <div className="mt-1">
                   <AssignToPicker

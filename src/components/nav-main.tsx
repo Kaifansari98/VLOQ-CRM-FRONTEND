@@ -170,7 +170,7 @@ export function NavMain({
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type as string | undefined,
   );
-  const normalizedUserType = userType?.toLowerCase();
+  const normalizedUserType = userType?.toLowerCase().replace(/_/g, "-").replace(/\s+/g, "-");
   const franchiseId =
     useAppSelector((state) => state.auth.franchise_id) ??
     useAppSelector((state) => state.auth.user?.franchise_id) ??

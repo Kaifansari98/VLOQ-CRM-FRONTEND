@@ -82,6 +82,7 @@ import { toastManager } from "@/components/ui/toast";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import BaseModal from "@/components/utils/baseModal";
 import AssignToPicker from "@/components/assign-to-picker";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -205,10 +206,48 @@ export default function OnlineLeadDetailsPage() {
   const userType = user?.user_type?.user_type?.toLowerCase() || "";
   const isAdmin = userType === "super-admin" || userType === "admin";
   const isCaller = userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead";
+  const isOnlineLeadFeatureEnabled = user?.vendor?.is_online_lead_feature_enabled === true;
 
   const [lead, setLead] = useState<OnlineLead | null>(null);
-  const isProductInfoMissing = useMemo(() => {
-    return !lead?.product_types || lead.product_types.length === 0 || !lead?.product_structures || lead.product_structures.length === 0;
+  const isProductInfoMissing = useMemo(() => false, []);
+
+  const latestRemarkInfo = useMemo(() => {
+    if (!lead) return null;
+    const isQuestionnaireText = (rem: string) => {
+      return rem.includes("Bulk imported:") || rem.includes("What modular solution") || rem.includes("When do you need your modular");
+    };
+
+    const logs = lead.call_log || [];
+    if (logs.length > 0) {
+      const sorted = [...logs].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      const latest = sorted.find((l) => l.remark && l.remark.trim() !== "" && !isQuestionnaireText(l.remark));
+      if (latest) {
+        return {
+          id: latest.id,
+          source: "call_log" as const,
+          remark: latest.remark,
+          status: latest.status?.status_name,
+          telecaller: latest.telecaller?.user_name,
+          date: latest.created_at,
+        };
+      }
+    }
+    const histories = lead.online_lead_history || [];
+    if (histories.length > 0) {
+      const sortedH = [...histories].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      const latestH = sortedH.find((h) => h.remark && h.remark.trim() !== "" && !isQuestionnaireText(h.remark));
+      if (latestH) {
+        return {
+          id: latestH.id,
+          source: "history" as const,
+          remark: latestH.remark,
+          status: latestH.status?.status_name,
+          telecaller: latestH.createdBy?.user_name,
+          date: latestH.created_at,
+        };
+      }
+    }
+    return null;
   }, [lead]);
 
   const [statuses, setStatuses] = useState<FollowupStatus[]>([]);
@@ -234,6 +273,23 @@ export default function OnlineLeadDetailsPage() {
 
   const [isStoreOpen, setIsStoreOpen] = useState(false);
   const [assignStoreId, setAssignStoreId] = useState("");
+  const [visitDate, setVisitDate] = useState("");
+  const [markStoreVisitDone, setMarkStoreVisitDone] = useState(false);
+
+  const isTodayOrPast = useMemo(() => {
+    if (!visitDate) return false;
+    const selected = new Date(visitDate);
+    selected.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return selected.getTime() <= today.getTime();
+  }, [visitDate]);
+
+  useEffect(() => {
+    if (!isTodayOrPast) {
+      setMarkStoreVisitDone(false);
+    }
+  }, [isTodayOrPast]);
   const [storeRemark, setStoreRemark] = useState("");
   const [storeCallers, setStoreCallers] = useState<Telecaller[]>([]);
   const [selectedStoreCaller, setSelectedStoreCaller] = useState("");
@@ -270,6 +326,16 @@ export default function OnlineLeadDetailsPage() {
   const [editArchNumber, setEditArchNumber] = useState("");
   const [editReferedBy, setEditReferedBy] = useState("");
   const [submittingEdit, setSubmittingEdit] = useState(false);
+  const [isRemarkEditOpen, setIsRemarkEditOpen] = useState(false);
+  const [remarkOnlyText, setRemarkOnlyText] = useState("");
+  const [parsedQuestionnaire, setParsedQuestionnaire] = useState<{
+    prefix: string;
+    items: { question: string; answer: string }[];
+  } | null>(null);
+  const [submittingRemark, setSubmittingRemark] = useState(false);
+  const [isLatestRemarkEditOpen, setIsLatestRemarkEditOpen] = useState(false);
+  const [latestRemarkText, setLatestRemarkText] = useState("");
+  const [submittingLatestRemark, setSubmittingLatestRemark] = useState(false);
   const [sourceTypes, setSourceTypes] = useState<{ id: number; type: string }[]>([]);
   const [siteTypes, setSiteTypes] = useState<{ id: number; type: string }[]>([]);
 
@@ -389,6 +455,163 @@ export default function OnlineLeadDetailsPage() {
     const selectedSt = statuses.find((s) => s.id === Number(callStatus));
     return selectedSt?.followup_required || false;
   }, [callStatus, statuses]);
+
+  const renderRemarkContent = (remarkText: string | null) => {
+    if (!remarkText || remarkText.trim() === "" || remarkText.trim() === "-") {
+      return <p className="text-[15px] text-foreground">N/A</p>;
+    }
+
+    // Replace all underscores with spaces for clean display
+    const cleanText = remarkText.replace(/_/g, " ");
+
+    // Handle inline markdown formatted text like "Bulk imported: **• Question?** Answer **• Question 2?** Answer 2"
+    if (cleanText.includes("**") && !cleanText.includes("\n")) {
+      let prefix = "";
+      let remaining = cleanText;
+      const firstStarIdx = cleanText.indexOf("**");
+      if (firstStarIdx > 0) {
+        prefix = cleanText.substring(0, firstStarIdx).trim();
+        remaining = cleanText.substring(firstStarIdx);
+      }
+
+      const regex = /\*\*\s*•?\s*([^*]+?)\s*\*\*\s*([^*]+)/g;
+      const matches: { question: string; answer: string }[] = [];
+      let match;
+      while ((match = regex.exec(remaining)) !== null) {
+        matches.push({
+          question: match[1].trim(),
+          answer: match[2].trim(),
+        });
+      }
+
+      if (matches.length > 0) {
+        return (
+          <div className="space-y-4">
+            {prefix && (
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                {prefix}
+              </p>
+            )}
+            {matches.map((item, idx) => (
+              <div key={idx} className="space-y-1">
+                <p className="font-bold text-foreground text-[14px] flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-foreground inline-block shrink-0" />
+                  <span>{item.question.replace(/^•\s*/, "")}</span>
+                </p>
+                <p className="text-[14px] text-slate-700 dark:text-slate-300 pl-3">{item.answer || "N/A"}</p>
+              </div>
+            ))}
+          </div>
+        );
+      }
+    }
+
+    // Check if text uses '|' delimiter (older single-line uploaded format)
+    if (cleanText.includes(" | ") && !cleanText.includes("\n")) {
+      const parts = cleanText.split(" | ");
+      return (
+        <div className="space-y-4">
+          {parts.map((part, idx) => {
+            const colonIdx = part.indexOf(":");
+            if (colonIdx !== -1) {
+              const label = part.substring(0, colonIdx).trim();
+              const val = part.substring(colonIdx + 1).trim();
+              let questionLabel = label;
+              if (label === "Modular Solution Interested In") questionLabel = "What modular solution are you interested in?";
+              else if (label === "Need Ready By") questionLabel = "When do you need your modular kitchen/wardrobe ready?";
+              else if (label === "Preferred Showroom") questionLabel = "Which Shambhala showroom would you prefer to visit?";
+              else if (label === "Project Location") questionLabel = "Where is your project located?";
+              else if (!questionLabel.endsWith("?")) questionLabel = `${questionLabel}?`;
+
+              return (
+                <div key={idx} className="space-y-1">
+                  <p className="font-bold text-foreground text-[14px] flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-foreground inline-block shrink-0" />
+                    <span>{questionLabel}</span>
+                  </p>
+                  <p className="text-[14px] text-slate-700 dark:text-slate-300 pl-3">{val || "N/A"}</p>
+                </div>
+              );
+            }
+            return <p key={idx} className="text-[14px] text-slate-700 dark:text-slate-300">{part}</p>;
+          })}
+        </div>
+      );
+    }
+
+    // Handle multiline text (\n\n separated blocks)
+    const blocks = cleanText.split(/\n\s*\n/);
+    return (
+      <div className="space-y-4">
+        {blocks.map((block, bIdx) => {
+          const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
+          return (
+            <div key={bIdx} className="space-y-1">
+              {lines.map((line, lIdx) => {
+                const isBoldHeader = (line.startsWith("**") && line.endsWith("**")) || line.endsWith("?");
+                if (isBoldHeader) {
+                  let cleanHeader = line.replace(/^\*\*|\*\*$/g, "").trim();
+                  if (cleanHeader.startsWith("•")) {
+                    cleanHeader = cleanHeader.replace(/^•\s*/, "").trim();
+                  }
+                  return (
+                    <p key={lIdx} className="font-bold text-foreground text-[14px] flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-foreground inline-block shrink-0" />
+                      <span>{cleanHeader}</span>
+                    </p>
+                  );
+                }
+                return (
+                  <p key={lIdx} className="text-[14px] text-slate-700 dark:text-slate-300 leading-relaxed pl-3">
+                    {line}
+                  </p>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const parseQuestionnaireItems = (text: string) => {
+    if (!text || !text.includes("**")) return null;
+    const cleanText = text.replace(/_/g, " ");
+    let prefix = "";
+    let remaining = cleanText;
+    const firstStarIdx = cleanText.indexOf("**");
+    if (firstStarIdx > 0) {
+      prefix = cleanText.substring(0, firstStarIdx).trim();
+      remaining = cleanText.substring(firstStarIdx);
+    }
+
+    const regex = /\*\*\s*•?\s*([^*]+?)\s*\*\*\s*([^*]+)/g;
+    const items: { question: string; answer: string }[] = [];
+    let match;
+    while ((match = regex.exec(remaining)) !== null) {
+      items.push({
+        question: match[1].trim().replace(/^•\s*/, ""),
+        answer: match[2].trim(),
+      });
+    }
+    return items.length > 0 ? { prefix, items } : null;
+  };
+
+  const renderHistoryRemark = (remarkText: string | null, statusName: string) => {
+    if (!remarkText) return <p className="text-sm text-foreground font-medium">Status updated to {statusName}</p>;
+    let textToRender = remarkText.replace(/_/g, " ");
+    let prefix = "";
+    if (textToRender.startsWith("Bulk imported:")) {
+      prefix = "Bulk imported:";
+      textToRender = textToRender.replace(/^Bulk imported:\s*/, "").trim();
+    }
+    return (
+      <div className="space-y-2">
+        {prefix && <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{prefix}</p>}
+        {renderRemarkContent(textToRender)}
+      </div>
+    );
+  };
 
   // Load Lead details
   const fetchLeadDetails = async () => {
@@ -527,15 +750,7 @@ export default function OnlineLeadDetailsPage() {
       return;
     }
 
-    if (isFollowUpDateRequired && !followUpDate) {
-      toastManager.add({ title: "Next follow-up date is required for this status.", type: "error" });
-      return;
-    }
 
-    if (selectedStatusName !== "lost" && !preferredStoreId) {
-      toastManager.add({ title: "Store selection is required", type: "error" });
-      return;
-    }
 
     if (!callRemark || !callRemark.trim()) {
       toastManager.add({ title: "Call log remark is required", type: "error" });
@@ -550,8 +765,6 @@ export default function OnlineLeadDetailsPage() {
         online_lead_status_id: callStatus,
         remark: callRemark,
         follow_up_date: followUpDate || undefined,
-        store_preference_option: selectedStatusName === "lost" ? undefined : (preferredStoreId ? "Another Store" : "No Preference"),
-        store_id: selectedStatusName === "lost" ? undefined : (preferredStoreId ? Number(preferredStoreId) : undefined),
       });
 
       if (res.data?.success) {
@@ -607,6 +820,8 @@ export default function OnlineLeadDetailsPage() {
         assigned_to: selectedStoreCaller ? Number(selectedStoreCaller) : undefined,
         remark: storeRemark,
         selected_by: userId,
+        mark_store_visit_done: markStoreVisitDone,
+        follow_up_date: visitDate || undefined,
       });
 
       if (res.data?.success) {
@@ -620,6 +835,8 @@ export default function OnlineLeadDetailsPage() {
           setStoreRemark("");
           setSelectedStoreCaller("");
           setRequiresCallerSelect(false);
+          setMarkStoreVisitDone(false);
+          setVisitDate("");
           fetchLeadDetails();
           toastManager.add({ title: "Store assigned successfully", type: "success" });
         }
@@ -629,6 +846,41 @@ export default function OnlineLeadDetailsPage() {
       toastManager.add({ title: err.response?.data?.error || "Failed to assign store.", type: "error" });
     } finally {
       setSubmittingStore(false);
+    }
+  };
+
+  const handleMarkAsActive = async () => {
+    if (!lead) return;
+    const pendingStatus = statuses.find(
+      (s) => s.status_name.toLowerCase() === "pending"
+    );
+    if (!pendingStatus) {
+      toastManager.add({
+        title: "Initial status 'Pending' not found.",
+        type: "error",
+      });
+      return;
+    }
+
+    try {
+      const res = await apiClient.patch(`/online-leads/${id}`, {
+        status: pendingStatus.id,
+        updated_by: userId,
+      });
+
+      if (res.data?.success) {
+        fetchLeadDetails();
+        toastManager.add({
+          title: "Lead marked as active successfully",
+          type: "success",
+        });
+      }
+    } catch (err: any) {
+      console.error("Failed to mark lead as active:", err);
+      toastManager.add({
+        title: err.response?.data?.error || "Failed to mark lead as active.",
+        type: "error",
+      });
     }
   };
 
@@ -668,28 +920,74 @@ export default function OnlineLeadDetailsPage() {
     }
   };
 
+  // Remark Only save
+  const handleRemarkOnlySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmittingRemark(true);
+    try {
+      let finalRemarkToSend = remarkOnlyText;
+      if (parsedQuestionnaire && parsedQuestionnaire.items.length > 0) {
+        const formattedItems = parsedQuestionnaire.items
+          .map((i) => `**• ${i.question}** ${i.answer}`)
+          .join(" ");
+        finalRemarkToSend = parsedQuestionnaire.prefix
+          ? `${parsedQuestionnaire.prefix} ${formattedItems}`
+          : formattedItems;
+      }
+
+      const res = await apiClient.patch(`/online-leads/${id}`, {
+        remark: finalRemarkToSend,
+        updated_by: userId,
+      });
+      if (res.data?.success) {
+        setIsRemarkEditOpen(false);
+        fetchLeadDetails();
+        toastManager.add({ title: "Design remarks updated successfully", type: "success" });
+      }
+    } catch (err: any) {
+      toastManager.add({ title: err.response?.data?.error || "Failed to update remarks.", type: "error" });
+    } finally {
+      setSubmittingRemark(false);
+    }
+  };
+
+  // Latest Remark Only save
+  const handleLatestRemarkSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!latestRemarkInfo) return;
+    setSubmittingLatestRemark(true);
+    try {
+      const endpoint = latestRemarkInfo.source === "call_log"
+        ? `/online-leads/call-log/${latestRemarkInfo.id}`
+        : `/online-leads/history/${latestRemarkInfo.id}`;
+
+      const res = await apiClient.patch(endpoint, {
+        remark: latestRemarkText,
+        updated_by: userId,
+      });
+
+      if (res.data?.success) {
+        setIsLatestRemarkEditOpen(false);
+        fetchLeadDetails();
+        toastManager.add({ title: "Latest remark updated successfully", type: "success" });
+      }
+    } catch (err: any) {
+      toastManager.add({ title: err.response?.data?.error || "Failed to update latest remark.", type: "error" });
+    } finally {
+      setSubmittingLatestRemark(false);
+    }
+  };
+
   // Furniture Structure save
   const handleFurnitureSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    let valid = true;
-    if (!furnitureCustomTitle.trim()) {
-      setFurnitureCustomTitleError("Title is required.");
-      valid = false;
-    }
-    if (!furnitureTitle.trim()) {
-      setFurnitureTitleError("Product Type is required.");
-      valid = false;
-    }
-    if (!furnitureStructureId) {
-      setFurnitureStructureError("Please select a structure.");
-      valid = false;
-    }
-    if (!valid) return;
 
     const selectedStructure = allProductStructures.find(
       (s) => s.id.toString() === furnitureStructureId
     );
-    if (!selectedStructure) return;
+    const structureType = selectedStructure ? selectedStructure.type : "—";
+    const typeTitleVal = furnitureTitle.trim() || furnitureCustomTitle.trim() || structureType || "General";
+    const customTitleVal = furnitureCustomTitle.trim() || typeTitleVal;
 
     setSubmittingFurniture(true);
     try {
@@ -698,15 +996,15 @@ export default function OnlineLeadDetailsPage() {
       
       let newStructures = [];
       let newTypes = [];
-      const rawTypeValue = `${furnitureCustomTitle.trim()} | ${furnitureTitle.trim()}`;
+      const rawTypeValue = `${customTitleVal} | ${typeTitleVal}`;
       
       if (editingIndex !== null) {
         newStructures = [...currentStructures];
         newTypes = [...currentTypes];
-        newStructures[editingIndex] = selectedStructure.type;
+        newStructures[editingIndex] = structureType;
         newTypes[editingIndex] = rawTypeValue;
       } else {
-        newStructures = [...currentStructures, selectedStructure.type];
+        newStructures = [...currentStructures, structureType];
         newTypes = [...currentTypes, rawTypeValue];
       }
 
@@ -964,101 +1262,133 @@ export default function OnlineLeadDetailsPage() {
         </div>
         <div className="flex items-center gap-2">
           {!isLost && (
-            <Button
-              size="sm"
-              onClick={() => {
-                setIsCallOpen(true);
-                setPreferredStoreId(lead?.store_id?.toString() || "");
-              }}
-              className="bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-2 h-9"
-            >
-              <PhoneCall className="w-3.5 h-3.5" /> Follow up
-            </Button>
+            <>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setAssignStoreId(lead?.store_id?.toString() || "");
+                  setIsStoreOpen(true);
+                }}
+                className="bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-2 h-9"
+              >
+                <Store className="w-3.5 h-3.5" /> {lead?.franchise?.franchise_name ? lead.franchise.franchise_name.replace(/vloq|furnix/gi, "").trim() : "Select Store"}
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setIsCallOpen(true);
+                }}
+                className="bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-2 h-9"
+              >
+                <PhoneCall className="w-3.5 h-3.5" /> Follow up
+              </Button>
+            </>
           )}
 
-          {canMoveToDraft && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>
-                    <Button
-                      size="sm"
-                      onClick={handleMoveToDraft}
-                      disabled={isMovingToDraft || !lead?.call_log || lead.call_log.length === 0}
-                      className="bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-2 h-9"
-                    >
-                      {isMovingToDraft ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                      )}
-                      Move to Online Leads
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                {(!lead?.call_log || lead.call_log.length === 0) && (
-                  <TooltipContent>
-                    <p>Add a call log before moving to Online Leads.</p>
-                  </TooltipContent>
-                )}
-              </Tooltip>
-            </TooltipProvider>
-          )}
+          {canMoveToDraft && (() => {
+            const hasStoreAssigned = Boolean(lead?.store_id);
+            const hasCallLog = Boolean(lead?.call_log && lead.call_log.length > 0);
+            const isMoveDisabled = isMovingToDraft || !hasStoreAssigned || !hasCallLog;
+
+            let tooltipText = "";
+            if (!hasStoreAssigned && !hasCallLog) {
+              tooltipText = "Assign a store and log a call/follow-up before moving to Online Leads.";
+            } else if (!hasStoreAssigned) {
+              tooltipText = "Assign a store before moving to Online Leads.";
+            } else if (!hasCallLog) {
+              tooltipText = "Log a call/follow-up before moving to Online Leads.";
+            }
+
+            return (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Button
+                        size="sm"
+                        onClick={handleMoveToDraft}
+                        disabled={isMoveDisabled}
+                        className="bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-2 h-9 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isMovingToDraft ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        )}
+                        Move to Online Leads
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {tooltipText && (
+                    <TooltipContent>
+                      <p>{tooltipText}</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
+            );
+          })()}
 
 
 
           <NotificationBell />
           <AnimatedThemeToggler />
 
-          {!isLost && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="relative bg-accent p-1.5 rounded-sm"
-                >
-                  <EllipsisVertical size={22} />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => {
-                    if (!lead) return;
-                    setEditName(lead.leads_name || "");
-                    setEditEmail(lead.email || "");
-                    setEditContact(lead.contact || "");
-                    setEditAltContact(lead.alt_contact_no || "");
-                    setEditSiteAddress(lead.site_address || "");
-                    setEditRemark(lead.remark || "");
-                    setEditPriority(lead.priority || "");
-                    const onlineSrc = sourceTypes.find((s) => s.type?.toLowerCase() === "online");
-                    setEditSourceId(lead.sourceRelation?.id?.toString() || onlineSrc?.id?.toString() || "");
-                    setEditSiteTypeId(lead.siteTypeRelation?.id?.toString() || "");
-                    setEditArchName(lead.archetech_name || "");
-                    setEditArchNumber(lead.archetech_number || "");
-                    setEditReferedBy(lead.refered_by || "");
-                    setIsEditOpen(true);
-                  }}
-                >
-                  <PencilLine className="w-4 h-4 mr-2" /> Edit
-                </DropdownMenuItem>
-                {canAssign && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="relative bg-accent p-1.5 rounded-sm"
+              >
+                <EllipsisVertical size={22} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {!isLost ? (
+                <>
                   <DropdownMenuItem
                     onClick={() => {
-                      if (lead) {
-                        setAssigneeId(lead.assign_to ? lead.assign_to.toString() : "none");
-                        setSalesExecutiveId(lead.final_assigned_leads ? lead.final_assigned_leads.toString() : "none");
-                      }
-                      setIsAssignOpen(true);
+                      if (!lead) return;
+                      setEditName(lead.leads_name || "");
+                      setEditEmail(lead.email || "");
+                      setEditContact(lead.contact || "");
+                      setEditAltContact(lead.alt_contact_no || "");
+                      setEditSiteAddress(lead.site_address || "");
+                      setEditRemark(lead.remark || "");
+                      setEditPriority(lead.priority || "");
+                      const onlineSrc = sourceTypes.find((s) => s.type?.toLowerCase() === "online");
+                      setEditSourceId(lead.sourceRelation?.id?.toString() || onlineSrc?.id?.toString() || "");
+                      setEditSiteTypeId(lead.siteTypeRelation?.id?.toString() || "");
+                      setEditArchName(lead.archetech_name || "");
+                      setEditArchNumber(lead.archetech_number || "");
+                      setEditReferedBy(lead.refered_by || "");
+                      setIsEditOpen(true);
                     }}
                   >
-                    <Users className="w-4 h-4 mr-2" /> Reassign Lead
+                    <PencilLine className="w-4 h-4 mr-2" /> Edit
                   </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+                  {canAssign && (
+                    <DropdownMenuItem
+                      onClick={() => {
+                        if (lead) {
+                          setAssigneeId(lead.assign_to ? lead.assign_to.toString() : "none");
+                          setSalesExecutiveId(lead.final_assigned_leads ? lead.final_assigned_leads.toString() : "none");
+                        }
+                        setIsAssignOpen(true);
+                      }}
+                    >
+                      <Users className="w-4 h-4 mr-2" /> Reassign Lead
+                    </DropdownMenuItem>
+                  )}
+                </>
+              ) : (
+                <DropdownMenuItem onClick={handleMarkAsActive}>
+                  <CheckCircle2 className="w-4 h-4 mr-2 text-green-500" /> Mark as Active
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
@@ -1275,14 +1605,94 @@ export default function OnlineLeadDetailsPage() {
 
             {/* Additional Information */}
             <Card className="shadow-sm border rounded-2xl">
-              <CardContent className="p-6">
-                <h3 className="text-base font-semibold text-foreground mb-5">Additional Information</h3>
+              <CardContent className="p-6 space-y-6">
+                <div className="flex items-center justify-between border-b pb-3">
+                  <h3 className="text-base font-semibold text-foreground">Additional Information</h3>
+                </div>
+
+                {/* Latest Remark (only if isOnlineLeadFeatureEnabled is true) */}
+                {isOnlineLeadFeatureEnabled && (
+                  <div className="flex items-start gap-3">
+                    <Clock className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                    <div className="w-full">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm text-muted-foreground font-medium">Latest Remark</p>
+                          {latestRemarkInfo?.status && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                              Status: {latestRemarkInfo.status}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {latestRemarkInfo?.date && (
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(latestRemarkInfo.date).toLocaleDateString("en-IN", {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          )}
+                          {latestRemarkInfo && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setLatestRemarkText(latestRemarkInfo.remark || "");
+                                setIsLatestRemarkEditOpen(true);
+                              }}
+                              className="h-7 px-2.5 gap-1 text-[11px] font-medium rounded-md hover:bg-accent border-input"
+                            >
+                              <Pencil className="w-3 h-3 text-muted-foreground" />
+                              Edit
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="p-4 rounded-lg border bg-muted/10 min-h-[50px] space-y-3">
+                        {latestRemarkInfo ? (
+                          <>
+                            {renderRemarkContent(latestRemarkInfo.remark)}
+                            {latestRemarkInfo.telecaller && (
+                              <p className="text-xs text-muted-foreground pt-2 border-t border-border/50">
+                                Logged by: <span className="font-semibold text-foreground">{latestRemarkInfo.telecaller}</span>
+                              </p>
+                            )}
+                          </>
+                        ) : (
+                          <p className="text-[15px] text-muted-foreground">No call logs or remarks recorded yet.</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Design Remarks */}
                 <div className="flex items-start gap-3">
                   <MessageSquare className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
                   <div className="w-full">
-                    <p className="text-sm text-muted-foreground font-medium">Design Remarks</p>
-                    <div className="mt-2 p-4 rounded-lg border bg-muted/10 min-h-[60px]">
-                      <p className="text-[15px] text-foreground">{lead.remark || "N/A"}</p>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm text-muted-foreground font-medium">Design Remarks</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const text = lead?.remark || "";
+                          setRemarkOnlyText(text);
+                          setParsedQuestionnaire(parseQuestionnaireItems(text));
+                          setIsRemarkEditOpen(true);
+                        }}
+                        className="h-7 px-2.5 gap-1 text-[11px] font-medium rounded-md hover:bg-accent border-input"
+                      >
+                        <Pencil className="w-3 h-3 text-muted-foreground" />
+                        Edit
+                      </Button>
+                    </div>
+                    <div className="p-4 rounded-lg border bg-muted/10 min-h-[60px]">
+                      {renderRemarkContent(lead?.remark ?? null)}
                     </div>
                   </div>
                 </div>
@@ -1433,9 +1843,7 @@ export default function OnlineLeadDetailsPage() {
 
                           {/* Main message */}
                           <div className="space-y-1.5">
-                            <p className="text-sm text-foreground font-medium leading-relaxed">
-                              {hist.remark || `Status updated to ${hist.status.status_name}`}
-                            </p>
+                            {renderHistoryRemark(hist.remark, hist.status?.status_name || "Status")}
                             {hist.follow_up_date && (
                               <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
                                 <Calendar className="w-3.5 h-3.5" /> Scheduled Next Call: {new Date(hist.follow_up_date).toLocaleString("en-IN")}
@@ -1528,7 +1936,7 @@ export default function OnlineLeadDetailsPage() {
 
 
             <div className="grid grid-cols-2 gap-4">
-              <div className={isFollowUpDateRequired ? "col-span-1 space-y-1.5" : "col-span-2 space-y-1.5"}>
+              <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-foreground">New Status Outcome <span className="text-red-500">*</span></label>
                 <Select
                   value={callStatus}
@@ -1539,22 +1947,15 @@ export default function OnlineLeadDetailsPage() {
                   </SelectTrigger>
                   <SelectContent className="bg-popover text-popover-foreground">
                     {statuses
-                      .filter((st) => st.status_name.toLowerCase() !== "pending")
+                      .filter((st) => {
+                        const name = st.status_name.toLowerCase();
+                        return name === "follow up done" || name === "lost";
+                      })
                       .map((st) => {
-                        const statusNameLower = st.status_name.toLowerCase();
-                        const isStoreStatus =
-                          statusNameLower === "store assigned" ||
-                          statusNameLower === "store visit done";
-                        const hasNoStore = !lead?.franchise && !lead?.store_id;
-                        const isDisabled = isStoreStatus && hasNoStore;
-
                         return (
                           <SelectItem
                             key={st.id}
                             value={st.id.toString()}
-                            disabled={isDisabled}
-                            title={isDisabled ? "Please assign a store to this lead first." : undefined}
-                            style={isDisabled ? { pointerEvents: "auto", cursor: "not-allowed" } : undefined}
                           >
                             {st.status_name}
                           </SelectItem>
@@ -1564,41 +1965,17 @@ export default function OnlineLeadDetailsPage() {
                 </Select>
               </div>
 
-              {isFollowUpDateRequired && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-rose-600 dark:text-rose-400">
-                    Next Follow-up Date (Mandatory)
-                  </label>
-                  <CustomeDatePicker
-                    value={followUpDate}
-                    onChange={(val) => setFollowUpDate(val || "")}
-                    restriction="futureOnly"
-                  />
-                </div>
-              )}
-            </div>
-
-            {selectedStatusName !== "lost" && (
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground">Select Store <span className="text-red-500">*</span></label>
-                <Select
-                  value={preferredStoreId || "none"}
-                  onValueChange={(val) => setPreferredStoreId(val === "none" ? "" : val)}
-                >
-                  <SelectTrigger className="w-full h-10 bg-background text-sm">
-                    <SelectValue placeholder="Select Store" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-popover text-popover-foreground">
-                    <SelectItem value="none">No preference</SelectItem>
-                    {stores.map((s) => (
-                      <SelectItem key={s.id} value={s.id.toString()}>
-                        {s.franchise_name.replace(/vloq|furnix/gi, "").trim()}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <label className="text-xs font-semibold text-foreground">
+                  Next Follow-up Date (optional)
+                </label>
+                <CustomeDatePicker
+                  value={followUpDate}
+                  onChange={(val) => setFollowUpDate(val || "")}
+                  restriction="futureOnly"
+                />
               </div>
-            )}
+            </div>
 
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-foreground">Call Log Remark <span className="text-red-500">*</span></label>
@@ -1900,6 +2277,108 @@ export default function OnlineLeadDetailsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Edit Design Remarks Only Modal */}
+      <Dialog open={isRemarkEditOpen} onOpenChange={setIsRemarkEditOpen}>
+        <DialogContent className="max-w-lg bg-card">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">Edit Additional Information</DialogTitle>
+            <DialogDescription className="text-xs">
+              Update design remarks and additional information for this lead.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleRemarkOnlySubmit} className="space-y-4 py-2">
+            {parsedQuestionnaire ? (
+              <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+                {parsedQuestionnaire.prefix && (
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                    {parsedQuestionnaire.prefix}
+                  </p>
+                )}
+                {parsedQuestionnaire.items.map((item, idx) => (
+                  <div key={idx} className="space-y-1.5 p-3 rounded-lg border bg-muted/20">
+                    <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-foreground inline-block shrink-0" />
+                      <span>{item.question}</span>
+                    </label>
+                    <Input
+                      value={item.answer}
+                      onChange={(e) => {
+                        const updated = [...parsedQuestionnaire.items];
+                        updated[idx] = { ...updated[idx], answer: e.target.value };
+                        setParsedQuestionnaire({ ...parsedQuestionnaire, items: updated });
+                      }}
+                      placeholder="Enter response..."
+                      className="h-9 text-xs bg-background"
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground">Design Remarks</label>
+                <Textarea
+                  value={remarkOnlyText}
+                  onChange={(e) => setRemarkOnlyText(e.target.value)}
+                  placeholder="Enter design remarks or additional information..."
+                  rows={6}
+                  className="w-full text-sm bg-background resize-none p-3"
+                />
+              </div>
+            )}
+            <DialogFooter className="gap-2">
+              <Button type="button" variant="outline" onClick={() => setIsRemarkEditOpen(false)} className="h-9 text-xs">
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={submittingRemark}
+                className="h-9 text-xs bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-semibold"
+              >
+                {submittingRemark && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Latest Remark Modal */}
+      <Dialog open={isLatestRemarkEditOpen} onOpenChange={setIsLatestRemarkEditOpen}>
+        <DialogContent className="max-w-lg bg-card">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">Edit Latest Remark</DialogTitle>
+            <DialogDescription className="text-xs">
+              Update the latest call log / outcome remark for this lead.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleLatestRemarkSubmit} className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-foreground">Latest Call Log Remark</label>
+              <Textarea
+                value={latestRemarkText}
+                onChange={(e) => setLatestRemarkText(e.target.value)}
+                placeholder="Enter latest call log remark..."
+                rows={5}
+                className="w-full text-sm bg-background resize-none p-3"
+              />
+            </div>
+            <DialogFooter className="gap-2">
+              <Button type="button" variant="outline" onClick={() => setIsLatestRemarkEditOpen(false)} className="h-9 text-xs">
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={submittingLatestRemark}
+                className="h-9 text-xs bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-semibold"
+              >
+                {submittingLatestRemark && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {/* Furniture Structure Modal — matches Draft Leads UI exactly */}
       <BaseModal
         open={isFurnitureOpen}
@@ -1922,7 +2401,7 @@ export default function OnlineLeadDetailsPage() {
             {/* Title */}
             <div>
               <label className="text-xs font-medium text-muted-foreground">
-                Title <span className="text-red-500">*</span>
+                Title (optional)
               </label>
               <div className="mt-1">
                 <Input
@@ -1943,7 +2422,7 @@ export default function OnlineLeadDetailsPage() {
             {/* Product Type */}
             <div>
               <label className="text-xs font-medium text-muted-foreground">
-                Product Type <span className="text-red-500">*</span>
+                Product Type (optional)
               </label>
               <div className="mt-1">
                 <Select
@@ -1996,7 +2475,7 @@ export default function OnlineLeadDetailsPage() {
             {/* Product Structure */}
             <div>
               <label className="text-xs font-medium text-muted-foreground">
-                Product Structure <span className="text-red-500">*</span>
+                Product Structure (optional)
               </label>
               <div className="mt-1">
                 <Select
@@ -2191,6 +2670,129 @@ export default function OnlineLeadDetailsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Assign Store Modal */}
+      <Dialog open={isStoreOpen} onOpenChange={setIsStoreOpen}>
+        <DialogContent className="max-w-md bg-card border border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl p-6">
+          <DialogHeader className="space-y-1.5">
+            <DialogTitle className="text-xl font-bold tracking-tight text-foreground">
+              Assign Store
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground font-medium">
+              Select the store and optionally choose a caller for this lead.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleStoreSubmit} className="space-y-5 mt-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-foreground">Store <span className="text-red-500">*</span></label>
+              <Select
+                value={assignStoreId || undefined}
+                onValueChange={(val) => {
+                  setAssignStoreId(val);
+                  setRequiresCallerSelect(false);
+                  setSelectedStoreCaller("");
+                }}
+              >
+                <SelectTrigger className="w-full h-10 bg-background text-sm">
+                  <SelectValue placeholder="Select Store" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover text-popover-foreground">
+                  {stores.map((s) => (
+                    <SelectItem key={s.id} value={s.id.toString()}>
+                      {s.franchise_name.replace(/vloq|furnix/gi, "").trim()}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {requiresCallerSelect && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground">Select Store Caller <span className="text-red-500">*</span></label>
+                <Select
+                  value={selectedStoreCaller || "none"}
+                  onValueChange={(val) => setSelectedStoreCaller(val === "none" ? "" : val)}
+                >
+                  <SelectTrigger className="w-full h-10 bg-background text-sm">
+                    <SelectValue placeholder="Select Caller" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover text-popover-foreground">
+                    <SelectItem value="none">-- Select Caller --</SelectItem>
+                    {storeCallers.map((c) => (
+                      <SelectItem key={c.id} value={c.id.toString()}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {assignStoreId && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground">Expected Visit Date <span className="text-red-500">*</span></label>
+                <CustomeDatePicker
+                  value={visitDate}
+                  onChange={(val) => setVisitDate(val || "")}
+                  restriction="futureOnly"
+                />
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-foreground">Remark (Optional)</label>
+              <Textarea
+                placeholder="Enter assignment remark..."
+                value={storeRemark}
+                onChange={(e) => setStoreRemark(e.target.value)}
+                className="h-20 resize-none text-sm bg-background"
+              />
+            </div>
+
+            <div className="flex items-center space-x-2 pt-1 pb-2">
+              <Checkbox
+                id="markStoreVisitDone"
+                checked={markStoreVisitDone}
+                disabled={!isTodayOrPast}
+                onCheckedChange={(checked) => setMarkStoreVisitDone(!!checked)}
+              />
+              <label
+                htmlFor="markStoreVisitDone"
+                className={`text-xs font-semibold cursor-pointer select-none ${!isTodayOrPast ? "text-muted-foreground/60 cursor-not-allowed" : "text-foreground"}`}
+              >
+                Mark as Store Visit Done
+              </label>
+            </div>
+
+            <DialogFooter className="gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsStoreOpen(false);
+                  setAssignStoreId("");
+                  setStoreRemark("");
+                  setSelectedStoreCaller("");
+                  setRequiresCallerSelect(false);
+                  setMarkStoreVisitDone(false);
+                  setVisitDate("");
+                }}
+                className="h-10 text-xs rounded-xl"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={submittingStore || (!assignStoreId) || (!visitDate) || (requiresCallerSelect && !selectedStoreCaller)}
+                className="h-10 text-xs bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-semibold rounded-xl"
+              >
+                {submittingStore && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Assign Store
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

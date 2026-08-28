@@ -729,6 +729,11 @@ export const getClientVisits = async (leadId: number) => {
   return response.data.data ?? [];
 };
 
+export const createWalkInLead = async (payload: any) => {
+  const response = await apiClient.post("/online-leads/walk-in", payload);
+  return response.data;
+};
+
 export const createLead = async (
   payload: CreateLeadPayload,
   files: File[] = [],
