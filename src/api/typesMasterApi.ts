@@ -136,9 +136,35 @@ export interface PrivilegeMasterEntry {
   is_selected: boolean;
 }
 
+export interface PrivilegeMasterChildSection {
+  id: string;
+  title: string;
+  privileges: PrivilegeMasterEntry[];
+}
+
+export interface PrivilegeMasterGroup {
+  id: string;
+  title: string;
+  privileges: PrivilegeMasterEntry[];
+}
+
+export interface PrivilegeMasterTab {
+  id: string;
+  title: string;
+  groups: PrivilegeMasterGroup[];
+}
+
+export interface PrivilegeMasterSection {
+  id: string;
+  title: string;
+  description: string;
+  children?: PrivilegeMasterChildSection[];
+  tabs?: PrivilegeMasterTab[];
+}
+
 export interface PrivilegeMasterResponse {
   success: boolean;
-  data: PrivilegeMasterEntry[];
+  data: PrivilegeMasterSection[];
 }
 
 export interface CarcassTypeMasterEntry {
