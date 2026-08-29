@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import { useAppSelector } from "@/redux/store";
+import { useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/apiClient";
 import {
   Breadcrumb,
@@ -43,7 +44,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Search, UserPlus, PlusCircle, PhoneCall, Calendar, MapPin, Loader2, ChevronDown, User, Mail, Phone, MessageSquare, Zap, Magnet, Activity, Building, CheckCircle2, Upload, Trash2, AlertCircle, Trash } from "lucide-react";
+import { Search, UserPlus, PlusCircle, PhoneCall, Calendar, MapPin, Loader2, ChevronDown, User, Mail, Phone, MessageSquare, Zap, Magnet, Activity, Building, CheckCircle2, XCircle, Upload, Trash2, AlertCircle, Trash } from "lucide-react";
 import CustomeDatePicker from "@/components/date-picker";
 import Link from "next/link";
 import MultipleSelector, { Option } from "@/components/ui/multiselect";
@@ -93,6 +94,9 @@ interface OnlineLead {
     status_name: string;
     followup_required: boolean;
   } | null;
+  approval_status?: string | null;
+  pending_store_id?: number | null;
+  pending_status_id?: number | null;
 }
 
 interface FollowupStatus {
@@ -115,6 +119,7 @@ interface Telecaller {
 }
 
 export default function OnlineLeadsPage() {
+  const queryClient = useQueryClient();
   const user = useAppSelector((state) => state.auth.user);
   const vendorId = user?.vendor_id;
   const userId = user?.id;
@@ -123,7 +128,7 @@ export default function OnlineLeadsPage() {
   const isSuperAdminOrAdmin = userType === "super-admin" || userType === "admin" || userType === "sales admin" || userType === "sales-admin";
 
   const canAssign = userType === "super-admin" || userType === "admin" || userType === "telecaller team lead" || userType === "telecaller-team-lead";
-  const canAddWalkIn = userType === "store-manager" || userType === "store manager" || userType === "super-admin" || userType === "admin" || userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead";
+  const canAddWalkIn = userType === "store-manager" || userType === "store manager" || userType === "super-admin" || userType === "admin" || userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead" || userType === "sales-executive" || userType === "sales executive";
 
   const [rawLeads, setRawLeads] = useState<OnlineLead[]>([]);
   const [statusTab, setStatusTab] = useState<"active" | "pending" | "lost">("active");
@@ -168,6 +173,7 @@ export default function OnlineLeadsPage() {
   const [quickFollowUpDate, setQuickFollowUpDate] = useState("");
   const [quickRemark, setQuickRemark] = useState("");
   const [isSavingQuickFollowUp, setIsSavingQuickFollowUp] = useState(false);
+  const [actingLeadId, setActingLeadId] = useState<number | null>(null);
   
   const router = useRouter();
 
@@ -400,7 +406,10 @@ export default function OnlineLeadsPage() {
         <DataTableColumnHeader column={column} title="Allocation" />
       ),
       cell: ({ row }) => {
-        const callerName = row.original.assignedTo?.user_name;
+        const assignedUser = row.original.assignedTo;
+        const callerName = assignedUser?.user_name;
+        const callerRole = (assignedUser as any)?.user_role?.toLowerCase() || "";
+        const isSalesRole = callerRole === "sales-executive" || callerRole === "sales executive";
         const salesExecName = row.original.finalAssignedLeads?.user_name;
         
         if (!callerName && !salesExecName) {
@@ -411,8 +420,10 @@ export default function OnlineLeadsPage() {
           <div className="space-y-1">
             {callerName && (
               <div className="flex items-center gap-1">
-                <User className="w-3 h-3 text-blue-500" />
-                <span className="text-xs text-foreground font-medium">Caller: {callerName}</span>
+                <User className={`w-3 h-3 ${isSalesRole ? "text-purple-500" : "text-blue-500"}`} />
+                <span className="text-xs text-foreground font-medium">
+                  {isSalesRole ? "Sales: " : "Caller: "}{callerName}
+                </span>
               </div>
             )}
             {salesExecName && (
@@ -432,46 +443,86 @@ export default function OnlineLeadsPage() {
           Actions
         </Button>
       ),
-      cell: ({ row }) => (
-        <div className="flex items-center justify-center gap-2">
-          <Link href={`/dashboard/online-leads/details/${row.original.id}`}>
-            <Button variant="outline" size="sm" className="h-8 text-xs font-medium">
-              Manage
-            </Button>
-          </Link>
+      cell: ({ row }) => {
+        const isPending = row.original.approval_status === "PENDING";
+        const isAuthorized = isSuperAdminOrAdmin || (userFranchiseId != null && userFranchiseId === (row.original.pending_store_id || row.original.store_id));
+        const isActing = actingLeadId === row.original.id;
 
-          {canAssign && (
-            <Button
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedLeadId(row.original.id);
-                setAssigneeId(row.original.assign_to ? row.original.assign_to.toString() : "none");
-                setIsAssignOpen(true);
-              }}
-              size="sm"
-              className="h-8 text-xs bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-medium"
-            >
-              <UserPlus className="w-3.5 h-3.5 mr-1" /> {row.original.assign_to || row.original.final_assigned_leads ? "Reallocate" : "Allocate"}
-            </Button>
-          )}
+        if (isPending) {
+          if (isAuthorized) {
+            return (
+              <div className="flex items-center justify-center gap-2">
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleApprove(row.original.id);
+                  }}
+                  disabled={isActing}
+                  size="sm"
+                  className="h-8 text-xs w-28 bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-medium flex items-center justify-center gap-1"
+                >
+                  {isActing ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />} Approve
+                </Button>
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleReject(row.original.id);
+                  }}
+                  disabled={isActing}
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs w-28 border-slate-200 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900 font-medium flex items-center justify-center gap-1"
+                >
+                  {isActing ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />} Reject
+                </Button>
+              </div>
+            );
+          } else {
+            return (
+              <div className="flex items-center justify-center gap-1">
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold italic flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5" /> Approval Pending
+                </span>
+              </div>
+            );
+          }
+        }
 
-          {isSuperAdminOrAdmin && (
-            <Button
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedLeadId(row.original.id);
-                setIsDeleteOpen(true);
-              }}
-              size="sm"
-              className="h-8 text-xs bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-medium"
-            >
-              <Trash className="w-3.5 h-3.5 mr-1" /> Delete
-            </Button>
-          )}
-        </div>
-      ),
+        return (
+          <div className="flex items-center justify-center gap-2">
+            {canAssign && (
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedLeadId(row.original.id);
+                  setAssigneeId(row.original.assign_to ? row.original.assign_to.toString() : "none");
+                  setIsAssignOpen(true);
+                }}
+                size="sm"
+                className="h-8 text-xs w-28 bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-medium flex items-center justify-center"
+              >
+                <UserPlus className="w-3.5 h-3.5 mr-1" /> {row.original.assign_to || row.original.final_assigned_leads ? "Reallocate" : "Allocate"}
+              </Button>
+            )}
+
+            {isSuperAdminOrAdmin && (
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedLeadId(row.original.id);
+                  setIsDeleteOpen(true);
+                }}
+                size="sm"
+                className="h-8 text-xs w-28 bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-medium flex items-center justify-center"
+              >
+                <Trash className="w-3.5 h-3.5 mr-1" /> Delete
+              </Button>
+            )}
+          </div>
+        );
+      },
     },
-  ], [canAssign, isSuperAdminOrAdmin, statuses, updatingLeadId, updatingPriorityId]);
+  ], [canAssign, isSuperAdminOrAdmin, statuses, updatingLeadId, updatingPriorityId, userType, userFranchiseId, actingLeadId, handleApprove, handleReject]);
 
   const table = useReactTable({
     data: leads,
@@ -552,7 +603,7 @@ export default function OnlineLeadsPage() {
   }, [vendorId]);
 
   // Fetch leads based on active tab & filters
-  const fetchLeadsData = async () => {
+  async function fetchLeadsData() {
     if (!vendorId) return;
     const currentRequestId = ++requestIdRef.current;
     setLoading(true);
@@ -577,7 +628,50 @@ export default function OnlineLeadsPage() {
         setLoading(false);
       }
     }
-  };
+  }
+
+  async function handleApprove(leadId: number) {
+    setActingLeadId(leadId);
+    try {
+      const res = await apiClient.post(`/online-leads/${leadId}/approve`, {
+        user_id: userId,
+      });
+      if (res.data?.success) {
+        toastManager.add({ title: "Lead approved successfully", type: "success" });
+        queryClient.invalidateQueries({ queryKey: ["draft-lead-table-data"] });
+        queryClient.resetQueries({ queryKey: ["draft-lead-table-data"] });
+        fetchLeadsData();
+      }
+    } catch (err: any) {
+      toastManager.add({
+        title: err.response?.data?.error || "Failed to approve lead.",
+        type: "error",
+      });
+    } finally {
+      setActingLeadId(null);
+    }
+  }
+
+  async function handleReject(leadId: number) {
+    setActingLeadId(leadId);
+    try {
+      const res = await apiClient.post(`/online-leads/${leadId}/reject`, {
+        user_id: userId,
+      });
+      if (res.data?.success) {
+        toastManager.add({ title: "Lead rejected successfully", type: "success" });
+        queryClient.invalidateQueries({ queryKey: ["draft-lead-table-data"] });
+        fetchLeadsData();
+      }
+    } catch (err: any) {
+      toastManager.add({
+        title: err.response?.data?.error || "Failed to reject lead.",
+        type: "error",
+      });
+    } finally {
+      setActingLeadId(null);
+    }
+  }
 
   useEffect(() => {
     fetchLeadsData();
@@ -817,12 +911,14 @@ export default function OnlineLeadsPage() {
               >
                 <PlusCircle className="w-4 h-4" /> Add Lead
               </Button>
-              <Button
-                onClick={() => setIsBulkUploadOpen(true)}
-                className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-semibold flex items-center gap-2 transition duration-200 h-9 text-xs py-1.5"
-              >
-                <Upload className="w-4 h-4" /> Bulk Upload
-              </Button>
+              {userType !== "telecaller" && userType !== "telecaller-team-lead" && userType !== "telecaller team lead" && userType !== "sales-executive" && userType !== "sales executive" && (
+                <Button
+                  onClick={() => setIsBulkUploadOpen(true)}
+                  className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-semibold flex items-center gap-2 transition duration-200 h-9 text-xs py-1.5"
+                >
+                  <Upload className="w-4 h-4" /> Bulk Upload
+                </Button>
+              )}
             </div>
           )}
 
@@ -1136,7 +1232,7 @@ export default function OnlineLeadsPage() {
                       </>
                     ) : (
                       <>
-                        A follow-up date and time is mandatory for status <strong>"{quickStatusName}"</strong>. Please schedule the next callback.
+                        Schedule optional next callback date and time for status <strong>"{quickStatusName}"</strong>.
                       </>
                     )}
                   </DialogDescription>

@@ -473,6 +473,9 @@ export function canViewSiteHistoryTab(role: string): boolean {
     "backend",
     "factory",
     "pre-prod",
+    "telecaller",
+    "telecaller-team-lead",
+    "telecaller team lead",
   ].includes(normalizedRole);
 }
 
