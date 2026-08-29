@@ -632,6 +632,9 @@ export function getUniversalTableColumns(
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Sales Executive" />
       ),
+      cell: ({ row }) => (
+        <span>{(row.getValue("sales_executive") as string) || "—"}</span>
+      ),
       meta: {
         label: "Sales Executive",
       },

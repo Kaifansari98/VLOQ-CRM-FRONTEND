@@ -17,6 +17,7 @@ import {
 import ClearInput from "@/components/origin-input";
 import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
+import { formatSalesExecutiveName } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 
 // API & REDUX IMPORTS
@@ -185,7 +186,7 @@ export default function DraftLeadsTable({
       altContact: lead.alt_contact_no ?? "",
       status: lead.statusType?.type ?? "Draft",
       statusTag: lead.statusType?.tag ?? "",
-      sales_executive: lead.assignedTo?.user_name ?? "",
+      sales_executive: formatSalesExecutiveName(lead.assignedTo),
       assignedToId: lead.assignedTo?.id ?? "",
       isDraft: lead.is_draft === true,
       accountId: lead.account?.id ?? lead.account_id ?? 0,
