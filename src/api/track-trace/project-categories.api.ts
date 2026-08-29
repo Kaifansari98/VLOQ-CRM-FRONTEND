@@ -64,9 +64,48 @@ export interface UpdateCategoryPayload {
   only_naming_structure_updated?: boolean;
 }
 
-export const getProjectCategories = async (vendorId: number) => {
-  const { data } = await apiClient.get(`/track-trace/project-categories/${vendorId}`);
-  return data.data.categories as ProjectCategory[];
+export interface ProjectCategoryFilters {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: string;
+  type?: string;
+  sort_by?: string;
+  sort_order?: "asc" | "desc";
+}
+
+export interface ProjectCategoriesPagination {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface GetProjectCategoriesResponse {
+  categories: ProjectCategory[];
+  pagination?: ProjectCategoriesPagination;
+}
+
+export const getProjectCategories = async (
+  vendorId: number,
+  filters?: ProjectCategoryFilters
+) => {
+  const params = new URLSearchParams();
+  if (filters?.page) params.append("page", String(filters.page));
+  if (filters?.limit) params.append("limit", String(filters.limit));
+  if (filters?.search && filters.search.trim() !== "")
+    params.append("search", filters.search.trim());
+  if (filters?.status && filters.status !== "all")
+    params.append("status", filters.status);
+  if (filters?.type && filters.type !== "all")
+    params.append("type", filters.type);
+  if (filters?.sort_by) params.append("sort_by", filters.sort_by);
+  if (filters?.sort_order) params.append("sort_order", filters.sort_order);
+
+  const qs = params.toString();
+  const url = `/track-trace/project-categories/${vendorId}${qs ? `?${qs}` : ""}`;
+  const { data } = await apiClient.get(url);
+  return data.data as GetProjectCategoriesResponse;
 };
 
 export const getProjectCategoryTypes = async () => {
