@@ -66,9 +66,13 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     (state) => state.customPrivileges.codes,
   );
   const updateSoValueReceived = useUpdateSoValueReceivedStatus(vendorId, leadId);
-  const handlesLargeScaleProjects = useAppSelector(
-    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
-  );
+  const handlesLargeScaleProjects = useAppSelector((state) => {
+    const user = state.auth.user as any;
+    return (
+      (user?.vendorMaster?.handlesLargeScaleProjects ??
+        user?.vendor?.handlesLargeScaleProjects) === true
+    );
+  });
   const {
     data: orderLoginLockIns = [],
     isLoading: orderLoginLockInsLoading,
@@ -78,6 +82,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     leadId,
     vendorId,
   );
+  const lead = leadResponse?.data?.lead;
 
   const { data: clientDocs } = useClientDocumentationDetails(
     vendorId,
@@ -299,7 +304,6 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     },
   ];
 
-  const lead = leadResponse?.data?.lead;
   const isSoValueReceived = lead?.is_so_value_received === true;
   const soValueReceivedAt = lead?.so_value_received_at ?? null;
   const normalizedUserType = userType?.toLowerCase() ?? "";
@@ -434,6 +438,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
         className="-mt-3"
         items={tabItems}
         headerRight={
+          !handlesLargeScaleProjects ? (
           <div className="flex items-start gap-3 xl:pt-1 -mt-3">
             <Checkbox
               checked={isSoValueReceived}
@@ -456,6 +461,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
               </p>
             </div>
           </div>
+          ) : null
         }
       />
 
