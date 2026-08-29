@@ -15,17 +15,24 @@ import { cn } from "@/lib/utils";
 export function getCutListColumns(
   machineColumns: string[],
   onMachineHeaderClick?: (machineName: string) => void,
-  onMachineCellClick?: (cutListId: number, machineId: number, machineName: string, currentlyAssigned: boolean) => void,
-  data?: any[],  // ✅ add this
+  onMachineCellClick?: (
+    cutListId: number,
+    machineId: number,
+    machineName: string,
+    currentlyAssigned: boolean,
+  ) => void,
+  data?: any[], // ✅ add this
   isAssignmentDisabled?: boolean,
 ): ColumnDef<any>[] {
   // ✅ Build unique option lists from data
   const uniqueGroups = Array.from(
-    new Set((data ?? []).map((row) => row.group_name).filter(Boolean))
+    new Set((data ?? []).map((row) => row.group_name).filter(Boolean)),
   ).sort();
 
   const uniqueCategories = Array.from(
-    new Set((data ?? []).map((row) => row.category_name?.trim()).filter(Boolean))
+    new Set(
+      (data ?? []).map((row) => row.category_name?.trim()).filter(Boolean),
+    ),
   ).sort();
 
   return [
@@ -66,7 +73,7 @@ export function getCutListColumns(
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-6 w-6 p-0 ${column.getFilterValue() ? 'text-primary' : ''}`}
+                className={`h-6 w-6 p-0 ${column.getFilterValue() ? "text-primary" : ""}`}
               >
                 <Filter className="h-3 w-3" />
               </Button>
@@ -106,7 +113,9 @@ export function getCutListColumns(
               <PopoverContent className="w-64 p-2" align="start">
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-xs font-medium text-muted-foreground">
-                    {selected.length > 0 ? `${selected.length} selected` : "Filter by group"}
+                    {selected.length > 0
+                      ? `${selected.length} selected`
+                      : "Filter by group"}
                   </span>
                   {selected.length > 0 && (
                     <Button
@@ -133,10 +142,14 @@ export function getCutListColumns(
                             const next = checked
                               ? [...selected, group]
                               : selected.filter((v) => v !== group);
-                            column.setFilterValue(next.length > 0 ? next : undefined);
+                            column.setFilterValue(
+                              next.length > 0 ? next : undefined,
+                            );
                           }}
                         />
-                        <span className="text-sm truncate" title={group}>{group}</span>
+                        <span className="text-sm truncate" title={group}>
+                          {group}
+                        </span>
                       </label>
                     );
                   })}
@@ -147,7 +160,9 @@ export function getCutListColumns(
         );
       },
       cell: ({ row }) => (
-        <div className="text-sm break-words whitespace-normal max-w-[250px]">{row.original.group_name ?? "—"}</div>
+        <div className="text-sm break-words whitespace-normal max-w-[250px]">
+          {row.original.group_name ?? "—"}
+        </div>
       ),
       size: 300,
       enableColumnFilter: true,
@@ -177,7 +192,9 @@ export function getCutListColumns(
               <PopoverContent className="w-64 p-2" align="start">
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-xs font-medium text-muted-foreground">
-                    {selected.length > 0 ? `${selected.length} selected` : "Filter by category"}
+                    {selected.length > 0
+                      ? `${selected.length} selected`
+                      : "Filter by category"}
                   </span>
                   {selected.length > 0 && (
                     <Button
@@ -204,10 +221,14 @@ export function getCutListColumns(
                             const next = checked
                               ? [...selected, category]
                               : selected.filter((v) => v !== category);
-                            column.setFilterValue(next.length > 0 ? next : undefined);
+                            column.setFilterValue(
+                              next.length > 0 ? next : undefined,
+                            );
                           }}
                         />
-                        <span className="text-sm truncate" title={category}>{category}</span>
+                        <span className="text-sm truncate" title={category}>
+                          {category}
+                        </span>
                       </label>
                     );
                   })}
@@ -218,7 +239,9 @@ export function getCutListColumns(
         );
       },
       cell: ({ row }) => (
-        <div className="whitespace-nowrap text-sm">{row.original.category_name?.trim() ?? "—"}</div>
+        <div className="whitespace-nowrap text-sm">
+          {row.original.category_name?.trim() ?? "—"}
+        </div>
       ),
       size: 150,
       enableColumnFilter: true,
@@ -239,7 +262,7 @@ export function getCutListColumns(
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-6 w-6 p-0 ${column.getFilterValue() ? 'text-primary' : ''}`}
+                className={`h-6 w-6 p-0 ${column.getFilterValue() ? "text-primary" : ""}`}
               >
                 <Filter className="h-3 w-3" />
               </Button>
@@ -260,8 +283,6 @@ export function getCutListColumns(
       enableColumnFilter: true,
     },
 
-
-
     // Item Name
     {
       accessorKey: "item_name",
@@ -273,7 +294,7 @@ export function getCutListColumns(
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-6 w-6 p-0 ${column.getFilterValue() ? 'text-primary' : ''}`}
+                className={`h-6 w-6 p-0 ${column.getFilterValue() ? "text-primary" : ""}`}
               >
                 <Filter className="h-3 w-3" />
               </Button>
@@ -304,7 +325,7 @@ export function getCutListColumns(
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-6 w-6 p-0 ${column.getFilterValue() ? 'text-primary' : ''}`}
+                className={`h-6 w-6 p-0 ${column.getFilterValue() ? "text-primary" : ""}`}
               >
                 <Filter className="h-3 w-3" />
               </Button>
@@ -335,7 +356,7 @@ export function getCutListColumns(
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-6 w-6 p-0 ${column.getFilterValue() ? 'text-primary' : ''}`}
+                className={`h-6 w-6 p-0 ${column.getFilterValue() ? "text-primary" : ""}`}
               >
                 <Filter className="h-3 w-3" />
               </Button>
@@ -366,7 +387,7 @@ export function getCutListColumns(
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-6 w-6 p-0 ${column.getFilterValue() ? 'text-primary' : ''}`}
+                className={`h-6 w-6 p-0 ${column.getFilterValue() ? "text-primary" : ""}`}
               >
                 <Filter className="h-3 w-3" />
               </Button>
@@ -397,7 +418,7 @@ export function getCutListColumns(
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-6 w-6 p-0 ${column.getFilterValue() ? 'text-primary' : ''}`}
+                className={`h-6 w-6 p-0 ${column.getFilterValue() ? "text-primary" : ""}`}
               >
                 <Filter className="h-3 w-3" />
               </Button>
@@ -428,7 +449,7 @@ export function getCutListColumns(
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-6 w-6 p-0 ${column.getFilterValue() ? 'text-primary' : ''}`}
+                className={`h-6 w-6 p-0 ${column.getFilterValue() ? "text-primary" : ""}`}
               >
                 <Filter className="h-3 w-3" />
               </Button>
@@ -459,7 +480,7 @@ export function getCutListColumns(
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-6 w-6 p-0 ${column.getFilterValue() ? 'text-primary' : ''}`}
+                className={`h-6 w-6 p-0 ${column.getFilterValue() ? "text-primary" : ""}`}
               >
                 <Filter className="h-3 w-3" />
               </Button>
@@ -490,7 +511,7 @@ export function getCutListColumns(
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-6 w-6 p-0 ${column.getFilterValue() ? 'text-primary' : ''}`}
+                className={`h-6 w-6 p-0 ${column.getFilterValue() ? "text-primary" : ""}`}
               >
                 <Filter className="h-3 w-3" />
               </Button>
@@ -521,7 +542,7 @@ export function getCutListColumns(
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-6 w-6 p-0 ${column.getFilterValue() ? 'text-primary' : ''}`}
+                className={`h-6 w-6 p-0 ${column.getFilterValue() ? "text-primary" : ""}`}
               >
                 <Filter className="h-3 w-3" />
               </Button>
@@ -550,7 +571,7 @@ export function getCutListColumns(
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-6 w-6 p-0 ${column.getFilterValue() ? 'text-primary' : ''}`}
+                className={`h-6 w-6 p-0 ${column.getFilterValue() ? "text-primary" : ""}`}
               >
                 <Filter className="h-3 w-3" />
               </Button>
@@ -579,7 +600,7 @@ export function getCutListColumns(
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-6 w-6 p-0 ${column.getFilterValue() ? 'text-primary' : ''}`}
+                className={`h-6 w-6 p-0 ${column.getFilterValue() ? "text-primary" : ""}`}
               >
                 <Filter className="h-3 w-3" />
               </Button>
@@ -608,7 +629,7 @@ export function getCutListColumns(
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-6 w-6 p-0 ${column.getFilterValue() ? 'text-primary' : ''}`}
+                className={`h-6 w-6 p-0 ${column.getFilterValue() ? "text-primary" : ""}`}
               >
                 <Filter className="h-3 w-3" />
               </Button>
@@ -639,7 +660,7 @@ export function getCutListColumns(
               "h-auto p-0 font-extrabold flex-1",
               isAssignmentDisabled
                 ? "cursor-not-allowed opacity-70 hover:bg-transparent"
-                : "hover:bg-transparent hover:text-primary"
+                : "hover:bg-transparent hover:text-primary",
             )}
             title={
               isAssignmentDisabled
@@ -655,7 +676,7 @@ export function getCutListColumns(
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-6 w-6 p-0 ${column.getFilterValue() ? 'text-primary' : ''}`}
+                className={`h-6 w-6 p-0 ${column.getFilterValue() ? "text-primary" : ""}`}
                 onClick={(e) => e.stopPropagation()}
               >
                 <Filter className="h-3 w-3" />
@@ -693,19 +714,24 @@ export function getCutListColumns(
               "flex items-center justify-center rounded p-1 transition-colors",
               isAssignmentDisabled
                 ? "cursor-not-allowed opacity-50"
-                : "cursor-pointer hover:bg-accent"
+                : "cursor-pointer hover:bg-accent",
             )}
             onClick={() => {
               if (machineId && onMachineCellClick) {
-                onMachineCellClick(cutListId, machineId, machineName, isAssigned);
+                onMachineCellClick(
+                  cutListId,
+                  machineId,
+                  machineName,
+                  isAssigned,
+                );
               }
             }}
             title={
               isAssignmentDisabled
                 ? "Project Started: You cannot assign. Only Super Admin can do this."
                 : isAssigned
-                ? `Click to unassign ${machineName}`
-                : `Click to assign ${machineName}`
+                  ? `Click to unassign ${machineName}`
+                  : `Click to assign ${machineName}`
             }
           >
             {isAssigned ? (

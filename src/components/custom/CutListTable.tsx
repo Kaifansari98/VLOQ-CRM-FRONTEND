@@ -85,7 +85,10 @@ export default function CutListTable({
   const resolveFileUrl = (url?: string) => {
     if (!url) return "";
     if (/^https?:\/\//i.test(url)) {
-      if (typeof window !== "undefined" && window.location.protocol === "https:") {
+      if (
+        typeof window !== "undefined" &&
+        window.location.protocol === "https:"
+      ) {
         return url.replace(/^http:\/\//i, "https://");
       }
       return url;
@@ -93,8 +96,13 @@ export default function CutListTable({
     const base = apiClient.defaults.baseURL ?? "";
     const origin = base.replace(/\/api\/?$/i, "");
     if (!origin) return url;
-    const resolved = url.startsWith("/") ? `${origin}${url}` : `${origin}/${url}`;
-    if (typeof window !== "undefined" && window.location.protocol === "https:") {
+    const resolved = url.startsWith("/")
+      ? `${origin}${url}`
+      : `${origin}/${url}`;
+    if (
+      typeof window !== "undefined" &&
+      window.location.protocol === "https:"
+    ) {
       return resolved.replace(/^http:\/\//i, "https://");
     }
     return resolved;
@@ -120,7 +128,10 @@ export default function CutListTable({
       }
 
       window.open(pdfUrl, "_blank", "noopener,noreferrer");
-      toastManager.add({ title: "Labels downloaded successfully", type: "success" });
+      toastManager.add({
+        title: "Labels downloaded successfully",
+        type: "success",
+      });
     } catch (error) {
       console.error("Error downloading labels:", error);
       toastManager.add({ title: "Failed to download labels", type: "error" });
@@ -151,10 +162,16 @@ export default function CutListTable({
       }
 
       window.open(fileUrl, "_blank", "noopener,noreferrer");
-      toastManager.add({ title: "Advanced cut list downloaded successfully", type: "success" });
+      toastManager.add({
+        title: "Advanced cut list downloaded successfully",
+        type: "success",
+      });
     } catch (error) {
       console.error("Error downloading advanced excel:", error);
-      toastManager.add({ title: "Failed to download advanced cut list", type: "error" });
+      toastManager.add({
+        title: "Failed to download advanced cut list",
+        type: "error",
+      });
     } finally {
       setIsDownloading(false);
     }
@@ -182,10 +199,16 @@ export default function CutListTable({
       }
 
       window.open(fileUrl, "_blank", "noopener,noreferrer");
-      toastManager.add({ title: "Basic cut list downloaded successfully", type: "success" });
+      toastManager.add({
+        title: "Basic cut list downloaded successfully",
+        type: "success",
+      });
     } catch (error) {
       console.error("Error downloading basic excel:", error);
-      toastManager.add({ title: "Failed to download basic cut list", type: "error" });
+      toastManager.add({
+        title: "Failed to download basic cut list",
+        type: "error",
+      });
     } finally {
       setIsDownloading(false);
     }
@@ -199,7 +222,8 @@ export default function CutListTable({
   ) => {
     if (isAssignmentDisabled) {
       toastManager.add({
-        title: "Project Started: You cannot assign. Only Super Admin can do this.",
+        title:
+          "Project Started: You cannot assign. Only Super Admin can do this.",
         type: "error",
       });
       return;
@@ -215,9 +239,15 @@ export default function CutListTable({
         !currentlyAssigned,
       );
 
-      toastManager.add({ title: `${machineName} ${!currentlyAssigned ? "assigned to" : "unassigned from"} item`, type: "success" });
+      toastManager.add({
+        title: `${machineName} ${!currentlyAssigned ? "assigned to" : "unassigned from"} item`,
+        type: "success",
+      });
     } catch (error) {
-      toastManager.add({ title: "Failed to update machine assignment", type: "error" });
+      toastManager.add({
+        title: "Failed to update machine assignment",
+        type: "error",
+      });
       console.error(error);
     }
   };
@@ -225,7 +255,8 @@ export default function CutListTable({
   function handleMachineHeaderClick(machineName: string) {
     if (isAssignmentDisabled) {
       toastManager.add({
-        title: "Project Started: You cannot assign. Only Super Admin can do this.",
+        title:
+          "Project Started: You cannot assign. Only Super Admin can do this.",
         type: "error",
       });
       return;
@@ -234,7 +265,10 @@ export default function CutListTable({
     const currentSelectedRows = table.getFilteredSelectedRowModel().rows;
 
     if (currentSelectedRows.length === 0) {
-      toastManager.add({ title: "Please select at least one row before assigning machines", type: "error" });
+      toastManager.add({
+        title: "Please select at least one row before assigning machines",
+        type: "error",
+      });
       return;
     }
 
@@ -249,7 +283,10 @@ export default function CutListTable({
     }
 
     if (!machineId) {
-      toastManager.add({ title: "Machine ID not found. Please contact support.", type: "error" });
+      toastManager.add({
+        title: "Machine ID not found. Please contact support.",
+        type: "error",
+      });
       console.error(`Machine ID not found for: ${machineName}`);
       return;
     }
@@ -261,17 +298,17 @@ export default function CutListTable({
     setDialogOpen(true);
   }
 
- const columns = useMemo(
-  () =>
-    getCutListColumns(
-      machineColumns,
-      handleMachineHeaderClick,
-      handleMachineCellClick,
-      data,  // ✅ pass data here
-      isAssignmentDisabled,
-    ),
-  [machineColumns, data, onMachineAssign, isAssignmentDisabled],
-);
+  const columns = useMemo(
+    () =>
+      getCutListColumns(
+        machineColumns,
+        handleMachineHeaderClick,
+        handleMachineCellClick,
+        data, // ✅ pass data here
+        isAssignmentDisabled,
+      ),
+    [machineColumns, data, onMachineAssign, isAssignmentDisabled],
+  );
 
   const table = useReactTable({
     data: data ?? [],
@@ -286,7 +323,7 @@ export default function CutListTable({
       rowSelection,
       columnFilters,
       columnPinning: {
-        left: ["select", "id","group_name"],
+        left: ["select", "id", "group_name"],
       },
     },
     enableRowSelection: true,
@@ -305,9 +342,15 @@ export default function CutListTable({
     if (onMachineAssign) {
       try {
         await onMachineAssign(rowsToUpdate, machineId, machineName, assigned);
-        toastManager.add({ title: `Machine ${assigned ? "assigned" : "unassigned"} successfully`, type: "success" });
+        toastManager.add({
+          title: `Machine ${assigned ? "assigned" : "unassigned"} successfully`,
+          type: "success",
+        });
       } catch (error) {
-        toastManager.add({ title: "Failed to update machine assignment", type: "error" });
+        toastManager.add({
+          title: "Failed to update machine assignment",
+          type: "error",
+        });
         console.error(error);
       }
     }
@@ -334,12 +377,19 @@ export default function CutListTable({
           variant="default"
           size="sm"
           className="gap-2"
-          disabled={uploadMachineExcelMutation.isPending || isAssignmentDisabled}
-          title={isAssignmentDisabled ? "Project Started: You cannot assign. Only Super Admin can do this." : "Upload Cutlist"}
+          disabled={
+            uploadMachineExcelMutation.isPending || isAssignmentDisabled
+          }
+          title={
+            isAssignmentDisabled
+              ? "Project Started: You cannot assign. Only Super Admin can do this."
+              : "Upload Cutlist"
+          }
           onClick={() => {
             if (isAssignmentDisabled) {
               toastManager.add({
-                title: "Project Started: You cannot assign. Only Super Admin can do this.",
+                title:
+                  "Project Started: You cannot assign. Only Super Admin can do this.",
                 type: "error",
               });
               return;
