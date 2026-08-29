@@ -610,6 +610,18 @@ export default function UserMastersTable({
     () => privilegeMastersData?.data ?? [],
     [privilegeMastersData?.data],
   );
+  const userTypeOptions = React.useMemo(
+    () =>
+      (userTypesData?.data ?? [])
+        .filter(
+          (ut) => ut.user_type?.trim().toLowerCase() !== "master-admin",
+        )
+        .map((ut) => ({
+          id: ut.id,
+          label: formatUserTypeLabel(ut.user_type),
+        })),
+    [userTypesData?.data],
+  );
   const serverSelectedPrivilegeIds = React.useMemo(
     () =>
       normalizeNumberArray(
@@ -1051,10 +1063,7 @@ export default function UserMastersTable({
                 <div className="space-y-2">
                   <Label>User Type</Label>
                   <AssignToPicker
-                    data={(userTypesData?.data ?? []).map((ut) => ({
-                      id: ut.id,
-                      label: formatUserTypeLabel(ut.user_type),
-                    }))}
+                    data={userTypeOptions}
                     value={
                       form.user_type_id ? Number(form.user_type_id) : undefined
                     }
