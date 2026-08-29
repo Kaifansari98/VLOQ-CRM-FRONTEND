@@ -562,21 +562,26 @@ export default function UserMastersTable({
 
   const tableData = React.useMemo<UserMasterRow[]>(
     () =>
-      (data?.data ?? []).map((item, index) => ({
-        srNo: pagination.pageIndex * pagination.pageSize + index + 1,
-        id: item.id,
-        user_name: item.user_name,
-        user_contact: item.user_contact,
-        user_email: item.user_email,
-        user_type: item.user_type?.user_type ?? "—",
-        franchise_name: item.franchise?.franchise_name ?? "—",
-        status: item.status,
-        franchise_id: item.franchise_id ?? null,
-        user_type_id:
-          userTypesData?.data?.find(
-            (ut) => ut.user_type === item.user_type?.user_type,
-          )?.id ?? null,
-      })),
+      (data?.data ?? [])
+        .filter(
+          (item) =>
+            item.user_type?.user_type?.trim().toLowerCase() !== "master-admin",
+        )
+        .map((item, index) => ({
+          srNo: pagination.pageIndex * pagination.pageSize + index + 1,
+          id: item.id,
+          user_name: item.user_name,
+          user_contact: item.user_contact,
+          user_email: item.user_email,
+          user_type: item.user_type?.user_type ?? "—",
+          franchise_name: item.franchise?.franchise_name ?? "—",
+          status: item.status,
+          franchise_id: item.franchise_id ?? null,
+          user_type_id:
+            userTypesData?.data?.find(
+              (ut) => ut.user_type === item.user_type?.user_type,
+            )?.id ?? null,
+        })),
     [data, pagination.pageIndex, pagination.pageSize],
   );
 
