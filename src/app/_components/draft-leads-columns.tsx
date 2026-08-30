@@ -53,6 +53,7 @@ export interface DraftLeadsColumnsOptions {
   userType?: string;
   userFranchiseId?: number;
   isSuperAdminOrAdmin?: boolean;
+  isOnlineLeadFeatureEnabled?: boolean;
 }
 
 export function getDraftLeadsColumns(options?: DraftLeadsColumnsOptions): ColumnDef<DraftLeadRow>[] {
@@ -203,6 +204,22 @@ export function getDraftLeadsColumns(options?: DraftLeadsColumnsOptions): Column
       enableSorting: false,
       enableHiding: true,
       enableColumnFilter: true,
+      cell: ({ row }) => {
+        const raw = (row.getValue("furnitureType") as string) || "";
+        if (!raw) return "—";
+        const cleaned = Array.from(
+          new Set(
+            raw
+              .split(",")
+              .map((item) => {
+                const str = item.trim();
+                return str.includes("|") ? str.split("|").pop()!.trim() : str;
+              })
+              .filter(Boolean)
+          )
+        ).join(", ");
+        return <span>{cleaned || "—"}</span>;
+      },
     },
 
     // 4.1) Furniture Structures
@@ -553,56 +570,24 @@ export function getDraftLeadsColumns(options?: DraftLeadsColumnsOptions): Column
       ),
       cell: ({ row }) => {
         const isPending = row.original.approval_status === "PENDING";
-        const isAuthorized =
-          options?.isSuperAdminOrAdmin ||
-          (options?.userFranchiseId != null &&
-            options.userFranchiseId === (row.original.pending_store_id || row.original.franchiseId));
-        const isActing = options?.actingLeadId === row.original.id;
+        const isApproved = row.original.approval_status === "APPROVED";
+        const isOnlineEnabled = options?.isOnlineLeadFeatureEnabled === true;
 
-        if (isPending) {
-          if (isAuthorized) {
-            return (
-              <div className="flex items-center justify-center gap-2">
-                <Button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    options?.onApprove?.(row.original.id);
-                  }}
-                  disabled={isActing}
-                  size="sm"
-                  className="h-8 text-xs w-28 bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-medium flex items-center justify-center gap-1"
-                >
-                  {isActing ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                  )}
-                  Approve
-                </Button>
-                <Button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    options?.onReject?.(row.original.id);
-                  }}
-                  disabled={isActing}
-                  size="sm"
-                  variant="outline"
-                  className="h-8 text-xs w-28 border-slate-200 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900 font-medium flex items-center justify-center gap-1"
-                >
-                  {isActing ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <XCircle className="w-3.5 h-3.5" />
-                  )}
-                  Reject
-                </Button>
-              </div>
-            );
-          } else {
+        if (isOnlineEnabled) {
+          if (isPending) {
             return (
               <div className="flex items-center justify-center gap-1">
                 <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold italic flex items-center gap-1">
                   <AlertCircle className="w-3.5 h-3.5" /> Approval Pending
+                </span>
+              </div>
+            );
+          }
+          if (isApproved) {
+            return (
+              <div className="flex items-center justify-center gap-1">
+                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold italic flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Approved
                 </span>
               </div>
             );

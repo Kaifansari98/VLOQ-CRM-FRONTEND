@@ -126,6 +126,7 @@ export default function OnlineLeadsPage() {
   const userType = user?.user_type?.user_type?.toLowerCase() || "";
   const userFranchiseId = user?.franchise_id;
   const isSuperAdminOrAdmin = userType === "super-admin" || userType === "admin" || userType === "sales admin" || userType === "sales-admin";
+  const isOnlineLeadFeatureEnabled = user?.vendor?.is_online_lead_feature_enabled === true;
 
   const canAssign = userType === "super-admin" || userType === "admin" || userType === "telecaller team lead" || userType === "telecaller-team-lead";
   const canAddWalkIn = userType === "store-manager" || userType === "store manager" || userType === "super-admin" || userType === "admin" || userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead" || userType === "sales-executive" || userType === "sales executive";
@@ -382,7 +383,9 @@ export default function OnlineLeadsPage() {
       ),
       cell: ({ row }) => {
         const remark = row.original.remark;
-        if (!remark) return <span className="text-muted-foreground/50">—</span>;
+        if (!remark || remark.trim() === "" || remark.trim() === "N/A" || remark.trim() === "-") {
+          return <span className="text-xs text-muted-foreground italic">No follow up performed yet</span>;
+        }
 
         return (
           <TooltipProvider>
@@ -445,43 +448,23 @@ export default function OnlineLeadsPage() {
       ),
       cell: ({ row }) => {
         const isPending = row.original.approval_status === "PENDING";
-        const isAuthorized = isSuperAdminOrAdmin || (userFranchiseId != null && userFranchiseId === (row.original.pending_store_id || row.original.store_id));
-        const isActing = actingLeadId === row.original.id;
+        const isApproved = row.original.approval_status === "APPROVED";
 
-        if (isPending) {
-          if (isAuthorized) {
-            return (
-              <div className="flex items-center justify-center gap-2">
-                <Button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleApprove(row.original.id);
-                  }}
-                  disabled={isActing}
-                  size="sm"
-                  className="h-8 text-xs w-28 bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-medium flex items-center justify-center gap-1"
-                >
-                  {isActing ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />} Approve
-                </Button>
-                <Button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleReject(row.original.id);
-                  }}
-                  disabled={isActing}
-                  size="sm"
-                  variant="outline"
-                  className="h-8 text-xs w-28 border-slate-200 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900 font-medium flex items-center justify-center gap-1"
-                >
-                  {isActing ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />} Reject
-                </Button>
-              </div>
-            );
-          } else {
+        if (isOnlineLeadFeatureEnabled) {
+          if (isPending) {
             return (
               <div className="flex items-center justify-center gap-1">
                 <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold italic flex items-center gap-1">
                   <AlertCircle className="w-3.5 h-3.5" /> Approval Pending
+                </span>
+              </div>
+            );
+          }
+          if (isApproved) {
+            return (
+              <div className="flex items-center justify-center gap-1">
+                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold italic flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Approved
                 </span>
               </div>
             );
@@ -522,7 +505,7 @@ export default function OnlineLeadsPage() {
         );
       },
     },
-  ], [canAssign, isSuperAdminOrAdmin, statuses, updatingLeadId, updatingPriorityId, userType, userFranchiseId, actingLeadId, handleApprove, handleReject]);
+  ], [canAssign, isSuperAdminOrAdmin, statuses, updatingLeadId, updatingPriorityId, userType, userFranchiseId, actingLeadId, handleApprove, handleReject, isOnlineLeadFeatureEnabled]);
 
   const table = useReactTable({
     data: leads,
@@ -585,11 +568,12 @@ export default function OnlineLeadsPage() {
     apiClient
       .get(`/franchises/vendor/${vendorId}`)
       .then((res) => {
-        if (Array.isArray(res.data)) {
-          setStores(res.data);
-        } else if (res.data?.data) {
-          setStores(res.data.data);
-        }
+        const raw = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+        const filtered = raw.filter((s: any) => {
+          const name = (s.franchise_name || "").replace(/vloq|furnix/gi, "").trim().toLowerCase();
+          return name !== "b2b";
+        });
+        setStores(filtered);
       })
       .catch(console.error);
 
@@ -1021,7 +1005,10 @@ export default function OnlineLeadsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL_STORES">All Stores</SelectItem>
-                  {stores.map((s) => (
+                  {stores.filter((s) => {
+                    const name = (s.franchise_name || "").replace(/vloq|furnix/gi, "").trim().toLowerCase();
+                    return name !== "b2b";
+                  }).map((s) => (
                     <SelectItem key={s.id} value={s.id.toString()}>
                       {s.franchise_name.replace(/vloq|furnix/gi, "").trim()}
                     </SelectItem>

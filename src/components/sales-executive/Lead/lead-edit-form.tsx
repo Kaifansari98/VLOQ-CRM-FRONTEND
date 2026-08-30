@@ -1053,17 +1053,17 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
     const hasAnyChanges =
       hasMainChanges || productTypeChanged || structuresChanged;
 
-    if (!hasAnyChanges) {
+    const shouldConvertDraft =
+      isDraftLead &&
+      (!requiresFurnitureSelection || Boolean(currentProductTypeId)) &&
+      isDraftReadyToConvert;
+
+    if (!hasAnyChanges && !shouldConvertDraft) {
       toastManager.add({ title: "No changes made", type: "info" });
       return;
     }
 
     try {
-      const shouldConvertDraft =
-        isDraftLead &&
-        (!requiresFurnitureSelection || Boolean(currentProductTypeId)) &&
-        isDraftReadyToConvert;
-
       // 1. Product type update
       if (productTypeChanged && currentProductTypeId) {
         const label = productTypes?.data?.find(

@@ -21,6 +21,7 @@ import {
   X,
   ExternalLink,
   FileText,
+  Clock,
 } from "lucide-react";
 import { formatDateTime } from "../utils/privileges";
 import RequirementDocUpload from "./RequirementDocUpload";
@@ -285,6 +286,9 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
+  const isOnlineLeadFeatureEnabled = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_online_lead_feature_enabled === true,
+  );
 
   // ✅ 2. QUERY HOOKS
   const { data, isLoading, isPlaceholderData } = useLeadById(
@@ -316,6 +320,160 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     vendorId,
     !!vendorId,
   );
+
+  const latestRemarkInfo = useMemo(() => {
+    const leadObj = data?.data?.lead;
+    if (!leadObj) return null;
+    const isInvalidRemark = (r?: string | null) => {
+      if (!r) return true;
+      const t = r.trim().toLowerCase();
+      return !t || t === "n/a" || t === "-" || t === "none" || t === "null";
+    };
+
+    const logs = (leadObj as any).call_log || [];
+    if (logs.length > 0) {
+      const sorted = [...logs].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      const latest = sorted.find((l: any) => !isInvalidRemark(l.remark));
+      if (latest) {
+        return {
+          id: latest.id,
+          remark: latest.remark,
+          status: latest.status?.status_name,
+          telecaller: latest.telecaller?.user_name,
+          date: latest.created_at,
+        };
+      }
+    }
+    const histories = (leadObj as any).online_lead_history || [];
+    if (histories.length > 0) {
+      const sortedH = [...histories].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      const latestH = sortedH.find((h: any) => !isInvalidRemark(h.remark));
+      if (latestH) {
+        return {
+          id: latestH.id,
+          remark: latestH.remark,
+          status: latestH.status?.status_name,
+          telecaller: latestH.createdBy?.user_name,
+          date: latestH.created_at,
+        };
+      }
+    }
+    return null;
+  }, [data?.data?.lead]);
+
+  const renderRemarkContent = (remarkText: string | null, defaultText = "No remarks provided") => {
+    if (!remarkText || remarkText.trim() === "" || remarkText.trim() === "-" || remarkText.trim() === "N/A") {
+      return <p className="text-[15px] font-medium text-heading dark:text-neutral-200">{defaultText}</p>;
+    }
+
+    const cleanText = remarkText.replace(/_/g, " ");
+
+    if (cleanText.includes("**") && !cleanText.includes("\n")) {
+      let prefix = "";
+      let remaining = cleanText;
+      const firstStarIdx = cleanText.indexOf("**");
+      if (firstStarIdx > 0) {
+        prefix = cleanText.substring(0, firstStarIdx).trim();
+        remaining = cleanText.substring(firstStarIdx);
+      }
+
+      const regex = /\*\*\s*•?\s*([^*]+?)\s*\*\*\s*([^*]+)/g;
+      const matches: { question: string; answer: string }[] = [];
+      let match;
+      while ((match = regex.exec(remaining)) !== null) {
+        matches.push({
+          question: match[1].trim(),
+          answer: match[2].trim(),
+        });
+      }
+
+      if (matches.length > 0) {
+        return (
+          <div className="space-y-3">
+            {prefix && (
+              <p className="text-xs font-semibold text-subtle uppercase tracking-wider mb-2">
+                {prefix}
+              </p>
+            )}
+            {matches.map((item, idx) => (
+              <div key={idx} className="space-y-1">
+                <p className="font-bold text-heading dark:text-neutral-200 text-[14px] flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-heading dark:bg-neutral-200 inline-block shrink-0" />
+                  <span>{item.question.replace(/^•\s*/, "")}</span>
+                </p>
+                <p className="text-[14px] text-heading dark:text-neutral-300 pl-3">{item.answer || "N/A"}</p>
+              </div>
+            ))}
+          </div>
+        );
+      }
+    }
+
+    if (cleanText.includes(" | ") && !cleanText.includes("\n")) {
+      const parts = cleanText.split(" | ");
+      return (
+        <div className="space-y-3">
+          {parts.map((part, idx) => {
+            const colonIdx = part.indexOf(":");
+            if (colonIdx !== -1) {
+              const label = part.substring(0, colonIdx).trim();
+              const val = part.substring(colonIdx + 1).trim();
+              let questionLabel = label;
+              if (label === "Modular Solution Interested In") questionLabel = "What modular solution are you interested in?";
+              else if (label === "Need Ready By") questionLabel = "When do you need your modular kitchen/wardrobe ready?";
+              else if (label === "Preferred Showroom") questionLabel = "Which showroom would you prefer to visit?";
+              else if (label === "Project Location") questionLabel = "Where is your project located?";
+              else if (!questionLabel.endsWith("?")) questionLabel = `${questionLabel}?`;
+
+              return (
+                <div key={idx} className="space-y-1">
+                  <p className="font-bold text-heading dark:text-neutral-200 text-[14px] flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-heading dark:bg-neutral-200 inline-block shrink-0" />
+                    <span>{questionLabel}</span>
+                  </p>
+                  <p className="text-[14px] text-heading dark:text-neutral-300 pl-3">{val || "N/A"}</p>
+                </div>
+              );
+            }
+            return <p key={idx} className="text-[14px] text-heading dark:text-neutral-300">{part}</p>;
+          })}
+        </div>
+      );
+    }
+
+    const blocks = cleanText.split(/\n\s*\n/);
+    return (
+      <div className="space-y-3">
+        {blocks.map((block, bIdx) => {
+          const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
+          return (
+            <div key={bIdx} className="space-y-1">
+              {lines.map((line, lIdx) => {
+                const isBoldHeader = (line.startsWith("**") && line.endsWith("**")) || line.endsWith("?");
+                if (isBoldHeader) {
+                  let cleanHeader = line.replace(/^\*\*|\*\*$/g, "").trim();
+                  if (cleanHeader.startsWith("•")) {
+                    cleanHeader = cleanHeader.replace(/^•\s*/, "").trim();
+                  }
+                  return (
+                    <p key={lIdx} className="font-bold text-heading dark:text-neutral-200 text-[14px] flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-heading dark:bg-neutral-200 inline-block shrink-0" />
+                      <span>{cleanHeader}</span>
+                    </p>
+                  );
+                }
+                return (
+                  <p key={lIdx} className="text-[14px] text-heading dark:text-neutral-300 leading-relaxed pl-3">
+                    {line}
+                  </p>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   // ✅ 3. ALL useState HOOKS
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
@@ -2587,23 +2745,61 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
           {/* ADDITIONAL INFORMATION */}
           {!isB2b && (
             <SectionCard title="Additional Information">
-              <div className="space-y-4">
+              <div className="space-y-6">
+                {/* Latest Remark (only if isOnlineLeadFeatureEnabled is true) */}
+                {isOnlineLeadFeatureEnabled && (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2 text-sm text-subtle font-medium">
+                        <Clock className="w-4 h-4" />
+                        Latest Remark
+                        {latestRemarkInfo?.status && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                            Status: {latestRemarkInfo.status}
+                          </span>
+                        )}
+                      </div>
+                      {latestRemarkInfo?.date && (
+                        <span className="text-xs text-subtle">
+                          {new Date(latestRemarkInfo.date).toLocaleDateString("en-IN", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="bg-[#fff] dark:bg-[#0a0a0a] border border-border rounded-xl p-4 ml-6">
+                      {latestRemarkInfo && latestRemarkInfo.remark && latestRemarkInfo.remark.trim() !== "N/A" && latestRemarkInfo.remark.trim() !== "-" ? (
+                        <>
+                          {renderRemarkContent(latestRemarkInfo.remark, "No follow up performed yet")}
+                          {latestRemarkInfo.telecaller && (
+                            <p className="text-xs text-subtle pt-2 border-t border-border/50">
+                              Logged by: <span className="font-semibold text-heading dark:text-neutral-200">{latestRemarkInfo.telecaller}</span>
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-[15px] font-medium text-heading dark:text-neutral-200">
+                          No follow up performed yet
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Design Remarks */}
                 <div>
                   <div className="flex items-center gap-2 text-sm text-subtle mb-2">
                     <MessageSquare className="w-4 h-4" />
                     Design Remarks
                   </div>
 
-                  <div
-                    className="
-    bg-[#fff] dark:bg-[#0a0a0a]
-    border border-border
-    rounded-xl p-4 ml-6
-  "
-                  >
-                    <p className="text-[15px] leading-relaxed text-heading dark:text-neutral-200">
-                      {lead.designer_remark || "No remarks provided"}
-                    </p>
+                  <div className="bg-[#fff] dark:bg-[#0a0a0a] border border-border rounded-xl p-4 ml-6">
+                    {renderRemarkContent(lead?.designer_remark || lead?.remark || null, "No remarks provided")}
                   </div>
                 </div>
               </div>

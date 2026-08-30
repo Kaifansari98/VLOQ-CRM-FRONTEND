@@ -1125,10 +1125,16 @@ export function UniversalTable({
       furnitureType: isB2b
         ? requirementTypes
         : (Array.isArray(lead.productMappings)
-            ? lead.productMappings
-                .map((p: any) => p.productType?.type)
-                .filter(Boolean)
-                .join(", ")
+            ? Array.from(
+                new Set<string>(
+                  lead.productMappings
+                    .map((p: any) => {
+                      const raw = String(p.productType?.type ?? "").trim();
+                      return raw.includes("|") ? raw.split("|").pop()!.trim() : raw;
+                    })
+                    .filter(Boolean)
+                )
+              ).join(", ")
             : ""),
       siteSupervisor: siteSupervisorName,
       furnitueStructures: isB2b
