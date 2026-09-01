@@ -69,6 +69,7 @@ import {
   Upload,
   Edit3,
   CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -127,6 +128,8 @@ interface OnlineLead {
   refered_by: string | null;
   archetech_name: string | null;
   archetech_number: string | null;
+  approval_status?: string | null;
+  pending_store_id?: number | null;
   product_types: string[];
   product_structures: string[];
   sourceRelation?: { id: number; type: string } | null;
@@ -209,6 +212,59 @@ export default function OnlineLeadDetailsPage() {
   const isOnlineLeadFeatureEnabled = user?.vendor?.is_online_lead_feature_enabled === true;
 
   const [lead, setLead] = useState<OnlineLead | null>(null);
+  const userFranchiseId = user?.franchise_id;
+  const isPendingApproval = lead?.approval_status === "PENDING";
+  const isAuthorizedToApprove = useMemo(() => {
+    if (!lead) return false;
+    if (isAdmin || userType === "sales admin" || userType === "sales-admin") return true;
+    const targetStoreId = lead.pending_store_id || lead.store_id;
+    return Boolean(userFranchiseId != null && targetStoreId && userFranchiseId === targetStoreId);
+  }, [lead, isAdmin, userType, userFranchiseId]);
+
+  const [actingLeadId, setActingLeadId] = useState<number | null>(null);
+
+  async function handleApproveLead() {
+    if (!lead) return;
+    setActingLeadId(lead.id);
+    try {
+      const res = await apiClient.post(`/online-leads/${lead.id}/approve`, {
+        user_id: userId,
+      });
+      if (res.data?.success) {
+        toastManager.add({ title: "Lead approved successfully", type: "success" });
+        fetchLeadDetails();
+      }
+    } catch (err: any) {
+      toastManager.add({
+        title: err.response?.data?.error || "Failed to approve lead.",
+        type: "error",
+      });
+    } finally {
+      setActingLeadId(null);
+    }
+  }
+
+  async function handleRejectLead() {
+    if (!lead) return;
+    setActingLeadId(lead.id);
+    try {
+      const res = await apiClient.post(`/online-leads/${lead.id}/reject`, {
+        user_id: userId,
+      });
+      if (res.data?.success) {
+        toastManager.add({ title: "Lead rejected successfully", type: "success" });
+        fetchLeadDetails();
+      }
+    } catch (err: any) {
+      toastManager.add({
+        title: err.response?.data?.error || "Failed to reject lead.",
+        type: "error",
+      });
+    } finally {
+      setActingLeadId(null);
+    }
+  }
+
   const isProductInfoMissing = useMemo(() => false, []);
 
   const latestRemarkInfo = useMemo(() => {
@@ -217,10 +273,16 @@ export default function OnlineLeadDetailsPage() {
       return rem.includes("Bulk imported:") || rem.includes("What modular solution") || rem.includes("When do you need your modular");
     };
 
+    const isInvalidRemark = (rem: string | null | undefined) => {
+      if (!rem) return true;
+      const clean = rem.trim();
+      return clean === "" || clean === "-" || clean === "N/A" || isQuestionnaireText(clean);
+    };
+
     const logs = lead.call_log || [];
     if (logs.length > 0) {
       const sorted = [...logs].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      const latest = sorted.find((l) => l.remark && l.remark.trim() !== "" && !isQuestionnaireText(l.remark));
+      const latest = sorted.find((l) => !isInvalidRemark(l.remark));
       if (latest) {
         return {
           id: latest.id,
@@ -235,7 +297,7 @@ export default function OnlineLeadDetailsPage() {
     const histories = lead.online_lead_history || [];
     if (histories.length > 0) {
       const sortedH = [...histories].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      const latestH = sortedH.find((h) => h.remark && h.remark.trim() !== "" && !isQuestionnaireText(h.remark));
+      const latestH = sortedH.find((h) => !isInvalidRemark(h.remark));
       if (latestH) {
         return {
           id: latestH.id,
@@ -456,9 +518,9 @@ export default function OnlineLeadDetailsPage() {
     return selectedSt?.followup_required || false;
   }, [callStatus, statuses]);
 
-  const renderRemarkContent = (remarkText: string | null) => {
-    if (!remarkText || remarkText.trim() === "" || remarkText.trim() === "-") {
-      return <p className="text-[15px] text-foreground">N/A</p>;
+  const renderRemarkContent = (remarkText: string | null, defaultText = "N/A") => {
+    if (!remarkText || remarkText.trim() === "" || remarkText.trim() === "-" || remarkText.trim() === "N/A") {
+      return <p className="text-[15px] font-medium text-foreground">{defaultText}</p>;
     }
 
     // Replace all underscores with spaces for clean display
@@ -674,7 +736,10 @@ export default function OnlineLeadDetailsPage() {
               }
             }
           }
-          const deduplicatedList = Object.values(nameToStoreMap);
+          const deduplicatedList = Object.values(nameToStoreMap).filter((s: any) => {
+            const displayName = (s.franchise_name || "").replace(/vloq|furnix/gi, "").trim().toLowerCase();
+            return displayName !== "b2b";
+          });
           setStores(deduplicatedList);
         }
       })
@@ -1396,30 +1461,53 @@ export default function OnlineLeadDetailsPage() {
       <div className="flex-1 p-6 space-y-6 overflow-y-auto bg-background">
         {/* Tabbed Layout matching Draft Leads */}
         <Tabs defaultValue="details" className="w-full">
-          <TabsList className="mb-3 h-auto gap-2 px-1.5 py-1.5">
-            <TabsTrigger value="details">
-              <HouseIcon size={16} className="mr-1 opacity-60" />
-              Lead Details
-            </TabsTrigger>
-            <TabsTrigger value="history">
-              <History size={16} className="mr-1 opacity-60" />
-              History
-            </TabsTrigger>
-            <TabsTrigger value="calls">
-              <PhoneCall size={16} className="mr-1 opacity-60" />
-              Call Logs
-            </TabsTrigger>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+            <TabsList className="h-auto gap-2 px-1.5 py-1.5">
+              <TabsTrigger value="details">
+                <HouseIcon size={16} className="mr-1 opacity-60" />
+                Lead Details
+              </TabsTrigger>
+              <TabsTrigger value="history">
+                <History size={16} className="mr-1 opacity-60" />
+                History
+              </TabsTrigger>
+              <TabsTrigger value="calls">
+                <PhoneCall size={16} className="mr-1 opacity-60" />
+                Call Logs
+              </TabsTrigger>
+            </TabsList>
 
-          </TabsList>
+            {isOnlineLeadFeatureEnabled && isPendingApproval && isAuthorizedToApprove && (
+              <div className="flex items-center gap-2.5">
+                <Button
+                  onClick={handleApproveLead}
+                  disabled={actingLeadId === lead.id}
+                  size="sm"
+                  className="h-9.5 text-xs w-32 bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-semibold flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  {actingLeadId === lead.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} Approve
+                </Button>
+                <Button
+                  onClick={handleRejectLead}
+                  disabled={actingLeadId === lead.id}
+                  size="sm"
+                  variant="outline"
+                  className="h-9.5 text-xs w-32 border-slate-200 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900 font-semibold flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  {actingLeadId === lead.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />} Reject
+                </Button>
+              </div>
+            )}
+          </div>
 
           <TabsContent value="details" className="mt-0 space-y-6">
             {/* Lead Identity Summary Card */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-1">
               <div>
                 <h2 className="text-lg font-bold text-foreground">Lead Details</h2>
                 <p className="text-sm text-muted-foreground mt-0.5">All the Lead Related Details Which has been filled during onboard.</p>
               </div>
-              <div className="flex flex-col items-start md:items-end">
+              <div className="text-left sm:text-right">
                 <div className="text-xs text-muted-foreground">Created At</div>
                 <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground mt-0.5">
                   <Calendar className="w-4 h-4 text-muted-foreground/80" />
@@ -1653,9 +1741,9 @@ export default function OnlineLeadDetailsPage() {
                         </div>
                       </div>
                       <div className="p-4 rounded-lg border bg-muted/10 min-h-[50px] space-y-3">
-                        {latestRemarkInfo ? (
+                        {latestRemarkInfo && latestRemarkInfo.remark && latestRemarkInfo.remark.trim() !== "N/A" && latestRemarkInfo.remark.trim() !== "-" ? (
                           <>
-                            {renderRemarkContent(latestRemarkInfo.remark)}
+                            {renderRemarkContent(latestRemarkInfo.remark, "No follow up performed yet")}
                             {latestRemarkInfo.telecaller && (
                               <p className="text-xs text-muted-foreground pt-2 border-t border-border/50">
                                 Logged by: <span className="font-semibold text-foreground">{latestRemarkInfo.telecaller}</span>
@@ -1663,7 +1751,7 @@ export default function OnlineLeadDetailsPage() {
                             )}
                           </>
                         ) : (
-                          <p className="text-[15px] text-muted-foreground">No call logs or remarks recorded yet.</p>
+                          <p className="text-[15px] font-medium text-foreground">No follow up performed yet</p>
                         )}
                       </div>
                     </div>
@@ -2697,7 +2785,10 @@ export default function OnlineLeadDetailsPage() {
                   <SelectValue placeholder="Select Store" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover text-popover-foreground">
-                  {stores.map((s) => (
+                  {stores.filter((s) => {
+                    const name = (s.franchise_name || "").replace(/vloq|furnix/gi, "").trim().toLowerCase();
+                    return name !== "b2b";
+                  }).map((s) => (
                     <SelectItem key={s.id} value={s.id.toString()}>
                       {s.franchise_name.replace(/vloq|furnix/gi, "").trim()}
                     </SelectItem>

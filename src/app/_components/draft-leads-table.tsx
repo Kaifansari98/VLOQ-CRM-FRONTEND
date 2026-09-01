@@ -177,7 +177,15 @@ export default function DraftLeadsTable({
       site_map_link: lead.site_map_link ?? "",
       architechName: lead.archetech_name ?? "",
       designerRemark: lead.designer_remark ?? "",
-      furnitureType: lead.productMappings?.map((p: any) => String(p.productType?.type ?? "").replace(/^\d+\s*\|\s*/, "")).filter(Boolean).join(", ") ?? "",
+      furnitureType: (() => {
+        const types = (lead.productMappings || [])
+          .map((p: any) => {
+            const raw = String(p.productType?.type ?? "").trim();
+            return raw.includes("|") ? raw.split("|").pop()!.trim() : raw;
+          })
+          .filter(Boolean);
+        return Array.from(new Set(types)).join(", ");
+      })(),
       furnitueStructures: lead.leadProductStructureMapping?.map((p: any) => p.productStructure?.type) ?? [],
       source: lead.source?.type ?? "",
       siteType: lead.siteType?.type ?? "",
@@ -201,6 +209,8 @@ export default function DraftLeadsTable({
 
   const totalPages = data?.pagination?.totalPages || 1;
 
+  const isOnlineLeadFeatureEnabled = useAppSelector((s) => s.auth.user?.vendor?.is_online_lead_feature_enabled === true);
+
   const columns = React.useMemo(
     () =>
       getDraftLeadsColumns({
@@ -210,8 +220,9 @@ export default function DraftLeadsTable({
         userType: normalizedUserType,
         userFranchiseId: franchiseId ?? undefined,
         isSuperAdminOrAdmin,
+        isOnlineLeadFeatureEnabled,
       }),
-    [handleApprove, handleReject, actingLeadId, normalizedUserType, franchiseId, isSuperAdminOrAdmin],
+    [handleApprove, handleReject, actingLeadId, normalizedUserType, franchiseId, isSuperAdminOrAdmin, isOnlineLeadFeatureEnabled],
   );
 
   const table = useReactTable({
@@ -246,7 +257,11 @@ export default function DraftLeadsTable({
 
   const handleRowClick = (row: DraftLeadRow) => {
     if (row.id) {
-      router.push(`/dashboard/leads/draft-lead/details/${row.id}`);
+      if (row.is_online_lead) {
+        router.push(`/dashboard/online-leads/details/${row.id}`);
+      } else {
+        router.push(`/dashboard/leads/draft-lead/details/${row.id}`);
+      }
     }
   };
 
