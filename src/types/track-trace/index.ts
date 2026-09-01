@@ -374,6 +374,7 @@ export interface TrackTraceLeadOption {
 export interface TrackTraceVendorConfig {
   vendor_id: number;
   is_crm_enabled: boolean;
+  is_available_unique_code: boolean;
 }
 
 export enum PackingType {
