@@ -458,10 +458,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     userType === "auditor" ||
     userType === "backend" ||
     userType === "factory" ||
-    userType === "site-supervisor";
+    userType === "site-supervisor" ||
+    userType === "head-site-supervisor";
   const skipFranchiseFilter =
     userType === "factory" ||
     userType === "site-supervisor" ||
+    userType === "head-site-supervisor" ||
     userType === "backend";
   const vendorId = user?.vendor_id;
   const franchiseId = selectedFranchiseId ?? user?.franchise_id ?? null;
