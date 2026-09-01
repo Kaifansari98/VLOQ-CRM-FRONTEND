@@ -318,14 +318,25 @@ const data = {
 
   inventoryTraceNav: [
     {
-      title: "Inventory",
+      title: "Procurement",
       url: "#",
       icon: Warehouse,
-      items: [{ title: "Products", url: "/dashboard/inventory/master/products/list" },
-      { title: "Purchase Enquiry", url: "/dashboard/inventory/purchase-intents" },
-      { title: "Purchase Order", url: "/dashboard/inventory/purchase-orders" },
-      { title: "GRN", url: "/dashboard/inventory/grn" },
-      { title: "Payment Requisition", url: "/dashboard/inventory/payment-requisitions" },
+      items: [
+        { title: "Purchase Enquiry", url: "/dashboard/inventory/purchase-intents" },
+        { title: "Purchase Order", url: "/dashboard/inventory/purchase-orders" },
+        { title: "GRN", url: "/dashboard/inventory/grn" },
+        { title: "Payment Requisition", url: "/dashboard/inventory/payment-requisitions" },
+      ],
+    },
+    {
+      title: "Material Issue",
+      url: "#",
+      icon: Forklift,
+      items: [
+        { title: "Projects", url: "/dashboard/inventory/material-issue/projects" },
+        { title: "Freeze Items", url: "/dashboard/inventory/material-issue/freeze-items" },
+        { title: "Issued Items", url: "/dashboard/inventory/material-issue/issued-items" },
+        { title: "Dispatch", url: "/dashboard/inventory/material-issue/dispatch" },
       ],
     },
   ],
@@ -335,6 +346,10 @@ const data = {
       url: "#",
       icon: FolderKanban,
       items: [
+        {
+          title: "Products",
+          url: "/dashboard/inventory/master/products/list",
+        },
         {
           title: "Category",
           url: "/dashboard/track-trace/master/category",
