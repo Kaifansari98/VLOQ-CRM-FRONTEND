@@ -83,7 +83,7 @@ const data = {
     },
     {
       title: "Lead Pool",
-      url: "/dashboard/online-leads",
+      url: "/dashboard/lead-pool",
       icon: Magnet,
       showCount: "total_lead_pool" as const,
     },
@@ -759,6 +759,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             return {
               ...subItem,
               title: isOnlineLeadFeatureEnabled ? "Online Lead" : "Draft Lead",
+              url: isOnlineLeadFeatureEnabled ? "/dashboard/online-leads" : "/dashboard/leads/draft-lead",
             };
           }
           return subItem;

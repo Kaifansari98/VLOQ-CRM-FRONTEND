@@ -974,6 +974,22 @@ export const deleteLead = async (leadId: number, userId: number) => {
   return response.data;
 };
 
+export const changeLeadStoreAPI = async (
+  vendorId: number,
+  leadId: number,
+  toStoreId: number,
+  updatedBy: number,
+) => {
+  const response = await apiClient.post(
+    `/leads/vendorId/${vendorId}/leadId/${leadId}/change-store`,
+    {
+      to_store_id: toStoreId,
+      updated_by: updatedBy,
+    },
+  );
+  return response.data;
+};
+
 export const getVendorSalesExecutiveUsers = async (
   vendorId: number,
   franchiseId?: number,

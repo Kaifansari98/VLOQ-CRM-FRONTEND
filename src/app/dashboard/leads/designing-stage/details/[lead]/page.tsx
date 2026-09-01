@@ -46,7 +46,10 @@ import {
   LockOpen,
   Lock,
   Zap,
+  Store as StoreIcon,
 } from "lucide-react";
+
+import ChangeStoreModal from "@/components/sales-executive/Lead/change-store-modal";
 
 import FastProductionDetailsModal from "@/components/sales-executive/Lead/fast-production-details-modal";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
@@ -184,6 +187,7 @@ export default function DesigningStageLead() {
   const searchParams = useSearchParams();
   const accountId = searchParams.get("accountId");
   const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
+  const [changeStoreOpen, setChangeStoreOpen] = useState(false);
   const [openCancelFastProduction, setOpenCancelFastProduction] = useState(false);
   const [fastProductionDetailsOpen, setFastProductionDetailsOpen] = useState(false);
   const revokeFastProductionMutation = useRevokeFastProductionRequest();
@@ -242,6 +246,9 @@ export default function DesigningStageLead() {
   );
   const handlesLargeScaleProjects = useAppSelector(
     (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const isOnlineLeadFeatureEnabled = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_online_lead_feature_enabled === true,
   );
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
@@ -825,6 +832,18 @@ export default function DesigningStageLead() {
               Assign Task
             </Button>
           )}
+          {isOnlineLeadFeatureEnabled && !isAuditor && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="hidden sm:flex items-center gap-1.5"
+              onClick={() => setChangeStoreOpen(true)}
+              disabled={isLeadBlocked || isLoading || !lead}
+            >
+              <StoreIcon className="h-4 w-4" />
+              Store
+            </Button>
+          )}
           <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
           {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
@@ -1337,6 +1356,13 @@ export default function DesigningStageLead() {
         open={fastProductionDetailsOpen}
         onOpenChange={setFastProductionDetailsOpen}
         leadId={leadIdNum}
+      />
+
+      <ChangeStoreModal
+        open={changeStoreOpen}
+        onOpenChange={setChangeStoreOpen}
+        leadId={leadIdNum}
+        currentStoreId={lead?.franchise_id}
       />
     </>
   );

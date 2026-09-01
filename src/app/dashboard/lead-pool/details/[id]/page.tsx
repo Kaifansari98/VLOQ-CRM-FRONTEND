@@ -1372,8 +1372,8 @@ export default function OnlineLeadDetailsPage() {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
-                <BreadcrumbLink href="/dashboard/online-leads">
-                  Online Lead
+                <BreadcrumbLink href="/dashboard/lead-pool">
+                  Lead Pool
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
@@ -1407,6 +1407,52 @@ export default function OnlineLeadDetailsPage() {
               </Button>
             </>
           )}
+
+          {canMoveToDraft && (() => {
+            const hasStoreAssigned = Boolean(lead?.store_id);
+            const hasCallLog = Boolean(lead?.call_log && lead.call_log.length > 0);
+            const isMoveDisabled = isMovingToDraft || !hasStoreAssigned || !hasCallLog;
+
+            let tooltipText = "";
+            if (!hasStoreAssigned && !hasCallLog) {
+              tooltipText = "Assign a store and log a call/follow-up before transferring to store.";
+            } else if (!hasStoreAssigned) {
+              tooltipText = "Assign a store before transferring to store.";
+            } else if (!hasCallLog) {
+              tooltipText = "Log a call/follow-up before transferring to store.";
+            }
+
+            return (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Button
+                        size="sm"
+                        onClick={handleMoveToDraft}
+                        disabled={isMoveDisabled}
+                        className="bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-2 h-9 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isMovingToDraft ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        )}
+                        Transfer to Store
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {tooltipText && (
+                    <TooltipContent>
+                      <p>{tooltipText}</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
+            );
+          })()}
+
+
 
           <NotificationBell />
           <AnimatedThemeToggler />
@@ -1493,42 +1539,6 @@ export default function OnlineLeadDetailsPage() {
                 Call Logs
               </TabsTrigger>
             </TabsList>
-
-            {isOnlineLeadFeatureEnabled && isPendingApproval && isAuthorizedToApprove && Boolean(lead?.store_id) && (
-              <div className="flex items-center gap-2.5">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span>
-                        <Button
-                          onClick={handleApproveLead}
-                          disabled={actingLeadId === lead.id || isApproveDisabled}
-                          size="sm"
-                          className="h-9.5 text-xs w-32 bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-semibold flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {actingLeadId === lead.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} Approve
-                        </Button>
-                      </span>
-                    </TooltipTrigger>
-                    {isApproveDisabled && approveTooltip && (
-                      <TooltipContent side="bottom" sideOffset={5} className="max-w-[280px] text-xs">
-                        <p>{approveTooltip}</p>
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
-                </TooltipProvider>
-
-                <Button
-                  onClick={handleRejectLead}
-                  disabled={actingLeadId === lead.id}
-                  size="sm"
-                  variant="outline"
-                  className="h-9.5 text-xs w-32 border-slate-200 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900 font-semibold flex items-center justify-center gap-1.5 shadow-sm"
-                >
-                  {actingLeadId === lead.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />} Reject
-                </Button>
-              </div>
-            )}
           </div>
 
           <TabsContent value="details" className="mt-0 space-y-6">
