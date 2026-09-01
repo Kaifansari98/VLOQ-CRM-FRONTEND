@@ -759,7 +759,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             return {
               ...subItem,
               title: isOnlineLeadFeatureEnabled ? "Online Lead" : "Draft Lead",
-              url: isOnlineLeadFeatureEnabled ? "/dashboard/online-leads" : "/dashboard/leads/draft-lead",
+              url: "/dashboard/leads/draft-lead",
             };
           }
           return subItem;

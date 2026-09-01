@@ -1353,7 +1353,7 @@ export default function OnlineLeadDetailsPage() {
         <p className="text-muted-foreground text-sm mt-1">
           This lead ID does not exist or you do not have permission to view it.
         </p>
-        <Link href="/dashboard/online-leads" className="mt-4">
+        <Link href="/dashboard/leads/draft-lead" className="mt-4">
           <Button variant="outline" size="sm">
             <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
           </Button>
@@ -1372,7 +1372,7 @@ export default function OnlineLeadDetailsPage() {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
-                <BreadcrumbLink href="/dashboard/online-leads">
+                <BreadcrumbLink href="/dashboard/leads/draft-lead">
                   Online Lead
                 </BreadcrumbLink>
               </BreadcrumbItem>
