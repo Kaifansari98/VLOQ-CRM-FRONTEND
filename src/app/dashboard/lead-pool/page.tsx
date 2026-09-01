@@ -118,7 +118,7 @@ interface Telecaller {
   } | null;
 }
 
-export default function OnlineLeadsPage() {
+export default function LeadPoolPage() {
   const queryClient = useQueryClient();
   const user = useAppSelector((state) => state.auth.user);
   const vendorId = user?.vendor_id;
@@ -143,7 +143,6 @@ export default function OnlineLeadsPage() {
       if (statusTab === "lost") {
         return statusName === "lost";
       }
-      // default: "active" (excludes lost leads)
       return statusName !== "lost";
     });
   }, [rawLeads, statusTab]);
@@ -164,7 +163,6 @@ export default function OnlineLeadsPage() {
   const [stores, setStores] = useState<Store[]>([]);
   const [telecallers, setTelecallers] = useState<Telecaller[]>([]);
 
-  // Quick status / follow-up update states
   const [updatingLeadId, setUpdatingLeadId] = useState<number | null>(null);
   const [updatingPriorityId, setUpdatingPriorityId] = useState<number | null>(null);
   const [isQuickFollowUpOpen, setIsQuickFollowUpOpen] = useState(false);
@@ -178,7 +176,7 @@ export default function OnlineLeadsPage() {
   
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<"pool" | "my" | "overall">("my");
+  const [activeTab, setActiveTab] = useState<"pool" | "my" | "overall">("pool");
   const requestIdRef = useRef(0);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -193,8 +191,6 @@ export default function OnlineLeadsPage() {
     pageSize: 50,
   });
 
-
-
   const columns: ColumnDef<OnlineLead>[] = useMemo(() => [
     {
       accessorKey: "id",
@@ -202,7 +198,7 @@ export default function OnlineLeadsPage() {
         <DataTableColumnHeader column={column} title="Lead Code" />
       ),
       cell: ({ row }) => (
-        <Link href={`/dashboard/online-leads/details/${row.original.id}`}>
+        <Link href={`/dashboard/lead-pool/details/${row.original.id}`}>
           <div className="font-medium text-foreground text-sm hover:underline">
             {row.original.lead_code || `ID: #${row.original.id}`}
             <span className="text-[10px] text-muted-foreground block mt-0.5 font-normal">
@@ -505,7 +501,7 @@ export default function OnlineLeadsPage() {
         );
       },
     },
-  ], [canAssign, isSuperAdminOrAdmin, statuses, updatingLeadId, updatingPriorityId, userType, userFranchiseId, actingLeadId, handleApprove, handleReject, isOnlineLeadFeatureEnabled]);
+  ], [canAssign, isSuperAdminOrAdmin, statuses, updatingLeadId, updatingPriorityId, userType, userFranchiseId, actingLeadId, isOnlineLeadFeatureEnabled]);
 
   const table = useReactTable({
     data: leads,
@@ -526,7 +522,6 @@ export default function OnlineLeadsPage() {
   });
   const [loading, setLoading] = useState(true);
 
-  // Modals state
   const [isAssignOpen, setIsAssignOpen] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState<number | null>(null);
   const [assigneeId, setAssigneeId] = useState("");
@@ -541,7 +536,6 @@ export default function OnlineLeadsPage() {
 
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Set default tab based on role
   useEffect(() => {
     if (userType === "telecaller") {
       setActiveTab("my");
@@ -552,11 +546,9 @@ export default function OnlineLeadsPage() {
     }
   }, [userType]);
 
-  // Fetch initial setup lists (statuses, stores, telecallers)
   useEffect(() => {
     if (!vendorId) return;
 
-    // Fetch Statuses
     apiClient
       .get(`/online-leads/statuses?vendor_id=${vendorId}`)
       .then((res) => {
@@ -564,7 +556,6 @@ export default function OnlineLeadsPage() {
       })
       .catch(console.error);
 
-    // Fetch Stores (Franchises)
     apiClient
       .get(`/franchises/vendor/${vendorId}`)
       .then((res) => {
@@ -577,7 +568,6 @@ export default function OnlineLeadsPage() {
       })
       .catch(console.error);
 
-    // Fetch Telecallers for assignment
     apiClient
       .get(`/online-leads/telecallers?vendor_id=${vendorId}`)
       .then((res) => {
@@ -586,7 +576,6 @@ export default function OnlineLeadsPage() {
       .catch(console.error);
   }, [vendorId]);
 
-  // Fetch leads based on active tab & filters
   async function fetchLeadsData() {
     if (!vendorId) return;
     const currentRequestId = ++requestIdRef.current;
@@ -614,56 +603,10 @@ export default function OnlineLeadsPage() {
     }
   }
 
-  async function handleApprove(leadId: number) {
-    setActingLeadId(leadId);
-    try {
-      const res = await apiClient.post(`/online-leads/${leadId}/approve`, {
-        user_id: userId,
-      });
-      if (res.data?.success) {
-        toastManager.add({ title: "Lead approved successfully", type: "success" });
-        queryClient.invalidateQueries({ queryKey: ["draft-lead-table-data"] });
-        queryClient.resetQueries({ queryKey: ["draft-lead-table-data"] });
-        fetchLeadsData();
-      }
-    } catch (err: any) {
-      toastManager.add({
-        title: err.response?.data?.error || "Failed to approve lead.",
-        type: "error",
-      });
-    } finally {
-      setActingLeadId(null);
-    }
-  }
-
-  async function handleReject(leadId: number) {
-    setActingLeadId(leadId);
-    try {
-      const res = await apiClient.post(`/online-leads/${leadId}/reject`, {
-        user_id: userId,
-      });
-      if (res.data?.success) {
-        toastManager.add({ title: "Lead rejected successfully", type: "success" });
-        queryClient.invalidateQueries({ queryKey: ["draft-lead-table-data"] });
-        fetchLeadsData();
-      }
-    } catch (err: any) {
-      toastManager.add({
-        title: err.response?.data?.error || "Failed to reject lead.",
-        type: "error",
-      });
-    } finally {
-      setActingLeadId(null);
-    }
-  }
-
   useEffect(() => {
     fetchLeadsData();
   }, [vendorId, activeTab, search, statusFilter, storeFilter, sourceFilter]);
 
-
-
-  // Lead Assign Action
   const handleAssignSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedLeadId) return;
@@ -694,7 +637,6 @@ export default function OnlineLeadsPage() {
     }
   };
 
-  // Lead Delete Action
   const handleDeleteConfirm = async () => {
     if (!selectedLeadId) return;
     setIsDeleting(true);
@@ -719,9 +661,6 @@ export default function OnlineLeadsPage() {
     }
   };
 
-
-
-  // Quick Priority Change Action
   async function handlePriorityChange(leadId: number, priority: string) {
     setUpdatingPriorityId(leadId);
     try {
@@ -745,94 +684,6 @@ export default function OnlineLeadsPage() {
     }
   }
 
-  // Quick Status Change Action
-  async function handleStatusChange(leadId: number, statusId: number) {
-    const selectedStatus = statuses.find((s) => s.id === statusId);
-    if (!selectedStatus) return;
-
-    if (selectedStatus.followup_required || selectedStatus.status_name.toLowerCase() === "lost") {
-      setQuickLeadId(leadId);
-      setQuickStatusId(statusId);
-      setQuickStatusName(selectedStatus.status_name);
-      setQuickFollowUpDate("");
-      setQuickRemark("");
-      setIsQuickFollowUpOpen(true);
-    } else {
-      setUpdatingLeadId(leadId);
-      try {
-        const res = await apiClient.post(`/online-leads/${leadId}/call`, {
-          telecaller_id: userId,
-          online_lead_status_id: statusId,
-          remark: `Status changed directly to ${selectedStatus.status_name}`,
-        });
-        if (res.data?.success) {
-          toastManager.add({ title: "Status updated successfully.", type: "success" });
-          fetchLeadsData();
-        } else {
-          toastManager.add({ title: res.data?.error || "Failed to update status.", type: "error" });
-        }
-      } catch (err: any) {
-        console.error("Direct status update error:", err);
-        toastManager.add({
-          title: err.response?.data?.error || "Error occurred while updating status.",
-          type: "error",
-        });
-      } finally {
-        setUpdatingLeadId(null);
-      }
-    }
-  }
-
-  async function handleSaveQuickFollowUp() {
-    if (!quickLeadId || !quickStatusId) return;
-    const isLost = quickStatusName?.toLowerCase() === "lost";
-    if (!isLost && !quickFollowUpDate) return;
-
-    setIsSavingQuickFollowUp(true);
-    try {
-      const res = await apiClient.post(`/online-leads/${quickLeadId}/call`, {
-        telecaller_id: userId,
-        online_lead_status_id: quickStatusId,
-        follow_up_date: isLost ? undefined : new Date(quickFollowUpDate).toISOString(),
-        remark: quickRemark || `Status changed directly to ${quickStatusName}`,
-      });
-      if (res.data?.success) {
-        toastManager.add({
-          title: isLost ? "Lead marked as lost successfully." : "Status and follow-up updated successfully.",
-          type: "success",
-        });
-        setIsQuickFollowUpOpen(false);
-        setQuickLeadId(null);
-        setQuickStatusId(null);
-        setQuickStatusName("");
-        setQuickFollowUpDate("");
-        setQuickRemark("");
-        fetchLeadsData();
-      } else {
-        toastManager.add({ title: res.data?.error || "Failed to update status.", type: "error" });
-      }
-    } catch (err: any) {
-      console.error("Save quick follow-up error:", err);
-      toastManager.add({
-        title: err.response?.data?.error || "Error occurred while saving status.",
-        type: "error",
-      });
-    } finally {
-      setIsSavingQuickFollowUp(false);
-    }
-  }
-
-  function handleCancelQuickFollowUp() {
-    setIsQuickFollowUpOpen(false);
-    setQuickLeadId(null);
-    setQuickStatusId(null);
-    setQuickStatusName("");
-    setQuickFollowUpDate("");
-    setQuickRemark("");
-  }
-
-
-
   return (
     <>
       {/* Header */}
@@ -843,11 +694,11 @@ export default function OnlineLeadsPage() {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="/dashboard">Leads</BreadcrumbLink>
+                <BreadcrumbLink href="/dashboard">CRM</BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
-                <BreadcrumbPage>Online Leads</BreadcrumbPage>
+                <BreadcrumbPage>Lead Pool</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
@@ -977,10 +828,9 @@ export default function OnlineLeadsPage() {
           className="pt-2"
           showPagination={true}
           onRowDoubleClick={(row) => {
-            router.push(`/dashboard/online-leads/details/${row.id}`);
+            router.push(`/dashboard/lead-pool/details/${row.id}`);
           }}
         >
-          {/* Header Action controls matching Draft Leads */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full">
             <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
               <Input
@@ -1046,7 +896,7 @@ export default function OnlineLeadsPage() {
         <DialogContent className="max-w-md bg-card/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl p-6">
           <DialogHeader className="space-y-1.5">
             <DialogTitle className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-              Assign Online Lead
+              Assign Lead
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground font-medium">
               Allocate this online/walk-in lead to a registered caller, sales executive, or administrator.
@@ -1123,10 +973,8 @@ export default function OnlineLeadsPage() {
       <Dialog open={isSuccessOpen} onOpenChange={setIsSuccessOpen}>
         <DialogContent className="max-w-md bg-card/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl p-6 text-center">
           <div className="flex flex-col items-center justify-center space-y-4">
-            {/* Animated Checkmark Wrapper */}
             <div className="relative flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200/50 shadow-inner">
               <CheckCircle2 className="w-9 h-9 animate-[scaleUp_0.35s_ease-out]" />
-              {/* Subtle pulsing background ring */}
               <div className="absolute inset-0 rounded-full border-2 border-emerald-500/20 animate-ping" style={{ animationDuration: '2s' }} />
             </div>
             
@@ -1151,7 +999,7 @@ export default function OnlineLeadsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Generate Lead Form Modal (exact same form as Draft Leads) */}
+      {/* Generate Lead Form Modal */}
       <GenerateLeadFormModal open={isWalkInOpen} onOpenChange={setIsWalkInOpen} mode="lead-pool" />
 
       {/* Bulk Upload Modal */}
@@ -1188,83 +1036,6 @@ export default function OnlineLeadsPage() {
               {isDeleting ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-
-
-      {/* Quick Follow-up Date/Time Dialog */}
-      <Dialog open={isQuickFollowUpOpen} onOpenChange={setIsQuickFollowUpOpen}>
-        <DialogContent className="max-w-md bg-background border border-slate-200 dark:border-slate-800 shadow-xl rounded-lg p-6">
-          {(() => {
-            const isLost = quickStatusName?.toLowerCase() === "lost";
-            return (
-              <>
-                <DialogHeader>
-                  <DialogTitle className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    {isLost ? (
-                      <>
-                        <Trash2 className="w-5 h-5 text-slate-800 dark:text-slate-200" /> Mark Lead as Lost
-                      </>
-                    ) : (
-                      <>
-                        <Calendar className="w-5 h-5 text-slate-800 dark:text-slate-200" /> Schedule Next Follow-up
-                      </>
-                    )}
-                  </DialogTitle>
-                  <DialogDescription className="mt-2 text-sm text-muted-foreground">
-                    {isLost ? (
-                      <>
-                        Please enter the reason/remark for marking this lead as <strong>"{quickStatusName}"</strong>.
-                      </>
-                    ) : (
-                      <>
-                        Schedule optional next callback date and time for status <strong>"{quickStatusName}"</strong>.
-                      </>
-                    )}
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="mt-4 space-y-4">
-                  {!isLost && (
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-foreground/80 flex items-center gap-1.5">
-                        Next Follow-up Date & Time
-                      </label>
-                      <CustomeDatePicker
-                        value={quickFollowUpDate}
-                        onChange={(val) => setQuickFollowUpDate(val || "")}
-                        restriction="futureOnly"
-                      />
-                    </div>
-                  )}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                      {isLost ? "Lost Reason / Remark" : "Optional Remark"}
-                    </label>
-                    <Input
-                      placeholder={isLost ? "Enter reason for losing this lead..." : "Optional call/follow-up remark..."}
-                      value={quickRemark}
-                      onChange={(e) => setQuickRemark(e.target.value)}
-                      className="h-10 rounded-lg border border-input bg-background/50 hover:bg-background/85 transition duration-200"
-                    />
-                  </div>
-                </div>
-                <DialogFooter className="mt-6 flex justify-end gap-2">
-                  <Button variant="outline" className="h-9 text-xs" onClick={handleCancelQuickFollowUp}>
-                    Cancel
-                  </Button>
-                  <Button
-                    className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-semibold h-9 text-xs"
-                    onClick={handleSaveQuickFollowUp}
-                    disabled={(!isLost && !quickFollowUpDate) || isSavingQuickFollowUp}
-                  >
-                    {isSavingQuickFollowUp && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    {isLost ? "Mark as Lost" : "Save Follow-up"}
-                  </Button>
-                </DialogFooter>
-              </>
-            );
-          })()}
         </DialogContent>
       </Dialog>
     </>

@@ -31,7 +31,9 @@ import {
   FolderOpen,
   LockOpen,
   Lock,
+  Store as StoreIcon,
 } from "lucide-react";
+import ChangeStoreModal from "@/components/sales-executive/Lead/change-store-modal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -117,6 +119,9 @@ export default function SiteMeasurementLead() {
     (state) =>
       state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
   );
+  const isOnlineLeadFeatureEnabled = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_online_lead_feature_enabled === true,
+  );
 
   const [openDelete, setOpenDelete] = useState(false);
   const [openMoveToDesigning, setOpenMoveToDesigning] = useState(false);
@@ -124,6 +129,7 @@ export default function SiteMeasurementLead() {
   const [openMeasurement, setOpenMeasurement] = useState(false);
   const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [changeStoreOpen, setChangeStoreOpen] = useState(false);
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
@@ -450,6 +456,18 @@ export default function SiteMeasurementLead() {
               onClick={() => setAssignOpen(true)}
             >
               Assign Task
+            </Button>
+          )}
+          {isOnlineLeadFeatureEnabled && !isAuditor && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="hidden md:flex items-center gap-1.5"
+              onClick={() => setChangeStoreOpen(true)}
+              disabled={isLoading || !lead}
+            >
+              <StoreIcon className="h-4 w-4" />
+              Store
             </Button>
           )}
           <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
@@ -879,6 +897,13 @@ export default function SiteMeasurementLead() {
           }
         }}
         data={{ id: leadIdNum, accountId, name: "" }}
+      />
+
+      <ChangeStoreModal
+        open={changeStoreOpen}
+        onOpenChange={setChangeStoreOpen}
+        leadId={leadIdNum}
+        currentStoreId={lead?.franchise_id}
       />
     </>
   );
