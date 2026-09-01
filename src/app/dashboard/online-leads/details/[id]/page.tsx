@@ -215,6 +215,7 @@ export default function OnlineLeadDetailsPage() {
   const isAdmin = userType === "super-admin" || userType === "admin";
   const isCaller = userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead";
   const isOnlineLeadFeatureEnabled = user?.vendor?.is_online_lead_feature_enabled === true;
+  const isSuperAdmin = userType === "super-admin";
 
   const [lead, setLead] = useState<OnlineLead | null>(null);
   const userFranchiseId = user?.franchise_id;
@@ -1386,16 +1387,18 @@ export default function OnlineLeadDetailsPage() {
         <div className="flex items-center gap-2">
           {!isLost && (
             <>
-              <Button
-                size="sm"
-                onClick={() => {
-                  setAssignStoreId(lead?.store_id?.toString() || "");
-                  setIsStoreOpen(true);
-                }}
-                className="bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-2 h-9"
-              >
-                <Store className="w-3.5 h-3.5" /> {lead?.franchise?.franchise_name ? lead.franchise.franchise_name.replace(/vloq|furnix/gi, "").trim() : "Select Store"}
-              </Button>
+              {isOnlineLeadFeatureEnabled && isSuperAdmin && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setAssignStoreId(lead?.store_id?.toString() || "");
+                    setIsStoreOpen(true);
+                  }}
+                  className="bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-2 h-9"
+                >
+                  <Store className="w-3.5 h-3.5" /> {lead?.franchise?.franchise_name ? lead.franchise.franchise_name.replace(/vloq|furnix/gi, "").trim() : "Select Store"}
+                </Button>
+              )}
               <Button
                 size="sm"
                 onClick={() => {

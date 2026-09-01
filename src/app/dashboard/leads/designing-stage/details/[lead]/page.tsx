@@ -241,6 +241,7 @@ export default function DesigningStageLead() {
     (state) => state.auth.user?.user_type.user_type,
   );
   const isAuditor = userType?.trim().toLowerCase() === "auditor";
+  const isSuperAdmin = userType?.trim().toLowerCase() === "super-admin";
   const eligibleBookingDaysValue = useAppSelector(
     (state) => state.auth.user?.vendor?.eligible_booking_days ?? null,
   );
@@ -832,18 +833,7 @@ export default function DesigningStageLead() {
               Assign Task
             </Button>
           )}
-          {isOnlineLeadFeatureEnabled && !isAuditor && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="hidden sm:flex items-center gap-1.5"
-              onClick={() => setChangeStoreOpen(true)}
-              disabled={isLeadBlocked || isLoading || !lead}
-            >
-              <StoreIcon className="h-4 w-4" />
-              Store
-            </Button>
-          )}
+
           <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
           {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
@@ -946,6 +936,16 @@ export default function DesigningStageLead() {
                     </DropdownMenuSubContent>
                   </DropdownMenuSub>
                 )
+              )}
+
+              {isOnlineLeadFeatureEnabled && isSuperAdmin && (
+                <DropdownMenuItem
+                  onSelect={() => setChangeStoreOpen(true)}
+                  disabled={isLoading || !lead || isLeadBlocked}
+                >
+                  <StoreIcon className="h-4 w-4 mr-2" />
+                  Store Transfer
+                </DropdownMenuItem>
               )}
 
 
