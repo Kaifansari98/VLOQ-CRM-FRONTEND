@@ -60,6 +60,8 @@ interface OnlineLead {
   email: string | null;
   contact: string;
   source: string;
+  source_id?: number | null;
+  site_type_id?: number | null;
   lead_entry_type: "ONLINE" | "WALK_IN";
   created_at: string;
   assign_to: number | null;
@@ -97,6 +99,7 @@ interface OnlineLead {
   approval_status?: string | null;
   pending_store_id?: number | null;
   pending_status_id?: number | null;
+  pending_follow_up_date?: string | null;
 }
 
 interface FollowupStatus {

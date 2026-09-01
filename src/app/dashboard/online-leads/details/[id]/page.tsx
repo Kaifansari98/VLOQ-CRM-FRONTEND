@@ -117,6 +117,8 @@ interface OnlineLead {
   contact: string;
   alt_contact_no: string | null;
   source: string;
+  source_id?: number | null;
+  site_type_id?: number | null;
   lead_entry_type: "ONLINE" | "WALK_IN";
   created_at: string;
   assign_to: number | null;
@@ -132,6 +134,7 @@ interface OnlineLead {
   archetech_number: string | null;
   approval_status?: string | null;
   pending_store_id?: number | null;
+  pending_follow_up_date?: string | null;
   product_types: string[];
   product_structures: string[];
   sourceRelation?: { id: number; type: string } | null;
@@ -1494,7 +1497,7 @@ export default function OnlineLeadDetailsPage() {
             {isOnlineLeadFeatureEnabled && isPendingApproval && isAuthorizedToApprove && Boolean(lead?.store_id) && (
               <div className="flex items-center gap-2.5">
                 <TooltipProvider>
-                  <Tooltip sideOffset={5}>
+                  <Tooltip>
                     <TooltipTrigger asChild>
                       <span>
                         <Button
@@ -1508,7 +1511,7 @@ export default function OnlineLeadDetailsPage() {
                       </span>
                     </TooltipTrigger>
                     {isApproveDisabled && approveTooltip && (
-                      <TooltipContent side="bottom" className="max-w-[280px] text-xs">
+                      <TooltipContent side="bottom" sideOffset={5} className="max-w-[280px] text-xs">
                         <p>{approveTooltip}</p>
                       </TooltipContent>
                     )}
