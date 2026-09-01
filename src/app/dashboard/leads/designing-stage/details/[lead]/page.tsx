@@ -425,7 +425,7 @@ export default function DesigningStageLead() {
     : [];
   const isChatNotification = useIsChatNotification();
   const normalizedUserType = userType?.toLowerCase() ?? "";
-  const isSuperAdmin = normalizedUserType === "super-admin";
+
   const eligibleBookingDays =
     eligibleBookingDaysValue == null
       ? null
