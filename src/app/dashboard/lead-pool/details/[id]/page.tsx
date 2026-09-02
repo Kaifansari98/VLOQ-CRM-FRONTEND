@@ -212,8 +212,9 @@ export default function OnlineLeadDetailsPage() {
   const vendorId = user?.vendor_id;
   const userId = user?.id;
   const userType = user?.user_type?.user_type?.toLowerCase() || "";
-  const isAdmin = userType === "super-admin" || userType === "admin";
-  const isCaller = userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead";
+  const isAdmin = userType === "super-admin" || userType === "admin" || userType === "sales admin" || userType === "sales-admin";
+  const isCaller = userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead" || userType === "caller";
+  const isSalesExecutive = userType === "sales-executive" || userType === "sales executive" || userType === "salesexecutive";
   const isOnlineLeadFeatureEnabled = user?.vendor?.is_online_lead_feature_enabled === true;
   const isSuperAdmin = userType === "super-admin";
 
@@ -1335,8 +1336,8 @@ export default function OnlineLeadDetailsPage() {
   }, [lead]);
 
   const canMoveToDraft = useMemo(() => {
-    return (isAdmin || isCaller) && !isLost;
-  }, [isAdmin, isCaller, isLost]);
+    return (isAdmin || isCaller || isSalesExecutive) && !isLost;
+  }, [isAdmin, isCaller, isSalesExecutive, isLost]);
 
   if (loading) {
     return (
@@ -1387,7 +1388,7 @@ export default function OnlineLeadDetailsPage() {
         <div className="flex items-center gap-2">
           {!isLost && (
             <>
-              {isOnlineLeadFeatureEnabled && isSuperAdmin && (
+              {isOnlineLeadFeatureEnabled && (isSuperAdmin || isAdmin || isCaller || isSalesExecutive) && (
                 <Button
                   size="sm"
                   onClick={() => {
