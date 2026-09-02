@@ -376,21 +376,26 @@ export default function UserMastersTable({
 
   const tableData = React.useMemo<UserMasterRow[]>(
     () =>
-      (data?.data ?? []).map((item, index) => ({
-        srNo: pagination.pageIndex * pagination.pageSize + index + 1,
-        id: item.id,
-        user_name: item.user_name,
-        user_contact: item.user_contact,
-        user_email: item.user_email,
-        user_type: item.user_type?.user_type ?? "—",
-        franchise_name: item.franchise?.franchise_name ?? "—",
-        status: item.status,
-        franchise_id: item.franchise_id ?? null,
-        user_type_id:
-          userTypesData?.data?.find(
-            (ut) => ut.user_type === item.user_type?.user_type,
-          )?.id ?? null,
-      })),
+      (data?.data ?? [])
+        .filter(
+          (item) =>
+            item.user_type?.user_type?.trim().toLowerCase() !== "master-admin",
+        )
+        .map((item, index) => ({
+          srNo: pagination.pageIndex * pagination.pageSize + index + 1,
+          id: item.id,
+          user_name: item.user_name,
+          user_contact: item.user_contact,
+          user_email: item.user_email,
+          user_type: item.user_type?.user_type ?? "—",
+          franchise_name: item.franchise?.franchise_name ?? "—",
+          status: item.status,
+          franchise_id: item.franchise_id ?? null,
+          user_type_id:
+            userTypesData?.data?.find(
+              (ut) => ut.user_type === item.user_type?.user_type,
+            )?.id ?? null,
+        })),
     [data, pagination.pageIndex, pagination.pageSize],
   );
 
@@ -439,6 +444,18 @@ export default function UserMastersTable({
     });
     return list;
   }, [privilegeMastersData?.data]);
+  const userTypeOptions = React.useMemo(
+    () =>
+      (userTypesData?.data ?? [])
+        .filter(
+          (ut) => ut.user_type?.trim().toLowerCase() !== "master-admin",
+        )
+        .map((ut) => ({
+          id: ut.id,
+          label: formatUserTypeLabel(ut.user_type),
+        })),
+    [userTypesData?.data],
+  );
   const serverSelectedPrivilegeIds = React.useMemo(
     () =>
       normalizeNumberArray(
@@ -773,10 +790,7 @@ export default function UserMastersTable({
                 <div className="space-y-2">
                   <Label>User Type</Label>
                   <AssignToPicker
-                    data={(userTypesData?.data ?? []).map((ut) => ({
-                      id: ut.id,
-                      label: formatUserTypeLabel(ut.user_type),
-                    }))}
+                    data={userTypeOptions}
                     value={
                       form.user_type_id ? Number(form.user_type_id) : undefined
                     }

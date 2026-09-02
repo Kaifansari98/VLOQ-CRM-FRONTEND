@@ -30,10 +30,14 @@ export interface TraceTraceDashboardResponse {
 }
 
 export const getTraceTraceDashboard = async (
-  vendorId: number
+  vendorId: number,
+  status: string = "all"
 ): Promise<TraceTraceDashboardResponse> => {
   const { data } = await apiClient.get(
-    `/track-trace/dashboard/${vendorId}`
+    `/track-trace/dashboard/${vendorId}`,
+    {
+      params: { status }
+    }
   );
   return data.data;
 };

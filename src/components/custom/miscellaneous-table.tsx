@@ -19,7 +19,7 @@ import { DataTable } from "@/components/data-table/data-table";
 import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
 
-import { mapTableFiltersToPayload } from "@/lib/utils";
+import { formatSalesExecutiveName, mapTableFiltersToPayload } from "@/lib/utils";
 import {
   getMiscellaneousTableColumns,
   MiscLeadColumn,
@@ -165,7 +165,7 @@ export function MiscellaneousTable({
     updatedAt: lead.updated_at ?? "",
     status: lead.statusType?.type ?? "",
     statusTag: lead.statusType?.tag ?? "",
-    sales_executive: lead.assignedTo?.user_name ?? "",
+    sales_executive: formatSalesExecutiveName(lead.assignedTo),
     assignedToId: lead.assignedTo?.id ?? "",
     account_id: lead.account?.id ?? lead.account_id ?? 0,
     pendingMiscCount: lead.pendingMiscCount ?? undefined,

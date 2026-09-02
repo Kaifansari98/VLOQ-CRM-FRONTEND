@@ -35,8 +35,8 @@ export default function DraftLeadsPage() {
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
-  const handlesLargeScaleProjects = useAppSelector(
-    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  const isOnlineLeadFeatureEnabled = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_online_lead_feature_enabled === true,
   );
 
   const normalizedUserType = userType?.trim().toLowerCase();
@@ -63,7 +63,7 @@ export default function DraftLeadsPage() {
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
-                <BreadcrumbPage>{handlesLargeScaleProjects ? "Draft Leads" : "Online Leads"}</BreadcrumbPage>
+                <BreadcrumbPage>{isOnlineLeadFeatureEnabled ? "Online Leads" : "Draft Leads"}</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
@@ -110,11 +110,11 @@ export default function DraftLeadsPage() {
 
       <main className="flex-1 overflow-x-hidden">
         <DraftLeadsTable
-          stageTitle={handlesLargeScaleProjects ? "Draft Leads" : "Online Leads"}
+          stageTitle={isOnlineLeadFeatureEnabled ? "Online Leads" : "Draft Leads"}
           stageDescription={
-            handlesLargeScaleProjects
-              ? "Leads that are saved as draft and not yet submitted."
-              : "Leads that are online and not yet submitted."
+            isOnlineLeadFeatureEnabled
+              ? "Leads that are online and not yet submitted."
+              : "Leads that are saved as draft and not yet submitted."
           }
         />
       </main>

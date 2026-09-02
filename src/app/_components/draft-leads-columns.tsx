@@ -27,7 +27,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-export type DraftLeadRow = LeadColumn;
+import { Button } from "@/components/ui/button";
+import { CheckCircle2, XCircle, Loader2, AlertCircle } from "lucide-react";
 
 function toTitleCase(value: string) {
   return value
@@ -38,7 +39,24 @@ function toTitleCase(value: string) {
     .join(" ");
 }
 
-export function getDraftLeadsColumns(): ColumnDef<DraftLeadRow>[] {
+export type DraftLeadRow = LeadColumn & {
+  approval_status?: string;
+  pending_store_id?: number;
+  is_online_lead?: boolean;
+  franchiseId?: number;
+};
+
+export interface DraftLeadsColumnsOptions {
+  onApprove?: (id: number) => void;
+  onReject?: (id: number) => void;
+  actingLeadId?: number | null;
+  userType?: string;
+  userFranchiseId?: number;
+  isSuperAdminOrAdmin?: boolean;
+  isOnlineLeadFeatureEnabled?: boolean;
+}
+
+export function getDraftLeadsColumns(options?: DraftLeadsColumnsOptions): ColumnDef<DraftLeadRow>[] {
   const columns: ColumnDef<DraftLeadRow>[] = [
     // 1) Lead Code
     {
@@ -186,6 +204,22 @@ export function getDraftLeadsColumns(): ColumnDef<DraftLeadRow>[] {
       enableSorting: false,
       enableHiding: true,
       enableColumnFilter: true,
+      cell: ({ row }) => {
+        const raw = (row.getValue("furnitureType") as string) || "";
+        if (!raw) return "—";
+        const cleaned = Array.from(
+          new Set(
+            raw
+              .split(",")
+              .map((item) => {
+                const str = item.trim();
+                return str.includes("|") ? str.split("|").pop()!.trim() : str;
+              })
+              .filter(Boolean)
+          )
+        ).join(", ");
+        return <span>{cleaned || "—"}</span>;
+      },
     },
 
     // 4.1) Furniture Structures
@@ -523,6 +557,44 @@ export function getDraftLeadsColumns(): ColumnDef<DraftLeadRow>[] {
       },
       meta: {
         label: "Designer Remark",
+      },
+    },
+
+    // 15) Actions (Approve / Reject for Pending Leads)
+    {
+      id: "actions",
+      header: () => (
+        <div className="w-full text-center font-medium text-foreground">
+          Actions
+        </div>
+      ),
+      cell: ({ row }) => {
+        const isPending = row.original.approval_status === "PENDING";
+        const isApproved = row.original.approval_status === "APPROVED";
+        const isOnlineEnabled = options?.isOnlineLeadFeatureEnabled === true;
+
+        if (isOnlineEnabled) {
+          if (isPending) {
+            return (
+              <div className="flex items-center justify-center gap-1">
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold italic flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5" /> Approval Pending
+                </span>
+              </div>
+            );
+          }
+          if (isApproved) {
+            return (
+              <div className="flex items-center justify-center gap-1">
+                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold italic flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Approved
+                </span>
+              </div>
+            );
+          }
+        }
+
+        return <span className="text-xs text-muted-foreground italic">—</span>;
       },
     },
   ];

@@ -57,7 +57,7 @@ export const useLeadStats = (
   return useQuery({
     queryKey: ["leadStats", vendorId, userId, franchiseId],
     queryFn: () => fetchLeadStats(vendorId!, userId, franchiseId),
-    enabled: !!vendorId && !!franchiseId, // Only run query if vendorId exists
+    enabled: !!vendorId, // Only run query if vendorId exists
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
     retry: 3,

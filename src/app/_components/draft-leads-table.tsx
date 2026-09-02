@@ -17,6 +17,7 @@ import {
 import ClearInput from "@/components/origin-input";
 import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
+import { formatSalesExecutiveName } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 
 // API & REDUX IMPORTS
@@ -26,7 +27,9 @@ import {
   useDraftLeadTableDataPost,
 } from "@/api/universalstage";
 import { mapTableFiltersToPayload } from "@/lib/utils";
-import { Skeleton } from "@/components/ui/skeleton"; // optional loader
+import { useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "@/lib/apiClient";
+import { toastManager } from "@/components/ui/toast";
 
 export default function DraftLeadsTable({
   stageTitle = "Draft Leads",
@@ -36,6 +39,7 @@ export default function DraftLeadsTable({
   stageDescription?: string;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
@@ -44,11 +48,59 @@ export default function DraftLeadsTable({
   );
   const userType = useAppSelector((s) => s.auth.user?.user_type.user_type);
   const normalizedUserType = userType?.toLowerCase();
+  const isSuperAdminOrAdmin =
+    normalizedUserType === "super-admin" ||
+    normalizedUserType === "admin" ||
+    normalizedUserType === "sales admin" ||
+    normalizedUserType === "sales-admin";
+
   const shouldIncludeFranchise =
     normalizedUserType === "admin" ||
     normalizedUserType === "super-admin" ||
     normalizedUserType === "sales-executive" ||
     normalizedUserType === "head-site-supervisor";
+
+  const [actingLeadId, setActingLeadId] = React.useState<number | null>(null);
+
+  const handleApprove = React.useCallback(async (leadId: number) => {
+    setActingLeadId(leadId);
+    try {
+      const res = await apiClient.post(`/online-leads/${leadId}/approve`, {
+        user_id: userId,
+      });
+      if (res.data?.success) {
+        toastManager.add({ title: "Lead approved successfully", type: "success" });
+        queryClient.invalidateQueries({ queryKey: ["draft-lead-table-data"] });
+      }
+    } catch (err: any) {
+      toastManager.add({
+        title: err.response?.data?.error || "Failed to approve lead.",
+        type: "error",
+      });
+    } finally {
+      setActingLeadId(null);
+    }
+  }, [userId, queryClient]);
+
+  const handleReject = React.useCallback(async (leadId: number) => {
+    setActingLeadId(leadId);
+    try {
+      const res = await apiClient.post(`/online-leads/${leadId}/reject`, {
+        user_id: userId,
+      });
+      if (res.data?.success) {
+        toastManager.add({ title: "Lead rejected successfully", type: "success" });
+        queryClient.invalidateQueries({ queryKey: ["draft-lead-table-data"] });
+      }
+    } catch (err: any) {
+      toastManager.add({
+        title: err.response?.data?.error || "Failed to reject lead.",
+        type: "error",
+      });
+    } finally {
+      setActingLeadId(null);
+    }
+  }, [userId, queryClient]);
 
   const [globalFilter, setGlobalFilter] = React.useState("");
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -125,7 +177,15 @@ export default function DraftLeadsTable({
       site_map_link: lead.site_map_link ?? "",
       architechName: lead.archetech_name ?? "",
       designerRemark: lead.designer_remark ?? "",
-      furnitureType: lead.productMappings?.map((p: any) => p.productType?.type).join(", ") ?? "",
+      furnitureType: (() => {
+        const types = (lead.productMappings || [])
+          .map((p: any) => {
+            const raw = String(p.productType?.type ?? "").trim();
+            return raw.includes("|") ? raw.split("|").pop()!.trim() : raw;
+          })
+          .filter(Boolean);
+        return Array.from(new Set(types)).join(", ");
+      })(),
       furnitueStructures: lead.leadProductStructureMapping?.map((p: any) => p.productStructure?.type) ?? [],
       source: lead.source?.type ?? "",
       siteType: lead.siteType?.type ?? "",
@@ -134,18 +194,36 @@ export default function DraftLeadsTable({
       altContact: lead.alt_contact_no ?? "",
       status: lead.statusType?.type ?? "Draft",
       statusTag: lead.statusType?.tag ?? "",
-      sales_executive: lead.assignedTo?.user_name ?? "",
+      sales_executive: formatSalesExecutiveName(lead.assignedTo),
       assignedToId: lead.assignedTo?.id ?? "",
       isDraft: lead.is_draft === true,
       accountId: lead.account?.id ?? lead.account_id ?? 0,
       priority: lead.priority ?? "",
       servicing: "",
+      approval_status: lead.approval_status,
+      pending_store_id: lead.pending_store_id,
+      is_online_lead: lead.is_online_lead === true,
+      franchiseId: lead.franchise_id ?? lead.franchise?.id ?? undefined,
     }));
   }, [data]);
 
   const totalPages = data?.pagination?.totalPages || 1;
 
-  const columns = React.useMemo(() => getDraftLeadsColumns(), []);
+  const isOnlineLeadFeatureEnabled = useAppSelector((s) => s.auth.user?.vendor?.is_online_lead_feature_enabled === true);
+
+  const columns = React.useMemo(
+    () =>
+      getDraftLeadsColumns({
+        onApprove: handleApprove,
+        onReject: handleReject,
+        actingLeadId,
+        userType: normalizedUserType,
+        userFranchiseId: franchiseId ?? undefined,
+        isSuperAdminOrAdmin,
+        isOnlineLeadFeatureEnabled,
+      }),
+    [handleApprove, handleReject, actingLeadId, normalizedUserType, franchiseId, isSuperAdminOrAdmin, isOnlineLeadFeatureEnabled],
+  );
 
   const table = useReactTable({
     data: tableData,
@@ -179,7 +257,11 @@ export default function DraftLeadsTable({
 
   const handleRowClick = (row: DraftLeadRow) => {
     if (row.id) {
-      router.push(`/dashboard/leads/draft-lead/details/${row.id}`);
+      if (row.is_online_lead) {
+        router.push(`/dashboard/online-leads/details/${row.id}`);
+      } else {
+        router.push(`/dashboard/leads/draft-lead/details/${row.id}`);
+      }
     }
   };
 

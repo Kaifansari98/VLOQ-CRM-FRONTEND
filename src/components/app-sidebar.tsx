@@ -20,6 +20,7 @@ import {
   MapPinned,
   Building2,
   Megaphone,
+  Magnet,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -82,8 +83,8 @@ const data = {
     },
     {
       title: "Lead Pool",
-      url: "/dashboard/online-leads",
-      icon: NotebookPen,
+      url: "/dashboard/lead-pool",
+      icon: Magnet,
       showCount: "total_lead_pool" as const,
     },
     {
@@ -317,14 +318,25 @@ const data = {
 
   inventoryTraceNav: [
     {
-      title: "Inventory",
+      title: "Procurement",
       url: "#",
       icon: Warehouse,
-      items: [{ title: "Products", url: "/dashboard/inventory/master/products/list" },
-      { title: "Purchase Enquiry", url: "/dashboard/inventory/purchase-intents" },
-      { title: "Purchase Order", url: "/dashboard/inventory/purchase-orders" },
-      { title: "GRN", url: "/dashboard/inventory/grn" },
-      { title: "Payment Requisition", url: "/dashboard/inventory/payment-requisitions" },
+      items: [
+        { title: "Purchase Enquiry", url: "/dashboard/inventory/purchase-intents" },
+        { title: "Purchase Order", url: "/dashboard/inventory/purchase-orders" },
+        { title: "GRN", url: "/dashboard/inventory/grn" },
+        { title: "Payment Requisition", url: "/dashboard/inventory/payment-requisitions" },
+      ],
+    },
+    {
+      title: "Material Issue",
+      url: "#",
+      icon: Forklift,
+      items: [
+        { title: "Projects", url: "/dashboard/inventory/material-issue/projects" },
+        { title: "Freeze Items", url: "/dashboard/inventory/material-issue/freeze-items" },
+        { title: "Issued Items", url: "/dashboard/inventory/material-issue/issued-items" },
+        { title: "Dispatch", url: "/dashboard/inventory/material-issue/dispatch" },
       ],
     },
   ],
@@ -334,6 +346,10 @@ const data = {
       url: "#",
       icon: FolderKanban,
       items: [
+        {
+          title: "Products",
+          url: "/dashboard/inventory/master/products/list",
+        },
         {
           title: "Category",
           url: "/dashboard/track-trace/master/category",
@@ -424,7 +440,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const selectedFranchiseId = useAppSelector(
     (state) => state.auth.franchise_id,
   );
-  const userType = user?.user_type?.user_type?.toLowerCase();
+  const userType = user?.user_type?.user_type?.toLowerCase().replace(/_/g, "-").replace(/\s+/g, "-");
   const isCustomUserTypeOnlyVendor =
     user?.vendor?.is_this_vendor_is_custom_usertype_only === true;
   const isCrmEnabled = user?.vendor?.is_crm_enabled !== false;
@@ -457,10 +473,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     userType === "auditor" ||
     userType === "backend" ||
     userType === "factory" ||
-    userType === "site-supervisor";
+    userType === "site-supervisor" ||
+    userType === "head-site-supervisor";
   const skipFranchiseFilter =
     userType === "factory" ||
     userType === "site-supervisor" ||
+    userType === "head-site-supervisor" ||
     userType === "backend";
   const vendorId = user?.vendor_id;
   const franchiseId = selectedFranchiseId ?? user?.franchise_id ?? null;
@@ -548,6 +566,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ? navMainWithBroadcast
         : navMainWithBroadcast.filter((item) => item.title !== "Overall Leads");
 
+      const isSalesExecutive =
+        userType === "sales-executive" ||
+        userType === "sales executive";
+
       const hideSectionsForRole =
         userType === "site-supervisor" ||
         userType === "tech-check" ||
@@ -557,7 +579,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
     const baseItems = withoutOverall.filter((item) => {
       if (item.title === "Lead Pool") {
-        if (hideSectionsForRole) return false;
+        if (hideSectionsForRole || isSalesExecutive) return false;
       }
 
       if (item.title === "Leads") {
@@ -750,10 +772,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const finalNavItemsSource = customFilteredItems.map((item) => {
       if (item.title === "Leads" && item.items) {
         const updatedItems = item.items.map((subItem) => {
-          if (subItem.title === "Draft Lead" && !handlesLargeScaleProjects) {
+          if (subItem.title === "Draft Lead" || subItem.title === "Online Lead") {
             return {
               ...subItem,
-              title: "Online Lead",
+              title: isOnlineLeadFeatureEnabled ? "Online Lead" : "Draft Lead",
+              url: "/dashboard/leads/draft-lead",
             };
           }
           return subItem;
@@ -816,9 +839,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             : section.items,
       }))
       : [];
-    const resolvedNavItems = isOnlineLeadFeatureEnabled
-      ? finalNavItems
-      : finalNavItems.filter((item) => item.title !== "Lead Pool");
+    const resolvedNavItems = (
+      isOnlineLeadFeatureEnabled
+        ? finalNavItems
+        : finalNavItems.filter((item) => item.title !== "Lead Pool")
+    ).filter((item) => !(item.title === "Lead Pool" && isSalesExecutive));
 
     return {
       navItems: resolvedNavItems,

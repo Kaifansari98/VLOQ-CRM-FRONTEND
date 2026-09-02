@@ -350,7 +350,7 @@ export default function ProductionFilesSection({
             {handlesLargeScaleProjects && (
               <Button
                 type="button"
-                variant="outline"
+                variant="default"
                 size="sm"
                 onClick={handleDownloadTemplate}
                 className="flex items-center gap-2"

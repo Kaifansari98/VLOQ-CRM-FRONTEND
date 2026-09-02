@@ -32,7 +32,9 @@ import {
   Lock,
   LockOpen,
   Zap,
+  Store as StoreIcon,
 } from "lucide-react";
+import ChangeStoreModal from "@/components/sales-executive/Lead/change-store-modal";
 
 import FastProductionDetailsModal from "@/components/sales-executive/Lead/fast-production-details-modal";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -117,6 +119,9 @@ export default function LeadDetails() {
   );
   const isClientVisitEnabled = useAppSelector(
     (s) => s.auth.user?.vendor?.is_client_visit_enabled === true,
+  );
+  const isOnlineLeadFeatureEnabled = useAppSelector(
+    (s) => s.auth.user?.vendor?.is_online_lead_feature_enabled === true,
   );
   const { data: franchisesForB2b = [] } = useFranchisesByVendorId(
     vendorId,
@@ -240,6 +245,7 @@ export default function LeadDetails() {
   // modals
   const [assignOpen, setAssignOpen] = useState(false);
   const [visitOpen, setVisitOpen] = useState(false);
+  const [changeStoreOpen, setChangeStoreOpen] = useState(false);
   const [moveToDesigningOpen, setMoveToDesigningOpen] = useState(false);
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -474,7 +480,7 @@ export default function LeadDetails() {
     if (isLeadBlockStatusLoading) return;
     if (isChatNotification) return;
     if (hasAutoOpenedAssign.current) return;
-    if (hasAutoOpenedAssign.current) return;
+    if (isOnlineLeadFeatureEnabled) return;
 
     if (
       !lead.is_draft &&
@@ -494,6 +500,7 @@ export default function LeadDetails() {
     canAccessAssignTask,
     isLeadBlocked,
     isLeadBlockStatusLoading,
+    isOnlineLeadFeatureEnabled,
   ]);
 
   // 🔹 Tabs state
@@ -557,6 +564,7 @@ export default function LeadDetails() {
               }
             />
           )}
+
 
           {canAccessAssignTask &&
             (isDraftLead ? (
@@ -755,6 +763,16 @@ export default function LeadDetails() {
                     </DropdownMenuSubContent>
                   )}
                 </DropdownMenuSub>
+              )}
+
+              {isOnlineLeadFeatureEnabled && isSuperAdmin && (
+                <DropdownMenuItem
+                  onSelect={() => setChangeStoreOpen(true)}
+                  disabled={uiDisabled || isLeadBlocked}
+                >
+                  <StoreIcon className="h-4 w-4 mr-2" />
+                  Store Transfer
+                </DropdownMenuItem>
               )}
               {canDelete && (
                 <>
@@ -1040,6 +1058,13 @@ export default function LeadDetails() {
         open={fastProductionDetailsOpen}
         onOpenChange={setFastProductionDetailsOpen}
         leadId={leadIdNum}
+      />
+
+      <ChangeStoreModal
+        open={changeStoreOpen}
+        onOpenChange={setChangeStoreOpen}
+        leadId={leadIdNum}
+        currentStoreId={lead?.franchise_id}
       />
     </>
   );

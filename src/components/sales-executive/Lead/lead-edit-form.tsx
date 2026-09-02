@@ -296,6 +296,9 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
     (state) =>
       state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
   );
+  const isOnlineLeadFeatureEnabled = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_online_lead_feature_enabled === true,
+  );
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -896,6 +899,17 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
   const isDraftReadyToConvert = useMemo(() => {
     if (!isDraftLead) return false;
 
+    const selectedSource = sourceTypes?.data?.find(
+      (s: any) => String(s.id) === String(watchedValues.source_id),
+    );
+    const isOnlineLead =
+      selectedSource?.type?.trim().toLowerCase() === "online" ||
+      leadData?.source?.type?.trim().toLowerCase() === "online";
+
+    if (isOnlineLead && !isOnlineLeadFeatureEnabled) {
+      return false;
+    }
+
     const hasRequiredTextFields =
       watchedValues.firstname?.trim() &&
       watchedValues.lastname?.trim() &&
@@ -911,7 +925,7 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
         (watchedValues.product_types?.length &&
           watchedValues.product_structures?.length)),
     );
-  }, [isDraftLead, requiresFurnitureSelection, watchedValues]);
+  }, [isDraftLead, isOnlineLeadFeatureEnabled, leadData, requiresFurnitureSelection, sourceTypes?.data, watchedValues]);
 
   if (isLoadingLead) {
     return (
@@ -1039,17 +1053,17 @@ export default function EditLeadForm({ leadData, onClose }: EditLeadFormProps) {
     const hasAnyChanges =
       hasMainChanges || productTypeChanged || structuresChanged;
 
-    if (!hasAnyChanges) {
+    const shouldConvertDraft =
+      isDraftLead &&
+      (!requiresFurnitureSelection || Boolean(currentProductTypeId)) &&
+      isDraftReadyToConvert;
+
+    if (!hasAnyChanges && !shouldConvertDraft) {
       toastManager.add({ title: "No changes made", type: "info" });
       return;
     }
 
     try {
-      const shouldConvertDraft =
-        isDraftLead &&
-        (!requiresFurnitureSelection || Boolean(currentProductTypeId)) &&
-        isDraftReadyToConvert;
-
       // 1. Product type update
       if (productTypeChanged && currentProductTypeId) {
         const label = productTypes?.data?.find(

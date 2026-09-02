@@ -66,6 +66,9 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     (state) => state.customPrivileges.codes,
   );
   const updateSoValueReceived = useUpdateSoValueReceivedStatus(vendorId, leadId);
+  const isAccountLocInEnabled = useAppSelector(
+    (state) => state.auth.user?.vendor?.IsAccountLocInEnabled ?? false,
+  );
   const handlesLargeScaleProjects = useAppSelector((state) => {
     const user = state.auth.user as any;
     return (
@@ -200,6 +203,8 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
 
   const activeTab =
     tabMapping[tabParam || ""] || forceDefaultTab || "order-login";
+  const isSoValueReceived = lead?.is_so_value_received === true;
+  const soValueReceivedAt = lead?.so_value_received_at ?? null;
   const hasPendingOrderLoginApproval = orderLoginLockIns.some((lockIn) => {
     const pendingTasks = Array.isArray(lockIn.pending_tasks)
       ? lockIn.pending_tasks
@@ -215,11 +220,19 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
 
     return !lockIn.is_approved;
   });
-  const isOrderLoginLocked =
-    orderLoginLockInsLoading || hasPendingOrderLoginApproval;
+  const hasCompletedOrderLoginApproval = orderLoginLockIns.some(
+    (lockIn) => lockIn.is_approved === true,
+  );
+  const isOrderLoginLocked = isAccountLocInEnabled
+    ? orderLoginLockInsLoading ||
+      !isSoValueReceived ||
+      !hasCompletedOrderLoginApproval
+    : false;
   const lockedTabsTooltip = orderLoginLockInsLoading
     ? "Checking accounts approval status"
-    : "Accounts approval for Order Login is still pending";
+    : !isSoValueReceived
+      ? "Mark SO Value Sent as checked to unlock Order Login actions."
+      : "Accounts approval for Order Login is still pending";
   const canViewApprovedDocuments =
     userType === "custom"
       ? customPrivilegeCodes.includes(
@@ -304,8 +317,6 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     },
   ];
 
-  const isSoValueReceived = lead?.is_so_value_received === true;
-  const soValueReceivedAt = lead?.so_value_received_at ?? null;
   const normalizedUserType = userType?.toLowerCase() ?? "";
   const canFullyManageSoValue = normalizedUserType === "super-admin";
   const canCheckSoValueOnly =

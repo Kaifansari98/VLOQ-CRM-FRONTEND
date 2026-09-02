@@ -40,7 +40,7 @@ import { useFranchisesByVendorId } from "@/api/franchise";
 
 import { getUniversalTableColumns } from "../utils/column/Universal-column";
 import { LeadColumn } from "../utils/column/column-type";
-import { mapTableFiltersToPayload } from "@/lib/utils";
+import { formatSalesExecutiveName, mapTableFiltersToPayload } from "@/lib/utils";
 
 // -------------------------------------------------------
 // 🟣 COMPONENT PROPS
@@ -1125,10 +1125,16 @@ export function UniversalTable({
       furnitureType: isB2b
         ? requirementTypes
         : (Array.isArray(lead.productMappings)
-            ? lead.productMappings
-                .map((p: any) => p.productType?.type)
-                .filter(Boolean)
-                .join(", ")
+            ? Array.from(
+                new Set<string>(
+                  lead.productMappings
+                    .map((p: any) => {
+                      const raw = String(p.productType?.type ?? "").trim();
+                      return raw.includes("|") ? raw.split("|").pop()!.trim() : raw;
+                    })
+                    .filter(Boolean)
+                )
+              ).join(", ")
             : ""),
       siteSupervisor: siteSupervisorName,
       furnitueStructures: isB2b
@@ -1162,7 +1168,7 @@ export function UniversalTable({
       altContact: lead.alt_contact_no ?? "",
       status: lead.statusType?.type ?? "",
       statusTag: lead.statusType?.tag ?? "",
-      sales_executive: lead.assignedTo?.user_name ?? "",
+      sales_executive: formatSalesExecutiveName(lead.assignedTo),
       designer: designerName,
       assignedToId: lead.assignedTo?.id ?? "",
       isDraft: lead.is_draft === true,
