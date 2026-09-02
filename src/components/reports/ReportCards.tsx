@@ -16,6 +16,7 @@ import { generateTechCheckStageReport } from "@/lib/reports/techCheckStageReport
 import { generateErdReport } from "@/lib/reports/erdReport";
 import { generatePaymentsBetweenClientAndStoreReport } from "@/lib/reports/paymentsBetweenClientAndStoreReport";
 import { generateLeadServicingReport } from "@/lib/reports/leadServicingReport";
+import { generateFastProductionReport } from "@/lib/reports/fastProductionReport";
 import { toast } from "sonner";
 
 interface ReportCardConfig {
@@ -81,6 +82,12 @@ const REPORTS: ReportCardConfig[] = [
     description: "Track free and AMC service schedule dates, handovers, and AMC status.",
     userTypes: [],
   },
+  {
+    id: "fast-production",
+    title: "Fast Production Report",
+    description: "Track Fast Production requests, approval status, and requested timelines.",
+    userTypes: [],
+  },
 ];
 
 const containerVariants = {
@@ -133,6 +140,17 @@ export function ReportCards() {
     setDownloadStatus((prev) => ({ ...prev, [reportId]: stage }));
   const clearStage = (reportId: string) =>
     setDownloadStatus((prev) => { const next = { ...prev }; delete next[reportId]; return next; });
+
+  const canShowFastProductionReport = () => {
+    if (adminFranchiseId && (adminFranchiseId as any) !== "all") {
+      const franchise = franchises.find((f) => f.id === Number(adminFranchiseId));
+      return franchise?.has_fast_production_leads ?? false;
+    }
+    
+    // For super admin (no specific franchise), show if ANY franchise has fast production leads
+    return franchises.some((f) => f.has_fast_production_leads);
+  };
+
 
   const handleApply = (filters: ReportFilters) => {
     if (!activeFilter) return;
@@ -413,6 +431,43 @@ try {
       }
       return;
     }
+    if (reportId === "fast-production") {
+      const filters = appliedFilters[reportId];
+      if (isSuperAdmin && !filters?._franchiseId) {
+        toast.error("Please apply filters before downloading.");
+        openFilterModal(reportId);
+        return;
+      }
+
+      const rawFranchiseId = filters?._franchiseId ?? adminFranchiseId ?? "all";
+      const franchiseId =
+        rawFranchiseId === "all"
+          ? "all"
+          : Array.isArray(rawFranchiseId)
+          ? rawFranchiseId.map(Number)
+          : Number(rawFranchiseId);
+
+      setStage(reportId, "Fetching fast production data...");
+      try {
+        await generateFastProductionReport({
+          vendorId,
+          vendorReportCode,
+          franchiseId,
+          fromDate: filters?.fromDate ?? "",
+          toDate: filters?.toDate ?? "",
+          onProgress: (stage) => setStage(reportId, stage),
+        });
+        toast.success("Report downloaded successfully.");
+      } catch (err: unknown) {
+        console.error(err);
+        const msg =
+          err instanceof Error ? err.message : "Failed to generate report.";
+        toast.error(msg);
+      } finally {
+        clearStage(reportId);
+      }
+      return;
+    }
 
     if (reportId === "payments") {
       const filters = appliedFilters[reportId];
@@ -547,7 +602,11 @@ try {
         initial="hidden"
         animate="visible"
       >
-        {REPORTS.filter((report) => report.active !== false).map((report) => (
+        {REPORTS.filter((report) => {
+          if (report.active === false) return false;
+          if (report.id === "fast-production" && !canShowFastProductionReport()) return false;
+          return true;
+        }).map((report) => (
           <motion.div
             key={report.id}
             variants={cardVariants}

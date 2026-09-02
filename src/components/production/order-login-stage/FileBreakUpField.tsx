@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useInstanceStage } from "@/hooks/designing-stage/designing-leads-hooks";
 import { useSearchParams } from "next/navigation";
-import { canDeletePODocument } from "@/components/utils/privileges";
+import { canDeletePODocument, canUploadPODocument } from "@/components/utils/privileges";
 import { useAppSelector } from "@/redux/store";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 import { useLeadById } from "@/hooks/useLeadsQueries";
@@ -134,10 +134,19 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
     lead,
   });
 
+  const customPrivilegeCodes = useAppSelector(
+    (state: any) => state.customPrivileges?.codes || []
+  );
+
   const canDeletePO =
     !shouldDisableBlockedActions &&
-    canDeletePODocument(userType, leadStatus!) &&
+    canDeletePODocument(userType, leadStatus!, customPrivilegeCodes) &&
     !disablePoDelete;
+
+  const canUploadPO =
+    !shouldDisableBlockedActions &&
+    canUploadPODocument(userType, leadStatus!, customPrivilegeCodes) &&
+    !disabled;
 
   useEffect(() => {
     setTitleDraft(title);
@@ -471,7 +480,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
           icon={<FolderOpen className="w-4 h-4 text-primary" />}
         >
           <div className="p-6 space-y-4">
-            {canDeletePO && (
+            {canUploadPO && (
               <div className="space-y-3">
                 <FileUploadField
                   value={poFiles}

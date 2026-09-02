@@ -2475,27 +2475,29 @@ const BookingLeadsDetails: React.FC<Props> = ({ leadId }) => {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-border overflow-hidden">
-              <div className="flex items-center gap-2 border-b border-border px-5 py-3">
-                <Images size={18} className="text-muted-foreground" />
-                <h3 className="text-base font-semibold tracking-tight">
-                  Booking Documents (Quotations + Design)
-                </h3>
+            {canViewBookingDocuments && (
+              <div className="rounded-2xl border border-border overflow-hidden">
+                <div className="flex items-center gap-2 border-b border-border px-5 py-3">
+                  <Images size={18} className="text-muted-foreground" />
+                  <h3 className="text-base font-semibold tracking-tight">
+                    Booking Documents (Quotations + Design)
+                  </h3>
+                </div>
+                <div className="p-5">
+                  {selectedBookingGroupDocs.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {selectedBookingGroupDocs.map((doc) => (
+                        <DocumentCard key={doc.id} doc={doc} />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No booking documents found for this product type.
+                    </p>
+                  )}
+                </div>
               </div>
-              <div className="p-5">
-                {selectedBookingGroupDocs.length > 0 ? (
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {selectedBookingGroupDocs.map((doc) => (
-                      <DocumentCard key={doc.id} doc={doc} />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    No booking documents found for this product type.
-                  </p>
-                )}
-              </div>
-            </div>
+            )}
 
             <div className="rounded-2xl border border-border overflow-hidden">
               <div className="flex items-center gap-2 border-b border-border px-5 py-3">

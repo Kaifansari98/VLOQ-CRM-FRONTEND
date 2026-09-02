@@ -372,7 +372,7 @@ export default function GroupedSmoothTab({
                           const canViewReadyToDispatch =
                             userType === "custom"
                               ? customPrivilegeCodes.includes(
-                                "production.production.ready_to_dispatch.enable_disable",
+                                "production.ready_to_dispatch.enable_disable",
                               )
                               : true;
                           const canViewTechCheckForCustomUser =

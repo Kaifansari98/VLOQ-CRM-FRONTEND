@@ -631,8 +631,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 ...item,
                 items: item.items?.filter((subItem) =>
                   subItem.title === "Open Leads"
-                    ? customPrivilegeCodes.includes(
-                      "leads.open_leads.details_of_lead.view",
+                    ? customPrivilegeCodes.some((code) =>
+                      code.startsWith("leads.open_leads."),
                     )
                     : subItem.title === "ISM Leads"
                       ? customPrivilegeCodes.includes(
@@ -692,7 +692,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             )
                             : subItem.title === "RTD Sites"
                               ? customPrivilegeCodes.includes(
-                                "production.production.ready_to_dispatch.enable_disable",
+                                "production.ready_to_dispatch.enable_disable",
                               )
                               : true,
                     ),
