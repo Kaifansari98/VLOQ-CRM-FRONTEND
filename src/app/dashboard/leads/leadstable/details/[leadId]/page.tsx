@@ -565,18 +565,6 @@ export default function LeadDetails() {
             />
           )}
 
-          {isOnlineLeadFeatureEnabled && !isAuditor && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="hidden sm:flex items-center gap-1.5"
-              onClick={() => setChangeStoreOpen(true)}
-              disabled={isLeadBlocked || uiDisabled}
-            >
-              <StoreIcon className="h-4 w-4" />
-              Store
-            </Button>
-          )}
 
           {canAccessAssignTask &&
             (isDraftLead ? (
@@ -775,6 +763,16 @@ export default function LeadDetails() {
                     </DropdownMenuSubContent>
                   )}
                 </DropdownMenuSub>
+              )}
+
+              {isOnlineLeadFeatureEnabled && isSuperAdmin && (
+                <DropdownMenuItem
+                  onSelect={() => setChangeStoreOpen(true)}
+                  disabled={uiDisabled || isLeadBlocked}
+                >
+                  <StoreIcon className="h-4 w-4 mr-2" />
+                  Store Transfer
+                </DropdownMenuItem>
               )}
               {canDelete && (
                 <>

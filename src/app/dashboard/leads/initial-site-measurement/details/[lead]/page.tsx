@@ -143,6 +143,7 @@ export default function SiteMeasurementLead() {
   const blockLeadMutation = useBlockLead();
   const unblockLeadMutation = useUnblockLead();
   const isAuditor = userType?.trim().toLowerCase() === "auditor";
+  const isSuperAdmin = userType?.trim().toLowerCase() === "super-admin";
 
   const { data: ismUploadData } = useCheckIsmUploaded(leadIdNum);
   const isIsmUploaded = ismUploadData?.isUploaded;
@@ -458,18 +459,7 @@ export default function SiteMeasurementLead() {
               Assign Task
             </Button>
           )}
-          {isOnlineLeadFeatureEnabled && !isAuditor && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="hidden md:flex items-center gap-1.5"
-              onClick={() => setChangeStoreOpen(true)}
-              disabled={isLoading || !lead}
-            >
-              <StoreIcon className="h-4 w-4" />
-              Store
-            </Button>
-          )}
+
           <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
           {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
@@ -568,6 +558,16 @@ export default function SiteMeasurementLead() {
                       </DropdownMenuSubContent>
                     </DropdownMenuSub>
                   ))}
+
+                {isOnlineLeadFeatureEnabled && isSuperAdmin && (
+                  <DropdownMenuItem
+                    onSelect={() => setChangeStoreOpen(true)}
+                    disabled={isLoading || !lead || shouldDisableBlockedActions}
+                  >
+                    <StoreIcon className="h-4 w-4 mr-2" />
+                    Store Transfer
+                  </DropdownMenuItem>
+                )}
 
                 {/* Edit */}
                 {canEdit &&
