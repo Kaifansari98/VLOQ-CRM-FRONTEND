@@ -9,6 +9,7 @@ export interface FranchiseSummary {
   is_head_office?: boolean;
   moduled_for_b2b?: boolean;
   status?: string | null;
+  has_fast_production_leads?: boolean;
 }
 
 export const fetchFranchisesByVendorId = async (vendorId: number) => {

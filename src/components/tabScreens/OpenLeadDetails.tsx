@@ -532,6 +532,39 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
           });
         } else {
           const primaryTypeId = typeIds[0];
+          const currentTypeIds: number[] = Array.from(
+            new Set<number>(
+              (lead?.productMappings || [])
+                .map((mapping: any) =>
+                  Number(mapping.product_type_id || mapping.productType?.id),
+                )
+                .filter((id: number) => Number.isFinite(id) && id > 0),
+            ),
+          );
+          const nextTypeIds: number[] = Array.from(new Set<number>(typeIds));
+          const productTypeChanged =
+            currentTypeIds.length !== nextTypeIds.length ||
+            currentTypeIds.some((id) => !nextTypeIds.includes(id));
+          const hasMismatchedStructures = (structureInstancesData?.data || []).some(
+            (instance: any) => {
+              const structureProductTypeId = Number(
+                instance.productStructure?.productType?.id ||
+                  instance.productItemCode?.productStructure?.productType?.id,
+              );
+              return (
+                Number.isFinite(structureProductTypeId) &&
+                structureProductTypeId > 0 &&
+                structureProductTypeId !== primaryTypeId
+              );
+            },
+          );
+
+          // Product structures belong to their product type. Remove them when
+          // switching between different product types.
+          if (productTypeChanged || hasMismatchedStructures) {
+            await clearLeadProductStructures(vendorId!, leadId, userId);
+          }
+
           const nextTypeLabel = productTypes?.data?.find(
             (t: any) => t.id === primaryTypeId,
           )?.type;
@@ -574,7 +607,9 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     useUploadMoreSitePhotos();
   const structureInstances = structureInstancesData?.data || [];
   const displayInstances = useMemo(() => {
-    if (structureInstances && structureInstances.length > 0) {
+    // An empty fetched list means structures were cleared; do not render the
+    // stale legacy mapping as a fallback.
+    if (Array.isArray(structureInstancesData?.data)) {
       return structureInstances;
     }
     return (lead?.leadProductStructureMapping || []).map((ps: any, index: number) => ({
@@ -587,7 +622,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       },
       description: null
     }));
-  }, [structureInstances, lead?.leadProductStructureMapping]);
+  }, [structureInstancesData?.data, structureInstances, lead?.leadProductStructureMapping]);
   const productItemCodes = productItemCodesData?.data || [];
   const leadDocuments = lead?.documents || [];
   const imageDocuments = leadDocuments.filter((doc: any) =>
@@ -1160,7 +1195,9 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const handleSaveProductType = () => {
     if (selectedProductTypeIds.length === 0 && !selectedProductTypeId) {
       toastManager.add({
-        title: "Please select at least one requirement type.",
+        title: isB2b
+          ? "Please select at least one requirement type."
+          : "Please select a product type.",
         type: "error",
       });
       return;
@@ -3089,45 +3126,81 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                 setEditProductTypeOpen(false);
               }
             }}
-            title="Requirement Details"
-            description="Select requirement types and dependent process briefs."
-            size="md"
+            title={
+              isB2b
+                ? "Requirement Details"
+                : currentProductTypeId
+                ? "Edit Product Type"
+                : "Set Product Type"
+            }
+            description={
+              isB2b
+                ? "Select requirement types and dependent process briefs."
+                : "Select the product type for this lead."
+            }
+            size="sm"
           >
-            <div className="space-y-5 p-5 max-h-[75vh] overflow-y-auto">
-              <div>
-                <label className="text-xs font-semibold text-foreground flex items-center justify-between">
-                  <span>Requirement Types {isB2b ? "(Multi-Select)" : "(Single-Select)"} <span className="text-red-500">*</span></span>
-                  <span className="text-[11px] text-muted-foreground font-normal">
-                    {selectedProductTypeIds.length} selected
-                  </span>
-                </label>
-                <div className="flex flex-wrap gap-2 mt-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-muted/10">
-                  {displayedTypesInModal.length === 0 ? (
-                    <p className="text-xs text-muted-foreground italic p-2">
-                      {isB2b ? "No B2B requirement types found." : "No product types found."}
-                    </p>
-                  ) : (
-                    displayedTypesInModal.map((t: any) => {
-                      const isSelected = selectedProductTypeIds.includes(t.id);
-                      return (
-                        <Badge
-                          key={t.id}
-                          variant={isSelected ? "default" : "outline"}
-                          className={`cursor-pointer py-1.5 px-3 text-xs flex items-center gap-1.5 transition-all select-none ${
-                            isSelected ? "bg-primary text-primary-foreground shadow-sm" : "hover:bg-muted"
-                          }`}
-                          onClick={() => toggleRequirementType(t.id)}
-                        >
-                          <Checkbox checked={isSelected} className="h-3.5 w-3.5 pointer-events-none" />
-                          <span>{t.type}</span>
-                        </Badge>
-                      );
-                    })
-                  )}
+            <div className="space-y-4 p-5">
+              {isB2b ? (
+                <div>
+                  <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                    <span>Requirement Types (Multi-Select) <span className="text-red-500">*</span></span>
+                    <span className="text-[11px] text-muted-foreground font-normal">
+                      {selectedProductTypeIds.length} selected
+                    </span>
+                  </label>
+                  <div className="flex flex-wrap gap-2 mt-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-muted/10">
+                    {displayedTypesInModal.length === 0 ? (
+                      <p className="text-xs text-muted-foreground italic p-2">
+                        No B2B requirement types found.
+                      </p>
+                    ) : (
+                      displayedTypesInModal.map((t: any) => {
+                        const isSelected = selectedProductTypeIds.includes(t.id);
+                        return (
+                          <Badge
+                            key={t.id}
+                            variant={isSelected ? "default" : "outline"}
+                            className={`cursor-pointer py-1.5 px-3 text-xs flex items-center gap-1.5 transition-all select-none ${
+                              isSelected ? "bg-primary text-primary-foreground shadow-sm" : "hover:bg-muted"
+                            }`}
+                            onClick={() => toggleRequirementType(t.id)}
+                          >
+                            <Checkbox checked={isSelected} className="h-3.5 w-3.5 pointer-events-none" />
+                            <span>{t.type}</span>
+                          </Badge>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
-              </div>
-
-
+              ) : (
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Product Type <span className="text-red-500">*</span>
+                  </label>
+                  <div className="mt-2">
+                    <AssignToPicker
+                      data={
+                        displayedTypesInModal.map((t: any) => ({
+                          id: t.id,
+                          label: t.type,
+                        })) ?? []
+                      }
+                      value={selectedProductTypeId ?? undefined}
+                      onChange={(id) => {
+                        setSelectedProductTypeId(id);
+                        if (id) {
+                          setSelectedProductTypeIds([id]);
+                        } else {
+                          setSelectedProductTypeIds([]);
+                        }
+                      }}
+                      placeholder="Search product type..."
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-end gap-2 pt-3 border-t">
                 <Button
