@@ -1388,7 +1388,7 @@ export default function OnlineLeadDetailsPage() {
         <div className="flex items-center gap-2">
           {!isLost && (
             <>
-              {isOnlineLeadFeatureEnabled && (isSuperAdmin || isAdmin || isCaller) && (
+              {isOnlineLeadFeatureEnabled && (isSuperAdmin || isAdmin) && !isCaller && (
                 <Button
                   size="sm"
                   onClick={() => {
@@ -1759,7 +1759,7 @@ export default function OnlineLeadDetailsPage() {
                               })}
                             </span>
                           )}
-                          {latestRemarkInfo && (
+                          {latestRemarkInfo && !isCaller && (
                             <Button
                               variant="outline"
                               size="sm"
