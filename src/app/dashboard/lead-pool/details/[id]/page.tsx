@@ -1566,7 +1566,7 @@ export default function OnlineLeadDetailsPage() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-5">
                   <h3 className="text-base font-semibold text-foreground">Product Information</h3>
-                  {!isLost && !isCaller && (
+                  {!isLost && (
                     <Button
                       size="sm"
                       onClick={() => {
@@ -1618,7 +1618,7 @@ export default function OnlineLeadDetailsPage() {
                                   <p className="flex-1 min-w-0 line-clamp-2 text-base font-semibold leading-tight text-foreground transition-colors group-hover:text-foreground dark:text-neutral-200 text-wrap break-words">
                                     {item.title}
                                   </p>
-                                  {!isLost && !isCaller && (
+                                  {!isLost && (
                                     <div className="flex items-center gap-1 shrink-0">
                                       <button
                                         type="button"
