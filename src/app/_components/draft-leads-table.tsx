@@ -194,7 +194,6 @@ export default function DraftLeadsTable({
       createdAt: lead.created_at ? new Date(lead.created_at).getTime() : "",
       updatedAt: lead.updated_at ?? "",
       altContact: lead.alt_contact_no ?? "",
-      status: lead.statusType?.type ?? "Draft",
       statusTag: lead.statusTag ?? lead.statusType?.tag ?? "",
       sales_executive: formatSalesExecutiveName(lead.assignedTo),
       assignedToId: lead.assignedTo?.id ?? "",
@@ -210,7 +209,6 @@ export default function DraftLeadsTable({
   }, [data, isOnlineLeadFeatureEnabled]);
 
   const totalPages = data?.pagination?.totalPages || 1;
-
   const columns = React.useMemo(
     () =>
       getDraftLeadsColumns({
