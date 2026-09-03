@@ -137,6 +137,10 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
   const customPrivilegeCodes = useAppSelector(
     (state: any) => state.customPrivileges?.codes || []
   );
+  const isSuperAdmin = userType?.trim().toLowerCase() === "super-admin";
+  const isPoUploadBlocked = shouldDisableBlockedActions && !isSuperAdmin;
+  const isVendorChangeDisabled =
+    (disabled || shouldDisableBlockedActions) && !isSuperAdmin;
 
   const canDeletePO =
     !shouldDisableBlockedActions &&
@@ -144,9 +148,8 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
     !disablePoDelete;
 
   const canUploadPO =
-    !shouldDisableBlockedActions &&
     canUploadPODocument(userType, leadStatus!, customPrivilegeCodes) &&
-    !disabled;
+    (isSuperAdmin || (!shouldDisableBlockedActions && !disabled));
 
   useEffect(() => {
     setTitleDraft(title);
@@ -198,8 +201,8 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
     ? `${poFileList.length} PO file${poFileList.length > 1 ? "s" : ""} already uploaded for "${title}". You can manage or add more files for this section.`
     : "";
 
-  // ✅ When blocked → show blockedTooltip, otherwise show existingPoMessage
-  const poTooltipMessage = shouldDisableBlockedActions
+  // Super-admins retain PO upload access when a lead is blocked.
+  const poTooltipMessage = isPoUploadBlocked
     ? blockedTooltip
     : existingPoMessage;
 
@@ -207,7 +210,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
     useUploadOrderLoginPoFiles(vendorId, leadId, orderLoginId);
 
   const handlePoUpload = async () => {
-    if (!canUsePoUpload) return;
+    if (!canUsePoUpload || !canUploadPO) return;
     if (!poFiles || poFiles.length === 0) {
       toastManager.add({
         title: "Please select at least one file.",
@@ -393,7 +396,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
               Vendor
             </label>
             <CustomeTooltip
-              value={shouldDisableBlockedActions ? blockedTooltip : ""}
+              value={isVendorChangeDisabled && shouldDisableBlockedActions ? blockedTooltip : ""}
               truncateValue={
                 <span className="block">
                   <AssignToPicker
@@ -403,7 +406,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
                     onChange={handleVendorSelect}
                     placeholder="Search vendor..."
                     emptyLabel="Select a vendor"
-                    disabled={disabled || shouldDisableBlockedActions}
+                    disabled={isVendorChangeDisabled}
                   />
                 </span>
               }
@@ -423,9 +426,9 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
                     variant="outline"
                     size="sm"
                     onClick={() =>
-                      !shouldDisableBlockedActions && setPoModalOpen(true)
+                      !isPoUploadBlocked && setPoModalOpen(true)
                     }
-                    disabled={!canUsePoUpload || shouldDisableBlockedActions}
+                    disabled={!canUsePoUpload || isPoUploadBlocked}
                     className="w-full h-9"
                   >
                     {hasExistingPoFiles ? (
@@ -487,19 +490,19 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
                   onChange={setPoFiles}
                   accept=".png,.jpg,.jpeg,.pdf,.pyo,.pytha,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip"
                   multiple
-                  disabled={!canUsePoUpload || shouldDisableBlockedActions}
+                  disabled={!canUsePoUpload || isPoUploadBlocked}
                   maxFiles={10}
                 />
 
                 <div className="flex justify-end">
                   {/* ✅ Upload button in modal — CustomeTooltip when blocked */}
                   <CustomeTooltip
-                    value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                    value={isPoUploadBlocked ? blockedTooltip : ""}
                     truncateValue={
                       <Button
                         size="sm"
                         onClick={
-                          shouldDisableBlockedActions
+                          isPoUploadBlocked
                             ? undefined
                             : handlePoUpload
                         }
@@ -507,7 +510,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
                           !canUsePoUpload ||
                           isUploadingPo ||
                           poFiles.length === 0 ||
-                          shouldDisableBlockedActions
+                          isPoUploadBlocked
                         }
                         className="flex items-center gap-2"
                       >
