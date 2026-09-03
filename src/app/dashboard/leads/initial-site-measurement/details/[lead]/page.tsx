@@ -31,7 +31,9 @@ import {
   FolderOpen,
   LockOpen,
   Lock,
+  Store as StoreIcon,
 } from "lucide-react";
+import ChangeStoreModal from "@/components/sales-executive/Lead/change-store-modal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -117,6 +119,9 @@ export default function SiteMeasurementLead() {
     (state) =>
       state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
   );
+  const isOnlineLeadFeatureEnabled = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_online_lead_feature_enabled === true,
+  );
 
   const [openDelete, setOpenDelete] = useState(false);
   const [openMoveToDesigning, setOpenMoveToDesigning] = useState(false);
@@ -124,6 +129,7 @@ export default function SiteMeasurementLead() {
   const [openMeasurement, setOpenMeasurement] = useState(false);
   const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [changeStoreOpen, setChangeStoreOpen] = useState(false);
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
@@ -137,6 +143,7 @@ export default function SiteMeasurementLead() {
   const blockLeadMutation = useBlockLead();
   const unblockLeadMutation = useUnblockLead();
   const isAuditor = userType?.trim().toLowerCase() === "auditor";
+  const isSuperAdmin = userType?.trim().toLowerCase() === "super-admin";
 
   const { data: ismUploadData } = useCheckIsmUploaded(leadIdNum);
   const isIsmUploaded = ismUploadData?.isUploaded;
@@ -452,6 +459,7 @@ export default function SiteMeasurementLead() {
               Assign Task
             </Button>
           )}
+
           <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
           {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
@@ -550,6 +558,16 @@ export default function SiteMeasurementLead() {
                       </DropdownMenuSubContent>
                     </DropdownMenuSub>
                   ))}
+
+                {isOnlineLeadFeatureEnabled && isSuperAdmin && (
+                  <DropdownMenuItem
+                    onSelect={() => setChangeStoreOpen(true)}
+                    disabled={isLoading || !lead || shouldDisableBlockedActions}
+                  >
+                    <StoreIcon className="h-4 w-4 mr-2" />
+                    Store Transfer
+                  </DropdownMenuItem>
+                )}
 
                 {/* Edit */}
                 {canEdit &&
@@ -879,6 +897,13 @@ export default function SiteMeasurementLead() {
           }
         }}
         data={{ id: leadIdNum, accountId, name: "" }}
+      />
+
+      <ChangeStoreModal
+        open={changeStoreOpen}
+        onOpenChange={setChangeStoreOpen}
+        leadId={leadIdNum}
+        currentStoreId={lead?.franchise_id}
       />
     </>
   );

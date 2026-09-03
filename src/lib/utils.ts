@@ -552,4 +552,24 @@ export function getYouTubeEmbedUrl(url: string): string | null {
   }
 
   return null;
-}
+}
+
+export function formatSalesExecutiveName(assignedTo: any): string {
+  if (!assignedTo || !assignedTo.user_name) return "";
+  const name = String(assignedTo.user_name).trim();
+  const lowerName = name.toLowerCase();
+  const role = String(
+    assignedTo.user_type?.user_type || assignedTo.user_role || assignedTo.role || ""
+  ).trim().toLowerCase();
+
+  if (
+    lowerName === "super admin" ||
+    lowerName.includes("super admin") ||
+    role === "super-admin" ||
+    role === "admin"
+  ) {
+    return "";
+  }
+  return name;
+}
+

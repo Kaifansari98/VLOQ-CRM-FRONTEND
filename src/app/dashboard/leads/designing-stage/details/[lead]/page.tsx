@@ -46,7 +46,10 @@ import {
   LockOpen,
   Lock,
   Zap,
+  Store as StoreIcon,
 } from "lucide-react";
+
+import ChangeStoreModal from "@/components/sales-executive/Lead/change-store-modal";
 
 import FastProductionDetailsModal from "@/components/sales-executive/Lead/fast-production-details-modal";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
@@ -184,6 +187,7 @@ export default function DesigningStageLead() {
   const searchParams = useSearchParams();
   const accountId = searchParams.get("accountId");
   const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
+  const [changeStoreOpen, setChangeStoreOpen] = useState(false);
   const [openCancelFastProduction, setOpenCancelFastProduction] = useState(false);
   const [fastProductionDetailsOpen, setFastProductionDetailsOpen] = useState(false);
   const revokeFastProductionMutation = useRevokeFastProductionRequest();
@@ -237,11 +241,15 @@ export default function DesigningStageLead() {
     (state) => state.auth.user?.user_type.user_type,
   );
   const isAuditor = userType?.trim().toLowerCase() === "auditor";
+  const isSuperAdmin = userType?.trim().toLowerCase() === "super-admin";
   const eligibleBookingDaysValue = useAppSelector(
     (state) => state.auth.user?.vendor?.eligible_booking_days ?? null,
   );
   const handlesLargeScaleProjects = useAppSelector(
     (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const isOnlineLeadFeatureEnabled = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_online_lead_feature_enabled === true,
   );
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
@@ -417,7 +425,7 @@ export default function DesigningStageLead() {
     : [];
   const isChatNotification = useIsChatNotification();
   const normalizedUserType = userType?.toLowerCase() ?? "";
-  const isSuperAdmin = normalizedUserType === "super-admin";
+
   const eligibleBookingDays =
     eligibleBookingDaysValue == null
       ? null
@@ -832,6 +840,7 @@ export default function DesigningStageLead() {
               Assign Task
             </Button>
           )}
+
           <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
           {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
@@ -934,6 +943,16 @@ export default function DesigningStageLead() {
                     </DropdownMenuSubContent>
                   </DropdownMenuSub>
                 )
+              )}
+
+              {isOnlineLeadFeatureEnabled && isSuperAdmin && (
+                <DropdownMenuItem
+                  onSelect={() => setChangeStoreOpen(true)}
+                  disabled={isLoading || !lead || isLeadBlocked}
+                >
+                  <StoreIcon className="h-4 w-4 mr-2" />
+                  Store Transfer
+                </DropdownMenuItem>
               )}
 
 
@@ -1344,6 +1363,13 @@ export default function DesigningStageLead() {
         open={fastProductionDetailsOpen}
         onOpenChange={setFastProductionDetailsOpen}
         leadId={leadIdNum}
+      />
+
+      <ChangeStoreModal
+        open={changeStoreOpen}
+        onOpenChange={setChangeStoreOpen}
+        leadId={leadIdNum}
+        currentStoreId={lead?.franchise_id}
       />
     </>
   );

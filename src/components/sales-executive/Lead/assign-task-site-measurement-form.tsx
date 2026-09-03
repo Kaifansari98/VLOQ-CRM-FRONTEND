@@ -58,6 +58,7 @@ interface Props {
   };
   onlyFollowUp?: boolean;
   isFastProductionEnabled?: boolean;
+  isOnlineLead?: boolean;
 }
 
 const formSchema = z
@@ -99,6 +100,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   data,
   onlyFollowUp,
   isFastProductionEnabled = false,
+  isOnlineLead: isOnlineLeadProp,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const vendorCustomUserTypeMode = useAppSelector(
@@ -140,6 +142,11 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   const router = useRouter();
   const leadId = data?.id!;
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const { data: leadData } = useLeadById(leadId, vendorId, userId);
+  const lead = leadData?.data?.lead;
+
+  const isOnlineLead = isOnlineLeadProp === true;
+
   const mutation = useAssignToSiteMeasurement(leadId);
   
   const { 
@@ -150,8 +157,6 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   const { data: draftResponse } = useFastProductionRequestDraft(vendorId, leadId);
   const hasDraft = !!draftResponse?.data?.requests?.length;
 
-  const { data: leadData } = useLeadById(leadId, vendorId, userId);
-  const lead = leadData?.data?.lead;
   const isLeadFastProductionAlready = lead?.is_fast_production === true;
   const isFastProductionPending = lead?.has_pending_fast_production_request === true;
 
@@ -185,7 +190,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     resolver: zodResolver(formSchema),
     defaultValues: {
       assign_lead_to: undefined,
-      task_type: onlyFollowUp ? "Follow Up" : "Initial Site Measurement",
+      task_type: onlyFollowUp || isOnlineLead ? "Follow Up" : "Initial Site Measurement",
       due_date: "",
       remark: "N/A",
     },
@@ -200,9 +205,11 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     "leads.open_leads.assign_task.follow_up_task",
   );
   const canShowInitialSiteMeasurementOption =
-    normalizedUserType === "custom"
-      ? canAssignInitialSiteMeasurementForCustomUser
-      : true;
+    isOnlineLead
+      ? false
+      : normalizedUserType === "custom"
+        ? canAssignInitialSiteMeasurementForCustomUser
+        : true;
   const canShowFollowUpOption = canUserShowFollowUp({
     isCustomUser: normalizedUserType === "custom",
     customPrivilegeCodes,
@@ -218,7 +225,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   });
   const allowedFastProductionRoles = ["super-admin", "admin", "sales-executive"];
   const canShowFastProductionOption = isFastProductionEnabled && allowedFastProductionRoles.includes(normalizedUserType);
-  const shouldShowInitialSiteMeasurementOption = !onlyFollowUp;
+  const shouldShowInitialSiteMeasurementOption = !onlyFollowUp && !isOnlineLead;
 
   // ✅ useLeadAccessControl replaces useLeadBlockStatus + formatBlockedAt
   const { isLeadBlocked, blockedTooltip, shouldDisableBlockedActions } =
@@ -231,6 +238,14 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
     if (!open) return;
 
     if (
+      (shouldDisableBlockedActions || isOnlineLead) &&
+      canShowFollowUpOption &&
+      form.getValues("task_type") === "Initial Site Measurement"
+    ) {
+      form.setValue("task_type", "Follow Up", {
+        shouldValidate: true,
+      });
+    } else if (
       shouldDisableBlockedActions &&
       canShowFollowUpOption &&
       form.getValues("task_type") !== "Follow Up"
@@ -239,7 +254,7 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
         shouldValidate: true,
       });
     }
-  }, [open, shouldDisableBlockedActions, canShowFollowUpOption, form]);
+  }, [open, isOnlineLead, shouldDisableBlockedActions, canShowFollowUpOption, form]);
   const initialSiteMeasurementTaskConflicts =
     taskConflicts?.restrictedTaskConflicts ?? [];
   const followUpConflicts = taskConflicts?.followUpConflicts ?? [];
@@ -589,12 +604,12 @@ const AssignTaskSiteMeasurementForm: React.FC<Props> = ({
   const resetForm = React.useCallback(() => {
     form.reset({
       assign_lead_to: undefined,
-      task_type: onlyFollowUp ? "Follow Up" : "Initial Site Measurement",
+      task_type: onlyFollowUp || isOnlineLead ? "Follow Up" : "Initial Site Measurement",
       due_date: "",
       remark: "N/A",
     });
     setApprovalFiles([]);
-  }, [form, onlyFollowUp]);
+  }, [form, onlyFollowUp, isOnlineLead]);
 
   const openFastProductionModal = React.useCallback(() => {
     resetForm();

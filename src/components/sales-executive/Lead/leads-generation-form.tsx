@@ -32,7 +32,7 @@ import {
 import { PhoneInput } from "@/components/ui/phone-input";
 import { toastManager } from "@/components/ui/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createLead, unshortenUrl, assignDesignerToLead } from "@/api/leads";
+import { createLead, unshortenUrl, assignDesignerToLead, createWalkInLead } from "@/api/leads";
 import { useAppSelector } from "@/redux/store";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 
@@ -132,9 +132,12 @@ const createFormSchema = (
   requiresFurnitureSelection: boolean,
   isB2b: boolean,
   referenceSourceIds: string[],
+  mode?: "standard" | "lead-pool",
 ) => {
   const isAdminOrSuperAdmin =
     userType === "admin" || userType === "super-admin";
+
+  const isLeadPool = mode === "lead-pool";
 
   return z
     .object({
@@ -153,44 +156,46 @@ const createFormSchema = (
         .email("Please enter a valid email")
         .optional()
         .or(z.literal("")),
-      site_type_id: isB2b
+      site_type_id: (isB2b || isLeadPool)
         ? z.string().optional().or(z.literal(""))
         : z.string().min(1, "Please select a site type"),
-      site_address: isB2b
+      site_address: (isB2b || isLeadPool)
         ? z
-            .string()
-            .optional()
-            .or(z.literal(""))
-            .refine(
-              (val) => !val || !/^(https?:\/\/[^\s]+)/i.test(val.trim()),
-              { message: "Invalid link" }
-            )
+          .string()
+          .optional()
+          .or(z.literal(""))
+          .refine(
+            (val) => !val || !/^(https?:\/\/[^\s]+)/i.test(val.trim()),
+            { message: "Invalid link" }
+          )
         : z
-            .string()
-            .min(1, "Site Address is required")
-            .max(2000)
-            .refine(
-              (val) => !/^(https?:\/\/[^\s]+)/i.test(val.trim()),
-              { message: "Invalid link" }
-            ),
-      source_id: z.string().min(1, "Please select a source"),
+          .string()
+          .min(1, "Site Address is required")
+          .max(2000)
+          .refine(
+            (val) => !/^(https?:\/\/[^\s]+)/i.test(val.trim()),
+            { message: "Invalid link" }
+          ),
+      source_id: isLeadPool
+        ? z.string().optional().or(z.literal(""))
+        : z.string().min(1, "Please select a source"),
       refered_by: z.string().max(300).optional().or(z.literal("")),
       client_id: isB2b
         ? z.string().min(1, "Please select a client")
         : z.string().optional().or(z.literal("")),
       order_number: z.string().max(100).optional().or(z.literal("")),
-      product_types: (requiresFurnitureSelection && !isB2b)
+      product_types: (requiresFurnitureSelection && !isB2b && !isLeadPool)
         ? z.array(z.string()).min(1, "Please select at least one product type")
         : z.array(z.string()).optional(),
       b2b_requirement_type_ids: (requiresFurnitureSelection && isB2b)
         ? z.array(z.string()).min(1, "Please select at least one requirement type")
         : z.array(z.string()).optional(),
-      product_structures: requiresFurnitureSelection
+      product_structures: (requiresFurnitureSelection && !isLeadPool)
         ? z
-            .array(z.string())
-            .min(1, "Please select at least one product structure")
+          .array(z.string())
+          .min(1, "Please select at least one product structure")
         : z.array(z.string()).optional(),
-      assign_to: isAdminOrSuperAdmin
+      assign_to: (isAdminOrSuperAdmin && !isLeadPool)
         ? z.string().min(1, "Please select an assignee")
         : z.string().optional(),
       assigned_by: isAdminOrSuperAdmin ? z.string() : z.string().optional(),
@@ -205,9 +210,13 @@ const createFormSchema = (
       designer_id: z.string().optional(),
       designer_remark: z.string().max(2000).optional(),
       initial_site_measurement_date: z.string().optional(),
-      priority: z.enum(["High", "Medium", "Low"], {
-        message: "Please select a priority",
-      }),
+      priority: isLeadPool
+        ? z.enum(["High", "Medium", "Low"], {
+            message: "Please select a priority",
+          }).optional()
+        : z.enum(["High", "Medium", "Low"], {
+            message: "Please select a priority",
+          }),
     })
     .superRefine((values, ctx) => {
       const requiresReferenceField =
@@ -307,16 +316,15 @@ export default function LeadsGenerationForm({
   onClose,
   mode = "standard",
 }: LeadsGenerationFormProps) {
-  void mode;
   const [files, setFiles] = useState<File[]>([]);
   const vendorId = useAppSelector((state: any) => state.auth.user?.vendor_id);
   const franchiseId = useAppSelector((state: any) => state.auth.user?.franchise_id);
   const vendorCustomUserTypeMode = useAppSelector(
     (state) =>
       state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only as
-        | boolean
-        | null
-        | undefined,
+      | boolean
+      | null
+      | undefined,
   );
   const isCustomDocNomenclatureEnabled = useAppSelector(
     (state) =>
@@ -365,7 +373,7 @@ export default function LeadsGenerationForm({
 
   const handleAddressChange = async (value: string, onChangeField: (v: string) => void) => {
     onChangeField(value);
-    
+
     const isUrl = /^(https?:\/\/[^\s]+)/i.test(value.trim());
     if (!isUrl) {
       form.clearErrors("site_address");
@@ -545,8 +553,9 @@ export default function LeadsGenerationForm({
         requiresFurnitureSelection,
         isB2b,
         referenceSourceIds,
+        mode,
       ),
-    [requiresFurnitureSelection, userType, isB2b, referenceSourceIds],
+    [requiresFurnitureSelection, userType, isB2b, referenceSourceIds, mode],
   );
 
   const form = useForm({
@@ -589,7 +598,7 @@ export default function LeadsGenerationForm({
     [clientsList, selectedClientId],
   );
   const showReferredByField =
-    isB2b && referenceSourceIds.includes(selectedSourceId);
+    isB2b && selectedSourceId && referenceSourceIds.includes(selectedSourceId);
 
   useEffect(() => {
     if (!isB2b || !selectedClient) return;
@@ -613,7 +622,7 @@ export default function LeadsGenerationForm({
   }, [isB2b, selectedClient, form]);
 
   useEffect(() => {
-    if (sourceTypes?.data && !form.getValues("source_id") && !handlesLargeScaleProjects) {
+    if (mode === "lead-pool" && sourceTypes?.data && !form.getValues("source_id") && !handlesLargeScaleProjects) {
       const onlineSource = sourceTypes.data.find(
         (s: any) => s.type?.toLowerCase() === "online"
       );
@@ -621,7 +630,7 @@ export default function LeadsGenerationForm({
         form.setValue("source_id", String(onlineSource.id));
       }
     }
-  }, [sourceTypes?.data, form, handlesLargeScaleProjects]);
+  }, [sourceTypes?.data, form, handlesLargeScaleProjects, mode]);
 
   const selectedProductTypes = form.watch("product_types");
   const selectedProductStructures = form.watch("product_structures");
@@ -629,7 +638,7 @@ export default function LeadsGenerationForm({
     useProductStructureTypes();
   const { data: productTypes, isLoading: isProductTypesLoading } =
     useProductTypes();
-  const { data: b2bRequirementTypes, isLoading: isB2bRequirementTypesLoading } = 
+  const { data: b2bRequirementTypes, isLoading: isB2bRequirementTypesLoading } =
     useB2BRequirementTypes();
 
   const selectedTypeId = selectedProductTypes?.[0];
@@ -841,10 +850,10 @@ export default function LeadsGenerationForm({
       franchiseId,
       vendorCustomUserTypeMode === true
         ? {
-            assigneeUserType: "custom",
-            requiredPrivilegeCode:
-              "leads.open_leads.details_of_lead.add_lead",
-          }
+          assigneeUserType: "custom",
+          requiredPrivilegeCode:
+            "leads.open_leads.details_of_lead.add_lead",
+        }
         : undefined,
     );
   const router = useRouter();
@@ -864,11 +873,11 @@ export default function LeadsGenerationForm({
             requiredPrivilegeCode: "leads.open_leads.details_of_lead.move_to_designing_stage",
           }
         : {
-            assigneeUserType: "designer",
-          },
+          assigneeUserType: "designer",
+        },
     );
-  const designersList = Array.isArray(designerUsers?.data) 
-    ? designerUsers.data 
+  const designersList = Array.isArray(designerUsers?.data)
+    ? designerUsers.data
     : (designerUsers?.data?.sales_executives || []);
 
   const invalidateLeadTableQueries = useCallback(async () => {
@@ -904,8 +913,47 @@ export default function LeadsGenerationForm({
     }: {
       payload: any;
       files: File[];
-    }) => createLead(payload, files),
+    }) => {
+      if (mode === "lead-pool") {
+        const walkInPayload = {
+          vendor_id: payload.vendor_id,
+          leads_name: `${payload.firstname} ${payload.lastname}`.trim(),
+          email: payload.email,
+          contact: payload.contact_no,
+          store_id: undefined,
+          remark: payload.designer_remark || "Walk-In customer",
+          created_by: payload.created_by,
+          firstname: payload.firstname,
+          lastname: payload.lastname,
+          alt_contact_no: payload.alt_contact_no,
+          site_address: payload.site_address,
+          site_type_id: payload.site_type_id,
+          source_id: payload.source_id,
+          refered_by: payload.refered_by,
+          archetech_name: payload.archetech_name,
+          archetech_number: payload.archetech_number,
+          priority: payload.priority,
+          product_types: payload.product_types,
+          product_structures: payload.product_structures,
+        };
+        return createWalkInLead(walkInPayload);
+      }
+      return createLead(payload, files);
+    },
     onSuccess: async (data: any) => {
+      if (mode === "lead-pool") {
+        toastManager.add({ title: "Walk-in lead created successfully!", type: "success" });
+        await invalidateLeadTableQueries();
+        form.reset();
+        setFiles([]);
+        onClose();
+        router.push("/dashboard/online-leads");
+        if (typeof window !== "undefined") {
+          window.location.reload();
+        }
+        return;
+      }
+
       const selectedDesignerId = form.getValues("designer_id");
       const createdLead = data?.data?.lead || data?.data || data;
       const leadId = createdLead?.id || createdLead?.lead_id;
@@ -1125,9 +1173,8 @@ export default function LeadsGenerationForm({
   };
 
   const buildRenamedSitePhotoFiles = useCallback(() => {
-    const clientName = `${form.getValues("firstname") || ""} ${
-      form.getValues("lastname") || ""
-    }`.trim();
+    const clientName = `${form.getValues("firstname") || ""} ${form.getValues("lastname") || ""
+      }`.trim();
     const furnitureTypeName =
       productTypes?.data?.find(
         (type: any) => String(type.id) === selectedProductTypes?.[0],
@@ -1147,11 +1194,11 @@ export default function LeadsGenerationForm({
 
     return isCustomVendorFlow || isCustomDocNomenclatureEnabled
       ? renameLeadSitePhotoFiles({
-          files,
-          clientName,
-          targetLabel: furnitureTypeName,
-          uploadDate,
-        })
+        files,
+        clientName,
+        targetLabel: furnitureTypeName,
+        uploadDate,
+      })
       : files;
   }, [
     files,
@@ -1171,7 +1218,7 @@ export default function LeadsGenerationForm({
       return;
     }
 
-    if (!vendorId || !createdBy || !franchiseId) {
+    if (!vendorId || !createdBy) {
       toastManager.add({ title: "User authentication required", type: "error" });
       return;
     }
@@ -1199,7 +1246,7 @@ export default function LeadsGenerationForm({
       email: values.email,
       site_address: values.site_address || undefined,
       site_type_id: values.site_type_id ? Number(values.site_type_id) : undefined,
-      source_id: Number(values.source_id),
+      source_id: values.source_id ? Number(values.source_id) : undefined,
       refered_by: values.refered_by?.trim() || undefined,
       client_id: isB2b && values.client_id ? Number(values.client_id) : undefined,
       order_number: values.order_number || undefined,
@@ -1224,8 +1271,8 @@ export default function LeadsGenerationForm({
       product_types: requiresFurnitureSelection ? values.product_types || [] : [],
       b2b_requirement_type_ids: requiresFurnitureSelection && isB2b
         ? (values.b2b_requirement_type_ids || [])
-            .map((id) => Number(id))
-            .filter((id) => Number.isFinite(id))
+          .map((id) => Number(id))
+          .filter((id) => Number.isFinite(id))
         : [],
       product_structures: requiresFurnitureSelection
         ? values.product_structures || []
@@ -1301,7 +1348,7 @@ export default function LeadsGenerationForm({
       return;
     }
 
-    if (!vendorId || !createdBy || !franchiseId) {
+    if (!vendorId || !createdBy) {
       toastManager.add({ title: "User authentication required", type: "error" });
       return;
     }
@@ -1350,8 +1397,8 @@ export default function LeadsGenerationForm({
       product_types: requiresFurnitureSelection ? values.product_types || [] : [],
       b2b_requirement_type_ids: requiresFurnitureSelection && isB2b
         ? (values.b2b_requirement_type_ids || [])
-            .map((id) => Number(id))
-            .filter((id) => Number.isFinite(id))
+          .map((id) => Number(id))
+          .filter((id) => Number.isFinite(id))
         : [],
       product_structures: requiresFurnitureSelection
         ? values.product_structures || []
@@ -1379,37 +1426,37 @@ export default function LeadsGenerationForm({
 
   return (
     <Form {...form}>
-      <form 
-          onSubmit={form.handleSubmit(onSubmit, (errors) => {
-            const errorKeys = Object.keys(errors);
-            if (errorKeys.length > 0) {
-              const firstErrorKey = errorKeys[0];
-              const el = document.querySelector(`[data-name="${firstErrorKey}"]`);
-              if (el) {
-                const isHidden = el.getBoundingClientRect().height === 0;
-                const targetScrollEl = isHidden ? (el.parentElement || el) : el;
-                
-                const scrollContainer = targetScrollEl.closest("[data-radix-scroll-area-viewport]") || targetScrollEl.closest("form");
-                if (scrollContainer instanceof HTMLElement) {
-                  const containerRect = scrollContainer.getBoundingClientRect();
-                  const elRect = targetScrollEl.getBoundingClientRect();
-                  const scrollOffset = elRect.top - containerRect.top + scrollContainer.scrollTop - (containerRect.height / 2) + (elRect.height / 2);
-                  scrollContainer.scrollTo({
-                    top: scrollOffset,
-                    behavior: "smooth",
-                  });
-                } else {
-                  targetScrollEl.scrollIntoView({ behavior: "smooth", block: "center" });
-                }
+      <form
+        onSubmit={form.handleSubmit(onSubmit, (errors) => {
+          const errorKeys = Object.keys(errors);
+          if (errorKeys.length > 0) {
+            const firstErrorKey = errorKeys[0];
+            const el = document.querySelector(`[data-name="${firstErrorKey}"]`);
+            if (el) {
+              const isHidden = el.getBoundingClientRect().height === 0;
+              const targetScrollEl = isHidden ? (el.parentElement || el) : el;
 
-                const focusable = el.querySelector("input, select, textarea, button");
-                if (focusable instanceof HTMLElement) {
-                  focusable.focus({ preventScroll: true });
-                }
+              const scrollContainer = targetScrollEl.closest("[data-radix-scroll-area-viewport]") || targetScrollEl.closest("form");
+              if (scrollContainer instanceof HTMLElement) {
+                const containerRect = scrollContainer.getBoundingClientRect();
+                const elRect = targetScrollEl.getBoundingClientRect();
+                const scrollOffset = elRect.top - containerRect.top + scrollContainer.scrollTop - (containerRect.height / 2) + (elRect.height / 2);
+                scrollContainer.scrollTo({
+                  top: scrollOffset,
+                  behavior: "smooth",
+                });
+              } else {
+                targetScrollEl.scrollIntoView({ behavior: "smooth", block: "center" });
+              }
+
+              const focusable = el.querySelector("input, select, textarea, button");
+              if (focusable instanceof HTMLElement) {
+                focusable.focus({ preventScroll: true });
               }
             }
-          })}
-          className="space-y-4 p-5">
+          }
+        })}
+        className="space-y-4 p-5">
         {/* File Upload */}
 
         {/* Client / Project (B2B) or First Name & Last Name */}
@@ -1429,7 +1476,7 @@ export default function LeadsGenerationForm({
                   return (
                     <FormItem data-name={field?.name || ""}>
                       <div className="w-full flex items-center justify-between">
-                        <FormLabel className="text-sm">Select Client *</FormLabel>
+                        <FormLabel className="text-sm">Select Client{mode !== "lead-pool" ? " *" : ""}</FormLabel>
                         <Link
                           href="/dashboard/masters-management/client-master"
                           target="_blank"
@@ -1464,7 +1511,7 @@ export default function LeadsGenerationForm({
                 name="lastname"
                 render={({ field }) => (
                   <FormItem data-name={field?.name || ""} >
-                    <FormLabel className="text-sm">Project Name *</FormLabel>
+                    <FormLabel className="text-sm">Project Name{mode !== "lead-pool" ? " *" : ""}</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="Enter project name"
@@ -1567,7 +1614,7 @@ export default function LeadsGenerationForm({
                         handleDuplicateCheck("contact_no");
                         handleSimilarLeadCheck();
                       }}
-                       validateIndianNumber={true}
+                      validateIndianNumber={true}
                     />
                   </FormControl>
                   {/* <FormDescription className="text-xs">
@@ -1645,75 +1692,75 @@ export default function LeadsGenerationForm({
 
         {/* Site Type */}
         {!isB2b && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
-          <FormField
-            control={form.control}
-            name="site_type_id"
-            render={({ field }) => {
-              const { data: siteTypes, isLoading } = useSiteTypes();
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+            <FormField
+              control={form.control}
+              name="site_type_id"
+              render={({ field }) => {
+                const { data: siteTypes, isLoading } = useSiteTypes();
 
-              // ✅ Transform API data into AssignToPicker format
-              const pickerData =
-                siteTypes?.data?.map((site: any) => ({
-                  id: site.id,
-                  label: site.type, // Display field
-                })) || [];
+                // ✅ Transform API data into AssignToPicker format
+                const pickerData =
+                  siteTypes?.data?.map((site: any) => ({
+                    id: site.id,
+                    label: site.type, // Display field
+                  })) || [];
 
-              return (
+                return (
+                  <FormItem data-name={field?.name || ""} >
+                    <FormLabel className="text-sm">
+                      Site Type{mode !== "lead-pool" ? " *" : ""}
+                    </FormLabel>
+
+                    {isLoading ? (
+                      <p className="text-xs text-muted-foreground">
+                        Loading site types...
+                      </p>
+                    ) : (
+                      <AssignToPicker
+                        data={pickerData}
+                        value={field.value ? Number(field.value) : undefined}
+                        onChange={(selectedId: number | null) => {
+                          field.onChange(selectedId ? String(selectedId) : ""); // ✅ cast to string
+                        }}
+                        placeholder="Search site type..."
+                      />
+                    )}
+
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+
+            <FormField
+              control={form.control}
+              name="priority"
+              render={({ field }) => (
                 <FormItem data-name={field?.name || ""} >
-                  <FormLabel className="text-sm">
-                    Site Type *
-                  </FormLabel>
-
-                  {isLoading ? (
-                    <p className="text-xs text-muted-foreground">
-                      Loading site types...
-                    </p>
-                  ) : (
-                    <AssignToPicker
-                      data={pickerData}
-                      value={field.value ? Number(field.value) : undefined}
-                      onChange={(selectedId: number | null) => {
-                        field.onChange(selectedId ? String(selectedId) : ""); // ✅ cast to string
-                      }}
-                      placeholder="Search site type..."
-                    />
-                  )}
-
+                  <FormLabel className="text-sm">Priority{mode !== "lead-pool" ? " *" : ""}</FormLabel>
+                  <AssignToPicker
+                    data={priorityOptions.map((option) => ({
+                      id: option.id,
+                      label: option.label,
+                    }))}
+                    value={
+                      priorityOptions.find((option) => option.value === field.value)
+                        ?.id
+                    }
+                    onChange={(selectedId: number | null) => {
+                      const selected = priorityOptions.find(
+                        (option) => option.id === selectedId
+                      );
+                      if (selected) field.onChange(selected.value);
+                    }}
+                    placeholder="Select priority..."
+                  />
                   <FormMessage />
                 </FormItem>
-              );
-            }}
-          />
-
-          <FormField
-            control={form.control}
-            name="priority"
-            render={({ field }) => (
-              <FormItem data-name={field?.name || ""} >
-                <FormLabel className="text-sm">Priority *</FormLabel>
-                <AssignToPicker
-                  data={priorityOptions.map((option) => ({
-                    id: option.id,
-                    label: option.label,
-                  }))}
-                  value={
-                    priorityOptions.find((option) => option.value === field.value)
-                      ?.id
-                  }
-                  onChange={(selectedId: number | null) => {
-                    const selected = priorityOptions.find(
-                      (option) => option.id === selectedId
-                    );
-                    if (selected) field.onChange(selected.value);
-                  }}
-                  placeholder="Select priority..."
-                />
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+              )}
+            />
+          </div>
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
@@ -1723,7 +1770,7 @@ export default function LeadsGenerationForm({
             render={({ field }) => {
               return (
                 <FormItem data-name={field?.name || ""} >
-                  <FormLabel className="text-sm">Source *</FormLabel>
+                  <FormLabel className="text-sm">Source{mode !== "lead-pool" ? " *" : ""}</FormLabel>
 
                   {isSourceTypesLoading ? (
                     <p className="text-xs text-muted-foreground">
@@ -1782,7 +1829,7 @@ export default function LeadsGenerationForm({
                 name="refered_by"
                 render={({ field }) => (
                   <FormItem data-name={field?.name || ""} >
-                    <FormLabel className="text-sm">Referred By *</FormLabel>
+                    <FormLabel className="text-sm">Referred By{mode !== "lead-pool" ? " *" : ""}</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="Enter referred by"
@@ -1812,7 +1859,7 @@ export default function LeadsGenerationForm({
 
                   return (
                     <FormItem data-name={field?.name || ""} >
-                      <FormLabel className="text-sm">Assign Lead To *</FormLabel>
+                      <FormLabel className="text-sm">Assign Lead To{mode !== "lead-pool" ? " *" : ""}</FormLabel>
 
                       <AssignToPicker
                         data={pickerData}
@@ -1871,7 +1918,7 @@ export default function LeadsGenerationForm({
             <FormItem data-name={field?.name || ""} >
               <div className="w-full flex justify-between ">
                 <FormLabel className="text-sm">
-                  {isB2b ? "Site Address" : "Site Address *"}
+                  {isB2b ? "Site Address" : `Site Address${mode !== "lead-pool" ? " *" : ""}`}
                 </FormLabel>
                 <Button
                   type="button"
@@ -1976,7 +2023,7 @@ export default function LeadsGenerationForm({
                     return (
                       <FormItem data-name={field?.name || ""}>
                         <FormLabel className="text-sm">
-                          Requirement Type (Multi-Select) *
+                          Requirement Type (Multi-Select){mode !== "lead-pool" ? " *" : ""}
                         </FormLabel>
                         {isB2bRequirementTypesLoading ? (
                           <p className="text-xs text-muted-foreground">Loading...</p>
@@ -2020,7 +2067,7 @@ export default function LeadsGenerationForm({
 
                     return (
                       <FormItem data-name={field?.name || ""} >
-                      <FormLabel className="text-sm">Furniture Type *</FormLabel>
+                        <FormLabel className="text-sm">Furniture Type{mode !== "lead-pool" ? " *" : ""}</FormLabel>
 
                         {isProductTypesLoading ? (
                           <p className="text-xs text-muted-foreground">Loading...</p>
@@ -2071,18 +2118,18 @@ export default function LeadsGenerationForm({
                   const tooltipMessage = !hasSelectedFurnitureType
                     ? "Select a furniture type first."
                     : isKitchenStructureSingleSelect && shouldShowMaxTooltip
-                    ? "Kitchen allows only 1 furniture structure."
-                    : shouldShowMaxTooltip
-                      ? "Maximum limit is 10 per item."
-                      : "";
+                      ? "Kitchen allows only 1 furniture structure."
+                      : shouldShowMaxTooltip
+                        ? "Maximum limit is 10 per item."
+                        : "";
 
                   return (
                     <FormItem data-name={field?.name || ""} >
                       <FormLabel className="text-sm">
-                        Furniture Structure *
+                        Furniture Structure{mode !== "lead-pool" ? " *" : ""}
                       </FormLabel>
                       <FormControl>
-                      <Tooltip {...(shouldShowMaxTooltip ? { open: true } : {})}>
+                        <Tooltip {...(shouldShowMaxTooltip ? { open: true } : {})}>
                           <TooltipTrigger asChild>
                             <div className="w-full">
                               <MultipleSelector
@@ -2138,12 +2185,12 @@ export default function LeadsGenerationForm({
                               {tooltipMessage}
                             </TooltipContent>
                           )}
-                      </Tooltip>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
+                        </Tooltip>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
             </div>
           </>
@@ -2205,7 +2252,7 @@ export default function LeadsGenerationForm({
                       }}
                       placeholder="Select Architect..."
                       disabled={isArchitectsLoading}
-                    
+
                     />
                     <FormMessage />
                   </FormItem>
@@ -2407,39 +2454,41 @@ export default function LeadsGenerationForm({
 
         <div className="flex flex-row justify-end gap-2 pt-4">
           {/* Save as Draft */}
-          <AlertDialog open={openDraftModal} onOpenChange={setOpenDraftModal}>
-            <AlertDialogTrigger asChild>
-              <Button
-                type="button"
-                variant="secondary"
-                className="text-sm"
-                disabled={saveDraftMutation.isPending}
-              >
-                {saveDraftMutation.isPending ? "Saving..." : "Save as Draft"}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Save Lead as Draft?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Only the name and contact number will be required. You can
-                  fill the rest later.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => {
-                    setOpenDraftModal(false);
-                    handleSaveAsDraft();
-                  }}
-                  className="bg-primary"
+          {mode !== "lead-pool" && (
+            <AlertDialog open={openDraftModal} onOpenChange={setOpenDraftModal}>
+              <AlertDialogTrigger asChild>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="text-sm"
+                  disabled={saveDraftMutation.isPending}
                 >
-                  Confirm Save
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                  {saveDraftMutation.isPending ? "Saving..." : "Save as Draft"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Save Lead as Draft?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Only the name and contact number will be required. You can
+                    fill the rest later.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      setOpenDraftModal(false);
+                      handleSaveAsDraft();
+                    }}
+                    className="bg-primary"
+                  >
+                    Confirm Save
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
 
           {/* Create Lead Button */}
           <Button
