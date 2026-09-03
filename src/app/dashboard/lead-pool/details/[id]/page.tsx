@@ -912,7 +912,7 @@ export default function OnlineLeadDetailsPage() {
 
       if (res.data?.success) {
         toastManager.add({ title: "Lead successfully transferred to store.", type: "success" });
-        window.location.href = "/dashboard/leads/draft-lead";
+        window.location.href = "/dashboard/online-leads";
       }
     } catch (err: any) {
       console.error("Transfer to Store error:", err);

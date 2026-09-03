@@ -214,8 +214,8 @@ export default function OnlineLeadDetailsPage() {
   const userType = user?.user_type?.user_type?.toLowerCase() || "";
   const isAdmin = userType === "super-admin" || userType === "admin" || userType === "sales admin" || userType === "sales-admin";
   const isCaller = userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead" || userType === "caller";
-  const isOnlineLeadFeatureEnabled = user?.vendor?.is_online_lead_feature_enabled === true;
   const isSuperAdmin = userType === "super-admin";
+  const isOnlineLeadFeatureEnabled = isSuperAdmin || isAdmin || user?.vendor?.is_online_lead_feature_enabled === true;
 
   const [lead, setLead] = useState<OnlineLead | null>(null);
   const userFranchiseId = user?.franchise_id;
@@ -223,9 +223,10 @@ export default function OnlineLeadDetailsPage() {
   const isAuthorizedToApprove = useMemo(() => {
     if (!lead) return false;
     if (isAdmin || userType === "sales admin" || userType === "sales-admin") return true;
+    if (isCaller) return false;
     const targetStoreId = lead.pending_store_id || lead.store_id;
     return Boolean(userFranchiseId != null && targetStoreId && userFranchiseId === targetStoreId);
-  }, [lead, isAdmin, userType, userFranchiseId]);
+  }, [lead, isAdmin, isCaller, userType, userFranchiseId]);
 
   const { isApproveDisabled, approveTooltip } = useMemo(() => {
     if (!lead) return { isApproveDisabled: true, approveTooltip: "" };
@@ -280,7 +281,7 @@ export default function OnlineLeadDetailsPage() {
       });
       if (res.data?.success) {
         toastManager.add({ title: "Lead approved successfully", type: "success" });
-        fetchLeadDetails();
+        router.push("/dashboard/leads/leadstable");
       }
     } catch (err: any) {
       toastManager.add({
@@ -1497,7 +1498,7 @@ export default function OnlineLeadDetailsPage() {
               </TabsTrigger>
             </TabsList>
 
-            {isOnlineLeadFeatureEnabled && isPendingApproval && isAuthorizedToApprove && Boolean(lead?.store_id) && (
+            {(isSuperAdmin ? isOnlineLeadFeatureEnabled : (isOnlineLeadFeatureEnabled && isPendingApproval && isAuthorizedToApprove && Boolean(lead?.pending_store_id || lead?.store_id))) && (
               <div className="flex items-center gap-2.5">
                 <TooltipProvider>
                   <Tooltip>
