@@ -255,25 +255,32 @@ export default function DesigningStageLead() {
     (state) => state.customPrivileges.codes,
   );
 
+  const normalizedUserType = userType?.trim().toLowerCase();
+  const isCaller = normalizedUserType === "telecaller" || normalizedUserType === "telecaller-team-lead" || normalizedUserType === "telecaller team lead" || normalizedUserType === "caller";
+
   const canUploadQuotation =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes("leads.designing_stage.quotation.upload")
-      : true;
+      : true);
 
   const canUploadMeetings =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes("leads.designing_stage.meetings.upload")
-      : true;
+      : true);
 
   const canUploadDesigns =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes("leads.designing_stage.designs.upload")
-      : true;
+      : true);
 
   const canAccessTodoTab =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? (canUploadQuotation || canUploadMeetings || canUploadDesigns)
-      : canAccessDessingTodoTab(userType);
+      : canAccessDessingTodoTab(userType));
 
   const { data: designDocsData } = useDesignsDoc(vendorId!, leadIdNum);
   const { data: quotationDocsData } = useQuotationDoc(vendorId, leadIdNum);
@@ -291,23 +298,26 @@ export default function DesigningStageLead() {
       )
       : canViewSiteHistoryTab(userType));
   const canPerformMoveToBooking =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
         "leads.designing_stage.move_to_booking.action",
       )
-      : canMoveToBookingStage(userType);
+      : canMoveToBookingStage(userType));
   const canMarkOnHold =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
         "leads.designing_stage.details.mark_on_hold",
       )
-      : true;
+      : true);
   const canMarkAsLost =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
         "leads.designing_stage.details.mark_as_lost",
       )
-      : true;
+      : true);
   const canSeeLeadStatusMenu = canMarkOnHold || canMarkAsLost;
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
@@ -424,7 +434,6 @@ export default function DesigningStageLead() {
     ? structureInstancesData.data
     : [];
   const isChatNotification = useIsChatNotification();
-  const normalizedUserType = userType?.toLowerCase() ?? "";
 
   const eligibleBookingDays =
     eligibleBookingDaysValue == null
@@ -613,6 +622,7 @@ export default function DesigningStageLead() {
 
     // Auto-open only when booking is actually allowed for this user.
     if (
+      !isCaller &&
       canOpenBookingModal &&
       normalizedUserType !== "admin" &&
       normalizedUserType !== "super-admin"
@@ -789,7 +799,7 @@ export default function DesigningStageLead() {
           </Breadcrumb>
         </div>
         <div className="flex items-center space-x-2">
-          {!isAuditor && (
+          {!isAuditor && !isCaller && (
             <div>
               {/* Move to Booking */}
               {!canMoveToBooking ||
@@ -824,7 +834,7 @@ export default function DesigningStageLead() {
               )}
             </div>
           )}
-          {!isAuditor && (
+          {!isAuditor && !isCaller && (
             <Button
               size="sm"
               className="hidden lg:block"
@@ -839,7 +849,7 @@ export default function DesigningStageLead() {
           <AnimatedThemeToggler />
 
           {/* 🔹 Dropdown for actions */}
-          {!isAuditor && (
+          {!isAuditor && !isCaller && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
               <Button

@@ -416,10 +416,20 @@ export default function OnlineLeadDetailsPage() {
   const [assigning, setAssigning] = useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
   const [assignedToName, setAssignedToName] = useState("");
+  const isStoreAdmin = userType === "store admin" || userType === "store-admin" || userType === "store manager";
+  const [salesExecutives, setSalesExecutives] = useState<any[]>([]);
 
   const canAssign = useMemo(() => {
-    return userType === "super-admin" || userType === "admin" || userType === "telecaller team lead" || userType === "telecaller-team-lead" || userType === "sales admin" || userType === "sales-admin";
-  }, [userType]);
+    return (
+      userType === "super-admin" ||
+      userType === "admin" ||
+      userType === "telecaller team lead" ||
+      userType === "telecaller-team-lead" ||
+      userType === "sales admin" ||
+      userType === "sales-admin" ||
+      (isOnlineLeadFeatureEnabled && isStoreAdmin)
+    );
+  }, [userType, isOnlineLeadFeatureEnabled, isStoreAdmin]);
 
   // Edit modal state
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -839,6 +849,37 @@ export default function OnlineLeadDetailsPage() {
       })
       .catch(console.error);
   }, [vendorId]);
+
+  // Fetch sales executives for this store/vendor
+  useEffect(() => {
+    const effectiveVendorId = lead?.vendor_id || vendorId;
+    if (!effectiveVendorId) return;
+    const storeIdParam = lead?.store_id || lead?.pending_store_id || userFranchiseId;
+    const url = storeIdParam
+      ? `/online-leads/store/${storeIdParam}/sales-executives?vendor_id=${effectiveVendorId}`
+      : `/online-leads/sales-executives?vendor_id=${effectiveVendorId}`;
+
+    apiClient
+      .get(url)
+      .then((res) => {
+        const list = Array.isArray(res.data?.data)
+          ? res.data.data
+          : Array.isArray(res.data)
+          ? res.data
+          : [];
+        setSalesExecutives(list);
+        if (list.length > 0) {
+          setSalesExecutiveId((prev) => {
+            if (prev && list.some((se: any) => se.id.toString() === prev)) return prev;
+            if (lead?.final_assigned_leads && list.some((se: any) => se.id.toString() === lead?.final_assigned_leads?.toString())) {
+              return lead.final_assigned_leads.toString();
+            }
+            return list[0].id.toString();
+          });
+        }
+      })
+      .catch(console.error);
+  }, [vendorId, lead?.vendor_id, lead?.store_id, lead?.pending_store_id, lead?.final_assigned_leads, userFranchiseId, isAssignOpen]);
 
   // Query store callers when target store is selected for store assignment
   useEffect(() => {
@@ -1387,7 +1428,7 @@ export default function OnlineLeadDetailsPage() {
         <div className="flex items-center gap-2">
           {!isLost && (
             <>
-              {isOnlineLeadFeatureEnabled && (isSuperAdmin || isAdmin || isCaller) && (
+              {isOnlineLeadFeatureEnabled && (isSuperAdmin || isAdmin) && (
                 <Button
                   size="sm"
                   onClick={() => {
@@ -1399,81 +1440,88 @@ export default function OnlineLeadDetailsPage() {
                   <Store className="w-3.5 h-3.5" /> {lead?.franchise?.franchise_name ? lead.franchise.franchise_name.replace(/vloq|furnix/gi, "").trim() : "Select Store"}
                 </Button>
               )}
-              <Button
-                size="sm"
-                onClick={() => {
-                  setIsCallOpen(true);
-                }}
-                className="bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-2 h-9"
-              >
-                <PhoneCall className="w-3.5 h-3.5" /> Follow up
-              </Button>
+              {!(isCaller && isOnlineLeadFeatureEnabled) && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setIsCallOpen(true);
+                  }}
+                  className="bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-2 h-9"
+                >
+                  <PhoneCall className="w-3.5 h-3.5" /> Follow up
+                </Button>
+              )}
             </>
           )}
 
           <NotificationBell />
           <AnimatedThemeToggler />
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="relative bg-accent p-1.5 rounded-sm"
-              >
-                <EllipsisVertical size={22} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {!isLost ? (
-                <>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      if (!lead) return;
-                      const parts = (lead.leads_name || "").trim().split(" ");
-                      const fName = lead.firstname || parts[0] || "";
-                      const lName = lead.lastname || parts.slice(1).join(" ") || "";
-                      setEditFirstName(fName);
-                      setEditLastName(lName);
-                      setEditName(lead.leads_name || "");
-                      setEditEmail(lead.email || "");
-                      setEditContact(lead.contact ? (lead.contact.startsWith("+") ? lead.contact : `+91${lead.contact}`) : "");
-                      setEditAltContact(lead.alt_contact_no ? (lead.alt_contact_no.startsWith("+") ? lead.alt_contact_no : `+91${lead.alt_contact_no}`) : "");
-                      setEditSiteAddress(lead.site_address || "");
-                      setEditRemark(lead.remark || "");
-                      setEditPriority(lead.priority || "");
-                      const onlineSrc = sourceTypes.find((s) => s.type?.toLowerCase() === "online");
-                      setEditSourceId(lead.sourceRelation?.id?.toString() || onlineSrc?.id?.toString() || "");
-                      setEditSiteTypeId(lead.siteTypeRelation?.id?.toString() || "");
-                      setEditArchName(lead.archetech_name || "");
-                      setEditArchNumber(lead.archetech_number || "");
-                      setEditReferedBy(lead.refered_by || "");
-                      setIsEditOpen(true);
-                    }}
-                  >
-                    <PencilLine className="w-4 h-4 mr-2" /> Edit
-                  </DropdownMenuItem>
-                  {canAssign && (
+          {!(isCaller && isOnlineLeadFeatureEnabled) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="relative bg-accent p-1.5 rounded-sm"
+                >
+                  <EllipsisVertical size={22} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {!isLost ? (
+                  <>
                     <DropdownMenuItem
                       onClick={() => {
-                        if (lead) {
-                          setAssigneeId(lead.assign_to ? lead.assign_to.toString() : "none");
-                          setSalesExecutiveId(lead.final_assigned_leads ? lead.final_assigned_leads.toString() : "none");
-                        }
-                        setIsAssignOpen(true);
+                        if (!lead) return;
+                        const parts = (lead.leads_name || "").trim().split(" ");
+                        const fName = lead.firstname || parts[0] || "";
+                        const lName = lead.lastname || parts.slice(1).join(" ") || "";
+                        setEditFirstName(fName);
+                        setEditLastName(lName);
+                        setEditName(lead.leads_name || "");
+                        setEditEmail(lead.email || "");
+                        setEditContact(lead.contact ? (lead.contact.startsWith("+") ? lead.contact : `+91${lead.contact}`) : "");
+                        setEditAltContact(lead.alt_contact_no ? (lead.alt_contact_no.startsWith("+") ? lead.alt_contact_no : `+91${lead.alt_contact_no}`) : "");
+                        setEditSiteAddress(lead.site_address || "");
+                        setEditRemark(lead.remark || "");
+                        setEditPriority(lead.priority || "");
+                        const onlineSrc = sourceTypes.find((s) => s.type?.toLowerCase() === "online");
+                        setEditSourceId(lead.sourceRelation?.id?.toString() || onlineSrc?.id?.toString() || "");
+                        setEditSiteTypeId(lead.siteTypeRelation?.id?.toString() || "");
+                        setEditArchName(lead.archetech_name || "");
+                        setEditArchNumber(lead.archetech_number || "");
+                        setEditReferedBy(lead.refered_by || "");
+                        setIsEditOpen(true);
                       }}
                     >
-                      <Users className="w-4 h-4 mr-2" /> Reassign Lead
+                      <PencilLine className="w-4 h-4 mr-2" /> Edit
                     </DropdownMenuItem>
-                  )}
-                </>
-              ) : (
-                <DropdownMenuItem onClick={handleMarkAsActive}>
-                  <CheckCircle2 className="w-4 h-4 mr-2 text-green-500" /> Mark as Active
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                    {canAssign && (
+                      <DropdownMenuItem
+                        onClick={() => {
+                          if (lead) {
+                            setAssigneeId(lead.assign_to ? lead.assign_to.toString() : "");
+                            const initId = lead.final_assigned_leads
+                              ? lead.final_assigned_leads.toString()
+                              : (salesExecutives[0]?.id ? salesExecutives[0].id.toString() : "");
+                            setSalesExecutiveId(initId);
+                          }
+                          setIsAssignOpen(true);
+                        }}
+                      >
+                        <Users className="w-4 h-4 mr-2" /> Assign Sales Executive
+                      </DropdownMenuItem>
+                    )}
+                  </>
+                ) : (
+                  <DropdownMenuItem onClick={handleMarkAsActive}>
+                    <CheckCircle2 className="w-4 h-4 mr-2 text-green-500" /> Mark as Active
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </header>
 
@@ -1555,7 +1603,7 @@ export default function OnlineLeadDetailsPage() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-5">
                   <h3 className="text-base font-semibold text-foreground">Product Information</h3>
-                  {!isLost && (
+                  {!isLost && !(isCaller && isOnlineLeadFeatureEnabled) && (
                     <Button
                       size="sm"
                       onClick={() => {
@@ -1607,7 +1655,7 @@ export default function OnlineLeadDetailsPage() {
                                   <p className="flex-1 min-w-0 line-clamp-2 text-base font-semibold leading-tight text-foreground transition-colors group-hover:text-foreground dark:text-neutral-200 text-wrap break-words">
                                     {item.title}
                                   </p>
-                                  {!isLost && (
+                                  {!isLost && !(isCaller && isOnlineLeadFeatureEnabled) && (
                                     <div className="flex items-center gap-1 shrink-0">
                                       <button
                                         type="button"
@@ -1758,7 +1806,7 @@ export default function OnlineLeadDetailsPage() {
                               })}
                             </span>
                           )}
-                          {latestRemarkInfo && (
+                          {latestRemarkInfo && !(isCaller && isOnlineLeadFeatureEnabled) && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -1798,20 +1846,22 @@ export default function OnlineLeadDetailsPage() {
                   <div className="w-full">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm text-muted-foreground font-medium">Design Remarks</p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const text = lead?.remark || "";
-                          setRemarkOnlyText(text);
-                          setParsedQuestionnaire(parseQuestionnaireItems(text));
-                          setIsRemarkEditOpen(true);
-                        }}
-                        className="h-7 px-2.5 gap-1 text-[11px] font-medium rounded-md hover:bg-accent border-input"
-                      >
-                        <Pencil className="w-3 h-3 text-muted-foreground" />
-                        Edit
-                      </Button>
+                      {!(isCaller && isOnlineLeadFeatureEnabled) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const text = lead?.remark || "";
+                            setRemarkOnlyText(text);
+                            setParsedQuestionnaire(parseQuestionnaireItems(text));
+                            setIsRemarkEditOpen(true);
+                          }}
+                          className="h-7 px-2.5 gap-1 text-[11px] font-medium rounded-md hover:bg-accent border-input"
+                        >
+                          <Pencil className="w-3 h-3 text-muted-foreground" />
+                          Edit
+                        </Button>
+                      )}
                     </div>
                     <div className="p-4 rounded-lg border bg-muted/10 min-h-[60px]">
                       {renderRemarkContent(lead?.remark ?? null)}
@@ -3028,6 +3078,76 @@ export default function OnlineLeadDetailsPage() {
               >
                 {submittingStore && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Assign Store
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign / Reassign Sales Executive Modal */}
+      <Dialog open={isAssignOpen} onOpenChange={setIsAssignOpen}>
+        <DialogContent className="max-w-md bg-card border border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl p-6">
+          <DialogHeader className="space-y-1.5">
+            <DialogTitle className="text-xl font-bold tracking-tight text-foreground">
+              Assign Sales Executive
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground font-medium">
+              Select a Sales Executive to assign to this online lead.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleAssignSubmit} className="space-y-5 mt-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-foreground">
+                Sales Executive <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={salesExecutiveId}
+                onChange={(e) => setSalesExecutiveId(e.target.value)}
+                className="w-full h-10 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-slate-400"
+              >
+                {salesExecutives.length === 0 ? (
+                  <option value="" disabled>
+                    -- No Sales Executives Available --
+                  </option>
+                ) : (
+                  salesExecutives.map((se) => (
+                    <option key={se.id} value={se.id.toString()}>
+                      {se.user_name || se.name}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-foreground">Remark (Optional)</label>
+              <Textarea
+                placeholder="Enter assignment remark..."
+                value={assignRemark}
+                onChange={(e) => setAssignRemark(e.target.value)}
+                className="h-20 resize-none text-sm bg-background"
+              />
+            </div>
+
+            <DialogFooter className="gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsAssignOpen(false);
+                  setAssignRemark("");
+                }}
+                className="h-10 text-xs rounded-xl"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={assigning || !salesExecutiveId}
+                className="h-10 text-xs bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-semibold rounded-xl"
+              >
+                {assigning && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Assign Sales Executive
               </Button>
             </DialogFooter>
           </form>

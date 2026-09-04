@@ -130,9 +130,10 @@ export default function OnlineLeadsPage() {
   const userFranchiseId = user?.franchise_id;
   const isSuperAdminOrAdmin = userType === "super-admin" || userType === "admin" || userType === "sales admin" || userType === "sales-admin";
   const isOnlineLeadFeatureEnabled = user?.vendor?.is_online_lead_feature_enabled === true;
+  const isCaller = userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead" || userType === "caller";
 
-  const canAssign = userType === "super-admin" || userType === "admin" || userType === "telecaller team lead" || userType === "telecaller-team-lead";
-  const canAddWalkIn = userType === "store-manager" || userType === "store manager" || userType === "super-admin" || userType === "admin" || userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead" || userType === "sales-executive" || userType === "sales executive";
+  const canAssign = (userType === "super-admin" || userType === "admin" || userType === "telecaller team lead" || userType === "telecaller-team-lead") && !(isCaller && isOnlineLeadFeatureEnabled);
+  const canAddWalkIn = (userType === "store-manager" || userType === "store manager" || userType === "super-admin" || userType === "admin" || userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead" || userType === "sales-executive" || userType === "sales executive") && !(isCaller && isOnlineLeadFeatureEnabled);
 
   const [rawLeads, setRawLeads] = useState<OnlineLead[]>([]);
   const [statusTab, setStatusTab] = useState<"active" | "pending" | "lost">("active");
@@ -289,7 +290,7 @@ export default function OnlineLeadsPage() {
 
         return (
           <Select
-            disabled={updatingPriorityId === row.original.id}
+            disabled={updatingPriorityId === row.original.id || (isCaller && isOnlineLeadFeatureEnabled)}
             value={value}
             onValueChange={(val) => handlePriorityChange(row.original.id, val)}
           >
@@ -508,7 +509,7 @@ export default function OnlineLeadsPage() {
         );
       },
     },
-  ], [canAssign, isSuperAdminOrAdmin, statuses, updatingLeadId, updatingPriorityId, userType, userFranchiseId, actingLeadId, handleApprove, handleReject, isOnlineLeadFeatureEnabled]);
+  ], [canAssign, isSuperAdminOrAdmin, statuses, updatingLeadId, updatingPriorityId, userType, userFranchiseId, actingLeadId, handleApprove, handleReject, isOnlineLeadFeatureEnabled, isCaller]);
 
   const table = useReactTable({
     data: leads,
@@ -546,9 +547,10 @@ export default function OnlineLeadsPage() {
 
   // Set default tab based on role
   useEffect(() => {
-    if (userType === "telecaller") {
+    const roleLower = userType.toLowerCase();
+    if (roleLower === "telecaller" || roleLower === "sales-executive" || roleLower === "sales executive") {
       setActiveTab("my");
-    } else if (userType === "store-manager" || userType === "store manager") {
+    } else if (roleLower === "store-manager" || roleLower === "store manager" || roleLower === "store admin" || roleLower === "store-admin") {
       setActiveTab("overall");
     } else {
       setActiveTab("pool");
