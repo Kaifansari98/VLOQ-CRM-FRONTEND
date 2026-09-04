@@ -226,7 +226,7 @@ export default function ProductionLeadDetails() {
   const canMoveReadyToDispatchStage =
     userType === "custom"
       ? customPrivilegeCodes.includes(
-        "production.production.ready_to_dispatch.enable_disable",
+        "production.ready_to_dispatch.enable_disable",
       )
       : canMoveToReadyToDispatch(effectiveUserType);
   const canUpdateExpectedDate =

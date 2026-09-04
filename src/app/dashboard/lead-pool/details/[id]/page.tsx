@@ -1336,8 +1336,8 @@ export default function OnlineLeadDetailsPage() {
   }, [lead]);
 
   const canMoveToDraft = useMemo(() => {
-    return (isAdmin || isCaller || isSalesExecutive) && !isLost;
-  }, [isAdmin, isCaller, isSalesExecutive, isLost]);
+    return (isAdmin || isSalesExecutive || isSuperAdmin || userType === "telecaller") && !isLost;
+  }, [isAdmin, isSalesExecutive, isSuperAdmin, isLost, userType]);
 
   if (loading) {
     return (
@@ -1388,7 +1388,7 @@ export default function OnlineLeadDetailsPage() {
         <div className="flex items-center gap-2">
           {!isLost && (
             <>
-              {isOnlineLeadFeatureEnabled && (isSuperAdmin || isAdmin || isCaller || isSalesExecutive) && (
+              {isOnlineLeadFeatureEnabled && (
                 <Button
                   size="sm"
                   onClick={() => {
@@ -1400,15 +1400,17 @@ export default function OnlineLeadDetailsPage() {
                   <Store className="w-3.5 h-3.5" /> {lead?.franchise?.franchise_name ? lead.franchise.franchise_name.replace(/vloq|furnix/gi, "").trim() : "Select Store"}
                 </Button>
               )}
-              <Button
-                size="sm"
-                onClick={() => {
-                  setIsCallOpen(true);
-                }}
-                className="bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-2 h-9"
-              >
-                <PhoneCall className="w-3.5 h-3.5" /> Follow up
-              </Button>
+              {true && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setIsCallOpen(true);
+                  }}
+                  className="bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-2 h-9"
+                >
+                  <PhoneCall className="w-3.5 h-3.5" /> Follow up
+                </Button>
+              )}
             </>
           )}
 
@@ -1461,66 +1463,70 @@ export default function OnlineLeadDetailsPage() {
           <NotificationBell />
           <AnimatedThemeToggler />
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="relative bg-accent p-1.5 rounded-sm"
-              >
-                <EllipsisVertical size={22} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {!isLost ? (
-                <>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      if (!lead) return;
-                      const parts = (lead.leads_name || "").trim().split(" ");
-                      const fName = lead.firstname || parts[0] || "";
-                      const lName = lead.lastname || parts.slice(1).join(" ") || "";
-                      setEditFirstName(fName);
-                      setEditLastName(lName);
-                      setEditName(lead.leads_name || "");
-                      setEditEmail(lead.email || "");
-                      setEditContact(lead.contact ? (lead.contact.startsWith("+") ? lead.contact : `+91${lead.contact}`) : "");
-                      setEditAltContact(lead.alt_contact_no ? (lead.alt_contact_no.startsWith("+") ? lead.alt_contact_no : `+91${lead.alt_contact_no}`) : "");
-                      setEditSiteAddress(lead.site_address || "");
-                      setEditRemark(lead.remark || "");
-                      setEditPriority(lead.priority || "");
-                      const onlineSrc = sourceTypes.find((s) => s.type?.toLowerCase() === "online");
-                      setEditSourceId(lead.sourceRelation?.id?.toString() || onlineSrc?.id?.toString() || "");
-                      setEditSiteTypeId(lead.siteTypeRelation?.id?.toString() || "");
-                      setEditArchName(lead.archetech_name || "");
-                      setEditArchNumber(lead.archetech_number || "");
-                      setEditReferedBy(lead.refered_by || "");
-                      setIsEditOpen(true);
-                    }}
-                  >
-                    <PencilLine className="w-4 h-4 mr-2" /> Edit
+          {!isLost && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="relative bg-accent p-1.5 rounded-sm"
+                >
+                  <EllipsisVertical size={22} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {!isLost ? (
+                  <>
+                    {true && (
+                      <DropdownMenuItem
+                        onClick={() => {
+                          if (!lead) return;
+                          const parts = (lead.leads_name || "").trim().split(" ");
+                          const fName = lead.firstname || parts[0] || "";
+                          const lName = lead.lastname || parts.slice(1).join(" ") || "";
+                          setEditFirstName(fName);
+                          setEditLastName(lName);
+                          setEditName(lead.leads_name || "");
+                          setEditEmail(lead.email || "");
+                          setEditContact(lead.contact ? (lead.contact.startsWith("+") ? lead.contact : `+91${lead.contact}`) : "");
+                          setEditAltContact(lead.alt_contact_no ? (lead.alt_contact_no.startsWith("+") ? lead.alt_contact_no : `+91${lead.alt_contact_no}`) : "");
+                          setEditSiteAddress(lead.site_address || "");
+                          setEditRemark(lead.remark || "");
+                          setEditPriority(lead.priority || "");
+                          const onlineSrc = sourceTypes.find((s) => s.type?.toLowerCase() === "online");
+                          setEditSourceId(lead.sourceRelation?.id?.toString() || onlineSrc?.id?.toString() || "");
+                          setEditSiteTypeId(lead.siteTypeRelation?.id?.toString() || "");
+                          setEditArchName(lead.archetech_name || "");
+                          setEditArchNumber(lead.archetech_number || "");
+                          setEditReferedBy(lead.refered_by || "");
+                          setIsEditOpen(true);
+                        }}
+                      >
+                        <PencilLine className="w-4 h-4 mr-2" /> Edit
+                      </DropdownMenuItem>
+                    )}
+                    {canAssign && (
+                      <DropdownMenuItem
+                        onClick={() => {
+                          if (lead) {
+                            setAssigneeId(lead.assign_to ? lead.assign_to.toString() : "none");
+                            setSalesExecutiveId(lead.final_assigned_leads ? lead.final_assigned_leads.toString() : "none");
+                          }
+                          setIsAssignOpen(true);
+                        }}
+                      >
+                        <Users className="w-4 h-4 mr-2" /> Reassign Lead
+                      </DropdownMenuItem>
+                    )}
+                  </>
+                ) : (
+                  <DropdownMenuItem onClick={handleMarkAsActive}>
+                    <CheckCircle2 className="w-4 h-4 mr-2 text-green-500" /> Mark as Active
                   </DropdownMenuItem>
-                  {canAssign && (
-                    <DropdownMenuItem
-                      onClick={() => {
-                        if (lead) {
-                          setAssigneeId(lead.assign_to ? lead.assign_to.toString() : "none");
-                          setSalesExecutiveId(lead.final_assigned_leads ? lead.final_assigned_leads.toString() : "none");
-                        }
-                        setIsAssignOpen(true);
-                      }}
-                    >
-                      <Users className="w-4 h-4 mr-2" /> Reassign Lead
-                    </DropdownMenuItem>
-                  )}
-                </>
-              ) : (
-                <DropdownMenuItem onClick={handleMarkAsActive}>
-                  <CheckCircle2 className="w-4 h-4 mr-2 text-green-500" /> Mark as Active
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </header>
 
@@ -1809,20 +1815,22 @@ export default function OnlineLeadDetailsPage() {
                   <div className="w-full">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm text-muted-foreground font-medium">Design Remarks</p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const text = lead?.remark || "";
-                          setRemarkOnlyText(text);
-                          setParsedQuestionnaire(parseQuestionnaireItems(text));
-                          setIsRemarkEditOpen(true);
-                        }}
-                        className="h-7 px-2.5 gap-1 text-[11px] font-medium rounded-md hover:bg-accent border-input"
-                      >
-                        <Pencil className="w-3 h-3 text-muted-foreground" />
-                        Edit
-                      </Button>
+                      {true && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const text = lead?.remark || "";
+                            setRemarkOnlyText(text);
+                            setParsedQuestionnaire(parseQuestionnaireItems(text));
+                            setIsRemarkEditOpen(true);
+                          }}
+                          className="h-7 px-2.5 gap-1 text-[11px] font-medium rounded-md hover:bg-accent border-input"
+                        >
+                          <Pencil className="w-3 h-3 text-muted-foreground" />
+                          Edit
+                        </Button>
+                      )}
                     </div>
                     <div className="p-4 rounded-lg border bg-muted/10 min-h-[60px]">
                       {renderRemarkContent(lead?.remark ?? null)}

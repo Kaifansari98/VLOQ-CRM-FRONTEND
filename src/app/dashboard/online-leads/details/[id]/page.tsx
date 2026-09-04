@@ -214,8 +214,8 @@ export default function OnlineLeadDetailsPage() {
   const userType = user?.user_type?.user_type?.toLowerCase() || "";
   const isAdmin = userType === "super-admin" || userType === "admin" || userType === "sales admin" || userType === "sales-admin";
   const isCaller = userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead" || userType === "caller";
-  const isOnlineLeadFeatureEnabled = user?.vendor?.is_online_lead_feature_enabled === true;
   const isSuperAdmin = userType === "super-admin";
+  const isOnlineLeadFeatureEnabled = isSuperAdmin || isAdmin || user?.vendor?.is_online_lead_feature_enabled === true;
 
   const [lead, setLead] = useState<OnlineLead | null>(null);
   const userFranchiseId = user?.franchise_id;
@@ -223,9 +223,10 @@ export default function OnlineLeadDetailsPage() {
   const isAuthorizedToApprove = useMemo(() => {
     if (!lead) return false;
     if (isAdmin || userType === "sales admin" || userType === "sales-admin") return true;
+    if (isCaller) return false;
     const targetStoreId = lead.pending_store_id || lead.store_id;
     return Boolean(userFranchiseId != null && targetStoreId && userFranchiseId === targetStoreId);
-  }, [lead, isAdmin, userType, userFranchiseId]);
+  }, [lead, isAdmin, isCaller, userType, userFranchiseId]);
 
   const { isApproveDisabled, approveTooltip } = useMemo(() => {
     if (!lead) return { isApproveDisabled: true, approveTooltip: "" };
@@ -280,7 +281,7 @@ export default function OnlineLeadDetailsPage() {
       });
       if (res.data?.success) {
         toastManager.add({ title: "Lead approved successfully", type: "success" });
-        fetchLeadDetails();
+        router.push("/dashboard/leads/leadstable");
       }
     } catch (err: any) {
       toastManager.add({
@@ -1428,7 +1429,7 @@ export default function OnlineLeadDetailsPage() {
         <div className="flex items-center gap-2">
           {!isLost && (
             <>
-              {isOnlineLeadFeatureEnabled && (isSuperAdmin || isAdmin) && (
+              {isOnlineLeadFeatureEnabled && (isSuperAdmin || isAdmin) && !isCaller && (
                 <Button
                   size="sm"
                   onClick={() => {
@@ -1440,7 +1441,7 @@ export default function OnlineLeadDetailsPage() {
                   <Store className="w-3.5 h-3.5" /> {lead?.franchise?.franchise_name ? lead.franchise.franchise_name.replace(/vloq|furnix/gi, "").trim() : "Select Store"}
                 </Button>
               )}
-              {!(isCaller && isOnlineLeadFeatureEnabled) && (
+              {!isCaller && (
                 <Button
                   size="sm"
                   onClick={() => {
@@ -1457,7 +1458,7 @@ export default function OnlineLeadDetailsPage() {
           <NotificationBell />
           <AnimatedThemeToggler />
 
-          {!(isCaller && isOnlineLeadFeatureEnabled) && (
+          {((!isLost && (!isCaller || canAssign)) || (isLost && !isCaller)) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -1471,46 +1472,45 @@ export default function OnlineLeadDetailsPage() {
               <DropdownMenuContent align="end">
                 {!isLost ? (
                   <>
-                    <DropdownMenuItem
-                      onClick={() => {
-                        if (!lead) return;
-                        const parts = (lead.leads_name || "").trim().split(" ");
-                        const fName = lead.firstname || parts[0] || "";
-                        const lName = lead.lastname || parts.slice(1).join(" ") || "";
-                        setEditFirstName(fName);
-                        setEditLastName(lName);
-                        setEditName(lead.leads_name || "");
-                        setEditEmail(lead.email || "");
-                        setEditContact(lead.contact ? (lead.contact.startsWith("+") ? lead.contact : `+91${lead.contact}`) : "");
-                        setEditAltContact(lead.alt_contact_no ? (lead.alt_contact_no.startsWith("+") ? lead.alt_contact_no : `+91${lead.alt_contact_no}`) : "");
-                        setEditSiteAddress(lead.site_address || "");
-                        setEditRemark(lead.remark || "");
-                        setEditPriority(lead.priority || "");
-                        const onlineSrc = sourceTypes.find((s) => s.type?.toLowerCase() === "online");
-                        setEditSourceId(lead.sourceRelation?.id?.toString() || onlineSrc?.id?.toString() || "");
-                        setEditSiteTypeId(lead.siteTypeRelation?.id?.toString() || "");
-                        setEditArchName(lead.archetech_name || "");
-                        setEditArchNumber(lead.archetech_number || "");
-                        setEditReferedBy(lead.refered_by || "");
-                        setIsEditOpen(true);
-                      }}
-                    >
-                      <PencilLine className="w-4 h-4 mr-2" /> Edit
-                    </DropdownMenuItem>
+                    {!isCaller && (
+                      <DropdownMenuItem
+                        onClick={() => {
+                          if (!lead) return;
+                          const parts = (lead.leads_name || "").trim().split(" ");
+                          const fName = lead.firstname || parts[0] || "";
+                          const lName = lead.lastname || parts.slice(1).join(" ") || "";
+                          setEditFirstName(fName);
+                          setEditLastName(lName);
+                          setEditName(lead.leads_name || "");
+                          setEditEmail(lead.email || "");
+                          setEditContact(lead.contact ? (lead.contact.startsWith("+") ? lead.contact : `+91${lead.contact}`) : "");
+                          setEditAltContact(lead.alt_contact_no ? (lead.alt_contact_no.startsWith("+") ? lead.alt_contact_no : `+91${lead.alt_contact_no}`) : "");
+                          setEditSiteAddress(lead.site_address || "");
+                          setEditRemark(lead.remark || "");
+                          setEditPriority(lead.priority || "");
+                          const onlineSrc = sourceTypes.find((s) => s.type?.toLowerCase() === "online");
+                          setEditSourceId(lead.sourceRelation?.id?.toString() || onlineSrc?.id?.toString() || "");
+                          setEditSiteTypeId(lead.siteTypeRelation?.id?.toString() || "");
+                          setEditArchName(lead.archetech_name || "");
+                          setEditArchNumber(lead.archetech_number || "");
+                          setEditReferedBy(lead.refered_by || "");
+                          setIsEditOpen(true);
+                        }}
+                      >
+                        <PencilLine className="w-4 h-4 mr-2" /> Edit
+                      </DropdownMenuItem>
+                    )}
                     {canAssign && (
                       <DropdownMenuItem
                         onClick={() => {
                           if (lead) {
-                            setAssigneeId(lead.assign_to ? lead.assign_to.toString() : "");
-                            const initId = lead.final_assigned_leads
-                              ? lead.final_assigned_leads.toString()
-                              : (salesExecutives[0]?.id ? salesExecutives[0].id.toString() : "");
-                            setSalesExecutiveId(initId);
+                            setAssigneeId(lead.assign_to ? lead.assign_to.toString() : "none");
+                            setSalesExecutiveId(lead.final_assigned_leads ? lead.final_assigned_leads.toString() : "none");
                           }
                           setIsAssignOpen(true);
                         }}
                       >
-                        <Users className="w-4 h-4 mr-2" /> Assign Sales Executive
+                        <Users className="w-4 h-4 mr-2" /> Reassign Lead
                       </DropdownMenuItem>
                     )}
                   </>
@@ -1545,7 +1545,7 @@ export default function OnlineLeadDetailsPage() {
               </TabsTrigger>
             </TabsList>
 
-            {isOnlineLeadFeatureEnabled && isPendingApproval && isAuthorizedToApprove && Boolean(lead?.store_id) && (
+            {Boolean(isOnlineLeadFeatureEnabled && isPendingApproval && (isSuperAdmin || isAuthorizedToApprove) && (lead?.pending_store_id || lead?.store_id)) && (
               <div className="flex items-center gap-2.5">
                 <TooltipProvider>
                   <Tooltip>
@@ -1603,7 +1603,7 @@ export default function OnlineLeadDetailsPage() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-5">
                   <h3 className="text-base font-semibold text-foreground">Product Information</h3>
-                  {!isLost && !(isCaller && isOnlineLeadFeatureEnabled) && (
+                  {!isLost && !isCaller && (
                     <Button
                       size="sm"
                       onClick={() => {
@@ -1655,7 +1655,7 @@ export default function OnlineLeadDetailsPage() {
                                   <p className="flex-1 min-w-0 line-clamp-2 text-base font-semibold leading-tight text-foreground transition-colors group-hover:text-foreground dark:text-neutral-200 text-wrap break-words">
                                     {item.title}
                                   </p>
-                                  {!isLost && !(isCaller && isOnlineLeadFeatureEnabled) && (
+                                  {!isLost && !isCaller && (
                                     <div className="flex items-center gap-1 shrink-0">
                                       <button
                                         type="button"
@@ -1806,7 +1806,7 @@ export default function OnlineLeadDetailsPage() {
                               })}
                             </span>
                           )}
-                          {latestRemarkInfo && !(isCaller && isOnlineLeadFeatureEnabled) && (
+                          {latestRemarkInfo && !isCaller && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -1846,7 +1846,7 @@ export default function OnlineLeadDetailsPage() {
                   <div className="w-full">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm text-muted-foreground font-medium">Design Remarks</p>
-                      {!(isCaller && isOnlineLeadFeatureEnabled) && (
+                      {!isCaller && (
                         <Button
                           variant="outline"
                           size="sm"

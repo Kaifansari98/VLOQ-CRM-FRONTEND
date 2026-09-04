@@ -108,11 +108,12 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
     [quotationDocs],
   );
   const availableDesignDocs = React.useMemo(
-    () =>
-      designDocs.filter((doc) => {
+    () => {
+      return designDocs.filter((doc) => {
         const designKey = getDesignRevisionKey(doc.doc_og_name);
         return !designKey || !usedQuotationKeys.has(designKey);
-      }),
+      });
+    },
     [designDocs, usedQuotationKeys],
   );
 
@@ -124,7 +125,7 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
   });
 
   useEffect(() => {
-    if (open && vendorId && leadId) {
+    if (open && vendorId && leadId && !handlesLargeScaleProjects) {
       fetchLeadB2BRequirementMappingsApi(leadId, vendorId)
         .then((res) => {
           if (res?.success && Array.isArray(res?.data)) {
@@ -140,7 +141,7 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
         })
         .catch((err) => console.error("Error fetching B2B requirement mappings:", err));
     }
-  }, [open, vendorId, leadId, form]);
+  }, [open, vendorId, leadId, handlesLargeScaleProjects, form]);
 
   React.useEffect(() => {
     if (!open) {
@@ -164,9 +165,12 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
       return;
     }
 
-    const b2bReqTypeId = data.b2b_requirement_type_id
-      ? Number(data.b2b_requirement_type_id)
-      : b2bReqTypes[0]?.id;
+    const b2bReqTypeId =
+      !handlesLargeScaleProjects && data.b2b_requirement_type_id
+        ? Number(data.b2b_requirement_type_id)
+        : !handlesLargeScaleProjects && b2bReqTypes.length > 0
+        ? b2bReqTypes[0]?.id
+        : null;
 
     if (b2bReqTypeId) {
       try {
@@ -211,9 +215,14 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
     }
 
     if ((vendorCustomUserTypeMode || handlesLargeScaleProjects) && !data.design_document_id) {
-      if (availableDesignDocs.length === 0) {
+      if (designDocs.length === 0) {
         toastManager.add({
           title: "No design files available. Please upload a design file first.",
+          type: "error",
+        });
+      } else if (availableDesignDocs.length === 0) {
+        toastManager.add({
+          title: "All designs are already linked to a quotation. Please upload a new design file.",
           type: "error",
         });
       } else {
@@ -268,6 +277,8 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
     );
   };
 
+  const displayDesignDocs = availableDesignDocs;
+
   return (
     <BaseModal
       open={open}
@@ -283,8 +294,8 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-5">
-          {/* Requirement Type Dropdown */}
-          {b2bReqTypes.length > 0 && (
+          {/* Requirement Type Dropdown for B2B (only when NOT handlesLargeScaleProjects) */}
+          {!handlesLargeScaleProjects && b2bReqTypes.length > 0 && (
             <FormField
               control={form.control}
               name="b2b_requirement_type_id"
@@ -345,7 +356,7 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
                       disabled={
                         isLoadingDesignDocs ||
                         isLoadingQuotationDocs ||
-                        availableDesignDocs.length === 0
+                        displayDesignDocs.length === 0
                       }
                     >
                       <SelectTrigger className="w-full">
@@ -353,14 +364,14 @@ const AddQuotationModal: React.FC<LeadViewModalProps> = ({
                           placeholder={
                             isLoadingDesignDocs || isLoadingQuotationDocs
                               ? "Loading design files..."
-                              : availableDesignDocs.length === 0
+                              : displayDesignDocs.length === 0
                                 ? "No design files available"
                                 : "Select one design file"
                           }
                         />
                       </SelectTrigger>
                       <SelectContent>
-                        {availableDesignDocs.map((doc) => (
+                        {displayDesignDocs.map((doc) => (
                           <SelectItem key={doc.id} value={String(doc.id)}>
                             {doc.doc_og_name}
                           </SelectItem>

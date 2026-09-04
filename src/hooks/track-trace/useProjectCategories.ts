@@ -10,22 +10,23 @@ import {
   updateProjectCategory,
   checkExternalToken,
   syncCategoriesFromExternal,
+  ProjectCategoryFilters,
 } from "@/api/track-trace/project-categories.api";
-// import {
-//   checkExternalToken,
-//   syncCategoriesFromExternal,
-// } from "@/api/track-trace/syncCategories.api";
 
 const KEYS = {
-  categories: (vendorId: number) => ["project-categories", vendorId] as const,
+  categories: (vendorId: number, filters?: ProjectCategoryFilters) =>
+    ["project-categories", vendorId, filters] as const,
   types: () => ["project-category-types"] as const,
   externalToken: (vendorId: number) => ["external-token", vendorId] as const,
 };
 
-export function useProjectCategories(vendorId?: number) {
+export function useProjectCategories(
+  vendorId?: number,
+  filters?: ProjectCategoryFilters
+) {
   return useQuery({
-    queryKey: KEYS.categories(vendorId ?? 0),
-    queryFn: () => getProjectCategories(vendorId!),
+    queryKey: KEYS.categories(vendorId ?? 0, filters),
+    queryFn: () => getProjectCategories(vendorId!, filters),
     enabled: !!vendorId,
     staleTime: 30_000,
   });

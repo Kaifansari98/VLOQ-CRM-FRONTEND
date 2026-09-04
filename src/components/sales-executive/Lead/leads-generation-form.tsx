@@ -869,9 +869,9 @@ export default function LeadsGenerationForm({
       franchiseId,
       vendorCustomUserTypeMode === true
         ? {
-          assigneeUserType: "custom",
-          requiredPrivilegeCode: "leads.designing_stage.designs.upload",
-        }
+            assigneeUserType: "custom",
+            requiredPrivilegeCode: "leads.open_leads.details_of_lead.move_to_designing_stage",
+          }
         : {
           assigneeUserType: "designer",
         },

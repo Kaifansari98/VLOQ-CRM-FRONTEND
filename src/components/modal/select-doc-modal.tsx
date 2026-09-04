@@ -135,28 +135,46 @@ const SelectDocumentModal: React.FC<Props> = ({
     [activeInstanceIds],
   );
 
+  const isDocMatchingActiveGroup = React.useCallback(
+    (doc: DocItem) => {
+      // 1. If doc is linked to a product structure instance, check if it matches activeInstanceIds
+      if (doc.product_structure_instance_id != null) {
+        if (activeInstanceIdSet.has(Number(doc.product_structure_instance_id))) {
+          return true;
+        }
+      }
+
+      // 2. If doc is linked to a product type, check if it matches activeProductTypeId
+      if (doc.product_type_id != null && activeProductTypeId != null) {
+        if (Number(doc.product_type_id) === Number(activeProductTypeId)) {
+          return true;
+        }
+      }
+
+      // 3. If doc has neither instance ID nor product_type_id, it is a general/unassigned lead document available for selection
+      if (doc.product_structure_instance_id == null && doc.product_type_id == null) {
+        return true;
+      }
+
+      return false;
+    },
+    [activeInstanceIdSet, activeProductTypeId],
+  );
+
   const filteredQuotations = useMemo(
     () =>
-      handlesLargeScaleProjects && activeInstanceIdSet.size > 0
-        ? quotations.filter((doc) =>
-            doc.product_structure_instance_id != null
-              ? activeInstanceIdSet.has(Number(doc.product_structure_instance_id))
-              : false,
-          )
+      handlesLargeScaleProjects && (activeInstanceIdSet.size > 0 || activeProductTypeId != null)
+        ? quotations.filter(isDocMatchingActiveGroup)
         : quotations,
-    [activeInstanceIdSet, handlesLargeScaleProjects, quotations],
+    [activeInstanceIdSet.size, activeProductTypeId, handlesLargeScaleProjects, isDocMatchingActiveGroup, quotations],
   );
 
   const filteredDesigns = useMemo(
     () =>
-      handlesLargeScaleProjects && activeInstanceIdSet.size > 0
-        ? designs.filter((doc) =>
-            doc.product_structure_instance_id != null
-              ? activeInstanceIdSet.has(Number(doc.product_structure_instance_id))
-              : false,
-          )
+      handlesLargeScaleProjects && (activeInstanceIdSet.size > 0 || activeProductTypeId != null)
+        ? designs.filter(isDocMatchingActiveGroup)
         : designs,
-    [activeInstanceIdSet, designs, handlesLargeScaleProjects],
+    [activeInstanceIdSet.size, activeProductTypeId, handlesLargeScaleProjects, isDocMatchingActiveGroup, designs],
   );
 
   const sortedQuotations = useMemo(

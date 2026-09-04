@@ -120,7 +120,7 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
     leadId,
     vendorId,
   );
-  const { data: docsDetails, isLoading: docsLoading } =
+  const { data: docsDetails, isLoading: docsLoading, refetch: refetchDocsDetails, isFetching: docsFetching } =
     useClientDocumentationDetails(vendorId, leadId, createdBy);
   const { mutateAsync: uploadDocs, isPending: uploading } =
     useUploadMoreClientDocumentation();
@@ -188,6 +188,12 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
       return;
     }
 
+    refetchDocsDetails();
+  }, [open, refetchDocsDetails]);
+
+  useEffect(() => {
+    if (!open) return;
+
     const hasActive = !!activeInstanceId;
     const activeExists =
       hasActive &&
@@ -231,30 +237,37 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
 
     const getBySection = (sectionId: SectionId) => {
       const grouped = docsDetails?.documents_by_instance || [];
-      const targetGroup = hasMultipleInstances
-        ? grouped.find(
-            (g) => Number(g.instance_id) === Number(resolvedInstanceId),
-          )
-        : null;
+      const flatDocs = sectionId === "project" ? flatProject : flatPytha;
 
-      // Fallback to filtering flat docs when grouped payload is missing/stale
-      const filteredFromFlat = (docs: any[]) =>
-        docs.filter(
+      if (resolvedInstanceId) {
+        const targetGroup = grouped.find(
+          (g) => Number(g.instance_id) === Number(resolvedInstanceId),
+        );
+        const groupDocs =
+          sectionId === "project"
+            ? targetGroup?.documents?.ppt
+            : targetGroup?.documents?.pytha;
+
+        if (groupDocs && groupDocs.length > 0) {
+          return groupDocs;
+        }
+
+        // Fallback to filtering flat docs
+        const filteredFromFlat = flatDocs.filter(
           (doc: any) =>
             Number(doc.product_structure_instance_id) ===
             Number(resolvedInstanceId),
         );
-
-      if (sectionId === "project") {
-        if (resolvedInstanceId) {
-          return targetGroup?.documents?.ppt || filteredFromFlat(flatProject);
+        if (filteredFromFlat.length > 0) {
+          return filteredFromFlat;
         }
-        return flatProject;
+
+        if (groupDocs) {
+          return groupDocs;
+        }
       }
-      if (resolvedInstanceId) {
-        return targetGroup?.documents?.pytha || filteredFromFlat(flatPytha);
-      }
-      return flatPytha;
+
+      return flatDocs;
     };
 
     return {
@@ -263,7 +276,6 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
     };
   }, [
     docsDetails,
-    hasMultipleInstances,
     activeInstanceId,
     displayInstances,
     validUrlInstanceId,
@@ -305,6 +317,11 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
       });
 
       setSelectedFiles([]);
+      
+      // Delay briefly to allow backend database replicas to synchronize
+      // before refetching the document lists
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      await refetchDocsDetails();
     } catch (e: any) {
       const errorMessage =
         e?.response?.data?.error ||
@@ -321,11 +338,18 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
 
   const handleConfirmDelete = () => {
     if (!confirmDelete) return;
-    deleteDocument({
-      vendorId,
-      documentId: confirmDelete,
-      deleted_by: createdBy,
-    });
+    deleteDocument(
+      {
+        vendorId,
+        documentId: confirmDelete,
+        deleted_by: createdBy,
+      },
+      {
+        onSuccess: () => {
+          refetchDocsDetails();
+        },
+      },
+    );
     setConfirmDelete(null);
   };
 
@@ -548,7 +572,7 @@ const UploadMoreClientDocumentationModal: React.FC<Props> = ({
                     </Badge>
                   </div>
 
-                  {docsLoading ? (
+                  {(docsLoading || docsFetching) ? (
                     <div className="p-8 border border-dashed rounded-lg flex items-center justify-center text-sm text-muted-foreground">
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       Loading files...

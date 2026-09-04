@@ -318,14 +318,25 @@ const data = {
 
   inventoryTraceNav: [
     {
-      title: "Inventory",
+      title: "Procurement",
       url: "#",
       icon: Warehouse,
-      items: [{ title: "Products", url: "/dashboard/inventory/master/products/list" },
-      { title: "Purchase Enquiry", url: "/dashboard/inventory/purchase-intents" },
-      { title: "Purchase Order", url: "/dashboard/inventory/purchase-orders" },
-      { title: "GRN", url: "/dashboard/inventory/grn" },
-      { title: "Payment Requisition", url: "/dashboard/inventory/payment-requisitions" },
+      items: [
+        { title: "Purchase Enquiry", url: "/dashboard/inventory/purchase-intents" },
+        { title: "Purchase Order", url: "/dashboard/inventory/purchase-orders" },
+        { title: "GRN", url: "/dashboard/inventory/grn" },
+        { title: "Payment Requisition", url: "/dashboard/inventory/payment-requisitions" },
+      ],
+    },
+    {
+      title: "Material Issue",
+      url: "#",
+      icon: Forklift,
+      items: [
+        { title: "Projects", url: "/dashboard/inventory/material-issue/projects" },
+        { title: "Freeze Items", url: "/dashboard/inventory/material-issue/freeze-items" },
+        { title: "Issued Items", url: "/dashboard/inventory/material-issue/issued-items" },
+        { title: "Dispatch", url: "/dashboard/inventory/material-issue/dispatch" },
       ],
     },
   ],
@@ -335,6 +346,10 @@ const data = {
       url: "#",
       icon: FolderKanban,
       items: [
+        {
+          title: "Products",
+          url: "/dashboard/inventory/master/products/list",
+        },
         {
           title: "Category",
           url: "/dashboard/track-trace/master/category",
@@ -458,10 +473,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     userType === "auditor" ||
     userType === "backend" ||
     userType === "factory" ||
-    userType === "site-supervisor";
+    userType === "site-supervisor" ||
+    userType === "head-site-supervisor";
   const skipFranchiseFilter =
     userType === "factory" ||
     userType === "site-supervisor" ||
+    userType === "head-site-supervisor" ||
     userType === "backend";
   const vendorId = user?.vendor_id;
   const franchiseId = selectedFranchiseId ?? user?.franchise_id ?? null;
@@ -636,8 +653,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 ...item,
                 items: item.items?.filter((subItem) =>
                   subItem.title === "Open Leads"
-                    ? customPrivilegeCodes.includes(
-                      "leads.open_leads.details_of_lead.view",
+                    ? customPrivilegeCodes.some((code) =>
+                      code.startsWith("leads.open_leads."),
                     )
                     : subItem.title === "ISM Leads"
                       ? customPrivilegeCodes.includes(
@@ -697,7 +714,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             )
                             : subItem.title === "RTD Sites"
                               ? customPrivilegeCodes.includes(
-                                "production.production.ready_to_dispatch.enable_disable",
+                                "production.ready_to_dispatch.enable_disable",
                               )
                               : true,
                     ),
@@ -759,7 +776,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             return {
               ...subItem,
               title: isOnlineLeadFeatureEnabled ? "Online Lead" : "Draft Lead",
-              url: "/dashboard/leads/draft-lead",
+              url: isOnlineLeadFeatureEnabled ? "/dashboard/leads/draft-lead" : "/dashboard/leads/draft-lead",
             };
           }
           return subItem;

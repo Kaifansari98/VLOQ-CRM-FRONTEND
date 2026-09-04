@@ -803,6 +803,7 @@ export default function DesigningStageLead() {
             <div>
               {/* Move to Booking */}
               {!canMoveToBooking ||
+                !canPerformMoveToBooking ||
                 isBookingLockedByEligibleDays ||
                 isLeadBlocked ? (
                 <div className="hidden md:block">
@@ -813,7 +814,13 @@ export default function DesigningStageLead() {
                         Move To Booking
                       </div>
                     }
-                    value={isLeadBlocked ? blockedTooltip : moveToBookingTooltip}
+                    value={
+                      isLeadBlocked
+                        ? blockedTooltip
+                        : !canPerformMoveToBooking
+                          ? "You do not have permission to move lead to booking stage."
+                          : moveToBookingTooltip
+                    }
                     contentClassName="max-w-80 text-left"
                   />
                 </div>

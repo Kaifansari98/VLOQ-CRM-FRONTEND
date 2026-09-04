@@ -398,7 +398,7 @@ export default function ClientApprovalLeadDetails() {
   const isCustomUser = userType?.toLowerCase() === "custom";
   const canRequestToTechCheckAccess = isCustomUser
     ? customPrivilegeCodes.includes(
-        "project.c  lient_documentation.request_to_techcheck.enable_disable",
+        "project.client_documentation.request_to_techcheck.enable_disable",
       )
     : canRequestToTeckCheck(userType);
 

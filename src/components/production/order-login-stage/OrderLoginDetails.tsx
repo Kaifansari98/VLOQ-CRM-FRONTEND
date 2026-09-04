@@ -10,7 +10,11 @@ import OrderLoginTab from "./OrderloginTab";
 import { useTechCheckInstanceStatus } from "@/api/tech-check";
 import { useAppSelector } from "@/redux/store";
 import { useClientDocumentationDetails } from "@/hooks/client-documentation/use-clientdocumentation";
-import { useLeadById, useLeadSuperAdminApprovalLockIns } from "@/hooks/useLeadsQueries";
+import {
+  useLeadById,
+  useLeadProductStructureInstances,
+  useLeadSuperAdminApprovalLockIns,
+} from "@/hooks/useLeadsQueries";
 import { useUpdateSoValueReceivedStatus } from "@/api/production/order-login";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
@@ -62,11 +66,26 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     (state) => state.customPrivileges.codes,
   );
   const updateSoValueReceived = useUpdateSoValueReceivedStatus(vendorId, leadId);
+  const isAccountLocInEnabled = useAppSelector(
+    (state) => state.auth.user?.vendor?.IsAccountLocInEnabled ?? false,
+  );
+  const handlesLargeScaleProjects = useAppSelector((state) => {
+    const user = state.auth.user as any;
+    return (
+      (user?.vendorMaster?.handlesLargeScaleProjects ??
+        user?.vendor?.handlesLargeScaleProjects) === true
+    );
+  });
   const {
     data: orderLoginLockIns = [],
     isLoading: orderLoginLockInsLoading,
   } = useLeadSuperAdminApprovalLockIns(vendorId, leadId, "order_login");
   const { data: leadResponse } = useLeadById(leadId, vendorId, userId);
+  const { data: structureInstancesData } = useLeadProductStructureInstances(
+    leadId,
+    vendorId,
+  );
+  const lead = leadResponse?.data?.lead;
 
   const { data: clientDocs } = useClientDocumentationDetails(
     vendorId,
@@ -77,6 +96,66 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   const isSmallOrderRequestLead =
     leadResponse?.data?.lead?.is_small_order_request === true;
   const instances = clientDocs?.product_structure_instances ?? [];
+  const largeScaleGroups = React.useMemo(() => {
+    if (!handlesLargeScaleProjects) return [];
+
+    const rawInstances = Array.isArray(structureInstancesData?.data)
+      ? structureInstancesData.data
+      : [];
+
+    const map = new Map<
+      number,
+      { productTypeId: number; title: string; subtitle?: string }
+    >();
+
+    rawInstances.forEach((inst: any) => {
+      const typeId =
+        inst.product_type_id ||
+        inst.product_type?.id ||
+        inst.productType?.id ||
+        inst.productItemCode?.productStructure?.productType?.id;
+
+      if (!typeId || map.has(Number(typeId))) return;
+
+      map.set(Number(typeId), {
+        productTypeId: Number(typeId),
+        title:
+          inst.product_type?.name ||
+          inst.productType?.type ||
+          inst.productItemCode?.productStructure?.productType?.type ||
+          inst.title ||
+          "Item Group",
+        subtitle:
+          inst.productItemCode?.item_code ||
+          inst.productStructure?.type ||
+          undefined,
+      });
+    });
+
+    return Array.from(map.values());
+  }, [handlesLargeScaleProjects, structureInstancesData?.data]);
+  const instanceToProductTypeEntries = React.useMemo(() => {
+    const rawInstances = Array.isArray(structureInstancesData?.data)
+      ? structureInstancesData.data
+      : [];
+
+    return rawInstances
+      .map((inst: any) => {
+        const productTypeId =
+          inst.product_type_id ||
+          inst.product_type?.id ||
+          inst.productType?.id ||
+          inst.productItemCode?.productStructure?.productType?.id;
+
+        if (!inst.id || !productTypeId) return null;
+
+        return {
+          instanceId: Number(inst.id),
+          productTypeId: Number(productTypeId),
+        };
+      })
+      .filter(Boolean) as Array<{ instanceId: number; productTypeId: number }>;
+  }, [structureInstancesData?.data]);
   const hasMultipleInstances = (clientDocs?.instance_count ?? 0) > 1;
   const [activeInstanceId, setActiveInstanceId] = useState<number | null>(
     resolvedInstanceId,
@@ -124,6 +203,8 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
 
   const activeTab =
     tabMapping[tabParam || ""] || forceDefaultTab || "order-login";
+  const isSoValueReceived = lead?.is_so_value_received === true;
+  const soValueReceivedAt = lead?.so_value_received_at ?? null;
   const hasPendingOrderLoginApproval = orderLoginLockIns.some((lockIn) => {
     const pendingTasks = Array.isArray(lockIn.pending_tasks)
       ? lockIn.pending_tasks
@@ -139,11 +220,19 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
 
     return !lockIn.is_approved;
   });
-  const isOrderLoginLocked =
-    orderLoginLockInsLoading || hasPendingOrderLoginApproval;
+  const hasCompletedOrderLoginApproval = orderLoginLockIns.some(
+    (lockIn) => lockIn.is_approved === true,
+  );
+  const isOrderLoginLocked = isAccountLocInEnabled
+    ? orderLoginLockInsLoading ||
+      !isSoValueReceived ||
+      !hasCompletedOrderLoginApproval
+    : false;
   const lockedTabsTooltip = orderLoginLockInsLoading
     ? "Checking accounts approval status"
-    : "Accounts approval for Order Login is still pending";
+    : !isSoValueReceived
+      ? "Mark SO Value Sent as checked to unlock Order Login actions."
+      : "Accounts approval for Order Login is still pending";
   const canViewApprovedDocuments =
     userType === "custom"
       ? customPrivilegeCodes.includes(
@@ -183,6 +272,8 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
         <ApprovedDocsSection
           leadId={leadId}
           instanceId={scopedInstanceId}
+          itemGroups={largeScaleGroups}
+          instanceToProductTypeEntries={instanceToProductTypeEntries}
           isSmallOrderRequestLead={isSmallOrderRequestLead}
           smallOrderRequestDocuments={smallOrderRequestDocuments}
         />
@@ -226,9 +317,6 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     },
   ];
 
-  const lead = leadResponse?.data?.lead;
-  const isSoValueReceived = lead?.is_so_value_received === true;
-  const soValueReceivedAt = lead?.so_value_received_at ?? null;
   const normalizedUserType = userType?.toLowerCase() ?? "";
   const canFullyManageSoValue = normalizedUserType === "super-admin";
   const canCheckSoValueOnly =
@@ -361,6 +449,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
         className="-mt-3"
         items={tabItems}
         headerRight={
+          !handlesLargeScaleProjects ? (
           <div className="flex items-start gap-3 xl:pt-1 -mt-3">
             <Checkbox
               checked={isSoValueReceived}
@@ -383,6 +472,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
               </p>
             </div>
           </div>
+          ) : null
         }
       />
 

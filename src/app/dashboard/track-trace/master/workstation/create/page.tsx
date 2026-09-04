@@ -85,6 +85,26 @@ const workstationSchema = z.object({
 
 type WorkstationFormData = z.infer<typeof workstationSchema>;
 
+const normalizeStatus = (
+  val?: string,
+): "ACTIVE" | "MAINTENANCE" | "INACTIVE" | "RETIRED" => {
+  if (!val) return "ACTIVE";
+  const s = String(val).trim().toUpperCase();
+  if (s === "MAINTENANCE") return "MAINTENANCE";
+  if (s === "INACTIVE") return "INACTIVE";
+  if (s === "RETIRED") return "RETIRED";
+  return "ACTIVE";
+};
+
+const normalizeScanType = (val?: string): "IN" | "OUT" | "BOTH" | "PASS" => {
+  if (!val) return "IN";
+  const s = String(val).trim().toUpperCase();
+  if (s === "OUT") return "OUT";
+  if (s === "BOTH") return "BOTH";
+  if (s === "PASS" || s === "PAAS") return "PASS";
+  return "IN";
+};
+
 function WorkstationFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -118,8 +138,8 @@ function WorkstationFormContent() {
       machine_name: "",
       machine_code: "",
       machine_type_id: "",
-      status: undefined,
-      scan_type: undefined,
+      status: "ACTIVE",
+      scan_type: "IN",
       description: "",
       factory_id: "",
       sequence_no: "",
@@ -131,15 +151,21 @@ function WorkstationFormContent() {
   useEffect(() => {
     if (editData) {
       form.reset({
-        machine_name: editData.machine_name,
-        machine_code: editData.machine_code,
-        machine_type_id: String(editData.machine_type_id),
-        status: editData.status as any,
-        scan_type: editData.scan_type as any,
-        description: editData.description,
+        machine_name: editData.machine_name || "",
+        machine_code: editData.machine_code || "",
+        machine_type_id: editData.machine_type_id ? String(editData.machine_type_id) : "",
+        status: normalizeStatus(editData.status),
+        scan_type: normalizeScanType(editData.scan_type),
+        description: editData.description || "",
         factory_id: editData.factory_id ? String(editData.factory_id) : "",
-        sequence_no: String(editData.sequence_no),
-        target_per_hour: String(editData.target_per_hour),
+        sequence_no:
+          editData.sequence_no !== undefined && editData.sequence_no !== null
+            ? String(editData.sequence_no)
+            : "",
+        target_per_hour:
+          editData.target_per_hour !== undefined && editData.target_per_hour !== null
+            ? String(editData.target_per_hour)
+            : "",
         machine_image: [],
       });
     }
@@ -153,6 +179,15 @@ function WorkstationFormContent() {
       })) || []
     );
   }, [machineTypes]);
+
+  if (editId && machinesLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3 text-muted-foreground">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm font-medium">Loading workstation details...</p>
+      </div>
+    );
+  }
 
   const onSubmit = (data: WorkstationFormData) => {
     if (!vendorId || !userId) {
@@ -524,11 +559,12 @@ function WorkstationFormContent() {
             <div className="flex flex-col gap-2">
               {isEdit && editData?.image_path && (
                 <div className="flex items-center gap-3 p-3 border rounded-xl bg-muted/20">
-                  <div className="relative w-14 h-14 rounded-lg border overflow-hidden bg-background shrink-0">
+                  <div className="relative w-14 h-14 rounded-lg border overflow-hidden bg-background shrink-0 flex items-center justify-center">
                     <Image
                       src={editData.image_path}
-                      alt={editData.machine_name}
+                      alt={editData.machine_name || "Workstation"}
                       fill
+                      unoptimized
                       className="object-cover"
                       sizes="56px"
                     />
