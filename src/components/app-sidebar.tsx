@@ -38,6 +38,7 @@ import { setFranchiseId } from "@/redux/slices/authSlice";
 import { usePendingMiscellaneousCount } from "@/api/installation/useUnderInstallationStageLeads";
 import { useFranchisesByVendorId } from "@/api/franchise";
 import { useUnreadBroadcastCount } from "@/api/broadcast";
+import { useVendorLeadsByTagPost } from "@/api/universalstage";
 import { useTheme } from "next-themes";
 import { sanitize } from "@/components/utils/sanitizeCapitalize";
 
@@ -484,6 +485,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const franchiseId = selectedFranchiseId ?? user?.franchise_id ?? null;
   const userId = user?.id;
   const dispatch = useAppDispatch();
+  const materialIssueProjectsPayload = React.useMemo(
+    () => ({
+      tag: "Type 9",
+      strict_status_tag: true,
+      page: 1,
+      limit: 1,
+    }),
+    [],
+  );
+  const {
+    data: materialIssueProjectsData,
+    isLoading: isMaterialIssueProjectsLoading,
+  } = useVendorLeadsByTagPost(vendorId ?? 0, materialIssueProjectsPayload);
 
   const { data: miscCountData, isLoading: isMiscLeadLoading } =
     usePendingMiscellaneousCount(
@@ -512,6 +526,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }, [dispatch, shouldBootstrapFranchise, franchiseId, franchises]);
 
   const miscLeadsCount = miscCountData?.pending_miscellaneous_leads ?? 0;
+  const materialIssueProjectsCount = materialIssueProjectsData?.count ?? 0;
 
   const { unreadCount: unreadBroadcastCount, isLoading: isBroadcastLoading } =
     useUnreadBroadcastCount(userId, vendorId ?? undefined, isSuperAdmin);
@@ -819,7 +834,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         : [];
 
     const finalInventoryItems = isSuperAdmin && isInventoryEnabled
-      ? data.inventoryTraceNav
+      ? data.inventoryTraceNav.map((section) =>
+        section.title === "Material Issue"
+          ? {
+            ...section,
+            items: section.items?.map((item) =>
+              item.title === "Projects"
+                ? {
+                  ...item,
+                  customCount: materialIssueProjectsCount,
+                  customCountLoading: isMaterialIssueProjectsLoading,
+                }
+                : item,
+            ),
+          }
+          : section,
+      )
       : [];
 
     const finalInventoryMasterItems = isSuperAdmin && isInventoryEnabled
@@ -864,6 +894,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     isCrmEnabled,
     isBroadcastEnabled,
     isInventoryEnabled,
+    materialIssueProjectsCount,
+    isMaterialIssueProjectsLoading,
     isTrackTraceEnabled,
     isOnlineLeadFeatureEnabled,
     isScanPackEnabled,
