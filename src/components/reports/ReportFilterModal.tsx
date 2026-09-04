@@ -476,11 +476,9 @@ export function ReportFilterModal({
   };
 
   const updateFilters = (updater: (prev: ReportFilters) => ReportFilters) => {
-    setFilters((prev) => {
-      const next = updater(prev);
-      syncDraft(next);
-      return next;
-    });
+    const next = updater(filters);
+    setFilters(next);
+    syncDraft(next);
   };
 
   return (

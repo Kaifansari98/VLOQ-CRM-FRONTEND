@@ -1336,8 +1336,8 @@ export default function OnlineLeadDetailsPage() {
   }, [lead]);
 
   const canMoveToDraft = useMemo(() => {
-    return (isAdmin || isSalesExecutive) && !isCaller && userType !== "telecaller" && !isLost;
-  }, [isAdmin, isCaller, isSalesExecutive, isLost, userType]);
+    return (isAdmin || isSalesExecutive || isSuperAdmin || userType === "telecaller") && !isLost;
+  }, [isAdmin, isSalesExecutive, isSuperAdmin, isLost, userType]);
 
   if (loading) {
     return (
@@ -1388,7 +1388,7 @@ export default function OnlineLeadDetailsPage() {
         <div className="flex items-center gap-2">
           {!isLost && (
             <>
-              {isOnlineLeadFeatureEnabled && (isSuperAdmin || isAdmin || isSalesExecutive) && !isCaller && userType !== "telecaller" && (
+              {isOnlineLeadFeatureEnabled && (
                 <Button
                   size="sm"
                   onClick={() => {
@@ -1400,7 +1400,7 @@ export default function OnlineLeadDetailsPage() {
                   <Store className="w-3.5 h-3.5" /> {lead?.franchise?.franchise_name ? lead.franchise.franchise_name.replace(/vloq|furnix/gi, "").trim() : "Select Store"}
                 </Button>
               )}
-              {!isCaller && (
+              {true && (
                 <Button
                   size="sm"
                   onClick={() => {
@@ -1463,7 +1463,7 @@ export default function OnlineLeadDetailsPage() {
           <NotificationBell />
           <AnimatedThemeToggler />
 
-          {((!isLost && (!isCaller || canAssign)) || (isLost && !isCaller)) && (
+          {!isLost && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -1477,7 +1477,7 @@ export default function OnlineLeadDetailsPage() {
               <DropdownMenuContent align="end">
                 {!isLost ? (
                   <>
-                    {!isCaller && (
+                    {true && (
                       <DropdownMenuItem
                         onClick={() => {
                           if (!lead) return;
@@ -1815,7 +1815,7 @@ export default function OnlineLeadDetailsPage() {
                   <div className="w-full">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm text-muted-foreground font-medium">Design Remarks</p>
-                      {!isCaller && (
+                      {true && (
                         <Button
                           variant="outline"
                           size="sm"
