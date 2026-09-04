@@ -168,6 +168,7 @@ export default function ProductionFilesSection({
   }, [savedRemark]);
 
   const handleRemarkSave = async () => {
+    if (readOnly) return;
     if (!remark.trim()) {
       toastManager.add({ title: "Remark cannot be empty.", type: "error" });
       return;
@@ -191,6 +192,7 @@ export default function ProductionFilesSection({
 
   // ✅ Handle Upload
   const handleUpload = async () => {
+    if (readOnly) return;
     if (selectedFiles.length === 0) {
       toastManager.add({ title: "Please select at least one file to upload.", type: "error" });
       return;
@@ -247,6 +249,7 @@ export default function ProductionFilesSection({
   };
 
   const handleConfirmDelete = () => {
+    if (readOnly) return;
     if (confirmDelete) {
       deleteDocument({
         vendorId: vendorId!,
@@ -308,6 +311,7 @@ export default function ProductionFilesSection({
     !isAuditor &&
     canUploadOrDeleteOrderLogin(userType ?? "", effectiveStage);
   const canUploadProductionFiles =
+    !readOnly &&
     !shouldDisableActions &&
     (
       userType === "custom"
@@ -318,6 +322,7 @@ export default function ProductionFilesSection({
     );
 
   const canDeleteProductionFiles =
+    !readOnly &&
     !shouldDisableActions &&
     (
       userType === "custom"
@@ -342,12 +347,14 @@ export default function ProductionFilesSection({
               </h2>
             </div>
             <p className="text-xs text-muted-foreground ml-7">
-              Upload and manage production files associated with this
+              {readOnly
+                ? "Preview and download production files associated with this"
+                : "Upload and manage production files associated with this"}
             </p>
           </div>
 
           <div className="flex items-center gap-2">
-            {handlesLargeScaleProjects && (
+            {!readOnly && handlesLargeScaleProjects && (
               <Button
                 type="button"
                 variant="default"
@@ -371,7 +378,7 @@ export default function ProductionFilesSection({
         {/* -------------------------------- UPLOAD AREA -------------------------------- */}
 
 
-        {shouldDisableActions ? (
+        {!readOnly && shouldDisableActions ? (
           <div className="p-6 border-b space-y-4">
             <CustomeTooltip
               value={effectiveBlockedTooltip}
@@ -389,7 +396,7 @@ export default function ProductionFilesSection({
 
        
           </div>
-        ) : (
+        ) : !readOnly ? (
           canUploadProductionFiles && (
             <div className="p-6 border-b space-y-4">
               <FileUploadField
@@ -421,10 +428,10 @@ export default function ProductionFilesSection({
               </div>
             </div>
           )
-        )}
+        ) : null}
 
 
-        {!handlesLargeScaleProjects && (
+        {!readOnly && !handlesLargeScaleProjects && (
           <div className="p-6 border-b space-y-2">
             <p className="text-sm font-semibold tracking-tight">Remark</p>
             {shouldDisableActions ? (
@@ -500,7 +507,9 @@ export default function ProductionFilesSection({
                 No production files uploaded yet.
               </p>
               <p className="text-xs text-muted-foreground">
-                Start by uploading your CAD, Pytha, or image files.
+                {readOnly
+                  ? "No files are available to preview or download."
+                  : "Start by uploading your CAD, Pytha, or image files."}
               </p>
             </div>
           ) : (
@@ -509,7 +518,7 @@ export default function ProductionFilesSection({
                 const isImage = doc.doc_og_name?.match(
                   /\.(jpg|jpeg|png|gif|webp)$/i,
                 );
-                if (isImage) {
+                if (isImage && !readOnly) {
                   return (
                     <ImageComponent
                       key={doc.id}

@@ -137,10 +137,13 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
   const customPrivilegeCodes = useAppSelector(
     (state: any) => state.customPrivileges?.codes || []
   );
-  const isSuperAdmin = userType?.trim().toLowerCase() === "super-admin";
-  const isPoUploadBlocked = shouldDisableBlockedActions && !isSuperAdmin;
+  const normalizedUserType = userType?.trim().toLowerCase();
+  const canOverridePoAndVendorLocks =
+    normalizedUserType === "super-admin" || normalizedUserType === "backend";
+  const isPoUploadBlocked =
+    shouldDisableBlockedActions && !canOverridePoAndVendorLocks;
   const isVendorChangeDisabled =
-    (disabled || shouldDisableBlockedActions) && !isSuperAdmin;
+    (disabled || shouldDisableBlockedActions) && !canOverridePoAndVendorLocks;
 
   const canDeletePO =
     !shouldDisableBlockedActions &&
@@ -149,7 +152,8 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
 
   const canUploadPO =
     canUploadPODocument(userType, leadStatus!, customPrivilegeCodes) &&
-    (isSuperAdmin || (!shouldDisableBlockedActions && !disabled));
+    (canOverridePoAndVendorLocks ||
+      (!shouldDisableBlockedActions && !disabled));
 
   useEffect(() => {
     setTitleDraft(title);
@@ -201,7 +205,7 @@ const FileBreakUpField: React.FC<FileBreakUpFieldProps> = ({
     ? `${poFileList.length} PO file${poFileList.length > 1 ? "s" : ""} already uploaded for "${title}". You can manage or add more files for this section.`
     : "";
 
-  // Super-admins retain PO upload access when a lead is blocked.
+  // Privileged roles retain PO upload access when a lead is blocked.
   const poTooltipMessage = isPoUploadBlocked
     ? blockedTooltip
     : existingPoMessage;
