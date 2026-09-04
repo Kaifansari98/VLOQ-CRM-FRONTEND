@@ -30,11 +30,9 @@ export default function MaterialIssueProjectsPage() {
           <Separator orientation="vertical" className="mr-2 h-4" />
           <Breadcrumb>
             <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="/dashboard/inventory">
+                <BreadcrumbItem >
                   Inventory Management
-                </BreadcrumbLink>
-              </BreadcrumbItem>
+                </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
                 <BreadcrumbPage>Material Issue - Projects</BreadcrumbPage>
@@ -59,6 +57,7 @@ export default function MaterialIssueProjectsPage() {
             allVendorLeads
             strictStatusTag
             ignoreFranchiseScope
+            materialIssueReadyOnly
             onRowNavigate={navigateOrderLogin}
           />
         </Suspense>

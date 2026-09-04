@@ -343,6 +343,7 @@ export interface VendorLeadsByTagPostPayload {
   pending_services?: boolean;
   franchises?: number[];
   strict_status_tag?: boolean;
+  material_issue_ready_only?: boolean;
 }
 
 export const postVendorLeadsByTag = async (

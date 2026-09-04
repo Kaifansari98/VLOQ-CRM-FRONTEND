@@ -489,6 +489,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     () => ({
       tag: "Type 9",
       strict_status_tag: true,
+      material_issue_ready_only: true,
       page: 1,
       limit: 1,
     }),

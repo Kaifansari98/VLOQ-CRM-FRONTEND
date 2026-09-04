@@ -64,6 +64,7 @@ export interface UniversalTableProps {
   allVendorLeads?: boolean;
   strictStatusTag?: boolean;
   ignoreFranchiseScope?: boolean;
+  materialIssueReadyOnly?: boolean;
 }
 
 // -------------------------------------------------------
@@ -466,6 +467,7 @@ export function UniversalTable({
   allVendorLeads = false,
   strictStatusTag = false,
   ignoreFranchiseScope = false,
+  materialIssueReadyOnly = false,
 }: UniversalTableProps) {
   // -------------------- GLOBAL STATE --------------------
 
@@ -793,6 +795,7 @@ export function UniversalTable({
           : undefined,
       tag: type,
       strict_status_tag: strictStatusTag || undefined,
+      material_issue_ready_only: materialIssueReadyOnly || undefined,
 
       page: overallPagination.pageIndex + 1,
       limit: overallPagination.pageSize,
@@ -844,6 +847,7 @@ export function UniversalTable({
     ignoreFranchiseScope,
     type,
     strictStatusTag,
+    materialIssueReadyOnly,
     franchiseId,
     overallPagination,
     overallSorting,

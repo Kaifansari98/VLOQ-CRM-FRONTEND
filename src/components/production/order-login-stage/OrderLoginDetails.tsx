@@ -15,7 +15,10 @@ import {
   useLeadProductStructureInstances,
   useLeadSuperAdminApprovalLockIns,
 } from "@/hooks/useLeadsQueries";
-import { useUpdateSoValueReceivedStatus } from "@/api/production/order-login";
+import {
+  useProductionFiles,
+  useUpdateSoValueReceivedStatus,
+} from "@/api/production/order-login";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
 import {
@@ -187,6 +190,11 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
     leadId,
     scopedInstanceId,
   );
+  const { data: materialIssueProductionFiles = [] } = useProductionFiles(
+    vendorId,
+    leadId,
+    scopedInstanceId,
+  );
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -252,9 +260,19 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
           "production.order_login.order_login_details.enable_disable",
         )
       : true;
-  const safeDefaultTab =
-    isOrderLoginLocked &&
-    (activeTab === "order-login" || activeTab === "production-files")
+  const hasMaterialIssueProductionFiles =
+    Array.isArray(materialIssueProductionFiles) &&
+    materialIssueProductionFiles.length > 0;
+  const isMaterialIssueOrderLoginDisabled =
+    isMaterialIssueView && !hasMaterialIssueProductionFiles;
+  const safeDefaultTab = isMaterialIssueView
+    ? tabParam
+      ? activeTab === "approved-docs"
+        ? "production-files"
+        : activeTab
+      : "production-files"
+    : isOrderLoginLocked &&
+        (activeTab === "order-login" || activeTab === "production-files")
       ? "approved-docs"
       : activeTab;
   const resolvedDefaultTab =
@@ -262,24 +280,28 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
   const smallOrderRequestDocuments =
     leadResponse?.data?.lead?.smallOrderRequest?.documents ?? [];
   const tabItems = [
-    {
-      id: "approved-docs",
-      title: "Approved Documents",
-      color: "bg-zinc-800 hover:bg-zinc-900",
-      disabled: !canViewApprovedDocuments,
-      disabledReason:
-        "You don’t have permission to access Approved Documents.",
-      cardContent: (
-        <ApprovedDocsSection
-          leadId={leadId}
-          instanceId={scopedInstanceId}
-          itemGroups={largeScaleGroups}
-          instanceToProductTypeEntries={instanceToProductTypeEntries}
-          isSmallOrderRequestLead={isSmallOrderRequestLead}
-          smallOrderRequestDocuments={smallOrderRequestDocuments}
-        />
-      ),
-    },
+    ...(!isMaterialIssueView
+      ? [
+          {
+            id: "approved-docs",
+            title: "Approved Documents",
+            color: "bg-zinc-800 hover:bg-zinc-900",
+            disabled: !canViewApprovedDocuments,
+            disabledReason:
+              "You don’t have permission to access Approved Documents.",
+            cardContent: (
+              <ApprovedDocsSection
+                leadId={leadId}
+                instanceId={scopedInstanceId}
+                itemGroups={largeScaleGroups}
+                instanceToProductTypeEntries={instanceToProductTypeEntries}
+                isSmallOrderRequestLead={isSmallOrderRequestLead}
+                smallOrderRequestDocuments={smallOrderRequestDocuments}
+              />
+            ),
+          },
+        ]
+      : []),
     {
       id: "production-files",
       title: "Production Files",
@@ -293,6 +315,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
           leadId={leadId}
           accountId={accountId}
           instanceId={scopedInstanceId}
+          readOnly={isMaterialIssueView}
           orderLoginApprovalPending={isOrderLoginLocked}
           orderLoginApprovalPendingTooltip={lockedTabsTooltip}
         />
@@ -302,8 +325,13 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
       id: "order-login",
       title: "Order Login",
       color: "bg-zinc-800 hover:bg-zinc-900",
-      disabled: isOrderLoginLocked || !canAccessOrderLoginDetails,
-      disabledReason: !canAccessOrderLoginDetails
+      disabled:
+        isOrderLoginLocked ||
+        !canAccessOrderLoginDetails ||
+        isMaterialIssueOrderLoginDisabled,
+      disabledReason: isMaterialIssueOrderLoginDisabled
+        ? "Production File is required to perform Order Login."
+        : !canAccessOrderLoginDetails
         ? "You don’t have permission to access Order Login."
         : lockedTabsTooltip,
       cardContent: (
