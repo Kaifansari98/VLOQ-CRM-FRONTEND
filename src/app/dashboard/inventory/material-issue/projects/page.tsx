@@ -19,7 +19,7 @@ import { UniversalTable } from "@/components/custom/UniversalTable";
 const navigateOrderLogin = (row: any) =>
   `/dashboard/production/order-login/details/${row.id}?accountId=${row.accountId}${
     row.instanceId ? `&instance_id=${row.instanceId}` : ""
-  }`;
+  }&source=material-issue`;
 
 export default function MaterialIssueProjectsPage() {
   return (

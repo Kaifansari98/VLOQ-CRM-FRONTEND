@@ -47,6 +47,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
 }) => {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
+  const isMaterialIssueView = searchParams.get("source") === "material-issue";
   const instanceFromUrlRaw = searchParams.get("instance_id");
   const instanceFromUrl = instanceFromUrlRaw
     ? Number(instanceFromUrlRaw)
@@ -449,7 +450,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
         className="-mt-3"
         items={tabItems}
         headerRight={
-          !handlesLargeScaleProjects ? (
+          !isMaterialIssueView && !handlesLargeScaleProjects ? (
           <div className="flex items-start gap-3 xl:pt-1 -mt-3">
             <Checkbox
               checked={isSoValueReceived}
@@ -476,12 +477,13 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
         }
       />
 
-      <AlertDialog
-        open={pendingSoValueState !== null}
-        onOpenChange={(open) => {
-          if (!open) setPendingSoValueState(null);
-        }}
-      >
+      {!isMaterialIssueView && (
+        <AlertDialog
+          open={pendingSoValueState !== null}
+          onOpenChange={(open) => {
+            if (!open) setPendingSoValueState(null);
+          }}
+        >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
@@ -507,7 +509,8 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
+        </AlertDialog>
+      )}
     </div>
   );
 };
