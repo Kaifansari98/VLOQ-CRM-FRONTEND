@@ -34,6 +34,7 @@ interface FastProductionRow {
   ol_date: string | null;
   prod_date: string | null;
   rtd_date: string | null;
+  is_fast_production?: boolean;
 }
 
 function sanitizeStageText(value: string | null | undefined): string {
@@ -90,7 +91,8 @@ async function fetchReportData(
     params,
   });
 
-  return data?.data ?? [];
+  const rows: FastProductionRow[] = data?.data ?? [];
+  return rows.filter((row) => row.is_fast_production !== false);
 }
 
 function buildFastProductionSheet(
