@@ -374,6 +374,10 @@ const data = {
           title: "Core Product",
           url: "/dashboard/track-trace/master/core-product",
         },
+        {
+          title: "Company Vendor",
+          url: "/dashboard/inventory/master/company-vendor",
+        },
       ],
     },
   ],

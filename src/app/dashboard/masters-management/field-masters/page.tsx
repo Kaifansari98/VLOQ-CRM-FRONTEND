@@ -18,7 +18,7 @@ import MiscellaneousTypeMastersTable from "@/components/custom/MiscellaneousType
 import IssueLogTypeMastersTable from "@/components/custom/IssueLogTypeMastersTable";
 import MiscellaneousTeamMastersTable from "@/components/custom/MiscellaneousTeamMastersTable";
 import InstallerUserMastersTable from "@/components/custom/InstallerUserMastersTable";
-import CompanyVendorMastersTable from "@/components/custom/CompanyVendorMastersTable";
+import SimpleCompanyVendorMastersTable from "@/components/custom/SimpleCompanyVendorMastersTable";
 import ArchitectureMastersTable from "@/components/custom/ArchitectureMastersTable";
 import BroadcastCategoryMastersTable from "@/components/custom/BroadcastCategoryMastersTable";
 import SpecsMasterTable from "@/components/custom/SpecsMasterTable";
@@ -86,7 +86,7 @@ export default function FieldMastersPage() {
       id: "company-vendor-master",
       title: "Company Vendor Master",
       color: "bg-black hover:bg-black",
-      cardContent: <CompanyVendorMastersTable vendorIdOverride={vendorIdOverride} />,
+      cardContent: <SimpleCompanyVendorMastersTable vendorIdOverride={vendorIdOverride} />,
     },
     ...(showSpecsMaster
       ? [

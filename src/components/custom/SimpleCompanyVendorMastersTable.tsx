@@ -12,7 +12,6 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { Plus } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 import { useAppSelector } from "@/redux/store";
@@ -38,6 +37,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { PhoneInput } from "@/components/ui/phone-input";
+import { validateIndianMobileRisk } from "@/utils/phoneRiskValidator";
 
 type CompanyVendorRow = {
   srNo: number;
@@ -177,17 +178,23 @@ const getCompanyVendorColumns = ({
   },
 ];
 
-interface CompanyVendorMastersTableProps {
+interface SimpleCompanyVendorMastersTableProps {
   vendorIdOverride?: number;
 }
 
-export default function CompanyVendorMastersTable({
+export default function SimpleCompanyVendorMastersTable({
   vendorIdOverride,
-}: CompanyVendorMastersTableProps) {
-  const router = useRouter();
+}: SimpleCompanyVendorMastersTableProps) {
   const userId = useAppSelector((state) => state.auth.user?.id);
   const vendorId = vendorIdOverride ?? useAppSelector((state) => state.auth.user?.vendor_id);
-  const { data, isLoading, isError, error, refetch } = useCompanyVendorsForMaster(vendorId, true);
+  
+  // List filtered for Field Masters (is_inventory_company_vendor = false)
+  const { data, isLoading, isError, error, refetch } = useCompanyVendorsForMaster(vendorId, false);
+  
+  // Fetch all vendors to check duplicate errors across database
+  const { data: allVendorsData } = useCompanyVendorsForMaster(vendorId);
+  const allVendors = allVendorsData?.data || [];
+
   const createCompanyVendorMutation = useCreateCompanyVendor(vendorId);
   const updateCompanyVendorMutation = useUpdateCompanyVendor(vendorId);
   const updateCompanyVendorStatusMutation = useUpdateCompanyVendorStatus(vendorId);
@@ -205,10 +212,48 @@ export default function CompanyVendorMastersTable({
     company_name: "",
     point_of_contact: "",
     contact_no: "",
-    email: "",
-    address: "",
     in_house: false,
   });
+
+  // Phone validation
+  const phoneValidationError = React.useMemo(() => {
+    if (!form.contact_no) return null;
+    const clean = form.contact_no.replace(/\D/g, "").replace(/^91/, "");
+    if (clean.length > 0 && !/^[6-9]\d{9}$/.test(clean)) {
+      return "Valid 10-digit mobile number required";
+    }
+    if (clean.length === 10) {
+      const riskResult = validateIndianMobileRisk(clean);
+      if (!riskResult.isValid) {
+        return riskResult.reason || "Invalid or fake phone number";
+      }
+    }
+    return null;
+  }, [form.contact_no]);
+
+  // Duplication check validation (identical to CompanyVendorForm.tsx)
+  const duplicateErrors = React.useMemo(() => {
+    const errors: Record<string, string> = {};
+    if (allVendors && allVendors.length > 0) {
+      const activeRecordId = editingRow?.id;
+
+      const checkDup = (field: string, val: string, label: string) => {
+        if (!val) return;
+        const exists = allVendors.some((v: any) => {
+          if (activeRecordId && v.id === activeRecordId) return false;
+          return String(v[field] || "").trim().toLowerCase() === val.trim().toLowerCase();
+        });
+        if (exists) {
+          errors[field] = `${label} already exists in database`;
+        }
+      };
+
+      checkDup("vendor_code", form.vendor_code, "Company Code");
+      checkDup("company_name", form.company_name, "Company Name");
+      checkDup("contact_no", form.contact_no, "Mobile No.");
+    }
+    return errors;
+  }, [form.vendor_code, form.company_name, form.contact_no, allVendors, editingRow]);
 
   const tableData = React.useMemo<CompanyVendorRow[]>(
     () =>
@@ -231,7 +276,15 @@ export default function CompanyVendorMastersTable({
     data: tableData,
     columns: getCompanyVendorColumns({
       onEdit: (row) => {
-        router.push(`/dashboard/inventory/master/company-vendor/edit/${row.id}`);
+        setEditingRow(row);
+        setForm({
+          vendor_code: row.vendor_code,
+          company_name: row.company_name,
+          point_of_contact: row.point_of_contact,
+          contact_no: row.contact_no,
+          in_house: row.in_house,
+        });
+        setOpenEditModal(true);
       },
       onToggleStatus: (row) => {
         setStatusTargetRow(row);
@@ -269,18 +322,20 @@ export default function CompanyVendorMastersTable({
       company_name: "",
       point_of_contact: "",
       contact_no: "",
-      email: "",
-      address: "",
       in_house: false,
     });
   };
+
+  const hasDuplicateErrors = Object.keys(duplicateErrors).length > 0;
 
   const canSubmit =
     !!userId &&
     !!form.vendor_code.trim() &&
     !!form.company_name.trim() &&
     !!form.point_of_contact.trim() &&
-    !!form.contact_no.trim();
+    !!form.contact_no.trim() &&
+    !hasDuplicateErrors &&
+    !phoneValidationError;
 
   const handleCreate = () => {
     if (!canSubmit) return;
@@ -291,9 +346,8 @@ export default function CompanyVendorMastersTable({
         company_name: form.company_name.trim(),
         point_of_contact: form.point_of_contact.trim(),
         contact_no: form.contact_no.trim(),
-        email: form.email.trim() || undefined,
-        address: form.address.trim() || undefined,
         in_house: form.in_house,
+        is_inventory_company_vendor: false,
         created_by: userId!,
       },
       {
@@ -317,9 +371,8 @@ export default function CompanyVendorMastersTable({
           company_name: form.company_name.trim(),
           point_of_contact: form.point_of_contact.trim(),
           contact_no: form.contact_no.trim(),
-          email: form.email.trim() || undefined,
-          address: form.address.trim() || undefined,
           in_house: form.in_house,
+          is_inventory_company_vendor: false,
           updated_by: userId!,
         },
       },
@@ -358,25 +411,31 @@ export default function CompanyVendorMastersTable({
   const formFields = (
     <>
       <div className="space-y-2">
-        <Label htmlFor="company-vendor-code">Vendor Code</Label>
+        <Label htmlFor="company-vendor-code">Vendor Code <span className="text-red-500">*</span></Label>
         <Input
           id="company-vendor-code"
           value={form.vendor_code}
           onChange={(e) => setForm((prev) => ({ ...prev, vendor_code: e.target.value }))}
           placeholder="Enter vendor code"
         />
+        {duplicateErrors.vendor_code && (
+          <p className="text-red-500 text-xs mt-1">{duplicateErrors.vendor_code}</p>
+        )}
       </div>
       <div className="space-y-2">
-        <Label htmlFor="company-name">Company Name</Label>
+        <Label htmlFor="company-name">Company Name <span className="text-red-500">*</span></Label>
         <Input
           id="company-name"
           value={form.company_name}
           onChange={(e) => setForm((prev) => ({ ...prev, company_name: e.target.value }))}
           placeholder="Enter company name"
         />
+        {duplicateErrors.company_name && (
+          <p className="text-red-500 text-xs mt-1">{duplicateErrors.company_name}</p>
+        )}
       </div>
       <div className="space-y-2">
-        <Label htmlFor="point-of-contact">Point Of Contact</Label>
+        <Label htmlFor="point-of-contact">Point of Contact <span className="text-red-500">*</span></Label>
         <Input
           id="point-of-contact"
           value={form.point_of_contact}
@@ -385,31 +444,22 @@ export default function CompanyVendorMastersTable({
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="contact-number">Contact Number</Label>
-        <Input
+        <Label htmlFor="contact-number">Mobile No. <span className="text-red-500">*</span></Label>
+        <PhoneInput
           id="contact-number"
+          defaultCountry="IN"
           value={form.contact_no}
-          onChange={(e) => setForm((prev) => ({ ...prev, contact_no: e.target.value }))}
-          placeholder="Enter contact number"
+          onChange={(val) => setForm((prev) => ({ ...prev, contact_no: val }))}
+          placeholder="10 digit mobile"
+          validateIndianNumber={true}
+          showError={false}
         />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="company-email">Email</Label>
-        <Input
-          id="company-email"
-          value={form.email}
-          onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
-          placeholder="Enter email"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="company-address">Address</Label>
-        <Input
-          id="company-address"
-          value={form.address}
-          onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
-          placeholder="Enter address"
-        />
+        {phoneValidationError && (
+          <p className="text-red-500 text-xs mt-1">{phoneValidationError}</p>
+        )}
+        {duplicateErrors.contact_no && (
+          <p className="text-red-500 text-xs mt-1">{duplicateErrors.contact_no}</p>
+        )}
       </div>
       <div className="space-y-2">
         <Label>Is this in house ?</Label>
@@ -462,7 +512,7 @@ export default function CompanyVendorMastersTable({
             </p>
           </div>
 
-          <Button onClick={() => router.push("/dashboard/inventory/master/company-vendor/create")} className="sm:self-start">
+          <Button onClick={() => setOpenCreateModal(true)} className="sm:self-start">
             <Plus className="mr-2 h-4 w-4" />
             Create Company Vendor
           </Button>
@@ -500,7 +550,79 @@ export default function CompanyVendorMastersTable({
         </CardContent>
       </Card>
 
+      <Dialog
+        open={openCreateModal}
+        onOpenChange={(open) => {
+          setOpenCreateModal(open);
+          if (!open) resetForm();
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Company Vendor</DialogTitle>
+            <DialogDescription>
+              Enter vendor code, company name, contact details and type.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">{formFields}</div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setOpenCreateModal(false);
+                resetForm();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreate}
+              disabled={!canSubmit || createCompanyVendorMutation.isPending}
+            >
+              {createCompanyVendorMutation.isPending ? "Creating..." : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
+      <Dialog
+        open={openEditModal}
+        onOpenChange={(open) => {
+          setOpenEditModal(open);
+          if (!open) {
+            setEditingRow(null);
+            resetForm();
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Company Vendor</DialogTitle>
+            <DialogDescription>
+              Update vendor details for this entry.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">{formFields}</div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setOpenEditModal(false);
+                setEditingRow(null);
+                resetForm();
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleEdit}
+              disabled={!canSubmit || updateCompanyVendorMutation.isPending}
+            >
+              {updateCompanyVendorMutation.isPending ? "Updating..." : "Update"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={openConfirmStatusModal}

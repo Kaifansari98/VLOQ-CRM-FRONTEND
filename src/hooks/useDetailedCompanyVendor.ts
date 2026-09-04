@@ -17,9 +17,13 @@ export const getDetailedCompanyVendorQueryKey = (id?: number) => [
   id,
 ];
 // Note: This key matches the existing key so that we invalidate the main list!
-export const getCompanyVendorsMasterQueryKey = (vendorId?: number) => [
+export const getCompanyVendorsMasterQueryKey = (
+  vendorId?: number,
+  isInventory?: boolean,
+) => [
   "companyVendorsMaster",
   vendorId,
+  isInventory,
 ];
 
 export const useCompanyVendorMetaData = (vendorId?: number) => {
@@ -54,7 +58,7 @@ export const useCreateDetailedCompanyVendor = (
     onSuccess: () => {
       // Invalidate both lists
       queryClient.invalidateQueries({
-        queryKey: getCompanyVendorsMasterQueryKey(vendorId),
+        queryKey: ["companyVendorsMaster"],
       });
       queryClient.invalidateQueries({
         queryKey: getCompanyVendorMetaDataQueryKey(vendorId),
@@ -77,7 +81,7 @@ export const useUpdateDetailedCompanyVendor = (
       updateDetailedCompanyVendor(id, formData, vendorId!, userId!),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({
-        queryKey: getCompanyVendorsMasterQueryKey(vendorId),
+        queryKey: ["companyVendorsMaster"],
       });
       queryClient.invalidateQueries({
         queryKey: getDetailedCompanyVendorQueryKey(id),
@@ -99,7 +103,7 @@ export const useDeleteDetailedCompanyVendor = (
     mutationFn: (id: number) => deleteDetailedCompanyVendor(id, vendorId!, userId!),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: getCompanyVendorsMasterQueryKey(vendorId),
+        queryKey: ["companyVendorsMaster"],
       });
       queryClient.invalidateQueries({
         queryKey: ["companyVendors", vendorId],

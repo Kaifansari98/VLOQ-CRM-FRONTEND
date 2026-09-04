@@ -101,7 +101,10 @@ const getMiscellaneousTypesQueryKey = (vendorId?: number) => ["miscellaneousType
 const getIssueLogTypesQueryKey = (vendorId?: number) => ["issueLogTypes", vendorId];
 const getMiscellaneousTeamsQueryKey = (vendorId?: number) => ["miscellaneousTeams", vendorId];
 const getInstallerUsersMasterQueryKey = (vendorId?: number) => ["installerUsersMaster", vendorId];
-const getCompanyVendorsMasterQueryKey = (vendorId?: number) => ["companyVendorsMaster", vendorId];
+const getCompanyVendorsMasterQueryKey = (
+  vendorId?: number,
+  isInventory?: boolean,
+) => ["companyVendorsMaster", vendorId, isInventory];
 const getUsersMasterQueryKey = (vendorId?: number) => ["usersMaster", vendorId];
 const getPrivilegeMastersQueryKey = (
   vendorId?: number,
@@ -134,16 +137,19 @@ const useResolvedVendorId = (vendorIdOverride?: number) => {
   return vendorIdOverride ?? vendorId;
 };
 
-export const useCompanyVendorsForMaster = (vendorIdOverride?: number) => {
+export const useCompanyVendorsForMaster = (
+  vendorIdOverride?: number,
+  isInventory?: boolean,
+) => {
   const vendorId = useResolvedVendorId(vendorIdOverride);
   return useQuery({
-    queryKey: getCompanyVendorsMasterQueryKey(vendorId),
-    queryFn: () => fetchCompanyVendorsForMaster(vendorId!),
+    queryKey: getCompanyVendorsMasterQueryKey(vendorId, isInventory),
+    queryFn: () => fetchCompanyVendorsForMaster(vendorId!, isInventory),
     enabled: !!vendorId,
     retry: false,
     refetchOnWindowFocus: false,
-  })
-}
+  });
+};
 
 export const useUsersForMaster = (params: {
   page: number;
@@ -195,7 +201,7 @@ export const useCreateCompanyVendor = (vendorIdOverride?: number) => {
     mutationFn: (payload: Parameters<typeof createCompanyVendor>[1]) =>
       createCompanyVendor(vendorId!, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: getCompanyVendorsMasterQueryKey(vendorId) });
+      queryClient.invalidateQueries({ queryKey: ["companyVendorsMaster"] });
       queryClient.invalidateQueries({ queryKey: ["companyVendors", vendorId] });
       toastManager.add({
         title: "Company vendor created successfully.",
@@ -1655,7 +1661,7 @@ export const useUpdateCompanyVendor = (vendorIdOverride?: number) => {
       payload: Parameters<typeof updateCompanyVendor>[2];
     }) => updateCompanyVendor(vendorId!, companyVendorId, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: getCompanyVendorsMasterQueryKey(vendorId) });
+      queryClient.invalidateQueries({ queryKey: ["companyVendorsMaster"] });
       queryClient.invalidateQueries({ queryKey: ["companyVendors", vendorId] });
       toastManager.add({
         title: "Company vendor updated successfully.",
@@ -1684,7 +1690,7 @@ export const useUpdateCompanyVendorStatus = (vendorIdOverride?: number) => {
       payload: Parameters<typeof updateCompanyVendorStatus>[2];
     }) => updateCompanyVendorStatus(vendorId!, companyVendorId, payload),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: getCompanyVendorsMasterQueryKey(vendorId) });
+      queryClient.invalidateQueries({ queryKey: ["companyVendorsMaster"] });
       queryClient.invalidateQueries({ queryKey: ["companyVendors", vendorId] });
       toastManager.add({
         title: `Company vendor marked ${variables.payload.is_deleted ? "inactive" : "active"}.`,

@@ -611,6 +611,7 @@ export interface CreateCompanyVendorMasterPayload {
   email?: string;
   address?: string;
   in_house?: boolean;
+  is_inventory_company_vendor?: boolean;
   created_by: number;
 }
 
@@ -622,6 +623,7 @@ export interface UpdateCompanyVendorMasterPayload {
   email?: string;
   address?: string;
   in_house?: boolean;
+  is_inventory_company_vendor?: boolean;
   updated_by: number;
 }
 
@@ -1215,9 +1217,12 @@ export const fetchInstallerUsersForMaster = async (vendorId: number) => {
   };
 }
 
-export const fetchCompanyVendorsForMaster = async (vendorId: number) => {
+export const fetchCompanyVendorsForMaster = async (vendorId: number, isInventory?: boolean) => {
   const res = await apiClient.get<CompanyVendorMasterResponse>(
     `/vendor/company-vendors/vendorId/${vendorId}/master`,
+    {
+      params: typeof isInventory === "boolean" ? { is_inventory_company_vendor: isInventory } : undefined,
+    }
   );
   return {
     success: Boolean(res.data?.success),
