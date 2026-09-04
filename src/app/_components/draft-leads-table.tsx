@@ -164,6 +164,8 @@ export default function DraftLeadsTable({
     postPayload
   );
 
+  const isOnlineLeadFeatureEnabled = useAppSelector((s) => s.auth.user?.vendor?.is_online_lead_feature_enabled === true);
+
   const tableData: DraftLeadRow[] = React.useMemo(() => {
     const rawData = data?.data || [];
     return rawData.map((lead: any, index: number) => ({
@@ -193,7 +195,7 @@ export default function DraftLeadsTable({
       updatedAt: lead.updated_at ?? "",
       altContact: lead.alt_contact_no ?? "",
       status: lead.statusType?.type ?? "Draft",
-      statusTag: lead.statusType?.tag ?? "",
+      statusTag: lead.statusTag ?? lead.statusType?.tag ?? "",
       sales_executive: formatSalesExecutiveName(lead.assignedTo),
       assignedToId: lead.assignedTo?.id ?? "",
       isDraft: lead.is_draft === true,
@@ -202,15 +204,12 @@ export default function DraftLeadsTable({
       servicing: "",
       approval_status: lead.approval_status,
       pending_store_id: lead.pending_store_id,
-      is_online_lead: lead.is_online_lead === true,
+      is_online_lead: isOnlineLeadFeatureEnabled || lead.is_online_lead === true,
       franchiseId: lead.franchise_id ?? lead.franchise?.id ?? undefined,
     }));
-  }, [data]);
+  }, [data, isOnlineLeadFeatureEnabled]);
 
   const totalPages = data?.pagination?.totalPages || 1;
-
-  const isOnlineLeadFeatureEnabled = useAppSelector((s) => s.auth.user?.vendor?.is_online_lead_feature_enabled === true);
-
   const columns = React.useMemo(
     () =>
       getDraftLeadsColumns({
