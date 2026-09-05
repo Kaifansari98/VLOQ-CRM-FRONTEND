@@ -458,10 +458,12 @@ export default function OrderLoginModal({
                     data={
                       (() => {
                         const baseList =
-                          vendors?.map((v: any) => ({
-                            id: v.id,
-                            label: v.company_name,
-                          })) ?? [];
+                          vendors
+                            ?.filter((v: any) => v.is_inventory_company_vendor !== true)
+                            ?.map((v: any) => ({
+                              id: v.id,
+                              label: v.company_name,
+                            })) ?? [];
                         if (
                           currentCompanyVendorId &&
                           !baseList.some((v: any) => v.id === currentCompanyVendorId) &&

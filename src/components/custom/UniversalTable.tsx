@@ -61,6 +61,10 @@ export interface UniversalTableProps {
   pendingServicesOnly?: boolean;
   showServicingColumn?: boolean;
   initialProductionStatusFilter?: string;
+  allVendorLeads?: boolean;
+  strictStatusTag?: boolean;
+  ignoreFranchiseScope?: boolean;
+  materialIssueReadyOnly?: boolean;
 }
 
 // -------------------------------------------------------
@@ -460,6 +464,10 @@ export function UniversalTable({
   pendingServicesOnly = false,
   showServicingColumn = false,
   initialProductionStatusFilter,
+  allVendorLeads = false,
+  strictStatusTag = false,
+  ignoreFranchiseScope = false,
+  materialIssueReadyOnly = false,
 }: UniversalTableProps) {
   // -------------------- GLOBAL STATE --------------------
 
@@ -534,7 +542,7 @@ export function UniversalTable({
   // -------------------- LOCAL UI STATE --------------------
 
   const [viewType, setViewType] = useState<"my" | "overall">(defaultViewType);
-  const effectiveViewType = isAdmin ? "overall" : viewType;
+  const effectiveViewType = isAdmin || allVendorLeads ? "overall" : viewType;
 
   // ✅ SEPARATE PAGINATION FOR BOTH VIEWS
   const [myPagination, setMyPagination] = useState({
@@ -639,6 +647,7 @@ export function UniversalTable({
   };
 
   const showFranchiseFilter = useMemo(() => {
+    if (ignoreFranchiseScope) return false;
     if (isHOUser) return true;
     const cleanRole = (userType || "")
       .toLowerCase()
@@ -653,7 +662,7 @@ export function UniversalTable({
       "site-supervisor",
     ];
     return allowedRoles.includes(cleanRole);
-  }, [isHOUser, userType]);
+  }, [ignoreFranchiseScope, isHOUser, userType]);
 
 
   const servicingDateRange = useMemo(() => {
@@ -704,7 +713,10 @@ export function UniversalTable({
 
     return {
       userId: userId!,
-      franchise_id: shouldIncludeFranchise ? franchiseId! : undefined,
+      franchise_id:
+        !ignoreFranchiseScope && shouldIncludeFranchise
+          ? franchiseId!
+          : undefined,
       tag: type,
       page: myPagination.pageIndex + 1,
       limit: myPagination.pageSize,
@@ -741,12 +753,16 @@ export function UniversalTable({
           ? productionStatusFilter
           : undefined,
       pending_services: pendingServicesOnly || undefined,
-      franchises: myFranchisesFilter.length > 0 ? myFranchisesFilter : undefined,
+      franchises:
+        !ignoreFranchiseScope && myFranchisesFilter.length > 0
+          ? myFranchisesFilter
+          : undefined,
     };
   }, [
     userId,
     userType,
     shouldIncludeFranchise,
+    ignoreFranchiseScope,
     type,
     franchiseId,
     myPagination,
@@ -776,12 +792,17 @@ export function UniversalTable({
         ? [userId]
         : (mappedFilters.assign_to ?? []);
     const assignToFilter = assignTo.length > 0 ? assignTo : undefined;
-    const overallUserId = isAdmin ? undefined : userId;
+    const overallUserId = isAdmin || allVendorLeads ? undefined : userId;
 
     return {
       userId: overallUserId,
-      franchise_id: shouldIncludeFranchise ? franchiseId! : undefined,
+      franchise_id:
+        !ignoreFranchiseScope && shouldIncludeFranchise
+          ? franchiseId!
+          : undefined,
       tag: type,
+      strict_status_tag: strictStatusTag || undefined,
+      material_issue_ready_only: materialIssueReadyOnly || undefined,
 
       page: overallPagination.pageIndex + 1,
       limit: overallPagination.pageSize,
@@ -819,14 +840,21 @@ export function UniversalTable({
           ? productionStatusFilter
           : undefined,
       pending_services: pendingServicesOnly || undefined,
-      franchises: overallFranchisesFilter.length > 0 ? overallFranchisesFilter : undefined,
+      franchises:
+        !ignoreFranchiseScope && overallFranchisesFilter.length > 0
+          ? overallFranchisesFilter
+          : undefined,
     };
   }, [
     userId,
     userType,
     isAdmin,
+    allVendorLeads,
     shouldIncludeFranchise,
+    ignoreFranchiseScope,
     type,
+    strictStatusTag,
+    materialIssueReadyOnly,
     franchiseId,
     overallPagination,
     overallSorting,
@@ -857,7 +885,10 @@ export function UniversalTable({
 
     return {
       userId: userId!,
-      franchise_id: shouldIncludeFranchise ? franchiseId! : undefined,
+      franchise_id:
+        !ignoreFranchiseScope && shouldIncludeFranchise
+          ? franchiseId!
+          : undefined,
       page: myPagination.pageIndex + 1,
       limit: myPagination.pageSize,
 
@@ -893,6 +924,7 @@ export function UniversalTable({
   }, [
     userId,
     shouldIncludeFranchise,
+    ignoreFranchiseScope,
     franchiseId,
     myPagination,
     mySorting,

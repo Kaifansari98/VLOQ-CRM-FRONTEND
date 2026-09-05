@@ -41,6 +41,7 @@ export interface BackendBroadcast {
   _count?: { readLogs?: number };
   sentCount?: number;
   isRead?: boolean;
+  wasSentToMe?: boolean;
 }
 
 export interface AttachmentItemInput {
@@ -193,6 +194,7 @@ export const mapBackendBroadcastToFrontend = (item: BackendBroadcast): Broadcast
     fileSize: formatFileSize(firstFile?.file_size),
     bookmarked: false,
     isRead: item.isRead ?? false,
+    wasSentToMe: item.wasSentToMe ?? true,
     videoLinks: youtubeLinks,
     attachments: attachmentsList,
     versionHistory: [

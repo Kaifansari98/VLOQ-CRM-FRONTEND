@@ -1558,7 +1558,7 @@ export default function OnlineLeadDetailsPage() {
                           setIsAssignOpen(true);
                         }}
                       >
-                        <Users className="w-4 h-4 mr-2" /> Reassign Lead
+                        <Users className="w-4 h-4 mr-2" /> Assign Sales Executive
                       </DropdownMenuItem>
                     )}
                   </>

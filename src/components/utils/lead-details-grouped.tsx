@@ -52,6 +52,7 @@ export interface LeadDetailsGroupedProps {
   allowServicingTabFromDeliveredProjects?: boolean;
   selectedProductTypeId?: number | null;
   onProductTypeChange?: (productTypeId: number) => void;
+  hideGroupNavigation?: boolean;
 }
 
 const GROUP_ORDER: GroupKey[] = [
@@ -83,6 +84,7 @@ export default function LeadDetailsGrouped({
   allowServicingTabFromDeliveredProjects = false,
   selectedProductTypeId,
   onProductTypeChange,
+  hideGroupNavigation = false,
 }: LeadDetailsGroupedProps) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -411,6 +413,7 @@ export default function LeadDetailsGrouped({
       defaultTabId={initialTab}
       onChange={onChangeTab}
       maxVisibleStage={maxVisibleStage}
+      hideGroupNavigation={hideGroupNavigation}
     />
   );
 }
