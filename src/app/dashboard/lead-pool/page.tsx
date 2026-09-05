@@ -814,14 +814,7 @@ export default function LeadPoolPage() {
                   <Upload className="w-4 h-4" /> Bulk Upload
                 </Button>
               )}
-              {isSuperAdminOrAdmin && (
-                <Button
-                  onClick={() => setIsDeleteAllOpen(true)}
-                  className="bg-red-600 hover:bg-red-700 text-white font-semibold flex items-center gap-2 transition duration-200 h-9 text-xs py-1.5"
-                >
-                  <Trash2 className="w-4 h-4" /> Delete All Leads
-                </Button>
-              )}
+
             </div>
           )}
 

@@ -2282,6 +2282,7 @@ export default function OnlineLeadDetailsPage() {
                      </SelectContent>
                    </Select>
                  </div>
+                 
                </div>
 
                <div className="space-y-1.5">
