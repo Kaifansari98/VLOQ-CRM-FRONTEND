@@ -956,7 +956,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     const normalized = String(typeLabel).toLowerCase();
     if (normalized.includes("kitchen")) return "Kitchen";
     if (normalized.includes("wardrobe")) return "Wardrobe";
-    return "Others";
+    return normalized;
   };
 
   const getStructureOptions = (parentFilter: string | null) => {
@@ -965,6 +965,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         id: structure.id,
         label: structure.type,
         parent: structure.parent,
+        product_type_id: structure.product_type_id,
       })) || [];
 
     const uniqueOptions: any[] = [];
@@ -978,21 +979,25 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     }
 
     if (!parentFilter) return uniqueOptions;
-    return uniqueOptions.filter((structure: any) => {
+    const normParent = parentFilter.toLowerCase();
+
+    const filtered = uniqueOptions.filter((structure: any) => {
       const normLabel = String(structure.label || "").toLowerCase();
       const parent = String(structure.parent || "").toLowerCase();
 
-      if (parentFilter === "Kitchen") {
-        // Only kitchen-specific structures, no Others
-        return normLabel.includes("kitchen") || parent === "kitchen";
+      if (normParent === "kitchen" || normParent.includes("kitchen")) {
+        return normLabel.includes("kitchen") || parent.includes("kitchen");
       }
-      if (parentFilter === "Wardrobe") {
-        // Only wardrobe-specific structures, no Others
-        return normLabel.includes("wardrobe") || parent === "wardrobe";
+      if (normParent === "wardrobe" || normParent.includes("wardrobe")) {
+        return normLabel.includes("wardrobe") || parent.includes("wardrobe");
       }
-      // For all other types (Consoles, Small Order, Office Furniture, etc.) → only Others
-      return normLabel === "others";
+      if (normLabel.includes(normParent) || normParent.includes(normLabel) || parent.includes(normParent)) {
+        return true;
+      }
+      return normLabel === "others" || (!normLabel.includes("kitchen") && !normLabel.includes("wardrobe"));
     });
+
+    return filtered.length > 0 ? filtered : uniqueOptions;
   };
 
   // ✅ 8. ALL useMemo HOOKS
@@ -1554,12 +1559,32 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     if (editStructureError) setEditStructureError("");
   };
 
+  const getFilteredProductStructures = (selectedTypeId?: number) => {
+    const parentFilter = getParentFilter(selectedTypeId);
+    const options = getStructureOptions(parentFilter);
+    return options.map((opt: any) => ({
+      id: opt.id,
+      type: opt.label,
+      product_type_id: opt.product_type_id,
+    }));
+  };
+
   const handleEditSave = () => {
     if (!editStructure || !vendorId) return;
-    if (!editStructure.title.trim()) {
-      setEditTitleError("Title is required.");
-      return;
-    }
+    const allStructures = productStructureTypes?.data || [];
+    const selectedTypeObj = (productTypes?.data || []).find(
+      (pt: any) => pt.id === editStructure.product_type_id,
+    );
+    const selectedStruct = allStructures.find(
+      (ps: any) => ps.id === editStructure.product_structure_id,
+    );
+    const structTypeLabel = selectedStruct?.type;
+    const resolvedTitle =
+      editStructure.title.trim() ||
+      (structTypeLabel && structTypeLabel.toLowerCase() !== "others"
+        ? structTypeLabel
+        : selectedTypeObj?.type || "General");
+
     if (!editStructure.product_structure_id) {
       setEditStructureError("Please select a structure.");
       return;
@@ -1570,7 +1595,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       instanceId: editStructure.id,
       payload: {
         product_structure_id: editStructure.product_structure_id,
-        title: editStructure.title.trim(),
+        title: resolvedTitle,
         description: editStructure.description.trim() || undefined,
         updated_by: userId,
       },
@@ -1591,10 +1616,20 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 
   const handleAddSave = () => {
     if (!addStructure || !vendorId || !userId) return;
-    if (!addStructure.title.trim()) {
-      setEditTitleError("Title is required.");
-      return;
-    }
+    const allStructures = productStructureTypes?.data || [];
+    const selectedTypeObj = (productTypes?.data || []).find(
+      (pt: any) => pt.id === addStructure.product_type_id,
+    );
+    const selectedStruct = allStructures.find(
+      (ps: any) => ps.id === addStructure.product_structure_id,
+    );
+    const structTypeLabel = selectedStruct?.type;
+    const resolvedTitle =
+      addStructure.title.trim() ||
+      (structTypeLabel && structTypeLabel.toLowerCase() !== "others"
+        ? structTypeLabel
+        : selectedTypeObj?.type || "General");
+
     if (!addStructure.product_structure_id) {
       setEditStructureError("Please select a structure.");
       return;
@@ -1604,7 +1639,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       leadId,
       payload: {
         product_structure_id: addStructure.product_structure_id,
-        title: addStructure.title.trim(),
+        title: resolvedTitle,
         description: addStructure.description.trim() || undefined,
         created_by: userId,
       },
@@ -1840,7 +1875,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                     label={
                       <span className="inline-flex items-center gap-2">
                         <span>Product Types</span>
-                        {canEditProductType && (
+                        {canEditProductType && !isOnlineLeadFeatureEnabled && (
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <button
@@ -1874,26 +1909,103 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                     }
                     value={
                       (() => {
-                        // Primary: from productMappings
+                        const derivedTypes: string[] = [];
+                        const instancesToUse = (structureInstancesData?.data || displayInstances || []);
+
+                        instancesToUse.forEach((si: any) => {
+                          // 1. Structure master lookup for specific structure types (Kitchen, Wardrobe, etc.)
+                          const structId = si.product_structure_id;
+                          const pstObj = productStructureTypes?.data?.find(
+                            (pst: any) => pst.id === structId,
+                          );
+
+                          if (pstObj) {
+                            const pstName = (pstObj.type || "").trim().toLowerCase();
+                            if (pstName && productTypes?.data) {
+                              const matchedPt = productTypes.data.find((pt: any) => {
+                                const ptName = pt.type.trim().toLowerCase();
+                                if (ptName === pstName) return true;
+                                if (pstName.includes("kitchen") && ptName.includes("kitchen")) return true;
+                                if (pstName.includes("wardrobe") && ptName.includes("wardrobe")) return true;
+                                return false;
+                              });
+                              if (matchedPt?.type) {
+                                derivedTypes.push(matchedPt.type);
+                                return;
+                              }
+                            }
+                            if (pstObj.product_type_id && productTypes?.data) {
+                              const pt = productTypes.data.find(
+                                (t: any) => t.id === pstObj.product_type_id,
+                              );
+                              if (pt?.type && pt.type.toLowerCase() !== "others" && pt.type.toLowerCase() !== "other furniture") {
+                                derivedTypes.push(pt.type);
+                                return;
+                              }
+                            }
+                          }
+
+                          // 2. Direct product_type_id or productType relation on instance
+                          const typeId = si.product_type_id;
+                          if (typeId && productTypes?.data) {
+                            const found = productTypes.data.find((pt: any) => pt.id === typeId);
+                            if (found?.type) {
+                              derivedTypes.push(found.type);
+                              return;
+                            }
+                          }
+
+                          const directType = si.productType?.type || si.product_type?.type;
+                          if (directType) {
+                            derivedTypes.push(directType);
+                            return;
+                          }
+
+                          // 3. Match si.title against valid productTypes in master list (flexible matching e.g. "Consoles" / "Console")
+                          if (si.title && productTypes?.data) {
+                            const titleName = si.title.trim().toLowerCase();
+                            const matchedType = productTypes.data.find((pt: any) => {
+                              const ptName = pt.type.trim().toLowerCase();
+                              if (ptName === titleName) return true;
+                              if (ptName.length >= 3 && (titleName.includes(ptName) || ptName.includes(titleName))) return true;
+                              return false;
+                            });
+                            if (matchedType?.type) {
+                              derivedTypes.push(matchedType.type);
+                              return;
+                            }
+                          }
+
+                          // 4. Fallback to instance title if clean and not generic
+                          if (si.title && si.title !== "—" && si.title.toLowerCase() !== "others") {
+                            derivedTypes.push(si.title);
+                          }
+                        });
+
+                        // 5. From productMappings if no derived types from instances
+                        if (derivedTypes.length === 0 && lead.productMappings && Array.isArray(lead.productMappings)) {
+                          lead.productMappings.forEach((pm: any) => {
+                            const pType = pm.productType?.type || pm.product_type?.type;
+                            if (pType) derivedTypes.push(pType);
+                          });
+                        }
+
+                        // 6. From leadProductStructureMapping if still empty
+                        if (derivedTypes.length === 0 && lead.leadProductStructureMapping && Array.isArray(lead.leadProductStructureMapping)) {
+                          lead.leadProductStructureMapping.forEach((ps: any) => {
+                            const pType = ps.productStructure?.productType?.type;
+                            if (pType) derivedTypes.push(pType);
+                          });
+                        }
+
+                        const uniqueTypes = Array.from(new Set(derivedTypes.filter(Boolean)));
+                        if (uniqueTypes.length > 0) return uniqueTypes.join(", ");
+
                         const fromMappings = lead.productMappings
                           ?.map((pm: any) => pm.productType?.type || pm.product_type?.type)
                           ?.filter(Boolean)
                           ?.join(", ");
-                        if (fromMappings) return fromMappings;
-                        // Fallback 1: from structureInstances (draft leads coming from Lead Pool with instances)
-                        const fromInstances = [...new Set(
-                          (structureInstances || [])
-                            .map((si: any) => si.productType?.type || si.product_type?.type)
-                            .filter(Boolean)
-                        )].join(", ");
-                        if (fromInstances) return fromInstances;
-                        // Fallback 2: from leadProductStructureMapping (older leads from Lead Pool)
-                        const fromStructureMapping = [...new Set(
-                          (lead.leadProductStructureMapping || [])
-                            .map((ps: any) => ps.productStructure?.productType?.type)
-                            .filter(Boolean)
-                        )].join(", ");
-                        return fromStructureMapping || undefined;
+                        return fromMappings || undefined;
                       })()
                     }
                   />
@@ -3471,14 +3583,14 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                 setEditStructureError("");
               }
             }}
-            title="Edit Product Instance"
-            description="Update title, structure, and description."
+            title="Edit Furniture Structure"
+            description="Update the product structure instance details."
             size="md"
           >
             <div className="space-y-4 p-5">
               <div>
                 <label className="text-xs font-medium text-muted-foreground">
-                  Title <span className="text-red-500">*</span>
+                  Title (optional)
                 </label>
                 <Input
                   value={editStructure?.title || ""}
@@ -3489,29 +3601,100 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                     if (editTitleError) setEditTitleError("");
                   }}
                   placeholder="Enter title"
-                  className="mt-1"
+                  className="mt-1 h-10 text-sm bg-background"
                 />
                 {editTitleError && (
                   <p className="mt-1 text-xs text-red-500">{editTitleError}</p>
                 )}
               </div>
+
               <div>
                 <label className="text-xs font-medium text-muted-foreground">
-                  Product Structure <span className="text-red-500">*</span>
+                  Product Type (optional)
                 </label>
                 <div className="mt-1">
-                  <AssignToPicker
-                    data={editStructureOptions}
-                    value={editStructure?.product_structure_id}
-                    onChange={(selectedId) => {
-                      if (!selectedId) {
-                        setEditStructureError("Please select a structure.");
-                        return;
-                      }
-                      handleEditStructureChange(selectedId);
+                  <Select
+                    value={
+                      editStructure?.product_type_id
+                        ? String(editStructure.product_type_id)
+                        : undefined
+                    }
+                    onValueChange={(val) => {
+                      const newTypeId = Number(val);
+                      const filteredStructs = getFilteredProductStructures(newTypeId);
+                      const isCurrentValid = filteredStructs.some(
+                        (ps: any) => ps.id === editStructure?.product_structure_id,
+                      );
+                      setEditStructure((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              product_type_id: newTypeId,
+                              product_structure_id: isCurrentValid
+                                ? prev.product_structure_id
+                                : filteredStructs.length === 1
+                                ? filteredStructs[0].id
+                                : 0,
+                            }
+                          : prev,
+                      );
                     }}
-                    placeholder="Select structure..."
-                  />
+                  >
+                    <SelectTrigger className="w-full h-10 bg-background text-sm">
+                      <SelectValue placeholder="Select Product Type" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover text-popover-foreground">
+                      {(productTypes?.data || []).map((pt: any) => (
+                        <SelectItem key={pt.id} value={String(pt.id)}>
+                          {pt.type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Product Structure (optional)
+                </label>
+                <div className="mt-1">
+                  <Select
+                    value={
+                      editStructure?.product_structure_id
+                        ? String(editStructure.product_structure_id)
+                        : undefined
+                    }
+                    onValueChange={(val) => {
+                      const selectedId = Number(val);
+                      const selectedStruct = getFilteredProductStructures(
+                        editStructure?.product_type_id,
+                      ).find((ps: any) => ps.id === selectedId);
+                      setEditStructure((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              product_structure_id: selectedId,
+                              title: selectedStruct?.type || prev.title,
+                            }
+                          : prev,
+                      );
+                      if (editStructureError) setEditStructureError("");
+                    }}
+                  >
+                    <SelectTrigger className="w-full h-10 bg-background text-sm">
+                      <SelectValue placeholder="Select Structure Type" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover text-popover-foreground">
+                      {getFilteredProductStructures(
+                        editStructure?.product_type_id,
+                      ).map((ps: any) => (
+                        <SelectItem key={ps.id} value={String(ps.id)}>
+                          {ps.type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 {editStructureError && (
                   <p className="mt-1 text-xs text-red-500">
@@ -3519,21 +3702,29 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   </p>
                 )}
               </div>
+
               <div>
                 <label className="text-xs font-medium text-muted-foreground">
                   Description (optional)
                 </label>
-                <TextAreaInput
+                <textarea
                   value={editStructure?.description || ""}
-                  onChange={(value) =>
-                    setEditStructure((prev) =>
-                      prev ? { ...prev, description: value } : prev,
-                    )
-                  }
+                  onChange={(e) => {
+                    if (e.target.value.length <= 1000) {
+                      setEditStructure((prev) =>
+                        prev ? { ...prev, description: e.target.value } : prev,
+                      );
+                    }
+                  }}
                   placeholder="Add description..."
-                  className="mt-1"
+                  rows={4}
+                  className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
                 />
+                <p className="text-right text-xs text-muted-foreground mt-0.5">
+                  {1000 - (editStructure?.description?.length || 0)} characters left
+                </p>
               </div>
+
               <div className="flex justify-end gap-2">
                 <Button
                   type="button"
@@ -3585,37 +3776,91 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                     if (editTitleError) setEditTitleError("");
                   }}
                   placeholder="Enter title"
-                  className="mt-1"
+                  className="mt-1 h-10 text-sm bg-background"
                 />
                 {editTitleError && (
                   <p className="mt-1 text-xs text-red-500">{editTitleError}</p>
                 )}
               </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Product Type (optional)
+                </label>
+                <div className="mt-1">
+                  <Select
+                    value={
+                      addStructure?.product_type_id
+                        ? String(addStructure.product_type_id)
+                        : undefined
+                    }
+                    onValueChange={(val) => {
+                      const newTypeId = Number(val);
+                      const filteredStructs = getFilteredProductStructures(newTypeId);
+                      const isCurrentValid = filteredStructs.some(
+                        (ps: any) => ps.id === addStructure?.product_structure_id,
+                      );
+                      setAddStructure((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              product_type_id: newTypeId,
+                              product_structure_id: isCurrentValid
+                                ? prev.product_structure_id
+                                : filteredStructs.length === 1
+                                ? filteredStructs[0].id
+                                : 0,
+                            }
+                          : prev,
+                      );
+                    }}
+                  >
+                    <SelectTrigger className="w-full h-10 bg-background text-sm">
+                      <SelectValue placeholder="Select Product Type" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover text-popover-foreground">
+                      {(productTypes?.data || []).map((pt: any) => (
+                        <SelectItem key={pt.id} value={String(pt.id)}>
+                          {pt.type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               <div>
                 <label className="text-xs font-medium text-muted-foreground">
                   Product Structure (optional)
                 </label>
                 <div className="mt-1">
-                  <AssignToPicker
-                    data={addStructureOptions}
-                    value={addStructure?.product_structure_id}
-                    onChange={(selectedId) => {
-                      if (!selectedId) {
-                        setEditStructureError("Please select a structure.");
-                        return;
-                      }
+                  <Select
+                    value={
+                      addStructure?.product_structure_id
+                        ? String(addStructure.product_structure_id)
+                        : undefined
+                    }
+                    onValueChange={(val) => {
+                      const selectedId = Number(val);
                       setAddStructure((prev) =>
-                        prev
-                          ? {
-                            ...prev,
-                            product_structure_id: selectedId,
-                          }
-                          : prev,
+                        prev ? { ...prev, product_structure_id: selectedId } : prev,
                       );
                       if (editStructureError) setEditStructureError("");
                     }}
-                    placeholder="Select structure..."
-                  />
+                  >
+                    <SelectTrigger className="w-full h-10 bg-background text-sm">
+                      <SelectValue placeholder="Select Structure Type" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover text-popover-foreground">
+                      {getFilteredProductStructures(
+                        addStructure?.product_type_id,
+                      ).map((ps: any) => (
+                        <SelectItem key={ps.id} value={String(ps.id)}>
+                          {ps.type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 {editStructureError && (
                   <p className="mt-1 text-xs text-red-500">
@@ -3623,21 +3868,29 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   </p>
                 )}
               </div>
+
               <div>
                 <label className="text-xs font-medium text-muted-foreground">
                   Description (optional)
                 </label>
-                <TextAreaInput
+                <textarea
                   value={addStructure?.description || ""}
-                  onChange={(value) =>
-                    setAddStructure((prev) =>
-                      prev ? { ...prev, description: value } : prev,
-                    )
-                  }
+                  onChange={(e) => {
+                    if (e.target.value.length <= 1000) {
+                      setAddStructure((prev) =>
+                        prev ? { ...prev, description: e.target.value } : prev,
+                      );
+                    }
+                  }}
                   placeholder="Add description..."
-                  className="mt-1"
+                  rows={4}
+                  className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
                 />
+                <p className="text-right text-xs text-muted-foreground mt-0.5">
+                  {1000 - (addStructure?.description?.length || 0)} characters left
+                </p>
               </div>
+
               <div className="flex justify-end gap-2">
                 <Button
                   type="button"

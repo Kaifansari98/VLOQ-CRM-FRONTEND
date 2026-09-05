@@ -136,7 +136,7 @@ export default function DraftLeadsTable({
       assign_to: mappedFilters.assign_to,
       priority:
         Array.isArray(mappedFilters.priority) &&
-        mappedFilters.priority.length > 0
+          mappedFilters.priority.length > 0
           ? mappedFilters.priority
           : undefined,
       created_at: sortOrder,

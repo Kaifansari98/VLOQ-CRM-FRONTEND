@@ -111,6 +111,8 @@ export default function SiteMeasurementLead() {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
   );
+  const normalizedUserType = userType?.trim().toLowerCase();
+  const isCaller = normalizedUserType === "telecaller" || normalizedUserType === "telecaller-team-lead" || normalizedUserType === "telecaller team lead" || normalizedUserType === "caller";
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
@@ -209,6 +211,7 @@ export default function SiteMeasurementLead() {
     // - User has upload permission
     // - User is NOT admin or super-admin
     if (
+      !isCaller &&
       !lead.is_draft &&
       !isLeadBlocked &&
       canUploadISM(userType) &&
@@ -306,13 +309,14 @@ export default function SiteMeasurementLead() {
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
 
   const canReassign =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
           "leads.ism_leads.ism_details.reassign_lead",
         )
-      : canReassignLeadButton(userType);
-  const canDelete = canDeleteLeadButton(userType);
-  const canEdit = canEditLeadForSalesExecutiveButton(userType);
+      : canReassignLeadButton(userType));
+  const canDelete = !isCaller && canDeleteLeadButton(userType);
+  const canEdit = !isCaller && canEditLeadForSalesExecutiveButton(userType);
   const canViewPayment =
     isAuditor ||
     (userType?.toLowerCase() === "custom"
@@ -334,35 +338,40 @@ export default function SiteMeasurementLead() {
         )
       : true;
   const canUploadMeasurement =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
           "leads.ism_leads.ism_details.upload_measurement",
         )
-      : canUploadISM(userType);
+      : canUploadISM(userType));
   const canMarkOnHold =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
           "leads.ism_leads.ism_details.mark_on_hold",
         )
-      : true;
+      : true);
   const canMarkAsLost =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
           "leads.ism_leads.ism_details.mark_as_lost",
         )
-      : true;
+      : true);
   const canMoveToDesigning =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
           "leads.ism_leads.ism_details.move_to_designing",
         )
-      : canUploadISM(userType);
+      : canUploadISM(userType));
   const canBlockLead =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
           "leads.ism_leads.ism_details.block_lead",
         )
-      : userType?.toLowerCase() === "super-admin";
+      : userType?.toLowerCase() === "super-admin");
   const canSeeLeadStatusMenu = canMarkOnHold || canMarkAsLost;
 
   console.log("assigned to", lead?.assignedTo?.id);
@@ -450,7 +459,7 @@ export default function SiteMeasurementLead() {
                 )}
               </>
             )}
-          {!isAuditor && (
+          {!isAuditor && !isCaller && (
             <Button
               size="sm"
               className="hidden md:block"
@@ -463,7 +472,7 @@ export default function SiteMeasurementLead() {
           <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
           {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
-          {!isAuditor && (
+          {!isAuditor && !isCaller && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -667,9 +676,8 @@ export default function SiteMeasurementLead() {
               <HouseIcon size={16} className="mr-1 opacity-60" />
               Lead Details
             </TabsTrigger>
-            {!isAuditor &&
-               
-              (shouldDisableBlockedActions ? (
+            {!isAuditor && !isCaller && (
+              shouldDisableBlockedActions ? (
                 <CustomeTooltip
                   value={blockedTooltip}
                   truncateValue={

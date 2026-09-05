@@ -472,6 +472,9 @@ export function UniversalTable({
   // -------------------- GLOBAL STATE --------------------
 
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
+  const isOnlineLeadFeatureEnabled = useAppSelector(
+    (s) => s.auth.user?.vendor?.is_online_lead_feature_enabled === true,
+  );
   const isCustomUserTypeOnlyVendor = useAppSelector(
     (s) => s.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
   );
@@ -1665,7 +1668,7 @@ export function UniversalTable({
                 onClick={() => handleViewSwitch("my")}
                 className="flex-1 md:flex-none"
               >
-                My Leads ({myCount})
+                My Leads{isOnlineLeadFeatureEnabled && (myCount === 0 || Number(myCount) === 0) ? "" : ` (${myCount})`}
               </Button>
 
               <Button
@@ -1676,7 +1679,7 @@ export function UniversalTable({
                 onClick={() => handleViewSwitch("overall")}
                 className="flex-1 md:flex-none"
               >
-                Overall Leads ({overallCount})
+                Overall Leads{isOnlineLeadFeatureEnabled && (overallCount === 0 || Number(overallCount) === 0) ? "" : ` (${overallCount})`}
               </Button>
             </div>
           )}

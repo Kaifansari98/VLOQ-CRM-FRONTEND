@@ -167,6 +167,9 @@ export function NavMain({
   const isCrmEnabled = useAppSelector(
     (state) => state.auth.user?.vendor?.is_crm_enabled !== false,
   );
+  const isOnlineLeadFeatureEnabled = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_online_lead_feature_enabled === true,
+  );
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type as string | undefined,
   );
@@ -523,6 +526,7 @@ export function NavMain({
                                 ? subItem.customCount
                                 : getCountForItem(subItem.showCount!);
                               if (!count) return null;
+                              if (isOnlineLeadFeatureEnabled && (count === 0 || count === "0" || Number(count) === 0)) return null;
                               return (
                                 <Badge
                                   className={cn(
@@ -569,24 +573,30 @@ export function NavMain({
             {/* ✅ No wrapper div — icon direct child of Link */}
             {item.icon && <item.icon className={cn("!size-5 shrink-0", item.iconClassName)} />}
             <span className="whitespace-nowrap">{item.title}</span>
-            {(item.showCount || item.customCount !== undefined) && (
-              <Badge
-                className={cn(
-                  "ml-auto rounded-full group-data-[collapsible=icon]:hidden",
-                  item.badgeClassName
-                )}
-                style={
-                  item.badgeStyle ?? {
-                    backgroundColor: "var(--theme-badge-bg)",
-                    color: "var(--theme-badge-text)",
+            {(() => {
+              if (!item.showCount && item.customCount === undefined) return null;
+              const count = getSingleItemCount(item);
+              if (count === undefined || count === null) return null;
+              if (isOnlineLeadFeatureEnabled && (count === 0 || count === "0" || Number(count) === 0)) return null;
+              return (
+                <Badge
+                  className={cn(
+                    "ml-auto rounded-full group-data-[collapsible=icon]:hidden",
+                    item.badgeClassName
+                  )}
+                  style={
+                    item.badgeStyle ?? {
+                      backgroundColor: "var(--theme-badge-bg)",
+                      color: "var(--theme-badge-text)",
+                    }
                   }
-                }
-              >
-                {isLoading || item.customCountLoading
-                  ? "…"
-                  : getSingleItemCount(item)}
-              </Badge>
-            )}
+                >
+                  {isLoading || item.customCountLoading
+                    ? "…"
+                    : count}
+                </Badge>
+              );
+            })()}
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
