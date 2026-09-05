@@ -19,6 +19,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { useAppSelector } from "@/redux/store";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 
@@ -52,6 +53,9 @@ export function TaskDetailsModal({
   onOpenChange,
 }: TaskDetailsModalProps) {
   const router = useRouter();
+  const isOnlineLeadFeatureEnabled = useAppSelector(
+    (s) => s.auth.user?.vendor?.is_online_lead_feature_enabled === true,
+  );
   const { data: response, isLoading, error } = useTaskDetails(
     taskId ?? 0,
     open && !!taskId
@@ -72,8 +76,11 @@ export function TaskDetailsModal({
     if (stage.includes("booking")) {
       return `/dashboard/leads/booking-stage/details/${leadId}?accountId=${accountId}`;
     }
-    if (stage.includes("draft")) {
-      return `/dashboard/leads/draft-lead/details/${leadId}?accountId=${accountId}`;
+    if (stage.includes("draft") || stage.includes("online")) {
+      const basePath = isOnlineLeadFeatureEnabled
+        ? "/dashboard/leads/online-lead"
+        : "/dashboard/leads/draft-lead";
+      return `${basePath}/details/${leadId}?accountId=${accountId}`;
     }
     if (stage.includes("final site measurement") || stage.includes("final measurement") || stage.includes("fsm")) {
       return `/dashboard/project/final-measurement/details/${leadId}?accountId=${accountId}`;

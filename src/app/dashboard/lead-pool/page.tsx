@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   useReactTable,
   getCoreRowModel,
@@ -44,7 +44,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Search, UserPlus, PlusCircle, PhoneCall, Calendar, MapPin, Loader2, ChevronDown, User, Mail, Phone, MessageSquare, Zap, Magnet, Activity, Building, CheckCircle2, XCircle, Upload, Trash2, AlertCircle, Trash } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Search, UserPlus, PlusCircle, PhoneCall, Calendar, MapPin, Loader2, ChevronDown, User, Mail, Phone, MessageSquare, Zap, Magnet, Activity, Building, CheckCircle2, XCircle, Upload, Trash2, AlertCircle, Trash, ChevronLeft, ChevronRight } from "lucide-react";
 import CustomeDatePicker from "@/components/date-picker";
 import Link from "next/link";
 import MultipleSelector, { Option } from "@/components/ui/multiselect";
@@ -71,6 +72,7 @@ interface OnlineLead {
   store_id: number | null;
   final_assigned_leads: number | null;
   priority?: string | null;
+  city?: string | null;
   sourceRelation?: {
     id: number;
     type: string;
@@ -87,6 +89,10 @@ interface OnlineLead {
     id: number;
     user_name: string;
   } | null;
+  createdBy?: {
+    id: number;
+    user_name: string;
+  } | null;
   franchise?: {
     id: number;
     franchise_name: string;
@@ -100,6 +106,21 @@ interface OnlineLead {
   pending_store_id?: number | null;
   pending_status_id?: number | null;
   pending_follow_up_date?: string | null;
+  online_lead_history?: {
+    id: number;
+    remark: string | null;
+    created_at: string;
+    createdBy?: { id: number; user_name: string } | null;
+    status?: { id: number; status_name: string } | null;
+  }[];
+  call_log?: {
+    id: number;
+    remark: string | null;
+    created_at?: string;
+    started_at?: string;
+    telecaller?: { id: number; user_name: string } | null;
+    status?: { id: number; status_name: string } | null;
+  }[];
 }
 
 interface FollowupStatus {
@@ -119,6 +140,12 @@ interface Telecaller {
   user_type?: {
     user_type: string;
   } | null;
+}
+
+import { LeadRemarkCell } from "@/components/custom/LeadRemarkCell";
+
+function RemarkCell({ lead }: { lead: OnlineLead }) {
+  return <LeadRemarkCell lead={lead} />;
 }
 
 export default function LeadPoolPage() {
@@ -178,8 +205,12 @@ export default function LeadPoolPage() {
   const [actingLeadId, setActingLeadId] = useState<number | null>(null);
   
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryTab = searchParams.get("tab") as "pool" | "my" | "overall" | null;
 
-  const [activeTab, setActiveTab] = useState<"pool" | "my" | "overall">("pool");
+  const [activeTab, setActiveTab] = useState<"pool" | "my" | "overall">(
+    queryTab && ["pool", "my", "overall"].includes(queryTab) ? queryTab : "pool"
+  );
   const requestIdRef = useRef(0);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -252,6 +283,20 @@ export default function LeadPoolPage() {
               Type: {row.original.lead_entry_type}
             </span>
           </div>
+        );
+      },
+    },
+    {
+      accessorKey: "city",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="City" />
+      ),
+      cell: ({ row }) => {
+        const city = row.original.city;
+        return (
+          <span className="text-xs font-medium text-foreground whitespace-nowrap">
+            {city && city.trim() ? city : "—"}
+          </span>
         );
       },
     },
@@ -380,27 +425,7 @@ export default function LeadPoolPage() {
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Remark" />
       ),
-      cell: ({ row }) => {
-        const remark = row.original.remark;
-        if (!remark || remark.trim() === "" || remark.trim() === "N/A" || remark.trim() === "-") {
-          return <span className="text-xs text-muted-foreground italic">No follow up performed yet</span>;
-        }
-
-        return (
-          <TooltipProvider>
-            <Tooltip delayDuration={150}>
-              <TooltipTrigger asChild>
-                <p className="text-sm font-normal text-foreground truncate max-w-[200px] cursor-help">
-                  {remark}
-                </p>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-[240px] bg-slate-950 text-white border border-slate-850 px-2.5 py-1.5 rounded-md shadow-md text-[11px] leading-relaxed break-words whitespace-normal">
-                {remark}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        );
-      },
+      cell: ({ row }) => <RemarkCell lead={row.original} />,
     },
     {
       accessorKey: "allocation",
@@ -538,16 +563,16 @@ export default function LeadPoolPage() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleteAllOpen, setIsDeleteAllOpen] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
 
   useEffect(() => {
-    if (userType === "telecaller") {
-      setActiveTab("my");
-    } else if (userType === "store-manager" || userType === "store manager") {
-      setActiveTab("overall");
+    if (queryTab && ["pool", "my", "overall"].includes(queryTab)) {
+      setActiveTab(queryTab);
     } else {
       setActiveTab("pool");
     }
-  }, [userType]);
+  }, [queryTab]);
 
   useEffect(() => {
     if (!vendorId) return;
@@ -664,6 +689,38 @@ export default function LeadPoolPage() {
     }
   };
 
+  const handleDeleteAllLeadsConfirm = async () => {
+    if (!vendorId) return;
+    setIsDeletingAll(true);
+    try {
+      const res = await apiClient.post("/online-leads/delete-all-pool", {
+        vendor_id: vendorId,
+      });
+      if (res.data?.success) {
+        toastManager.add({
+          title: res.data.message || "All lead pool leads deleted successfully.",
+          type: "success",
+        });
+        setIsDeleteAllOpen(false);
+        fetchLeadsData();
+        queryClient.invalidateQueries({ queryKey: ["lead-stats"] });
+      } else {
+        toastManager.add({
+          title: res.data?.error || "Failed to delete leads.",
+          type: "error",
+        });
+      }
+    } catch (err: any) {
+      console.error("Delete all leads error:", err);
+      toastManager.add({
+        title: err.response?.data?.error || "Error occurred while deleting leads.",
+        type: "error",
+      });
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
+
   async function handlePriorityChange(leadId: number, priority: string) {
     setUpdatingPriorityId(leadId);
     try {
@@ -755,6 +812,14 @@ export default function LeadPoolPage() {
                   className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-semibold flex items-center gap-2 transition duration-200 h-9 text-xs py-1.5"
                 >
                   <Upload className="w-4 h-4" /> Bulk Upload
+                </Button>
+              )}
+              {isSuperAdminOrAdmin && (
+                <Button
+                  onClick={() => setIsDeleteAllOpen(true)}
+                  className="bg-red-600 hover:bg-red-700 text-white font-semibold flex items-center gap-2 transition duration-200 h-9 text-xs py-1.5"
+                >
+                  <Trash2 className="w-4 h-4" /> Delete All Leads
                 </Button>
               )}
             </div>
@@ -1037,6 +1102,43 @@ export default function LeadPoolPage() {
               onClick={handleDeleteConfirm}
             >
               {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete All Leads Confirmation Dialog */}
+      <Dialog open={isDeleteAllOpen} onOpenChange={setIsDeleteAllOpen}>
+        <DialogContent showCloseButton={false} className="max-w-md bg-background border border-red-200 dark:border-red-900 shadow-xl rounded-xl p-6">
+          <DialogHeader className="space-y-2">
+            <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+              <AlertCircle className="w-6 h-6 shrink-0" />
+              <DialogTitle className="text-xl font-semibold">
+                Delete All Lead Pool Leads?
+              </DialogTitle>
+            </div>
+            <DialogDescription className="text-[14px] leading-relaxed text-slate-600 dark:text-slate-300">
+              <span className="font-semibold text-red-600 dark:text-red-400 block mb-1">
+                Warning: This action is permanent and cannot be undone!
+              </span>
+              This will permanently delete all leads in the Lead Pool, as well as any converted leads that originated from the Lead Pool.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-6 flex justify-end gap-2.5">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteAllOpen(false)}
+              className="h-10 px-5 text-sm font-medium border border-slate-200 hover:bg-slate-50 rounded-lg"
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={isDeletingAll}
+              variant="destructive"
+              className="h-10 px-5 text-sm font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg"
+              onClick={handleDeleteAllLeadsConfirm}
+            >
+              {isDeletingAll ? "Deleting All Leads..." : "Yes, Delete All Leads"}
             </Button>
           </DialogFooter>
         </DialogContent>

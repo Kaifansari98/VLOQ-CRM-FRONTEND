@@ -9,6 +9,7 @@ import { parsePhoneNumberFromString } from "libphonenumber-js";
 
 import RemarkTooltip from "@/components/origin-tooltip";
 import CustomeTooltip from "@/components/custom-tooltip";
+import { LeadRemarkCell } from "@/components/custom/LeadRemarkCell";
 
 import { LeadColumn } from "@/components/utils/column/column-type";
 import {
@@ -44,6 +45,7 @@ export type DraftLeadRow = LeadColumn & {
   pending_store_id?: number;
   is_online_lead?: boolean;
   franchiseId?: number;
+  rawLead?: any;
 };
 
 export interface DraftLeadsColumnsOptions {
@@ -57,6 +59,7 @@ export interface DraftLeadsColumnsOptions {
 }
 
 export function getDraftLeadsColumns(options?: DraftLeadsColumnsOptions): ColumnDef<DraftLeadRow>[] {
+  const isOnlineLeadFeatureEnabled = Boolean(options?.isOnlineLeadFeatureEnabled);
   const columns: ColumnDef<DraftLeadRow>[] = [
     // 1) Lead Code
     {
@@ -158,23 +161,27 @@ export function getDraftLeadsColumns(options?: DraftLeadsColumnsOptions): Column
       },
     },
 
-    // Stage
-    {
-      accessorKey: "status",
-      filterFn: tableMultiValueFilter,
+    // Stage (hidden if online lead feature is enabled)
+    ...(!isOnlineLeadFeatureEnabled
+      ? [
+          {
+            accessorKey: "status",
+            filterFn: tableMultiValueFilter,
 
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Stage" />
-      ),
+            header: ({ column }: any) => (
+              <DataTableColumnHeader column={column} title="Stage" />
+            ),
 
-      cell: ({ row }) => {
-        const status = row.original.isDraft ? "Draft" : (row.getValue("status") as string);
-        return <CustomeStatusBadge title={status} />;
-      },
-      enableSorting: false,
-      enableHiding: true,
-      enableColumnFilter: true,
-    },
+            cell: ({ row }: any) => {
+              const status = row.original.isDraft ? "Draft" : (row.getValue("status") as string);
+              return <CustomeStatusBadge title={status} />;
+            },
+            enableSorting: false,
+            enableHiding: true,
+            enableColumnFilter: true,
+          } as ColumnDef<DraftLeadRow>,
+        ]
+      : []),
 
     // 3) Contact
     {
@@ -530,6 +537,7 @@ export function getDraftLeadsColumns(options?: DraftLeadsColumnsOptions): Column
           <CustomeTooltip
             value={email}
             truncateValue={email.slice(0, max) + "..."}
+            showArrow={options?.isOnlineLeadFeatureEnabled ? false : true}
           />
         );
       },
@@ -538,17 +546,23 @@ export function getDraftLeadsColumns(options?: DraftLeadsColumnsOptions): Column
       },
     },
 
-    // 14) Designer Remark
+    // 14) Designer Remark / Remark
     {
       accessorKey: "designerRemark",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Designer Remark" />
+        <DataTableColumnHeader
+          column={column}
+          title={options?.isOnlineLeadFeatureEnabled ? "Remark" : "Designer Remark"}
+        />
       ),
 
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
       cell: ({ row }) => {
+        if (options?.isOnlineLeadFeatureEnabled) {
+          return <LeadRemarkCell lead={row.original.rawLead || row.original} />;
+        }
         const full = (row.getValue("designerRemark") as string) || "";
         if (!full) return "—";
         const trunc = full.length > 15 ? full.slice(0, 15) + "..." : full;
@@ -556,7 +570,7 @@ export function getDraftLeadsColumns(options?: DraftLeadsColumnsOptions): Column
         return <RemarkTooltip remark={trunc} remarkFull={full} />;
       },
       meta: {
-        label: "Designer Remark",
+        label: options?.isOnlineLeadFeatureEnabled ? "Remark" : "Designer Remark",
       },
     },
 

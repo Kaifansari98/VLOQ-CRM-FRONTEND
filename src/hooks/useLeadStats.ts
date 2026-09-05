@@ -8,6 +8,7 @@ interface LeadStatsResponse {
     total_overall_leads: number;
     total_lead_pool: number;
     total_open_leads: number;
+    total_draft_leads: number;
     total_initial_site_measurement_leads: number;
     total_designing_stage_leads: number;
     total_booking_stage_leads: number;

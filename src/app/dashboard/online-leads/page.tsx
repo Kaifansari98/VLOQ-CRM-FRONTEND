@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   useReactTable,
   getCoreRowModel,
@@ -44,7 +44,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Search, UserPlus, PlusCircle, PhoneCall, Calendar, MapPin, Loader2, ChevronDown, User, Mail, Phone, MessageSquare, Zap, Magnet, Activity, Building, CheckCircle2, XCircle, Upload, Trash2, AlertCircle, Trash } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Search, UserPlus, PlusCircle, PhoneCall, Calendar, MapPin, Loader2, ChevronDown, User, Mail, Phone, MessageSquare, Zap, Magnet, Activity, Building, CheckCircle2, XCircle, Upload, Trash2, AlertCircle, Trash, ChevronLeft, ChevronRight } from "lucide-react";
 import CustomeDatePicker from "@/components/date-picker";
 import Link from "next/link";
 import MultipleSelector, { Option } from "@/components/ui/multiselect";
@@ -71,6 +72,7 @@ interface OnlineLead {
   store_id: number | null;
   final_assigned_leads: number | null;
   priority?: string | null;
+  city?: string | null;
   sourceRelation?: {
     id: number;
     type: string;
@@ -87,6 +89,10 @@ interface OnlineLead {
     id: number;
     user_name: string;
   } | null;
+  createdBy?: {
+    id: number;
+    user_name: string;
+  } | null;
   franchise?: {
     id: number;
     franchise_name: string;
@@ -100,6 +106,21 @@ interface OnlineLead {
   pending_store_id?: number | null;
   pending_status_id?: number | null;
   pending_follow_up_date?: string | null;
+  online_lead_history?: {
+    id: number;
+    remark: string | null;
+    created_at: string;
+    createdBy?: { id: number; user_name: string } | null;
+    status?: { id: number; status_name: string } | null;
+  }[];
+  call_log?: {
+    id: number;
+    remark: string | null;
+    created_at?: string;
+    started_at?: string;
+    telecaller?: { id: number; user_name: string } | null;
+    status?: { id: number; status_name: string } | null;
+  }[];
 }
 
 interface FollowupStatus {
@@ -119,6 +140,12 @@ interface Telecaller {
   user_type?: {
     user_type: string;
   } | null;
+}
+
+import { LeadRemarkCell } from "@/components/custom/LeadRemarkCell";
+
+function RemarkCell({ lead }: { lead: OnlineLead }) {
+  return <LeadRemarkCell lead={lead} />;
 }
 
 export default function OnlineLeadsPage() {
@@ -181,8 +208,12 @@ export default function OnlineLeadsPage() {
   const [actingLeadId, setActingLeadId] = useState<number | null>(null);
   
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryTab = searchParams.get("tab") as "pool" | "my" | "overall" | null;
 
-  const [activeTab, setActiveTab] = useState<"pool" | "my" | "overall">("my");
+  const [activeTab, setActiveTab] = useState<"pool" | "my" | "overall">(
+    queryTab && ["pool", "my", "overall"].includes(queryTab) ? queryTab : "pool"
+  );
   const requestIdRef = useRef(0);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -257,6 +288,20 @@ export default function OnlineLeadsPage() {
               Type: {row.original.lead_entry_type}
             </span>
           </div>
+        );
+      },
+    },
+    {
+      accessorKey: "city",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="City" />
+      ),
+      cell: ({ row }) => {
+        const city = row.original.city;
+        return (
+          <span className="text-xs font-medium text-foreground whitespace-nowrap">
+            {city && city.trim() ? city : "—"}
+          </span>
         );
       },
     },
@@ -385,27 +430,7 @@ export default function OnlineLeadsPage() {
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Remark" />
       ),
-      cell: ({ row }) => {
-        const remark = row.original.remark;
-        if (!remark || remark.trim() === "" || remark.trim() === "N/A" || remark.trim() === "-") {
-          return <span className="text-xs text-muted-foreground italic">No follow up performed yet</span>;
-        }
-
-        return (
-          <TooltipProvider>
-            <Tooltip delayDuration={150}>
-              <TooltipTrigger asChild>
-                <p className="text-sm font-normal text-foreground truncate max-w-[200px] cursor-help">
-                  {remark}
-                </p>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-[240px] bg-slate-950 text-white border border-slate-850 px-2.5 py-1.5 rounded-md shadow-md text-[11px] leading-relaxed break-words whitespace-normal">
-                {remark}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        );
-      },
+      cell: ({ row }) => <RemarkCell lead={row.original} />,
     },
     {
       accessorKey: "allocation",
@@ -547,15 +572,12 @@ export default function OnlineLeadsPage() {
 
   // Set default tab based on role
   useEffect(() => {
-    const roleLower = userType.toLowerCase();
-    if (roleLower === "telecaller" || roleLower === "sales-executive" || roleLower === "sales executive") {
-      setActiveTab("my");
-    } else if (roleLower === "store-manager" || roleLower === "store manager" || roleLower === "store admin" || roleLower === "store-admin") {
-      setActiveTab("overall");
+    if (queryTab && ["pool", "my", "overall"].includes(queryTab)) {
+      setActiveTab(queryTab);
     } else {
       setActiveTab("pool");
     }
-  }, [userType]);
+  }, [queryTab]);
 
   // Fetch initial setup lists (statuses, stores, telecallers)
   useEffect(() => {
@@ -627,7 +649,14 @@ export default function OnlineLeadsPage() {
       });
       if (res.data?.success) {
         toastManager.add({ title: "Lead approved successfully", type: "success" });
-        queryClient.invalidateQueries({ queryKey: ["draft-lead-table-data"] });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["draft-lead-table-data"] }),
+          queryClient.invalidateQueries({ queryKey: ["universal-stage-leads"] }),
+          queryClient.invalidateQueries({ queryKey: ["vendorOverallLeads"] }),
+          queryClient.invalidateQueries({ queryKey: ["leadStats"] }),
+          queryClient.invalidateQueries({ queryKey: ["activity-status-counts"] }),
+          queryClient.invalidateQueries({ queryKey: ["online-leads"] }),
+        ]);
         queryClient.resetQueries({ queryKey: ["draft-lead-table-data"] });
         fetchLeadsData();
       }
@@ -649,7 +678,14 @@ export default function OnlineLeadsPage() {
       });
       if (res.data?.success) {
         toastManager.add({ title: "Lead rejected successfully", type: "success" });
-        queryClient.invalidateQueries({ queryKey: ["draft-lead-table-data"] });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["draft-lead-table-data"] }),
+          queryClient.invalidateQueries({ queryKey: ["universal-stage-leads"] }),
+          queryClient.invalidateQueries({ queryKey: ["vendorOverallLeads"] }),
+          queryClient.invalidateQueries({ queryKey: ["leadStats"] }),
+          queryClient.invalidateQueries({ queryKey: ["activity-status-counts"] }),
+          queryClient.invalidateQueries({ queryKey: ["online-leads"] }),
+        ]);
         fetchLeadsData();
       }
     } catch (err: any) {

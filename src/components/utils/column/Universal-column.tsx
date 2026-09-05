@@ -48,6 +48,57 @@ function toTitleCase(value: string) {
     .join(" ");
 }
 
+export function parseLeadCode(leadCode: string | null | undefined): {
+  prefix: string;
+  num: number;
+  sub: number;
+} {
+  if (!leadCode) return { prefix: "", num: 0, sub: 0 };
+  const str = String(leadCode).trim();
+  const match = str.match(/^(.*?)(?:[-_\s/])?(\d+)(?:[.\-_](\d+))?$/);
+  if (match) {
+    return {
+      prefix: (match[1] || "").toUpperCase(),
+      num: parseInt(match[2], 10) || 0,
+      sub: match[3] ? parseInt(match[3], 10) : 0,
+    };
+  }
+  const numMatch = str.match(/(\d+)/);
+  return {
+    prefix: str.replace(/\d+/g, "").toUpperCase(),
+    num: numMatch ? parseInt(numMatch[1], 10) : 0,
+    sub: 0,
+  };
+}
+
+export function compareLeadCodesNumeric(
+  codeA: string | null | undefined,
+  codeB: string | null | undefined,
+  direction: "asc" | "desc" = "asc",
+): number {
+  const a = parseLeadCode(codeA);
+  const b = parseLeadCode(codeB);
+
+  if (a.prefix === b.prefix) {
+    if (a.num !== b.num) {
+      return direction === "desc" ? b.num - a.num : a.num - b.num;
+    }
+    if (a.sub !== b.sub) {
+      return a.sub - b.sub;
+    }
+    return 0;
+  }
+
+  if (a.num !== b.num) {
+    return direction === "desc" ? b.num - a.num : a.num - b.num;
+  }
+  const prefixCmp = a.prefix.localeCompare(b.prefix);
+  if (prefixCmp !== 0) {
+    return direction === "desc" ? -prefixCmp : prefixCmp;
+  }
+  return a.sub - b.sub;
+}
+
 export function getUniversalTableColumns(
   options: UniversalColumnOptions = {},
 ): ColumnDef<LeadColumn>[] {
@@ -97,6 +148,11 @@ export function getUniversalTableColumns(
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: false,
+      sortingFn: (rowA, rowB, columnId) => {
+        const codeA = (rowA.getValue(columnId) as string) ?? "";
+        const codeB = (rowB.getValue(columnId) as string) ?? "";
+        return compareLeadCodesNumeric(codeA, codeB, "asc");
+      },
     },
 
     // 2) Name / Client Name & Project Name (for B2B)
@@ -213,6 +269,27 @@ export function getUniversalTableColumns(
 
     ...(showPriorityColumn
       ? ([
+          {
+            accessorKey: "city",
+            filterFn: tableTextSearchFilter<LeadColumn>(),
+            header: ({ column }) => (
+              <DataTableColumnHeader column={column} title="City" />
+            ),
+            meta: {
+              label: "City",
+            },
+            enableSorting: false,
+            enableHiding: true,
+            enableColumnFilter: true,
+            cell: ({ row }) => {
+              const value = (row.getValue("city") as string) || (row.original as any)?.city || "";
+              return (
+                <span className="text-xs font-medium text-foreground whitespace-nowrap">
+                  {value && value.trim() ? value : "—"}
+                </span>
+              );
+            },
+          },
           {
             accessorKey: "priority",
             filterFn: tableSingleValueMultiSelectFilter,

@@ -295,8 +295,8 @@ export const useUniversalStageLeadsPost = (
 
     enabled: !!vendorId && !!payload?.userId,
 
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    staleTime: 10 * 1000,
+    refetchOnWindowFocus: true,
   });
 };
 
@@ -368,8 +368,8 @@ export const useVendorLeadsByTagPost = (
 
     enabled: !!vendorId && !!payload?.tag,
 
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    staleTime: 10 * 1000,
+    refetchOnWindowFocus: true,
   });
 };
 

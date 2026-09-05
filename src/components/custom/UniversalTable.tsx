@@ -38,7 +38,7 @@ import {
 } from "@/api/universalstage";
 import { useFranchisesByVendorId } from "@/api/franchise";
 
-import { getUniversalTableColumns } from "../utils/column/Universal-column";
+import { getUniversalTableColumns, compareLeadCodesNumeric } from "../utils/column/Universal-column";
 import { LeadColumn } from "../utils/column/column-type";
 import { formatSalesExecutiveName, mapTableFiltersToPayload } from "@/lib/utils";
 
@@ -556,14 +556,18 @@ export function UniversalTable({
     ...(STATUS_LOG_SORTED_STAGE_TYPES.has(normalizedType) ||
     ["type 9", "type 10"].includes(normalizedType)
       ? []
-      : [{ id: "createdAt", desc: true }]),
+      : normalizedType === "type 1" && isOnlineLeadFeatureEnabled
+        ? [{ id: "lead_code", desc: true }]
+        : [{ id: "createdAt", desc: true }]),
   ]);
 
   const [overallSorting, setOverallSorting] = useState<SortingState>([
     ...(STATUS_LOG_SORTED_STAGE_TYPES.has(normalizedType) ||
     ["type 9", "type 10"].includes(normalizedType)
       ? []
-      : [{ id: "createdAt", desc: true }]),
+      : normalizedType === "type 1" && isOnlineLeadFeatureEnabled
+        ? [{ id: "lead_code", desc: true }]
+        : [{ id: "createdAt", desc: true }]),
   ]);
 
   // ✅ SEPARATE COLUMN FILTERS FOR BOTH VIEWS
@@ -1230,6 +1234,13 @@ export function UniversalTable({
     if (!isType8 && !isType9 && !isType10) {
       const isDesc = primarySort ? createdAtDirection === "desc" : true;
       const baseData = [...filteredActiveData].sort((a, b) => {
+        if (normalizedType === "type 1" && isOnlineLeadFeatureEnabled) {
+          const codeA = a?.lead_code || "";
+          const codeB = b?.lead_code || "";
+          const cmp = compareLeadCodesNumeric(codeA, codeB, isDesc ? "desc" : "asc");
+          if (cmp !== 0) return cmp;
+          return isDesc ? Number(b?.id || 0) - Number(a?.id || 0) : Number(a?.id || 0) - Number(b?.id || 0);
+        }
         const getLeadActivityTime = (lead: any) => {
           const uTime = lead?.updated_at || lead?.updatedAt ? new Date(lead.updated_at || lead.updatedAt).getTime() : 0;
           const cTime = lead?.created_at || lead?.createdAt ? new Date(lead.created_at || lead.createdAt).getTime() : 0;

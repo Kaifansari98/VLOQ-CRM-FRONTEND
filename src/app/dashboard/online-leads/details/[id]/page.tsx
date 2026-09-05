@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import MultipleSelector, { Option } from "@/components/ui/multiselect";
 import { useParams, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAppSelector } from "@/redux/store";
 import { apiClient } from "@/lib/apiClient";
 import {
@@ -216,6 +217,7 @@ export default function OnlineLeadDetailsPage() {
   const isCaller = userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead" || userType === "caller";
   const isSuperAdmin = userType === "super-admin";
   const isOnlineLeadFeatureEnabled = isSuperAdmin || isAdmin || user?.vendor?.is_online_lead_feature_enabled === true;
+  const isVendorOnlineLeadEnabled = Boolean(user?.vendor?.is_online_lead_feature_enabled === true);
 
   const [lead, setLead] = useState<OnlineLead | null>(null);
   const userFranchiseId = user?.franchise_id;
@@ -224,9 +226,38 @@ export default function OnlineLeadDetailsPage() {
     if (!lead) return false;
     if (isAdmin || userType === "sales admin" || userType === "sales-admin") return true;
     if (isCaller) return false;
+
+    // Direct assignment to user
+    const isDirectlyAssigned =
+      (lead.final_assigned_leads != null && Number(lead.final_assigned_leads) === Number(userId)) ||
+      (lead.assign_to != null && Number(lead.assign_to) === Number(userId));
+    if (isDirectlyAssigned) return true;
+
+    const isSalesExecOrManager =
+      userType === "sales executive" ||
+      userType === "sales-executive" ||
+      userType === "sales person" ||
+      userType === "sales-person" ||
+      userType === "store manager" ||
+      userType === "store-manager" ||
+      userType === "store admin" ||
+      userType === "store-admin";
+
     const targetStoreId = lead.pending_store_id || lead.store_id;
-    return Boolean(userFranchiseId != null && targetStoreId && userFranchiseId === targetStoreId);
-  }, [lead, isAdmin, isCaller, userType, userFranchiseId]);
+    const isSameStore = Boolean(
+      userFranchiseId != null &&
+      targetStoreId &&
+      Number(userFranchiseId) === Number(targetStoreId)
+    );
+
+    if (isSalesExecOrManager) {
+      if (isSameStore || !targetStoreId || userFranchiseId == null) {
+        return true;
+      }
+    }
+
+    return isSameStore;
+  }, [lead, isAdmin, isCaller, userType, userId, userFranchiseId]);
 
   const { isApproveDisabled, approveTooltip } = useMemo(() => {
     if (!lead) return { isApproveDisabled: true, approveTooltip: "" };
@@ -265,6 +296,7 @@ export default function OnlineLeadDetailsPage() {
     return { isApproveDisabled: isDisabled, approveTooltip: tooltip };
   }, [lead]);
 
+  const queryClient = useQueryClient();
   const [actingLeadId, setActingLeadId] = useState<number | null>(null);
 
   async function handleApproveLead() {
@@ -281,6 +313,14 @@ export default function OnlineLeadDetailsPage() {
       });
       if (res.data?.success) {
         toastManager.add({ title: "Lead approved successfully", type: "success" });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["draft-lead-table-data"] }),
+          queryClient.invalidateQueries({ queryKey: ["universal-stage-leads"] }),
+          queryClient.invalidateQueries({ queryKey: ["vendorOverallLeads"] }),
+          queryClient.invalidateQueries({ queryKey: ["leadStats"] }),
+          queryClient.invalidateQueries({ queryKey: ["activity-status-counts"] }),
+          queryClient.invalidateQueries({ queryKey: ["online-leads"] }),
+        ]);
         router.push("/dashboard/leads/leadstable");
       }
     } catch (err: any) {
@@ -302,6 +342,14 @@ export default function OnlineLeadDetailsPage() {
       });
       if (res.data?.success) {
         toastManager.add({ title: "Lead rejected successfully", type: "success" });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["draft-lead-table-data"] }),
+          queryClient.invalidateQueries({ queryKey: ["universal-stage-leads"] }),
+          queryClient.invalidateQueries({ queryKey: ["vendorOverallLeads"] }),
+          queryClient.invalidateQueries({ queryKey: ["leadStats"] }),
+          queryClient.invalidateQueries({ queryKey: ["activity-status-counts"] }),
+          queryClient.invalidateQueries({ queryKey: ["online-leads"] }),
+        ]);
         fetchLeadDetails();
       }
     } catch (err: any) {
@@ -953,7 +1001,7 @@ export default function OnlineLeadDetailsPage() {
 
       if (res.data?.success) {
         toastManager.add({ title: "Lead successfully transferred to store.", type: "success" });
-        window.location.href = "/dashboard/leads/draft-lead";
+        window.location.href = isVendorOnlineLeadEnabled ? "/dashboard/leads/online-lead" : "/dashboard/leads/draft-lead";
       }
     } catch (err: any) {
       console.error("Transfer to Store error:", err);
@@ -1396,7 +1444,7 @@ export default function OnlineLeadDetailsPage() {
         <p className="text-muted-foreground text-sm mt-1">
           This lead ID does not exist or you do not have permission to view it.
         </p>
-        <Link href="/dashboard/leads/draft-lead" className="mt-4">
+        <Link href={isVendorOnlineLeadEnabled ? "/dashboard/leads/online-lead" : "/dashboard/leads/draft-lead"} className="mt-4">
           <Button variant="outline" size="sm">
             <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
           </Button>
@@ -1415,8 +1463,8 @@ export default function OnlineLeadDetailsPage() {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
-                <BreadcrumbLink href="/dashboard/leads/draft-lead">
-                  Online Lead
+                <BreadcrumbLink href={isVendorOnlineLeadEnabled ? "/dashboard/leads/online-lead" : "/dashboard/leads/draft-lead"}>
+                  {isVendorOnlineLeadEnabled ? "Online Lead" : "Draft Lead"}
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator />
@@ -1545,7 +1593,7 @@ export default function OnlineLeadDetailsPage() {
               </TabsTrigger>
             </TabsList>
 
-            {Boolean(isOnlineLeadFeatureEnabled && isPendingApproval && (isSuperAdmin || isAuthorizedToApprove) && (lead?.pending_store_id || lead?.store_id)) && (
+            {Boolean(isOnlineLeadFeatureEnabled && isPendingApproval && (isSuperAdmin || isAuthorizedToApprove)) && (
               <div className="flex items-center gap-2.5">
                 <TooltipProvider>
                   <Tooltip>

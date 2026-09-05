@@ -13,7 +13,8 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { GenerateLeadFormModal } from "@/components/sales-executive/Lead/leads-generation-form-modal";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { canCreateLead } from "@/components/utils/privileges";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,8 @@ import DraftLeadsTable from "../../../_components/draft-leads-table";
 
 export default function DraftLeadsPage() {
   const [openCreateLead, setOpenCreateLead] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
 
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type as string | undefined,
@@ -38,6 +41,14 @@ export default function DraftLeadsPage() {
   const isOnlineLeadFeatureEnabled = useAppSelector(
     (state) => state.auth.user?.vendor?.is_online_lead_feature_enabled === true,
   );
+
+  useEffect(() => {
+    if (isOnlineLeadFeatureEnabled && pathname === "/dashboard/leads/draft-lead") {
+      router.replace("/dashboard/leads/online-lead");
+    } else if (!isOnlineLeadFeatureEnabled && pathname === "/dashboard/leads/online-lead") {
+      router.replace("/dashboard/leads/draft-lead");
+    }
+  }, [isOnlineLeadFeatureEnabled, pathname, router]);
 
   const normalizedUserType = userType?.trim().toLowerCase();
   const canShowAddNewLeadButton =
@@ -63,7 +74,7 @@ export default function DraftLeadsPage() {
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
-                <BreadcrumbPage>{isOnlineLeadFeatureEnabled ? "Online Leads" : "Draft Leads"}</BreadcrumbPage>
+                <BreadcrumbPage>{isOnlineLeadFeatureEnabled ? "Online Lead" : "Draft Leads"}</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
@@ -110,7 +121,7 @@ export default function DraftLeadsPage() {
 
       <main className="flex-1 overflow-x-hidden">
         <DraftLeadsTable
-          stageTitle={isOnlineLeadFeatureEnabled ? "Online Leads" : "Draft Leads"}
+          stageTitle={isOnlineLeadFeatureEnabled ? "Online Lead" : "Draft Leads"}
           stageDescription={
             isOnlineLeadFeatureEnabled
               ? "Leads that are online and not yet submitted."

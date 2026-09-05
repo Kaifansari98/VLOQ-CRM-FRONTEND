@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import LeadDetailsPage from "@/app/dashboard/leads/leadstable/details/[leadId]/page";
 
-export default function DraftLeadDetailsPage() {
+export default function OnlineLeadDetailsPage() {
   const router = useRouter();
   const params = useParams();
   const leadId = params?.leadId;
@@ -15,8 +15,8 @@ export default function DraftLeadDetailsPage() {
   );
 
   useEffect(() => {
-    if (isOnlineLeadFeatureEnabled && leadId) {
-      router.replace(`/dashboard/leads/online-lead/details/${leadId}`);
+    if (!isOnlineLeadFeatureEnabled && leadId) {
+      router.replace(`/dashboard/leads/draft-lead/details/${leadId}`);
     }
   }, [isOnlineLeadFeatureEnabled, leadId, router]);
 

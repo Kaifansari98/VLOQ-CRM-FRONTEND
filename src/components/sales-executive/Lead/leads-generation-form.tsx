@@ -334,6 +334,10 @@ export default function LeadsGenerationForm({
     (state) =>
       state.auth.user?.vendor?.handlesLargeScaleProjects === true,
   );
+  const isOnlineLeadFeatureEnabled = useAppSelector(
+    (state: any) =>
+      state.auth.user?.vendor?.is_online_lead_feature_enabled === true,
+  );
   const userId = useAppSelector((state) => state.auth.user?.id);
   const createdBy = useAppSelector((state: any) => state.auth.user?.id);
   const [mapOpen, setMapOpen] = useState(false);
@@ -1016,7 +1020,11 @@ export default function LeadsGenerationForm({
       form.reset();
       setFiles([]);
       onClose();
-      router.push("/dashboard/leads/draft-lead");
+      router.push(
+        isOnlineLeadFeatureEnabled
+          ? "/dashboard/leads/online-lead"
+          : "/dashboard/leads/draft-lead"
+      );
     },
     onError: (error: any) => {
       console.error("Draft save error:", error);

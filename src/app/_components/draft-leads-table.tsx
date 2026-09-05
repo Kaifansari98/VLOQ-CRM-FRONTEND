@@ -46,6 +46,9 @@ export default function DraftLeadsTable({
   const franchiseId = useAppSelector(
     (s) => s.auth.franchise_id ?? s.auth.user?.franchise_id,
   );
+  const isOnlineLeadFeatureEnabled = useAppSelector(
+    (s) => s.auth.user?.vendor?.is_online_lead_feature_enabled === true,
+  );
   const userType = useAppSelector((s) => s.auth.user?.user_type.user_type);
   const normalizedUserType = userType?.toLowerCase();
   const isSuperAdminOrAdmin =
@@ -70,7 +73,14 @@ export default function DraftLeadsTable({
       });
       if (res.data?.success) {
         toastManager.add({ title: "Lead approved successfully", type: "success" });
-        queryClient.invalidateQueries({ queryKey: ["draft-lead-table-data"] });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["draft-lead-table-data"] }),
+          queryClient.invalidateQueries({ queryKey: ["universal-stage-leads"] }),
+          queryClient.invalidateQueries({ queryKey: ["vendorOverallLeads"] }),
+          queryClient.invalidateQueries({ queryKey: ["leadStats"] }),
+          queryClient.invalidateQueries({ queryKey: ["activity-status-counts"] }),
+          queryClient.invalidateQueries({ queryKey: ["online-leads"] }),
+        ]);
       }
     } catch (err: any) {
       toastManager.add({
@@ -90,7 +100,14 @@ export default function DraftLeadsTable({
       });
       if (res.data?.success) {
         toastManager.add({ title: "Lead rejected successfully", type: "success" });
-        queryClient.invalidateQueries({ queryKey: ["draft-lead-table-data"] });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["draft-lead-table-data"] }),
+          queryClient.invalidateQueries({ queryKey: ["universal-stage-leads"] }),
+          queryClient.invalidateQueries({ queryKey: ["vendorOverallLeads"] }),
+          queryClient.invalidateQueries({ queryKey: ["leadStats"] }),
+          queryClient.invalidateQueries({ queryKey: ["activity-status-counts"] }),
+          queryClient.invalidateQueries({ queryKey: ["online-leads"] }),
+        ]);
       }
     } catch (err: any) {
       toastManager.add({
@@ -164,7 +181,6 @@ export default function DraftLeadsTable({
     postPayload
   );
 
-  const isOnlineLeadFeatureEnabled = useAppSelector((s) => s.auth.user?.vendor?.is_online_lead_feature_enabled === true);
 
   const tableData: DraftLeadRow[] = React.useMemo(() => {
     const rawData = data?.data || [];
@@ -206,6 +222,7 @@ export default function DraftLeadsTable({
       pending_store_id: lead.pending_store_id,
       is_online_lead: isOnlineLeadFeatureEnabled || lead.is_online_lead === true,
       franchiseId: lead.franchise_id ?? lead.franchise?.id ?? undefined,
+      rawLead: lead,
     }));
   }, [data, isOnlineLeadFeatureEnabled]);
 
@@ -259,7 +276,10 @@ export default function DraftLeadsTable({
       if (row.is_online_lead) {
         router.push(`/dashboard/online-leads/details/${row.id}`);
       } else {
-        router.push(`/dashboard/leads/draft-lead/details/${row.id}`);
+        const basePath = isOnlineLeadFeatureEnabled
+          ? "/dashboard/leads/online-lead"
+          : "/dashboard/leads/draft-lead";
+        router.push(`${basePath}/details/${row.id}`);
       }
     }
   };

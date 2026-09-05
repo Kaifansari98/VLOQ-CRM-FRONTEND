@@ -526,7 +526,7 @@ export function NavMain({
                                 ? subItem.customCount
                                 : getCountForItem(subItem.showCount!);
                               if (!count) return null;
-                              if (isOnlineLeadFeatureEnabled && (count === 0 || count === "0" || Number(count) === 0)) return null;
+                              if (isOnlineLeadFeatureEnabled && (count === 0 || Number(count) === 0)) return null;
                               return (
                                 <Badge
                                   className={cn(
@@ -577,7 +577,7 @@ export function NavMain({
               if (!item.showCount && item.customCount === undefined) return null;
               const count = getSingleItemCount(item);
               if (count === undefined || count === null) return null;
-              if (isOnlineLeadFeatureEnabled && (count === 0 || count === "0" || Number(count) === 0)) return null;
+              if (isOnlineLeadFeatureEnabled && (count === 0 || Number(count) === 0)) return null;
               return (
                 <Badge
                   className={cn(
