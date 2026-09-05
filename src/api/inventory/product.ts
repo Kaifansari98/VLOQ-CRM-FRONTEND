@@ -137,13 +137,14 @@ export const fetchProductMasters = async (vendorId: number) => {
 
 export const fetchProducts = async (
   vendorId: number,
-  params: { page?: number; search?: string; page_size?: number }
+  params: { page?: number; search?: string; page_size?: number; active?: "Yes" | "No" }
 ) => {
   const q = new URLSearchParams();
 
   if (params.page) q.set("page", String(params.page));
   if (params.search) q.set("search", params.search);
   if (params.page_size) q.set("page_size", String(params.page_size));
+  if (params.active) q.set("active", params.active);
 
   const { data } = await apiClient.get(
     `/inventory/products/${vendorId}?${q.toString()}`
