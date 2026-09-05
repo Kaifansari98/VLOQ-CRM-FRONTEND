@@ -48,6 +48,7 @@ export interface BroadcastItem {
   fileSize?: string;
   bookmarked?: boolean;
   isRead?: boolean;
+  wasSentToMe?: boolean;
   videoLinks?: string[];
   attachments?: BroadcastAttachment[];
   versionHistory?: BroadcastVersion[];

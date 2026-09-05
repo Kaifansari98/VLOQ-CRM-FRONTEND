@@ -124,8 +124,13 @@ export function BroadcastPopupModal() {
          window.location.pathname.includes("/broadcast"))) ||
       isBroadcastPage;
 
+    const isInactiveUser = Boolean(
+      user?.status && user.status.toLowerCase() !== "active"
+    );
+
     if (
       isSuperAdmin ||
+      isInactiveUser ||
       currentIsBroadcastPage ||
       isNavigating ||
       !broadcasts ||
@@ -148,6 +153,17 @@ export function BroadcastPopupModal() {
         return timeA - timeB;
       });
 
+    const parseDateToMs = (val: any): number => {
+      if (!val) return 0;
+      if (typeof val === "number") return val;
+      const parsed = new Date(val).getTime();
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    const userCreatedAtTime = parseDateToMs((user as any)?.created_at || (user as any)?.createdAt);
+    const userUpdatedAtTime = parseDateToMs((user as any)?.updated_at || (user as any)?.updatedAt);
+    const userBaselineTime = Math.max(userCreatedAtTime, userUpdatedAtTime);
+
     const pendingBroadcast = publishedBroadcasts.find((b) => {
       const numIdStr = String(b.numericId ?? "");
       const fullIdStr = String(b.id ?? "");
@@ -156,7 +172,21 @@ export function BroadcastPopupModal() {
       const isDismissed =
         dismissedIds.includes(numIdStr) || dismissedIds.includes(fullIdStr);
 
-      return !isRead && !isDismissed;
+      if (isRead || isDismissed) return false;
+
+      // STRICT RULE: Only trigger popup modal for users captured in notification list at broadcast send time
+      if (b.wasSentToMe === false) return false;
+
+      // Do NOT trigger popup modal for broadcasts published BEFORE the user was added or reactivated
+      if (userBaselineTime > 0) {
+        const rawTime = b.rawPublishAt || (b as any).publish_at || (b as any).created_at;
+        const broadcastTime = parseDateToMs(rawTime);
+        if (broadcastTime > 0 && broadcastTime < userBaselineTime - 30000) {
+          return false;
+        }
+      }
+
+      return true;
     });
 
     if (pendingBroadcast) {
@@ -242,7 +272,8 @@ export function BroadcastPopupModal() {
     router.push(`/dashboard/broadcast?id=${targetId}`);
   };
 
-  if (isSuperAdmin || isMasterAdmin || isBroadcastPage || isNavigating || !activeBroadcast || !user) return null;
+  const isInactive = Boolean(user?.status && user.status.toLowerCase() !== "active");
+  if (isSuperAdmin || isMasterAdmin || isInactive || isBroadcastPage || isNavigating || !activeBroadcast || !user) return null;
 
   const contentSnippet = stripHtmlAndEntities(activeBroadcast.content || "");
   const timerPercentage = (timeLeft / POPUP_DURATION_SECONDS) * 100;
