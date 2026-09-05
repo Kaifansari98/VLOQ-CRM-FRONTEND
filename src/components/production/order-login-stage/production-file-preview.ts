@@ -18,7 +18,7 @@ export type InventoryProduct = {
 export type ProductionPreviewRow = {
   key: string; source: string; type: string; category: string; qty: number; unit: string;
   name: string; articleCode: string; errors: string[]; product?: InventoryProduct;
-  status: "invalid" | "unmatched" | "ambiguous" | "inactive" | "unit" | "unknown" | "shortage" | "ready";
+  status: "invalid" | "unmatched" | "ambiguous" | "inactive" | "unknown" | "shortage" | "ready";
   available?: number; shortage?: number; stockUnit?: string;
 };
 export type ProductionPreview = { rows: ProductionPreviewRow[]; logs: PreviewLog[]; fileCount: number };
@@ -140,14 +140,9 @@ export function applyInventoryMatches(preview: ProductionPreview, matches: Map<s
       row.product = product;
       row.stockUnit = product.stockUnit?.unit_name || product.unit_of_measure || product.primaryUnit?.unit_name || undefined;
       const stock = product.current_stock == null || product.current_stock === "" ? NaN : Number(product.current_stock);
-      const acceptedUnits = [row.stockUnit];
-      if (normalize(product.primaryUnit?.unit_name ?? "") === normalize(row.stockUnit ?? "")) acceptedUnits.push(product.primaryUnit?.short_name ?? undefined);
       if (product.active !== "Yes") {
         row.status = "inactive";
         message = "This catalog product is inactive.";
-      } else if (!row.stockUnit || !acceptedUnits.some((unit) => unit && normalize(unit) === normalize(row.unit))) {
-        row.status = "unit";
-        message = `Excel unit “${row.unit}” cannot be compared with inventory unit “${row.stockUnit || "not set"}”. Review the units.`;
       } else if (!Number.isFinite(stock)) {
         row.status = "unknown";
         message = "Inventory quantity is unavailable for this product.";

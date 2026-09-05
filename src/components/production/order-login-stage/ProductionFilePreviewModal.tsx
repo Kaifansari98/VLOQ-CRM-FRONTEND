@@ -15,7 +15,7 @@ import {
 
 const statusLabels: Record<ProductionPreviewRow["status"], string> = {
   ready: "In stock", shortage: "Stock shortage", unmatched: "Not found", ambiguous: "Multiple matches",
-  inactive: "Inactive product", unit: "Check unit", unknown: "Stock unavailable", invalid: "Invalid row",
+  inactive: "Inactive product", unknown: "Stock unavailable", invalid: "Invalid row",
 };
 const quantity = (value: number | string | null | undefined) => value == null || value === "" || !Number.isFinite(Number(value))
   ? "—" : Number(value).toLocaleString(undefined, { maximumFractionDigits: 8 });
