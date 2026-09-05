@@ -80,6 +80,12 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
         user?.vendor?.handlesLargeScaleProjects) === true
     );
   });
+  const isInventoryEnabled = useAppSelector((state) => {
+    const user = state.auth.user as any;
+    return (user?.vendorMaster?.is_inventory_enabled ?? user?.vendor?.is_inventory_enabled) === true;
+  });
+  const showRequiredMaterials = handlesLargeScaleProjects && isInventoryEnabled;
+  const productionFilesTitle = showRequiredMaterials ? "Required Production Materials" : "Production Files";
   const {
     data: orderLoginLockIns = [],
     isLoading: orderLoginLockInsLoading,
@@ -304,14 +310,15 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
       : []),
     {
       id: "production-files",
-      title: "Production Files",
+      title: productionFilesTitle,
       color: "bg-zinc-800 hover:bg-zinc-900",
       disabled: isOrderLoginLocked || !canViewProductionFiles,
       disabledReason: !canViewProductionFiles
-        ? "You don’t have permission to access Production Files."
+        ? `You don’t have permission to access ${productionFilesTitle}.`
         : lockedTabsTooltip,
       cardContent: (
         <ProductionFilesSection
+          showRequiredMaterials={showRequiredMaterials}
           leadId={leadId}
           accountId={accountId}
           instanceId={scopedInstanceId}

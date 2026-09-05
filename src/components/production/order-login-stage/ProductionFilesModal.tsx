@@ -55,6 +55,7 @@ interface ProductionFilesSectionProps {
   leadId: number;
   accountId: number | null;
   readOnly?: boolean;
+  showRequiredMaterials?: boolean;
   instanceId?: number | null;
   orderLoginApprovalPending?: boolean;
   orderLoginApprovalPendingTooltip?: string;
@@ -97,6 +98,7 @@ export default function ProductionFilesSection({
   leadId,
   accountId,
   readOnly = false,
+  showRequiredMaterials = false,
   instanceId,
   orderLoginApprovalPending = false,
   orderLoginApprovalPendingTooltip = "Accounts approval for Order Login is still pending",
@@ -118,7 +120,7 @@ export default function ProductionFilesSection({
   );
   // Vendors that both run large-scale projects and have inventory switched on
   // must upload a strict Excel-only sheet whose columns match the template.
-  const strictExcelMode = handlesLargeScaleProjects && isInventoryEnabled;
+  const strictExcelMode = showRequiredMaterials || (handlesLargeScaleProjects && isInventoryEnabled);
   const customPrivilegeCodes = useAppSelector(
     (s) => s.customPrivileges.codes,
   );
@@ -357,6 +359,24 @@ export default function ProductionFilesSection({
       <ClientRequiredDeliveryDateBanner leadId={leadId} />
 
       <div className="border rounded-lg bg-background shadow-sm">
+        {showRequiredMaterials ? (
+          <>
+            {shouldDisableActions && <p role="status" className="border-b px-6 py-3 text-sm text-muted-foreground">{effectiveBlockedTooltip}</p>}
+            <ProductionFilePreviewModal
+              embedded
+              open
+              onOpenChange={() => {}}
+              files={selectedFiles}
+              onFilesChange={setSelectedFiles}
+              vendorId={vendorId}
+              uploading={isPending}
+              canUpload={canUploadProductionFiles}
+              onUpload={handleUpload}
+              onDownloadTemplate={handleDownloadTemplate}
+            />
+          </>
+        ) : (
+          <>
         {/* -------------------------------- HEADER -------------------------------- */}
         <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between px-6 py-4 border-b bg-muted/30 ">
           <div className="space-y-0.5">
@@ -533,6 +553,9 @@ export default function ProductionFilesSection({
           </div>
         )}
 
+          </>
+        )}
+
         {/* -------------------------------- FILE LIST SECTION -------------------------------- */}
         <div className="p-6 space-y-4">
           <div className="flex items-center justify-between mb-2">
@@ -555,6 +578,8 @@ export default function ProductionFilesSection({
               <p className="text-xs text-muted-foreground">
                 {readOnly
                   ? "No files are available to preview or download."
+                  : strictExcelMode
+                  ? "Select an Excel workbook above to review the required materials."
                   : "Start by uploading your CAD, Pytha, or image files."}
               </p>
             </div>
@@ -627,7 +652,7 @@ export default function ProductionFilesSection({
 
         {/* -------------------------------- EXCEL IMPORT PREVIEW -------------------------------- */}
         <ProductionFilePreviewModal
-          open={strictExcelMode && previewModalOpen}
+          open={!showRequiredMaterials && strictExcelMode && previewModalOpen}
           onOpenChange={(open) => {
             if (isPending) return;
             setPreviewModalOpen(open);

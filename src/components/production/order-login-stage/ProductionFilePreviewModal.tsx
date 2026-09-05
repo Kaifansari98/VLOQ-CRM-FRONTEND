@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2, Package, Search, Upload } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,7 @@ const quantity = (value: number | string | null | undefined) => value == null ||
   ? "—" : Number(value).toLocaleString(undefined, { maximumFractionDigits: 8 });
 
 interface Props {
+  embedded?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   files: File[];
@@ -32,7 +33,7 @@ interface Props {
   onDownloadTemplate: () => void;
 }
 
-export default function ProductionFilePreviewModal({ open, onOpenChange, files, onFilesChange, vendorId,
+export default function ProductionFilePreviewModal({ embedded = false, open, onOpenChange, files, onFilesChange, vendorId,
   uploading, canUpload, onUpload, onDownloadTemplate }: Props) {
   const [preview, setPreview] = useState<ProductionPreview | null>(null);
   const [phase, setPhase] = useState<"reading" | "matching" | "done">("reading");
@@ -53,6 +54,8 @@ export default function ProductionFilePreviewModal({ open, onOpenChange, files, 
     setLookupError("");
     setPhase("reading");
     setPage(1);
+    setFilter("all");
+    setSearch("");
     async function read() {
       try {
         const parsed = await parseProductionFiles(files);
@@ -94,16 +97,18 @@ export default function ProductionFilePreviewModal({ open, onOpenChange, files, 
   const visibleRows = filtered.slice((currentPage - 1) * 25, currentPage * 25);
   const canConfirm = checked && !busy && !uploading && canUpload && !errors && !lookupError && rows.length > 0;
 
-  return (
-    <Dialog open={open} onOpenChange={(next) => { if (!uploading) onOpenChange(next); }}>
-      <DialogContent className="flex max-h-[92vh] w-[96vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-6xl" showCloseButton={!uploading} onPointerDownOutside={(event) => event.preventDefault()}>
-        <DialogHeader className="border-b bg-muted/30 px-6 py-5 pr-12 text-left">
+  const content = (
+    <>
+        <div className="border-b bg-muted/30 px-6 py-5 pr-12 text-left">
           <div className="flex items-center gap-3">
             <div className="rounded-xl border bg-background p-2.5 text-primary"><FileSpreadsheet className="size-6" /></div>
-            <div><DialogTitle className="text-lg">Review production materials</DialogTitle>
-              <DialogDescription className="mt-1">Check your Excel rows and inventory before uploading production files.</DialogDescription></div>
+            <div>{embedded ? (
+              <><h2 className="text-lg font-semibold">Required Production Materials</h2><p className="mt-1 text-sm text-muted-foreground">Check your Excel rows and inventory before uploading production files.</p></>
+            ) : (
+              <><DialogTitle className="text-lg">Required Production Materials</DialogTitle><DialogDescription className="mt-1">Check your Excel rows and inventory before uploading production files.</DialogDescription></>
+            )}</div>
           </div>
-        </DialogHeader>
+        </div>
 
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 sm:p-6">
           <div className="rounded-xl border p-4">
@@ -111,7 +116,7 @@ export default function ProductionFilePreviewModal({ open, onOpenChange, files, 
               <div><p className="text-sm font-medium">Excel workbooks</p><p className="text-xs text-muted-foreground">.xlsx only · Required headers in the first row · Additional columns allowed</p></div>
               <Button variant="outline" size="sm" onClick={onDownloadTemplate}>Download template</Button>
             </div>
-            <FileUploadField value={files} onChange={onFilesChange} accept=".xlsx" multiple disabled={uploading} />
+            <FileUploadField value={files} onChange={onFilesChange} accept=".xlsx" multiple disabled={uploading || !canUpload} />
             <div className="mt-3 flex flex-wrap gap-1.5">{REQUIRED_PRODUCTION_HEADERS.map((header) => <Badge key={header} variant="secondary">{header}</Badge>)}</div>
           </div>
 
@@ -170,8 +175,17 @@ export default function ProductionFilePreviewModal({ open, onOpenChange, files, 
         </div>
         <div className="flex flex-col items-start justify-between gap-3 border-t bg-muted/20 px-6 py-4 sm:flex-row sm:items-center">
           <div className="text-sm"><p className="font-medium">{canConfirm ? `${rows.length} rows reviewed in ${files.length} file${files.length === 1 ? "" : "s"}` : "Review and validate your files to continue"}</p><p className="mt-1 text-xs text-muted-foreground">{warnings ? "Inventory warnings do not prevent file upload. " : ""}Uploads save production documents; material records are not added yet.</p></div>
-          <div className="flex shrink-0 gap-2"><Button variant="outline" disabled={uploading} onClick={() => onOpenChange(false)}>Back</Button><Button disabled={!canConfirm} onClick={() => { if (canConfirm) void onUpload(); }}>{uploading ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Upload className="mr-2 size-4" />}{uploading ? "Uploading…" : "Upload files"}</Button></div>
+          <div className="flex shrink-0 gap-2">{!embedded && <Button variant="outline" disabled={uploading} onClick={() => onOpenChange(false)}>Back</Button>}<Button disabled={!canConfirm} onClick={() => { if (canConfirm) void onUpload(); }}>{uploading ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Upload className="mr-2 size-4" />}{uploading ? "Uploading…" : "Upload files"}</Button></div>
         </div>
+    </>
+  );
+
+  if (embedded) return <section className="flex min-w-0 flex-col">{content}</section>;
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => { if (!uploading) onOpenChange(next); }}>
+      <DialogContent className="flex max-h-[92vh] w-[96vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-6xl" showCloseButton={!uploading} onPointerDownOutside={(event) => event.preventDefault()}>
+        {content}
       </DialogContent>
     </Dialog>
   );
