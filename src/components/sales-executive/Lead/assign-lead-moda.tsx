@@ -137,7 +137,16 @@ const AssignLeadModal = ({
     onSuccess: () => {
       toastManager.add({ title: "Assign Lead Successfully.", type: "success" });
       queryClient.invalidateQueries({
-        queryKey: ["vendorUserLeads", vendorId, userId],
+        queryKey: ["vendorUserLeads"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["universal-stage-leads"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["lead", leadData?.id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["leadDetails"],
       });
       onOpenChange(false);
     },
