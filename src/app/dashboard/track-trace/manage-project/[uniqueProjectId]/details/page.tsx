@@ -3,6 +3,7 @@
 import { toastManager } from "@/components/ui/toast";
 import {
   getBoxItems,
+  deleteTrackTraceBoxItem,
   getProjectDetail,
   getProjectCutListPaginated,
   ProjectDetailData,
@@ -15,6 +16,8 @@ import {
   ProjectCutListSortOrder,
   downloadBoxPdf,
   downloadProjectFullReport,
+  TrackTraceBoxStatus,
+  updateTrackTraceBoxStatus,
 } from "@/api/track-trace/track-trace-cutlist.api";
 import {
   Breadcrumb,
@@ -46,6 +49,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
@@ -84,11 +97,13 @@ import {
   Phone,
   Calendar,
   PackageCheck,
+  PackageOpen,
+  Trash2,
   TrendingUp,
   UserCheck,
 } from "lucide-react";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 
@@ -1136,29 +1151,137 @@ function BoxItemsDialog({
   onClose,
   vendorId,
   projectId,
+  projectMasterId,
   boxId,
   boxName,
+  userId,
+  onBoxUpdated,
 }: {
   open: boolean;
   onClose: () => void;
   vendorId: number;
   projectId: string;
+  projectMasterId: number;
   boxId: number;
   boxName: string;
+  userId: number;
+  onBoxUpdated: () => void | Promise<void>;
 }) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<Awaited<
     ReturnType<typeof getBoxItems>
   > | null>(null);
+  const [pendingStatus, setPendingStatus] =
+    useState<TrackTraceBoxStatus | null>(null);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
+  const [deletingItemId, setDeletingItemId] = useState<number | null>(null);
+
+  const loadBoxItems = useCallback(async () => {
+    setLoading(true);
+
+    try {
+      const result = await getBoxItems(vendorId, projectId, boxId);
+      setData(result);
+    } catch (error) {
+      console.error(error);
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [boxId, projectId, vendorId]);
 
   useEffect(() => {
     if (!open) return;
-    setLoading(true);
-    getBoxItems(vendorId, projectId, boxId)
-      .then(setData)
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [open, boxId]);
+    setData(null);
+    void loadBoxItems();
+  }, [loadBoxItems, open]);
+
+  const refreshBoxViews = useCallback(async () => {
+    const [, projectRefresh] = await Promise.allSettled([
+      loadBoxItems(),
+      Promise.resolve().then(() => onBoxUpdated()),
+    ]);
+
+    if (projectRefresh.status === "rejected") {
+      console.error("Failed to refresh project boxes:", projectRefresh.reason);
+    }
+  }, [loadBoxItems, onBoxUpdated]);
+
+  const boxStatus = String(data?.box.box_status || "").toLowerCase();
+  const isPacked = boxStatus === "packed";
+
+  const handleStatusUpdate = async () => {
+    if (!pendingStatus || updatingStatus) return;
+
+    try {
+      setUpdatingStatus(true);
+      await updateTrackTraceBoxStatus(boxId, pendingStatus, userId);
+      await refreshBoxViews();
+      toastManager.add({
+        title: `Box marked as ${pendingStatus}`,
+        type: "success",
+      });
+      setPendingStatus(null);
+    } catch (error: any) {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          "Failed to update box status",
+        type: "error",
+      });
+      void refreshBoxViews();
+      setPendingStatus(null);
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handleDeleteItem = async () => {
+    if (!itemToDelete || deletingItemId) return;
+
+    if (isPacked) {
+      toastManager.add({
+        title: "Unpack the box before deleting an item",
+        type: "warning",
+      });
+      setItemToDelete(null);
+      return;
+    }
+
+    try {
+      setDeletingItemId(itemToDelete.id);
+      await deleteTrackTraceBoxItem({
+        mappingId: itemToDelete.id,
+        vendorId,
+        projectId: projectMasterId,
+        boxId,
+        userId,
+      });
+      await refreshBoxViews();
+      toastManager.add({
+        title: "Item removed from box successfully",
+        type: "success",
+      });
+      setItemToDelete(null);
+    } catch (error: any) {
+      toastManager.add({
+        title:
+          error?.response?.data?.message ||
+          error?.response?.data?.error ||
+          "Failed to remove item from box",
+        type: "error",
+      });
+      void refreshBoxViews();
+      setItemToDelete(null);
+    } finally {
+      setDeletingItemId(null);
+    }
+  };
 
   const { totalQty, totalWeight } = useMemo(() => {
     if (!data?.items) return { totalQty: 0, totalWeight: 0 };
@@ -1178,9 +1301,10 @@ function BoxItemsDialog({
   }, [data]);
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+    <>
+      <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="sm:max-w-6xl md:max-w-7xl lg:max-w-[90vw] xl:max-w-[1300px] w-full max-h-[88vh] flex flex-col p-0 overflow-hidden rounded-2xl border">
-        <DialogHeader className="px-6 py-4 border-b bg-muted/30 flex flex-row items-center justify-between">
+        <DialogHeader className="flex flex-row items-center justify-between gap-4 border-b bg-muted/30 px-6 py-4 pr-14">
           <DialogTitle className="flex items-center gap-3 text-lg font-bold">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/80 font-bold">
               <Box size={18} />
@@ -1198,6 +1322,40 @@ function BoxItemsDialog({
               )}
             </div>
           </DialogTitle>
+          {data && (
+            <div className="flex shrink-0 items-center gap-2">
+              <Badge
+                variant="outline"
+                className={cn(
+                  "hidden capitalize sm:inline-flex",
+                  isPacked
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                    : "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+                )}
+              >
+                {boxStatus}
+              </Badge>
+              <Button
+                type="button"
+                size="sm"
+                variant={isPacked ? "outline" : "default"}
+                className="gap-1.5"
+                disabled={updatingStatus}
+                onClick={() =>
+                  setPendingStatus(isPacked ? "unpacked" : "packed")
+                }
+              >
+                {updatingStatus ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : isPacked ? (
+                  <PackageOpen className="size-4" />
+                ) : (
+                  <PackageCheck className="size-4" />
+                )}
+                {isPacked ? "Unpack box" : "Pack box"}
+              </Button>
+            </div>
+          )}
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto p-0 bg-background">
@@ -1256,6 +1414,9 @@ function BoxItemsDialog({
                     </TableHead>
                     <TableHead className="text-xs font-bold uppercase text-foreground whitespace-nowrap px-4">
                       Site By
+                    </TableHead>
+                    <TableHead className="text-right text-xs font-bold uppercase text-foreground whitespace-nowrap px-4">
+                      Actions
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1337,6 +1498,33 @@ function BoxItemsDialog({
                             "—"
                           )}
                         </TableCell>
+                        <TableCell className="px-4 text-right">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            disabled={isPacked || deletingItemId === item.id}
+                            title={
+                              isPacked
+                                ? "Unpack the box before deleting items"
+                                : "Remove item from box"
+                            }
+                            onClick={() =>
+                              setItemToDelete({
+                                id: item.id,
+                                name: item.cut_list.item_name,
+                              })
+                            }
+                          >
+                            {deletingItemId === item.id ? (
+                              <Loader2 className="size-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="size-4" />
+                            )}
+                            <span className="sr-only">Remove item</span>
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     );
                   })}
@@ -1357,7 +1545,7 @@ function BoxItemsDialog({
                       {formatWeight(totalWeight)}
                     </TableCell>
                     <TableCell
-                      colSpan={6}
+                      colSpan={7}
                       className="py-3.5 px-4 text-xs text-muted-foreground text-right pr-6"
                     >
                       Total Weight:{" "}
@@ -1372,7 +1560,81 @@ function BoxItemsDialog({
           )}
         </div>
       </DialogContent>
-    </Dialog>
+      </Dialog>
+
+      <AlertDialog
+        open={pendingStatus !== null}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen && !updatingStatus) setPendingStatus(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingStatus === "packed"
+                ? "Pack this box?"
+                : "Unpack this box?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingStatus === "packed"
+                ? "The box will be marked as packed. Items cannot be removed until the box is unpacked again."
+                : "The box will be marked as unpacked, allowing its contents to be changed or removed."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updatingStatus}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={updatingStatus}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleStatusUpdate();
+              }}
+            >
+              {updatingStatus && <Loader2 className="size-4 animate-spin" />}
+              {pendingStatus === "packed" ? "Pack box" : "Unpack box"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={itemToDelete !== null}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen && deletingItemId === null) setItemToDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove item from box?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {itemToDelete
+                ? `Remove “${itemToDelete.name}” from ${boxName}? This action is only allowed while the box is unpacked.`
+                : "This action is only allowed while the box is unpacked."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingItemId !== null}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20"
+              disabled={deletingItemId !== null}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleDeleteItem();
+              }}
+            >
+              {deletingItemId !== null && (
+                <Loader2 className="size-4 animate-spin" />
+              )}
+              Remove item
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
@@ -2470,12 +2732,16 @@ function CutListSection({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ProjectDetailPage() {
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const currentUser = useAppSelector((state) => state.auth.user);
+  const vendorId = currentUser?.vendor_id;
   const { uniqueProjectId } = useParams<{ uniqueProjectId: string }>();
 
   const [data, setData] = useState<ProjectDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const activeBoxFiltersRef = useRef<
+    NonNullable<Parameters<typeof getProjectDetail>[2]>
+  >({});
 
   const [selectedBox, setSelectedBox] = useState<{
     id: number;
@@ -2484,14 +2750,27 @@ export default function ProjectDetailPage() {
   const [downloadingBoxId, setDownloadingBoxId] = useState<number | null>(null);
   const [downloadingAll, setDownloadingAll] = useState(false);
 
+  const refreshProjectDetail = useCallback(async () => {
+    if (!vendorId || !uniqueProjectId) return;
+
+    const result = await getProjectDetail(
+      Number(vendorId),
+      String(uniqueProjectId),
+      activeBoxFiltersRef.current,
+    );
+    setData(result);
+  }, [uniqueProjectId, vendorId]);
+
   useEffect(() => {
     if (!vendorId || !uniqueProjectId) return;
+
+    activeBoxFiltersRef.current = {};
     setLoading(true);
-    getProjectDetail(Number(vendorId), String(uniqueProjectId))
-      .then(setData)
+    setError(false);
+    refreshProjectDetail()
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [vendorId, uniqueProjectId]);
+  }, [refreshProjectDetail, uniqueProjectId, vendorId]);
 
   const handleBoxesFilterChange = useCallback(
     (params: {
@@ -2502,11 +2781,10 @@ export default function ProjectDetailPage() {
       box_status?: string;
     }) => {
       if (!vendorId || !uniqueProjectId) return;
-      getProjectDetail(Number(vendorId), String(uniqueProjectId), params)
-        .then(setData)
-        .catch(console.error);
+      activeBoxFiltersRef.current = params;
+      void refreshProjectDetail().catch(console.error);
     },
-    [vendorId, uniqueProjectId],
+    [refreshProjectDetail, uniqueProjectId, vendorId],
   );
 
   const receivedStats = data
@@ -3672,14 +3950,17 @@ export default function ProjectDetailPage() {
       </div>
 
       {/* ── Box items dialog ── */}
-      {selectedBox && (
+      {selectedBox && data && currentUser && (
         <BoxItemsDialog
           open={!!selectedBox}
           onClose={() => setSelectedBox(null)}
           vendorId={Number(vendorId)}
           projectId={String(uniqueProjectId)}
+          projectMasterId={data.project.id}
           boxId={selectedBox.id}
           boxName={selectedBox.name}
+          userId={currentUser.id}
+          onBoxUpdated={refreshProjectDetail}
         />
       )}
     </>

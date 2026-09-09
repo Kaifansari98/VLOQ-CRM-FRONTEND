@@ -576,6 +576,51 @@ export const getBoxItems = async (
   };
 };
 
+export type TrackTraceBoxStatus = "packed" | "unpacked";
+
+export const updateTrackTraceBoxStatus = async (
+  boxId: number,
+  status: TrackTraceBoxStatus,
+  userId: number,
+) => {
+  const { data } = await apiClient.put(
+    `/boxes/status/${status}/${boxId}`,
+    {
+      user_id: userId,
+    },
+  );
+
+  return data;
+};
+
+export const deleteTrackTraceBoxItem = async ({
+  mappingId,
+  vendorId,
+  projectId,
+  boxId,
+  userId,
+}: {
+  mappingId: number;
+  vendorId: number;
+  projectId: number;
+  boxId: number;
+  userId: number;
+}) => {
+  const { data } = await apiClient.delete(
+    `/scan-items/scan-and-pack/delete/${mappingId}`,
+    {
+      data: {
+        vendor_id: vendorId,
+        project_id: projectId,
+        box_id: boxId,
+        deleted_by: userId,
+      },
+    },
+  );
+
+  return data;
+};
+
 export const downloadBoxPdf = async (
   boxId: number,
   projectId: string | number,
