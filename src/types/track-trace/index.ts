@@ -399,3 +399,116 @@ export type ProjectBoxInfoField = {
   sort_order?: number;
   active?: boolean;
 };
+
+// --- CUTLIST MACHINE RULES TYPES ---
+export type RuleStatus = "ACTIVE" | "INACTIVE";
+export type RuleConditionType = "COLUMN" | "CATEGORY";
+export type RuleOperator =
+  | "EQUALS"
+  | "NOT_EQUALS"
+  | "CONTAINS"
+  | "NOT_CONTAINS"
+  | "LESS_THAN"
+  | "LESS_THAN_OR_EQUAL"
+  | "GREATER_THAN"
+  | "GREATER_THAN_OR_EQUAL"
+  | "IN"
+  | "NOT_IN"
+  | "BETWEEN";
+export type LogicalOperator = "AND" | "OR";
+export type RuleFieldDataType = "STRING" | "NUMBER" | "BOOLEAN" | "ARRAY";
+
+export interface RuleFieldMaster {
+  id: number;
+  field_key: string;
+  field_name: string;
+  data_type: RuleFieldDataType;
+  status: RuleStatus;
+}
+
+export interface RuleActionMaster {
+  id: number;
+  vendor_id: number;
+  action_code: string;
+  action_name: string;
+  status: RuleStatus;
+}
+
+export interface CutListRuleCondition {
+  id?: number;
+  group_id?: number;
+  condition_type: RuleConditionType;
+  field_key?: string | null;
+  operator: RuleOperator;
+  value: any;
+  logical_operator?: LogicalOperator | null;
+  sequence_no: number;
+}
+
+export interface CutListRuleConditionGroup {
+  id?: number;
+  rule_id?: number;
+  logical_operator?: LogicalOperator | null;
+  sequence_no: number;
+  conditions: CutListRuleCondition[];
+}
+
+export interface CutListRuleAction {
+  id?: number;
+  rule_id?: number;
+  action_id: number;
+  action_value?: any;
+  sequence_no: number;
+  actionMaster?: RuleActionMaster;
+}
+
+export interface CutListRuleMaster {
+  id: number;
+  vendor_id: number;
+  machine_id: number;
+  rule_code: string;
+  rule_name: string;
+  rule_tag: string | null;
+  priority: number;
+  status: RuleStatus;
+  created_by?: number | null;
+  updated_by?: number | null;
+  created_at: string;
+  updated_at: string;
+  conditionGroups: CutListRuleConditionGroup[];
+  actions: CutListRuleAction[];
+  createdBy?: { id: number; user_name: string; user_email: string } | null;
+  updatedBy?: { id: number; user_name: string; user_email: string } | null;
+}
+
+export interface CreateRulePayload {
+  vendor_id: number;
+  rule_code: string;
+  rule_name: string;
+  rule_tag?: string;
+  priority?: number;
+  status?: RuleStatus;
+  created_by?: number;
+  conditionGroups: Array<{
+    logical_operator?: LogicalOperator | null;
+    sequence_no: number;
+    conditions: Array<{
+      condition_type: RuleConditionType;
+      field_key?: string | null;
+      operator: RuleOperator;
+      value: any;
+      logical_operator?: LogicalOperator | null;
+      sequence_no: number;
+    }>;
+  }>;
+  actions: Array<{
+    action_id: number;
+    action_value?: any;
+    sequence_no: number;
+  }>;
+}
+
+export interface UpdateRulePayload extends Partial<CreateRulePayload> {
+  updated_by?: number;
+}
+

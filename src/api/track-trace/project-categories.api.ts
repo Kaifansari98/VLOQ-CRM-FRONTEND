@@ -92,7 +92,7 @@ export const getProjectCategories = async (
 ) => {
   const params = new URLSearchParams();
   if (filters?.page) params.append("page", String(filters.page));
-  if (filters?.limit) params.append("limit", String(filters.limit));
+  params.append("limit", String(filters?.limit || 1000));
   if (filters?.search && filters.search.trim() !== "")
     params.append("search", filters.search.trim());
   if (filters?.status && filters.status !== "all")

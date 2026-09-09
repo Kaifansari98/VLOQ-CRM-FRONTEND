@@ -49,14 +49,17 @@ import {
   XCircle,
   Copy,
   Check,
+  SlidersHorizontal,
 } from "lucide-react";
 import { useAssignedUsersByMachine } from "@/hooks/track-trace-hooks/useTrackTraceMasterHooks";
 import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
+import { useRouter } from "next/navigation";
 
 interface TrackTraceWorkstationTableProps {
   data: MachineData[];
   onEditClick: (machine: MachineData) => void;
   onAssignUsersClick: (machineId: number) => void;
+  onManageRulesClick?: (machine: MachineData) => void;
   className?: string;
 }
 
@@ -285,8 +288,10 @@ export default function TrackTraceWorkstationTable({
   data,
   onEditClick,
   onAssignUsersClick,
+  onManageRulesClick,
   className,
 }: TrackTraceWorkstationTableProps) {
+  const router = useRouter();
   const [rowSelection, setRowSelection] = useState({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -589,6 +594,20 @@ export default function TrackTraceWorkstationTable({
                 >
                   <Users size={14} />
                   Assign Users
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  className="cursor-pointer gap-2"
+                  onClick={() => {
+                    if (onManageRulesClick) {
+                      onManageRulesClick(row.original);
+                    } else {
+                      router.push(`/dashboard/track-trace/master/workstation/rules/create?machine_id=${row.original.id}`);
+                    }
+                  }}
+                >
+                  <SlidersHorizontal size={14} />
+                  Manage Rules
                 </DropdownMenuItem>
 
                 <DropdownMenuSeparator />
