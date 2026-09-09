@@ -15,15 +15,19 @@ import { NotificationBell } from "@/components/notifications/NotificationBell";
 import VendorsTable from "@/components/custom/VendorsTable";
 import { Button } from "@/components/ui/button";
 import { useCreateVendorLoginLaunch } from "@/api/auth";
+import { useAppDispatch } from "@/redux/store";
+import { logout } from "@/redux/slices/authSlice";
+import { clearClientSessionStorage } from "@/lib/sessionCleanup";
 import { toastManager } from "@/components/ui/toast";
 import { Plus } from "lucide-react";
 
 export default function VendorsPage() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const createVendorLoginLaunchMutation = useCreateVendorLoginLaunch();
 
   const handleLoginToVendor = React.useCallback(
-    async (row: { id: number; vendor_name: string; status?: string }) => {
+    async (row: { id: number; vendor_name: string; status?: string; subdomain_url?: string }) => {
       if (String(row.status || "").toLowerCase() !== "active") {
         toastManager.add({
           title: `Vendor ${row.vendor_name} is inactive. Login is disabled.`,
@@ -39,7 +43,24 @@ export default function VendorsPage() {
           throw new Error("Vendor launch URL not found");
         }
 
-        window.open(launchUrl, "_blank", "noopener,noreferrer");
+        let isSameDomain = false;
+        try {
+          const targetHost = new URL(launchUrl).host.toLowerCase();
+          const currentHost = window.location.host.toLowerCase();
+          isSameDomain = targetHost === currentHost;
+        } catch {
+          const currentHost = window.location.host.toLowerCase();
+          const sub = String(row.subdomain_url || "").toLowerCase();
+          isSameDomain = !!sub && currentHost.includes(sub);
+        }
+
+        if (isSameDomain) {
+          dispatch(logout());
+          clearClientSessionStorage();
+          window.location.href = launchUrl;
+        } else {
+          window.open(launchUrl, "_blank", "noopener,noreferrer");
+        }
       } catch (error: any) {
         toastManager.add({
           title:
@@ -50,7 +71,7 @@ export default function VendorsPage() {
         });
       }
     },
-    [createVendorLoginLaunchMutation],
+    [createVendorLoginLaunchMutation, dispatch],
   );
 
   const handleOpenCreateVendor = () => {
