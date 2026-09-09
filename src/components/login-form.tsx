@@ -15,7 +15,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { apiClient } from "@/lib/apiClient";
 import { exchangeVendorLoginApi } from "@/api/auth";
-import { setCredentials } from "@/redux/slices/authSlice";
+import { setCredentials, logout } from "@/redux/slices/authSlice";
+import { clearClientSessionStorage } from "@/lib/sessionCleanup";
 import { setCustomPrivileges } from "@/redux/slices/customPrivilegesSlice";
 import { setActiveTheme } from "@/redux/slices/themeSlice";
 
@@ -139,8 +140,13 @@ export function LoginForm({
 
   useEffect(() => {
     const exchangeVendorLogin = async () => {
-      if (!vendorLoginToken || user || token || isVendorLoginInProgress) {
+      if (!vendorLoginToken || isVendorLoginInProgress) {
         return;
+      }
+
+      if (user || token) {
+        dispatch(logout());
+        clearClientSessionStorage();
       }
 
       setIsVendorLoginInProgress(true);
