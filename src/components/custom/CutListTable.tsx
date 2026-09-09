@@ -51,7 +51,14 @@ interface Props {
     machineName: string,
     assigned: boolean,
   ) => Promise<void>;
-  onDownloadLabels?: (cutListIds?: number[]) => Promise<string>;
+  onDownloadLabels?: (
+    cutListIds?: number[],
+    options?: {
+      selectedMachines?: string[];
+      includeMachineSequence?: boolean;
+      targetMachine?: string;
+    },
+  ) => Promise<string>;
   onDownloadExcel?: (cutListIds?: number[]) => Promise<string>;
   onDownloadBasicExcel?: (cutListIds?: number[]) => Promise<string>; // ✅ New prop
 }
@@ -107,18 +114,24 @@ export default function CutListTable({
     }
     return resolved;
   };
-  const handleDownloadLabels = async () => {
+  const handleDownloadLabels = async (options?: {
+    cutListIds?: number[];
+    selectedMachines?: string[];
+    includeMachineSequence?: boolean;
+    targetMachine?: string;
+  }) => {
     if (!onDownloadLabels) return;
 
     try {
       setIsDownloading(true);
 
       const selectedRowIds =
-        selectedRows.length > 0
+        options?.cutListIds ??
+        (selectedRows.length > 0
           ? selectedRows.map((row) => row.original.id)
-          : undefined;
+          : undefined);
 
-      const rawPdfUrl = await onDownloadLabels(selectedRowIds);
+      const rawPdfUrl = await onDownloadLabels(selectedRowIds, options);
       console.log("[CutList] labels download raw url", rawPdfUrl);
       const pdfUrl = resolveFileUrl(rawPdfUrl);
       console.log("[CutList] labels download resolved url", pdfUrl);
@@ -471,7 +484,7 @@ export default function CutListTable({
       <Button
         variant="default"
         size="sm"
-        onClick={handleDownloadLabels}
+        onClick={() => handleDownloadLabels()}
         disabled={isDownloading}
         className="gap-2"
       >
