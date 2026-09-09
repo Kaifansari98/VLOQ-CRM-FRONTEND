@@ -21,6 +21,7 @@ export interface MachineScanResult {
   description: string | null;
   group_name: string | null;
   box_id: number | null;
+  box_total_weight?: number | null;
   scanned_at: string;
 }
 

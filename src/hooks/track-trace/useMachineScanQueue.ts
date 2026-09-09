@@ -115,8 +115,12 @@ const isStoredScanResult = (result: unknown): result is MachineScanResult => {
     typeof candidate.unique_code === "string" &&
     (candidate.description === null ||
       typeof candidate.description === "string") &&
-    (candidate.group_name === null || typeof candidate.group_name === "string") &&
+    (candidate.group_name === null ||
+      typeof candidate.group_name === "string") &&
     (candidate.box_id === null || typeof candidate.box_id === "number") &&
+    (candidate.box_total_weight === undefined ||
+      candidate.box_total_weight === null ||
+      typeof candidate.box_total_weight === "number") &&
     typeof candidate.scanned_at === "string"
   );
 };

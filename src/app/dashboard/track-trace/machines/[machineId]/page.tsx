@@ -87,6 +87,7 @@ import { useAppSelector } from "@/redux/store";
 import { PackagingBoxInfoField } from "@/api/track-trace/packaging-scanner.api";
 
 const AUTO_SUBMIT_DELAY_MS = 300;
+const BOX_WEIGHT_WARNING_KG = 25;
 
 const QueueStatus = ({ item }: { item: MachineScanQueueItem }) => {
   if (item.status === "processing") {
@@ -1031,6 +1032,10 @@ export default function MachineScannerPage() {
                               item.status === "processing" && "bg-blue-500/5",
                               item.status === "success" && "bg-emerald-500/5",
                               item.status === "failure" && "bg-red-500/5",
+                              typeof item.result?.box_total_weight === "number" &&
+                                item.result.box_total_weight >=
+                                  BOX_WEIGHT_WARNING_KG &&
+                                "bg-amber-500/10",
                             )}
                           >
                             <TableCell className="pl-5 font-medium tabular-nums text-muted-foreground sm:pl-6">
@@ -1064,8 +1069,17 @@ export default function MachineScannerPage() {
                             </TableCell>
                             {isPackagingMachine && (
                               <TableCell className="text-sm font-medium">
-                                {item.boxName ||
-                                  (item.boxId ? `Box #${item.boxId}` : "—")}
+                                <p>
+                                  {item.boxName ||
+                                    (item.boxId ? `Box #${item.boxId}` : "—")}
+                                </p>
+                                {typeof item.result?.box_total_weight ===
+                                  "number" && (
+                                  <p className="mt-0.5 text-xs font-normal text-muted-foreground">
+                                    {item.result.box_total_weight.toFixed(2)} kg{" "}
+                                    total
+                                  </p>
+                                )}
                               </TableCell>
                             )}
                             <TableCell>
@@ -1080,7 +1094,24 @@ export default function MachineScannerPage() {
                                   "text-emerald-700 dark:text-emerald-400",
                               )}
                             >
-                              {item.message}
+                              <div className="space-y-1.5">
+                                <p>{item.message}</p>
+                                {typeof item.result?.box_total_weight ===
+                                  "number" &&
+                                  item.result.box_total_weight >=
+                                    BOX_WEIGHT_WARNING_KG && (
+                                    <div
+                                      role="status"
+                                      className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400"
+                                    >
+                                      <AlertCircle className="size-3.5 shrink-0" />
+                                      Warning: box weight is{" "}
+                                      {item.result.box_total_weight.toFixed(2)} kg{" "}
+                                      ({BOX_WEIGHT_WARNING_KG} kg warning
+                                      threshold). Scanning remains enabled.
+                                    </div>
+                                  )}
+                              </div>
                             </TableCell>
                             <TableCell className="pr-5 text-right text-xs tabular-nums text-muted-foreground sm:pr-6">
                               {new Date(
