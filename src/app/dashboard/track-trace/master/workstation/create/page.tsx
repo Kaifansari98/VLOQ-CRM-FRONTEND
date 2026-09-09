@@ -126,7 +126,7 @@ function WorkstationFormContent() {
 
   const editData = useMemo(() => {
     if (!editId || !machines) return null;
-    return machines.find((m) => m.id === editId) || null;
+    return machines.find((m) => String(m.id) === String(editId)) || null;
   }, [machines, editId]);
 
   const isEdit = !!editData;
@@ -432,6 +432,7 @@ function WorkstationFormContent() {
                       Status <span className="text-destructive">*</span>
                     </FormLabel>
                     <Select
+                      key={field.value}
                       onValueChange={field.onChange}
                       value={field.value}
                       disabled={isSubmitting}
@@ -462,6 +463,7 @@ function WorkstationFormContent() {
                       Scan Type <span className="text-destructive">*</span>
                     </FormLabel>
                     <Select
+                      key={field.value}
                       onValueChange={field.onChange}
                       value={field.value}
                       disabled={isSubmitting}
