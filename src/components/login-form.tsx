@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLogin } from "@/hooks/useLogin";
 import { useDispatch, useSelector } from "react-redux";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -98,10 +98,11 @@ export function LoginForm({
   const [isVendorLoginInProgress, setIsVendorLoginInProgress] = useState(false);
 
   const { user, token } = useSelector((state: RootState) => state.auth);
+  const hasAttemptedVendorExchangeRef = useRef<string | null>(null);
 
-  // ✅ Redirect if already logged in
+  // ✅ Redirect if already logged in (only when not performing a vendor login exchange)
   useEffect(() => {
-    if (user && token) {
+    if (!vendorLoginToken && user && token) {
       router.replace(getPostLoginPath(user, vendorLoginToken));
     }
   }, [router, token, user, vendorLoginToken]);
@@ -140,18 +141,22 @@ export function LoginForm({
 
   useEffect(() => {
     const exchangeVendorLogin = async () => {
-      if (!vendorLoginToken || isVendorLoginInProgress) {
+      if (
+        !vendorLoginToken ||
+        hasAttemptedVendorExchangeRef.current === vendorLoginToken
+      ) {
         return;
       }
 
-      if (user || token) {
-        dispatch(logout());
-        clearClientSessionStorage();
-      }
-
-      setIsVendorLoginInProgress(true);
+      hasAttemptedVendorExchangeRef.current = vendorLoginToken;
 
       try {
+        // Clear any old session before setting up the new vendor credentials
+        dispatch(logout());
+        clearClientSessionStorage();
+
+        setIsVendorLoginInProgress(true);
+
         const response = await exchangeVendorLoginApi(vendorLoginToken);
         dispatch(setCredentials({ user: response.user, token: response.token }));
         dispatch(
@@ -186,7 +191,7 @@ export function LoginForm({
     };
 
     exchangeVendorLogin();
-  }, [dispatch, isVendorLoginInProgress, router, token, user, vendorLoginToken]);
+  }, [dispatch, router, vendorLoginToken]);
 
   useEffect(() => {
     if (loginMutation.isError) {
