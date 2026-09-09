@@ -23,7 +23,14 @@ export default function VendorsPage() {
   const createVendorLoginLaunchMutation = useCreateVendorLoginLaunch();
 
   const handleLoginToVendor = React.useCallback(
-    async (row: { id: number; vendor_name: string }) => {
+    async (row: { id: number; vendor_name: string; status?: string }) => {
+      if (String(row.status || "").toLowerCase() !== "active") {
+        toastManager.add({
+          title: `Vendor ${row.vendor_name} is inactive. Login is disabled.`,
+          type: "error",
+        });
+        return;
+      }
       try {
         const response = await createVendorLoginLaunchMutation.mutateAsync(row.id);
         const launchUrl = response?.data?.launch_url;
