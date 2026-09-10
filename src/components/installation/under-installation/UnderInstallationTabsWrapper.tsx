@@ -114,6 +114,8 @@ export default function UnderInstallationTabsWrapper({
         )
       : true;
 
+  const isMiscUser = userType?.trim().toLowerCase() === "miscellaneous";
+
   const tabs = [
     {
       id: "underInstallation",
@@ -194,6 +196,15 @@ export default function UnderInstallationTabsWrapper({
       ),
     },
   ].filter((tab) => {
+    if (isMiscUser) {
+      if (
+        tab.id === "underInstallation" ||
+        tab.id === "handover" ||
+        tab.id === "smallOrderRequest"
+      ) {
+        return false;
+      }
+    }
     if (tab.id === "misc") return canViewMiscellaneousTab;
     if (tab.id === "issueLog") return canViewIssueLogTab;
     if (tab.id === "handover") return canViewUsableHandoverTab;
@@ -203,11 +214,12 @@ export default function UnderInstallationTabsWrapper({
   });
 
   const preferredTabId = searchParams.get("tab");
+  const fallbackDefaultTabId = isMiscUser ? "misc" : "underInstallation";
   const resolvedDefaultTabId =
     preferredTabId &&
     tabs.some((tab) => !tab.disabled && tab.id === preferredTabId)
       ? preferredTabId
-      : "underInstallation";
+      : tabs.find((t) => !t.disabled)?.id || fallbackDefaultTabId;
 
   return (
     <div className="w-full h-full bg-white dark:bg-[#0a0a0a]">

@@ -61,7 +61,8 @@ export function MiscellaneousTable({
   const skipFranchiseFilter =
     userType === "factory" ||
     userType === "site-supervisor" ||
-    userType === "backend";
+    userType === "backend" ||
+    userType === "miscellaneous";
 
   const router = useRouter();
 
