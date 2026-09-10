@@ -116,12 +116,20 @@ export default function CutListPage() {
     };
 
 
-    const handleDownloadLabels = async (cutListIds?: number[]) => {
+    const handleDownloadLabels = async (
+        cutListIds?: number[],
+        options?: {
+            selectedMachines?: string[];
+            includeMachineSequence?: boolean;
+            targetMachine?: string;
+        }
+    ) => {
         try {
             const pdfUrl = await generateQRLabels(
                 Number(vendorId),
                 String(uniqueProjectId),
-                cutListIds
+                cutListIds,
+                options
             );
 
             return pdfUrl;

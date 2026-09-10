@@ -71,6 +71,7 @@ import {
   Edit3,
   CheckCircle2,
   XCircle,
+  ShieldAlert,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -218,16 +219,29 @@ export default function OnlineLeadDetailsPage() {
   const isSalesExecutive = userType === "sales-executive" || userType === "sales executive" || userType === "salesexecutive";
   const isOnlineLeadFeatureEnabled = user?.vendor?.is_online_lead_feature_enabled === true;
   const isSuperAdmin = userType === "super-admin";
-
   const [lead, setLead] = useState<OnlineLead | null>(null);
+  const [accessDenied, setAccessDenied] = useState(false);
   const userFranchiseId = user?.franchise_id;
   const isPendingApproval = lead?.approval_status === "PENDING";
   const isAuthorizedToApprove = useMemo(() => {
     if (!lead) return false;
     if (isAdmin || userType === "sales admin" || userType === "sales-admin") return true;
+    if (isSalesExecutive) {
+      const assignedExecId =
+        lead.final_assigned_leads || (lead as any)?.finalAssignedLeads?.id;
+      if (assignedExecId && Number(assignedExecId) !== Number(userId)) {
+        return false;
+      }
+      return Boolean(
+        userFranchiseId != null &&
+          (lead.pending_store_id || lead.store_id) === userFranchiseId,
+      );
+    }
     const targetStoreId = lead.pending_store_id || lead.store_id;
-    return Boolean(userFranchiseId != null && targetStoreId && userFranchiseId === targetStoreId);
-  }, [lead, isAdmin, userType, userFranchiseId]);
+    return Boolean(
+      userFranchiseId != null && targetStoreId && userFranchiseId === targetStoreId,
+    );
+  }, [lead, isAdmin, userType, isSalesExecutive, userId, userFranchiseId]);
 
   const { isApproveDisabled, approveTooltip } = useMemo(() => {
     if (!lead) return { isApproveDisabled: true, approveTooltip: "" };
@@ -749,13 +763,20 @@ export default function OnlineLeadDetailsPage() {
   const fetchLeadDetails = async () => {
     if (isNaN(id)) return;
     setLoading(true);
+    setAccessDenied(false);
     try {
       const res = await apiClient.get(`/online-leads/${id}`);
       if (res.data?.success) {
         setLead(res.data.data);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to load lead details:", err);
+      if (
+        err?.response?.status === 403 ||
+        err?.response?.data?.error?.includes("Access denied")
+      ) {
+        setAccessDenied(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -1330,6 +1351,15 @@ export default function OnlineLeadDetailsPage() {
         setSalesExecutiveId("");
         setAssignRemark("");
         fetchLeadDetails();
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["draft-lead-table-data"] }),
+          queryClient.invalidateQueries({ queryKey: ["universal-stage-leads"] }),
+          queryClient.invalidateQueries({ queryKey: ["vendorOverallLeads"] }),
+          queryClient.invalidateQueries({ queryKey: ["vendorUserLeads"] }),
+          queryClient.invalidateQueries({ queryKey: ["leadStats"] }),
+          queryClient.invalidateQueries({ queryKey: ["activity-status-counts"] }),
+          queryClient.invalidateQueries({ queryKey: ["online-leads"] }),
+        ]);
         setIsSuccessOpen(true);
       }
     } catch (err: any) {
@@ -1362,6 +1392,33 @@ export default function OnlineLeadDetailsPage() {
       <div className="flex-1 flex flex-col items-center justify-center space-y-3 bg-background">
         <Loader2 className="w-10 h-10 text-slate-800 dark:text-slate-200 animate-spin" />
         <p className="text-muted-foreground font-semibold text-sm">Loading lead profile...</p>
+      </div>
+    );
+  }
+
+  const assignedExecId =
+    lead?.final_assigned_leads || (lead as any)?.finalAssignedLeads?.id;
+  const isUnauthorizedSalesExec =
+    isSalesExecutive &&
+    !isAdmin &&
+    Boolean(assignedExecId) &&
+    Number(assignedExecId) !== Number(userId);
+
+  if (accessDenied || isUnauthorizedSalesExec) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-12 bg-background text-center min-h-[60vh]">
+        <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-950/50 flex items-center justify-center mb-4 shadow-xs">
+          <ShieldAlert className="w-8 h-8 text-red-600 dark:text-red-400" />
+        </div>
+        <h2 className="text-xl font-bold text-foreground">Access Denied</h2>
+        <p className="text-muted-foreground text-sm mt-1.5 max-w-md">
+          This lead is currently assigned to another Sales Executive. You do not have permission to view or access this lead.
+        </p>
+        <Link href="/dashboard/leads/online-lead" className="mt-5">
+          <Button variant="outline" size="sm" className="rounded-xl cursor-pointer">
+            <ArrowLeft className="w-4 h-4 mr-2" /> Back to Online Leads
+          </Button>
+        </Link>
       </div>
     );
   }

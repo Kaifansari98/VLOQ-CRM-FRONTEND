@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAppSelector } from "@/redux/store";
 import {
   Clock,
   User,
@@ -87,6 +88,29 @@ const getEventBadgeLabel = (eventType: string) => {
 };
 
 export default function OnlineHistoryTab({ leadId, vendorId }: OnlineHistoryTabProps) {
+  const isOnlineLeadFeatureEnabled = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_online_lead_feature_enabled === true
+  );
+
+  const formatOnlineHistoryText = React.useCallback(
+    (text: string | null) => {
+      if (!text) return "";
+      if (isOnlineLeadFeatureEnabled) {
+        return text
+          .replace(
+            /Lead conversion approved and moved to Draft Lead stage/gi,
+            "Lead conversion approved and moved to Online Lead stage"
+          )
+          .replace(
+            /Lead conversion to Draft submitted for approval/gi,
+            "Lead conversion to Online submitted for approval"
+          );
+      }
+      return text;
+    },
+    [isOnlineLeadFeatureEnabled]
+  );
+
   const { data: events = [], isLoading, error } = useQuery<OnlineHistoryEvent[]>({
     queryKey: ["leadOnlineHistory", leadId, vendorId],
     queryFn: () => fetchLeadOnlineHistory({ leadId, vendorId }),
@@ -163,12 +187,12 @@ export default function OnlineHistoryTab({ leadId, vendorId }: OnlineHistoryTabP
                       </div>
 
                       <p className="text-sm text-foreground font-medium leading-relaxed">
-                        {event.action}
+                        {formatOnlineHistoryText(event.action)}
                       </p>
 
                       {event.remark && (
                         <p className="text-xs text-muted-foreground italic border-l-2 border-slate-300 dark:border-slate-700 pl-2 py-0.5">
-                          {event.remark}
+                          {formatOnlineHistoryText(event.remark)}
                         </p>
                       )}
 

@@ -38,12 +38,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import {
   PhoneCall,
   History,
   Store,
   Calendar,
   User,
+  UserCheck,
+  Check,
+  ChevronsUpDown,
   Mail,
   Phone,
   Tag,
@@ -71,6 +76,7 @@ import {
   Edit3,
   CheckCircle2,
   XCircle,
+  ShieldAlert,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -186,6 +192,11 @@ interface OnlineLead {
     selectedBy: { user_name: string };
     assignedTo: { user_name: string } | null;
   }>;
+  vendor?: {
+    id: number;
+    vendor_name: string;
+    is_online_lead_feature_enabled: boolean;
+  } | null;
 }
 
 interface FollowupStatus {
@@ -204,6 +215,30 @@ interface Telecaller {
   name: string;
 }
 
+const getInitials = (name: string) => {
+  if (!name) return "SE";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
+
+const getAvatarStyle = (name: string) => {
+  const styles = [
+    "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800",
+    "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800",
+    "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
+    "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800",
+    "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800",
+    "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800",
+    "bg-teal-500/15 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800",
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return styles[Math.abs(hash) % styles.length];
+};
+
 export default function OnlineLeadDetailsPage() {
   const params = useParams();
   const router = useRouter();
@@ -216,10 +251,13 @@ export default function OnlineLeadDetailsPage() {
   const isAdmin = userType === "super-admin" || userType === "admin" || userType === "sales admin" || userType === "sales-admin";
   const isCaller = userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead" || userType === "caller";
   const isSuperAdmin = userType === "super-admin";
-  const isOnlineLeadFeatureEnabled = isSuperAdmin || isAdmin || user?.vendor?.is_online_lead_feature_enabled === true;
-  const isVendorOnlineLeadEnabled = Boolean(user?.vendor?.is_online_lead_feature_enabled === true);
-
   const [lead, setLead] = useState<OnlineLead | null>(null);
+  const [accessDenied, setAccessDenied] = useState(false);
+  const isOnlineLeadFeatureEnabled =
+    lead?.vendor?.is_online_lead_feature_enabled !== undefined
+      ? Boolean(lead.vendor.is_online_lead_feature_enabled)
+      : Boolean(user?.vendor?.is_online_lead_feature_enabled === true);
+  const isVendorOnlineLeadEnabled = isOnlineLeadFeatureEnabled;
   const userFranchiseId = user?.franchise_id;
   const isPendingApproval = lead?.approval_status === "PENDING";
   const isAuthorizedToApprove = useMemo(() => {
@@ -233,11 +271,21 @@ export default function OnlineLeadDetailsPage() {
       (lead.assign_to != null && Number(lead.assign_to) === Number(userId));
     if (isDirectlyAssigned) return true;
 
-    const isSalesExecOrManager =
+    const isSalesExec =
       userType === "sales executive" ||
       userType === "sales-executive" ||
       userType === "sales person" ||
-      userType === "sales-person" ||
+      userType === "sales-person";
+
+    if (isSalesExec) {
+      const assignedExecId = lead.final_assigned_leads || (lead as any)?.finalAssignedLeads?.id;
+      if (assignedExecId && Number(assignedExecId) !== Number(userId)) {
+        return false;
+      }
+      return isDirectlyAssigned;
+    }
+
+    const isStoreManagerOrAdmin =
       userType === "store manager" ||
       userType === "store-manager" ||
       userType === "store admin" ||
@@ -250,7 +298,7 @@ export default function OnlineLeadDetailsPage() {
       Number(userFranchiseId) === Number(targetStoreId)
     );
 
-    if (isSalesExecOrManager) {
+    if (isStoreManagerOrAdmin) {
       if (isSameStore || !targetStoreId || userFranchiseId == null) {
         return true;
       }
@@ -467,8 +515,27 @@ export default function OnlineLeadDetailsPage() {
   const [assignedToName, setAssignedToName] = useState("");
   const isStoreAdmin = userType === "store admin" || userType === "store-admin" || userType === "store manager";
   const [salesExecutives, setSalesExecutives] = useState<any[]>([]);
+  const [isSeDropdownOpen, setIsSeDropdownOpen] = useState(false);
+  const [seSearchQuery, setSeSearchQuery] = useState("");
+
+  const selectedSalesExec = useMemo(
+    () => salesExecutives.find((se) => String(se.id) === String(salesExecutiveId)),
+    [salesExecutives, salesExecutiveId]
+  );
+
+  const filteredSalesExecutives = useMemo(() => {
+    if (!seSearchQuery.trim()) return salesExecutives;
+    const q = seSearchQuery.toLowerCase();
+    return salesExecutives.filter(
+      (se) =>
+        (se.user_name || se.name || "").toLowerCase().includes(q) ||
+        (se.user_email || "").toLowerCase().includes(q)
+    );
+  }, [salesExecutives, seSearchQuery]);
 
   const canAssign = useMemo(() => {
+    if (!isOnlineLeadFeatureEnabled) return false;
+
     return (
       userType === "super-admin" ||
       userType === "admin" ||
@@ -476,7 +543,7 @@ export default function OnlineLeadDetailsPage() {
       userType === "telecaller-team-lead" ||
       userType === "sales admin" ||
       userType === "sales-admin" ||
-      (isOnlineLeadFeatureEnabled && isStoreAdmin)
+      isStoreAdmin
     );
   }, [userType, isOnlineLeadFeatureEnabled, isStoreAdmin]);
 
@@ -789,13 +856,20 @@ export default function OnlineLeadDetailsPage() {
   const fetchLeadDetails = async () => {
     if (isNaN(id)) return;
     setLoading(true);
+    setAccessDenied(false);
     try {
       const res = await apiClient.get(`/online-leads/${id}`);
       if (res.data?.success) {
         setLead(res.data.data);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to load lead details:", err);
+      if (
+        err?.response?.status === 403 ||
+        err?.response?.data?.error?.includes("Access denied")
+      ) {
+        setAccessDenied(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -923,7 +997,7 @@ export default function OnlineLeadDetailsPage() {
             if (lead?.final_assigned_leads && list.some((se: any) => se.id.toString() === lead?.final_assigned_leads?.toString())) {
               return lead.final_assigned_leads.toString();
             }
-            return list[0].id.toString();
+            return "";
           });
         }
       })
@@ -1377,34 +1451,43 @@ export default function OnlineLeadDetailsPage() {
   const handleAssignSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!salesExecutiveId || salesExecutiveId === "none") {
+      toastManager.add({ title: "Please select a sales executive.", type: "error" });
+      return;
+    }
+
     setAssigning(true);
     try {
+      const selectedExecNum = Number(salesExecutiveId);
       const res = await apiClient.put(`/online-leads/${id}/assign`, {
-        assign_to: assigneeId && assigneeId !== "none" ? Number(assigneeId) : null,
-        sales_executive_id: salesExecutiveId && salesExecutiveId !== "none" ? Number(salesExecutiveId) : null,
+        assign_to: assigneeId && assigneeId !== "none" ? Number(assigneeId) : undefined,
+        sales_executive_id: selectedExecNum,
+        final_assigned_leads: selectedExecNum,
         remark: assignRemark,
         created_by: userId,
       });
 
       if (res.data?.success) {
         setIsAssignOpen(false);
-        
-        const assignedCaller = telecallers.find((tc) => String(tc.id) === String(assigneeId));
-        const assignedSales = telecallers.find((tc) => String(tc.id) === String(salesExecutiveId));
-        
-        const names = [];
-        if (assignedCaller) names.push(`Caller: ${assignedCaller.user_name}`);
-        if (assignedSales) names.push(`Sales: ${assignedSales.user_name}`);
-        
-        setAssignedToName(names.join(" & ") || "Unassigned");
-        setAssigneeId("");
+        setIsSeDropdownOpen(false);
+        setSeSearchQuery("");
+
+        const assignedSales =
+          salesExecutives.find((se) => String(se.id) === String(salesExecutiveId)) ||
+          telecallers.find((tc) => String(tc.id) === String(salesExecutiveId));
+        const assignedName = assignedSales ? (assignedSales.user_name || assignedSales.name) : "Sales Executive";
+
+        setAssignedToName(assignedName);
         setSalesExecutiveId("");
         setAssignRemark("");
         fetchLeadDetails();
+        queryClient.invalidateQueries({ queryKey: ["universal-stage-leads"] });
+        queryClient.invalidateQueries({ queryKey: ["vendorUserLeads"] });
+        queryClient.invalidateQueries({ queryKey: ["vendor-leads-by-tag"] });
         setIsSuccessOpen(true);
       }
     } catch (err: any) {
-      toastManager.add({ title: err.response?.data?.error || "Failed to reassign lead.", type: "error" });
+      toastManager.add({ title: err.response?.data?.error || "Failed to assign sales executive.", type: "error" });
     } finally {
       setAssigning(false);
     }
@@ -1433,6 +1516,42 @@ export default function OnlineLeadDetailsPage() {
       <div className="flex-1 flex flex-col items-center justify-center space-y-3 bg-background">
         <Loader2 className="w-10 h-10 text-slate-800 dark:text-slate-200 animate-spin" />
         <p className="text-muted-foreground font-semibold text-sm">Loading lead profile...</p>
+      </div>
+    );
+  }
+
+  const isSalesExec =
+    userType === "sales executive" || userType === "sales-executive";
+  const assignedExecId =
+    lead?.final_assigned_leads || (lead as any)?.finalAssignedLeads?.id;
+  const isUnauthorizedSalesExec =
+    isSalesExec &&
+    !isAdmin &&
+    Boolean(assignedExecId) &&
+    Number(assignedExecId) !== Number(userId);
+
+  if (accessDenied || isUnauthorizedSalesExec) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-12 bg-background text-center min-h-[60vh]">
+        <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-950/50 flex items-center justify-center mb-4 shadow-xs">
+          <ShieldAlert className="w-8 h-8 text-red-600 dark:text-red-400" />
+        </div>
+        <h2 className="text-xl font-bold text-foreground">Access Denied</h2>
+        <p className="text-muted-foreground text-sm mt-1.5 max-w-md">
+          This lead is currently assigned to another Sales Executive. You do not have permission to view or access this lead.
+        </p>
+        <Link
+          href={
+            isVendorOnlineLeadEnabled
+              ? "/dashboard/leads/online-lead"
+              : "/dashboard/leads/draft-lead"
+          }
+          className="mt-5"
+        >
+          <Button variant="outline" size="sm" className="rounded-xl cursor-pointer">
+            <ArrowLeft className="w-4 h-4 mr-2" /> Back to Online Leads
+          </Button>
+        </Link>
       </div>
     );
   }
@@ -1548,17 +1667,18 @@ export default function OnlineLeadDetailsPage() {
                         <PencilLine className="w-4 h-4 mr-2" /> Edit
                       </DropdownMenuItem>
                     )}
-                    {canAssign && (
+                    {canAssign && isOnlineLeadFeatureEnabled && (
                       <DropdownMenuItem
                         onClick={() => {
                           if (lead) {
                             setAssigneeId(lead.assign_to ? lead.assign_to.toString() : "none");
-                            setSalesExecutiveId(lead.final_assigned_leads ? lead.final_assigned_leads.toString() : "none");
+                            setSalesExecutiveId(lead.final_assigned_leads ? lead.final_assigned_leads.toString() : "");
                           }
                           setIsAssignOpen(true);
                         }}
+                        className="cursor-pointer font-medium"
                       >
-                        <Users className="w-4 h-4 mr-2" /> Assign Sales Executive
+                        <UserCheck className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" /> Assign Sales Executive
                       </DropdownMenuItem>
                     )}
                   </>
@@ -2241,116 +2361,6 @@ export default function OnlineLeadDetailsPage() {
             </DialogFooter>
           </form>
       </BaseModal>
-
-      {/* Reassign Lead Modal */}
-      <Dialog open={isAssignOpen} onOpenChange={setIsAssignOpen}>
-        <DialogContent className="max-w-md bg-card border border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl p-6">
-          <DialogHeader className="space-y-1.5">
-            <DialogTitle className="text-xl font-bold tracking-tight text-foreground">
-              Reassign Online Lead
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground font-medium">
-              Allocate this online/walk-in lead to a registered caller, sales executive, or administrator.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleAssignSubmit} className="space-y-5 mt-4">
-             <div className="grid grid-cols-2 gap-4">
-               <div className="space-y-1.5">
-                 <label className="text-xs font-semibold text-foreground/80 flex items-center gap-1.5">
-                   <User className="w-3.5 h-3.5 text-slate-500" /> Caller
-                 </label>
-                 <div className="relative">
-                   <Select
-                     value={assigneeId || "none"}
-                     onValueChange={(val) => setAssigneeId(val)}
-                   >
-                     <SelectTrigger className="w-full h-10 rounded-xl border border-input bg-background/50 hover:bg-background/85 focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition duration-200 cursor-pointer text-sm text-foreground focus:outline-none">
-                       <SelectValue placeholder="Select Caller" />
-                     </SelectTrigger>
-                     <SelectContent className="bg-popover text-popover-foreground">
-                       <SelectItem value="none">Unassigned</SelectItem>
-                       {telecallers
-                         .filter((tc) => {
-                           const role = tc.user_type?.user_type?.toLowerCase() || "";
-                           return role === "telecaller" || role === "telecaller-team-lead" || role === "telecaller team lead";
-                         })
-                         .map((tc) => (
-                           <SelectItem key={tc.id} value={tc.id.toString()}>
-                             {tc.user_name}
-                           </SelectItem>
-                         ))}
-                     </SelectContent>
-                   </Select>
-                 </div>
-                 
-               </div>
-
-               <div className="space-y-1.5">
-                 <label className="text-xs font-semibold text-foreground/80 flex items-center gap-1.5">
-                   <User className="w-3.5 h-3.5 text-slate-500" /> Sales Executive
-                 </label>
-                 <div className="relative">
-                   <Select
-                     value={salesExecutiveId || "none"}
-                     onValueChange={(val) => setSalesExecutiveId(val)}
-                   >
-                     <SelectTrigger className="w-full h-10 rounded-xl border border-input bg-background/50 hover:bg-background/85 focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition duration-200 cursor-pointer text-sm text-foreground focus:outline-none">
-                       <SelectValue placeholder="Select Sales Exec" />
-                     </SelectTrigger>
-                     <SelectContent className="bg-popover text-popover-foreground">
-                       <SelectItem value="none">Unassigned</SelectItem>
-                       {telecallers
-                         .filter((tc) => {
-                           const role = tc.user_type?.user_type?.toLowerCase() || "";
-                           return role === "sales-executive" || role === "sales executive";
-                         })
-                         .map((tc) => (
-                           <SelectItem key={tc.id} value={tc.id.toString()}>
-                             {tc.user_name}
-                           </SelectItem>
-                         ))}
-                     </SelectContent>
-                   </Select>
-                 </div>
-               </div>
-             </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground/80 flex items-center gap-1.5">
-                <MessageSquare className="w-3.5 h-3.5 text-slate-500" /> Assignment Remark
-              </label>
-              <div className="relative">
-                <MessageSquare className="absolute left-3 top-3 h-4 w-4 text-muted-foreground/60 pointer-events-none" />
-                <Input
-                  placeholder="Optional assignment note..."
-                  value={assignRemark}
-                  onChange={(e) => setAssignRemark(e.target.value)}
-                  className="pl-9 h-10 rounded-xl border border-input bg-background/50 hover:bg-background/85 focus-visible:ring-2 focus-visible:ring-slate-500/25 focus-visible:border-slate-500 transition duration-200"
-                />
-              </div>
-            </div>
-
-            <DialogFooter className="mt-5 gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsAssignOpen(false)}
-                className="h-10 text-xs rounded-xl border-input/60 hover:bg-muted/70"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={assigning}
-                className="h-10 text-xs bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-semibold rounded-xl hover:shadow-lg active:scale-[0.98] transition-all"
-              >
-                {assigning && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Save Assignment
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       {/* Allocation Success Dialog */}
       <Dialog open={isSuccessOpen} onOpenChange={setIsSuccessOpen}>
@@ -3133,69 +3143,221 @@ export default function OnlineLeadDetailsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Assign / Reassign Sales Executive Modal */}
-      <Dialog open={isAssignOpen} onOpenChange={setIsAssignOpen}>
-        <DialogContent className="max-w-md bg-card border border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl p-6">
-          <DialogHeader className="space-y-1.5">
-            <DialogTitle className="text-xl font-bold tracking-tight text-foreground">
-              Assign Sales Executive
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground font-medium">
-              Select a Sales Executive to assign to this online lead.
-            </DialogDescription>
+      {/* Assign Sales Executive Modal */}
+      <Dialog
+        open={isAssignOpen}
+        onOpenChange={(open) => {
+          setIsAssignOpen(open);
+          if (!open) {
+            setIsSeDropdownOpen(false);
+            setSeSearchQuery("");
+            setAssignRemark("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-md bg-card border border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl p-6 sm:max-w-lg">
+          <DialogHeader className="space-y-3 pb-3 border-b border-slate-100 dark:border-slate-800/80">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-100 dark:border-blue-900/50 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0 shadow-xs">
+                <UserCheck className="w-5 h-5" />
+              </div>
+              <div className="space-y-0.5 text-left">
+                <DialogTitle className="text-lg font-bold tracking-tight text-foreground">
+                  Assign Sales Executive
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground font-medium">
+                  Select a Sales Executive to assign to this online lead.
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
-          <form onSubmit={handleAssignSubmit} className="space-y-5 mt-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">
-                Sales Executive <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={salesExecutiveId}
-                onChange={(e) => setSalesExecutiveId(e.target.value)}
-                className="w-full h-10 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-slate-400"
-              >
-                {salesExecutives.length === 0 ? (
-                  <option value="" disabled>
-                    -- No Sales Executives Available --
-                  </option>
-                ) : (
-                  salesExecutives.map((se) => (
-                    <option key={se.id} value={se.id.toString()}>
-                      {se.user_name || se.name}
-                    </option>
-                  ))
+
+          {lead?.finalAssignedLeads?.user_name && (
+            <div className="mt-3 flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800 text-xs text-muted-foreground">
+              <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+              <span>Currently assigned to:</span>
+              <span className="font-semibold text-foreground">
+                {lead.finalAssignedLeads.user_name}
+              </span>
+            </div>
+          )}
+
+          <form onSubmit={handleAssignSubmit} className="space-y-4 mt-3">
+            <div className="space-y-1.5 text-left">
+              <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                <span>
+                  Sales Executive <span className="text-red-500">*</span>
+                </span>
+                {salesExecutives.length > 0 && (
+                  <span className="text-[11px] font-normal text-muted-foreground">
+                    {salesExecutives.length} executive{salesExecutives.length > 1 ? "s" : ""} available
+                  </span>
                 )}
-              </select>
+              </label>
+
+              <Popover open={isSeDropdownOpen} onOpenChange={setIsSeDropdownOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className={cn(
+                      "w-full h-12 px-3.5 rounded-xl border border-input bg-background/80 hover:bg-background transition-all duration-150 flex items-center justify-between gap-2 text-left focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-xs cursor-pointer",
+                      isSeDropdownOpen && "ring-2 ring-blue-500/20 border-blue-500",
+                      !selectedSalesExec && "text-muted-foreground"
+                    )}
+                  >
+                    {selectedSalesExec ? (
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div
+                          className={cn(
+                            "w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold border shrink-0",
+                            getAvatarStyle(selectedSalesExec.user_name || selectedSalesExec.name || "")
+                          )}
+                        >
+                          {getInitials(selectedSalesExec.user_name || selectedSalesExec.name || "")}
+                        </div>
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <span className="font-semibold text-sm text-foreground truncate">
+                            {selectedSalesExec.user_name || selectedSalesExec.name}
+                          </span>
+                          <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800/50 shrink-0">
+                            Sales
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2.5 text-muted-foreground">
+                        <User className="w-4 h-4" />
+                        <span className="text-sm font-normal">Choose Sales Executive...</span>
+                      </div>
+                    )}
+                    <ChevronsUpDown className="w-4 h-4 text-muted-foreground/70 shrink-0" />
+                  </button>
+                </PopoverTrigger>
+
+                <PopoverContent
+                  align="start"
+                  className="w-[var(--radix-popover-trigger-width)] p-0 shadow-2xl rounded-2xl border border-slate-200 dark:border-slate-800 bg-card z-50 overflow-hidden"
+                >
+                  <div className="p-2 border-b border-slate-100 dark:border-slate-800 bg-muted/20">
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <Input
+                        placeholder="Search by name or email..."
+                        value={seSearchQuery}
+                        onChange={(e) => setSeSearchQuery(e.target.value)}
+                        className="pl-8.5 h-8 text-xs rounded-lg border-slate-200 dark:border-slate-800 bg-background focus-visible:ring-1 focus-visible:ring-blue-500"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  <div className="max-h-60 overflow-y-auto p-1.5 space-y-1">
+                    {filteredSalesExecutives.length === 0 ? (
+                      <div className="py-6 px-4 text-center">
+                        <Users className="w-6 h-6 text-muted-foreground/50 mx-auto mb-1.5" />
+                        <p className="text-xs font-medium text-foreground">
+                          {salesExecutives.length === 0
+                            ? "No Sales Executives Available"
+                            : "No matching executives found"}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          {salesExecutives.length === 0
+                            ? "Please check active users for this store/vendor."
+                            : `No results for "${seSearchQuery}"`}
+                        </p>
+                      </div>
+                    ) : (
+                      filteredSalesExecutives.map((se) => {
+                        const isSelected = String(se.id) === String(salesExecutiveId);
+                        const isCurrentlyAssigned =
+                          lead?.final_assigned_leads &&
+                          String(se.id) === String(lead.final_assigned_leads);
+
+                        return (
+                          <button
+                            key={se.id}
+                            type="button"
+                            onClick={() => {
+                              setSalesExecutiveId(se.id.toString());
+                              setIsSeDropdownOpen(false);
+                              setSeSearchQuery("");
+                            }}
+                            className={cn(
+                              "w-full flex items-center gap-2.5 p-2 rounded-xl text-left transition-colors duration-150 cursor-pointer",
+                              isSelected
+                                ? "bg-blue-50/80 dark:bg-blue-950/60 text-foreground"
+                                : "hover:bg-slate-100 dark:hover:bg-slate-800/70 text-foreground"
+                            )}
+                          >
+                            <div
+                              className={cn(
+                                "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold border shrink-0",
+                                getAvatarStyle(se.user_name || se.name || "")
+                              )}
+                            >
+                              {getInitials(se.user_name || se.name || "")}
+                            </div>
+                            <div className="flex flex-col min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-semibold text-xs truncate">
+                                  {se.user_name || se.name}
+                                </span>
+                                {isCurrentlyAssigned && (
+                                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-slate-200/80 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium">
+                                    Current
+                                  </span>
+                                )}
+                              </div>
+                              {se.user_email && (
+                                <span className="text-[11px] text-muted-foreground truncate">
+                                  {se.user_email}
+                                </span>
+                              )}
+                            </div>
+                            {isSelected && (
+                              <Check className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 ml-auto" />
+                            )}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">Remark (Optional)</label>
+            <div className="space-y-1.5 text-left">
+              <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" /> Remark (Optional)
+              </label>
               <Textarea
-                placeholder="Enter assignment remark..."
+                placeholder="Enter assignment remark or notes..."
                 value={assignRemark}
                 onChange={(e) => setAssignRemark(e.target.value)}
-                className="h-20 resize-none text-sm bg-background"
+                className="h-22 resize-none text-xs rounded-xl border border-input bg-background/50 hover:bg-background/80 focus-visible:ring-2 focus-visible:ring-blue-500/20 focus-visible:border-blue-500 transition-all p-3"
               />
             </div>
 
-            <DialogFooter className="gap-2">
+            <DialogFooter className="gap-2 pt-3 border-t border-slate-100 dark:border-slate-800/80">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => {
                   setIsAssignOpen(false);
+                  setIsSeDropdownOpen(false);
+                  setSeSearchQuery("");
                   setAssignRemark("");
                 }}
-                className="h-10 text-xs rounded-xl"
+                className="h-10 text-xs rounded-xl px-4 border-input/60 hover:bg-muted/70 cursor-pointer"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={assigning || !salesExecutiveId}
-                className="h-10 text-xs bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-semibold rounded-xl"
+                className="h-10 text-xs bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-semibold rounded-xl px-5 shadow-xs transition-all flex items-center gap-2 cursor-pointer"
               >
-                {assigning && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {assigning && <Loader2 className="w-4 h-4 animate-spin" />}
                 Assign Sales Executive
               </Button>
             </DialogFooter>

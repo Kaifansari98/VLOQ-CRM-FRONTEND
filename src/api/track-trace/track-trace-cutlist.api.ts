@@ -31,11 +31,19 @@ export const generateQRLabels = async (
   vendorId: number,
   projectId: string,
   cutListIds?: number[],
+  options?: {
+    selectedMachines?: string[];
+    includeMachineSequence?: boolean;
+    targetMachine?: string;
+  },
 ) => {
   const { data } = await apiClient.post(`/track-trace/create-qr-code`, {
     vendorId,
     projectId,
     cutListIds,
+    selectedMachines: options?.selectedMachines,
+    includeMachineSequence: options?.includeMachineSequence,
+    targetMachine: options?.targetMachine,
   });
   return data.data; // Returns the PDF URL
 };

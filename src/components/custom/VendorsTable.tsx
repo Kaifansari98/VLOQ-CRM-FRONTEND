@@ -21,12 +21,19 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import ImageViewerModal from "@/components/utils/ImageViewerModal";
+import { useAppSelector } from "@/redux/store";
 import {
   ContextMenuItem,
   ContextMenuSub,
   ContextMenuSubContent,
   ContextMenuSubTrigger,
 } from "@/components/ui/context-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // ─── Row type ────────────────────────────────────────────────────────────────
 
@@ -93,6 +100,13 @@ export default function VendorsTable({
   onConfigureVendor,
 }: VendorsTableProps) {
   const router = useRouter();
+
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type,
+  )?.trim().toLowerCase();
+
+  const isMasterAdmin =
+    userType === "master-admin" || userType === "super-admin";
 
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -354,16 +368,18 @@ export default function VendorsTable({
           const original = row.original;
           return (
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onConfigureVendor?.(original);
-                }}
-              >
-                Edit
-              </Button>
+              {isMasterAdmin && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onConfigureVendor?.(original);
+                  }}
+                >
+                  Edit
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -413,7 +429,7 @@ export default function VendorsTable({
         enableHiding: false,
       },
     ],
-    [onConfigureVendor],
+    [onConfigureVendor, isMasterAdmin],
   );
 
   const totalPages = data?.pagination?.totalPages ?? 1;
@@ -484,41 +500,69 @@ export default function VendorsTable({
             <DataTable
               table={table}
               onRowDoubleClick={handleRowDoubleClick}
-              renderRowContextMenu={(row) => (
-                <>
-                  <ContextMenuItem onClick={() => onConfigureVendor?.(row)}>
-                    Configure Vendor
-                  </ContextMenuItem>
-                  <ContextMenuItem onClick={() => onLoginToVendor?.(row)}>
-                    {`Login to ${row.vendor_name}`}
-                  </ContextMenuItem>
-                  <ContextMenuSub>
-                    <ContextMenuSubTrigger>CRM Masters</ContextMenuSubTrigger>
-                    <ContextMenuSubContent>
-                      <ContextMenuItem
-                        onClick={() =>
-                          handleVendorMasterNavigation(
-                            row,
-                            "/dashboard/masters-management/field-masters",
-                          )
-                        }
-                      >
-                        Field Masters
-                      </ContextMenuItem>
-                      <ContextMenuItem
-                        onClick={() =>
-                          handleVendorMasterNavigation(
-                            row,
-                            "/dashboard/masters-management/user-master",
-                          )
-                        }
-                      >
-                        User Master
-                      </ContextMenuItem>
-                    </ContextMenuSubContent>
-                  </ContextMenuSub>
-                </>
-              )}
+              renderRowContextMenu={(row) => {
+                const isInactive =
+                  String(row.status || "").toLowerCase() !== "active";
+                return (
+                  <>
+                    {isMasterAdmin && (
+                      <>
+                        <ContextMenuItem onClick={() => onConfigureVendor?.(row)}>
+                          Configure Vendor
+                        </ContextMenuItem>
+                        {isInactive ? (
+                          <TooltipProvider delayDuration={100}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="block w-full">
+                                  <ContextMenuItem
+                                    disabled
+                                    className="cursor-not-allowed opacity-50"
+                                  >
+                                    {`Login to ${row.vendor_name}`}
+                                  </ContextMenuItem>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="right" className="text-xs">
+                                Vendor is inactive. Login is disabled.
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          <ContextMenuItem onClick={() => onLoginToVendor?.(row)}>
+                            {`Login to ${row.vendor_name}`}
+                          </ContextMenuItem>
+                        )}
+                      </>
+                    )}
+                    <ContextMenuSub>
+                      <ContextMenuSubTrigger>CRM Masters</ContextMenuSubTrigger>
+                      <ContextMenuSubContent>
+                        <ContextMenuItem
+                          onClick={() =>
+                            handleVendorMasterNavigation(
+                              row,
+                              "/dashboard/masters-management/field-masters",
+                            )
+                          }
+                        >
+                          Field Masters
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                          onClick={() =>
+                            handleVendorMasterNavigation(
+                              row,
+                              "/dashboard/masters-management/user-master",
+                            )
+                          }
+                        >
+                          User Master
+                        </ContextMenuItem>
+                      </ContextMenuSubContent>
+                    </ContextMenuSub>
+                  </>
+                );
+              }}
             />
           </div>
         )}
