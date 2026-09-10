@@ -553,6 +553,9 @@ export default function OnlineLeadDetailsPage() {
   const getHistoryActionIcon = (hist: any) => {
     const remark = (hist.remark || "").toLowerCase();
     const statusName = (hist.status?.status_name || "").toLowerCase();
+    if (remark.includes("product structure instance added")) {
+      return Edit3;
+    }
     if (remark.includes("created") || remark.includes("added") || statusName.includes("created") || remark.includes("generation")) {
       return Upload;
     }
@@ -564,9 +567,10 @@ export default function OnlineLeadDetailsPage() {
 
   const filteredHistory = useMemo(() => {
     if (!lead || !lead.online_lead_history) return [];
-    if (!historySearchQuery.trim()) return lead.online_lead_history;
+    const list = lead.online_lead_history;
+    if (!historySearchQuery.trim()) return list;
     const query = historySearchQuery.toLowerCase().trim();
-    return lead.online_lead_history.filter((hist: any) => {
+    return list.filter((hist: any) => {
       const remarkMatch = (hist.remark || "").toLowerCase().includes(query);
       const statusMatch = (hist.status?.status_name || "").toLowerCase().includes(query);
       const storeMatch = (hist.franchise?.franchise_name || "").toLowerCase().includes(query);
@@ -609,6 +613,14 @@ export default function OnlineLeadDetailsPage() {
 
     // Replace all underscores with spaces for clean display
     const cleanText = remarkText.replace(/_/g, " ");
+
+    if (cleanText.startsWith("Product structure instance added")) {
+      return (
+        <p className="text-[14px] text-foreground font-semibold leading-relaxed">
+          {cleanText}
+        </p>
+      );
+    }
 
     // Handle inline markdown formatted text like "Bulk imported: **• Question?** Answer **• Question 2?** Answer 2"
     if (cleanText.includes("**") && !cleanText.includes("\n")) {
@@ -746,6 +758,19 @@ export default function OnlineLeadDetailsPage() {
   const renderHistoryRemark = (remarkText: string | null, statusName: string) => {
     if (!remarkText) return <p className="text-sm text-foreground font-medium">Status updated to {statusName}</p>;
     let textToRender = remarkText.replace(/_/g, " ");
+
+    if (isOnlineLeadFeatureEnabled) {
+      textToRender = textToRender
+        .replace(
+          /Lead conversion approved and moved to Draft Lead stage/gi,
+          "Lead conversion approved and moved to Online Lead stage"
+        )
+        .replace(
+          /Lead conversion to Draft submitted for approval/gi,
+          "Lead conversion to Online submitted for approval"
+        );
+    }
+
     let prefix = "";
     if (textToRender.startsWith("Bulk imported:")) {
       prefix = "Bulk imported:";
@@ -947,6 +972,8 @@ export default function OnlineLeadDetailsPage() {
     try {
       const res = await apiClient.post(`/online-leads/${id}/move-to-draft`, {
         user_id: userId,
+        product_types: lead?.product_types,
+        product_structures: lead?.product_structures,
       });
 
       if (res.data?.success) {
