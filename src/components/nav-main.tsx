@@ -32,7 +32,7 @@ import Link from "next/link";
 
 // ----------------- TYPES -----------------
 
-interface NavSubItem {
+export interface NavSubItem {
   title: string;
   url: string;
   customCount?: number;
@@ -69,7 +69,7 @@ interface NavSubItem {
   | "total_my_tasks";
 }
 
-interface NavItem {
+export interface NavItem {
   title: string;
   url: string;
   icon?: LucideIcon;
@@ -107,6 +107,7 @@ interface NavItem {
   | "total_production_group"
   | "total_installation_group"
   | "total_my_tasks";
+  hasRedDot?: boolean;
   items?: NavSubItem[];
 }
 
@@ -566,13 +567,33 @@ export function NavMain({
             href={item.url}
             className={cn(
               "flex items-center gap-2 w-full transition-all duration-200 text-sidebar-foreground",
-              isSingleActive && "font-bold bg-sidebar-accent rounded-md",
+              isSingleActive &&
+                (item.hasRedDot
+                  ? "font-bold bg-red-500/15 text-red-600 dark:text-red-400 rounded-md shadow-xs"
+                  : "font-bold bg-sidebar-accent rounded-md"),
               item.className
             )}
           >
-            {/* ✅ No wrapper div — icon direct child of Link */}
-            {item.icon && <item.icon className={cn("!size-5 shrink-0", item.iconClassName)} />}
-            <span className="whitespace-nowrap">{item.title}</span>
+            {item.icon && (
+              <div className="relative shrink-0 flex items-center justify-center">
+                <item.icon className={cn("!size-5", item.iconClassName)} />
+                {item.hasRedDot && (
+                  <span className="absolute -top-1 -right-1 h-2 w-2 hidden group-data-[collapsible=icon]:flex">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500 ring-2 ring-sidebar-background"></span>
+                  </span>
+                )}
+              </div>
+            )}
+            <span className="whitespace-nowrap flex items-center gap-1.5">
+              {item.title}
+              {item.hasRedDot && (
+                <span className="relative flex h-2 w-2 shrink-0 group-data-[collapsible=icon]:hidden">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                </span>
+              )}
+            </span>
             {(() => {
               if (!item.showCount && item.customCount === undefined) return null;
               const count = getSingleItemCount(item);

@@ -439,8 +439,7 @@ export function canDoERDMiscellaneousDate(
   return (
     role === "admin" ||
     role === "super-admin" ||
-    role === "factory" ||
-    role === "miscellaneous"
+    role === "factory"
   );
 }
 

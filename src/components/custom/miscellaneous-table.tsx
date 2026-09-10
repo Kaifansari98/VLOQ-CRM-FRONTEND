@@ -57,7 +57,7 @@ export function MiscellaneousTable({
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const franchiseId = useAppSelector((s) => s.auth.franchise_id);
-  const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type?.toLowerCase());
+  const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type?.toLowerCase().trim().replace(/_/g, "-").replace(/\s+/g, "-"));
   const skipFranchiseFilter =
     userType === "factory" ||
     userType === "site-supervisor" ||

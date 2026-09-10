@@ -21,6 +21,7 @@ import {
   Building2,
   Megaphone,
   Magnet,
+  TriangleAlert,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -811,6 +812,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         );
         if (underInstallationIndex !== -1) {
           const shouldShowMisc =
+            userType !== "factory" &&
             canSeeMiscLeads &&
             (miscLeadsCount > 0 || userType === "miscellaneous");
           let updatedItems = shouldShowMisc
@@ -835,16 +837,44 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       return item;
     });
 
-      const initialNavItems = !isCrmEnabled
+      const factoryMiscItem = {
+        title: "Miscellaneous",
+        url: "/dashboard/installation/under-installation/miscellaneous-leads",
+        icon: TriangleAlert,
+        customCount: miscLeadsCount,
+        customCountLoading: isMiscLeadLoading,
+        hasRedDot: true,
+        iconClassName: "text-red-500 group-hover:scale-110 transition-transform duration-200",
+        badgeClassName: "bg-red-500 text-white font-bold text-xs shadow-sm shadow-red-500/20",
+        className: "text-red-600 dark:text-red-400 font-medium hover:bg-red-500/10 transition-colors",
+      };
+
+      const initialNavItems: any[] = !isCrmEnabled
         ? []
         : isActiveFranchiseB2b
           ? data.b2bNavMain
           : finalNavItemsSource;
 
+      let navItemsWithRoleAdditions: any[] = initialNavItems;
+      if (userType === "factory") {
+        const dashboardIndex = navItemsWithRoleAdditions.findIndex(
+          (item) => item.title === "Dashboard",
+        );
+        if (dashboardIndex !== -1) {
+          navItemsWithRoleAdditions = [
+            ...navItemsWithRoleAdditions.slice(0, dashboardIndex + 1),
+            factoryMiscItem,
+            ...navItemsWithRoleAdditions.slice(dashboardIndex + 1),
+          ];
+        } else {
+          navItemsWithRoleAdditions = [factoryMiscItem, ...navItemsWithRoleAdditions];
+        }
+      }
+
       const finalNavItems =
         isBroadcastEnabled && !isMasterAdmin
-          ? initialNavItems
-          : initialNavItems.filter((item) => item.title !== "Broadcast");
+          ? navItemsWithRoleAdditions
+          : navItemsWithRoleAdditions.filter((item) => item.title !== "Broadcast");
 
     const finalTrackTraceItems =
       isSuperAdmin && (isTrackTraceEnabled || isScanPackEnabled)

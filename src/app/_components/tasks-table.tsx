@@ -522,6 +522,7 @@ const MyTaskTable = () => {
           "Pending Work",
           "Order Login Completed",
           "Pre Prod Completed",
+          "Miscellaneous Followup",
         ].includes(row.taskType) ||
           selfAssignTaskTypeNames.has(row.taskType) ||
           (row.taskType === "Miscellaneous" && (row.remark || "").toLowerCase().includes("required delivery date"));
@@ -536,7 +537,9 @@ const MyTaskTable = () => {
       }
 
       const isBlocked = row.is_blocked;
-      const isFollowUpTask = row.taskType === "Follow Up";
+      const isFollowUpTask =
+        row.taskType === "Follow Up" ||
+        row.taskType === "Miscellaneous Followup";
 
       if (isBlocked && !isFollowUpTask) {
         const blockTime = row.lead_blocked_at ? ` at ${formatBlockedAt(row.lead_blocked_at)}` : "";
@@ -624,6 +627,12 @@ const MyTaskTable = () => {
         setRowAction({
           row: { original: row } as any,
           variant: "Pending Work",
+        });
+        setOpenFollowUp(true);
+      } else if (row.taskType === "Miscellaneous Followup") {
+        setRowAction({
+          row: { original: row } as any,
+          variant: "Miscellaneous Followup",
         });
         setOpenFollowUp(true);
       } else if (selfAssignTaskTypeNames.has(row.taskType)) {
@@ -905,12 +914,18 @@ const MyTaskTable = () => {
     );
   };
 
-  const followUpVariant: "Follow Up" | "Pending Materials" | "Pending Work" =
+  const followUpVariant:
+    | "Follow Up"
+    | "Pending Materials"
+    | "Pending Work"
+    | "Miscellaneous Followup" =
     rowAction?.variant === "Pending Materials"
       ? "Pending Materials"
       : rowAction?.variant === "Pending Work"
         ? "Pending Work"
-        : "Follow Up";
+        : rowAction?.variant === "Miscellaneous Followup"
+          ? "Miscellaneous Followup"
+          : "Follow Up";
 
   const dueDateFilterLabel =
     (activeColumnFilters.find((f) => f.id === "dueDate")?.value as string) ||

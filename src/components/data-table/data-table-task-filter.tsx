@@ -24,6 +24,7 @@ const TASK_TYPES = [
   "Follow Up",
   "Initial Site Measurement",
   "Miscellaneous",
+  "Miscellaneous Followup",
   "Order Login",
   "Order Login Approval",
   "Order Login Completed",
