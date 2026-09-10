@@ -643,19 +643,19 @@ export default function InstallationMiscellaneous({
     isAdminOrSuper ||
     normalizedUserType === "miscellaneous";
 
-  // Step 1: Production (ERD, Solution, Mark as Ready)
-  const canViewStep1Production = isFactoryUser || isAdminOrSuper || isSupervisorUser;
+  // Step 1: Production (ERD, Solution, Mark as Ready) -> Always visible to all users
+  const canViewStep1Production = true;
 
-  // Step 2: Handover (Required Delivery Date & Task) ->
-  // Supervisor and Admin see it to set the date.
-  // Factory user sees it once Required Delivery Date is set by supervisor to manage the delivery task.
+  // Step 2: Handover (Required Delivery Date, Task & Resolution) ->
+  // Non-factory users (Supervisors, Admins, Miscellaneous, etc.) always see it.
+  // Factory user sees it once Required Delivery Date is set or when resolved.
   const canViewStep2Handover =
-    isSupervisorUser ||
-    isAdminOrSuper ||
-    (isFactoryUser && Boolean(viewModalData?.required_delivery_date));
+    !isFactoryUser ||
+    Boolean(viewModalData?.required_delivery_date) ||
+    Boolean(viewModalData?.is_resolved);
 
-  // Overall workflow view permission
-  const canViewApprovedWorkflow = canViewStep1Production || canViewStep2Handover;
+  // Overall workflow view permission -> Always true when approved
+  const canViewApprovedWorkflow = true;
 
   const showApprovalActions = canApproveReject && miscApproved == null;
   const canUpdateERD = canDoERDDate && !isTaskReady && isApproved;
@@ -1309,6 +1309,7 @@ export default function InstallationMiscellaneous({
 
                 {/* Documents */}
                 {entry?.documents && entry.documents.length > 0 && (() => {
+                  const readyDocs = entry.documents.filter((d) => d.doc_type_tag === "Type 41");
                   const completionDocs = entry.documents.filter((d) => d.doc_type_tag === "Type 37");
                   const miscDocs = entry.documents.filter((d) => d.doc_type_tag !== "Type 37" && d.doc_type_tag !== "Type 41");
 
@@ -1379,6 +1380,20 @@ export default function InstallationMiscellaneous({
                           {renderDocs(miscDocs, true)}
                         </div>
                       )}
+                      {readyDocs.length > 0 && (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                              <div className="w-1 h-4 bg-emerald-500 rounded-full" />
+                              Production Ready Documents
+                            </h4>
+                            <Badge variant="outline" className="text-xs px-2.5 py-0.5 bg-muted/30 dark:bg-neutral-900/50">
+                              {readyDocs.length} {readyDocs.length === 1 ? "file" : "files"}
+                            </Badge>
+                          </div>
+                          {renderDocs(readyDocs, false)}
+                        </div>
+                      )}
                       {completionDocs.length > 0 && (
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
@@ -1417,14 +1432,16 @@ export default function InstallationMiscellaneous({
                     <Badge
                       variant="outline"
                       className={`text-xs px-3 py-1 font-medium rounded-full border-0 ${
-                        isApproved
+                        viewModalData?.is_resolved
+                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                          : isApproved
                           ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300"
                           : isRejected
                           ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300"
                           : "bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-300"
                       }`}
                     >
-                      {isApproved ? "Approved" : isRejected ? "Rejected" : "Pending"}
+                      {viewModalData?.is_resolved ? "Resolved" : isApproved ? "Approved" : isRejected ? "Rejected" : "Pending"}
                     </Badge>
                   </div>
 
@@ -1514,8 +1531,7 @@ export default function InstallationMiscellaneous({
 
                   {/* ── Approved Workflow & Scheduling (2 Cards Grid) ── */}
                   {isApproved && (
-                    canViewApprovedWorkflow ? (
-                      <>
+                    <>
                         <div
                           className={cn(
                             "grid gap-4 pt-1",
@@ -1941,20 +1957,7 @@ export default function InstallationMiscellaneous({
                       );
                     })()}
                   </>
-                ) : (
-                      <div className="rounded-lg border border-green-200 dark:border-green-800 bg-green-50/70 dark:bg-green-950/30 p-4 flex items-center gap-3">
-                        <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400 shrink-0">
-                          <CheckCircle2 className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <h5 className="text-sm font-semibold text-green-900 dark:text-green-200">Requirement Approved</h5>
-                          <p className="text-xs text-green-700 dark:text-green-300/80">
-                            This requirement has been approved. Production scheduling and fulfillment tracking are being handled by the factory and admin team.
-                          </p>
-                        </div>
-                      </div>
-                    )
-                  )}
+                )}
                 </div>
               </div>
             </TabsContent>
