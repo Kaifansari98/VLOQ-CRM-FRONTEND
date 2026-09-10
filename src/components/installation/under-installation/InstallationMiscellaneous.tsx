@@ -11,9 +11,13 @@ import {
   User,
   Currency,
   Upload,
+  Clock,
+  XCircle,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -264,7 +268,7 @@ export default function InstallationMiscellaneous({
 
   const canDoERDDate = canDoERDMiscellaneousDate(userType, leadStatus);
   const canDoMarkAsResolved = canMiscellaneousMarkAsResolved(userType, leadStatus);
-  const canMarkAsReady = userType === "factory" || userType === "super-admin";
+  const canMarkAsReady = userType === "factory" || userType === "super-admin" || userType === "miscellaneous";
   const canAddMiscellaneous =
     userType === "custom"
       ? customPrivilegeCodes.includes(
@@ -509,18 +513,18 @@ export default function InstallationMiscellaneous({
   const isRejected = miscApproved === false;
   const isApproved = miscApproved === true;
   const isReady = viewModalData?.task?.status === "completed";
-  const canResolveRole = ["super-admin", "site-supervisor", "head-site-supervisor"].includes(userType || "");
-  const canApproveReject = userType === "factory" || userType === "super-admin";
+  const canResolveRole = ["super-admin", "site-supervisor", "head-site-supervisor", "admin", "miscellaneous"].includes(userType || "");
+  const canApproveReject = userType === "factory" || userType === "super-admin" || userType === "admin" || userType === "miscellaneous";
   const showApprovalActions = canApproveReject && miscApproved == null;
   const canUpdateERD = canDoERDDate && !isTaskReady && isApproved;
   const isDeliveryTaskCompleted = viewModalData?.delivery_task?.status === "completed";
   const canUpdateRequiredDelivery =
-    ["super-admin", "site-supervisor", "head-site-supervisor"].includes(userType || "") &&
+    ["super-admin", "site-supervisor", "head-site-supervisor", "admin", "factory", "miscellaneous"].includes(userType || "") &&
     isApproved &&
     isReady &&
     !isDeliveryTaskCompleted &&
     !viewModalData?.is_resolved;
-  const canManageDeliveryTask = ["factory", "super-admin"].includes(userType || "");
+  const canManageDeliveryTask = ["factory", "super-admin", "admin", "miscellaneous"].includes(userType || "");
 
   // ✅ Effective action flags — blocked overrides all
   const effectiveCanWork = canWork && !shouldDisableBlockedActions;
@@ -1015,290 +1019,358 @@ export default function InstallationMiscellaneous({
         description="Detailed information and supporting documents for this miscellaneous entry."
       >
         <div className="p-5">
-          <div className="flex-1 overflow-y-auto py-2 space-y-6 px-1">
+          <Tabs defaultValue="misc-details" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 mb-4">
+              <TabsTrigger value="misc-details">Misc Details</TabsTrigger>
+              <TabsTrigger value="actions-scheduling">Actions & Scheduling</TabsTrigger>
+              <TabsTrigger value="followup">Followup</TabsTrigger>
+            </TabsList>
 
-            {/* Quick Stats */}
-            {(viewModalData?.quantity || viewModalData?.cost || viewModalData?.expected_ready_date || viewModalData?.created_user?.user_name || viewModalData?.created_at) && (
-              <div className="grid grid-cols-2 gap-3">
-                {viewModalData?.created_at && (
-                  <Card className="border border-border bg-muted/30 dark:bg-neutral-900/50 hover:bg-muted/50 dark:hover:bg-neutral-900/70 transition-colors">
-                    <CardContent className="px-4">
-                      <div className="flex items-start gap-3">
-                        <div className="p-2 rounded-lg bg-background dark:bg-neutral-800 border border-border">
-                          <User className="w-4 h-4 text-muted-foreground" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">{viewModalData?.created_user?.user_name}</p>
-                          <p className="text-base font-semibold text-foreground">{viewModalData && formatDate(viewModalData.created_at)}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+            {/* ── Tab 1: Misc Details ────────────────────────────────────── */}
+            <TabsContent value="misc-details">
+              <div className="flex-1 overflow-y-auto py-2 space-y-6 px-1">
+                {/* Quick Stats */}
+                {(viewModalData?.quantity || viewModalData?.cost || viewModalData?.expected_ready_date || viewModalData?.created_user?.user_name || viewModalData?.created_at) && (
+                  <div className="grid grid-cols-2 gap-3">
+                    {viewModalData?.created_at && (
+                      <Card className="border border-border bg-muted/30 dark:bg-neutral-900/50 hover:bg-muted/50 dark:hover:bg-neutral-900/70 transition-colors">
+                        <CardContent className="px-4">
+                          <div className="flex items-start gap-3">
+                            <div className="p-2 rounded-lg bg-background dark:bg-neutral-800 border border-border">
+                              <User className="w-4 h-4 text-muted-foreground" />
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">{viewModalData?.created_user?.user_name}</p>
+                              <p className="text-base font-semibold text-foreground">{viewModalData && formatDate(viewModalData.created_at)}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                    {viewModalData?.quantity && (
+                      <Card className="border border-border bg-muted/30 dark:bg-neutral-900/50 hover:bg-muted/50 dark:hover:bg-neutral-900/70 transition-colors">
+                        <CardContent className="px-4">
+                          <div className="flex items-start gap-3">
+                            <div className="p-2 rounded-lg bg-background dark:bg-neutral-800 border border-border">
+                              <Package className="w-4 h-4 text-muted-foreground" />
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Quantity</p>
+                              <p className="text-base font-semibold text-foreground">{viewModalData.quantity}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                    {viewModalData?.cost && (
+                      <Card className="border border-border bg-muted/30 dark:bg-neutral-900/50 hover:bg-muted/50 dark:hover:bg-neutral-900/70 transition-colors">
+                        <CardContent className="px-4">
+                          <div className="flex items-start gap-3">
+                            <div className="p-2 rounded-lg bg-background dark:bg-neutral-800 border border-border">
+                              <Currency className="w-4 h-4 text-muted-foreground" />
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Cost</p>
+                              <p className="text-base font-semibold text-foreground">₹{viewModalData.cost.toLocaleString()}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                    {viewModalData?.expected_ready_date && (
+                      <Card className="border border-border bg-muted/30 dark:bg-neutral-900/50 hover:bg-muted/50 dark:hover:bg-neutral-900/70 transition-colors">
+                        <CardContent className="px-4">
+                          <div className="flex items-start gap-3">
+                            <div className="p-2 rounded-lg bg-background dark:bg-neutral-800 border border-border">
+                              <Calendar className="w-4 h-4 text-muted-foreground" />
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Expected Ready</p>
+                              <p className="text-sm font-semibold text-foreground">{formatDate(viewModalData.expected_ready_date)}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
                 )}
-                {viewModalData?.quantity && (
-                  <Card className="border border-border bg-muted/30 dark:bg-neutral-900/50 hover:bg-muted/50 dark:hover:bg-neutral-900/70 transition-colors">
-                    <CardContent className="px-4">
-                      <div className="flex items-start gap-3">
-                        <div className="p-2 rounded-lg bg-background dark:bg-neutral-800 border border-border">
-                          <Package className="w-4 h-4 text-muted-foreground" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Quantity</p>
-                          <p className="text-base font-semibold text-foreground">{viewModalData.quantity}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-                {viewModalData?.cost && (
-                  <Card className="border border-border bg-muted/30 dark:bg-neutral-900/50 hover:bg-muted/50 dark:hover:bg-neutral-900/70 transition-colors">
-                    <CardContent className="px-4">
-                      <div className="flex items-start gap-3">
-                        <div className="p-2 rounded-lg bg-background dark:bg-neutral-800 border border-border">
-                          <Currency className="w-4 h-4 text-muted-foreground" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Cost</p>
-                          <p className="text-base font-semibold text-foreground">₹{viewModalData.cost.toLocaleString()}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-                {viewModalData?.expected_ready_date && (
-                  <Card className="border border-border bg-muted/30 dark:bg-neutral-900/50 hover:bg-muted/50 dark:hover:bg-neutral-900/70 transition-colors">
-                    <CardContent className="px-4">
-                      <div className="flex items-start gap-3">
-                        <div className="p-2 rounded-lg bg-background dark:bg-neutral-800 border border-border">
-                          <Calendar className="w-4 h-4 text-muted-foreground" />
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Expected Ready</p>
-                          <p className="text-sm font-semibold text-foreground">{formatDate(viewModalData.expected_ready_date)}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            )}
 
-            {isRejected && (
-              <div className="space-y-2">
-                <p className="text-[13px] font-medium text-muted-foreground">This miscellaneous request has been rejected.</p>
-                <div className="border border-border rounded-lg bg-red-50/60 dark:bg-red-950/20 px-4 py-2">
-                  <p className="text-xs leading-relaxed text-red-600">{viewModalData?.exp_of_rejection || "-"}</p>
-                </div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {viewModalData?.problem_description && (
-                <div className="space-y-1.5">
-                  <p className="text-[13px] font-medium text-muted-foreground">Problem Description</p>
-                  <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
-                    <p className="text-sm text-foreground leading-relaxed">{viewModalData.problem_description}</p>
-                  </div>
-                </div>
-              )}
-              {viewModalData?.reorder_material_details && (
-                <div className="space-y-1.5">
-                  <p className="text-[13px] font-medium text-muted-foreground">Reorder Material Details</p>
-                  <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
-                    <p className="text-sm text-foreground leading-relaxed">{viewModalData.reorder_material_details}</p>
-                  </div>
-                </div>
-              )}
-              {viewModalData?.supervisor_remark && (
-                <div className="space-y-1.5">
-                  <p className="text-[13px] font-medium text-muted-foreground">Supervisor Remark</p>
-                  <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
-                    <p className="text-sm text-foreground leading-relaxed">{viewModalData.supervisor_remark}</p>
-                  </div>
-                </div>
-              )}
-              {viewModalData?.teams && viewModalData.teams.length > 0 && (
-                <div className="space-y-1.5">
-                  <p className="text-[13px] font-medium text-muted-foreground">Team Responsible</p>
-                  <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
-                    <div className="flex flex-wrap gap-2">
-                      {viewModalData.teams.map((team) => (
-                        <Badge key={team.team_id} variant="outline" className="px-3 py-1 bg-background dark:bg-neutral-800">
-                          {team.team_name}
-                        </Badge>
-                      ))}
+                {isRejected && (
+                  <div className="space-y-2">
+                    <p className="text-[13px] font-medium text-muted-foreground">This miscellaneous request has been rejected.</p>
+                    <div className="border border-border rounded-lg bg-red-50/60 dark:bg-red-950/20 px-4 py-2">
+                      <p className="text-xs leading-relaxed text-red-600">{viewModalData?.exp_of_rejection || "-"}</p>
                     </div>
                   </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {viewModalData?.problem_description && (
+                    <div className="space-y-1.5">
+                      <p className="text-[13px] font-medium text-muted-foreground">Problem Description</p>
+                      <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
+                        <p className="text-sm text-foreground leading-relaxed">{viewModalData.problem_description}</p>
+                      </div>
+                    </div>
+                  )}
+                  {viewModalData?.reorder_material_details && (
+                    <div className="space-y-1.5">
+                      <p className="text-[13px] font-medium text-muted-foreground">Reorder Material Details</p>
+                      <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
+                        <p className="text-sm text-foreground leading-relaxed">{viewModalData.reorder_material_details}</p>
+                      </div>
+                    </div>
+                  )}
+                  {viewModalData?.supervisor_remark && (
+                    <div className="space-y-1.5">
+                      <p className="text-[13px] font-medium text-muted-foreground">Supervisor Remark</p>
+                      <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
+                        <p className="text-sm text-foreground leading-relaxed">{viewModalData.supervisor_remark}</p>
+                      </div>
+                    </div>
+                  )}
+                  {viewModalData?.teams && viewModalData.teams.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-[13px] font-medium text-muted-foreground">Team Responsible</p>
+                      <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
+                        <div className="flex flex-wrap gap-2">
+                          {viewModalData.teams.map((team) => (
+                            <Badge key={team.team_id} variant="outline" className="px-3 py-1 bg-background dark:bg-neutral-800">
+                              {team.team_name}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            {/* Documents */}
-            {entry?.documents && entry.documents.length > 0 && (() => {
-              const completionDocs = entry.documents.filter((d) => d.doc_type_tag === "Type 37");
-              const miscDocs = entry.documents.filter((d) => d.doc_type_tag !== "Type 37");
+                {/* Documents */}
+                {entry?.documents && entry.documents.length > 0 && (() => {
+                  const completionDocs = entry.documents.filter((d) => d.doc_type_tag === "Type 37");
+                  const miscDocs = entry.documents.filter((d) => d.doc_type_tag !== "Type 37");
 
-              const renderDocs = (docs: typeof entry.documents, showupload?: boolean) => {
-                const { images, videos, nonImages } = separateImageAndDocs(docs);
-                const totalInSection = docs.length;
-                return (
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {images.map((doc) => (
-                        <ImageComponent
-                          key={doc.document_id}
-                          doc={{ id: doc.document_id, doc_og_name: doc.original_name, signedUrl: doc.signed_url, created_at: doc.uploaded_at }}
-                          // ✅ delete disabled when blocked
-                          canDelete={effectiveCanWork}
-                          onDelete={(id) => handleDeleteRequest(Number(id), totalInSection)}
-                        />
-                      ))}
-                      {nonImages.map((doc) => (
-                        <DocumentCard
-                          key={doc.document_id}
-                          doc={{ id: doc.document_id, originalName: doc.original_name, signedUrl: doc.signed_url, created_at: doc.uploaded_at }}
-                          canDelete={effectiveCanWork}
-                          onDelete={(id) => handleDeleteRequest(Number(id), totalInSection)}
-                        />
-                      ))}
-                      {videos.map((doc) => (
-                        <VideoCard
-                          key={doc.document_id}
-                          doc={{ id: doc.document_id, originalName: doc.original_name, signedUrl: doc.signed_url, created_at: doc.uploaded_at }}
-                          canDelete={effectiveCanWork}
-                          onDelete={(id) => handleDeleteRequest(Number(id), totalInSection)}
-                        />
-                      ))}
-                      {/* ✅ UploadCard — tooltip when blocked */}
-                      {canWork && showupload && (
+                  const renderDocs = (docs: typeof entry.documents, showupload?: boolean) => {
+                    const { images, videos, nonImages } = separateImageAndDocs(docs);
+                    const totalInSection = docs.length;
+                    return (
+                      <div className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {images.map((doc) => (
+                            <ImageComponent
+                              key={doc.document_id}
+                              doc={{ id: doc.document_id, doc_og_name: doc.original_name, signedUrl: doc.signed_url, created_at: doc.uploaded_at }}
+                              canDelete={effectiveCanWork}
+                              onDelete={(id) => handleDeleteRequest(Number(id), totalInSection)}
+                            />
+                          ))}
+                          {nonImages.map((doc) => (
+                            <DocumentCard
+                              key={doc.document_id}
+                              doc={{ id: doc.document_id, originalName: doc.original_name, signedUrl: doc.signed_url, created_at: doc.uploaded_at }}
+                              canDelete={effectiveCanWork}
+                              onDelete={(id) => handleDeleteRequest(Number(id), totalInSection)}
+                            />
+                          ))}
+                          {videos.map((doc) => (
+                            <VideoCard
+                              key={doc.document_id}
+                              doc={{ id: doc.document_id, originalName: doc.original_name, signedUrl: doc.signed_url, created_at: doc.uploaded_at }}
+                              canDelete={effectiveCanWork}
+                              onDelete={(id) => handleDeleteRequest(Number(id), totalInSection)}
+                            />
+                          ))}
+                          {canWork && showupload && (
+                            <CustomeTooltip
+                              value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                              truncateValue={
+                                <span className="block h-full">
+                                  <UploadCard
+                                    onClick={() => {
+                                      if (shouldDisableBlockedActions) return;
+                                      setUploadModalOpen(true);
+                                    }}
+                                    disabled={isPending || shouldDisableBlockedActions}
+                                  />
+                                </span>
+                              }
+                            />
+                          )}
+                        </div>
+                      </div>
+                    );
+                  };
+
+                  return (
+                    <div className="space-y-6">
+                      {miscDocs.length > 0 && (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                              <div className="w-1 h-4 bg-primary rounded-full" />
+                              Supporting Documents
+                            </h4>
+                            <Badge variant="outline" className="text-xs px-2.5 py-0.5 bg-muted/30 dark:bg-neutral-900/50">
+                              {miscDocs.length} {miscDocs.length === 1 ? "file" : "files"}
+                            </Badge>
+                          </div>
+                          {renderDocs(miscDocs, true)}
+                        </div>
+                      )}
+                      {completionDocs.length > 0 && (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                              <div className="w-1 h-4 bg-green-500 rounded-full" />
+                              Completion Documents
+                            </h4>
+                            <Badge variant="outline" className="text-xs px-2.5 py-0.5 bg-muted/30 dark:bg-neutral-900/50">
+                              {completionDocs.length} {completionDocs.length === 1 ? "file" : "files"}
+                            </Badge>
+                          </div>
+                          {renderDocs(completionDocs, false)}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            </TabsContent>
+
+            {/* ── Tab 2: Actions & Scheduling ─────────────────────────────── */}
+            <TabsContent value="actions-scheduling">
+              <div className="py-2 space-y-4 px-1">
+                <div className="rounded-xl border bg-card p-5 shadow-sm space-y-5">
+                  {/* Header */}
+                  <div className="flex items-center justify-between border-b pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                        <ShieldCheck className="w-4.5 h-4.5 text-primary" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-semibold text-foreground">Actions & Scheduling</h4>
+                        <p className="text-xs text-muted-foreground">Manage approval status, fulfillment timeline, and delivery tracking</p>
+                      </div>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={`text-xs px-3 py-1 font-medium rounded-full border-0 ${
+                        isApproved
+                          ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300"
+                          : isRejected
+                          ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+                          : "bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-300"
+                      }`}
+                    >
+                      {isApproved ? "Approved" : isRejected ? "Rejected" : "Pending"}
+                    </Badge>
+                  </div>
+
+                  {/* ── Approval Actions (When Pending and user can approve/reject) ── */}
+                  {effectiveShowApprovalActions && (
+                    <div className="rounded-lg border bg-muted/20 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div className="space-y-1">
+                        <h5 className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                          <Clock className="w-4 h-4 text-amber-500" />
+                          Pending Review
+                        </h5>
+                        <p className="text-xs text-muted-foreground">
+                          Please review the issue details and choose an action to proceed with fulfillment.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
                         <CustomeTooltip
                           value={shouldDisableBlockedActions ? blockedTooltip : ""}
                           truncateValue={
-                            <span className="block h-full">
-                              <UploadCard
+                            <span className="inline-block">
+                              <Button
+                                variant="default"
+                                disabled={updateApprovalMutation.isPending || shouldDisableBlockedActions}
                                 onClick={() => {
-                                  if (shouldDisableBlockedActions) return;
-                                  setUploadModalOpen(true);
+                                  if (!viewModalData || shouldDisableBlockedActions) return;
+                                  setShowApproveModal(true);
                                 }}
-                                disabled={isPending || shouldDisableBlockedActions}
-                              />
+                                className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-4 shadow-sm"
+                              >
+                                <CheckCircle2 className="w-4 h-4" />
+                                {updateApprovalMutation.isPending ? "Approving..." : "Approve"}
+                              </Button>
                             </span>
                           }
                         />
-                      )}
-                    </div>
-                  </div>
-                );
-              };
 
-              return (
-                <div className="space-y-6">
-                  {miscDocs.length > 0 && (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                          <div className="w-1 h-4 bg-primary rounded-full" />
-                          Supporting Documents
-                        </h4>
-                        <Badge variant="outline" className="text-xs px-2.5 py-0.5 bg-muted/30 dark:bg-neutral-900/50">
-                          {miscDocs.length} {miscDocs.length === 1 ? "file" : "files"}
-                        </Badge>
+                        <CustomeTooltip
+                          value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                          truncateValue={
+                            <span className="inline-block">
+                              <Button
+                                variant="destructive"
+                                disabled={updateApprovalMutation.isPending || shouldDisableBlockedActions}
+                                onClick={() => {
+                                  if (shouldDisableBlockedActions) return;
+                                  setShowRejectModal(true);
+                                }}
+                                className="gap-2 font-medium px-4 shadow-sm"
+                              >
+                                <XCircle className="w-4 h-4" />
+                                Reject
+                              </Button>
+                            </span>
+                          }
+                        />
                       </div>
-                      {renderDocs(miscDocs, true)}
                     </div>
                   )}
-                  {completionDocs.length > 0 && (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                          <div className="w-1 h-4 bg-green-500 rounded-full" />
-                          Completion Documents
-                        </h4>
-                        <Badge variant="outline" className="text-xs px-2.5 py-0.5 bg-muted/30 dark:bg-neutral-900/50">
-                          {completionDocs.length} {completionDocs.length === 1 ? "file" : "files"}
-                        </Badge>
+
+                  {/* ── Waiting Info (When Pending and user cannot approve) ── */}
+                  {!canApproveReject && miscApproved == null && (
+                    <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/70 dark:bg-blue-950/30 p-4 flex items-center gap-3">
+                      <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 shrink-0">
+                        <AlertCircle className="w-5 h-5" />
                       </div>
-                      {renderDocs(completionDocs, false)}
+                      <div>
+                        <h5 className="text-sm font-semibold text-blue-900 dark:text-blue-200">Waiting for Factory / Admin Approval</h5>
+                        <p className="text-xs text-blue-700 dark:text-blue-300/80">
+                          This requirement has been logged. Once authorized by the admin/factory team, fulfillment scheduling will be enabled.
+                        </p>
+                      </div>
                     </div>
                   )}
-                </div>
-              );
-            })()}
 
-            {/* Actions & Scheduling */}
-            <div className="mt-2 rounded-xl border bg-muted/30 dark:bg-neutral-900/40 p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-semibold text-foreground">Actions & Scheduling</h4>
-                <Badge variant="outline" className="text-xs">
-                  {isApproved ? "Approved" : isRejected ? "Rejected" : "Pending"}
-                </Badge>
-              </div>
+                  {/* ── Rejected Summary ── */}
+                  {isRejected && (
+                    <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50/70 dark:bg-red-950/30 p-4 space-y-2">
+                      <div className="flex items-center gap-2 text-red-700 dark:text-red-300 font-medium text-sm">
+                        <XCircle className="w-4 h-4 shrink-0" />
+                        <span>Request Rejected</span>
+                      </div>
+                      <p className="text-xs text-red-600 dark:text-red-400/90 leading-relaxed bg-background/50 p-2.5 rounded border border-red-200/50 dark:border-red-800/50">
+                        {viewModalData?.exp_of_rejection || "No reason provided."}
+                      </p>
+                    </div>
+                  )}
 
-              <DialogFooter className="flex-row items-start justify-between gap-4">
-
-                {/* ✅ Approve / Reject — blocked tooltip */}
-                {effectiveShowApprovalActions && (
-                  <div className="flex items-center gap-3 flex-1">
-                    <CustomeTooltip
-                      value={shouldDisableBlockedActions ? blockedTooltip : ""}
-                      truncateValue={
-                        <span className="inline-block">
-                            <Button
-                            variant="default"
-                            disabled={updateApprovalMutation.isPending || shouldDisableBlockedActions}
-                            onClick={() => {
-                              if (!viewModalData || shouldDisableBlockedActions) return;
-                              setShowApproveModal(true);
-                            }}
-                            className="gap-2 bg-green-600 hover:bg-green-700"
-                          >
-                            <CheckCircle2 className="w-4 h-4" />
-                            {updateApprovalMutation.isPending ? "Approving..." : "Approve"}
-                          </Button>
-                        </span>
-                      }
-                    />
-
-                    <CustomeTooltip
-                      value={shouldDisableBlockedActions ? blockedTooltip : ""}
-                      truncateValue={
-                        <span className="inline-block">
-                          <Button
-                            variant="destructive"
-                            disabled={updateApprovalMutation.isPending || shouldDisableBlockedActions}
-                            onClick={() => {
-                              if (shouldDisableBlockedActions) return;
-                              setShowRejectModal(true);
-                            }}
-                          >
-                            Reject
-                          </Button>
-                        </span>
-                      }
-                    />
-                  </div>
-
-                )}
-
-                {/* ✅ Info message for users who cannot approve */}
-                {!canApproveReject && miscApproved == null && (
-                  <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg border border-blue-200 dark:border-blue-800 flex-1">
-                    <AlertCircle className="w-4 h-4 shrink-0" />
-                    <span className="text-sm font-medium">Waiting for approval</span>
-                  </div>
-                )}
-                {/* Scheduling */}
-                {isApproved ? (
-                  <div className="flex-1 space-y-4">
-                    {/* ERD Date */}
-                    <div className="space-y-1">
-                      <div className="flex items-end justify-between gap-2">
-                        <div className="w-full">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Calendar className="w-4 h-4 text-muted-foreground" />
-                            <span className="text-xs font-medium text-muted-foreground">Expected Ready Date (ERD)</span>
+                  {/* ── Approved Workflow & Scheduling (2 Cards Grid) ── */}
+                  {isApproved && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                      {/* Step 1: ERD Card */}
+                      <div className="rounded-lg border bg-muted/20 p-4 space-y-3 flex flex-col justify-between">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Step 1 • Production</span>
+                            {isTaskReady && (
+                              <Badge variant="outline" className="text-[10px] bg-cyan-100 text-cyan-800 border-0 dark:bg-cyan-950 dark:text-cyan-300">
+                                Ready to Dispatch
+                              </Badge>
+                            )}
                           </div>
-                          {/* ✅ ERD date picker — tooltip when blocked */}
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-primary" />
+                            <h5 className="text-sm font-semibold text-foreground">Expected Ready Date (ERD)</h5>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
                           <CustomeTooltip
                             value={shouldDisableBlockedActions ? blockedTooltip : ""}
                             truncateValue={
@@ -1329,43 +1401,50 @@ export default function InstallationMiscellaneous({
                               </span>
                             }
                           />
+
+                          {viewModalData?.expected_ready_date && canMarkAsReady && isApproved && !viewModalData?.is_resolved && (
+                            <CustomeTooltip
+                              value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                              truncateValue={
+                                <span className="block w-full">
+                                  <Button
+                                    variant="default"
+                                    size="sm"
+                                    disabled={markReadyMutation.isPending || isTaskReady || shouldDisableBlockedActions}
+                                    onClick={() => {
+                                      if (shouldDisableBlockedActions) return;
+                                      !isTaskReady && setShowReadyConfirm(true);
+                                    }}
+                                    className="w-full gap-2 text-xs"
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    {isTaskReady ? "Marked as Ready" : markReadyMutation.isPending ? "Marking..." : "Mark as Ready"}
+                                  </Button>
+                                </span>
+                              }
+                            />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Step 2: Required Delivery & Resolution Card */}
+                      <div className="rounded-lg border bg-muted/20 p-4 space-y-3 flex flex-col justify-between">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Step 2 • Handover</span>
+                            {viewModalData?.is_resolved && (
+                              <Badge variant="outline" className="text-[10px] bg-green-100 text-green-800 border-0 dark:bg-green-950 dark:text-green-300">
+                                Resolved
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-primary" />
+                            <h5 className="text-sm font-semibold text-foreground">Required Delivery Date</h5>
+                          </div>
                         </div>
 
-                        {/* ✅ Mark as Ready button — tooltip when blocked */}
-                        {viewModalData?.expected_ready_date && canMarkAsReady && isApproved && !viewModalData?.is_resolved && (
-                          <CustomeTooltip
-                            value={shouldDisableBlockedActions ? blockedTooltip : ""}
-                            truncateValue={
-                              <span className="inline-block">
-                                <Button
-                                  variant="default"
-                                  size="default"
-                                  disabled={markReadyMutation.isPending || isTaskReady || shouldDisableBlockedActions}
-                                  onClick={() => {
-                                    if (shouldDisableBlockedActions) return;
-                                    !isTaskReady && setShowReadyConfirm(true);
-                                  }}
-                                  className="gap-2"
-                                >
-                                  <CheckCircle2 className="w-4 h-4" />
-                                  {isTaskReady ? "Marked as Ready" : markReadyMutation.isPending ? "Marking..." : "Mark as Ready"}
-                                </Button>
-                              </span>
-                            }
-                          />
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Required Delivery Date */}
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Calendar className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-xs font-medium text-muted-foreground">Required Delivery Date</span>
-                      </div>
-                      <div className="flex items-end justify-between gap-2">
-                        <div className="w-full">
-                          {/* ✅ Required delivery date — tooltip when blocked */}
+                        <div className="space-y-2">
                           <CustomeTooltip
                             value={shouldDisableBlockedActions ? blockedTooltip : ""}
                             truncateValue={
@@ -1394,43 +1473,38 @@ export default function InstallationMiscellaneous({
                               </span>
                             }
                           />
-                        </div>
 
-                        <div className="flex gap-2">
-                          {/* ✅ Manage Delivery Task — tooltip when blocked */}
-                          {viewModalData?.required_delivery_date && viewModalData?.delivery_task?.id && !isDeliveryTaskCompleted && canManageDeliveryTask && (
-                            <div className="flex justify-end pt-2">
+                          <div className="flex gap-2">
+                            {viewModalData?.required_delivery_date && viewModalData?.delivery_task?.id && !isDeliveryTaskCompleted && canManageDeliveryTask && (
                               <CustomeTooltip
                                 value={shouldDisableBlockedActions ? blockedTooltip : ""}
                                 truncateValue={
-                                  <span className="inline-block">
+                                  <span className="block flex-1">
                                     <Button
                                       variant="outline"
-                                      size="md"
+                                      size="sm"
                                       disabled={shouldDisableBlockedActions}
                                       onClick={() => {
                                         if (shouldDisableBlockedActions) return;
                                         setOpenDeliveryTaskModal(true);
                                       }}
+                                      className="w-full text-xs"
                                     >
                                       Manage Delivery Task
                                     </Button>
                                   </span>
                                 }
                               />
-                            </div>
-                          )}
+                            )}
 
-                          {/* ✅ Mark as Resolved — tooltip when blocked */}
-                          {viewModalData?.expected_ready_date && canDoMarkAsResolved && canResolveRole && isApproved && isReady && isDeliveryTaskCompleted && !viewModalData?.is_resolved && (
-                            <div className="flex justify-end">
+                            {viewModalData?.expected_ready_date && canDoMarkAsResolved && canResolveRole && isApproved && isReady && isDeliveryTaskCompleted && !viewModalData?.is_resolved && (
                               <CustomeTooltip
                                 value={shouldDisableBlockedActions ? blockedTooltip : ""}
                                 truncateValue={
-                                  <span className="inline-block">
+                                  <span className="block flex-1">
                                     <Button
                                       variant="default"
-                                      size="default"
+                                      size="sm"
                                       disabled={resolveMisc.isPending || shouldDisableBlockedActions}
                                       onClick={() => {
                                         if (shouldDisableBlockedActions) return;
@@ -1443,28 +1517,33 @@ export default function InstallationMiscellaneous({
                                           },
                                         );
                                       }}
-                                      className="gap-2"
+                                      className="w-full gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
                                     >
-                                      <CheckCircle2 className="w-4 h-4" />
+                                      <CheckCircle2 className="w-3.5 h-3.5" />
                                       {resolveMisc.isPending ? "Resolving..." : "Mark as Resolved"}
                                     </Button>
                                   </span>
                                 }
                               />
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="flex-1" />
-                )}
+                  )}
+                </div>
+              </div>
+            </TabsContent>
 
-                <div className="flex items-end gap-2"></div>
-              </DialogFooter>
-            </div>
-          </div>
+            {/* ── Tab 3: Followup ────────────────────────────────────────── */}
+            <TabsContent value="followup">
+              <div className="flex-1 overflow-y-auto py-2 space-y-6 px-1">
+                <div className="rounded-xl border bg-muted/30 dark:bg-neutral-900/40 p-6 text-center text-muted-foreground">
+                  <p className="text-sm font-medium">Followup details will be displayed here.</p>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </BaseModal>
 

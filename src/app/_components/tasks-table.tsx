@@ -170,6 +170,11 @@ const MyTaskTable = () => {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type as string | undefined,
   );
+  const skipFranchiseFilter =
+    userType?.toLowerCase() === "factory" ||
+    userType?.toLowerCase() === "site-supervisor" ||
+    userType?.toLowerCase() === "backend" ||
+    userType?.toLowerCase() === "miscellaneous";
   const isAuditor = userType?.toLowerCase() === "auditor";
   const isAdminUser =
     userType?.toLowerCase() === "admin" ||
@@ -321,7 +326,7 @@ const MyTaskTable = () => {
       limit: myPagination.pageSize,
       created_at: sortOrder,
       global_search: myGlobalFilter || "",
-      franchise_id: selectedFranchiseId!,
+      franchise_id: skipFranchiseFilter ? undefined : selectedFranchiseId,
 
       // ✅ FIX: Add task_type from state
       task_type: mappedFilters.task_type,
@@ -343,6 +348,7 @@ const MyTaskTable = () => {
     myColumnFilters,
     myTaskTypeFilter, // ✅ ADD DEPENDENCY
     selectedFranchiseId,
+    skipFranchiseFilter,
   ]);
 
   // ✅ OVERALL TASKS PAYLOAD - FIXED
@@ -355,7 +361,7 @@ const MyTaskTable = () => {
       limit: overallPagination.pageSize,
       created_at: sortOrder,
       global_search: overallGlobalFilter || "",
-      franchise_id: selectedFranchiseId!,
+      franchise_id: skipFranchiseFilter ? undefined : selectedFranchiseId,
 
       // ✅ FIX: Add task_type from state
       task_type: mappedFilters.task_type,

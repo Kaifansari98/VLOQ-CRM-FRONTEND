@@ -479,12 +479,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     userType === "backend" ||
     userType === "factory" ||
     userType === "site-supervisor" ||
-    userType === "head-site-supervisor";
+    userType === "head-site-supervisor" ||
+    userType === "miscellaneous";
   const skipFranchiseFilter =
     userType === "factory" ||
     userType === "site-supervisor" ||
     userType === "head-site-supervisor" ||
-    userType === "backend";
+    userType === "backend" ||
+    userType === "miscellaneous";
   const vendorId = user?.vendor_id;
   const franchiseId = selectedFranchiseId ?? user?.franchise_id ?? null;
   const userId = user?.id;
@@ -808,14 +810,25 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           (subItem) => subItem.title === "Installation",
         );
         if (underInstallationIndex !== -1) {
-          const shouldShowMisc = canSeeMiscLeads && miscLeadsCount > 0;
-          const updatedItems = shouldShowMisc
+          const shouldShowMisc =
+            canSeeMiscLeads &&
+            (miscLeadsCount > 0 || userType === "miscellaneous");
+          let updatedItems = shouldShowMisc
             ? [
-              ...item.items.slice(0, underInstallationIndex + 1),
-              miscItem,
-              ...item.items.slice(underInstallationIndex + 1),
-            ]
+                ...item.items.slice(0, underInstallationIndex + 1),
+                miscItem,
+                ...item.items.slice(underInstallationIndex + 1),
+              ]
             : item.items;
+
+          if (userType === "miscellaneous") {
+            updatedItems = updatedItems.filter(
+              (subItem) =>
+                subItem.title === "Installation" ||
+                subItem.title === "Miscellaneous",
+            );
+          }
+
           return { ...item, items: updatedItems };
         }
       }
@@ -874,11 +887,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             : section.items,
       }))
       : [];
-    const resolvedNavItems = (
+    let resolvedNavItems = (
       isOnlineLeadFeatureEnabled
         ? finalNavItems
         : finalNavItems.filter((item) => item.title !== "Lead Pool")
     ).filter((item) => !(item.title === "Lead Pool" && isSalesExecutive));
+
+    if (userType === "miscellaneous") {
+      resolvedNavItems = resolvedNavItems.filter(
+        (item) => item.title === "My Task" || item.title === "Execution",
+      );
+    }
 
     return {
       navItems: resolvedNavItems,

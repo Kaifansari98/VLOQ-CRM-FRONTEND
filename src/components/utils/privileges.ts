@@ -394,6 +394,8 @@ export function canViewAndWorkUnderInstallationStage(
   // can work and view both and site suprvisor work only under-installation stage.
   return (
     role === "super-admin" ||
+    role === "admin" ||
+    role === "miscellaneous" ||
     ((role === "site-supervisor" || role === "head-site-supervisor") && stage === "under-installation-stage")
   );
 }
@@ -402,7 +404,7 @@ export function canAccessTodoTaskTabUnderInstallationStage(
   role: string,
 ): boolean {
   // 1. Admins always have access
-  if (role === "admin" || role === "super-admin" || role === "site-supervisor" || role === "head-site-supervisor")
+  if (role === "admin" || role === "super-admin" || role === "site-supervisor" || role === "head-site-supervisor" || role === "miscellaneous")
     return true;
 
   return false;
@@ -411,7 +413,7 @@ export function canAccessTodoTaskTabUnderInstallationStage(
 export function canAccessTodoTaskTabUnderFinalHandoverStage(
   role: string,
 ): boolean {
-  if (role === "super-admin" || role === "site-supervisor" || role === "head-site-supervisor")
+  if (role === "super-admin" || role === "site-supervisor" || role === "head-site-supervisor" || role === "miscellaneous")
     return true;
 
   return false;
@@ -425,6 +427,7 @@ export function canViewAndWorkFinalHandoverStage(
   return (
     role === "admin" ||
     role === "super-admin" ||
+    role === "miscellaneous" ||
     ((role === "site-supervisor" || role === "head-site-supervisor") && stage === "final-handover-stage")
   );
 }
@@ -436,7 +439,8 @@ export function canDoERDMiscellaneousDate(
   return (
     role === "admin" ||
     role === "super-admin" ||
-    role === "factory"
+    role === "factory" ||
+    role === "miscellaneous"
   );
 }
 
@@ -449,7 +453,8 @@ export function canMiscellaneousMarkAsResolved(
     role === "admin" ||
     role === "super-admin" ||
     role === "site-supervisor" ||
-    role === "head-site-supervisor"
+    role === "head-site-supervisor" ||
+    role === "miscellaneous"
   );
 }
 
