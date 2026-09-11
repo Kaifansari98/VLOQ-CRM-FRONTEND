@@ -283,12 +283,6 @@ const data = {
       showCount: "total_project_completed_stage_leads" as const,
     },
     {
-      title: "Lead Pool",
-      url: "/dashboard/lead-pool",
-      icon: NotebookPen,
-      showCount: "total_lead_pool" as const,
-    },
-    {
       title: "Open Leads",
       url: "/dashboard/leads/leadstable",
       icon: NotebookPen,
