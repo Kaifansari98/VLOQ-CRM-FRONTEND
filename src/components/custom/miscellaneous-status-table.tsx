@@ -405,7 +405,9 @@ export function MiscellaneousStatusTable({
                   Lead / Project
                 </TableHead>
                 <TableHead className="w-[160px] font-semibold text-xs uppercase tracking-wider text-muted-foreground">
-                  ERD Date
+                  {status === "dispatch-scheduled" || status === "dispatched"
+                    ? "Delivery Date"
+                    : "ERD Date"}
                 </TableHead>
                 <TableHead className="min-w-[170px] font-semibold text-xs uppercase tracking-wider text-muted-foreground">
                   Responsible Teams
@@ -583,9 +585,31 @@ export function MiscellaneousStatusTable({
                       </div>
                     </TableCell>
 
-                    {/* 3. ERD Date */}
+                    {/* 3. Date (ERD / Delivery Date) */}
                     <TableCell className="py-3.5">
-                      {entry.expected_ready_date ? (
+                      {status === "dispatch-scheduled" || status === "dispatched" ? (
+                        entry.required_delivery_date ? (
+                          <div>
+                            <p className="text-sm font-medium text-foreground">
+                              {formatDate(entry.required_delivery_date)}
+                            </p>
+                            {entry.expected_ready_date && (
+                              <p className="text-[11px] text-muted-foreground">
+                                ERD: {formatDate(entry.expected_ready_date)}
+                              </p>
+                            )}
+                          </div>
+                        ) : entry.expected_ready_date ? (
+                          <div>
+                            <p className="text-sm font-medium text-foreground">
+                              {formatDate(entry.expected_ready_date)}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground">ERD</p>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">-</span>
+                        )
+                      ) : entry.expected_ready_date ? (
                         <div>
                           <p className="text-sm font-medium text-foreground">
                             {formatDate(entry.expected_ready_date)}

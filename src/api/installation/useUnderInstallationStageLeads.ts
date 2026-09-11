@@ -675,6 +675,8 @@ export const useCreateMiscellaneousEntry = () => {
           variables.leadId,
         ],
       });
+      queryClient.invalidateQueries({ queryKey: ["miscellaneousStatusCounts"] });
+      queryClient.invalidateQueries({ queryKey: ["miscellaneousByStatus"] });
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
@@ -827,6 +829,8 @@ export const useUpdateMiscERD = () => {
 
       client.invalidateQueries({ queryKey: ["miscellaneous-details"] });
       client.invalidateQueries({ queryKey: ["miscellaneousEntries"] });
+      client.invalidateQueries({ queryKey: ["miscellaneousStatusCounts"] });
+      client.invalidateQueries({ queryKey: ["miscellaneousByStatus"] });
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
@@ -874,6 +878,8 @@ export const useUpdateMiscRequiredDeliveryDate = () => {
 
       client.invalidateQueries({ queryKey: ["miscellaneous-details"] });
       client.invalidateQueries({ queryKey: ["miscellaneousEntries"] });
+      client.invalidateQueries({ queryKey: ["miscellaneousStatusCounts"] });
+      client.invalidateQueries({ queryKey: ["miscellaneousByStatus"] });
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
@@ -921,6 +927,8 @@ export const useUpdateMiscRequiredDeliveryDateByTaskId = () => {
 
       client.invalidateQueries({ queryKey: ["miscellaneous-details"] });
       client.invalidateQueries({ queryKey: ["miscellaneousEntries"] });
+      client.invalidateQueries({ queryKey: ["miscellaneousStatusCounts"] });
+      client.invalidateQueries({ queryKey: ["miscellaneousByStatus"] });
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
@@ -962,6 +970,8 @@ export const useUploadMiscCompletionDocumentsByTaskId = () => {
 
     onSuccess: () => {
       client.invalidateQueries({ queryKey: ["miscellaneousEntries"] });
+      client.invalidateQueries({ queryKey: ["miscellaneousStatusCounts"] });
+      client.invalidateQueries({ queryKey: ["miscellaneousByStatus"] });
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
@@ -984,6 +994,8 @@ export const useUpdateMiscApproval = () => {
 
       client.invalidateQueries({ queryKey: ["miscellaneous-details"] });
       client.invalidateQueries({ queryKey: ["miscellaneousEntries"] });
+      client.invalidateQueries({ queryKey: ["miscellaneousStatusCounts"] });
+      client.invalidateQueries({ queryKey: ["miscellaneousByStatus"] });
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
