@@ -53,6 +53,7 @@ import { DataTableColumnHeader } from "@/components/data-table/data-table-column
 import { GenerateLeadFormModal } from "@/components/sales-executive/Lead/leads-generation-form-modal";
 import { BulkUploadModal } from "@/components/sales-executive/Lead/bulk-upload-modal";
 import { toastManager } from "@/components/ui/toast";
+import { useFranchisesByVendorId } from "@/api/franchise";
 
 interface OnlineLead {
   id: number;
@@ -207,6 +208,24 @@ export default function LeadPoolPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryTab = searchParams.get("tab") as "pool" | "my" | "overall" | null;
+
+  const reduxModuledForB2b = useAppSelector(
+    (s) => s.auth.moduled_for_b2b ?? s.auth.user?.moduled_for_b2b ?? false,
+  );
+  const franchiseId = useAppSelector(
+    (state) => state.auth.franchise_id ?? state.auth.user?.franchise_id,
+  );
+  const { data: franchises = [] } = useFranchisesByVendorId(vendorId, !!vendorId);
+  const isB2b = useMemo(() => {
+    const activeFranchise = franchises.find((f) => f.id === franchiseId);
+    return activeFranchise?.moduled_for_b2b ?? reduxModuledForB2b;
+  }, [franchises, franchiseId, reduxModuledForB2b]);
+
+  useEffect(() => {
+    if (isB2b) {
+      router.replace("/dashboard/leads/leadstable");
+    }
+  }, [isB2b, router]);
 
   const [activeTab, setActiveTab] = useState<"pool" | "my" | "overall">(
     queryTab && ["pool", "my", "overall"].includes(queryTab) ? queryTab : "pool"
