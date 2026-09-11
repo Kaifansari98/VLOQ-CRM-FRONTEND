@@ -622,6 +622,8 @@ function BoxesSection({
         category: category !== "all" ? category : undefined,
         machine_id: selectedMachineId !== "all" ? selectedMachineId : undefined,
         box_status: boxFilter !== "all" ? boxFilter : undefined,
+        page,
+        limit: pageSize,
       });
     }, 300);
     return () => clearTimeout(timer);
@@ -631,6 +633,8 @@ function BoxesSection({
     category,
     selectedMachineId,
     boxFilter,
+    page,
+    pageSize,
     onFilterChange,
   ]);
 
@@ -713,6 +717,44 @@ function BoxesSection({
     return sortedBoxes;
   }, [boxes, boxSort]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [search, productGroup, category, selectedMachineId, boxFilter]);
+
+  const isServerPaginated = Boolean(boxesPagination && boxesPagination.total > 0);
+
+  const totalBoxes = isServerPaginated ? boxesPagination!.total : filteredBoxes.length;
+  const totalPages = isServerPaginated
+    ? boxesPagination!.total_pages
+    : Math.max(1, Math.ceil(totalBoxes / pageSize));
+  const currentPage = isServerPaginated ? boxesPagination!.page : Math.min(Math.max(1, page), totalPages);
+
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalBoxes);
+
+  const paginatedBoxes = useMemo(() => {
+    if (isServerPaginated) {
+      return filteredBoxes;
+    }
+    return filteredBoxes.slice(startIndex, endIndex);
+  }, [filteredBoxes, isServerPaginated, startIndex, endIndex]);
+
+  const activePagination = useMemo(() => {
+    if (boxesPagination && boxesPagination.total > 0) {
+      return boxesPagination;
+    }
+    return {
+      total: totalBoxes,
+      page: currentPage,
+      limit: pageSize,
+      total_pages: totalPages,
+      from: totalBoxes === 0 ? 0 : startIndex + 1,
+      to: endIndex,
+      has_previous: currentPage > 1,
+      has_next: currentPage < totalPages,
+    };
+  }, [boxesPagination, totalBoxes, currentPage, pageSize, totalPages, startIndex, endIndex]);
+
   const resetBoxFilters = () => {
     setSearch("");
     setProductGroup("all");
@@ -720,6 +762,7 @@ function BoxesSection({
     setSelectedMachineId("all");
     setBoxFilter("all");
     setBoxSort("sequence_asc");
+    setPage(1);
   };
 
   return (
@@ -1008,7 +1051,7 @@ function BoxesSection({
                   : "grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-4",
               )}
             >
-              {filteredBoxes.map((box) => (
+              {paginatedBoxes.map((box) => (
                 <BoxCard
                   key={box.id}
                   box={box}
@@ -1022,20 +1065,20 @@ function BoxesSection({
           )}
 
           {/* Boxes Pagination UI */}
-          {boxesPagination && boxesPagination.total > 0 && (
+          {activePagination.total > 0 && (
             <div className="mt-4 flex w-full flex-col-reverse items-center justify-between gap-4 overflow-auto border-t bg-muted/10 p-3 sm:flex-row sm:gap-8 rounded-b-xl">
               <div className="flex-1 whitespace-nowrap text-sm text-muted-foreground">
                 Showing{" "}
                 <span className="font-semibold text-foreground">
-                  {boxesPagination.from}
+                  {activePagination.from}
                 </span>
                 {" - "}
                 <span className="font-semibold text-foreground">
-                  {boxesPagination.to}
+                  {activePagination.to}
                 </span>
                 {" of "}
                 <span className="font-semibold text-foreground">
-                  {boxesPagination.total}
+                  {activePagination.total}
                 </span>
                 {" boxes"}
               </div>
@@ -1066,7 +1109,7 @@ function BoxesSection({
                 </div>
 
                 <div className="flex items-center justify-center text-sm font-medium">
-                  Page {boxesPagination.page} of {boxesPagination.total_pages}
+                  Page {activePagination.page} of {activePagination.total_pages}
                 </div>
 
                 <div className="flex items-center space-x-2">
@@ -1076,7 +1119,7 @@ function BoxesSection({
                     size="icon"
                     className="hidden h-8 w-8 lg:flex"
                     onClick={() => setPage(1)}
-                    disabled={boxesPagination.page <= 1}
+                    disabled={!activePagination.has_previous}
                   >
                     <ChevronsLeft className="h-4 w-4" />
                   </Button>
@@ -1087,7 +1130,7 @@ function BoxesSection({
                     size="icon"
                     className="h-8 w-8"
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={!boxesPagination.has_previous}
+                    disabled={!activePagination.has_previous}
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
@@ -1099,10 +1142,10 @@ function BoxesSection({
                     className="h-8 w-8"
                     onClick={() =>
                       setPage((p) =>
-                        Math.min(boxesPagination.total_pages, p + 1),
+                        Math.min(activePagination.total_pages, p + 1),
                       )
                     }
-                    disabled={!boxesPagination.has_next}
+                    disabled={!activePagination.has_next}
                   >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
@@ -1112,10 +1155,8 @@ function BoxesSection({
                     variant="outline"
                     size="icon"
                     className="hidden h-8 w-8 lg:flex"
-                    onClick={() => setPage(boxesPagination.total_pages)}
-                    disabled={
-                      boxesPagination.page >= boxesPagination.total_pages
-                    }
+                    onClick={() => setPage(activePagination.total_pages)}
+                    disabled={!activePagination.has_next}
                   >
                     <ChevronsRight className="h-4 w-4" />
                   </Button>
