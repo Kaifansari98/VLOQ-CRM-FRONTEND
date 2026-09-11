@@ -256,7 +256,7 @@ export default function PurchaseOrderDetailPage() {
             </header>
 
             <main className="min-h-[calc(100vh-4rem)] bg-zinc-50 p-4 dark:bg-zinc-950 md:p-6">
-                <div className="mx-auto max-w-7xl space-y-5">
+                <div className="w-full space-y-5">
                     <div className="flex flex-col gap-3 rounded-2xl border bg-background p-4 shadow-sm md:flex-row md:items-center md:justify-between">
                         <div>
                             <div className="mb-2 flex items-center gap-2">
@@ -425,7 +425,7 @@ export default function PurchaseOrderDetailPage() {
                                                 value={po.companyVendor?.email ?? "—"}
                                             />
                                             <InfoRow
-                                                label="Purchase Intent"
+                                                label="Purchase Enquiry"
                                                 value={po.purchaseIntent?.intent_no ?? "—"}
                                             />
                                             <InfoRow

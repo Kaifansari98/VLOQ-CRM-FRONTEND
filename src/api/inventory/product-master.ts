@@ -118,6 +118,7 @@ export interface ProductMastersResponse {
     id: number;
     company_name: string;
     vendor_code: string;
+    is_inventory_company_vendor?: boolean;
   }[];
   subCategories: { id: number; categoryId: number; name: string }[];
   sizes: { id: number; name: string }[];
