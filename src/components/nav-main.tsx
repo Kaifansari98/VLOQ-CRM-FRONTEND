@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { LucideIcon } from "lucide-react";
 import { useFranchisesByVendorId } from "@/api/franchise";
 import { useLeadStats } from "@/hooks/useLeadStats";
@@ -368,6 +368,40 @@ export function NavMain({
 
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const sidebarScrollTop = useRef<number | null>(null);
+  const routeKey = `${pathname}?${searchParams.toString()}`;
+
+  const handleNavigationClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    const sidebarContent = event.currentTarget.closest<HTMLElement>(
+      '[data-sidebar="content"]',
+    );
+
+    if (!sidebarContent) return;
+
+    sidebarScrollTop.current = sidebarContent.scrollTop;
+    sessionStorage.setItem(
+      "dashboard-sidebar-scroll-top",
+      String(sidebarContent.scrollTop),
+    );
+  };
+
+  useLayoutEffect(() => {
+    const savedScrollTop =
+      sidebarScrollTop.current ??
+      Number(sessionStorage.getItem("dashboard-sidebar-scroll-top"));
+    if (!Number.isFinite(savedScrollTop)) return;
+
+    const sidebarContent = document.querySelector<HTMLElement>(
+      '[data-sidebar="content"]',
+    );
+    if (!sidebarContent) return;
+
+    sidebarContent.scrollTop = savedScrollTop;
+    // Restore once more after the route's collapsible content has committed.
+    requestAnimationFrame(() => {
+      sidebarContent.scrollTop = savedScrollTop;
+    });
+  }, [routeKey]);
   const allItems = [
     ...enhancedNavItems,
     ...(trackTraceItems ?? []),
@@ -511,7 +545,10 @@ export function NavMain({
                         <SidebarMenuSubButton asChild>
                           <Link
                             href={subItem.url}
-                            onClick={handleMobileNavigate}
+                            onClick={(event) => {
+                              handleNavigationClick(event);
+                              handleMobileNavigate();
+                            }}
                             className={cn(
                               "flex items-center justify-between w-full transition-all duration-200 text-sidebar-foreground",
                               isSubActive && "font-bold rounded-md"
@@ -565,6 +602,7 @@ export function NavMain({
         <SidebarMenuButton asChild tooltip={item.title}>
           <Link
             href={item.url}
+            onClick={handleNavigationClick}
             className={cn(
               "flex items-center gap-2 w-full transition-all duration-200 text-sidebar-foreground",
               isSingleActive &&

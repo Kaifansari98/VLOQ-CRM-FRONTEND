@@ -42,6 +42,7 @@ import { toastManager } from "@/components/ui/toast";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useAppSelector } from "@/redux/store";
+import { cn } from "@/lib/utils";
 
 import {
   Plus,
@@ -473,20 +474,27 @@ const finalGrandTotal = useMemo(() => {
     product: PIProduct,
     supplier: PICompanyVendor
   ) => {
-    const isSameState = Number(supplier.state_id) === Number(stateId);
+    const cgst = Number(product.cgst_rate || 0);
+    const sgst = Number(product.sgst_rate || 0);
+    const igst = Number(product.igst_rate || 0);
+    const taxPct = Number(product.tax_pct || 0);
+
+    const totalTax = taxPct > 0 ? taxPct : (igst > 0 ? igst : (cgst + sgst));
+
+    const isSameState =
+      Boolean(stateId && supplier.state_id) &&
+      Number(supplier.state_id) === Number(stateId);
 
     if (isSameState) {
-      entry.cgst_pct = String(product.cgst_rate || 0);
-      entry.sgst_pct = String(product.sgst_rate || 0);
+      entry.cgst_pct = cgst > 0 ? String(cgst) : String(totalTax / 2);
+      entry.sgst_pct = sgst > 0 ? String(sgst) : String(totalTax / 2);
       entry.igst_pct = "0";
-      entry.tax_pct = String(
-        Number(product.cgst_rate || 0) + Number(product.sgst_rate || 0)
-      );
+      entry.tax_pct = String(totalTax);
     } else {
       entry.cgst_pct = "0";
       entry.sgst_pct = "0";
-      entry.igst_pct = String(product.tax_pct || product.igst_rate || 0);
-      entry.tax_pct = String(product.tax_pct || product.igst_rate || 0);
+      entry.igst_pct = igst > 0 ? String(igst) : String(totalTax);
+      entry.tax_pct = String(totalTax);
     }
 
     return entry;
@@ -900,14 +908,14 @@ const finalGrandTotal = useMemo(() => {
 });
 
       toastManager.add({
-        title: "Purchase Intent created successfully",
+        title: "Purchase Enquiry created successfully",
         type: "success",
       });
 
       router.push("/dashboard/inventory/purchase-intents");
     } catch (error) {
       toastManager.add({
-        title: "Failed to create purchase intent",
+        title: "Failed to create purchase enquiry",
         type: "error",
       });
     } finally {
@@ -937,14 +945,14 @@ const finalGrandTotal = useMemo(() => {
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
                 <BreadcrumbLink href="/dashboard/inventory/purchase-intents">
-                  Purchase Intents
+                  Purchase Enquiries
                 </BreadcrumbLink>
               </BreadcrumbItem>
 
               <BreadcrumbSeparator className="hidden md:block" />
 
               <BreadcrumbItem>
-                <BreadcrumbPage>Raise Intent</BreadcrumbPage>
+                <BreadcrumbPage>Raise Enquiry</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
@@ -959,7 +967,7 @@ const finalGrandTotal = useMemo(() => {
       <main className="p-4 md:p-6">
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="text-xl font-bold">Raise Purchase Intent</h1>
+            <h1 className="text-xl font-bold">Raise Purchase Enquiry</h1>
             <p className="text-sm text-muted-foreground">
               Add products and supplier quotation in a simple table.
             </p>
@@ -985,7 +993,7 @@ const finalGrandTotal = useMemo(() => {
               ) : (
                 <Send size={15} />
               )}
-              Submit Intent
+              Submit Enquiry
             </Button>
           </div>
         </div>
@@ -1319,15 +1327,13 @@ const finalGrandTotal = useMemo(() => {
                                     <input
                                       type="number"
                                       value={entry.tax_pct}
-                                      onChange={(e) =>
-                                        updateSupplierRow(
-                                          rowIndex,
-                                          vendorIndex,
-                                          "tax_pct",
-                                          e.target.value
-                                        )
-                                      }
-                                      className={tableInputClass}
+                                      readOnly
+                                      disabled
+                                      className={cn(
+                                        tableInputClass,
+                                        "bg-muted/50 cursor-not-allowed text-muted-foreground font-semibold"
+                                      )}
+                                      title="GST % is auto-filled from product HSN and cannot be edited"
                                     />
                                   </td>
 
@@ -1447,7 +1453,7 @@ const finalGrandTotal = useMemo(() => {
                 ) : (
                   <Send size={15} />
                 )}
-                Submit Intent
+                Submit Enquiry
               </Button>
             </div>
           </>

@@ -258,7 +258,7 @@ function ApprovalModal({
 
           <div>
             <h3 className="text-base font-black">
-              {isReject ? "Reject" : "Approve"} Purchase Intent
+              {isReject ? "Reject" : "Approve"} Purchase Enquiry
             </h3>
             <p className="text-xs text-muted-foreground">{intentNo}</p>
           </div>
@@ -369,7 +369,7 @@ function IntentDetailPanel({
       await updatePIStatus(vendorId, intentId, status, remarks || undefined);
 
       toastManager.add({
-        title: `Intent ${getStatusCfg(status).label}`,
+        title: `Enquiry ${getStatusCfg(status).label}`,
         type: "success",
       });
 
@@ -504,7 +504,7 @@ function IntentDetailPanel({
             </div>
           ) : !data ? (
             <div className="flex h-full items-center justify-center p-8 text-muted-foreground">
-              Failed to load intent details.
+              Failed to load enquiry details.
             </div>
           ) : (
             <div className="grid gap-5 p-5 lg:grid-cols-[1fr_340px]">
@@ -517,7 +517,7 @@ function IntentDetailPanel({
                       <div>
                         <div className="mb-3 inline-flex items-center gap-2 rounded-full border bg-muted/40 px-3 py-1 text-xs font-medium text-muted-foreground">
                           <Sparkles size={13} className="text-indigo-500" />
-                          Purchase Intent Workspace
+                          Purchase Enquiry Workspace
                         </div>
 
                         <h2 className="text-2xl font-black tracking-tight">
@@ -948,7 +948,7 @@ function Pagination({
     <div className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3">
       <p className="text-xs text-muted-foreground">
         Showing <span className="font-semibold text-foreground">{start}–{end}</span> of{" "}
-        <span className="font-semibold text-foreground">{total}</span> intents
+        <span className="font-semibold text-foreground">{total}</span> enquiries
       </p>
 
       <div className="flex items-center gap-1">
@@ -1061,7 +1061,7 @@ export default function PurchaseIntentListPage() {
       await deletePurchaseIntent(vendorId, deleteTarget.id);
 
       toastManager.add({
-        title: "Purchase Intent deleted",
+        title: "Purchase Enquiry deleted",
         type: "success",
       });
 
@@ -1108,7 +1108,7 @@ export default function PurchaseIntentListPage() {
               <BreadcrumbSeparator className="hidden md:block" />
 
               <BreadcrumbItem>
-                <BreadcrumbPage>Purchase Intents</BreadcrumbPage>
+                <BreadcrumbPage>Purchase Enquiries</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
@@ -1121,7 +1121,7 @@ export default function PurchaseIntentListPage() {
             onClick={() => router.push("/dashboard/inventory/purchase-intents/new")}
           >
             <Plus size={14} />
-            Raise Intent
+            Raise Enquiry
           </Button>
 
           <NotificationBell />
@@ -1130,7 +1130,7 @@ export default function PurchaseIntentListPage() {
       </header>
 
       <main className="min-h-[calc(100vh-4rem)] bg-zinc-50 p-4 dark:bg-zinc-950 md:p-6">
-        <div className="mx-auto flex max-w-7xl flex-col gap-5">
+        <div className="flex w-full flex-col gap-5">
           <div className="overflow-hidden rounded-[28px] border bg-background shadow-sm">
             <div className="relative p-5 md:p-6">
               <div className="absolute right-0 top-0 h-28 w-28 rounded-bl-full bg-indigo-500/10" />
@@ -1148,7 +1148,7 @@ export default function PurchaseIntentListPage() {
                     </div>
 
                     <h1 className="text-2xl font-black tracking-tight">
-                      Purchase Intents
+                      Purchase Enquiries
                     </h1>
 
                     <p className="mt-1 text-sm text-muted-foreground">
@@ -1167,7 +1167,7 @@ export default function PurchaseIntentListPage() {
               </div>
 
               <div className="relative mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <SummaryCard icon={ClipboardList} label="Total Intents" value={totals.count} />
+                <SummaryCard icon={ClipboardList} label="Total Enquiries" value={totals.count} />
                 <SummaryCard icon={Pencil} label="Drafts on Page" value={totals.draft} />
                 <SummaryCard
                   icon={ShoppingCart}
@@ -1219,7 +1219,7 @@ export default function PurchaseIntentListPage() {
                 <input
                   value={search}
                   onChange={(e) => handleSearch(e.target.value)}
-                  placeholder="Search intent no..."
+                  placeholder="Search enquiry no..."
                   className="h-10 w-full rounded-xl border bg-muted/30 pl-9 pr-9 text-sm outline-none focus:bg-background focus:ring-2 focus:ring-indigo-300"
                 />
 
@@ -1242,7 +1242,7 @@ export default function PurchaseIntentListPage() {
                 <thead>
                   <tr className="border-b bg-muted/40">
                     <th className="px-5 py-4 text-left text-[10px] font-black uppercase text-muted-foreground">
-                      Intent
+                      Enquiry
                     </th>
                     <th className="px-5 py-4 text-right text-[10px] font-black uppercase text-muted-foreground">
                       Amount
@@ -1284,7 +1284,7 @@ export default function PurchaseIntentListPage() {
                             <ShoppingCart size={30} className="opacity-40" />
                           </div>
 
-                          <p className="text-sm font-semibold">No purchase intents found</p>
+                          <p className="text-sm font-semibold">No purchase enquiries found</p>
 
                           {(search || statusFilter) && (
                             <p className="text-xs">Try clearing filters.</p>
@@ -1465,7 +1465,7 @@ export default function PurchaseIntentListPage() {
               </div>
 
               <div>
-                <h3 className="text-base font-black">Delete Intent</h3>
+                <h3 className="text-base font-black">Delete Enquiry</h3>
                 <p className="text-xs text-muted-foreground">
                   {deleteTarget.intent_no}
                 </p>
@@ -1473,7 +1473,7 @@ export default function PurchaseIntentListPage() {
             </div>
 
             <p className="text-sm text-muted-foreground">
-              This will permanently delete the purchase intent. This action cannot be
+              This will permanently delete the purchase enquiry. This action cannot be
               undone.
             </p>
 
