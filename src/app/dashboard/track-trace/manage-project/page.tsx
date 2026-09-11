@@ -23,6 +23,7 @@ import {
   useDeleteTrackTraceProject,
   useTrackTraceProjects,
 } from "@/hooks/track-trace/useTrackTraceProjects";
+import { useActiveMachines } from "@/hooks/track-trace/useActiveMachines";
 
 import {
   ProjectDeletedFilter,
@@ -70,6 +71,11 @@ export default function TrackTraceProjectsPage() {
     vendorId,
     filters
   );
+  const { data: activeMachines = [], isLoading: isLoadingMachines } =
+    useActiveMachines(vendorId);
+  const packagingMachine = activeMachines.find(
+    (machine) => machine.machine_type_id === 18,
+  );
 
   const { mutateAsync: deleteProject, isPending: isDeleting } =
     useDeleteTrackTraceProject();
@@ -96,6 +102,13 @@ export default function TrackTraceProjectsPage() {
   const handleEditProject = (row: TrackTraceProjectListRow) => {
     if (row.isDeleted) return;
     router.push(`/dashboard/track-trace/manage-project/${row.unique_project_id}/edit`);
+  };
+
+  const handlePackaging = (row: TrackTraceProjectListRow) => {
+    if (row.isDeleted || !packagingMachine) return;
+    router.push(
+      `/dashboard/track-trace/machines/${packagingMachine.id}?projectId=${row.id}`,
+    );
   };
 
   const navigateTrackTraceProject = (row: TrackTraceProjectListRow) => {
@@ -258,6 +271,8 @@ export default function TrackTraceProjectsPage() {
               onRowDoubleClick={navigateTrackTraceProject}
               onCutListClick={handleCutList}
               onProjectDetailClick={handleProjectDetail}
+              onPackagingClick={handlePackaging}
+              isPackagingDisabled={isLoadingMachines || !packagingMachine}
               onEditClick={handleEditProject}
               onDeleteClick={handleDeleteProject}
               isDeleting={isDeleting}

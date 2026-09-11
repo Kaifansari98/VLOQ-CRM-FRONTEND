@@ -47,6 +47,7 @@ import {
   Layers,
   ListFilter,
   MoreHorizontal,
+  PackageCheck,
   PackageOpen,
   Pencil,
   Trash2,
@@ -70,6 +71,8 @@ interface TrackTraceProjectTableProps {
   onRowDoubleClick?: (row: TrackTraceProjectListRow) => void;
   onCutListClick?: (row: TrackTraceProjectListRow) => void;
   onProjectDetailClick?: (row: TrackTraceProjectListRow) => void;
+  onPackagingClick?: (row: TrackTraceProjectListRow) => void;
+  isPackagingDisabled?: boolean;
   onEditClick?: (row: TrackTraceProjectListRow) => void;
   onDeleteClick?: (row: TrackTraceProjectListRow) => void;
   isDeleting?: boolean;
@@ -321,6 +324,8 @@ export default function TrackTraceProjectTable({
   onRowDoubleClick,
   onCutListClick,
   onProjectDetailClick,
+  onPackagingClick,
+  isPackagingDisabled = false,
   onEditClick,
   onDeleteClick,
   isDeleting = false,
@@ -575,6 +580,18 @@ export default function TrackTraceProjectTable({
                     Details & Boxes
                   </DropdownMenuItem>
 
+                  <DropdownMenuItem
+                    disabled={isPackagingDisabled}
+                    className="cursor-pointer gap-2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPackagingClick?.(row.original);
+                    }}
+                  >
+                    <PackageCheck size={14} />
+                    Packaging
+                  </DropdownMenuItem>
+
                   {canDelete && (
                     <>
                       <DropdownMenuSeparator />
@@ -598,7 +615,21 @@ export default function TrackTraceProjectTable({
         ),
       },
     ],
-    [page, limit, sortBy, sortOrder, onSort, canDelete, isDeleting]
+    [
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+      onSort,
+      onCutListClick,
+      onProjectDetailClick,
+      onPackagingClick,
+      isPackagingDisabled,
+      onEditClick,
+      onDeleteClick,
+      canDelete,
+      isDeleting,
+    ]
   );
 
   const tableInstance = useReactTable({
