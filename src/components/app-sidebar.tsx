@@ -37,6 +37,7 @@ import {
 import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { setFranchiseId } from "@/redux/slices/authSlice";
 import { usePendingMiscellaneousCount } from "@/api/installation/useUnderInstallationStageLeads";
+import { useMiscellaneousStatusCounts } from "@/api/miscellaneousModuleApi";
 import { useFranchisesByVendorId } from "@/api/franchise";
 import { useUnreadBroadcastCount } from "@/api/broadcast";
 import { useVendorLeadsByTagPost } from "@/api/universalstage";
@@ -203,6 +204,45 @@ const data = {
           title: "Final Handover",
           url: "/dashboard/installation/final-handover",
           showCount: "total_final_handover_stage_leads" as const,
+        },
+      ],
+    },
+    {
+      title: "Miscellaneous Module",
+      url: "#",
+      icon: TriangleAlert,
+      items: [
+        {
+          title: "Awaiting Approval",
+          url: "/dashboard/miscellaneous/awaiting-approval",
+        },
+        {
+          title: "Misc Approved",
+          url: "/dashboard/miscellaneous/misc-approved",
+        },
+        {
+          title: "Under Process",
+          url: "/dashboard/miscellaneous/under-process",
+        },
+        {
+          title: "RTD (Ready To Dispatch)",
+          url: "/dashboard/miscellaneous/ready-to-dispatch",
+        },
+        {
+          title: "Dispatch Scheduled",
+          url: "/dashboard/miscellaneous/dispatch-scheduled",
+        },
+        {
+          title: "Dispatched",
+          url: "/dashboard/miscellaneous/dispatched",
+        },
+        {
+          title: "Resolved",
+          url: "/dashboard/miscellaneous/resolved",
+        },
+        {
+          title: "Rejected",
+          url: "/dashboard/miscellaneous/rejected",
         },
       ],
     },
@@ -514,6 +554,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       userType,
       userId,
     );
+
+  const skipFranchiseForMiscModule =
+    userType === "factory" ||
+    userType === "miscellaneous" ||
+    userType === "super-admin" ||
+    userType === "auditor";
+
+  const {
+    data: miscStatusCountsData,
+    isLoading: isMiscStatusCountsLoading,
+  } = useMiscellaneousStatusCounts(
+    vendorId ?? 0,
+    skipFranchiseForMiscModule ? undefined : (franchiseId ?? undefined),
+    userType,
+    userId,
+  );
   const { data: franchises = [] } = useFranchisesByVendorId(
     vendorId ?? 0,
     !!vendorId,
@@ -629,6 +685,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           userType === "telecaller" ||
           userType === "telecaller-team-lead";
         if (hidesProdExecServ) return false;
+      }
+
+      if (item.title === "Miscellaneous Module") {
+        const canSeeMiscModule =
+          userType === "admin" ||
+          userType === "super-admin" ||
+          userType === "auditor" ||
+          userType === "site-supervisor" ||
+          userType === "head-site-supervisor" ||
+          userType === "miscellaneous" ||
+          userType === "factory";
+        if (!canSeeMiscModule) return false;
       }
 
       return true;
@@ -834,6 +902,35 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           return { ...item, items: updatedItems };
         }
       }
+      if (item.title === "Miscellaneous Module" && item.items) {
+        const counts = miscStatusCountsData?.data;
+        const statusCountMap: Record<string, number | undefined> = {
+          "Awaiting Approval": counts?.awaiting_approval,
+          "Misc Approved": counts?.misc_approved,
+          "Under Process": counts?.under_process,
+          "RTD (Ready To Dispatch)": counts?.rtd,
+          "Dispatch Scheduled": counts?.dispatch_scheduled,
+          "Dispatched": counts?.dispatched,
+          "Resolved": counts?.resolved,
+          "Rejected": counts?.rejected,
+        };
+
+        const updatedItems = item.items.map((subItem) => {
+          const count = statusCountMap[subItem.title];
+          return {
+            ...subItem,
+            customCount: count !== undefined ? count : 0,
+            customCountLoading: isMiscStatusCountsLoading,
+          };
+        });
+
+        return {
+          ...item,
+          customCount: counts?.total ?? 0,
+          customCountLoading: isMiscStatusCountsLoading,
+          items: updatedItems,
+        };
+      }
       return item;
     });
 
@@ -925,7 +1022,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
     if (userType === "miscellaneous") {
       resolvedNavItems = resolvedNavItems.filter(
-        (item) => item.title === "My Task" || item.title === "Execution",
+        (item) =>
+          item.title === "My Task" ||
+          item.title === "Execution" ||
+          item.title === "Miscellaneous Module",
       );
     }
 
