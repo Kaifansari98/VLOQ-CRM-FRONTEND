@@ -21,8 +21,12 @@ export interface PackagingProjectContext {
   client_name: string | null;
   lead_id: number | null;
   packing_type: "DEFAULT" | "GROUPWISE" | "CUSTOM_GROUP";
+  is_multi_location: boolean;
   project_details_id: number | null;
   group_names: string[];
+  locations: Array<{
+    location_name: string;
+  }>;
   box_info_fields: PackagingBoxInfoField[];
 }
 
@@ -36,6 +40,13 @@ export interface PackagingBox {
   lead_id: number | null;
   items_count?: number;
   weight?: number;
+  sequence_no?: number | null;
+  product_group_name?: string | null;
+  packing_group_name?: string | null;
+  product_set_no?: number | null;
+  box_position?: number | null;
+  boxes_per_product?: number | null;
+  is_auto_created?: boolean;
 }
 
 export interface CreatePackagingBoxPayload {

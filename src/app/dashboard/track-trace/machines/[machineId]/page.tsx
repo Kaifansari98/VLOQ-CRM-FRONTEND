@@ -21,6 +21,7 @@ import {
   Cpu,
   ListChecks,
   Loader2,
+  MapPin,
   Maximize2,
   Minimize2,
   PackageCheck,
@@ -96,6 +97,11 @@ import {
 
 const AUTO_SUBMIT_DELAY_MS = 300;
 const BOX_WEIGHT_WARNING_KG = 25;
+const WITHOUT_LOCATION_VALUE = "__without_location__";
+const AUTO_PRINT_API_ATTEMPTS = 3;
+const AUTO_PRINT_RETRY_DELAY_MS = 750;
+const AUTO_PRINT_DIALOG_RETRY_MS = 1_500;
+const AUTO_PRINT_CLEANUP_MS = 20_000;
 
 type BoxAction = "pack" | "unpack" | "pack-print" | "print";
 
@@ -192,6 +198,7 @@ export default function MachineScannerPage() {
   const showPackagingSetup = Boolean(
     isPackagingMachine && !isCustomGroupPacking,
   );
+  const customPackingLocations = packagingContext?.locations ?? [];
   const {
     data: packagingBoxes = [],
     isLoading: isLoadingBoxes,
@@ -212,6 +219,10 @@ export default function MachineScannerPage() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedBoxId, setSelectedBoxId] = useState<number>();
   const [isBoxSelectorOpen, setIsBoxSelectorOpen] = useState(false);
+  const [isLocationSelectorOpen, setIsLocationSelectorOpen] = useState(false);
+  const [selectedLocationName, setSelectedLocationName] = useState<
+    string | null | undefined
+  >();
   const [isCreateBoxOpen, setIsCreateBoxOpen] = useState(false);
   const [newBoxName, setNewBoxName] = useState("");
   const [boxInfoValues, setBoxInfoValues] = useState<Record<number, string>>(
@@ -222,15 +233,26 @@ export default function MachineScannerPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
   const autoSubmitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initializedAutoPrintRef = useRef(false);
+  const autoPrintedBoxIdsRef = useRef<Set<number>>(new Set());
+  const autoPrintingBoxIdsRef = useRef<Set<number>>(new Set());
+  const autoPrintChainRef = useRef<Promise<void>>(Promise.resolve());
   const selectedBox = useMemo(
     () => packagingBoxes.find((box) => box.id === selectedBoxId),
     [packagingBoxes, selectedBoxId],
+  );
+  const hasLocationDecision = Boolean(
+    !isCustomGroupPacking ||
+      customPackingLocations.length === 0 ||
+      selectedLocationName !== undefined,
   );
   const scannerReady = Boolean(
     machine &&
       (!isPackagingMachine ||
         (packagingContext &&
-          (isCustomGroupPacking || selectedBox?.box_status === "unpacked"))),
+          (isCustomGroupPacking
+            ? hasLocationDecision
+            : selectedBox?.box_status === "unpacked"))),
   );
   const {
     items: queuedItems,
@@ -248,7 +270,19 @@ export default function MachineScannerPage() {
     projectId: packagingProjectId,
     boxId: requiresDestinationBox ? selectedBox?.id : undefined,
     boxName: requiresDestinationBox ? selectedBox?.box_name : undefined,
+    locationName:
+      isCustomGroupPacking && selectedLocationName
+        ? selectedLocationName
+        : undefined,
   });
+
+  useEffect(() => {
+    setSelectedLocationName(undefined);
+    initializedAutoPrintRef.current = false;
+    autoPrintedBoxIdsRef.current.clear();
+    autoPrintingBoxIdsRef.current.clear();
+    autoPrintChainRef.current = Promise.resolve();
+  }, [packagingProjectId]);
 
   useEffect(() => {
     if (machine && isPackagingMachine && !hasValidProjectId) {
@@ -473,6 +507,145 @@ export default function MachineScannerPage() {
     printWindow.document.close();
   };
 
+  const renderAutomaticBoxPrint = useCallback(
+    async (boxId: number) => {
+      if (!vendorId || !packagingProjectId) {
+        throw new Error("Project information is unavailable");
+      }
+
+      const response = await getPackagingBoxPrint(
+        boxId,
+        packagingProjectId,
+        vendorId,
+      );
+      const printHtml = response.data?.print_html;
+
+      if (!response.success || !printHtml) {
+        throw new Error(response.message || "Failed to generate box label");
+      }
+
+      // The backend HTML contains its own delayed window.print(). Automatic
+      // printing is more reliable when this page controls the iframe load and
+      // invokes print only after fonts and images have finished loading.
+      const controlledPrintHtml = printHtml.replace(
+        "window.print();",
+        "window.__automaticPrintIsControlled = true;",
+      );
+      const printFrame = document.createElement("iframe");
+      printFrame.title = `Print label for box ${boxId}`;
+      printFrame.setAttribute("aria-hidden", "true");
+      printFrame.style.position = "fixed";
+      printFrame.style.width = "420px";
+      printFrame.style.height = "700px";
+      printFrame.style.left = "-10000px";
+      printFrame.style.top = "0";
+      printFrame.style.border = "0";
+
+      await new Promise<void>((resolve, reject) => {
+        let isFinished = false;
+        let retryTimer: number | undefined;
+        let cleanupTimer: number | undefined;
+        let loadTimer: number | undefined;
+
+        const finishPrinting = (error?: unknown) => {
+          if (isFinished) return;
+          isFinished = true;
+          if (retryTimer) window.clearTimeout(retryTimer);
+          if (cleanupTimer) window.clearTimeout(cleanupTimer);
+          if (loadTimer) window.clearTimeout(loadTimer);
+          printFrame.remove();
+          if (error) {
+            reject(error);
+          } else {
+            resolve();
+          }
+        };
+
+        printFrame.addEventListener(
+          "load",
+          () => {
+            if (loadTimer) {
+              window.clearTimeout(loadTimer);
+              loadTimer = undefined;
+            }
+
+            const frameWindow = printFrame.contentWindow;
+
+            if (!frameWindow) {
+              finishPrinting(
+                new Error("Unable to open the box label for printing"),
+              );
+              return;
+            }
+
+            frameWindow.addEventListener(
+              "afterprint",
+              () => finishPrinting(),
+              { once: true },
+            );
+
+            const waitForImages = Promise.all(
+              Array.from(frameWindow.document.images).map(
+                (image) =>
+                  image.complete
+                    ? Promise.resolve()
+                    : new Promise<void>((imageReady) => {
+                        image.addEventListener("load", () => imageReady(), {
+                          once: true,
+                        });
+                        image.addEventListener("error", () => imageReady(), {
+                          once: true,
+                        });
+                      }),
+              ),
+            );
+
+            void Promise.all([
+              frameWindow.document.fonts?.ready ?? Promise.resolve(),
+              waitForImages,
+            ])
+              .then(() => {
+                if (isFinished) return;
+
+                const requestPrint = () => {
+                  if (isFinished || printFrame.contentWindow !== frameWindow) {
+                    return;
+                  }
+
+                  frameWindow.focus();
+                  frameWindow.print();
+                };
+
+                // Retry once when a browser silently ignores the first iframe
+                // print request. If a dialog opens, JavaScript pauses and the
+                // afterprint handler clears this timer when it closes.
+                retryTimer = window.setTimeout(
+                  requestPrint,
+                  AUTO_PRINT_DIALOG_RETRY_MS,
+                );
+                cleanupTimer = window.setTimeout(
+                  () => finishPrinting(),
+                  AUTO_PRINT_CLEANUP_MS,
+                );
+                window.setTimeout(requestPrint, 150);
+              })
+              .catch(finishPrinting);
+          },
+          { once: true },
+        );
+
+        loadTimer = window.setTimeout(
+          () =>
+            finishPrinting(new Error("Box label took too long to load")),
+          10_000,
+        );
+        printFrame.srcdoc = controlledPrintHtml;
+        document.body.appendChild(printFrame);
+      });
+    },
+    [packagingProjectId, vendorId],
+  );
+
   const handleToggleBoxStatus = async () => {
     if (!selectedBox || !userId || boxAction) return;
 
@@ -562,10 +735,96 @@ export default function MachineScannerPage() {
   };
 
   useEffect(() => {
+    if (!isCustomGroupPacking || !isQueueHydrated) {
+      return;
+    }
+
+    const completedBoxes = queuedItems.flatMap((item) => {
+      const boxId = item.result?.box_id;
+
+      return item.status === "success" &&
+        item.result?.box_completed &&
+        typeof boxId === "number"
+        ? [
+            {
+              boxId,
+              boxNumber:
+                String(item.result.box_name || boxId)
+                  .replace(/^box\s*/i, "")
+                  .trim() || String(boxId),
+            },
+          ]
+        : [];
+    });
+
+    // Restored queue history must not reopen print dialogs after a reload.
+    if (!initializedAutoPrintRef.current) {
+      completedBoxes.forEach(({ boxId }) =>
+        autoPrintedBoxIdsRef.current.add(boxId),
+      );
+      initializedAutoPrintRef.current = true;
+      return;
+    }
+
+    completedBoxes.forEach(({ boxId, boxNumber }) => {
+      if (
+        autoPrintedBoxIdsRef.current.has(boxId) ||
+        autoPrintingBoxIdsRef.current.has(boxId)
+      ) {
+        return;
+      }
+
+      autoPrintingBoxIdsRef.current.add(boxId);
+      autoPrintChainRef.current = autoPrintChainRef.current.then(async () => {
+        let lastError: unknown;
+
+        try {
+          for (
+            let attempt = 1;
+            attempt <= AUTO_PRINT_API_ATTEMPTS;
+            attempt += 1
+          ) {
+            try {
+              await renderAutomaticBoxPrint(boxId);
+              autoPrintedBoxIdsRef.current.add(boxId);
+              toastManager.add({
+                title: `Box ${boxNumber} completed. Label sent to print.`,
+                type: "success",
+              });
+              return;
+            } catch (error: unknown) {
+              lastError = error;
+
+              if (attempt < AUTO_PRINT_API_ATTEMPTS) {
+                await new Promise<void>((resolve) => {
+                  window.setTimeout(resolve, AUTO_PRINT_RETRY_DELAY_MS);
+                });
+              }
+            }
+          }
+
+          toastManager.add({
+            title: `Box completed, but label printing failed: ${getBoxActionError(lastError)}`,
+            type: "error",
+          });
+        } finally {
+          autoPrintingBoxIdsRef.current.delete(boxId);
+        }
+      });
+    });
+  }, [
+    isCustomGroupPacking,
+    isQueueHydrated,
+    queuedItems,
+    renderAutomaticBoxPrint,
+  ]);
+
+  useEffect(() => {
     if (
       !scannerReady ||
       !isQueueHydrated ||
       isBoxSelectorOpen ||
+      isLocationSelectorOpen ||
       isCreateBoxOpen
     ) {
       return;
@@ -598,6 +857,7 @@ export default function MachineScannerPage() {
   }, [
     isBoxSelectorOpen,
     isCreateBoxOpen,
+    isLocationSelectorOpen,
     isQueueHydrated,
     scannerReady,
   ]);
@@ -741,41 +1001,113 @@ export default function MachineScannerPage() {
               {isPackagingMachine &&
                 isCustomGroupPacking &&
                 packagingContext && (
-                  <div className="flex flex-col gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold">
-                        {packagingContext.project_name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Custom Packing Group · No destination box selection
-                        required
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button asChild variant="outline" size="sm">
-                        <Link
-                          href={`/dashboard/track-trace/machines/${machine.id}/projects`}
+                  <div className="space-y-3 rounded-xl border bg-card px-4 py-3 shadow-sm">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold">
+                          {packagingContext.project_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Custom Packing Group · Boxes are assigned automatically
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button asChild variant="outline" size="sm">
+                          <Link
+                            href={`/dashboard/track-trace/machines/${machine.id}/projects`}
+                          >
+                            Change project
+                          </Link>
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="gap-2"
+                          onClick={toggleFullscreen}
                         >
-                          Change project
-                        </Link>
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="gap-2"
-                        onClick={toggleFullscreen}
-                      >
-                        {isFullscreen ? (
-                          <Minimize2 className="size-4" />
-                        ) : (
-                          <Maximize2 className="size-4" />
-                        )}
-                        <span className="hidden sm:inline">
-                          {isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-                        </span>
-                      </Button>
+                          {isFullscreen ? (
+                            <Minimize2 className="size-4" />
+                          ) : (
+                            <Maximize2 className="size-4" />
+                          )}
+                          <span className="hidden sm:inline">
+                            {isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                          </span>
+                        </Button>
+                      </div>
                     </div>
+
+                    {customPackingLocations.length > 0 ? (
+                      <div className="flex flex-col gap-2 border-t pt-3 sm:flex-row sm:items-center">
+                        <div className="flex min-w-0 items-center gap-2 sm:w-56">
+                          <MapPin className="size-4 shrink-0 text-primary" />
+                          <div>
+                            <Label htmlFor="packing-location">Location</Label>
+                            <p className="text-[11px] text-muted-foreground">
+                              Select once before scanning.
+                            </p>
+                          </div>
+                        </div>
+                        <Select
+                          value={
+                            selectedLocationName === undefined
+                              ? undefined
+                              : selectedLocationName === null
+                                ? WITHOUT_LOCATION_VALUE
+                                : `location:${selectedLocationName}`
+                          }
+                          onValueChange={(value) => {
+                            clearAutoSubmitTimer();
+                            setScanValue("");
+                            setSelectedLocationName(
+                              value === WITHOUT_LOCATION_VALUE
+                                ? null
+                                : value.slice("location:".length),
+                            );
+                            window.setTimeout(
+                              () => inputRef.current?.focus(),
+                              0,
+                            );
+                          }}
+                          onOpenChange={(open) => {
+                            setIsLocationSelectorOpen(open);
+
+                            if (open && document.fullscreenElement) {
+                              void document
+                                .exitFullscreen()
+                                .catch(() => undefined);
+                            }
+                          }}
+                        >
+                          <SelectTrigger
+                            id="packing-location"
+                            className="h-10 w-full sm:max-w-md"
+                          >
+                            <SelectValue placeholder="Select location or continue without one" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={WITHOUT_LOCATION_VALUE}>
+                              Continue without location
+                            </SelectItem>
+                            {customPackingLocations.map((location) => (
+                              <SelectItem
+                                key={location.location_name}
+                                value={`location:${location.location_name}`}
+                              >
+                                {location.location_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 border-t pt-3 text-xs text-muted-foreground">
+                        <MapPin className="size-4" />
+                        No project locations configured. Scanning will continue
+                        without a location.
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1137,7 +1469,9 @@ export default function MachineScannerPage() {
                         value={scanValue}
                         onChange={(event) => handleScanChange(event.target.value)}
                         placeholder={
-                          requiresDestinationBox && !selectedBox
+                          isCustomGroupPacking && !hasLocationDecision
+                            ? "Select a location or continue without one"
+                            : requiresDestinationBox && !selectedBox
                             ? "Select a box before scanning"
                             : requiresDestinationBox &&
                                 selectedBox?.box_status === "packed"
@@ -1231,8 +1565,11 @@ export default function MachineScannerPage() {
                             Scanned item
                           </TableHead>
                           <TableHead>Scanned value</TableHead>
-                          {requiresDestinationBox && (
+                          {isPackagingMachine && (
                             <TableHead className="min-w-36">Box</TableHead>
+                          )}
+                          {isCustomGroupPacking && (
+                            <TableHead className="min-w-40">Location</TableHead>
                           )}
                           <TableHead className="w-32">Status</TableHead>
                           <TableHead className="min-w-64">Message</TableHead>
@@ -1285,12 +1622,33 @@ export default function MachineScannerPage() {
                             <TableCell className="max-w-80 break-all font-mono font-medium">
                               {item.result?.unique_code || item.value}
                             </TableCell>
-                            {requiresDestinationBox && (
+                            {isPackagingMachine && (
                               <TableCell className="text-sm font-medium">
                                 <p>
-                                  {item.boxName ||
+                                  {item.result?.box_name ||
+                                    item.boxName ||
                                     (item.boxId ? `Box #${item.boxId}` : "—")}
                                 </p>
+                                {isCustomGroupPacking &&
+                                  item.result?.box_position &&
+                                  item.result.boxes_per_product && (
+                                    <p className="mt-0.5 text-xs font-normal text-muted-foreground">
+                                      {item.result.packing_group_name ||
+                                        "Packing group"}
+                                      {" · "}
+                                      {item.result.box_position} of{" "}
+                                      {item.result.boxes_per_product}
+                                      {item.result.product_set_no
+                                        ? ` · Set ${item.result.product_set_no}`
+                                        : ""}
+                                    </p>
+                                  )}
+                                {item.result?.box_completed && (
+                                  <p className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                                    <PackageCheck className="size-3.5" />
+                                    Packed · label queued for print
+                                  </p>
+                                )}
                                 {typeof item.result?.box_total_weight ===
                                   "number" && (
                                   <p className="mt-0.5 text-xs font-normal text-muted-foreground">
@@ -1298,6 +1656,13 @@ export default function MachineScannerPage() {
                                     total
                                   </p>
                                 )}
+                              </TableCell>
+                            )}
+                            {isCustomGroupPacking && (
+                              <TableCell className="text-sm">
+                                {item.result?.location_name ||
+                                  item.locationName ||
+                                  "Without location"}
                               </TableCell>
                             )}
                             <TableCell>

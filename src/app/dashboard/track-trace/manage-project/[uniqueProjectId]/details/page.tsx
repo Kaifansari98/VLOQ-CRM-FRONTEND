@@ -15,7 +15,7 @@ import {
   ProjectCutListSortBy,
   ProjectCutListSortOrder,
   downloadBoxPdf,
-  downloadProjectFullReport,
+  downloadDispatchDocument,
   TrackTraceBoxStatus,
   updateTrackTraceBoxStatus,
 } from "@/api/track-trace/track-trace-cutlist.api";
@@ -62,9 +62,12 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useAppSelector } from "@/redux/store";
 import { cn } from "@/lib/utils";
 import {
@@ -255,6 +258,12 @@ function getBoxStatus(box: ProjectDetailData["boxes"][0]) {
 }
 
 function getBoxSequenceNumber(box: ProjectDetailData["boxes"][0]) {
+  const storedSequence = Number(box.sequence_no);
+
+  if (Number.isFinite(storedSequence) && storedSequence > 0) {
+    return storedSequence;
+  }
+
   const rawName = String((box as any).box_name || "");
   const directNumber = Number(rawName);
 
@@ -268,17 +277,47 @@ function getBoxSequenceNumber(box: ProjectDetailData["boxes"][0]) {
   return Number.isFinite(parsedNumber) ? parsedNumber : Number.MAX_SAFE_INTEGER;
 }
 
+function getBoxPositionLabel(box: ProjectDetailData["boxes"][0]) {
+  const position = Number(box.box_position);
+  const total = Number(box.boxes_per_product);
+
+  if (
+    !Number.isInteger(position) ||
+    !Number.isInteger(total) ||
+    position <= 0 ||
+    total <= 0 ||
+    position > total
+  ) {
+    return null;
+  }
+
+  return `${position} of ${total}`;
+}
+
+function getBoxDisplayNumber(box: ProjectDetailData["boxes"][0]) {
+  const sequenceNumber = Number(box.sequence_no);
+
+  if (Number.isInteger(sequenceNumber) && sequenceNumber > 0) {
+    return String(sequenceNumber);
+  }
+
+  const numberFromName = String(box.box_name || "").match(/\d+/)?.[0];
+  return numberFromName || String(box.box_name || box.id);
+}
+
 function BoxCard({
   box,
   onClick,
   onDownload,
   downloading,
+  packingType,
   viewMode = "grid",
 }: {
   box: ProjectDetailData["boxes"][0];
   onClick: () => void;
   onDownload: () => void;
   downloading?: boolean;
+  packingType: ProjectDetailData["project"]["packing_type"];
   viewMode?: BoxViewMode;
 }) {
   const isPacked = getBoxStatus(box) === "packed";
@@ -287,11 +326,28 @@ function BoxCard({
   const hasItems = itemCount > 0;
   const factoryOut = !!box.factory_out_at;
   const siteIn = !!box.site_in_at;
+  const boxPositionLabel = getBoxPositionLabel(box);
+  const boxDisplayNumber = getBoxDisplayNumber(box);
+  const shouldShowGroup =
+    packingType === "GROUPWISE" || packingType === "CUSTOM_GROUP";
+  const groupName =
+    String(box.group_name || box.product_group_name || "").trim() || null;
+  const locationName = box.location_name?.trim() || null;
+  const hasBoxContext = Boolean(
+    (shouldShowGroup && groupName) || locationName,
+  );
 
   const visibleBoxInfoValues =
     box.box_info_values?.filter(
       (item) => item.field_value && String(item.field_value).trim(),
     ) || [];
+  const compactDetails = [
+    shouldShowGroup && groupName ? `Group: ${groupName}` : null,
+    locationName ? `Location: ${locationName}` : null,
+    ...visibleBoxInfoValues
+      .slice(0, 3)
+      .map((item) => `${item.field_label}: ${item.field_value}`),
+  ].filter((item): item is string => Boolean(item));
 
   if (viewMode === "compact") {
     return (
@@ -307,7 +363,7 @@ function BoxCard({
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <p className="truncate text-sm font-bold text-foreground">
-                Box {box.box_name}
+                Box {boxDisplayNumber}
               </p>
 
               <Badge
@@ -321,14 +377,20 @@ function BoxCard({
               >
                 {box.box_status}
               </Badge>
+
+              {boxPositionLabel && (
+                <Badge
+                  variant="secondary"
+                  className="shrink-0 text-[10px] font-bold tabular-nums"
+                >
+                  {boxPositionLabel}
+                </Badge>
+              )}
             </div>
 
-            {visibleBoxInfoValues.length > 0 ? (
+            {compactDetails.length > 0 ? (
               <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                {visibleBoxInfoValues
-                  .slice(0, 3)
-                  .map((item) => `${item.field_label}: ${item.field_value}`)
-                  .join(" · ")}
+                {compactDetails.join(" · ")}
               </p>
             ) : (
               <p className="mt-0.5 text-xs text-muted-foreground">
@@ -420,7 +482,7 @@ function BoxCard({
 
           <div className="min-w-0">
             <p className="truncate text-base font-bold text-foreground">
-              Box {box.box_name}
+              Box {boxDisplayNumber}
             </p>
 
             <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -435,6 +497,15 @@ function BoxCard({
               >
                 {box.box_status}
               </Badge>
+
+              {boxPositionLabel && (
+                <Badge
+                  variant="secondary"
+                  className="text-[10px] font-bold tabular-nums"
+                >
+                  {boxPositionLabel}
+                </Badge>
+              )}
 
               <span className="text-xs font-semibold text-foreground">
                 {itemCount} item{itemCount === 1 ? "" : "s"}
@@ -468,6 +539,34 @@ function BoxCard({
           )}
         </button>
       </div>
+
+      {hasBoxContext && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          {shouldShowGroup && groupName && (
+            <div className="inline-flex max-w-full items-center gap-1.5 rounded-lg border bg-muted/40 px-2 py-1">
+              <Layers size={12} className="shrink-0 text-muted-foreground" />
+              <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                Group
+              </span>
+              <span className="max-w-48 truncate text-[11px] font-semibold text-foreground">
+                {groupName}
+              </span>
+            </div>
+          )}
+
+          {locationName && (
+            <div className="inline-flex max-w-full items-center gap-1.5 rounded-lg border bg-muted/40 px-2 py-1">
+              <MapPin size={12} className="shrink-0 text-muted-foreground" />
+              <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                Location
+              </span>
+              <span className="max-w-48 truncate text-[11px] font-semibold text-foreground">
+                {locationName}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {visibleBoxInfoValues.length > 0 && (
         <div className="mb-4 flex flex-wrap gap-2">
@@ -592,21 +691,23 @@ function BoxesSection({
   boxes,
   boxesPagination,
   filterOptions: serverFilterOptions,
+  packingType,
   downloadingBoxId,
-  downloadingAll,
+  downloadingDispatch,
   onSelectBox,
   onPrintBox,
-  onDownloadAll,
+  onDownloadDispatch,
   onFilterChange,
 }: {
   boxes: ProjectDetailData["boxes"];
   boxesPagination?: ProjectDetailData["boxes_pagination"];
   filterOptions?: ProjectDetailData["filterOptions"];
+  packingType: ProjectDetailData["project"]["packing_type"];
   downloadingBoxId: number | null;
-  downloadingAll: boolean;
+  downloadingDispatch: boolean;
   onSelectBox: (box: ProjectDetailData["boxes"][0]) => void;
   onPrintBox: (box: ProjectDetailData["boxes"][0]) => void;
-  onDownloadAll: () => void;
+  onDownloadDispatch: () => void;
   onFilterChange?: (params: {
     search?: string;
     group?: string;
@@ -637,6 +738,8 @@ function BoxesSection({
         category: category !== "all" ? category : undefined,
         machine_id: selectedMachineId !== "all" ? selectedMachineId : undefined,
         box_status: boxFilter !== "all" ? boxFilter : undefined,
+        page,
+        limit: pageSize,
       });
     }, 300);
     return () => clearTimeout(timer);
@@ -646,6 +749,8 @@ function BoxesSection({
     category,
     selectedMachineId,
     boxFilter,
+    page,
+    pageSize,
     onFilterChange,
   ]);
 
@@ -735,6 +840,7 @@ function BoxesSection({
     setSelectedMachineId("all");
     setBoxFilter("all");
     setBoxSort("sequence_asc");
+    setPage(1);
   };
 
   return (
@@ -752,7 +858,8 @@ function BoxesSection({
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-bold text-foreground">
-                  Boxes ({filteredBoxes.length}/{boxes.length})
+                  Boxes ({filteredBoxes.length}/
+                  {boxesPagination?.total ?? boxes.length})
                 </h2>
                 <Badge variant="outline" className="text-[11px] font-semibold">
                   {formatWeight(stats.totalWeight)}
@@ -809,20 +916,21 @@ function BoxesSection({
               </div>
             )}
 
+            {/* The former Download All button is replaced by the dispatch PDF. */}
             <Button
               type="button"
               size="sm"
               variant="outline"
-              disabled={downloadingAll}
-              onClick={onDownloadAll}
+              disabled={downloadingDispatch}
+              onClick={onDownloadDispatch}
               className="h-8 text-xs gap-1.5 rounded-lg"
             >
-              {downloadingAll ? (
+              {downloadingDispatch ? (
                 <Loader2 size={13} className="animate-spin" />
               ) : (
                 <Download size={13} />
               )}
-              Download All
+              Download Dispatch Document
             </Button>
           </div>
         </div>
@@ -844,7 +952,10 @@ function BoxesSection({
 
                   <Input
                     value={search}
-                    onChange={(event) => setSearch(event.target.value)}
+                    onChange={(event) => {
+                      setSearch(event.target.value);
+                      setPage(1);
+                    }}
                     placeholder="Search box no, status, weight..."
                     className="h-9 w-full pl-9 pr-9 text-sm rounded-lg"
                   />
@@ -852,7 +963,10 @@ function BoxesSection({
                   {search && (
                     <button
                       type="button"
-                      onClick={() => setSearch("")}
+                      onClick={() => {
+                        setSearch("");
+                        setPage(1);
+                      }}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground z-10"
                     >
                       <X size={14} />
@@ -867,7 +981,13 @@ function BoxesSection({
                   Product / Group
                 </label>
 
-                <Select value={productGroup} onValueChange={setProductGroup}>
+                <Select
+                  value={productGroup}
+                  onValueChange={(value) => {
+                    setProductGroup(value);
+                    setPage(1);
+                  }}
+                >
                   <SelectTrigger className="h-9 w-full rounded-lg text-sm bg-background">
                     <SelectValue placeholder="All Groups" />
                   </SelectTrigger>
@@ -888,7 +1008,13 @@ function BoxesSection({
                   Category
                 </label>
 
-                <Select value={category} onValueChange={setCategory}>
+                <Select
+                  value={category}
+                  onValueChange={(value) => {
+                    setCategory(value);
+                    setPage(1);
+                  }}
+                >
                   <SelectTrigger className="h-9 w-full rounded-lg text-sm bg-background">
                     <SelectValue placeholder="All Categories" />
                   </SelectTrigger>
@@ -909,7 +1035,13 @@ function BoxesSection({
                   Machine
                 </label>
 
-                <Select value={selectedMachineId} onValueChange={setSelectedMachineId}>
+                <Select
+                  value={selectedMachineId}
+                  onValueChange={(value) => {
+                    setSelectedMachineId(value);
+                    setPage(1);
+                  }}
+                >
                   <SelectTrigger className="h-9 w-full rounded-lg text-sm bg-background">
                     <SelectValue placeholder="All Machines" />
                   </SelectTrigger>
@@ -973,7 +1105,10 @@ function BoxesSection({
                   <button
                     key={filter.value}
                     type="button"
-                    onClick={() => setBoxFilter(filter.value)}
+                    onClick={() => {
+                      setBoxFilter(filter.value);
+                      setPage(1);
+                    }}
                     className={cn(
                       "inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
                       active
@@ -1027,6 +1162,7 @@ function BoxesSection({
                 <BoxCard
                   key={box.id}
                   box={box}
+                  packingType={packingType}
                   viewMode={viewMode}
                   downloading={downloadingBoxId === box.id}
                   onClick={() => onSelectBox(box)}
@@ -2748,7 +2884,12 @@ export default function ProjectDetailPage() {
     name: string;
   } | null>(null);
   const [downloadingBoxId, setDownloadingBoxId] = useState<number | null>(null);
-  const [downloadingAll, setDownloadingAll] = useState(false);
+  const [downloadingDispatch, setDownloadingDispatch] = useState(false);
+  const [dispatchLocationDialogOpen, setDispatchLocationDialogOpen] =
+    useState(false);
+  const [selectedDispatchLocations, setSelectedDispatchLocations] = useState<
+    string[]
+  >([]);
 
   const refreshProjectDetail = useCallback(async () => {
     if (!vendorId || !uniqueProjectId) return;
@@ -2779,6 +2920,8 @@ export default function ProjectDetailPage() {
       category?: string;
       machine_id?: string;
       box_status?: string;
+      page?: number;
+      limit?: number;
     }) => {
       if (!vendorId || !uniqueProjectId) return;
       activeBoxFiltersRef.current = params;
@@ -2866,54 +3009,74 @@ export default function ProjectDetailPage() {
     }
   };
 
-  const handleDownloadAllBoxes = async () => {
+  const handleDownloadDispatchDocument = async (locations: string[] = []) => {
     if (!vendorId || !uniqueProjectId) return;
 
     try {
-      setDownloadingAll(true);
+      setDownloadingDispatch(true);
 
-      const response = await downloadProjectFullReport(
+      const response = await downloadDispatchDocument(
         String(uniqueProjectId),
         Number(vendorId),
+        locations,
       );
-
-      if (!response?.status && !response?.success && response?.status !== 1) {
-        throw new Error(response?.message || "Failed to generate full report");
-      }
-
-      const pdfUrl =
-        response?.data?.download_url ||
-        response?.data?.pdf_url ||
-        response?.download_url ||
-        response?.pdf_url;
-
-      if (!pdfUrl) {
-        throw new Error("Report URL not found in response");
-      }
-
+      const pdfUrl = URL.createObjectURL(response.blob);
       const link = document.createElement("a");
       link.href = pdfUrl;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.download = `${data?.project?.project_name || "project"}-full-report.pdf`;
+      link.download = response.fileName;
 
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 1000);
 
       toastManager.add({
-        title: "Full report downloaded successfully",
+        title: "Dispatch document downloaded successfully",
         type: "success",
       });
+      setDispatchLocationDialogOpen(false);
     } catch (error: any) {
-      console.error("Download all boxes error:", error);
+      console.error("Download dispatch document error:", error);
+
+      let message = error?.message || "Failed to download dispatch document";
+      const responseData = error?.response?.data;
+
+      if (responseData instanceof Blob) {
+        try {
+          const payload = JSON.parse(await responseData.text());
+          message = payload?.message || message;
+        } catch {
+          // Keep the original transport error when the response is not JSON.
+        }
+      }
+
       toastManager.add({
-        title: error?.message || "Failed to download full report",
+        title: message,
         type: "error",
       });
     } finally {
-      setDownloadingAll(false);
+      setDownloadingDispatch(false);
     }
+  };
+
+  const handleDispatchDocumentClick = () => {
+    const locations = data?.filterOptions?.locations ?? [];
+
+    if (locations.length === 0) {
+      void handleDownloadDispatchDocument();
+      return;
+    }
+
+    setSelectedDispatchLocations(locations);
+    setDispatchLocationDialogOpen(true);
+  };
+
+  const toggleDispatchLocation = (location: string, checked: boolean) => {
+    setSelectedDispatchLocations((current) =>
+      checked
+        ? Array.from(new Set([...current, location]))
+        : current.filter((item) => item !== location),
+    );
   };
 
   return (
@@ -3407,16 +3570,17 @@ export default function ProjectDetailPage() {
                 boxes={data.boxes}
                 boxesPagination={data.boxes_pagination}
                 filterOptions={data.filterOptions}
+                packingType={data.project.packing_type}
                 downloadingBoxId={downloadingBoxId}
-                downloadingAll={downloadingAll}
+                downloadingDispatch={downloadingDispatch}
                 onSelectBox={(box) =>
                   setSelectedBox({
                     id: box.id,
-                    name: box.box_name,
+                    name: getBoxDisplayNumber(box),
                   })
                 }
                 onPrintBox={handleDownloadBoxPdf}
-                onDownloadAll={handleDownloadAllBoxes}
+                onDownloadDispatch={handleDispatchDocumentClick}
                 onFilterChange={handleBoxesFilterChange}
               />
             )}
@@ -3948,6 +4112,111 @@ export default function ProjectDetailPage() {
           </>
         )}
       </div>
+
+      <Dialog
+        open={dispatchLocationDialogOpen}
+        onOpenChange={(open) => {
+          if (!downloadingDispatch) setDispatchLocationDialogOpen(open);
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Select dispatch locations</DialogTitle>
+            <DialogDescription>
+              Select one or more locations. The PDF will start every location
+              on a separate page and continue onto additional pages when needed.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex items-center justify-between gap-3 border-y py-3">
+            <p className="text-sm font-medium">
+              {selectedDispatchLocations.length} of{" "}
+              {data?.filterOptions?.locations?.length ?? 0} selected
+            </p>
+            <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={downloadingDispatch}
+                onClick={() =>
+                  setSelectedDispatchLocations(
+                    data?.filterOptions?.locations ?? [],
+                  )
+                }
+              >
+                Select all
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={downloadingDispatch}
+                onClick={() => setSelectedDispatchLocations([])}
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+
+          <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+            {(data?.filterOptions?.locations ?? []).map((location) => {
+              const checked = selectedDispatchLocations.includes(location);
+
+              return (
+                <label
+                  key={location}
+                  className={cn(
+                    "flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-3 transition-colors",
+                    checked
+                      ? "border-primary/50 bg-primary/5"
+                      : "hover:bg-muted/50",
+                  )}
+                >
+                  <Checkbox
+                    checked={checked}
+                    disabled={downloadingDispatch}
+                    onCheckedChange={(value) =>
+                      toggleDispatchLocation(location, value === true)
+                    }
+                  />
+                  <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                    {location}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={downloadingDispatch}
+              onClick={() => setDispatchLocationDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={
+                downloadingDispatch || selectedDispatchLocations.length === 0
+              }
+              onClick={() =>
+                void handleDownloadDispatchDocument(selectedDispatchLocations)
+              }
+            >
+              {downloadingDispatch ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              Download PDF
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Box items dialog ── */}
       {selectedBox && data && currentUser && (

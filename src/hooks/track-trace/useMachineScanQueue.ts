@@ -23,6 +23,7 @@ export interface MachineScanQueueItem {
   projectId?: number;
   boxId?: number;
   boxName?: string;
+  locationName?: string;
   result?: MachineScanResult;
 }
 
@@ -34,6 +35,7 @@ interface UseMachineScanQueueOptions {
   projectId?: number;
   boxId?: number;
   boxName?: string;
+  locationName?: string;
 }
 
 const MAX_STORED_ITEMS = 250;
@@ -145,6 +147,8 @@ const isStoredQueueItem = (item: unknown): item is MachineScanQueueItem => {
     (candidate.boxId === undefined ||
       (typeof candidate.boxId === "number" && candidate.boxId > 0)) &&
     (candidate.boxName === undefined || typeof candidate.boxName === "string") &&
+    (candidate.locationName === undefined ||
+      typeof candidate.locationName === "string") &&
     (candidate.result === undefined || isStoredScanResult(candidate.result))
   );
 };
@@ -157,6 +161,7 @@ export const useMachineScanQueue = ({
   projectId,
   boxId,
   boxName,
+  locationName,
 }: UseMachineScanQueueOptions) => {
   const storageKey = useMemo(() => {
     if (!vendorId || !machineId || !userId) {
@@ -396,6 +401,7 @@ export const useMachineScanQueue = ({
         created_by: userId,
         project_id: nextItem.projectId,
         box_id: nextItem.boxId,
+        location_name: nextItem.locationName,
       },
       abortController.signal,
     )
@@ -504,6 +510,7 @@ export const useMachineScanQueue = ({
         projectId,
         boxId,
         boxName,
+        locationName,
       };
 
       updateItems((currentItems) =>
@@ -515,6 +522,7 @@ export const useMachineScanQueue = ({
     [
       boxId,
       boxName,
+      locationName,
       enabled,
       isHydrated,
       isOnline,

@@ -7,6 +7,7 @@ export interface MachineScanPayload {
   created_by: number;
   project_id?: number;
   box_id?: number;
+  location_name?: string;
 }
 
 export interface MachineScanResult {
@@ -22,6 +23,14 @@ export interface MachineScanResult {
   group_name: string | null;
   box_id: number | null;
   box_total_weight?: number | null;
+  box_name?: string | null;
+  box_completed?: boolean;
+  packing_group_name?: string | null;
+  product_set_no?: number | null;
+  box_position?: number | null;
+  boxes_per_product?: number | null;
+  location_name?: string | null;
+  project_location_product_quantity_id?: number | null;
   scanned_at: string;
 }
 
