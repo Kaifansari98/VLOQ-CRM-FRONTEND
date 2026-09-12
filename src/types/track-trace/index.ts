@@ -348,6 +348,7 @@ export type CreateTrackTraceProjectRequest = {
   client_address?: string;
   client_contact_no?: string;
   packing_type?: PackingType;
+  is_multi_location?: boolean;
   box_info_fields?: ProjectBoxInfoField[];
   no_of_boxes?: number;
 remove_box_ids?: number[];
@@ -383,6 +384,9 @@ export enum PackingType {
 
   GROUPWISE =
   "GROUPWISE",
+
+  CUSTOM_GROUP =
+  "CUSTOM_GROUP",
 }
 
 export type BoxInfoFieldType =
@@ -398,4 +402,23 @@ export type ProjectBoxInfoField = {
   is_required: boolean;
   sort_order?: number;
   active?: boolean;
+};
+
+export type ProjectLocationRow = {
+  location_name: string;
+  quantities: Record<string, number>;
+};
+
+export type ProjectLocationsData = {
+  project_id: number;
+  unique_project_id: string;
+  project_name: string;
+  group_names: string[];
+  group_quantity_limits: Record<string, number>;
+  locations: ProjectLocationRow[];
+};
+
+export type SaveProjectLocationsRequest = {
+  vendorId: number;
+  locations: ProjectLocationRow[];
 };

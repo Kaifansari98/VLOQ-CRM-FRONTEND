@@ -267,7 +267,7 @@ export default function PackagingProjectSelectionPage() {
                             {project.project_name}
                           </h3>
                           <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-                            <p className="font-mono">{project.unique_project_id}</p>
+                            
                             {(project.order_no || project.client_name) && (
                               <p className="truncate">
                                 {[project.order_no, project.client_name]

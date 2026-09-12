@@ -184,6 +184,14 @@ export default function MachineScannerPage() {
     packagingProjectId,
     Boolean(isPackagingMachine),
   );
+  const isCustomGroupPacking =
+    packagingContext?.packing_type === "CUSTOM_GROUP";
+  const requiresDestinationBox = Boolean(
+    isPackagingMachine && packagingContext && !isCustomGroupPacking,
+  );
+  const showPackagingSetup = Boolean(
+    isPackagingMachine && !isCustomGroupPacking,
+  );
   const {
     data: packagingBoxes = [],
     isLoading: isLoadingBoxes,
@@ -193,7 +201,7 @@ export default function MachineScannerPage() {
   } = usePackagingBoxes(
     vendorId,
     packagingProjectId,
-    Boolean(isPackagingMachine),
+    requiresDestinationBox,
   );
   const createBoxMutation = useCreatePackagingBox(
     vendorId,
@@ -221,7 +229,8 @@ export default function MachineScannerPage() {
   const scannerReady = Boolean(
     machine &&
       (!isPackagingMachine ||
-        (packagingContext && selectedBox?.box_status === "unpacked")),
+        (packagingContext &&
+          (isCustomGroupPacking || selectedBox?.box_status === "unpacked"))),
   );
   const {
     items: queuedItems,
@@ -237,8 +246,8 @@ export default function MachineScannerPage() {
     userId,
     enabled: scannerReady,
     projectId: packagingProjectId,
-    boxId: isPackagingMachine ? selectedBox?.id : undefined,
-    boxName: isPackagingMachine ? selectedBox?.box_name : undefined,
+    boxId: requiresDestinationBox ? selectedBox?.id : undefined,
+    boxName: requiresDestinationBox ? selectedBox?.box_name : undefined,
   });
 
   useEffect(() => {
@@ -729,14 +738,55 @@ export default function MachineScannerPage() {
 
           {machine && (
             <>
+              {isPackagingMachine &&
+                isCustomGroupPacking &&
+                packagingContext && (
+                  <div className="flex flex-col gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">
+                        {packagingContext.project_name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Custom Packing Group · No destination box selection
+                        required
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button asChild variant="outline" size="sm">
+                        <Link
+                          href={`/dashboard/track-trace/machines/${machine.id}/projects`}
+                        >
+                          Change project
+                        </Link>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={toggleFullscreen}
+                      >
+                        {isFullscreen ? (
+                          <Minimize2 className="size-4" />
+                        ) : (
+                          <Maximize2 className="size-4" />
+                        )}
+                        <span className="hidden sm:inline">
+                          {isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                        </span>
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
               <div
                 className={cn(
                   "space-y-5",
-                  isPackagingMachine &&
+                  showPackagingSetup &&
                     "lg:grid lg:grid-cols-2 lg:gap-5 lg:space-y-0",
                 )}
               >
-                {isPackagingMachine && (
+                {showPackagingSetup && (
                   <section className="overflow-hidden rounded-xl border bg-card shadow-sm lg:order-3 lg:self-start">
                     <div className="flex flex-col gap-2 border-b px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-4">
                       <div className="flex items-start gap-3">
@@ -744,7 +794,11 @@ export default function MachineScannerPage() {
                           <Boxes className="size-4" />
                         </div>
                         <div>
-                          <h2 className="text-sm font-semibold">Packaging setup</h2>
+                          <h2 className="text-sm font-semibold">
+                            {packagingContext?.packing_type === "GROUPWISE"
+                              ? "Groupwise packaging setup"
+                              : "Packaging setup"}
+                          </h2>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -822,7 +876,9 @@ export default function MachineScannerPage() {
                                   Destination box
                                 </Label>
                                 <p className="text-[11px] text-muted-foreground">
-                                  Scans are added to the selected box.
+                                  {packagingContext.packing_type === "GROUPWISE"
+                                    ? "Each box accepts items from one product group."
+                                    : "Scans are added to the selected box."}
                                 </p>
                               </div>
                               <Button
@@ -1081,9 +1137,9 @@ export default function MachineScannerPage() {
                         value={scanValue}
                         onChange={(event) => handleScanChange(event.target.value)}
                         placeholder={
-                          isPackagingMachine && !selectedBox
+                          requiresDestinationBox && !selectedBox
                             ? "Select a box before scanning"
-                            : isPackagingMachine &&
+                            : requiresDestinationBox &&
                                 selectedBox?.box_status === "packed"
                               ? "Unpack the selected box before scanning"
                             : "Scan or enter QR value"
@@ -1175,7 +1231,7 @@ export default function MachineScannerPage() {
                             Scanned item
                           </TableHead>
                           <TableHead>Scanned value</TableHead>
-                          {isPackagingMachine && (
+                          {requiresDestinationBox && (
                             <TableHead className="min-w-36">Box</TableHead>
                           )}
                           <TableHead className="w-32">Status</TableHead>
@@ -1229,7 +1285,7 @@ export default function MachineScannerPage() {
                             <TableCell className="max-w-80 break-all font-mono font-medium">
                               {item.result?.unique_code || item.value}
                             </TableCell>
-                            {isPackagingMachine && (
+                            {requiresDestinationBox && (
                               <TableCell className="text-sm font-medium">
                                 <p>
                                   {item.boxName ||

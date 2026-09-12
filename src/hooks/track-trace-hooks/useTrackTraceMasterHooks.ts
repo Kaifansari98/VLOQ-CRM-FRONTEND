@@ -11,6 +11,10 @@ import {
   searchTrackTraceLeadsApi,
   getTrackTraceProjectApi,
   updateTrackTraceProjectApi,
+  downloadMultiLocationTemplateApi,
+  getProjectLocationsApi,
+  importProjectLocationsExcelApi,
+  saveProjectLocationsApi,
 
 } from "@/api/trackAndTrace/track-trace-master";
 import {
@@ -21,7 +25,8 @@ import {
   MachineData,
   VendorLeadsPostPayload,
   VendorLeadsResponse,
-  TrackTraceLeadOption
+  TrackTraceLeadOption,
+  SaveProjectLocationsRequest,
 } from "@/types/track-trace";
 
 
@@ -230,6 +235,73 @@ export const useTrackTraceProject = (uniqueProjectId?: string) => {
 
     staleTime: 1000 * 60 * 2,
 
+    refetchOnMount: "always",
+
     retry: 1,
+  });
+};
+
+export const useDownloadMultiLocationTemplate = () => {
+  return useMutation({
+    mutationFn: ({
+      uniqueProjectId,
+      vendorId,
+    }: {
+      uniqueProjectId: string;
+      vendorId: number;
+    }) => downloadMultiLocationTemplateApi(uniqueProjectId, vendorId),
+  });
+};
+
+export const useProjectLocations = (
+  uniqueProjectId?: string,
+  vendorId?: number
+) => {
+  return useQuery({
+    queryKey: ["track-trace-project-locations", uniqueProjectId, vendorId],
+    queryFn: () => getProjectLocationsApi(uniqueProjectId!, vendorId!),
+    enabled: !!uniqueProjectId && !!vendorId,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+  });
+};
+
+export const useSaveProjectLocations = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      uniqueProjectId,
+      payload,
+    }: {
+      uniqueProjectId: string;
+      payload: SaveProjectLocationsRequest;
+    }) => saveProjectLocationsApi(uniqueProjectId, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["track-trace-project-locations", variables.uniqueProjectId],
+      });
+    },
+  });
+};
+
+export const useImportProjectLocationsExcel = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      uniqueProjectId,
+      vendorId,
+      file,
+    }: {
+      uniqueProjectId: string;
+      vendorId: number;
+      file: File;
+    }) => importProjectLocationsExcelApi(uniqueProjectId, vendorId, file),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["track-trace-project-locations", variables.uniqueProjectId],
+      });
+    },
   });
 };

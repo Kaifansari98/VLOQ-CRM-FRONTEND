@@ -20,7 +20,7 @@ export interface PackagingProjectContext {
   order_no: string | null;
   client_name: string | null;
   lead_id: number | null;
-  packing_type: "DEFAULT" | "GROUPWISE";
+  packing_type: "DEFAULT" | "GROUPWISE" | "CUSTOM_GROUP";
   project_details_id: number | null;
   group_names: string[];
   box_info_fields: PackagingBoxInfoField[];

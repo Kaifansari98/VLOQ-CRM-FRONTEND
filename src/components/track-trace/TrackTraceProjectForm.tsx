@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -44,6 +44,7 @@ import {
   Plus,
   Trash2,
   Package,
+  Upload,
 } from "lucide-react";
 
 import {
@@ -52,6 +53,7 @@ import {
   useTrackTraceVendorConfig,
   useTrackTraceProject,
   useUpdateTrackTraceProject,
+  useDownloadMultiLocationTemplate,
 } from "@/hooks/track-trace-hooks/useTrackTraceMasterHooks";
 
 import { TrackTraceLeadOption, PackingType } from "@/types/track-trace";
@@ -103,6 +105,7 @@ const getProjectFormSchema = (mode: "create" | "edit" = "create") =>
       client_address: z.string().optional(),
       client_contact_no: z.string().optional(),
       packing_type: z.enum(PackingType),
+      is_multi_location: z.boolean().default(false),
 
       no_of_boxes: z.coerce
         .number()
@@ -202,6 +205,99 @@ type BoxRemovalOption = {
   box_status?: string | null;
   item_count: number;
   can_remove: boolean;
+};
+
+const normalizeExcelHeader = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ");
+
+const normalizePackingType = (value: unknown): PackingType => {
+  const normalized = String(value ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, "_");
+
+  if (
+    normalized === PackingType.CUSTOM_GROUP ||
+    normalized === "CUSTOM_PACKING_GROUP"
+  ) {
+    return PackingType.CUSTOM_GROUP;
+  }
+
+  if (normalized === PackingType.GROUPWISE || normalized === "GROUP_WISE") {
+    return PackingType.GROUPWISE;
+  }
+
+  return PackingType.DEFAULT;
+};
+
+const validateCustomPackingGroupWorkbook = async (
+  file: File
+): Promise<string | null> => {
+  try {
+    const ExcelJS = await import("exceljs");
+    const workbook = new ExcelJS.Workbook();
+
+    await workbook.xlsx.load(await file.arrayBuffer());
+
+    const worksheet = workbook.worksheets[0];
+
+    if (!worksheet) {
+      return "Excel sheet not found";
+    }
+
+    let customPackingGroupColumn = 0;
+
+    worksheet.getRow(1).eachCell({ includeEmpty: true }, (cell, column) => {
+      if (normalizeExcelHeader(cell.text) === "custom packing group") {
+        customPackingGroupColumn = column;
+      }
+    });
+
+    if (customPackingGroupColumn === 0) {
+      return 'The "Custom Packing Group" column is required when Packing Type is Custom Packing Group';
+    }
+
+    const rowsMissingCustomPackingGroup: number[] = [];
+
+    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+      if (rowNumber === 1) return;
+
+      let hasRowData = false;
+
+      row.eachCell({ includeEmpty: true }, (cell) => {
+        if (cell.text.trim()) {
+          hasRowData = true;
+        }
+      });
+
+      if (
+        hasRowData &&
+        !row.getCell(customPackingGroupColumn).text.trim()
+      ) {
+        rowsMissingCustomPackingGroup.push(rowNumber);
+      }
+    });
+
+    if (rowsMissingCustomPackingGroup.length > 0) {
+      const displayedRows = rowsMissingCustomPackingGroup.slice(0, 10);
+      const remainingRows =
+        rowsMissingCustomPackingGroup.length - displayedRows.length;
+
+      return `Custom Packing Group is required in Excel row${
+        rowsMissingCustomPackingGroup.length > 1 ? "s" : ""
+      } ${displayedRows.join(", ")}${
+        remainingRows > 0 ? ` and ${remainingRows} more` : ""
+      }`;
+    }
+
+    return null;
+  } catch {
+    return "Unable to read the Excel file. Upload a valid .xlsx workbook";
+  }
 };
 
 function LeadSearchBox({
@@ -393,6 +489,11 @@ export default function TrackTraceProjectForm({
   const { mutate: updateProject, isPending: isUpdating } =
     useUpdateTrackTraceProject();
 
+  const {
+    mutate: downloadMultiLocationTemplate,
+    isPending: isDownloadingMultiLocationTemplate,
+  } = useDownloadMultiLocationTemplate();
+
   const { data: vendorConfig, isLoading: configLoading } =
     useTrackTraceVendorConfig(vendorId);
 
@@ -413,6 +514,8 @@ export default function TrackTraceProjectForm({
   const [boxRemovalRequiredCount, setBoxRemovalRequiredCount] = useState(0);
   const [selectedRemoveBoxIds, setSelectedRemoveBoxIds] = useState<number[]>([]);
   const [pendingUpdatePayload, setPendingUpdatePayload] = useState<any | null>(null);
+  const [isValidatingExcel, setIsValidatingExcel] = useState(false);
+  const excelValidationId = useRef(0);
 
   const form = useForm<ProjectFormInput, unknown, ProjectFormData>({
     resolver: zodResolver(getProjectFormSchema(mode)),
@@ -424,11 +527,13 @@ export default function TrackTraceProjectForm({
       client_address: "",
       client_contact_no: "",
       packing_type: PackingType.DEFAULT,
+      is_multi_location: false,
       no_of_boxes: 0,
       box_info_fields: [],
       file: [],
     },
   });
+  const resetProjectForm = form.reset;
 
   const {
     fields: boxInfoFields,
@@ -441,13 +546,62 @@ export default function TrackTraceProjectForm({
 
   const selectedLeadId = form.watch("lead_id");
   const isLeadSelected = !!selectedLeadId;
+  const selectedPackingType = form.watch("packing_type");
+  const isMultiLocation = form.watch("is_multi_location");
+  const persistedProject = (projectData as any)?.data ?? projectData;
+  const isMultiLocationSaved = Boolean(persistedProject?.is_multi_location);
+
+  const validateUploadedExcel = async (
+    files: File[],
+    packingType: PackingType
+  ) => {
+    const validationId = ++excelValidationId.current;
+    const file = files[0];
+
+    if (!file || packingType !== PackingType.CUSTOM_GROUP) {
+      if (form.getFieldState("file").error?.type === "custom_packing_group") {
+        form.clearErrors("file");
+      }
+
+      setIsValidatingExcel(false);
+      return true;
+    }
+
+    setIsValidatingExcel(true);
+    const errorMessage = await validateCustomPackingGroupWorkbook(file);
+
+    if (validationId !== excelValidationId.current) {
+      return false;
+    }
+
+    setIsValidatingExcel(false);
+
+    if (errorMessage) {
+      form.setError("file", {
+        type: "custom_packing_group",
+        message: errorMessage,
+      });
+      toastManager.add({ title: errorMessage, type: "error" });
+      return false;
+    }
+
+    if (form.getFieldState("file").error?.type === "custom_packing_group") {
+      form.clearErrors("file");
+    }
+
+    return true;
+  };
 
   useEffect(() => {
     if (mode !== "edit" || !projectData) return;
 
-    const project = projectData as any;
+    const projectResponse = projectData as any;
+    const project = projectResponse?.data ?? projectResponse;
+    const persistedPackingType =
+      project.packing_type ?? project.packingType ?? project.project_type;
+    const normalizedPackingType = normalizePackingType(persistedPackingType);
 
-    form.reset({
+    resetProjectForm({
       projectName: project.project_name || "",
       lead_id: project.lead_id || null,
       order_no: project.order_no || "",
@@ -455,9 +609,8 @@ export default function TrackTraceProjectForm({
       client_address: project.client_address || "",
       client_contact_no: project.client_contact_no || "",
 
-      packing_type:
-        project.packing_type ||
-        PackingType.DEFAULT,
+      packing_type: normalizedPackingType,
+      is_multi_location: Boolean(project.is_multi_location),
 
       no_of_boxes:
         Number(project.no_of_boxes || 0),
@@ -499,12 +652,12 @@ export default function TrackTraceProjectForm({
     if (project.lead) {
       setSelectedLeadFromProject(project.lead as ExtendedLeadOption);
     }
-  }, [mode, projectData, form]);
+  }, [mode, projectData, resetProjectForm]);
 
   const handleDownloadTemplate = () => {
     try {
       const link = document.createElement("a");
-      link.href = "/track-trace-template.xlsx";
+      link.href = "/TrackTrace_Project_Template.xlsx";
       link.download = "TrackTrace_Project_Template.xlsx";
       document.body.appendChild(link);
       link.click();
@@ -520,6 +673,47 @@ export default function TrackTraceProjectForm({
         type: "error",
       });
     }
+  };
+
+  const handleDownloadMultiLocationTemplate = () => {
+    if (!uniqueProjectId || !vendorId) {
+      toastManager.add({
+        title: "Project or vendor information not found",
+        type: "error",
+      });
+      return;
+    }
+
+    downloadMultiLocationTemplate(
+      {
+        uniqueProjectId,
+        vendorId: Number(vendorId),
+      },
+      {
+        onSuccess: ({ blob, fileName }) => {
+          const downloadUrl = window.URL.createObjectURL(blob);
+          const link = document.createElement("a");
+
+          link.href = downloadUrl;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.setTimeout(() => window.URL.revokeObjectURL(downloadUrl), 0);
+
+          toastManager.add({
+            title: "Multi Location Excel downloaded successfully",
+            type: "success",
+          });
+        },
+        onError: () => {
+          toastManager.add({
+            title: "Failed to download Multi Location Excel",
+            type: "error",
+          });
+        },
+      }
+    );
   };
 
   const clearLeadSelection = () => {
@@ -722,12 +916,16 @@ export default function TrackTraceProjectForm({
     setBoxRemovalRequiredCount(0);
   };
 
-  const onSubmit = (data: ProjectFormData) => {
+  const onSubmit = async (data: ProjectFormData) => {
     if (!vendorId) {
       toastManager.add({
         title: "Vendor information not found",
         type: "error",
       });
+      return;
+    }
+
+    if (!(await validateUploadedExcel(data.file || [], data.packing_type))) {
       return;
     }
 
@@ -741,6 +939,7 @@ export default function TrackTraceProjectForm({
       client_address: data.client_address?.trim() || undefined,
       client_contact_no: data.client_contact_no?.trim() || undefined,
       packing_type: data.packing_type,
+      is_multi_location: data.is_multi_location,
       no_of_boxes: Number(data.no_of_boxes || 0),
       box_info_fields:
         data.box_info_fields
@@ -915,12 +1114,12 @@ export default function TrackTraceProjectForm({
               </p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid items-start gap-4 md:grid-cols-2 lg:grid-cols-3">
               <FormField
                 control={form.control}
                 name="projectName"
                 render={({ field }) => (
-                  <FormItem className="md:col-span-2 lg:col-span-2">
+                  <FormItem>
                     <FormLabel className="text-xs font-semibold">
                       Project Name <span className="text-destructive">*</span>
                     </FormLabel>
@@ -946,7 +1145,7 @@ export default function TrackTraceProjectForm({
                   control={form.control}
                   name="lead_id"
                   render={({ field }) => (
-                    <FormItem className="md:col-span-2 lg:col-span-1">
+                    <FormItem>
                       <FormLabel className="text-xs font-semibold">
                         Select Lead <span className="text-xs text-muted-foreground font-normal">(optional)</span>
                       </FormLabel>
@@ -1040,20 +1239,16 @@ export default function TrackTraceProjectForm({
                 control={form.control}
                 name="client_address"
                 render={({ field }) => (
-                  <FormItem className="md:col-span-2 lg:col-span-3">
+                  <FormItem>
                     <FormLabel className="text-xs font-semibold">
                       Client Address <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
-                      <textarea
+                      <Input
                         placeholder="Enter client address"
                         {...field}
                         disabled={isPending || isLeadSelected}
-                        aria-invalid={Boolean(form.formState.errors.client_address)}
-                        className={cn(
-                          "min-h-[80px] w-full rounded-md border bg-background px-3 py-2 text-sm outline-none disabled:bg-muted/60 focus:ring-2 focus:ring-indigo-300",
-                          form.formState.errors.client_address && "border-destructive aria-invalid:border-destructive"
-                        )}
+                        className="h-10 text-sm disabled:bg-muted/60"
                       />
                     </FormControl>
                     <FormMessage />
@@ -1072,7 +1267,7 @@ export default function TrackTraceProjectForm({
               </p>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid items-start gap-6 md:grid-cols-2 xl:grid-cols-3">
               <FormField
                 control={form.control}
                 name="packing_type"
@@ -1081,11 +1276,23 @@ export default function TrackTraceProjectForm({
                     <FormLabel className="text-xs font-semibold">
                       Packing Type <span className="text-destructive">*</span>
                     </FormLabel>
+
                     <FormControl>
                       <Select
-                        value={field.value || PackingType.DEFAULT}
-                        onValueChange={(val) => field.onChange(val as PackingType)}
-                        disabled={isPending}
+                        key={field.value}
+                        value={field.value}
+                        onValueChange={(val) => {
+                          if (!val) return;
+
+                          const packingType = normalizePackingType(val);
+
+                          field.onChange(packingType);
+                          void validateUploadedExcel(
+                            form.getValues("file") || [],
+                            packingType
+                          );
+                        }}
+                        disabled={isPending || mode === "edit"}
                       >
                         <SelectTrigger className="h-10 text-sm w-full">
                           <SelectValue placeholder="Select packing type..." />
@@ -1093,9 +1300,20 @@ export default function TrackTraceProjectForm({
                         <SelectContent>
                           <SelectItem value={PackingType.DEFAULT}>Default</SelectItem>
                           <SelectItem value={PackingType.GROUPWISE}>Groupwise</SelectItem>
+                          <SelectItem value={PackingType.CUSTOM_GROUP}>
+                            Custom Packing Group
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </FormControl>
+                    <p className="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
+                      <Info className="mt-0.5 size-3.5 shrink-0" />
+                      <span>
+                        {mode === "create"
+                          ? "Choose carefully. Packing Type cannot be changed after the project is created."
+                          : "Packing Type is locked and cannot be changed after project creation."}
+                      </span>
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -1128,12 +1346,80 @@ export default function TrackTraceProjectForm({
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="is_multi_location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-semibold">
+                      Multi Location <span className="text-destructive">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Select
+                        key={field.value ? "multi-location-yes" : "multi-location-no"}
+                        value={field.value ? "YES" : "NO"}
+                        onValueChange={(value) => field.onChange(value === "YES")}
+                        disabled={isPending}
+                      >
+                        <SelectTrigger className="h-10 w-full text-sm">
+                          <SelectValue placeholder="Select an option..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="NO">No</SelectItem>
+                          <SelectItem value="YES">Yes</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      Use locations to organize the project&apos;s packing groups.
+                    </p>
+                    {mode === "edit" && isMultiLocation && isMultiLocationSaved && (
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full"
+                          disabled={isPending || isDownloadingMultiLocationTemplate}
+                          onClick={handleDownloadMultiLocationTemplate}
+                        >
+                          {isDownloadingMultiLocationTemplate ? (
+                            <Loader2 className="mr-2 size-4 animate-spin" />
+                          ) : (
+                            <Download className="mr-2 size-4" />
+                          )}
+                          Download Location
+                        </Button>
+                        <Button
+                          type="button"
+                          className="w-full"
+                          disabled={isPending || !uniqueProjectId}
+                          onClick={() =>
+                            router.push(
+                              `/dashboard/track-trace/manage-project/${uniqueProjectId}/locations`
+                            )
+                          }
+                        >
+                          <Upload className="mr-2 size-4" />
+                          Upload Locations
+                        </Button>
+                      </div>
+                    )}
+                    {mode === "edit" && isMultiLocation && !isMultiLocationSaved && (
+                      <p className="text-xs text-amber-700 dark:text-amber-400">
+                        Save the project before downloading the Location Excel.
+                      </p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
             <Separator />
 
             {/* Dynamic Box Information Fields Sub-Section */}
-            <div className="space-y-4 pt-1">
+            <div className="space-y-4 pt-1" style={{ display: "none" }}>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">
@@ -1298,13 +1584,36 @@ export default function TrackTraceProjectForm({
                   <FormControl>
                     <FileUploadField
                       value={field.value || []}
-                      onChange={field.onChange}
+                      onChange={(files) => {
+                        field.onChange(files);
+                        void validateUploadedExcel(
+                          files,
+                          form.getValues("packing_type")
+                        );
+                      }}
                       accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
                       multiple={false}
-                      disabled={isPending}
+                      disabled={isPending || isValidatingExcel}
                       maxFiles={1}
+                      invalid={Boolean(form.formState.errors.file)}
                     />
                   </FormControl>
+                  {selectedPackingType === PackingType.CUSTOM_GROUP && (
+                    <p className="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
+                      <Info className="mt-0.5 size-3.5 shrink-0" />
+                      <span>
+                        <strong>Custom Packing Group is mandatory.</strong> The
+                        Excel file must contain a Custom Packing Group column with
+                        a value in every item row.
+                      </span>
+                    </p>
+                  )}
+                  {isValidatingExcel && (
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Loader2 className="size-3.5 animate-spin" />
+                      Validating Custom Packing Group data...
+                    </p>
+                  )}
                   {mode === "edit" && (
                     <p className="text-xs text-muted-foreground">
                       Leave empty if you do not want to replace the current Excel file.
@@ -1330,13 +1639,17 @@ export default function TrackTraceProjectForm({
 
             <Button
               type="submit"
-              disabled={isPending}
+              disabled={isPending || isValidatingExcel}
               className="h-10 min-w-[150px]"
             >
-              {isPending ? (
+              {isPending || isValidatingExcel ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {mode === "edit" ? "Updating..." : "Creating..."}
+                  {isValidatingExcel
+                    ? "Validating Excel..."
+                    : mode === "edit"
+                      ? "Updating..."
+                      : "Creating..."}
                 </>
               ) : (
                 <>

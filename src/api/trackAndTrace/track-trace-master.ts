@@ -14,6 +14,8 @@ import {
   TrackTraceLeadOption,
   TrackTraceVendorConfig,
   PackingType,
+  ProjectLocationsData,
+  SaveProjectLocationsRequest,
 } from "@/types/track-trace";
 
 
@@ -137,7 +139,9 @@ export const updateTrackTraceProjectApi = async (
 
   formData.append("vendorId", String(payload.vendorId));
   formData.append("projectName", payload.projectName);
-formData.append("packing_type",payload.packing_type || PackingType.DEFAULT);
+  if (payload.is_multi_location !== undefined) {
+    formData.append("is_multi_location", String(payload.is_multi_location));
+  }
   formData.append("no_of_boxes", String(Number((payload as any).no_of_boxes || 0)));
 
   if (Array.isArray((payload as any).remove_box_ids)) {
@@ -195,6 +199,7 @@ export const createTrackTraceProjectApi = async (
   formData.append("vendorId", String(payload.vendorId));
   formData.append("projectName", payload.projectName);
   formData.append("packing_type",payload.packing_type || PackingType.DEFAULT);
+  formData.append("is_multi_location", String(payload.is_multi_location ?? false));
   formData.append("no_of_boxes", String(Number((payload as any).no_of_boxes || 0)));
 formData.append(
   "box_info_fields",
@@ -294,4 +299,75 @@ export const getTrackTraceProjectApi = async (uniqueProjectId: string) => {
   );
 
   return response.data.data;
+};
+
+export const downloadMultiLocationTemplateApi = async (
+  uniqueProjectId: string,
+  vendorId: number
+) => {
+  const response = await apiClient.get<Blob>(
+    `/track-trace-project/onboard/project/${uniqueProjectId}/multi-location-template`,
+    {
+      params: { vendorId },
+      responseType: "blob",
+    }
+  );
+  const contentDisposition = response.headers["content-disposition"] as
+    | string
+    | undefined;
+  const fileNameMatch = contentDisposition?.match(/filename="?([^";]+)"?/i);
+
+  return {
+    blob: response.data,
+    fileName: fileNameMatch?.[1] || "Multi_Location.xlsx",
+  };
+};
+
+export const getProjectLocationsApi = async (
+  uniqueProjectId: string,
+  vendorId: number
+): Promise<ProjectLocationsData> => {
+  const response = await apiClient.get(
+    `/track-trace-project/onboard/project/${uniqueProjectId}/locations`,
+    {
+      params: { vendorId },
+    }
+  );
+
+  return response.data.data;
+};
+
+export const saveProjectLocationsApi = async (
+  uniqueProjectId: string,
+  payload: SaveProjectLocationsRequest
+) => {
+  const response = await apiClient.put(
+    `/track-trace-project/onboard/project/${uniqueProjectId}/locations`,
+    payload
+  );
+
+  return response.data;
+};
+
+export const importProjectLocationsExcelApi = async (
+  uniqueProjectId: string,
+  vendorId: number,
+  file: File
+) => {
+  const formData = new FormData();
+
+  formData.append("vendorId", String(vendorId));
+  formData.append("file", file);
+
+  const response = await apiClient.post(
+    `/track-trace-project/onboard/project/${uniqueProjectId}/locations/import`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+
+  return response.data;
 };
