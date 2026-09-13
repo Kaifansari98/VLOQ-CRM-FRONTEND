@@ -547,9 +547,43 @@ export default function TrackTraceProjectForm({
   const selectedLeadId = form.watch("lead_id");
   const isLeadSelected = !!selectedLeadId;
   const selectedPackingType = form.watch("packing_type");
+  const selectedNoOfBoxes = Number(form.watch("no_of_boxes") || 0);
   const isMultiLocation = form.watch("is_multi_location");
   const persistedProject = (projectData as any)?.data ?? projectData;
   const isMultiLocationSaved = Boolean(persistedProject?.is_multi_location);
+  const isCustomGroupPacking =
+    selectedPackingType === PackingType.CUSTOM_GROUP;
+  const isDefaultPacking = selectedPackingType === PackingType.DEFAULT;
+  const isGroupwiseWithConfiguredBoxes =
+    selectedPackingType === PackingType.GROUPWISE && selectedNoOfBoxes > 0;
+  const showNoOfBoxes = !isCustomGroupPacking;
+  const showMultiLocation = !isGroupwiseWithConfiguredBoxes;
+
+  useEffect(() => {
+    if (isCustomGroupPacking && selectedNoOfBoxes !== 0) {
+      form.setValue("no_of_boxes", 0, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+
+    if (
+      (isDefaultPacking || isGroupwiseWithConfiguredBoxes) &&
+      isMultiLocation
+    ) {
+      form.setValue("is_multi_location", false, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+  }, [
+    form,
+    isCustomGroupPacking,
+    isDefaultPacking,
+    isGroupwiseWithConfiguredBoxes,
+    isMultiLocation,
+    selectedNoOfBoxes,
+  ]);
 
   const validateUploadedExcel = async (
     files: File[],
@@ -929,6 +963,17 @@ export default function TrackTraceProjectForm({
       return;
     }
 
+    const normalizedNoOfBoxes =
+      data.packing_type === PackingType.CUSTOM_GROUP
+        ? 0
+        : Number(data.no_of_boxes || 0);
+    const normalizedIsMultiLocation =
+      data.packing_type === PackingType.DEFAULT ||
+      (data.packing_type === PackingType.GROUPWISE &&
+        normalizedNoOfBoxes > 0)
+        ? false
+        : data.is_multi_location;
+
     const payload = {
       vendorId,
       lead_id: isCrmEnabled && data.lead_id ? Number(data.lead_id) : null,
@@ -939,8 +984,8 @@ export default function TrackTraceProjectForm({
       client_address: data.client_address?.trim() || undefined,
       client_contact_no: data.client_contact_no?.trim() || undefined,
       packing_type: data.packing_type,
-      is_multi_location: data.is_multi_location,
-      no_of_boxes: Number(data.no_of_boxes || 0),
+      is_multi_location: normalizedIsMultiLocation,
+      no_of_boxes: normalizedNoOfBoxes,
       box_info_fields:
         data.box_info_fields
           ?.filter(
@@ -1319,101 +1364,112 @@ export default function TrackTraceProjectForm({
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="no_of_boxes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs font-semibold">
-                      No of Boxes <span className="text-xs text-muted-foreground font-normal">(optional)</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={0}
-                        step={1}
-                        placeholder="e.g., 10"
-                        value={String(field.value ?? 0)}
-                        disabled={isPending}
-                        onChange={(event) => {
-                          const value = event.target.value;
-                          field.onChange(value === "" ? 0 : Number(value));
-                        }}
-                        className="h-10 text-sm w-full"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {showNoOfBoxes && (
+                <FormField
+                  control={form.control}
+                  name="no_of_boxes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-semibold">
+                        No of Boxes <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={0}
+                          step={1}
+                          placeholder="e.g., 10"
+                          value={String(field.value ?? 0)}
+                          disabled={isPending}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            field.onChange(value === "" ? 0 : Number(value));
+                          }}
+                          className="h-10 text-sm w-full"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
-              <FormField
-                control={form.control}
-                name="is_multi_location"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs font-semibold">
-                      Multi Location <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Select
-                        key={field.value ? "multi-location-yes" : "multi-location-no"}
-                        value={field.value ? "YES" : "NO"}
-                        onValueChange={(value) => field.onChange(value === "YES")}
-                        disabled={isPending}
-                      >
-                        <SelectTrigger className="h-10 w-full text-sm">
-                          <SelectValue placeholder="Select an option..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="NO">No</SelectItem>
-                          <SelectItem value="YES">Yes</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <p className="text-xs text-muted-foreground">
-                      Use locations to organize the project&apos;s packing groups.
-                    </p>
-                    {mode === "edit" && isMultiLocation && isMultiLocationSaved && (
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="w-full"
-                          disabled={isPending || isDownloadingMultiLocationTemplate}
-                          onClick={handleDownloadMultiLocationTemplate}
+              {showMultiLocation && (
+                <FormField
+                  control={form.control}
+                  name="is_multi_location"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-semibold">
+                        Multi Location{" "}
+                        {!isDefaultPacking && (
+                          <span className="text-xs font-normal text-muted-foreground">
+                            (optional)
+                          </span>
+                        )}
+                      </FormLabel>
+                      <FormControl>
+                        <Select
+                          key={field.value ? "multi-location-yes" : "multi-location-no"}
+                          value={field.value ? "YES" : "NO"}
+                          onValueChange={(value) => field.onChange(value === "YES")}
+                          disabled={isPending || isDefaultPacking}
                         >
-                          {isDownloadingMultiLocationTemplate ? (
-                            <Loader2 className="mr-2 size-4 animate-spin" />
-                          ) : (
-                            <Download className="mr-2 size-4" />
-                          )}
-                          Download Location
-                        </Button>
-                        <Button
-                          type="button"
-                          className="w-full"
-                          disabled={isPending || !uniqueProjectId}
-                          onClick={() =>
-                            router.push(
-                              `/dashboard/track-trace/manage-project/${uniqueProjectId}/locations`
-                            )
-                          }
-                        >
-                          <Upload className="mr-2 size-4" />
-                          Upload Locations
-                        </Button>
-                      </div>
-                    )}
-                    {mode === "edit" && isMultiLocation && !isMultiLocationSaved && (
-                      <p className="text-xs text-amber-700 dark:text-amber-400">
-                        Save the project before downloading the Location Excel.
+                          <SelectTrigger className="h-10 w-full text-sm">
+                            <SelectValue placeholder="Select an option..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="NO">No</SelectItem>
+                            <SelectItem value="YES">Yes</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">
+                        {isDefaultPacking
+                          ? "Default packing uses a single location."
+                          : "Use locations to organize the project's packing groups."}
                       </p>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      {mode === "edit" && isMultiLocation && isMultiLocationSaved && (
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full"
+                            disabled={isPending || isDownloadingMultiLocationTemplate}
+                            onClick={handleDownloadMultiLocationTemplate}
+                          >
+                            {isDownloadingMultiLocationTemplate ? (
+                              <Loader2 className="mr-2 size-4 animate-spin" />
+                            ) : (
+                              <Download className="mr-2 size-4" />
+                            )}
+                            Download Location
+                          </Button>
+                          <Button
+                            type="button"
+                            className="w-full"
+                            disabled={isPending || !uniqueProjectId}
+                            onClick={() =>
+                              router.push(
+                                `/dashboard/track-trace/manage-project/${uniqueProjectId}/locations`
+                              )
+                            }
+                          >
+                            <Upload className="mr-2 size-4" />
+                            Upload Locations
+                          </Button>
+                        </div>
+                      )}
+                      {mode === "edit" && isMultiLocation && !isMultiLocationSaved && (
+                        <p className="text-xs text-amber-700 dark:text-amber-400">
+                          Save the project before downloading the Location Excel.
+                        </p>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
 
             <Separator />

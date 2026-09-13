@@ -192,13 +192,20 @@ export default function MachineScannerPage() {
   );
   const isCustomGroupPacking =
     packagingContext?.packing_type === "CUSTOM_GROUP";
+  const isGroupwisePacking = packagingContext?.packing_type === "GROUPWISE";
+  const supportsLocationSelection = Boolean(
+    isCustomGroupPacking || isGroupwisePacking,
+  );
   const requiresDestinationBox = Boolean(
     isPackagingMachine && packagingContext && !isCustomGroupPacking,
   );
   const showPackagingSetup = Boolean(
     isPackagingMachine && !isCustomGroupPacking,
   );
-  const customPackingLocations = packagingContext?.locations ?? [];
+  const packagingLocations = packagingContext?.locations ?? [];
+  const showLocationSelection = Boolean(
+    supportsLocationSelection && packagingLocations.length > 0,
+  );
   const {
     data: packagingBoxes = [],
     isLoading: isLoadingBoxes,
@@ -242,17 +249,16 @@ export default function MachineScannerPage() {
     [packagingBoxes, selectedBoxId],
   );
   const hasLocationDecision = Boolean(
-    !isCustomGroupPacking ||
-      customPackingLocations.length === 0 ||
+    !supportsLocationSelection ||
+      packagingLocations.length === 0 ||
       selectedLocationName !== undefined,
   );
   const scannerReady = Boolean(
     machine &&
       (!isPackagingMachine ||
         (packagingContext &&
-          (isCustomGroupPacking
-            ? hasLocationDecision
-            : selectedBox?.box_status === "unpacked"))),
+          hasLocationDecision &&
+          (isCustomGroupPacking || selectedBox?.box_status === "unpacked"))),
   );
   const {
     items: queuedItems,
@@ -271,7 +277,7 @@ export default function MachineScannerPage() {
     boxId: requiresDestinationBox ? selectedBox?.id : undefined,
     boxName: requiresDestinationBox ? selectedBox?.box_name : undefined,
     locationName:
-      isCustomGroupPacking && selectedLocationName
+      supportsLocationSelection && selectedLocationName
         ? selectedLocationName
         : undefined,
   });
@@ -1038,7 +1044,7 @@ export default function MachineScannerPage() {
                       </div>
                     </div>
 
-                    {customPackingLocations.length > 0 ? (
+                    {packagingLocations.length > 0 ? (
                       <div className="flex flex-col gap-2 border-t pt-3 sm:flex-row sm:items-center">
                         <div className="flex min-w-0 items-center gap-2 sm:w-56">
                           <MapPin className="size-4 shrink-0 text-primary" />
@@ -1090,7 +1096,7 @@ export default function MachineScannerPage() {
                             <SelectItem value={WITHOUT_LOCATION_VALUE}>
                               Continue without location
                             </SelectItem>
-                            {customPackingLocations.map((location) => (
+                            {packagingLocations.map((location) => (
                               <SelectItem
                                 key={location.location_name}
                                 value={`location:${location.location_name}`}
@@ -1198,9 +1204,75 @@ export default function MachineScannerPage() {
 
                     {packagingContext && !isBoxesError && (
                       <div className="p-3 sm:p-4">
-                        <div
-                          className="grid gap-3"
-                        >
+                        <div className="grid gap-3">
+                          {isGroupwisePacking && showLocationSelection && (
+                            <div className="rounded-lg border bg-background p-3">
+                              <div className="mb-2 flex items-center gap-2">
+                                <MapPin className="size-4 shrink-0 text-primary" />
+                                <div>
+                                  <Label htmlFor="groupwise-packing-location">
+                                    Location
+                                  </Label>
+                                  <p className="text-[11px] text-muted-foreground">
+                                    Select a location or continue without one.
+                                  </p>
+                                </div>
+                              </div>
+
+                              <Select
+                                value={
+                                  selectedLocationName === undefined
+                                    ? undefined
+                                    : selectedLocationName === null
+                                      ? WITHOUT_LOCATION_VALUE
+                                      : `location:${selectedLocationName}`
+                                }
+                                onValueChange={(value) => {
+                                  clearAutoSubmitTimer();
+                                  setScanValue("");
+                                  setSelectedLocationName(
+                                    value === WITHOUT_LOCATION_VALUE
+                                      ? null
+                                      : value.slice("location:".length),
+                                  );
+                                  window.setTimeout(
+                                    () => inputRef.current?.focus(),
+                                    0,
+                                  );
+                                }}
+                                onOpenChange={(open) => {
+                                  setIsLocationSelectorOpen(open);
+
+                                  if (open && document.fullscreenElement) {
+                                    void document
+                                      .exitFullscreen()
+                                      .catch(() => undefined);
+                                  }
+                                }}
+                              >
+                                <SelectTrigger
+                                  id="groupwise-packing-location"
+                                  className="h-10 w-full"
+                                >
+                                  <SelectValue placeholder="Select location or continue without one" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value={WITHOUT_LOCATION_VALUE}>
+                                    Continue without location
+                                  </SelectItem>
+                                  {packagingLocations.map((location) => (
+                                    <SelectItem
+                                      key={location.location_name}
+                                      value={`location:${location.location_name}`}
+                                    >
+                                      {location.location_name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+
                           <div className="rounded-lg border bg-background p-3">
                             <div className="mb-2 flex items-center justify-between gap-3">
                               <div>
@@ -1469,7 +1541,7 @@ export default function MachineScannerPage() {
                         value={scanValue}
                         onChange={(event) => handleScanChange(event.target.value)}
                         placeholder={
-                          isCustomGroupPacking && !hasLocationDecision
+                          supportsLocationSelection && !hasLocationDecision
                             ? "Select a location or continue without one"
                             : requiresDestinationBox && !selectedBox
                             ? "Select a box before scanning"
@@ -1568,7 +1640,7 @@ export default function MachineScannerPage() {
                           {isPackagingMachine && (
                             <TableHead className="min-w-36">Box</TableHead>
                           )}
-                          {isCustomGroupPacking && (
+                          {showLocationSelection && (
                             <TableHead className="min-w-40">Location</TableHead>
                           )}
                           <TableHead className="w-32">Status</TableHead>
@@ -1658,7 +1730,7 @@ export default function MachineScannerPage() {
                                 )}
                               </TableCell>
                             )}
-                            {isCustomGroupPacking && (
+                            {showLocationSelection && (
                               <TableCell className="text-sm">
                                 {item.result?.location_name ||
                                   item.locationName ||
