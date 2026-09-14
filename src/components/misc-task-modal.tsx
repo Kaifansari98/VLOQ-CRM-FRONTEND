@@ -17,6 +17,8 @@ import {
   useUpdateMiscRequiredDeliveryDateByTaskId,
 } from "@/api/installation/useUnderInstallationStageLeads";
 import { FileUploadField } from "@/components/custom/file-upload";
+import CustomeTooltip from "@/components/custom-tooltip";
+import { AlertCircle } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -28,6 +30,7 @@ interface Props {
     dueDate?: string;
     remark?: string;
     taskStatus?: string;
+    requiredDeliveryDate?: string;
   };
 }
 
@@ -62,6 +65,58 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
   const [rescheduleRemark, setRescheduleRemark] = useState("");
   const [completionFiles, setCompletionFiles] = useState<File[]>([]);
 
+  const rawUserType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type || state.auth.user?.user_type
+  );
+  const normalizedUserType =
+    typeof rawUserType === "string"
+      ? rawUserType.toLowerCase().trim().replace(/_/g, "-").replace(/\s+/g, "-")
+      : "";
+  const isSuperAdmin = normalizedUserType === "super-admin";
+
+  const isBeforeDeliveryDate = (dateValue?: string | Date | null) => {
+    if (!dateValue) return false;
+    let targetDateStr = "";
+    if (typeof dateValue === "string") {
+      const match = dateValue.match(/^(\d{4}-\d{2}-\d{2})/);
+      if (match) {
+        targetDateStr = match[1];
+      } else {
+        const d = new Date(dateValue);
+        if (isNaN(d.getTime())) return false;
+        targetDateStr = d.toISOString().slice(0, 10);
+      }
+    } else if (dateValue instanceof Date) {
+      if (isNaN(dateValue.getTime())) return false;
+      targetDateStr = dateValue.toISOString().slice(0, 10);
+    }
+
+    if (!targetDateStr) return false;
+
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    const todayDateStr = `${year}-${month}-${day}`;
+
+    return todayDateStr < targetDateStr;
+  };
+
+  const formatDeliveryDate = (dateString?: string | null) => {
+    if (!dateString) return "";
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return "";
+    return d.toLocaleDateString("en-US", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const targetDeliveryDate = data?.requiredDeliveryDate || data?.dueDate;
+  const isDateBeforeDelivery = isBeforeDeliveryDate(targetDeliveryDate);
+  const isCompleteRestrictedByDate = !isSuperAdmin && isDateBeforeDelivery;
+
   useEffect(() => {
     if (data?.dueDate) {
       setRescheduleDate(data.dueDate);
@@ -75,6 +130,13 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
 
   const handleMarkCompleted = () => {
     if (!data) return;
+    if (isCompleteRestrictedByDate) {
+      toastManager.add({
+        title: `Cannot complete task before Required Delivery Date (${formatDeliveryDate(targetDeliveryDate)})`,
+        type: "error",
+      });
+      return;
+    }
     if (completionFiles.length === 0) {
       toastManager.add({ title: "Please upload completion documents", type: "error" });
       return;
@@ -241,10 +303,38 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
                   <p className="text-sm text-muted-foreground">
                     If this task is completed, you can mark it as done.
                   </p>
+                  {isCompleteRestrictedByDate && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1 font-medium mt-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      Cannot complete before Required Delivery Date ({formatDeliveryDate(targetDeliveryDate)}).
+                    </p>
+                  )}
                 </div>
-                <Button className="w-28" onClick={() => setOpenCompletedModal(true)}>
-                  Complete
-                </Button>
+                <CustomeTooltip
+                  value={
+                    isCompleteRestrictedByDate
+                      ? `Cannot mark as completed before Required Delivery Date (${formatDeliveryDate(targetDeliveryDate)})`
+                      : ""
+                  }
+                  truncateValue={
+                    <Button
+                      className="w-28"
+                      disabled={isCompleteRestrictedByDate}
+                      onClick={() => {
+                        if (isCompleteRestrictedByDate) {
+                          toastManager.add({
+                            title: `Cannot mark as completed before Required Delivery Date (${formatDeliveryDate(targetDeliveryDate)})`,
+                            type: "error",
+                          });
+                          return;
+                        }
+                        setOpenCompletedModal(true);
+                      }}
+                    >
+                      Complete
+                    </Button>
+                  }
+                />
               </div>
 
               <div className="flex items-center justify-between rounded-xl border p-3 gap-3">
@@ -306,7 +396,8 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
               onClick={handleMarkCompleted}
               disabled={
                 uploadCompletionDocsMutation.isPending ||
-                completedUpdateMutation.isPending
+                completedUpdateMutation.isPending ||
+                isCompleteRestrictedByDate
               }
             >
               {uploadCompletionDocsMutation.isPending ||
