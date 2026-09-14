@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   useProductionFiles,
+  useRequiredProductionMaterials,
   useUploadProductionFiles,
   useProductionFilesRemark,
   useUpsertProductionFilesRemark,
@@ -43,6 +44,7 @@ import { Badge } from "@/components/ui/badge";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import { useSearchParams } from "next/navigation";
 import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
+import { type ProductionPreviewRow } from "./production-file-preview";
 import ProductionFilePreviewModal from "./ProductionFilePreviewModal";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
@@ -119,7 +121,7 @@ export default function ProductionFilesSection({
     (s) => s.auth.user?.vendor?.is_inventory_enabled === true,
   );
   // Vendors that both run large-scale projects and have inventory switched on
-  // must upload a strict Excel-only sheet whose columns match the template.
+  // must upload a spreadsheet whose columns match the template.
   const strictExcelMode = showRequiredMaterials || (handlesLargeScaleProjects && isInventoryEnabled);
   const customPrivilegeCodes = useAppSelector(
     (s) => s.customPrivileges.codes,
@@ -146,11 +148,11 @@ export default function ProductionFilesSection({
     resolvedInstanceId,
   );
 
+  const { data: savedMaterials = [], isLoading: materialsLoading, isError: materialsError } = useRequiredProductionMaterials(vendorId, leadId, resolvedInstanceId, strictExcelMode);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  useEffect(() => { setSelectedFiles([]); setPreviewModalOpen(false); }, [vendorId, leadId, resolvedInstanceId]);
   const hasFiles = Array.isArray(productionFiles) && productionFiles.length > 0;
-  const allowedLargeScaleExtensions = strictExcelMode
-    ? [".xlsx"]
-    : [".xlsx", ".csv"];
+  const allowedLargeScaleExtensions = [".xlsx", ".csv"];
   const productionFileAccept = handlesLargeScaleProjects
     ? allowedLargeScaleExtensions.join(",")
     : ".png,.jpg,.jpeg,.pdf,.pyo,.pytha,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip";
@@ -215,7 +217,7 @@ export default function ProductionFilesSection({
   };
 
   // ✅ Handle Upload
-  const handleUpload = async () => {
+  const handleUpload = async (materialRows?: ProductionPreviewRow[], replaceMaterials = false) => {
     if (readOnly) return;
     if (selectedFiles.length === 0) {
       toastManager.add({ title: "Please select at least one file to upload.", type: "error" });
@@ -231,7 +233,7 @@ export default function ProductionFilesSection({
       if (invalidFiles.length > 0) {
         toastManager.add({
           title: strictExcelMode
-            ? "Only .xlsx (Excel) files are allowed."
+            ? "Only .xlsx and .csv files are allowed."
             : "Only .xlsx and .csv files are allowed for large-scale vendors.",
           type: "error",
         });
@@ -245,7 +247,13 @@ export default function ProductionFilesSection({
       formData.append("created_by", String(userId || 0));
       if (accountId) formData.append("account_id", String(accountId));
 
+      if (strictExcelMode) {
+        if (!materialRows?.length) throw new Error("No valid materials to save.");
+        formData.append("material_rows", JSON.stringify(materialRows.map(({ articleCode, type, category, qty, unit, name }) => ({ articleCode, type, category, qty, unit, name }))));
+        formData.append("replace_materials", String(replaceMaterials));
+      }
       await uploadFiles(formData);
+      await queryClient.invalidateQueries({ queryKey: ["requiredProductionMaterials", vendorId, leadId] });
       toastManager.add({ title: "Production files uploaded successfully!", type: "success" });
       setSelectedFiles([]);
       setPreviewModalOpen(false);
@@ -262,6 +270,7 @@ export default function ProductionFilesSection({
         queryKey: ["leadProductionReadiness", vendorId, leadId],
       });
     } catch (error: any) {
+      if (error?.response?.status === 409) await queryClient.invalidateQueries({ queryKey: ["requiredProductionMaterials", vendorId, leadId] });
       const errorMessage =
         error?.response?.data?.error ||
         error?.response?.data?.message ||
@@ -363,6 +372,10 @@ export default function ProductionFilesSection({
           <>
             {shouldDisableActions && <p role="status" className="border-b px-6 py-3 text-sm text-muted-foreground">{effectiveBlockedTooltip}</p>}
             <ProductionFilePreviewModal
+              key={`${leadId}-${resolvedInstanceId ?? "all"}`}
+              savedMaterials={savedMaterials}
+              materialsLoading={materialsLoading}
+              materialsError={materialsError}
               embedded
               open
               onOpenChange={() => {}}
@@ -475,7 +488,7 @@ export default function ProductionFilesSection({
               <div className="flex justify-end">
                 <Button
                   size="sm"
-                  onClick={handleUpload}
+                  onClick={() => void handleUpload()}
                   disabled={isPending || selectedFiles.length === 0}
                   className="flex items-center gap-2"
                 >
@@ -652,6 +665,9 @@ export default function ProductionFilesSection({
 
         {/* -------------------------------- EXCEL IMPORT PREVIEW -------------------------------- */}
         <ProductionFilePreviewModal
+          savedMaterials={savedMaterials}
+          materialsLoading={materialsLoading}
+          materialsError={materialsError}
           open={!showRequiredMaterials && strictExcelMode && previewModalOpen}
           onOpenChange={(open) => {
             if (isPending) return;

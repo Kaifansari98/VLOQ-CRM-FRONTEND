@@ -1,26 +1,26 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2, Package, Search, Upload } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2, Package, Upload } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { cn } from "@/lib/utils";
 import {
-  matchProductionInventory, parseProductionFiles, REQUIRED_PRODUCTION_HEADERS,
-  type ProductionPreview, type ProductionPreviewRow,
+  applyInventoryMatches, canSaveProductionRow, matchProductionInventory, parseProductionFiles, REQUIRED_PRODUCTION_HEADERS,
+  type InventoryProduct, type ProductionPreview, type ProductionPreviewRow,
 } from "./production-file-preview";
 
-const statusLabels: Record<ProductionPreviewRow["status"], string> = {
-  ready: "In stock", shortage: "Stock shortage", unmatched: "Not found", ambiguous: "Multiple matches",
-  inactive: "Inactive product", unknown: "Stock unavailable", invalid: "Invalid row",
-};
-const quantity = (value: number | string | null | undefined) => value == null || value === "" || !Number.isFinite(Number(value))
-  ? "—" : Number(value).toLocaleString(undefined, { maximumFractionDigits: 8 });
+import { type RequiredProductionMaterial } from "@/api/production/order-login";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+
+import ProductionMaterialsTable from "./ProductionMaterialsTable";
 
 interface Props {
+  savedMaterials?: RequiredProductionMaterial[];
+  materialsLoading?: boolean;
+  materialsError?: boolean;
   embedded?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -29,20 +29,18 @@ interface Props {
   vendorId?: number;
   uploading: boolean;
   canUpload: boolean;
-  onUpload: () => Promise<void>;
+  onUpload: (rows: ProductionPreviewRow[], replace: boolean) => Promise<void>;
   onDownloadTemplate: () => void;
 }
 
-export default function ProductionFilePreviewModal({ embedded = false, open, onOpenChange, files, onFilesChange, vendorId,
+export default function ProductionFilePreviewModal({ savedMaterials = [], materialsLoading = false, materialsError = false, embedded = false, open, onOpenChange, files, onFilesChange, vendorId,
   uploading, canUpload, onUpload, onDownloadTemplate }: Props) {
+  const [confirmReplace, setConfirmReplace] = useState(false);
   const [preview, setPreview] = useState<ProductionPreview | null>(null);
   const [phase, setPhase] = useState<"reading" | "matching" | "done">("reading");
   const [lookupError, setLookupError] = useState("");
   const [retry, setRetry] = useState(0);
   const [tab, setTab] = useState<"products" | "logs">("products");
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("all");
-  const [page, setPage] = useState(1);
   // Tie the result to the exact selection and vendor; an old preview can never approve new files.
   const [checkedSelection, setCheckedSelection] = useState<{ files: File[]; vendorId: number } | null>(null);
 
@@ -53,15 +51,12 @@ export default function ProductionFilePreviewModal({ embedded = false, open, onO
     setCheckedSelection(null);
     setLookupError("");
     setPhase("reading");
-    setPage(1);
-    setFilter("all");
-    setSearch("");
     async function read() {
       try {
         const parsed = await parseProductionFiles(files);
         if (cancelled) return;
         setPreview(parsed);
-        if (parsed.logs.some((log) => log.level === "error") || !parsed.rows.length) {
+        if (!parsed.rows.length) {
           setPhase("done");
           return;
         }
@@ -81,21 +76,25 @@ export default function ProductionFilePreviewModal({ embedded = false, open, onO
     return () => { cancelled = true; };
   }, [files, vendorId, open, retry]);
 
+  const savedRows = useMemo(() => {
+    const matches = new Map<string, InventoryProduct[]>();
+    const savedPreview: ProductionPreview = { fileCount: 0, logs: [], rows: savedMaterials.map((material) => {
+      matches.set(material.article_code, [material.product]);
+      return { key: String(material.id), source: "", type: material.type, category: material.category,
+        qty: Number(material.qty), unit: material.unit, name: material.name, articleCode: material.article_code,
+        errors: [], status: "unmatched" };
+    }) };
+    return applyInventoryMatches(savedPreview, matches).rows;
+  }, [savedMaterials]);
   const rows = preview?.rows ?? [];
   const errors = preview?.logs.filter((log) => log.level === "error").length ?? 0;
   const warnings = preview?.logs.filter((log) => log.level === "warning").length ?? 0;
   const busy = phase !== "done";
   const checked = checkedSelection?.files === files && checkedSelection?.vendorId === vendorId;
   const matchedProducts = new Set(rows.flatMap((row) => row.product ? [row.product.id] : [])).size;
-  const filtered = useMemo(() => (preview?.rows ?? []).filter((row) => {
-    const query = search.trim().toLowerCase();
-    return (filter === "all" || (filter === "attention" ? row.status !== "ready" : row.status === "ready")) &&
-      (!query || [row.articleCode, row.name, row.product?.product_name, row.category, row.type, row.source].some((value) => value?.toLowerCase().includes(query)));
-  }), [preview, search, filter]);
-  const pageCount = Math.max(1, Math.ceil(filtered.length / 25));
-  const currentPage = Math.min(page, pageCount);
-  const visibleRows = filtered.slice((currentPage - 1) * 25, currentPage * 25);
-  const canConfirm = checked && !busy && !uploading && canUpload && !errors && !lookupError && rows.length > 0;
+  const saveableRows = rows.filter(canSaveProductionRow);
+  const canConfirm = checked && !busy && !uploading && canUpload && !materialsLoading && !materialsError && !lookupError && saveableRows.length > 0;
+  const submit = () => { if (!canConfirm) return; if (savedMaterials.length) setConfirmReplace(true); else void onUpload(saveableRows, false); };
 
   const content = (
     <>
@@ -111,12 +110,17 @@ export default function ProductionFilePreviewModal({ embedded = false, open, onO
         </div>
 
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 sm:p-6">
+          {materialsLoading && <p role="status">Loading saved materials…</p>}
+          {materialsError && <p role="alert" className="text-destructive">Could not load saved materials. Reload this page to retry.</p>}
+          {!!savedMaterials.length && <div className="space-y-3">
+            <ProductionMaterialsTable rows={savedRows} />
+          </div>}
           <div className="rounded-xl border p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <div><p className="text-sm font-medium">Excel workbooks</p><p className="text-xs text-muted-foreground">.xlsx only · Required headers in the first row · Additional columns allowed</p></div>
+              <div><p className="text-sm font-medium">Excel workbooks</p><p className="text-xs text-muted-foreground">.xlsx or .csv · Required headers in the first row · Additional columns allowed</p></div>
               <Button variant="outline" size="sm" onClick={onDownloadTemplate}>Download template</Button>
             </div>
-            <FileUploadField value={files} onChange={onFilesChange} accept=".xlsx" multiple disabled={uploading || !canUpload} />
+            <FileUploadField value={files} onChange={onFilesChange} accept=".xlsx,.csv" multiple disabled={uploading || !canUpload} />
             <div className="mt-3 flex flex-wrap gap-1.5">{REQUIRED_PRODUCTION_HEADERS.map((header) => <Badge key={header} variant="secondary">{header}</Badge>)}</div>
           </div>
 
@@ -135,7 +139,7 @@ export default function ProductionFilePreviewModal({ embedded = false, open, onO
           {busy && <div role="status" className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm"><Loader2 className="size-5 animate-spin text-primary" />
             {phase === "reading" ? "Reading workbooks and checking required columns…" : "Matching article codes with your vendor’s inventory…"}</div>}
           {lookupError && <div role="alert" className="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm"><p>{lookupError}</p><Button size="sm" variant="outline" onClick={() => setRetry((value) => value + 1)}>Retry</Button></div>}
-          {!!errors && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm"><p className="font-medium">Fix the workbook before uploading</p><p className="mt-1 text-muted-foreground">{errors} validation issue{errors === 1 ? "" : "s"} found. Review the validation log, correct the file, then remove it and select the corrected workbook.</p></div>}
+          {!!errors && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm"><p className="font-medium">Some rows or sheets could not be read</p><p className="mt-1 text-muted-foreground">{errors} validation issue{errors === 1 ? "" : "s"} found. Valid matched rows can still be saved. Review the log for skipped rows or sheets.</p></div>}
 
           <div className="space-y-4">
             <div className="flex gap-1 border-b" role="tablist" aria-label="Preview details">
@@ -143,32 +147,7 @@ export default function ProductionFilePreviewModal({ embedded = false, open, onO
                 {value === "products" ? `Products (${rows.length})` : `Validation log (${preview?.logs.length ?? 0})`}</button>)}
             </div>
             {tab === "products" ? <div role="tabpanel" id="production-products-panel" aria-labelledby="production-products-tab" className="space-y-3">
-              <div className="flex flex-col justify-between gap-3 sm:flex-row">
-                <div className="relative sm:w-80"><Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" /><Input aria-label="Search preview products" placeholder="Search name, article code, category…" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} className="pl-9" /></div>
-                <div className="flex gap-1">{[["all", "All rows"], ["attention", "Needs attention"], ["ready", "In stock"]].map(([value, label]) => <Button key={value} size="sm" variant={filter === value ? "secondary" : "ghost"} disabled={!checked && value !== "all"} onClick={() => { setFilter(value); setPage(1); }}>{label}</Button>)}</div>
-              </div>
-              <div className="overflow-x-auto rounded-xl border">
-                <table className="w-full min-w-[1000px] text-left text-sm">
-                  <thead className="bg-muted/50 text-xs text-muted-foreground"><tr className="divide-x">{["Product / Article code", "Type / Category", "Required", "Inventory stock", "Updated Stock", "Status"].map((label) => <th key={label} className="px-4 py-3 font-medium">{label}</th>)}</tr></thead>
-                  <tbody className="divide-y">{visibleRows.map((row) => {
-                    const updatedStock = row.available !== undefined
-                      ? (row.available >= row.qty ? row.available - row.qty : row.qty - row.available)
-                      : undefined;
-                    const insufficient = row.available !== undefined && row.qty > row.available;
-                    return <tr key={row.key} className="align-top divide-x hover:bg-muted/20">
-                    <td className="max-w-72 px-4 py-3"><p className="font-medium break-words">{row.name || "Unnamed product"}</p><p className="mt-1 font-mono text-xs text-primary">{row.articleCode || "No article code"}</p>{row.product && row.product.product_name !== row.name && <p className="mt-1 text-xs text-muted-foreground">Inventory: {row.product.product_name}</p>}<p className="mt-1 break-words text-[11px] text-muted-foreground">{row.source}</p></td>
-                    <td className="px-4 py-3"><p>{row.type || "—"}</p><p className="mt-1 text-xs text-muted-foreground">{row.category || "—"}</p></td>
-                    <td className="px-4 py-3 font-medium tabular-nums">{quantity(row.qty)} <span className="text-xs font-normal text-muted-foreground">{row.unit}</span></td>
-                    <td className="px-4 py-3 tabular-nums">{quantity(row.product?.current_stock)}<p className="text-xs text-muted-foreground">{row.stockUnit}</p></td>
-                    <td className={cn("px-4 py-3 tabular-nums", insufficient && "font-medium text-amber-700 dark:text-amber-400")}>{quantity(updatedStock)}<p className="text-xs text-muted-foreground">{updatedStock !== undefined ? row.unit : ""}</p></td>
-                    <td className="px-4 py-3"><Badge variant="outline" className={cn(row.status === "invalid" ? "border-destructive/30 text-destructive" : checked && row.status === "ready" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : checked ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400" : "")}>{row.status === "invalid" || checked ? statusLabels[row.status] : "Not checked"}</Badge>{row.errors.length > 0 && <p className="mt-1 max-w-48 text-xs text-destructive">{row.errors.join("; ")}</p>}</td>
-                  </tr>;
-                  })}</tbody>
-                </table>
-                {!visibleRows.length && <p className="p-10 text-center text-sm text-muted-foreground">{busy ? "Preparing your preview…" : rows.length ? "No products match these filters." : "Select a workbook with product rows to see the preview."}</p>}
-              </div>
-              <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground"><p>{filtered.length} rows · Page {currentPage} of {pageCount}</p><div className="flex gap-2"><Button size="sm" variant="outline" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>Previous</Button><Button size="sm" variant="outline" disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)}>Next</Button></div></div>
-              <p className="text-xs leading-relaxed text-muted-foreground">Inventory stock is the current vendor-wide quantity. Updated Stock is Inventory stock minus Required when stock covers it, or Required minus Inventory stock (shown in amber) when it falls short. Quantities with different units are not compared. This preview does not reserve stock.</p>
+              <ProductionMaterialsTable rows={rows} checked={checked} busy={busy} />
             </div> : <div role="tabpanel" id="production-logs-panel" aria-labelledby="production-logs-tab" className="max-h-80 space-y-2 overflow-y-auto">
               {!preview?.logs.length && <p className="p-6 text-center text-sm text-muted-foreground">Validation results will appear here.</p>}
               {preview?.logs.map((log, index) => <div key={index} className={cn("flex gap-3 rounded-lg border p-3", log.level === "error" ? "border-destructive/25 bg-destructive/5" : log.level === "warning" ? "border-amber-500/25 bg-amber-500/5" : "bg-muted/20")}>
@@ -179,9 +158,14 @@ export default function ProductionFilePreviewModal({ embedded = false, open, onO
           </div>
         </div>
         <div className="flex flex-col items-start justify-between gap-3 border-t bg-muted/20 px-6 py-4 sm:flex-row sm:items-center">
-          <div className="text-sm"><p className="font-medium">{canConfirm ? `${rows.length} rows reviewed in ${files.length} file${files.length === 1 ? "" : "s"}` : "Review and validate your files to continue"}</p><p className="mt-1 text-xs text-muted-foreground">{warnings ? "Inventory warnings do not prevent file upload. " : ""}Uploads save production documents; material records are not added yet.</p></div>
-          <div className="flex shrink-0 gap-2">{!embedded && <Button variant="outline" disabled={uploading} onClick={() => onOpenChange(false)}>Back</Button>}<Button disabled={!canConfirm} onClick={() => { if (canConfirm) void onUpload(); }}>{uploading ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Upload className="mr-2 size-4" />}{uploading ? "Uploading…" : "Upload files"}</Button></div>
+          <div className="text-sm"><p className="font-medium">{canConfirm ? `${rows.length} rows reviewed in ${files.length} file${files.length === 1 ? "" : "s"}` : "Review and validate your files to continue"}</p><p className="mt-1 text-xs text-muted-foreground">{warnings ? "Inventory warnings do not prevent file upload. " : ""}{saveableRows.length} rows can be saved; {rows.length - saveableRows.length} rows will be skipped. Stock shortages do not prevent saving materials.</p></div>
+          <div className="flex shrink-0 gap-2">{!embedded && <Button variant="outline" disabled={uploading} onClick={() => onOpenChange(false)}>Back</Button>}<Button disabled={!canConfirm} onClick={submit}>{uploading ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Upload className="mr-2 size-4" />}{uploading ? "Uploading…" : "Upload files"}</Button></div>
         </div>
+        <AlertDialog open={confirmReplace} onOpenChange={setConfirmReplace}>
+          <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Replace saved materials?</AlertDialogTitle>
+            <AlertDialogDescription>Submitting this upload will delete the previous {savedMaterials.length} material rows and replace them with {saveableRows.length} valid rows from the selected files. The previous material data will be lost.</AlertDialogDescription>
+          </AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction disabled={!canConfirm} onClick={() => { if (canConfirm) void onUpload(saveableRows, true); }}>Replace and upload</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+        </AlertDialog>
     </>
   );
 

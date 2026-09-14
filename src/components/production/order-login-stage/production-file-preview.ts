@@ -35,13 +35,18 @@ function cellText(cell: Cell): string {
 export async function parseProductionFiles(files: File[]): Promise<ProductionPreview> {
   const preview: ProductionPreview = { rows: [], logs: [], fileCount: files.length };
   for (const [fileIndex, file] of files.entries()) {
-    if (!file.name.toLowerCase().endsWith(".xlsx")) {
-      preview.logs.push({ level: "error", source: file.name, message: "Only .xlsx Excel files are accepted. Save your file as an Excel workbook and try again." });
+    if (!/\.(xlsx|csv)$/i.test(file.name)) {
+      preview.logs.push({ level: "error", source: file.name, message: "Only .xlsx and .csv files are accepted." });
       continue;
     }
     try {
       const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(await file.arrayBuffer());
+      if (file.name.toLowerCase().endsWith(".csv")) {
+        const sheet = workbook.addWorksheet("CSV");
+        parseProductionCsv(await file.text()).forEach((row) => sheet.addRow(row));
+      } else {
+        await workbook.xlsx.load(await file.arrayBuffer());
+      }
       const sheets = workbook.worksheets.filter((sheet) => sheet.actualRowCount > 0);
       if (!sheets.length) throw new Error("The workbook is empty.");
       for (const sheet of sheets) {
@@ -76,6 +81,7 @@ export async function parseProductionFiles(files: File[]): Promise<ProductionPre
           const errors = REQUIRED_PRODUCTION_HEADERS.filter((_, i) => !values[i]).map((header) => `${header} is required`);
           const qty = Number(quantity);
           if (quantity && (!Number.isFinite(qty) || qty <= 0)) errors.push("Qty. must be a number greater than zero");
+          if (Number.isFinite(qty) && (qty > 9999999999.99 || Math.abs(qty * 100 - Math.round(qty * 100)) > 0.0001)) errors.push("Qty. must fit 10 digits and at most 2 decimal places");
           const rowSource = `${source} · row ${rowNumber}`;
           preview.rows.push({ key: `${fileIndex}:${sheet.id}:${rowNumber}`, source: rowSource, type, category,
             qty, unit, name, articleCode, errors, status: errors.length ? "invalid" : "unmatched" });
@@ -160,3 +166,29 @@ export function applyInventoryMatches(preview: ProductionPreview, matches: Map<s
   });
   return { ...preview, rows, logs };
 }
+
+// RFC-style CSV fields, including escaped quotes, commas and embedded newlines.
+export function parseProductionCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [], field = "", quoted = false;
+  text = text.replace(/^\uFEFF/, "");
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (char === '"') {
+      if (quoted && text[i + 1] === '"') { field += '"'; i++; }
+      else if (quoted || !field) quoted = !quoted;
+      else throw new Error("Unexpected quote in CSV field");
+    } else if (char === "," && !quoted) { row.push(field); field = ""; }
+    else if ((char === "\n" || char === "\r") && !quoted) {
+      row.push(field); rows.push(row); row = []; field = "";
+      if (char === "\r" && text[i + 1] === "\n") i++;
+    } else field += char;
+  }
+  if (quoted) throw new Error("Unclosed quote in CSV file");
+  if (field || row.length) { row.push(field); rows.push(row); }
+  return rows;
+}
+
+export const canSaveProductionRow = (row: ProductionPreviewRow) =>
+  !row.errors.length && !!row.product && row.product.active === "Yes" &&
+  ["ready", "shortage", "unknown"].includes(row.status);
