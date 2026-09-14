@@ -706,10 +706,7 @@ export default function ClientDocumentationLeadDetails() {
   const canMoveToClientApproval =
     userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
-          "project.client_documentation.move_to_client_documentation.action",
-        ) ||
-        customPrivilegeCodes.includes(
-          "project.final_measurement.move_to_client_documentation.action",
+          "project.client_documentation.move_to_client_approval.action",
         )
       : true;
 

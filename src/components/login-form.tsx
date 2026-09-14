@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLogin } from "@/hooks/useLogin";
 import { useDispatch, useSelector } from "react-redux";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -15,7 +15,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { apiClient } from "@/lib/apiClient";
 import { exchangeVendorLoginApi } from "@/api/auth";
-import { setCredentials } from "@/redux/slices/authSlice";
+import { setCredentials, logout } from "@/redux/slices/authSlice";
+import { clearClientSessionStorage } from "@/lib/sessionCleanup";
 import { setCustomPrivileges } from "@/redux/slices/customPrivilegesSlice";
 import { setActiveTheme } from "@/redux/slices/themeSlice";
 
@@ -97,10 +98,11 @@ export function LoginForm({
   const [isVendorLoginInProgress, setIsVendorLoginInProgress] = useState(false);
 
   const { user, token } = useSelector((state: RootState) => state.auth);
+  const hasAttemptedVendorExchangeRef = useRef<string | null>(null);
 
-  // ✅ Redirect if already logged in
+  // ✅ Redirect if already logged in (only when not performing a vendor login exchange)
   useEffect(() => {
-    if (user && token) {
+    if (!vendorLoginToken && user && token) {
       router.replace(getPostLoginPath(user, vendorLoginToken));
     }
   }, [router, token, user, vendorLoginToken]);
@@ -139,13 +141,22 @@ export function LoginForm({
 
   useEffect(() => {
     const exchangeVendorLogin = async () => {
-      if (!vendorLoginToken || user || token || isVendorLoginInProgress) {
+      if (
+        !vendorLoginToken ||
+        hasAttemptedVendorExchangeRef.current === vendorLoginToken
+      ) {
         return;
       }
 
-      setIsVendorLoginInProgress(true);
+      hasAttemptedVendorExchangeRef.current = vendorLoginToken;
 
       try {
+        // Clear any old session before setting up the new vendor credentials
+        dispatch(logout());
+        clearClientSessionStorage();
+
+        setIsVendorLoginInProgress(true);
+
         const response = await exchangeVendorLoginApi(vendorLoginToken);
         dispatch(setCredentials({ user: response.user, token: response.token }));
         dispatch(
@@ -180,7 +191,7 @@ export function LoginForm({
     };
 
     exchangeVendorLogin();
-  }, [dispatch, isVendorLoginInProgress, router, token, user, vendorLoginToken]);
+  }, [dispatch, router, vendorLoginToken]);
 
   useEffect(() => {
     if (loginMutation.isError) {
@@ -201,7 +212,7 @@ export function LoginForm({
       onSubmit={handleSubmit}
       className={cn("flex flex-col gap-6", className)}
       {...props}
-    >
+    >                              
       
       {/* <div className="flex flex-col items-center gap-2 text-center">
         <h1 className="text-2xl font-bold">Login to your account</h1>

@@ -46,7 +46,10 @@ import {
   LockOpen,
   Lock,
   Zap,
+  Store as StoreIcon,
 } from "lucide-react";
+
+import ChangeStoreModal from "@/components/sales-executive/Lead/change-store-modal";
 
 import FastProductionDetailsModal from "@/components/sales-executive/Lead/fast-production-details-modal";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
@@ -184,6 +187,7 @@ export default function DesigningStageLead() {
   const searchParams = useSearchParams();
   const accountId = searchParams.get("accountId");
   const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
+  const [changeStoreOpen, setChangeStoreOpen] = useState(false);
   const [openCancelFastProduction, setOpenCancelFastProduction] = useState(false);
   const [fastProductionDetailsOpen, setFastProductionDetailsOpen] = useState(false);
   const revokeFastProductionMutation = useRevokeFastProductionRequest();
@@ -237,35 +241,46 @@ export default function DesigningStageLead() {
     (state) => state.auth.user?.user_type.user_type,
   );
   const isAuditor = userType?.trim().toLowerCase() === "auditor";
+  const isSuperAdmin = userType?.trim().toLowerCase() === "super-admin";
   const eligibleBookingDaysValue = useAppSelector(
     (state) => state.auth.user?.vendor?.eligible_booking_days ?? null,
   );
   const handlesLargeScaleProjects = useAppSelector(
     (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
   );
+  const isOnlineLeadFeatureEnabled = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_online_lead_feature_enabled === true,
+  );
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
 
+  const normalizedUserType = userType?.trim().toLowerCase();
+  const isCaller = normalizedUserType === "telecaller" || normalizedUserType === "telecaller-team-lead" || normalizedUserType === "telecaller team lead" || normalizedUserType === "caller";
+
   const canUploadQuotation =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes("leads.designing_stage.quotation.upload")
-      : true;
+      : true);
 
   const canUploadMeetings =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes("leads.designing_stage.meetings.upload")
-      : true;
+      : true);
 
   const canUploadDesigns =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes("leads.designing_stage.designs.upload")
-      : true;
+      : true);
 
   const canAccessTodoTab =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? (canUploadQuotation || canUploadMeetings || canUploadDesigns)
-      : canAccessDessingTodoTab(userType);
+      : canAccessDessingTodoTab(userType));
 
   const { data: designDocsData } = useDesignsDoc(vendorId!, leadIdNum);
   const { data: quotationDocsData } = useQuotationDoc(vendorId, leadIdNum);
@@ -283,23 +298,26 @@ export default function DesigningStageLead() {
       )
       : canViewSiteHistoryTab(userType));
   const canPerformMoveToBooking =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
         "leads.designing_stage.move_to_booking.action",
       )
-      : canMoveToBookingStage(userType);
+      : canMoveToBookingStage(userType));
   const canMarkOnHold =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
         "leads.designing_stage.details.mark_on_hold",
       )
-      : true;
+      : true);
   const canMarkAsLost =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
         "leads.designing_stage.details.mark_as_lost",
       )
-      : true;
+      : true);
   const canSeeLeadStatusMenu = canMarkOnHold || canMarkAsLost;
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
@@ -416,8 +434,7 @@ export default function DesigningStageLead() {
     ? structureInstancesData.data
     : [];
   const isChatNotification = useIsChatNotification();
-  const normalizedUserType = userType?.toLowerCase() ?? "";
-  const isSuperAdmin = normalizedUserType === "super-admin";
+
   const eligibleBookingDays =
     eligibleBookingDaysValue == null
       ? null
@@ -605,6 +622,7 @@ export default function DesigningStageLead() {
 
     // Auto-open only when booking is actually allowed for this user.
     if (
+      !isCaller &&
       canOpenBookingModal &&
       normalizedUserType !== "admin" &&
       normalizedUserType !== "super-admin"
@@ -781,10 +799,11 @@ export default function DesigningStageLead() {
           </Breadcrumb>
         </div>
         <div className="flex items-center space-x-2">
-          {!isAuditor && (
+          {!isAuditor && !isCaller && (
             <div>
               {/* Move to Booking */}
               {!canMoveToBooking ||
+                !canPerformMoveToBooking ||
                 isBookingLockedByEligibleDays ||
                 isLeadBlocked ? (
                 <div className="hidden md:block">
@@ -795,7 +814,13 @@ export default function DesigningStageLead() {
                         Move To Booking
                       </div>
                     }
-                    value={isLeadBlocked ? blockedTooltip : moveToBookingTooltip}
+                    value={
+                      isLeadBlocked
+                        ? blockedTooltip
+                        : !canPerformMoveToBooking
+                          ? "You do not have permission to move lead to booking stage."
+                          : moveToBookingTooltip
+                    }
                     contentClassName="max-w-80 text-left"
                   />
                 </div>
@@ -816,7 +841,7 @@ export default function DesigningStageLead() {
               )}
             </div>
           )}
-          {!isAuditor && (
+          {!isAuditor && !isCaller && (
             <Button
               size="sm"
               className="hidden lg:block"
@@ -825,12 +850,13 @@ export default function DesigningStageLead() {
               Assign Task
             </Button>
           )}
+
           <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
           {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
 
           {/* 🔹 Dropdown for actions */}
-          {!isAuditor && (
+          {!isAuditor && !isCaller && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
               <Button
@@ -927,6 +953,16 @@ export default function DesigningStageLead() {
                     </DropdownMenuSubContent>
                   </DropdownMenuSub>
                 )
+              )}
+
+              {isOnlineLeadFeatureEnabled && isSuperAdmin && (
+                <DropdownMenuItem
+                  onSelect={() => setChangeStoreOpen(true)}
+                  disabled={isLoading || !lead || isLeadBlocked}
+                >
+                  <StoreIcon className="h-4 w-4 mr-2" />
+                  Store Transfer
+                </DropdownMenuItem>
               )}
 
 
@@ -1337,6 +1373,13 @@ export default function DesigningStageLead() {
         open={fastProductionDetailsOpen}
         onOpenChange={setFastProductionDetailsOpen}
         leadId={leadIdNum}
+      />
+
+      <ChangeStoreModal
+        open={changeStoreOpen}
+        onOpenChange={setChangeStoreOpen}
+        leadId={leadIdNum}
+        currentStoreId={lead?.franchise_id}
       />
     </>
   );

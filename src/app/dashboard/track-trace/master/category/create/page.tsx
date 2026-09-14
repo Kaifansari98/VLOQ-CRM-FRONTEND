@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppSelector } from "@/redux/store";
 import { cn } from "@/lib/utils";
@@ -41,10 +41,25 @@ import {
   Trash2,
   List,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Check,
   Save,
   GripVertical,
+  SlidersHorizontal,
+  Copy,
+  RotateCcw,
+  Sparkles,
+  X,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { toastManager } from "@/components/ui/toast";
 import {
   useCreateProjectCategory,
   useProjectCategories,
@@ -54,6 +69,34 @@ import {
 import { ProjectCategory } from "@/api/track-trace/project-categories.api";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
+
+const STRUCTURE_ATTRIBUTES = [
+  { key: "article_code", label: "Item Code", sample: "TAPE001" },
+  { key: "barcode", label: "Barcode", sample: "890123456" },
+  { key: "brand_short_name", label: "Brand Short Name", sample: "E3" },
+  { key: "brand_name", label: "Brand Full Name", sample: "Euro Edge" },
+  { key: "core_product", label: "Core Product", sample: "EB_TAPE" },
+  { key: "type", label: "Type", sample: "PVC" },
+  { key: "finish", label: "Finish", sample: "MATT" },
+  { key: "p_code", label: "Product Code", sample: "1000SR" },
+  { key: "color_name", label: "Color Name", sample: "WHITE" },
+  { key: "grade", label: "Grade", sample: "PREMIUM" },
+  { key: "thickness", label: "Thickness", sample: "0.8" },
+  { key: "size", label: "Size", sample: "22X0.8" },
+  { key: "length", label: "Length", sample: "50M" },
+  { key: "height", label: "Height", sample: "2400" },
+  { key: "hsn_code", label: "HSN Code", sample: "39269099" },
+  { key: "unit", label: "Primary Unit", sample: "ROLL" },
+];
+
+const DEFAULT_STRUCTURE_FIELDS = [
+  "article_code",
+  "brand_short_name",
+  "core_product",
+  "finish",
+  "p_code",
+  "thickness",
+];
 
 interface SubCategoryEntry {
   id?: number;
@@ -73,8 +116,9 @@ function CategoryFormContent() {
   const vendorId = user?.vendor_id;
   const userId = user?.id;
 
-  const { data: allCategories = [], isLoading: categoriesLoading } =
+  const { data: categoryData, isLoading: categoriesLoading } =
     useProjectCategories(vendorId);
+  const allCategories: ProjectCategory[] = categoryData?.categories ?? [];
   const { data: types = [], isLoading: typesLoading } =
     useProjectCategoryTypes();
 
@@ -679,51 +723,152 @@ function CategoryFormContent() {
           </div>
 
           {/* Product Name Structure Builder */}
-          {(!editData?.parent_id) && (
-            <div className="rounded-2xl border bg-card p-5 space-y-4 shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
-                <div>
-                  <h4 className="text-sm font-bold text-foreground">Product Name Structure (Material Code Format)</h4>
-                  <p className="text-xs text-muted-foreground">Select and sequence attributes to auto-compose item names (e.g. TAPE001_E3_TAPE_MATT_1000SR_0.8).</p>
+          {!editData?.parent_id && (
+            <div className="rounded-2xl border border-border/80 bg-card p-5 space-y-4 shadow-2xs">
+              {/* Header with Icon, Title, and Delimiter Selector */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/80 pb-3.5">
+                <div className="flex items-start gap-2.5">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20 mt-0.5">
+                    <SlidersHorizontal className="size-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-foreground tracking-tight">
+                      Product Name Structure (Material Code Format)
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Select and sequence attributes to auto-compose standard item material codes (e.g. TAPE001_E3_EB_TAPE_MATT_1000SR_0.8).
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Label className="text-xs font-semibold">Delimiter:</Label>
-                  <select
+
+                <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                  <Label className="text-xs font-semibold text-muted-foreground">
+                    Delimiter:
+                  </Label>
+                  <Select
                     value={delimiter}
-                    onChange={(e) => setDelimiter(e.target.value)}
-                    className="h-8 text-xs rounded-md border bg-background px-2"
+                    onValueChange={(val) => setDelimiter(val)}
                   >
-                    <option value="_">Underscore (_)</option>
-                    <option value="-">Hyphen (-)</option>
-                    <option value="/">Slash (/)</option>
-                    <option value=" ">Space ( )</option>
-                  </select>
+                    <SelectTrigger className="h-8 text-xs w-40 bg-background">
+                      <SelectValue placeholder="Select Delimiter" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_">Underscore ( _ )</SelectItem>
+                      <SelectItem value="-">Hyphen ( - )</SelectItem>
+                      <SelectItem value="/">Slash ( / )</SelectItem>
+                      <SelectItem value=".">Dot ( . )</SelectItem>
+                      <SelectItem value=" ">Space ( &nbsp; )</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
-              {/* Token Badges Selector */}
-              <div>
-                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Toggle Attributes</Label>
-                <div className="flex flex-wrap gap-1.5">
-                  {[
-                    { key: "article_code", label: "Item Code" },
-                    { key: "barcode", label: "Barcode" },
-                    { key: "brand_short_name", label: "Brand Short Name" },
-                    { key: "brand_name", label: "Brand Full Name" },
-                    { key: "core_product", label: "Core Product" },
-                    { key: "type", label: "Type" },
-                    { key: "finish", label: "Finish" },
-                    { key: "p_code", label: "Product Code" },
-                    { key: "color_name", label: "Color Name" },
-                    { key: "grade", label: "Grade" },
-                    { key: "thickness", label: "Thickness" },
-                    { key: "size", label: "Size" },
-                    { key: "length", label: "Length" },
-                    { key: "height", label: "Height" },
-                    { key: "hsn_code", label: "HSN Code" },
-                    { key: "unit", label: "Primary Unit" },
+              {/* Live Preview Box */}
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors">
+                <div className="flex flex-col gap-1.5 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="size-3.5 text-primary" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
+                      Live Format Preview
+                    </span>
+                  </div>
+                  {selectedFields.length > 0 ? (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {selectedFields.map((fieldKey, idx) => {
+                        const attr = STRUCTURE_ATTRIBUTES.find(
+                          (a) => a.key === fieldKey
+                        );
+                        const sample = attr?.sample || fieldKey.toUpperCase();
+                        return (
+                          <React.Fragment key={fieldKey}>
+                            <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-background border border-border/80 text-foreground shadow-2xs">
+                              {sample}
+                            </span>
+                            {idx < selectedFields.length - 1 && (
+                              <span className="font-mono text-xs font-extrabold text-primary px-0.5">
+                                {delimiter === " " ? "␣" : delimiter}
+                              </span>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground italic">
+                      No attributes selected yet. Click attributes below to construct material code.
+                    </span>
+                  )}
+                </div>
 
-                  ].map((attr) => {
+                {selectedFields.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const sampleStr = selectedFields
+                        .map((k) => {
+                          const found = STRUCTURE_ATTRIBUTES.find(
+                            (a) => a.key === k
+                          );
+                          return found?.sample || k.toUpperCase();
+                        })
+                        .join(delimiter);
+                      navigator.clipboard?.writeText(sampleStr);
+                      toastManager.add({
+                        title: "Copied sample material code to clipboard",
+                        type: "success",
+                      });
+                    }}
+                    className="h-7.5 px-2.5 text-xs gap-1.5 shrink-0 bg-background hover:bg-primary/10 hover:text-primary hover:border-primary/30"
+                  >
+                    <Copy className="size-3.5" />
+                    <span>Copy Sample</span>
+                  </Button>
+                )}
+              </div>
+
+              {/* Toggle Attributes Section */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <Label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                    Toggle Attributes
+                  </Label>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedFields(STRUCTURE_ATTRIBUTES.map((a) => a.key))
+                      }
+                      className="text-[11px] text-muted-foreground hover:text-primary font-medium transition-colors"
+                    >
+                      Select All
+                    </button>
+                    <span className="text-muted-foreground/40">•</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedFields([...DEFAULT_STRUCTURE_FIELDS])
+                      }
+                      className="text-[11px] text-muted-foreground hover:text-primary font-medium transition-colors flex items-center gap-1"
+                    >
+                      <RotateCcw className="size-3" />
+                      Reset Defaults
+                    </button>
+                    <span className="text-muted-foreground/40">•</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedFields([])}
+                      className="text-[11px] text-muted-foreground hover:text-destructive font-medium transition-colors"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {STRUCTURE_ATTRIBUTES.map((attr) => {
                     const isSelected = selectedFields.includes(attr.key);
                     return (
                       <button
@@ -731,19 +876,26 @@ function CategoryFormContent() {
                         type="button"
                         onClick={() => {
                           if (isSelected) {
-                            setSelectedFields(selectedFields.filter((f) => f !== attr.key));
+                            setSelectedFields(
+                              selectedFields.filter((f) => f !== attr.key)
+                            );
                           } else {
                             setSelectedFields([...selectedFields, attr.key]);
                           }
                         }}
                         className={cn(
-                          "px-2.5 py-1 rounded-lg text-xs font-semibold transition-all border",
+                          "group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border cursor-pointer select-none",
                           isSelected
-                            ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-                            : "bg-muted/40 text-muted-foreground border-transparent hover:bg-muted"
+                            ? "bg-primary text-primary-foreground border-primary shadow-xs hover:bg-primary/90"
+                            : "bg-muted/40 text-muted-foreground border-border/60 hover:bg-muted hover:text-foreground hover:border-border"
                         )}
                       >
-                        {isSelected ? `✓ ${attr.label}` : `+ ${attr.label}`}
+                        {isSelected ? (
+                          <Check className="size-3.5 stroke-[2.5]" />
+                        ) : (
+                          <Plus className="size-3.5 opacity-60 group-hover:opacity-100" />
+                        )}
+                        <span>{attr.label}</span>
                       </button>
                     );
                   })}
@@ -752,83 +904,99 @@ function CategoryFormContent() {
 
               {/* Active Sequence Order Bar */}
               {selectedFields.length > 0 && (
-                <div className="rounded-xl border bg-muted/20 p-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-600">Active Field Sequence</span>
-                    <span className="text-[10px] text-muted-foreground italic"> Drag & drop badges to reorder</span>
+                <div className="rounded-xl border border-border/80 bg-muted/20 p-3.5 space-y-2.5">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <GripVertical className="size-3.5 text-primary" />
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-primary">
+                        Active Field Sequence
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground italic">
+                      Drag chips or use arrows to rearrange sequence order
+                    </span>
                   </div>
-                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
+
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
                     {selectedFields.map((fieldKey, idx) => {
-                      const label = [
-                        { key: "article_code", label: "Item Code" },
-                        { key: "barcode", label: "Barcode" },
-                        { key: "brand_short_name", label: "Brand Short Name" },
-                        { key: "brand_name", label: "Brand Full Name" },
-                        { key: "core_product", label: "Core Product" },
-                        { key: "type", label: "Type" },
-                        { key: "finish", label: "Finish" },
-                        { key: "p_code", label: "Product Code" },
-                        { key: "color_name", label: "Color Name" },
-                        { key: "grade", label: "Grade" },
-                        { key: "thickness", label: "Thickness" },
-                        { key: "size", label: "Size" },
-                        { key: "length", label: "Length" },
-                        { key: "height", label: "Height" },
-                        { key: "hsn_code", label: "HSN Code" },
-                        { key: "unit", label: "Primary Unit" },
-                        { key: "custom_field_1", label: "Custom Field 1" },
-                        { key: "custom_field_2", label: "Custom Field 2" },
-                        { key: "custom_field_3", label: "Custom Field 3" },
-                      ].find((a) => a.key === fieldKey)?.label || fieldKey;
+                      const label =
+                        STRUCTURE_ATTRIBUTES.find((a) => a.key === fieldKey)
+                          ?.label || fieldKey;
 
                       return (
-                        <div
-                          key={fieldKey}
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, idx)}
-                          onDragOver={handleDragOver}
-                          onDrop={(e) => handleDrop(e, idx)}
-                          onDragEnd={() => setDraggedIndex(null)}
-                          className={cn(
-                            "flex items-center gap-1.5 bg-background border rounded-lg px-2.5 py-1 text-xs font-semibold shadow-xs cursor-grab active:cursor-grabbing transition-all select-none hover:border-indigo-300",
-                            draggedIndex === idx && "opacity-40 border-dashed border-indigo-500 scale-95"
-                          )}
-                        >
-                          <GripVertical className="size-3 text-muted-foreground/60" />
-                          <span>{label}</span>
-                          <div className="flex items-center gap-0.5 ml-1 text-[10px] text-muted-foreground">
-                            {idx > 0 && (
+                        <React.Fragment key={fieldKey}>
+                          <div
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, idx)}
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, idx)}
+                            onDragEnd={() => setDraggedIndex(null)}
+                            className={cn(
+                              "flex items-center gap-1.5 bg-background border border-border/80 rounded-lg pl-2 pr-1.5 py-1 text-xs font-semibold shadow-2xs transition-all select-none hover:border-primary/50 group",
+                              draggedIndex === idx &&
+                                "opacity-40 border-dashed border-primary scale-95"
+                            )}
+                          >
+                            <span className="size-4 rounded-full bg-muted text-muted-foreground font-mono text-[10px] font-bold flex items-center justify-center shrink-0">
+                              {idx + 1}
+                            </span>
+                            <GripVertical className="size-3 text-muted-foreground/60 cursor-grab active:cursor-grabbing shrink-0" />
+                            <span className="text-foreground">{label}</span>
+
+                            <div className="flex items-center gap-0.5 ml-1 text-muted-foreground">
+                              {idx > 0 && (
+                                <button
+                                  type="button"
+                                  title="Move Left"
+                                  className="p-0.5 rounded hover:bg-muted hover:text-primary transition-colors"
+                                  onClick={() => {
+                                    const arr = [...selectedFields];
+                                    const temp = arr[idx - 1];
+                                    arr[idx - 1] = arr[idx];
+                                    arr[idx] = temp;
+                                    setSelectedFields(arr);
+                                  }}
+                                >
+                                  <ChevronLeft className="size-3.5" />
+                                </button>
+                              )}
+                              {idx < selectedFields.length - 1 && (
+                                <button
+                                  type="button"
+                                  title="Move Right"
+                                  className="p-0.5 rounded hover:bg-muted hover:text-primary transition-colors"
+                                  onClick={() => {
+                                    const arr = [...selectedFields];
+                                    const temp = arr[idx + 1];
+                                    arr[idx + 1] = arr[idx];
+                                    arr[idx] = temp;
+                                    setSelectedFields(arr);
+                                  }}
+                                >
+                                  <ChevronRight className="size-3.5" />
+                                </button>
+                              )}
                               <button
                                 type="button"
-                                className="hover:text-indigo-600 font-bold px-0.5"
+                                title="Remove Attribute"
+                                className="p-0.5 rounded-full hover:bg-destructive/10 hover:text-destructive text-muted-foreground/70 transition-colors ml-0.5"
                                 onClick={() => {
-                                  const arr = [...selectedFields];
-                                  const temp = arr[idx - 1];
-                                  arr[idx - 1] = arr[idx];
-                                  arr[idx] = temp;
-                                  setSelectedFields(arr);
+                                  setSelectedFields(
+                                    selectedFields.filter((f) => f !== fieldKey)
+                                  );
                                 }}
                               >
-                                ◄
+                                <X className="size-3.5" />
                               </button>
-                            )}
-                            {idx < selectedFields.length - 1 && (
-                              <button
-                                type="button"
-                                className="hover:text-indigo-600 font-bold px-0.5"
-                                onClick={() => {
-                                  const arr = [...selectedFields];
-                                  const temp = arr[idx + 1];
-                                  arr[idx + 1] = arr[idx];
-                                  arr[idx] = temp;
-                                  setSelectedFields(arr);
-                                }}
-                              >
-                                ►
-                              </button>
-                            )}
+                            </div>
                           </div>
-                        </div>
+
+                          {idx < selectedFields.length - 1 && (
+                            <div className="size-5 rounded-full bg-muted/60 border border-border/80 flex items-center justify-center text-[10px] font-mono font-bold text-muted-foreground shrink-0">
+                              {delimiter === " " ? "␣" : delimiter}
+                            </div>
+                          )}
+                        </React.Fragment>
                       );
                     })}
                   </div>

@@ -93,6 +93,7 @@ export default function OrderLoginLeadDetails() {
   const searchParams = useSearchParams();
   const leadIdNum = Number(leadId);
   const instanceId = searchParams.get("instance_id");
+  const isMaterialIssueView = searchParams.get("source") === "material-issue";
   const instanceIdNum = instanceId ? Number(instanceId) : null;
   const validInstanceId =
     instanceIdNum && !Number.isNaN(instanceIdNum) ? instanceIdNum : null;
@@ -752,6 +753,7 @@ export default function OrderLoginLeadDetails() {
             leadId={leadIdNum}
             accountId={accountId}
             defaultParentTab="production"
+            hideGroupNavigation={isMaterialIssueView}
             orderLoginInstanceId={
               instanceIdNum && !Number.isNaN(instanceIdNum)
                 ? instanceIdNum
@@ -769,6 +771,7 @@ export default function OrderLoginLeadDetails() {
             leadId={leadIdNum}
             accountId={accountId}
             defaultParentTab="production"
+            hideGroupNavigation={isMaterialIssueView}
             orderLoginInstanceId={
               instanceIdNum && !Number.isNaN(instanceIdNum)
                 ? instanceIdNum

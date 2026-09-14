@@ -19,7 +19,7 @@ import { DataTable } from "@/components/data-table/data-table";
 import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
 
-import { mapTableFiltersToPayload } from "@/lib/utils";
+import { formatSalesExecutiveName, mapTableFiltersToPayload } from "@/lib/utils";
 import {
   getMiscellaneousTableColumns,
   MiscLeadColumn,
@@ -57,11 +57,12 @@ export function MiscellaneousTable({
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const franchiseId = useAppSelector((s) => s.auth.franchise_id);
-  const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type?.toLowerCase());
+  const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type?.toLowerCase().trim().replace(/_/g, "-").replace(/\s+/g, "-"));
   const skipFranchiseFilter =
     userType === "factory" ||
     userType === "site-supervisor" ||
-    userType === "backend";
+    userType === "backend" ||
+    userType === "miscellaneous";
 
   const router = useRouter();
 
@@ -165,7 +166,7 @@ export function MiscellaneousTable({
     updatedAt: lead.updated_at ?? "",
     status: lead.statusType?.type ?? "",
     statusTag: lead.statusType?.tag ?? "",
-    sales_executive: lead.assignedTo?.user_name ?? "",
+    sales_executive: formatSalesExecutiveName(lead.assignedTo),
     assignedToId: lead.assignedTo?.id ?? "",
     account_id: lead.account?.id ?? lead.account_id ?? 0,
     pendingMiscCount: lead.pendingMiscCount ?? undefined,

@@ -350,7 +350,12 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
           "project.client_documentation.specifications.upload",
         )
       : canUpdateInput;
-  const canMoveToClientApproval = true;
+  const canMoveToClientApproval =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.client_documentation.move_to_client_approval.action",
+        )
+      : true;
 
   // ✅ Effective permissions — blocked lead overrides all write actions
   const effectiveCanEditSelections =
@@ -771,6 +776,14 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       existingCarcassRemark = "";
     }
 
+    // If design selections exist for this instance, prioritize them over initial fast production request finishes
+    if (existingCarcassValues.length > 0 || existingCarcas?.desc) {
+      return {
+        value: existingCarcassValues,
+        remark: existingCarcassRemark,
+      };
+    }
+
     const fastProdReq = fastProductionDetails?.requests?.find(
       (r: any) => r.instance_id === currentInstanceId,
     );
@@ -778,8 +791,6 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       (f: any) => f.component === "CARCASS",
     );
 
-    // For fast-production leads, the request finish is the latest source of
-    // truth. Do not let an older client-documentation selection override it.
     if (isFastProduction && fastProdCarcass) {
       const carcassValues = labelToValues(
         fastProdCarcass.finish_category,
@@ -814,6 +825,13 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       existingShutterRemark === DEFAULT_REMARK
     ) {
       existingShutterRemark = "";
+    }
+
+    if (existingShutterValues.length > 0 || existingShutter?.desc) {
+      return {
+        value: existingShutterValues,
+        remark: existingShutterRemark,
+      };
     }
 
     const fastProdReq = fastProductionDetails?.requests?.find(
@@ -857,6 +875,13 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       existingHandlesRemark === DEFAULT_REMARK
     ) {
       existingHandlesRemark = "";
+    }
+
+    if (existingHandlesValues.length > 0 || existingHandles?.desc) {
+      return {
+        value: existingHandlesValues,
+        remark: existingHandlesRemark,
+      };
     }
 
     const fastProdReq = fastProductionDetails?.requests?.find(
@@ -1166,6 +1191,9 @@ const SelectionsTabForClientDocs: React.FC<Props> = ({
       });
       queryClient.invalidateQueries({
         queryKey: ["getSelectionData", vendorId, leadId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["getFastProductionDetailsForLead"],
       });
     } catch (e: any) {
       const errorMessage =

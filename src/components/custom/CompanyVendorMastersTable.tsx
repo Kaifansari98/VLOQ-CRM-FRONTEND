@@ -187,7 +187,7 @@ export default function CompanyVendorMastersTable({
   const router = useRouter();
   const userId = useAppSelector((state) => state.auth.user?.id);
   const vendorId = vendorIdOverride ?? useAppSelector((state) => state.auth.user?.vendor_id);
-  const { data, isLoading, isError, error, refetch } = useCompanyVendorsForMaster(vendorId);
+  const { data, isLoading, isError, error, refetch } = useCompanyVendorsForMaster(vendorId, true);
   const createCompanyVendorMutation = useCreateCompanyVendor(vendorId);
   const updateCompanyVendorMutation = useUpdateCompanyVendor(vendorId);
   const updateCompanyVendorStatusMutation = useUpdateCompanyVendorStatus(vendorId);
@@ -231,7 +231,7 @@ export default function CompanyVendorMastersTable({
     data: tableData,
     columns: getCompanyVendorColumns({
       onEdit: (row) => {
-        router.push(`/dashboard/masters-management/field-masters/company-vendor/edit/${row.id}`);
+        router.push(`/dashboard/inventory/master/company-vendor/edit/${row.id}`);
       },
       onToggleStatus: (row) => {
         setStatusTargetRow(row);
@@ -462,7 +462,7 @@ export default function CompanyVendorMastersTable({
             </p>
           </div>
 
-          <Button onClick={() => router.push("/dashboard/masters-management/field-masters/company-vendor/create")} className="sm:self-start">
+          <Button onClick={() => router.push("/dashboard/inventory/master/company-vendor/create")} className="sm:self-start">
             <Plus className="mr-2 h-4 w-4" />
             Create Company Vendor
           </Button>

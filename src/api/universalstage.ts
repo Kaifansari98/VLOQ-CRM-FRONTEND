@@ -295,8 +295,8 @@ export const useUniversalStageLeadsPost = (
 
     enabled: !!vendorId && !!payload?.userId,
 
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    staleTime: 10 * 1000,
+    refetchOnWindowFocus: true,
   });
 };
 
@@ -342,6 +342,8 @@ export interface VendorLeadsByTagPostPayload {
   production_status?: string;
   pending_services?: boolean;
   franchises?: number[];
+  strict_status_tag?: boolean;
+  material_issue_ready_only?: boolean;
 }
 
 export const postVendorLeadsByTag = async (
@@ -368,8 +370,8 @@ export const useVendorLeadsByTagPost = (
 
     enabled: !!vendorId && !!payload?.tag,
 
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    staleTime: 10 * 1000,
+    refetchOnWindowFocus: true,
   });
 };
 
@@ -435,7 +437,7 @@ export const useDraftLeadTableDataPost = (
 
     enabled: !!vendorId && !!payload?.userId,
 
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 };

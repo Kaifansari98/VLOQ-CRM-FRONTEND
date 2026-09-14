@@ -68,6 +68,26 @@ const editMachineSchema = z.object({
 
 type EditMachineFormData = z.infer<typeof editMachineSchema>;
 
+const normalizeStatus = (
+  val?: string,
+): "ACTIVE" | "MAINTENANCE" | "INACTIVE" | "RETIRED" => {
+  if (!val) return "ACTIVE";
+  const s = String(val).trim().toUpperCase();
+  if (s === "MAINTENANCE") return "MAINTENANCE";
+  if (s === "INACTIVE") return "INACTIVE";
+  if (s === "RETIRED") return "RETIRED";
+  return "ACTIVE";
+};
+
+const normalizeScanType = (val?: string): "IN" | "OUT" | "BOTH" | "PASS" => {
+  if (!val) return "IN";
+  const s = String(val).trim().toUpperCase();
+  if (s === "OUT") return "OUT";
+  if (s === "BOTH") return "BOTH";
+  if (s === "PASS" || s === "PAAS") return "PASS";
+  return "IN";
+};
+
 interface EditMachineModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -89,8 +109,8 @@ export function EditMachineModal({
       machine_name: "",
       machine_code: "",      
       machine_type_id:"",
-      status: undefined,
-      scan_type: undefined,
+      status: "ACTIVE",
+      scan_type: "IN",
       description: "",
       factory_id: "",
       sequence_no: "",
@@ -105,9 +125,9 @@ export function EditMachineModal({
       form.reset({
         machine_name: machine.machine_name,
         machine_code: machine.machine_code,
-        machine_type_id:String(machine.machine_type_id),
-        status: machine.status as any,
-        scan_type: machine.scan_type as any,
+        machine_type_id: String(machine.machine_type_id),
+        status: normalizeStatus(machine.status),
+        scan_type: normalizeScanType(machine.scan_type),
         description: machine.description,
         factory_id: machine.factory_id ? String(machine.factory_id) : "",
         sequence_no: String(machine.sequence_no),
@@ -307,6 +327,7 @@ export function EditMachineModal({
                     Status <span className="text-destructive">*</span>
                   </FormLabel>
                   <Select
+                    key={field.value}
                     onValueChange={field.onChange}
                     value={field.value}
                     disabled={isPending}
@@ -337,6 +358,7 @@ export function EditMachineModal({
                     Scan Type <span className="text-destructive">*</span>
                   </FormLabel>
                   <Select
+                    key={field.value}
                     onValueChange={field.onChange}
                     value={field.value}
                     disabled={isPending}

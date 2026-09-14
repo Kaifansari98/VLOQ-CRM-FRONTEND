@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import { useAppSelector } from "@/redux/store";
+import { useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/apiClient";
 import {
   Breadcrumb,
@@ -20,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   useReactTable,
   getCoreRowModel,
@@ -43,7 +44,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Search, UserPlus, PlusCircle, PhoneCall, Calendar, MapPin, Loader2, ChevronDown, User, Mail, Phone, MessageSquare, Zap, Magnet, Activity, Building, CheckCircle2, Upload, Trash2, AlertCircle, Trash } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Search, UserPlus, PlusCircle, PhoneCall, Calendar, MapPin, Loader2, ChevronDown, User, Mail, Phone, MessageSquare, Zap, Magnet, Activity, Building, CheckCircle2, XCircle, Upload, Trash2, AlertCircle, Trash, ChevronLeft, ChevronRight } from "lucide-react";
 import CustomeDatePicker from "@/components/date-picker";
 import Link from "next/link";
 import MultipleSelector, { Option } from "@/components/ui/multiselect";
@@ -59,6 +61,8 @@ interface OnlineLead {
   email: string | null;
   contact: string;
   source: string;
+  source_id?: number | null;
+  site_type_id?: number | null;
   lead_entry_type: "ONLINE" | "WALK_IN";
   created_at: string;
   assign_to: number | null;
@@ -68,6 +72,7 @@ interface OnlineLead {
   store_id: number | null;
   final_assigned_leads: number | null;
   priority?: string | null;
+  city?: string | null;
   sourceRelation?: {
     id: number;
     type: string;
@@ -84,6 +89,10 @@ interface OnlineLead {
     id: number;
     user_name: string;
   } | null;
+  createdBy?: {
+    id: number;
+    user_name: string;
+  } | null;
   franchise?: {
     id: number;
     franchise_name: string;
@@ -93,6 +102,25 @@ interface OnlineLead {
     status_name: string;
     followup_required: boolean;
   } | null;
+  approval_status?: string | null;
+  pending_store_id?: number | null;
+  pending_status_id?: number | null;
+  pending_follow_up_date?: string | null;
+  online_lead_history?: {
+    id: number;
+    remark: string | null;
+    created_at: string;
+    createdBy?: { id: number; user_name: string } | null;
+    status?: { id: number; status_name: string } | null;
+  }[];
+  call_log?: {
+    id: number;
+    remark: string | null;
+    created_at?: string;
+    started_at?: string;
+    telecaller?: { id: number; user_name: string } | null;
+    status?: { id: number; status_name: string } | null;
+  }[];
 }
 
 interface FollowupStatus {
@@ -114,16 +142,25 @@ interface Telecaller {
   } | null;
 }
 
+import { LeadRemarkCell } from "@/components/custom/LeadRemarkCell";
+
+function RemarkCell({ lead }: { lead: OnlineLead }) {
+  return <LeadRemarkCell lead={lead} />;
+}
+
 export default function OnlineLeadsPage() {
+  const queryClient = useQueryClient();
   const user = useAppSelector((state) => state.auth.user);
   const vendorId = user?.vendor_id;
   const userId = user?.id;
   const userType = user?.user_type?.user_type?.toLowerCase() || "";
   const userFranchiseId = user?.franchise_id;
   const isSuperAdminOrAdmin = userType === "super-admin" || userType === "admin" || userType === "sales admin" || userType === "sales-admin";
+  const isOnlineLeadFeatureEnabled = user?.vendor?.is_online_lead_feature_enabled === true;
+  const isCaller = userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead" || userType === "caller";
 
-  const canAssign = userType === "super-admin" || userType === "admin" || userType === "telecaller team lead" || userType === "telecaller-team-lead";
-  const canAddWalkIn = userType === "store-manager" || userType === "store manager" || userType === "super-admin" || userType === "admin" || userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead";
+  const canAssign = (userType === "super-admin" || userType === "admin" || userType === "telecaller team lead" || userType === "telecaller-team-lead") && !(isCaller && isOnlineLeadFeatureEnabled);
+  const canAddWalkIn = (userType === "store-manager" || userType === "store manager" || userType === "super-admin" || userType === "admin" || userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead" || userType === "sales-executive" || userType === "sales executive") && !(isCaller && isOnlineLeadFeatureEnabled);
 
   const [rawLeads, setRawLeads] = useState<OnlineLead[]>([]);
   const [statusTab, setStatusTab] = useState<"active" | "pending" | "lost">("active");
@@ -168,10 +205,15 @@ export default function OnlineLeadsPage() {
   const [quickFollowUpDate, setQuickFollowUpDate] = useState("");
   const [quickRemark, setQuickRemark] = useState("");
   const [isSavingQuickFollowUp, setIsSavingQuickFollowUp] = useState(false);
+  const [actingLeadId, setActingLeadId] = useState<number | null>(null);
   
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryTab = searchParams.get("tab") as "pool" | "my" | "overall" | null;
 
-  const [activeTab, setActiveTab] = useState<"pool" | "my" | "overall">("my");
+  const [activeTab, setActiveTab] = useState<"pool" | "my" | "overall">(
+    queryTab && ["pool", "my", "overall"].includes(queryTab) ? queryTab : "pool"
+  );
   const requestIdRef = useRef(0);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -250,6 +292,20 @@ export default function OnlineLeadsPage() {
       },
     },
     {
+      accessorKey: "city",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="City" />
+      ),
+      cell: ({ row }) => {
+        const city = row.original.city;
+        return (
+          <span className="text-xs font-medium text-foreground whitespace-nowrap">
+            {city && city.trim() ? city : "—"}
+          </span>
+        );
+      },
+    },
+    {
       accessorKey: "priority",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Priority" />
@@ -279,7 +335,7 @@ export default function OnlineLeadsPage() {
 
         return (
           <Select
-            disabled={updatingPriorityId === row.original.id}
+            disabled={updatingPriorityId === row.original.id || (isCaller && isOnlineLeadFeatureEnabled)}
             value={value}
             onValueChange={(val) => handlePriorityChange(row.original.id, val)}
           >
@@ -361,46 +417,10 @@ export default function OnlineLeadsPage() {
         const currentStatus = row.original.followupStatus;
         return (
           <div>
-            <Select
-              disabled={updatingLeadId === row.original.id}
-              value={currentStatus?.id?.toString() || ""}
-              onValueChange={(val) => handleStatusChange(row.original.id, Number(val))}
-            >
-              <SelectTrigger className="border-0 shadow-none p-0 h-auto bg-transparent focus:ring-0 focus:ring-offset-0 focus:outline-none cursor-pointer flex items-center justify-start w-fit">
-                <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200/50 inline-flex items-center gap-1">
-                  {updatingLeadId === row.original.id ? (
-                    <Loader2 className="w-3 h-3 text-blue-600 dark:text-blue-400 animate-spin" />
-                  ) : (
-                    <Activity className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                  )}
-                  {currentStatus?.status_name || "New Lead"}
-                </span>
-              </SelectTrigger>
-              <SelectContent>
-                {statuses
-                  .filter((st) => st.status_name.toLowerCase() !== "pending")
-                  .map((st) => {
-                    const statusNameLower = st.status_name.toLowerCase();
-                    const isStoreStatus =
-                      statusNameLower === "store assigned" ||
-                      statusNameLower === "store visit done";
-                    const hasNoStore = !row.original.franchise && !row.original.store_id;
-                    const isDisabled = isStoreStatus && hasNoStore;
-
-                    return (
-                      <SelectItem
-                        key={st.id}
-                        value={st.id.toString()}
-                        disabled={isDisabled}
-                        title={isDisabled ? "Please assign a store to this lead first." : undefined}
-                        style={isDisabled ? { pointerEvents: "auto", cursor: "not-allowed" } : undefined}
-                      >
-                        {st.status_name}
-                      </SelectItem>
-                    );
-                  })}
-              </SelectContent>
-            </Select>
+            <span className="px-2 py-0.5 text-[11px] font-medium rounded-full bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200/50 inline-flex items-center gap-1">
+              <Activity className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+              {currentStatus?.status_name || "New Lead"}
+            </span>
           </div>
         );
       },
@@ -410,25 +430,7 @@ export default function OnlineLeadsPage() {
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Remark" />
       ),
-      cell: ({ row }) => {
-        const remark = row.original.remark;
-        if (!remark) return <span className="text-muted-foreground/50">—</span>;
-
-        return (
-          <TooltipProvider>
-            <Tooltip delayDuration={150}>
-              <TooltipTrigger asChild>
-                <p className="text-sm font-normal text-foreground truncate max-w-[200px] cursor-help">
-                  {remark}
-                </p>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-[240px] bg-slate-950 text-white border border-slate-850 px-2.5 py-1.5 rounded-md shadow-md text-[11px] leading-relaxed break-words whitespace-normal">
-                {remark}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        );
-      },
+      cell: ({ row }) => <RemarkCell lead={row.original} />,
     },
     {
       accessorKey: "allocation",
@@ -436,7 +438,10 @@ export default function OnlineLeadsPage() {
         <DataTableColumnHeader column={column} title="Allocation" />
       ),
       cell: ({ row }) => {
-        const callerName = row.original.assignedTo?.user_name;
+        const assignedUser = row.original.assignedTo;
+        const callerName = assignedUser?.user_name;
+        const callerRole = (assignedUser as any)?.user_role?.toLowerCase() || "";
+        const isSalesRole = callerRole === "sales-executive" || callerRole === "sales executive";
         const salesExecName = row.original.finalAssignedLeads?.user_name;
         
         if (!callerName && !salesExecName) {
@@ -447,8 +452,10 @@ export default function OnlineLeadsPage() {
           <div className="space-y-1">
             {callerName && (
               <div className="flex items-center gap-1">
-                <User className="w-3 h-3 text-blue-500" />
-                <span className="text-xs text-foreground font-medium">Caller: {callerName}</span>
+                <User className={`w-3 h-3 ${isSalesRole ? "text-purple-500" : "text-blue-500"}`} />
+                <span className="text-xs text-foreground font-medium">
+                  {isSalesRole ? "Sales: " : "Caller: "}{callerName}
+                </span>
               </div>
             )}
             {salesExecName && (
@@ -468,46 +475,66 @@ export default function OnlineLeadsPage() {
           Actions
         </Button>
       ),
-      cell: ({ row }) => (
-        <div className="flex items-center justify-center gap-2">
-          <Link href={`/dashboard/online-leads/details/${row.original.id}`}>
-            <Button variant="outline" size="sm" className="h-8 text-xs font-medium">
-              Manage
-            </Button>
-          </Link>
+      cell: ({ row }) => {
+        const isPending = row.original.approval_status === "PENDING";
+        const isApproved = row.original.approval_status === "APPROVED";
 
-          {canAssign && (
-            <Button
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedLeadId(row.original.id);
-                setAssigneeId(row.original.assign_to ? row.original.assign_to.toString() : "none");
-                setIsAssignOpen(true);
-              }}
-              size="sm"
-              className="h-8 text-xs bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-medium"
-            >
-              <UserPlus className="w-3.5 h-3.5 mr-1" /> {row.original.assign_to || row.original.final_assigned_leads ? "Reallocate" : "Allocate"}
-            </Button>
-          )}
+        if (isOnlineLeadFeatureEnabled) {
+          if (isPending) {
+            return (
+              <div className="flex items-center justify-center gap-1">
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold italic flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5" /> Approval Pending
+                </span>
+              </div>
+            );
+          }
+          if (isApproved) {
+            return (
+              <div className="flex items-center justify-center gap-1">
+                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold italic flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Approved
+                </span>
+              </div>
+            );
+          }
+        }
 
-          {isSuperAdminOrAdmin && (
-            <Button
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedLeadId(row.original.id);
-                setIsDeleteOpen(true);
-              }}
-              size="sm"
-              className="h-8 text-xs bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-medium"
-            >
-              <Trash className="w-3.5 h-3.5 mr-1" /> Delete
-            </Button>
-          )}
-        </div>
-      ),
+        return (
+          <div className="flex items-center justify-center gap-2">
+            {canAssign && (
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedLeadId(row.original.id);
+                  setAssigneeId(row.original.assign_to ? row.original.assign_to.toString() : "none");
+                  setIsAssignOpen(true);
+                }}
+                size="sm"
+                className="h-8 text-xs w-28 bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-medium flex items-center justify-center"
+              >
+                <UserPlus className="w-3.5 h-3.5 mr-1" /> {row.original.assign_to || row.original.final_assigned_leads ? "Reallocate" : "Allocate"}
+              </Button>
+            )}
+
+            {isSuperAdminOrAdmin && (
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedLeadId(row.original.id);
+                  setIsDeleteOpen(true);
+                }}
+                size="sm"
+                className="h-8 text-xs w-28 bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-medium flex items-center justify-center"
+              >
+                <Trash className="w-3.5 h-3.5 mr-1" /> Delete
+              </Button>
+            )}
+          </div>
+        );
+      },
     },
-  ], [canAssign, isSuperAdminOrAdmin, statuses, updatingLeadId, updatingPriorityId]);
+  ], [canAssign, isSuperAdminOrAdmin, statuses, updatingLeadId, updatingPriorityId, userType, userFranchiseId, actingLeadId, handleApprove, handleReject, isOnlineLeadFeatureEnabled, isCaller]);
 
   const table = useReactTable({
     data: leads,
@@ -545,14 +572,12 @@ export default function OnlineLeadsPage() {
 
   // Set default tab based on role
   useEffect(() => {
-    if (userType === "telecaller") {
-      setActiveTab("my");
-    } else if (userType === "store-manager" || userType === "store manager") {
-      setActiveTab("overall");
+    if (queryTab && ["pool", "my", "overall"].includes(queryTab)) {
+      setActiveTab(queryTab);
     } else {
       setActiveTab("pool");
     }
-  }, [userType]);
+  }, [queryTab]);
 
   // Fetch initial setup lists (statuses, stores, telecallers)
   useEffect(() => {
@@ -570,11 +595,12 @@ export default function OnlineLeadsPage() {
     apiClient
       .get(`/franchises/vendor/${vendorId}`)
       .then((res) => {
-        if (Array.isArray(res.data)) {
-          setStores(res.data);
-        } else if (res.data?.data) {
-          setStores(res.data.data);
-        }
+        const raw = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+        const filtered = raw.filter((s: any) => {
+          const name = (s.franchise_name || "").replace(/vloq|furnix/gi, "").trim().toLowerCase();
+          return name !== "b2b";
+        });
+        setStores(filtered);
       })
       .catch(console.error);
 
@@ -588,7 +614,7 @@ export default function OnlineLeadsPage() {
   }, [vendorId]);
 
   // Fetch leads based on active tab & filters
-  const fetchLeadsData = async () => {
+  async function fetchLeadsData() {
     if (!vendorId) return;
     const currentRequestId = ++requestIdRef.current;
     setLoading(true);
@@ -613,7 +639,64 @@ export default function OnlineLeadsPage() {
         setLoading(false);
       }
     }
-  };
+  }
+
+  async function handleApprove(leadId: number) {
+    setActingLeadId(leadId);
+    try {
+      const res = await apiClient.post(`/online-leads/${leadId}/approve`, {
+        user_id: userId,
+      });
+      if (res.data?.success) {
+        toastManager.add({ title: "Lead approved successfully", type: "success" });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["draft-lead-table-data"] }),
+          queryClient.invalidateQueries({ queryKey: ["universal-stage-leads"] }),
+          queryClient.invalidateQueries({ queryKey: ["vendorOverallLeads"] }),
+          queryClient.invalidateQueries({ queryKey: ["leadStats"] }),
+          queryClient.invalidateQueries({ queryKey: ["activity-status-counts"] }),
+          queryClient.invalidateQueries({ queryKey: ["online-leads"] }),
+        ]);
+        queryClient.resetQueries({ queryKey: ["draft-lead-table-data"] });
+        fetchLeadsData();
+      }
+    } catch (err: any) {
+      toastManager.add({
+        title: err.response?.data?.error || "Failed to approve lead.",
+        type: "error",
+      });
+    } finally {
+      setActingLeadId(null);
+    }
+  }
+
+  async function handleReject(leadId: number) {
+    setActingLeadId(leadId);
+    try {
+      const res = await apiClient.post(`/online-leads/${leadId}/reject`, {
+        user_id: userId,
+      });
+      if (res.data?.success) {
+        toastManager.add({ title: "Lead rejected successfully", type: "success" });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["draft-lead-table-data"] }),
+          queryClient.invalidateQueries({ queryKey: ["universal-stage-leads"] }),
+          queryClient.invalidateQueries({ queryKey: ["vendorOverallLeads"] }),
+          queryClient.invalidateQueries({ queryKey: ["leadStats"] }),
+          queryClient.invalidateQueries({ queryKey: ["activity-status-counts"] }),
+          queryClient.invalidateQueries({ queryKey: ["online-leads"] }),
+        ]);
+        fetchLeadsData();
+      }
+    } catch (err: any) {
+      toastManager.add({
+        title: err.response?.data?.error || "Failed to reject lead.",
+        type: "error",
+      });
+    } finally {
+      setActingLeadId(null);
+    }
+  }
 
   useEffect(() => {
     fetchLeadsData();
@@ -801,11 +884,11 @@ export default function OnlineLeadsPage() {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="/dashboard">CRM</BreadcrumbLink>
+                <BreadcrumbLink href="/dashboard">Leads</BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
-                <BreadcrumbPage>Lead Pool</BreadcrumbPage>
+                <BreadcrumbPage>Online Leads</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
@@ -853,12 +936,14 @@ export default function OnlineLeadsPage() {
               >
                 <PlusCircle className="w-4 h-4" /> Add Lead
               </Button>
-              <Button
-                onClick={() => setIsBulkUploadOpen(true)}
-                className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-semibold flex items-center gap-2 transition duration-200 h-9 text-xs py-1.5"
-              >
-                <Upload className="w-4 h-4" /> Bulk Upload
-              </Button>
+              {userType !== "telecaller" && userType !== "telecaller-team-lead" && userType !== "telecaller team lead" && userType !== "sales-executive" && userType !== "sales executive" && (
+                <Button
+                  onClick={() => setIsBulkUploadOpen(true)}
+                  className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950 font-semibold flex items-center gap-2 transition duration-200 h-9 text-xs py-1.5"
+                >
+                  <Upload className="w-4 h-4" /> Bulk Upload
+                </Button>
+              )}
             </div>
           )}
 
@@ -961,7 +1046,10 @@ export default function OnlineLeadsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL_STORES">All Stores</SelectItem>
-                  {stores.map((s) => (
+                  {stores.filter((s) => {
+                    const name = (s.franchise_name || "").replace(/vloq|furnix/gi, "").trim().toLowerCase();
+                    return name !== "b2b";
+                  }).map((s) => (
                     <SelectItem key={s.id} value={s.id.toString()}>
                       {s.franchise_name.replace(/vloq|furnix/gi, "").trim()}
                     </SelectItem>
@@ -1172,7 +1260,7 @@ export default function OnlineLeadsPage() {
                       </>
                     ) : (
                       <>
-                        A follow-up date and time is mandatory for status <strong>"{quickStatusName}"</strong>. Please schedule the next callback.
+                        Schedule optional next callback date and time for status <strong>"{quickStatusName}"</strong>.
                       </>
                     )}
                   </DialogDescription>

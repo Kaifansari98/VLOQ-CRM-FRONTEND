@@ -34,6 +34,7 @@ import {
   useUploadDispatchDocuments,
   usePendingMaterialTasks,
 } from "@/api/installation/useDispatchStageLeads";
+import { useDispatchPlanningInfo } from "@/api/installation/useDispatchPlanning";
 import { useAppSelector } from "@/redux/store";
 import {
   updateNoOfBoxes,
@@ -135,6 +136,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
 
   const [openTaskModal, setOpenTaskModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [openPlanningRemarkModal, setOpenPlanningRemarkModal] = useState(false);
 
   const form = useForm<DispatchDetailsForm>({
     resolver: zodResolver(DispatchDetailsSchema),
@@ -155,6 +157,7 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
     useRequiredDateForDispatch(vendorId, leadId);
   const { data: dispatchDetails, isLoading: loadingDispatchDetails } =
     useDispatchDetails(vendorId, leadId);
+  const { data: dispatchPlanningInfo } = useDispatchPlanningInfo(vendorId, leadId);
   const { mutate: deleteDocument, isPending: deleting } =
     useDeleteDocument(leadId);
   const { data: tasks = [], isLoading } = usePendingMaterialTasks(
@@ -304,6 +307,8 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
     canEditDispatchSnapshotBoxes && !shouldDisableBlockedActions;
   const effectiveCanManagePendingMaterial =
     canManagePendingMaterial && !shouldDisableBlockedActions;
+  const dispatchPlanningRemark =
+    dispatchPlanningInfo?.dispatch_planning_remark?.trim() || "";
 
   return (
     <div className="space-y-4 sm:space-y-6 bg-[#fff] dark:bg-[#0a0a0a] p-2 sm:p-4 md:p-0">
@@ -324,6 +329,17 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
               </p>
             </div>
           </div>
+          {dispatchPlanningRemark && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setOpenPlanningRemarkModal(true)}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              View Remark
+            </Button>
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
@@ -543,6 +559,31 @@ const DispatchStageDetails: React.FC<DispatchStageDetailsProps> = ({
           })()}
         </div>
       </div>
+
+      <Dialog
+        open={openPlanningRemarkModal}
+        onOpenChange={setOpenPlanningRemarkModal}
+      >
+        <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Dispatch Planning Remark</DialogTitle>
+            <DialogDescription>
+              Additional remarks added during dispatch planning.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto whitespace-pre-wrap rounded-lg border bg-muted/30 p-4 text-sm leading-relaxed">
+            {dispatchPlanningRemark}
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              onClick={() => setOpenPlanningRemarkModal(false)}
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Dispatch Details Form ──────────────────────────────────────────────── */}
       <div className="border rounded-lg bg-background overflow-hidden">

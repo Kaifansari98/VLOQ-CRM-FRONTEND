@@ -9,6 +9,7 @@ import { parsePhoneNumberFromString } from "libphonenumber-js";
 
 import RemarkTooltip from "@/components/origin-tooltip";
 import CustomeTooltip from "@/components/custom-tooltip";
+import { LeadRemarkCell } from "@/components/custom/LeadRemarkCell";
 
 import { LeadColumn } from "@/components/utils/column/column-type";
 import {
@@ -27,7 +28,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-export type DraftLeadRow = LeadColumn;
+import { Button } from "@/components/ui/button";
+import { CheckCircle2, XCircle, Loader2, AlertCircle } from "lucide-react";
 
 function toTitleCase(value: string) {
   return value
@@ -38,7 +40,26 @@ function toTitleCase(value: string) {
     .join(" ");
 }
 
-export function getDraftLeadsColumns(): ColumnDef<DraftLeadRow>[] {
+export type DraftLeadRow = LeadColumn & {
+  approval_status?: string;
+  pending_store_id?: number;
+  is_online_lead?: boolean;
+  franchiseId?: number;
+  rawLead?: any;
+};
+
+export interface DraftLeadsColumnsOptions {
+  onApprove?: (id: number) => void;
+  onReject?: (id: number) => void;
+  actingLeadId?: number | null;
+  userType?: string;
+  userFranchiseId?: number;
+  isSuperAdminOrAdmin?: boolean;
+  isOnlineLeadFeatureEnabled?: boolean;
+}
+
+export function getDraftLeadsColumns(options?: DraftLeadsColumnsOptions): ColumnDef<DraftLeadRow>[] {
+  const isOnlineLeadFeatureEnabled = Boolean(options?.isOnlineLeadFeatureEnabled);
   const columns: ColumnDef<DraftLeadRow>[] = [
     // 1) Lead Code
     {
@@ -140,23 +161,27 @@ export function getDraftLeadsColumns(): ColumnDef<DraftLeadRow>[] {
       },
     },
 
-    // Stage
-    {
-      accessorKey: "status",
-      filterFn: tableMultiValueFilter,
+    // Stage (hidden if online lead feature is enabled)
+    ...(!isOnlineLeadFeatureEnabled
+      ? [
+          {
+            accessorKey: "status",
+            filterFn: tableMultiValueFilter,
 
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Stage" />
-      ),
+            header: ({ column }: any) => (
+              <DataTableColumnHeader column={column} title="Stage" />
+            ),
 
-      cell: ({ row }) => {
-        const status = row.original.isDraft ? "Draft" : (row.getValue("status") as string);
-        return <CustomeStatusBadge title={status} />;
-      },
-      enableSorting: false,
-      enableHiding: true,
-      enableColumnFilter: true,
-    },
+            cell: ({ row }: any) => {
+              const status = row.original.isDraft ? "Draft" : (row.getValue("status") as string);
+              return <CustomeStatusBadge title={status} />;
+            },
+            enableSorting: false,
+            enableHiding: true,
+            enableColumnFilter: true,
+          } as ColumnDef<DraftLeadRow>,
+        ]
+      : []),
 
     // 3) Contact
     {
@@ -186,6 +211,22 @@ export function getDraftLeadsColumns(): ColumnDef<DraftLeadRow>[] {
       enableSorting: false,
       enableHiding: true,
       enableColumnFilter: true,
+      cell: ({ row }) => {
+        const raw = (row.getValue("furnitureType") as string) || "";
+        if (!raw) return "—";
+        const cleaned = Array.from(
+          new Set(
+            raw
+              .split(",")
+              .map((item) => {
+                const str = item.trim();
+                return str.includes("|") ? str.split("|").pop()!.trim() : str;
+              })
+              .filter(Boolean)
+          )
+        ).join(", ");
+        return <span>{cleaned || "—"}</span>;
+      },
     },
 
     // 4.1) Furniture Structures
@@ -496,6 +537,7 @@ export function getDraftLeadsColumns(): ColumnDef<DraftLeadRow>[] {
           <CustomeTooltip
             value={email}
             truncateValue={email.slice(0, max) + "..."}
+            showArrow={options?.isOnlineLeadFeatureEnabled ? false : true}
           />
         );
       },
@@ -504,17 +546,23 @@ export function getDraftLeadsColumns(): ColumnDef<DraftLeadRow>[] {
       },
     },
 
-    // 14) Designer Remark
+    // 14) Designer Remark / Remark
     {
       accessorKey: "designerRemark",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Designer Remark" />
+        <DataTableColumnHeader
+          column={column}
+          title={options?.isOnlineLeadFeatureEnabled ? "Remark" : "Designer Remark"}
+        />
       ),
 
       enableSorting: true,
       enableHiding: true,
       enableColumnFilter: true,
       cell: ({ row }) => {
+        if (options?.isOnlineLeadFeatureEnabled) {
+          return <LeadRemarkCell lead={row.original.rawLead || row.original} />;
+        }
         const full = (row.getValue("designerRemark") as string) || "";
         if (!full) return "—";
         const trunc = full.length > 15 ? full.slice(0, 15) + "..." : full;
@@ -522,7 +570,45 @@ export function getDraftLeadsColumns(): ColumnDef<DraftLeadRow>[] {
         return <RemarkTooltip remark={trunc} remarkFull={full} />;
       },
       meta: {
-        label: "Designer Remark",
+        label: options?.isOnlineLeadFeatureEnabled ? "Remark" : "Designer Remark",
+      },
+    },
+
+    // 15) Actions (Approve / Reject for Pending Leads)
+    {
+      id: "actions",
+      header: () => (
+        <div className="w-full text-center font-medium text-foreground">
+          Actions
+        </div>
+      ),
+      cell: ({ row }) => {
+        const isPending = row.original.approval_status === "PENDING";
+        const isApproved = row.original.approval_status === "APPROVED";
+        const isOnlineEnabled = options?.isOnlineLeadFeatureEnabled === true;
+
+        if (isOnlineEnabled) {
+          if (isPending) {
+            return (
+              <div className="flex items-center justify-center gap-1">
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold italic flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5" /> Approval Pending
+                </span>
+              </div>
+            );
+          }
+          if (isApproved) {
+            return (
+              <div className="flex items-center justify-center gap-1">
+                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold italic flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Approved
+                </span>
+              </div>
+            );
+          }
+        }
+
+        return <span className="text-xs text-muted-foreground italic">—</span>;
       },
     },
   ];

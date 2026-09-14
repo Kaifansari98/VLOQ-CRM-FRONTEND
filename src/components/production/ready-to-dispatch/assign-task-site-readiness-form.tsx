@@ -154,13 +154,13 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   const isAllowedToAssignSR =
     normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
-          "production.production.ready_to_dispatch.assign_site_readiness_task.action",
+          "production.ready_to_dispatch.assign_site_readiness_task.action",
         )
       : canAssignSR(userType);
   const canAssignSiteReadinessForCustomUser =
     normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
-          "production.production.ready_to_dispatch.assign_site_readiness_task.action",
+          "production.ready_to_dispatch.assign_site_readiness_task.action",
         )
       : true;
 

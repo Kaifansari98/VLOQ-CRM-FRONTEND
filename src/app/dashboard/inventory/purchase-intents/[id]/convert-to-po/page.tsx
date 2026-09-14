@@ -203,7 +203,7 @@ export default function ConvertPIToPOPage() {
       })
       .catch(() => {
         toastManager.add({
-          title: "Failed to load purchase intent",
+          title: "Failed to load purchase enquiry",
           type: "error",
         });
       })
@@ -423,7 +423,7 @@ export default function ConvertPIToPOPage() {
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
                 <BreadcrumbLink href="/dashboard/inventory/purchase-intents">
-                  Purchase Intents
+                  Purchase Enquiries
                 </BreadcrumbLink>
               </BreadcrumbItem>
 
@@ -443,7 +443,7 @@ export default function ConvertPIToPOPage() {
       </header>
 
       <main className="min-h-[calc(100vh-4rem)] bg-zinc-50 p-4 dark:bg-zinc-950 md:p-6">
-        <div className="mx-auto max-w-7xl space-y-5">
+        <div className="w-full space-y-5">
           <div className="flex flex-col gap-3 rounded-2xl border bg-background p-4 shadow-sm md:flex-row md:items-center md:justify-between">
             <div>
               <div className="mb-2">
@@ -461,7 +461,7 @@ export default function ConvertPIToPOPage() {
               </div>
 
               <h1 className="text-xl font-bold">
-                Convert PI to PO {pi?.intent_no ? `- ${pi.intent_no}` : ""}
+                Convert Enquiry to PO {pi?.intent_no ? `- ${pi.intent_no}` : ""}
               </h1>
 
               <p className="text-sm text-muted-foreground">
@@ -501,12 +501,12 @@ export default function ConvertPIToPOPage() {
             </div>
           ) : !pi ? (
             <div className="rounded-2xl border bg-background p-10 text-center text-muted-foreground">
-              Failed to load purchase intent.
+              Failed to load purchase enquiry.
             </div>
           ) : (
             <>
               <div className="grid gap-3 md:grid-cols-4">
-                <SummaryBox label="Intent No" value={pi.intent_no} />
+                <SummaryBox label="Enquiry No" value={pi.intent_no} />
                 <SummaryBox label="Products" value={pi.items?.length ?? 0} />
                 <SummaryBox label="Selected Rows" value={selectedRows.length} />
                 <SummaryBox label="Selected Amount" value={fmtMoney(totals.total_amount)} />

@@ -195,6 +195,24 @@ export function getVendorLeadsTableColumns({
     },
 
     {
+      accessorKey: "taskType",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Task Type" />
+      ),
+      cell: ({ row }) => {
+        const taskType = (row.getValue("taskType") as string) || "—";
+        return <span className="font-medium">{taskType}</span>;
+      },
+      meta: {
+        label: "Task Type",
+      },
+      enableSorting: false,
+      enableHiding: true,
+      enableColumnFilter: true,
+      filterFn: tableMultiValueFilter,
+    },
+
+    {
       accessorKey: "remark",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Remark" />

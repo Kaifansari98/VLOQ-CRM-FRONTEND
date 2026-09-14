@@ -774,7 +774,7 @@ function ProductHistoryPanel({ product, vendorId, onClose }: {
 
   const TABS = [
     { id: "po" as const, label: "Purchase Orders", Icon: ShoppingCart, count: data?.stats.total_po },
-    { id: "pi" as const, label: "Purchase Intents", Icon: AlertTriangle, count: data?.stats.total_pi },
+    { id: "pi" as const, label: "Purchase Enquiries", Icon: AlertTriangle, count: data?.stats.total_pi },
     { id: "grn" as const, label: "GRN Receipts", Icon: ClipboardList, count: data?.stats.total_grn },
   ];
 
@@ -955,7 +955,7 @@ function ProductHistoryPanel({ product, vendorId, onClose }: {
                 !data.purchase_intents.length ? (
                   <div className="flex flex-col items-center py-12 text-muted-foreground gap-2">
                     <AlertTriangle size={24} className="opacity-20" />
-                    <p className="text-sm">No purchase intents yet</p>
+                    <p className="text-sm">No purchase enquiries yet</p>
                   </div>
                 ) : data.purchase_intents.map((pi, i) => (
                   <div key={i} className="rounded-xl border overflow-hidden">

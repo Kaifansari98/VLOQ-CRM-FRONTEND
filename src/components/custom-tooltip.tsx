@@ -19,6 +19,8 @@ interface CustomeTooltipProps {
 
   /** 🔧 Delay control (default = instant) */
   delayDuration?: number;
+
+  showArrow?: boolean;
 }
 
 export default function CustomeTooltip({
@@ -28,6 +30,7 @@ export default function CustomeTooltip({
   side = "top",
   align = "center",
   delayDuration = 0,
+  showArrow = true,
 }: CustomeTooltipProps) {
   // Skip tooltip if no value
   if (!value?.trim()) {
@@ -46,6 +49,7 @@ export default function CustomeTooltip({
         <TooltipContent
           side={side}
           align={align}
+          showArrow={showArrow}
           className={`
             dark text-xs leading-snug max-w-sm break-words
             ${contentClassName}

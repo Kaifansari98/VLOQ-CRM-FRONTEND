@@ -114,13 +114,14 @@ export default function UnderInstallationLeadDetails() {
   const router = useRouter();
 
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type,
+    (state) => state.auth?.user?.user_type?.user_type,
   );
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
   const effectiveUserType = userType;
   const isAuditor = userType?.trim().toLowerCase() === "auditor";
+  const isMiscellaneous = userType?.trim().toLowerCase() === "miscellaneous";
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const { data: underDetails } = useUnderInstallationDetails(
@@ -233,11 +234,13 @@ export default function UnderInstallationLeadDetails() {
       )
       : true;
   const canViewDocuments =
-    effectiveUserType?.toLowerCase() === "custom"
-      ? customPrivilegeCodes.some((code) =>
-        code.startsWith("leads.open_leads.details_of_lead.documents_section."),
-      )
-      : true;
+    !isMiscellaneous && (
+      effectiveUserType?.toLowerCase() === "custom"
+        ? customPrivilegeCodes.some((code) =>
+          code.startsWith("leads.open_leads.details_of_lead.documents_section."),
+        )
+        : true
+    );
 
 
   const {
@@ -497,7 +500,7 @@ export default function UnderInstallationLeadDetails() {
 
         {/* 🔹 Header Actions */}
         <div className="flex items-center space-x-2">
-          {!isAuditor && (
+          {!isAuditor && !isMiscellaneous && (
             <Button
               size="sm"
               className="hidden sm:flex"
@@ -510,7 +513,7 @@ export default function UnderInstallationLeadDetails() {
           {/* ───────────────────────────────────────────── */}
           {/*  MOVE TO FINAL HANDOVER BUTTON WITH CONDITIONS */}
           {/* ───────────────────────────────────────────── */}
-          {!isAuditor && canMoveToFinalHandover &&
+          {!isAuditor && !isMiscellaneous && canMoveToFinalHandover &&
             (isSmallOrderLead && isSmallOrderRequestResolved ? (
               <Button
                 variant="outline"
@@ -640,7 +643,7 @@ export default function UnderInstallationLeadDetails() {
           {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
 
-          {!isAuditor && (
+          {!isAuditor && !isMiscellaneous && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button

@@ -38,9 +38,9 @@ import {
 } from "@/api/universalstage";
 import { useFranchisesByVendorId } from "@/api/franchise";
 
-import { getUniversalTableColumns } from "../utils/column/Universal-column";
+import { getUniversalTableColumns, compareLeadCodesNumeric } from "../utils/column/Universal-column";
 import { LeadColumn } from "../utils/column/column-type";
-import { mapTableFiltersToPayload } from "@/lib/utils";
+import { formatSalesExecutiveName, mapTableFiltersToPayload } from "@/lib/utils";
 
 // -------------------------------------------------------
 // 🟣 COMPONENT PROPS
@@ -61,6 +61,10 @@ export interface UniversalTableProps {
   pendingServicesOnly?: boolean;
   showServicingColumn?: boolean;
   initialProductionStatusFilter?: string;
+  allVendorLeads?: boolean;
+  strictStatusTag?: boolean;
+  ignoreFranchiseScope?: boolean;
+  materialIssueReadyOnly?: boolean;
 }
 
 // -------------------------------------------------------
@@ -460,10 +464,17 @@ export function UniversalTable({
   pendingServicesOnly = false,
   showServicingColumn = false,
   initialProductionStatusFilter,
+  allVendorLeads = false,
+  strictStatusTag = false,
+  ignoreFranchiseScope = false,
+  materialIssueReadyOnly = false,
 }: UniversalTableProps) {
   // -------------------- GLOBAL STATE --------------------
 
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
+  const isOnlineLeadFeatureEnabled = useAppSelector(
+    (s) => s.auth.user?.vendor?.is_online_lead_feature_enabled === true,
+  );
   const isCustomUserTypeOnlyVendor = useAppSelector(
     (s) => s.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
   );
@@ -531,7 +542,7 @@ export function UniversalTable({
   // -------------------- LOCAL UI STATE --------------------
 
   const [viewType, setViewType] = useState<"my" | "overall">(defaultViewType);
-  const effectiveViewType = isAdmin ? "overall" : viewType;
+  const effectiveViewType = isAdmin || allVendorLeads ? "overall" : viewType;
 
   // ✅ SEPARATE PAGINATION FOR BOTH VIEWS
   const [myPagination, setMyPagination] = useState({
@@ -553,14 +564,18 @@ export function UniversalTable({
     ...(STATUS_LOG_SORTED_STAGE_TYPES.has(normalizedType) ||
     ["type 9", "type 10"].includes(normalizedType)
       ? []
-      : [{ id: "createdAt", desc: true }]),
+      : normalizedType === "type 1" && isOnlineLeadFeatureEnabled
+        ? [{ id: "lead_code", desc: true }]
+        : [{ id: "createdAt", desc: true }]),
   ]);
 
   const [overallSorting, setOverallSorting] = useState<SortingState>([
     ...(STATUS_LOG_SORTED_STAGE_TYPES.has(normalizedType) ||
     ["type 9", "type 10"].includes(normalizedType)
       ? []
-      : [{ id: "createdAt", desc: true }]),
+      : normalizedType === "type 1" && isOnlineLeadFeatureEnabled
+        ? [{ id: "lead_code", desc: true }]
+        : [{ id: "createdAt", desc: true }]),
   ]);
 
   // ✅ SEPARATE COLUMN FILTERS FOR BOTH VIEWS
@@ -632,6 +647,7 @@ export function UniversalTable({
   };
 
   const showFranchiseFilter = useMemo(() => {
+    if (ignoreFranchiseScope) return false;
     if (isHOUser) return true;
     const cleanRole = (userType || "")
       .toLowerCase()
@@ -646,7 +662,7 @@ export function UniversalTable({
       "site-supervisor",
     ];
     return allowedRoles.includes(cleanRole);
-  }, [isHOUser, userType]);
+  }, [ignoreFranchiseScope, isHOUser, userType]);
 
 
   const servicingDateRange = useMemo(() => {
@@ -697,7 +713,10 @@ export function UniversalTable({
 
     return {
       userId: userId!,
-      franchise_id: shouldIncludeFranchise ? franchiseId! : undefined,
+      franchise_id:
+        !ignoreFranchiseScope && shouldIncludeFranchise
+          ? franchiseId!
+          : undefined,
       tag: type,
       page: myPagination.pageIndex + 1,
       limit: myPagination.pageSize,
@@ -734,12 +753,16 @@ export function UniversalTable({
           ? productionStatusFilter
           : undefined,
       pending_services: pendingServicesOnly || undefined,
-      franchises: myFranchisesFilter.length > 0 ? myFranchisesFilter : undefined,
+      franchises:
+        !ignoreFranchiseScope && myFranchisesFilter.length > 0
+          ? myFranchisesFilter
+          : undefined,
     };
   }, [
     userId,
     userType,
     shouldIncludeFranchise,
+    ignoreFranchiseScope,
     type,
     franchiseId,
     myPagination,
@@ -769,12 +792,17 @@ export function UniversalTable({
         ? [userId]
         : (mappedFilters.assign_to ?? []);
     const assignToFilter = assignTo.length > 0 ? assignTo : undefined;
-    const overallUserId = isAdmin ? undefined : userId;
+    const overallUserId = isAdmin || allVendorLeads ? undefined : userId;
 
     return {
       userId: overallUserId,
-      franchise_id: shouldIncludeFranchise ? franchiseId! : undefined,
+      franchise_id:
+        !ignoreFranchiseScope && shouldIncludeFranchise
+          ? franchiseId!
+          : undefined,
       tag: type,
+      strict_status_tag: strictStatusTag || undefined,
+      material_issue_ready_only: materialIssueReadyOnly || undefined,
 
       page: overallPagination.pageIndex + 1,
       limit: overallPagination.pageSize,
@@ -812,14 +840,21 @@ export function UniversalTable({
           ? productionStatusFilter
           : undefined,
       pending_services: pendingServicesOnly || undefined,
-      franchises: overallFranchisesFilter.length > 0 ? overallFranchisesFilter : undefined,
+      franchises:
+        !ignoreFranchiseScope && overallFranchisesFilter.length > 0
+          ? overallFranchisesFilter
+          : undefined,
     };
   }, [
     userId,
     userType,
     isAdmin,
+    allVendorLeads,
     shouldIncludeFranchise,
+    ignoreFranchiseScope,
     type,
+    strictStatusTag,
+    materialIssueReadyOnly,
     franchiseId,
     overallPagination,
     overallSorting,
@@ -850,7 +885,10 @@ export function UniversalTable({
 
     return {
       userId: userId!,
-      franchise_id: shouldIncludeFranchise ? franchiseId! : undefined,
+      franchise_id:
+        !ignoreFranchiseScope && shouldIncludeFranchise
+          ? franchiseId!
+          : undefined,
       page: myPagination.pageIndex + 1,
       limit: myPagination.pageSize,
 
@@ -886,6 +924,7 @@ export function UniversalTable({
   }, [
     userId,
     shouldIncludeFranchise,
+    ignoreFranchiseScope,
     franchiseId,
     myPagination,
     mySorting,
@@ -1125,10 +1164,16 @@ export function UniversalTable({
       furnitureType: isB2b
         ? requirementTypes
         : (Array.isArray(lead.productMappings)
-            ? lead.productMappings
-                .map((p: any) => p.productType?.type)
-                .filter(Boolean)
-                .join(", ")
+            ? Array.from(
+                new Set<string>(
+                  lead.productMappings
+                    .map((p: any) => {
+                      const raw = String(p.productType?.type ?? "").trim();
+                      return raw.includes("|") ? raw.split("|").pop()!.trim() : raw;
+                    })
+                    .filter(Boolean)
+                )
+              ).join(", ")
             : ""),
       siteSupervisor: siteSupervisorName,
       furnitueStructures: isB2b
@@ -1162,7 +1207,7 @@ export function UniversalTable({
       altContact: lead.alt_contact_no ?? "",
       status: lead.statusType?.type ?? "",
       statusTag: lead.statusType?.tag ?? "",
-      sales_executive: lead.assignedTo?.user_name ?? "",
+      sales_executive: formatSalesExecutiveName(lead.assignedTo),
       designer: designerName,
       assignedToId: lead.assignedTo?.id ?? "",
       isDraft: lead.is_draft === true,
@@ -1221,6 +1266,13 @@ export function UniversalTable({
     if (!isType8 && !isType9 && !isType10) {
       const isDesc = primarySort ? createdAtDirection === "desc" : true;
       const baseData = [...filteredActiveData].sort((a, b) => {
+        if (normalizedType === "type 1" && isOnlineLeadFeatureEnabled) {
+          const codeA = a?.lead_code || "";
+          const codeB = b?.lead_code || "";
+          const cmp = compareLeadCodesNumeric(codeA, codeB, isDesc ? "desc" : "asc");
+          if (cmp !== 0) return cmp;
+          return isDesc ? Number(b?.id || 0) - Number(a?.id || 0) : Number(a?.id || 0) - Number(b?.id || 0);
+        }
         const getLeadActivityTime = (lead: any) => {
           const uTime = lead?.updated_at || lead?.updatedAt ? new Date(lead.updated_at || lead.updatedAt).getTime() : 0;
           const cTime = lead?.created_at || lead?.createdAt ? new Date(lead.created_at || lead.createdAt).getTime() : 0;
@@ -1268,7 +1320,7 @@ export function UniversalTable({
           ? lead.productStructureInstances
           : [];
 
-        if (handlesLargeScaleProjects) {
+        if (handlesLargeScaleProjects && !isType9) {
           const structureTypes = Array.from(
             new Set(
               instances
@@ -1627,7 +1679,7 @@ export function UniversalTable({
                 onClick={() => handleViewSwitch("my")}
                 className="flex-1 md:flex-none"
               >
-                My Leads ({myCount})
+                My Leads{isOnlineLeadFeatureEnabled && (myCount === 0 || Number(myCount) === 0) ? "" : ` (${myCount})`}
               </Button>
 
               <Button
@@ -1638,7 +1690,7 @@ export function UniversalTable({
                 onClick={() => handleViewSwitch("overall")}
                 className="flex-1 md:flex-none"
               >
-                Overall Leads ({overallCount})
+                Overall Leads{isOnlineLeadFeatureEnabled && (overallCount === 0 || Number(overallCount) === 0) ? "" : ` (${overallCount})`}
               </Button>
             </div>
           )}

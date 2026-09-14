@@ -95,7 +95,7 @@ const {
   const canViewDocuments =
     userType === "custom"
       ? customPrivilegeCodes.includes(
-          "production.production.ready_to_dispatch.current_site_photos.view",
+          "production.ready_to_dispatch.current_site_photos.view",
         )
       : true;
 const canUploadDocuments =
@@ -103,7 +103,7 @@ const canUploadDocuments =
   (
     userType === "custom"
       ? customPrivilegeCodes.includes(
-          "production.production.ready_to_dispatch.current_site_photos.upload",
+          "production.ready_to_dispatch.current_site_photos.upload",
         )
       : canUploadReadyToDispatchDocuments(userType)
   );
@@ -114,7 +114,7 @@ const canDeleteDocuments =
   (
     userType === "custom"
       ? customPrivilegeCodes.includes(
-          "production.production.ready_to_dispatch.current_site_photos.delete",
+          "production.ready_to_dispatch.current_site_photos.delete",
         )
       : canDelete
   );

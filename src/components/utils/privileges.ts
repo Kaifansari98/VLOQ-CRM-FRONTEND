@@ -394,6 +394,8 @@ export function canViewAndWorkUnderInstallationStage(
   // can work and view both and site suprvisor work only under-installation stage.
   return (
     role === "super-admin" ||
+    role === "admin" ||
+    role === "miscellaneous" ||
     ((role === "site-supervisor" || role === "head-site-supervisor") && stage === "under-installation-stage")
   );
 }
@@ -402,7 +404,7 @@ export function canAccessTodoTaskTabUnderInstallationStage(
   role: string,
 ): boolean {
   // 1. Admins always have access
-  if (role === "admin" || role === "super-admin" || role === "site-supervisor" || role === "head-site-supervisor")
+  if (role === "admin" || role === "super-admin" || role === "site-supervisor" || role === "head-site-supervisor" || role === "miscellaneous")
     return true;
 
   return false;
@@ -411,7 +413,7 @@ export function canAccessTodoTaskTabUnderInstallationStage(
 export function canAccessTodoTaskTabUnderFinalHandoverStage(
   role: string,
 ): boolean {
-  if (role === "super-admin" || role === "site-supervisor" || role === "head-site-supervisor")
+  if (role === "super-admin" || role === "site-supervisor" || role === "head-site-supervisor" || role === "miscellaneous")
     return true;
 
   return false;
@@ -425,6 +427,7 @@ export function canViewAndWorkFinalHandoverStage(
   return (
     role === "admin" ||
     role === "super-admin" ||
+    role === "miscellaneous" ||
     ((role === "site-supervisor" || role === "head-site-supervisor") && stage === "final-handover-stage")
   );
 }
@@ -449,7 +452,8 @@ export function canMiscellaneousMarkAsResolved(
     role === "admin" ||
     role === "super-admin" ||
     role === "site-supervisor" ||
-    role === "head-site-supervisor"
+    role === "head-site-supervisor" ||
+    role === "miscellaneous"
   );
 }
 
@@ -473,6 +477,9 @@ export function canViewSiteHistoryTab(role: string): boolean {
     "backend",
     "factory",
     "pre-prod",
+    "telecaller",
+    "telecaller-team-lead",
+    "telecaller team lead",
   ].includes(normalizedRole);
 }
 
@@ -490,13 +497,116 @@ export function canUpdateDessingStageSelectionInputs(
 }
 
 export function canDeletePODocument(
-  role: string,
-  stage: string,
+  role: string | undefined,
+  stage: string | undefined,
+  customPrivilegeCodes: string[] = [],
 ): boolean {
+  if (!role) return false;
+  const normalizedRole = role.toLowerCase();
+
+  if (normalizedRole === "custom") {
+    return customPrivilegeCodes.includes("production.order_login.po_file.delete");
+  }
 
   return (
-    role === "admin" ||
-    role === "super-admin" ||
-    (role === "backend" && (stage === "order-login-stage" || stage === "production-stage"))
+    normalizedRole === "admin" ||
+    normalizedRole === "super-admin" ||
+    (normalizedRole === "backend" && (stage === "order-login-stage" || stage === "production-stage"))
   );
+}
+
+export function canUploadPODocument(
+  role: string | undefined,
+  stage: string | undefined,
+  customPrivilegeCodes: string[] = [],
+): boolean {
+  if (!role) return false;
+  const normalizedRole = role.toLowerCase();
+
+  if (normalizedRole === "custom") {
+    return customPrivilegeCodes.includes("production.order_login.po_file.upload");
+  }
+
+  return (
+    normalizedRole === "admin" ||
+    normalizedRole === "super-admin" ||
+    (normalizedRole === "backend" && (stage === "order-login-stage" || stage === "production-stage"))
+  );
+}
+
+export function canEditBasicAndGstAmount(
+  userType: string | undefined,
+  customPrivilegeCodes: string[] = [],
+): boolean {
+  if (!userType) return false;
+  const role = userType.toLowerCase();
+  if (role === "super-admin") return true;
+  if (role === "custom") {
+    return (
+      customPrivilegeCodes.includes(
+        "leads.open_leads.details_of_lead.payment_information.edit_basic_gst_amount",
+      ) ||
+      customPrivilegeCodes.includes(
+        "leads.booking_done.payment_information.edit_basic_gst_amount",
+      ) ||
+      customPrivilegeCodes.includes(
+        "payment_information.edit_basic_gst_amount",
+      ) ||
+      customPrivilegeCodes.includes(
+        "leads.booking_done.payment_information.basic_amount.edit",
+      ) ||
+      customPrivilegeCodes.includes("payment_information.basic_amount.edit")
+    );
+  }
+  return false;
+}
+
+export function canEditGstAmount(
+  userType: string | undefined,
+  customPrivilegeCodes: string[] = [],
+): boolean {
+  if (!userType) return false;
+  const role = userType.toLowerCase();
+  if (role === "super-admin") return true;
+  if (role === "custom") {
+    return (
+      customPrivilegeCodes.includes(
+        "leads.open_leads.details_of_lead.payment_information.edit_basic_gst_amount",
+      ) ||
+      customPrivilegeCodes.includes(
+        "leads.booking_done.payment_information.edit_basic_gst_amount",
+      ) ||
+      customPrivilegeCodes.includes(
+        "payment_information.edit_basic_gst_amount",
+      ) ||
+      customPrivilegeCodes.includes(
+        "leads.booking_done.payment_information.gst_amount.edit",
+      ) ||
+      customPrivilegeCodes.includes("payment_information.gst_amount.edit")
+    );
+  }
+  return false;
+}
+
+export function canAddAdditionalPayment(
+  userType: string | undefined,
+  customPrivilegeCodes: string[] = [],
+): boolean {
+  if (!userType) return false;
+  const role = userType.toLowerCase();
+  if (role === "auditor") return false;
+  if (role === "super-admin" || role === "admin" || role === "sales-executive") return true;
+  if (role === "custom") {
+    return (
+      customPrivilegeCodes.includes(
+        "leads.open_leads.details_of_lead.payment_information.add_payment",
+      ) ||
+      customPrivilegeCodes.includes(
+        "leads.booking_done.payment_information.add_payment",
+      ) ||
+      customPrivilegeCodes.includes("payment_information.add_payment") ||
+      customPrivilegeCodes.includes("details_of_lead.payment_information.add_payment")
+    );
+  }
+  return true;
 }

@@ -8,6 +8,7 @@ interface LeadStatsResponse {
     total_overall_leads: number;
     total_lead_pool: number;
     total_open_leads: number;
+    total_draft_leads: number;
     total_initial_site_measurement_leads: number;
     total_designing_stage_leads: number;
     total_booking_stage_leads: number;
@@ -57,7 +58,7 @@ export const useLeadStats = (
   return useQuery({
     queryKey: ["leadStats", vendorId, userId, franchiseId],
     queryFn: () => fetchLeadStats(vendorId!, userId, franchiseId),
-    enabled: !!vendorId && !!franchiseId, // Only run query if vendorId exists
+    enabled: !!vendorId, // Only run query if vendorId exists
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
     retry: 3,

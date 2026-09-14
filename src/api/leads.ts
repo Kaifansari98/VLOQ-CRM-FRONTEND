@@ -729,6 +729,11 @@ export const getClientVisits = async (leadId: number) => {
   return response.data.data ?? [];
 };
 
+export const createWalkInLead = async (payload: any) => {
+  const response = await apiClient.post("/online-leads/walk-in", payload);
+  return response.data;
+};
+
 export const createLead = async (
   payload: CreateLeadPayload,
   files: File[] = [],
@@ -965,6 +970,22 @@ export const getVendorUserLeadsOpen = async (
 export const deleteLead = async (leadId: number, userId: number) => {
   const response = await apiClient.delete(
     `/leads/delete-lead/${leadId}/user-id/${userId}`,
+  );
+  return response.data;
+};
+
+export const changeLeadStoreAPI = async (
+  vendorId: number,
+  leadId: number,
+  toStoreId: number,
+  updatedBy: number,
+) => {
+  const response = await apiClient.post(
+    `/leads/vendorId/${vendorId}/leadId/${leadId}/change-store`,
+    {
+      to_store_id: toStoreId,
+      updated_by: updatedBy,
+    },
   );
   return response.data;
 };

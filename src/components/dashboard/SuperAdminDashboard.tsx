@@ -773,9 +773,9 @@ function StageLeadsModal({
                   </td>
                 </tr>
               ) : (
-                data.map((row) => (
+                data.map((row, idx) => (
                   <tr
-                    key={row.id}
+                    key={row.instance_id ? `inst-${row.instance_id}` : `lead-${row.id}-${idx}`}
                     className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer select-none"
                     onDoubleClick={() => handleRowDoubleClick(row)}
                   >
@@ -1200,6 +1200,27 @@ function StageWiseBarChart({ vendorId, franchises }: StageWiseBarChartProps) {
                 data={chartData}
                 margin={{ top: 8, right: 8, left: -16, bottom: 4 }}
                 barCategoryGap="20%"
+                className="cursor-pointer"
+                onClick={(state) => {
+                  if (!state) return;
+                  const rawState = state as unknown as {
+                    activePayload?: Array<{ payload: (typeof chartData)[number] }>;
+                    activeTooltipIndex?: number;
+                  };
+                  let entry: (typeof chartData)[number] | undefined;
+                  if (rawState.activePayload && rawState.activePayload.length > 0) {
+                    entry = rawState.activePayload[0].payload;
+                  } else if (
+                    typeof rawState.activeTooltipIndex === "number" &&
+                    rawState.activeTooltipIndex >= 0 &&
+                    rawState.activeTooltipIndex < chartData.length
+                  ) {
+                    entry = chartData[rawState.activeTooltipIndex];
+                  }
+                  if (entry && entry.tag) {
+                    handleBarClick(entry);
+                  }
+                }}
               >
                 <CartesianGrid
                   strokeDasharray="3 3"
@@ -1219,15 +1240,24 @@ function StageWiseBarChart({ vendorId, franchises }: StageWiseBarChartProps) {
                   tickLine={false}
                 />
                 <Tooltip
-                  cursor={{ fill: "hsl(var(--muted))", opacity: 0.5 }}
+                  cursor={{
+                    fill: "hsl(var(--muted))",
+                    opacity: 0.5,
+                    style: { cursor: "pointer" },
+                  }}
                   content={({ active, payload }) => {
                     if (!active || !payload?.length) return null;
                     const d = payload[0].payload as (typeof chartData)[number];
+                    const isInstanceStage = ["Type 8", "Type 9", "Type 10"].includes(
+                      d.tag,
+                    );
+                    const unit = isInstanceStage ? "instance" : "lead";
                     return (
                       <div className="rounded-lg border bg-background px-3 py-2 text-xs shadow-md">
                         <p className="font-medium">{d.label}</p>
                         <p className="text-muted-foreground">
-                          {d.count} lead{d.count !== 1 ? "s" : ""}
+                          {d.count} {unit}
+                          {d.count !== 1 ? "s" : ""}
                         </p>
                       </div>
                     );
@@ -1238,6 +1268,7 @@ function StageWiseBarChart({ vendorId, franchises }: StageWiseBarChartProps) {
                   radius={[4, 4, 0, 0]}
                   cursor="pointer"
                   fill="var(--primary)"
+                  background={{ fill: "transparent", cursor: "pointer" }}
                   onClick={(data) =>
                     handleBarClick(
                       data as unknown as (typeof chartData)[number],
@@ -1431,9 +1462,9 @@ function OverdueInstallationsModal({
                   </td>
                 </tr>
               ) : (
-                data.map((row) => (
+                data.map((row, idx) => (
                   <tr
-                    key={row.id}
+                    key={row.instance_id ? `inst-${row.instance_id}` : `lead-${row.id}-${idx}`}
                     className="border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer select-none"
                     onDoubleClick={() => handleRowDoubleClick(row)}
                   >

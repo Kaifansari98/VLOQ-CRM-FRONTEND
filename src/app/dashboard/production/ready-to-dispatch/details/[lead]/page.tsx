@@ -191,7 +191,7 @@ export default function ReadyToDispatchLeadDetails() {
     !isAuditor &&
     (userType === "custom"
       ? customPrivilegeCodes.some((code) =>
-        code.startsWith("production.production.ready_to_dispatch"),
+        code.startsWith("production.ready_to_dispatch"),
       )
       : canAssignSR(userType));
   const handleExpectedDateChange = async (newDate?: string) => {

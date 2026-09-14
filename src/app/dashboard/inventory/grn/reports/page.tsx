@@ -159,7 +159,7 @@ export default function GRNReportsPage() {
       </header>
 
       <main className="min-h-[calc(100vh-4rem)] bg-zinc-50 p-4 dark:bg-zinc-950 md:p-6">
-        <div className="mx-auto flex max-w-7xl flex-col gap-5">
+        <div className="flex w-full flex-col gap-5">
           <ReportsHero from={from} to={to} />
 
           <ReportsFilters

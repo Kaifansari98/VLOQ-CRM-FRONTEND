@@ -16,6 +16,7 @@ import {
   getPendingLeadsColumns,
   PendingLeadRow,
 } from "./pending-leads-columns";
+import { formatSalesExecutiveName } from "@/lib/utils";
 import { useFranchisesByVendorId } from "@/api/franchise";
 
 import {
@@ -307,7 +308,7 @@ export default function PendingLeadsTable({
       altContact: lead.alt_contact_no || "",
       status: lead.statusType?.type || "",
       isDraft: lead.is_draft === true,
-      sales_executive: lead.assignedTo?.user_name || "",
+      sales_executive: formatSalesExecutiveName(lead.assignedTo),
       assignedToId: lead.assignedTo?.id ?? undefined,
       initial_site_measurement_date: lead.initial_site_measurement_date || "",
       accountId: lead.account?.id ?? lead.account_id ?? 0,

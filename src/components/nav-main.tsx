@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { LucideIcon } from "lucide-react";
 import { useFranchisesByVendorId } from "@/api/franchise";
 import { useLeadStats } from "@/hooks/useLeadStats";
@@ -32,7 +32,7 @@ import Link from "next/link";
 
 // ----------------- TYPES -----------------
 
-interface NavSubItem {
+export interface NavSubItem {
   title: string;
   url: string;
   customCount?: number;
@@ -69,7 +69,7 @@ interface NavSubItem {
   | "total_my_tasks";
 }
 
-interface NavItem {
+export interface NavItem {
   title: string;
   url: string;
   icon?: LucideIcon;
@@ -107,6 +107,7 @@ interface NavItem {
   | "total_production_group"
   | "total_installation_group"
   | "total_my_tasks";
+  hasRedDot?: boolean;
   items?: NavSubItem[];
 }
 
@@ -167,10 +168,13 @@ export function NavMain({
   const isCrmEnabled = useAppSelector(
     (state) => state.auth.user?.vendor?.is_crm_enabled !== false,
   );
+  const isOnlineLeadFeatureEnabled = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_online_lead_feature_enabled === true,
+  );
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type as string | undefined,
   );
-  const normalizedUserType = userType?.toLowerCase();
+  const normalizedUserType = userType?.toLowerCase().replace(/_/g, "-").replace(/\s+/g, "-");
   const franchiseId =
     useAppSelector((state) => state.auth.franchise_id) ??
     useAppSelector((state) => state.auth.user?.franchise_id) ??
@@ -364,6 +368,40 @@ export function NavMain({
 
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const sidebarScrollTop = useRef<number | null>(null);
+  const routeKey = `${pathname}?${searchParams.toString()}`;
+
+  const handleNavigationClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    const sidebarContent = event.currentTarget.closest<HTMLElement>(
+      '[data-sidebar="content"]',
+    );
+
+    if (!sidebarContent) return;
+
+    sidebarScrollTop.current = sidebarContent.scrollTop;
+    sessionStorage.setItem(
+      "dashboard-sidebar-scroll-top",
+      String(sidebarContent.scrollTop),
+    );
+  };
+
+  useLayoutEffect(() => {
+    const savedScrollTop =
+      sidebarScrollTop.current ??
+      Number(sessionStorage.getItem("dashboard-sidebar-scroll-top"));
+    if (!Number.isFinite(savedScrollTop)) return;
+
+    const sidebarContent = document.querySelector<HTMLElement>(
+      '[data-sidebar="content"]',
+    );
+    if (!sidebarContent) return;
+
+    sidebarContent.scrollTop = savedScrollTop;
+    // Restore once more after the route's collapsible content has committed.
+    requestAnimationFrame(() => {
+      sidebarContent.scrollTop = savedScrollTop;
+    });
+  }, [routeKey]);
   const allItems = [
     ...enhancedNavItems,
     ...(trackTraceItems ?? []),
@@ -507,7 +545,10 @@ export function NavMain({
                         <SidebarMenuSubButton asChild>
                           <Link
                             href={subItem.url}
-                            onClick={handleMobileNavigate}
+                            onClick={(event) => {
+                              handleNavigationClick(event);
+                              handleMobileNavigate();
+                            }}
                             className={cn(
                               "flex items-center justify-between w-full transition-all duration-200 text-sidebar-foreground",
                               isSubActive && "font-bold rounded-md"
@@ -523,6 +564,7 @@ export function NavMain({
                                 ? subItem.customCount
                                 : getCountForItem(subItem.showCount!);
                               if (!count) return null;
+                              if (isOnlineLeadFeatureEnabled && Number(count) === 0) return null;
                               return (
                                 <Badge
                                   className={cn(
@@ -560,33 +602,60 @@ export function NavMain({
         <SidebarMenuButton asChild tooltip={item.title}>
           <Link
             href={item.url}
+            onClick={handleNavigationClick}
             className={cn(
               "flex items-center gap-2 w-full transition-all duration-200 text-sidebar-foreground",
-              isSingleActive && "font-bold bg-sidebar-accent rounded-md",
+              isSingleActive &&
+                (item.hasRedDot
+                  ? "font-bold bg-red-500/15 text-red-600 dark:text-red-400 rounded-md shadow-xs"
+                  : "font-bold bg-sidebar-accent rounded-md"),
               item.className
             )}
           >
-            {/* ✅ No wrapper div — icon direct child of Link */}
-            {item.icon && <item.icon className={cn("!size-5 shrink-0", item.iconClassName)} />}
-            <span className="whitespace-nowrap">{item.title}</span>
-            {(item.showCount || item.customCount !== undefined) && (
-              <Badge
-                className={cn(
-                  "ml-auto rounded-full group-data-[collapsible=icon]:hidden",
-                  item.badgeClassName
+            {item.icon && (
+              <div className="relative shrink-0 flex items-center justify-center">
+                <item.icon className={cn("!size-5", item.iconClassName)} />
+                {item.hasRedDot && (
+                  <span className="absolute -top-1 -right-1 h-2 w-2 hidden group-data-[collapsible=icon]:flex">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500 ring-2 ring-sidebar-background"></span>
+                  </span>
                 )}
-                style={
-                  item.badgeStyle ?? {
-                    backgroundColor: "var(--theme-badge-bg)",
-                    color: "var(--theme-badge-text)",
-                  }
-                }
-              >
-                {isLoading || item.customCountLoading
-                  ? "…"
-                  : getSingleItemCount(item)}
-              </Badge>
+              </div>
             )}
+            <span className="whitespace-nowrap flex items-center gap-1.5">
+              {item.title}
+              {item.hasRedDot && (
+                <span className="relative flex h-2 w-2 shrink-0 group-data-[collapsible=icon]:hidden">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                </span>
+              )}
+            </span>
+            {(() => {
+              if (!item.showCount && item.customCount === undefined) return null;
+              const count = getSingleItemCount(item);
+              if (count === undefined || count === null) return null;
+              if (isOnlineLeadFeatureEnabled && Number(count) === 0) return null;
+              return (
+                <Badge
+                  className={cn(
+                    "ml-auto rounded-full group-data-[collapsible=icon]:hidden",
+                    item.badgeClassName
+                  )}
+                  style={
+                    item.badgeStyle ?? {
+                      backgroundColor: "var(--theme-badge-bg)",
+                      color: "var(--theme-badge-text)",
+                    }
+                  }
+                >
+                  {isLoading || item.customCountLoading
+                    ? "…"
+                    : count}
+                </Badge>
+              );
+            })()}
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>

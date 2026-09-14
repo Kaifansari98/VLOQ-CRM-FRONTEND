@@ -150,7 +150,9 @@ export default function BookingStageLeadsDetails() {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
   );
-  const isAuditor = userType?.trim().toLowerCase() === "auditor";
+  const normalizedUserType = userType?.trim().toLowerCase();
+  const isCaller = normalizedUserType === "telecaller" || normalizedUserType === "telecaller-team-lead" || normalizedUserType === "telecaller team lead" || normalizedUserType === "caller";
+  const isAuditor = normalizedUserType === "auditor";
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
@@ -174,7 +176,7 @@ export default function BookingStageLeadsDetails() {
 
   useEffect(() => {
     if (isLoading || isLeadBlockStatusLoading || !lead) return;
-    if (isChatNotification) {
+    if (isChatNotification || isCaller) {
       setAssignOpen(false);
       return;
     }
@@ -183,7 +185,7 @@ export default function BookingStageLeadsDetails() {
     } else {
       setAssignOpen(false);
     }
-  }, [isLoading, isLeadBlockStatusLoading, lead, isChatNotification, userType, isLeadBlocked]);
+  }, [isLoading, isLeadBlockStatusLoading, lead, isChatNotification, userType, isLeadBlocked, isCaller]);
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
@@ -308,9 +310,9 @@ export default function BookingStageLeadsDetails() {
     return <p className="p-6">Lead details not found or you do not have access.</p>;
   }
 
-  const canReassign = canReassignLeadButton(userType);
-  const canDelete = canDeleteLeadButton(userType);
-  const canEdit = canEditLeadForSalesExecutiveButton(userType);
+  const canReassign = !isCaller && canReassignLeadButton(userType);
+  const canDelete = !isCaller && canDeleteLeadButton(userType);
+  const canEdit = !isCaller && canEditLeadForSalesExecutiveButton(userType);
   const canViewPayment =
     isAuditor ||
     (userType?.toLowerCase() === "custom"
@@ -338,23 +340,28 @@ export default function BookingStageLeadsDetails() {
       )
       : true;
   const canAccessMarkOnHold =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes("leads.booking_done.details.mark_on_hold")
-      : true;
+      : true);
   const canAccessEditLead =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes("leads.booking_done.details.edit")
-      : canEdit;
+      : canEdit);
   const canAccessReassignLead =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes("leads.booking_done.details.reassign_lead")
-      : canReassign;
+      : canReassign);
   const canAccessDeleteLead =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes("leads.booking_done.details.delete")
-      : canDelete;
+      : canDelete);
   const canAccessAssignTask =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
         "leads.booking_done.assign_task.final_measurement",
       ) ||
@@ -364,7 +371,7 @@ export default function BookingStageLeadsDetails() {
       customPrivilegeCodes.includes(
         "leads.booking_done.assign_task.bookingdone_ism",
       )
-      : canAssignFM(userType);
+      : canAssignFM(userType));
 
 
 
@@ -427,7 +434,7 @@ export default function BookingStageLeadsDetails() {
           </Breadcrumb>
         </div>
         <div className="flex items-center space-x-2">
-          {!isAuditor && (
+          {!isAuditor && !isCaller && (
             canAccessAssignTask ? (
               <Button
                 className="hidden md:block"
@@ -448,7 +455,7 @@ export default function BookingStageLeadsDetails() {
             )
           )}
 
-          {showSkipButton && (
+          {showSkipButton && !isCaller && (
             <Button
               className="hidden md:block"
               size="sm"
@@ -462,7 +469,7 @@ export default function BookingStageLeadsDetails() {
           <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
           {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
-          {!isAuditor && (
+          {!isAuditor && !isCaller && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
               <Button

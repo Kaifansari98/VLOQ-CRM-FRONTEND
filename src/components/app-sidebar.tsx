@@ -20,6 +20,8 @@ import {
   MapPinned,
   Building2,
   Megaphone,
+  Magnet,
+  TriangleAlert,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -35,8 +37,10 @@ import {
 import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { setFranchiseId } from "@/redux/slices/authSlice";
 import { usePendingMiscellaneousCount } from "@/api/installation/useUnderInstallationStageLeads";
+import { useMiscellaneousStatusCounts } from "@/api/miscellaneousModuleApi";
 import { useFranchisesByVendorId } from "@/api/franchise";
 import { useUnreadBroadcastCount } from "@/api/broadcast";
+import { useVendorLeadsByTagPost } from "@/api/universalstage";
 import { useTheme } from "next-themes";
 import { sanitize } from "@/components/utils/sanitizeCapitalize";
 
@@ -82,8 +86,8 @@ const data = {
     },
     {
       title: "Lead Pool",
-      url: "/dashboard/online-leads",
-      icon: NotebookPen,
+      url: "/dashboard/lead-pool",
+      icon: Magnet,
       showCount: "total_lead_pool" as const,
     },
     {
@@ -204,6 +208,45 @@ const data = {
       ],
     },
     {
+      title: "Miscellaneous Module",
+      url: "#",
+      icon: TriangleAlert,
+      items: [
+        {
+          title: "Awaiting Approval",
+          url: "/dashboard/miscellaneous/awaiting-approval",
+        },
+        {
+          title: "Misc Approved",
+          url: "/dashboard/miscellaneous/misc-approved",
+        },
+        {
+          title: "Under Process",
+          url: "/dashboard/miscellaneous/under-process",
+        },
+        {
+          title: "RTD (Ready To Dispatch)",
+          url: "/dashboard/miscellaneous/ready-to-dispatch",
+        },
+        {
+          title: "Dispatch Scheduled",
+          url: "/dashboard/miscellaneous/dispatch-scheduled",
+        },
+        {
+          title: "Dispatched",
+          url: "/dashboard/miscellaneous/dispatched",
+        },
+        {
+          title: "Resolved",
+          url: "/dashboard/miscellaneous/resolved",
+        },
+        {
+          title: "Rejected",
+          url: "/dashboard/miscellaneous/rejected",
+        },
+      ],
+    },
+    {
       title: "Servicing",
       url: "/dashboard/installation/servicing",
       icon: FolderCog,
@@ -238,12 +281,6 @@ const data = {
       url: "/dashboard/delivered-projects",
       icon: Handshake,
       showCount: "total_project_completed_stage_leads" as const,
-    },
-    {
-      title: "Lead Pool",
-      url: "/dashboard/online-leads",
-      icon: NotebookPen,
-      showCount: "total_lead_pool" as const,
     },
     {
       title: "Open Leads",
@@ -317,14 +354,25 @@ const data = {
 
   inventoryTraceNav: [
     {
-      title: "Inventory",
+      title: "Procurement",
       url: "#",
       icon: Warehouse,
-      items: [{ title: "Products", url: "/dashboard/inventory/master/products/list" },
-      { title: "Purchase Enquiry", url: "/dashboard/inventory/purchase-intents" },
-      { title: "Purchase Order", url: "/dashboard/inventory/purchase-orders" },
-      { title: "GRN", url: "/dashboard/inventory/grn" },
-      { title: "Payment Requisition", url: "/dashboard/inventory/payment-requisitions" },
+      items: [
+        { title: "Purchase Enquiry", url: "/dashboard/inventory/purchase-intents" },
+        { title: "Purchase Order", url: "/dashboard/inventory/purchase-orders" },
+        { title: "GRN", url: "/dashboard/inventory/grn" },
+        { title: "Payment Requisition", url: "/dashboard/inventory/payment-requisitions" },
+      ],
+    },
+    {
+      title: "Material Issue",
+      url: "#",
+      icon: Forklift,
+      items: [
+        { title: "Projects", url: "/dashboard/inventory/material-issue/projects" },
+        { title: "Freeze Items", url: "/dashboard/inventory/material-issue/freeze-items" },
+        { title: "Issued Items", url: "/dashboard/inventory/material-issue/issued-items" },
+        { title: "Dispatch", url: "/dashboard/inventory/material-issue/dispatch" },
       ],
     },
   ],
@@ -334,6 +382,10 @@ const data = {
       url: "#",
       icon: FolderKanban,
       items: [
+        {
+          title: "Products",
+          url: "/dashboard/inventory/master/products/list",
+        },
         {
           title: "Category",
           url: "/dashboard/track-trace/master/category",
@@ -357,6 +409,10 @@ const data = {
         {
           title: "Core Product",
           url: "/dashboard/track-trace/master/core-product",
+        },
+        {
+          title: "Company Vendor",
+          url: "/dashboard/inventory/master/company-vendor",
         },
       ],
     },
@@ -424,7 +480,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const selectedFranchiseId = useAppSelector(
     (state) => state.auth.franchise_id,
   );
-  const userType = user?.user_type?.user_type?.toLowerCase();
+  const userType = user?.user_type?.user_type?.toLowerCase().replace(/_/g, "-").replace(/\s+/g, "-");
   const isCustomUserTypeOnlyVendor =
     user?.vendor?.is_this_vendor_is_custom_usertype_only === true;
   const isCrmEnabled = user?.vendor?.is_crm_enabled !== false;
@@ -434,6 +490,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const isOnlineLeadFeatureEnabled =
     user?.vendor?.is_online_lead_feature_enabled === true;
   const isScanPackEnabled = user?.vendor?.is_scanpack_enabled === true;
+  const handlesLargeScaleProjects =
+    user?.vendor?.handlesLargeScaleProjects === true;
   const canSeeOverallLeads =
     userType === "admin" ||
     userType === "super-admin" ||
@@ -455,15 +513,33 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     userType === "auditor" ||
     userType === "backend" ||
     userType === "factory" ||
-    userType === "site-supervisor";
+    userType === "site-supervisor" ||
+    userType === "head-site-supervisor" ||
+    userType === "miscellaneous";
   const skipFranchiseFilter =
     userType === "factory" ||
     userType === "site-supervisor" ||
-    userType === "backend";
+    userType === "head-site-supervisor" ||
+    userType === "backend" ||
+    userType === "miscellaneous";
   const vendorId = user?.vendor_id;
   const franchiseId = selectedFranchiseId ?? user?.franchise_id ?? null;
   const userId = user?.id;
   const dispatch = useAppDispatch();
+  const materialIssueProjectsPayload = React.useMemo(
+    () => ({
+      tag: "Type 9",
+      strict_status_tag: true,
+      material_issue_ready_only: true,
+      page: 1,
+      limit: 1,
+    }),
+    [],
+  );
+  const {
+    data: materialIssueProjectsData,
+    isLoading: isMaterialIssueProjectsLoading,
+  } = useVendorLeadsByTagPost(vendorId ?? 0, materialIssueProjectsPayload);
 
   const { data: miscCountData, isLoading: isMiscLeadLoading } =
     usePendingMiscellaneousCount(
@@ -472,6 +548,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       userType,
       userId,
     );
+
+  const skipFranchiseForMiscModule =
+    userType === "factory" ||
+    userType === "miscellaneous" ||
+    userType === "super-admin" ||
+    userType === "auditor";
+
+  const {
+    data: miscStatusCountsData,
+    isLoading: isMiscStatusCountsLoading,
+  } = useMiscellaneousStatusCounts(
+    vendorId ?? 0,
+    skipFranchiseForMiscModule ? undefined : (franchiseId ?? undefined),
+    userType,
+    userId,
+  );
   const { data: franchises = [] } = useFranchisesByVendorId(
     vendorId ?? 0,
     !!vendorId,
@@ -492,6 +584,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }, [dispatch, shouldBootstrapFranchise, franchiseId, franchises]);
 
   const miscLeadsCount = miscCountData?.pending_miscellaneous_leads ?? 0;
+  const materialIssueProjectsCount = materialIssueProjectsData?.count ?? 0;
 
   const { unreadCount: unreadBroadcastCount, isLoading: isBroadcastLoading } =
     useUnreadBroadcastCount(userId, vendorId ?? undefined, isSuperAdmin);
@@ -546,6 +639,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ? navMainWithBroadcast
         : navMainWithBroadcast.filter((item) => item.title !== "Overall Leads");
 
+      const isSalesExecutive =
+        userType === "sales-executive" ||
+        userType === "sales executive";
+
       const hideSectionsForRole =
         userType === "site-supervisor" ||
         userType === "tech-check" ||
@@ -555,7 +652,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
     const baseItems = withoutOverall.filter((item) => {
       if (item.title === "Lead Pool") {
-        if (hideSectionsForRole) return false;
+        if (hideSectionsForRole || isSalesExecutive) return false;
       }
 
       if (item.title === "Leads") {
@@ -582,6 +679,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           userType === "telecaller" ||
           userType === "telecaller-team-lead";
         if (hidesProdExecServ) return false;
+      }
+
+      if (item.title === "Miscellaneous Module") {
+        const canSeeMiscModule =
+          userType === "admin" ||
+          userType === "super-admin" ||
+          userType === "auditor" ||
+          userType === "site-supervisor" ||
+          userType === "head-site-supervisor" ||
+          userType === "miscellaneous" ||
+          userType === "factory";
+        if (!canSeeMiscModule) return false;
       }
 
       return true;
@@ -629,8 +738,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 ...item,
                 items: item.items?.filter((subItem) =>
                   subItem.title === "Open Leads"
-                    ? customPrivilegeCodes.includes(
-                      "leads.open_leads.details_of_lead.view",
+                    ? customPrivilegeCodes.some((code) =>
+                      code.startsWith("leads.open_leads."),
                     )
                     : subItem.title === "ISM Leads"
                       ? customPrivilegeCodes.includes(
@@ -690,7 +799,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             )
                             : subItem.title === "RTD Sites"
                               ? customPrivilegeCodes.includes(
-                                "production.production.ready_to_dispatch.enable_disable",
+                                "production.ready_to_dispatch.enable_disable",
                               )
                               : true,
                     ),
@@ -746,35 +855,117 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       };
 
     const finalNavItemsSource = customFilteredItems.map((item) => {
+      if (item.title === "Leads" && item.items) {
+        const updatedItems = item.items.map((subItem) => {
+          if (subItem.title === "Draft Lead" || subItem.title === "Online Lead") {
+            return {
+              ...subItem,
+              title: isOnlineLeadFeatureEnabled ? "Online Lead" : "Draft Lead",
+              url: isOnlineLeadFeatureEnabled ? "/dashboard/leads/online-lead" : "/dashboard/leads/draft-lead",
+            };
+          }
+          return subItem;
+        });
+        return { ...item, items: updatedItems };
+      }
       if (item.title === "Execution" && item.items) {
         const underInstallationIndex = item.items.findIndex(
           (subItem) => subItem.title === "Installation",
         );
         if (underInstallationIndex !== -1) {
-          const shouldShowMisc = canSeeMiscLeads && miscLeadsCount > 0;
-          const updatedItems = shouldShowMisc
+          const shouldShowMisc =
+            userType !== "factory" &&
+            canSeeMiscLeads &&
+            (miscLeadsCount > 0 || userType === "miscellaneous");
+          let updatedItems = shouldShowMisc
             ? [
-              ...item.items.slice(0, underInstallationIndex + 1),
-              miscItem,
-              ...item.items.slice(underInstallationIndex + 1),
-            ]
+                ...item.items.slice(0, underInstallationIndex + 1),
+                miscItem,
+                ...item.items.slice(underInstallationIndex + 1),
+              ]
             : item.items;
+
+          if (userType === "miscellaneous") {
+            updatedItems = updatedItems.filter(
+              (subItem) =>
+                subItem.title === "Installation" ||
+                subItem.title === "Miscellaneous",
+            );
+          }
+
           return { ...item, items: updatedItems };
         }
+      }
+      if (item.title === "Miscellaneous Module" && item.items) {
+        const counts = miscStatusCountsData?.data;
+        const statusCountMap: Record<string, number | undefined> = {
+          "Awaiting Approval": counts?.awaiting_approval,
+          "Misc Approved": counts?.misc_approved,
+          "Under Process": counts?.under_process,
+          "RTD (Ready To Dispatch)": counts?.rtd,
+          "Dispatch Scheduled": counts?.dispatch_scheduled,
+          "Dispatched": counts?.dispatched,
+          "Resolved": counts?.resolved,
+          "Rejected": counts?.rejected,
+        };
+
+        const updatedItems = item.items.map((subItem) => {
+          const count = statusCountMap[subItem.title];
+          return {
+            ...subItem,
+            customCount: count !== undefined ? count : 0,
+            customCountLoading: isMiscStatusCountsLoading,
+          };
+        });
+
+        return {
+          ...item,
+          customCount: counts?.total ?? 0,
+          customCountLoading: isMiscStatusCountsLoading,
+          items: updatedItems,
+        };
       }
       return item;
     });
 
-      const initialNavItems = !isCrmEnabled
+      const factoryMiscItem = {
+        title: "Miscellaneous",
+        url: "/dashboard/installation/under-installation/miscellaneous-leads",
+        icon: TriangleAlert,
+        customCount: miscLeadsCount,
+        customCountLoading: isMiscLeadLoading,
+        hasRedDot: true,
+        iconClassName: "text-red-500 group-hover:scale-110 transition-transform duration-200",
+        badgeClassName: "bg-red-500 text-white font-bold text-xs shadow-sm shadow-red-500/20",
+        className: "text-red-600 dark:text-red-400 font-medium hover:bg-red-500/10 transition-colors",
+      };
+
+      const initialNavItems: any[] = !isCrmEnabled
         ? []
         : isActiveFranchiseB2b
           ? data.b2bNavMain
           : finalNavItemsSource;
 
+      let navItemsWithRoleAdditions: any[] = initialNavItems;
+      if (userType === "factory") {
+        const dashboardIndex = navItemsWithRoleAdditions.findIndex(
+          (item) => item.title === "Dashboard",
+        );
+        if (dashboardIndex !== -1) {
+          navItemsWithRoleAdditions = [
+            ...navItemsWithRoleAdditions.slice(0, dashboardIndex + 1),
+            factoryMiscItem,
+            ...navItemsWithRoleAdditions.slice(dashboardIndex + 1),
+          ];
+        } else {
+          navItemsWithRoleAdditions = [factoryMiscItem, ...navItemsWithRoleAdditions];
+        }
+      }
+
       const finalNavItems =
         isBroadcastEnabled && !isMasterAdmin
-          ? initialNavItems
-          : initialNavItems.filter((item) => item.title !== "Broadcast");
+          ? navItemsWithRoleAdditions
+          : navItemsWithRoleAdditions.filter((item) => item.title !== "Broadcast");
 
     const finalTrackTraceItems =
       isSuperAdmin && (isTrackTraceEnabled || isScanPackEnabled)
@@ -782,7 +973,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         : [];
 
     const finalInventoryItems = isSuperAdmin && isInventoryEnabled
-      ? data.inventoryTraceNav
+      ? data.inventoryTraceNav.map((section) =>
+        section.title === "Material Issue"
+          ? {
+            ...section,
+            items: section.items?.map((item) =>
+              item.title === "Projects"
+                ? {
+                  ...item,
+                  customCount: materialIssueProjectsCount,
+                  customCountLoading: isMaterialIssueProjectsLoading,
+                }
+                : item,
+            ),
+          }
+          : section,
+      )
       : [];
 
     const finalInventoryMasterItems = isSuperAdmin && isInventoryEnabled
@@ -802,9 +1008,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             : section.items,
       }))
       : [];
-    const resolvedNavItems = isOnlineLeadFeatureEnabled
-      ? finalNavItems
-      : finalNavItems.filter((item) => item.title !== "Lead Pool");
+    let resolvedNavItems = (
+      isOnlineLeadFeatureEnabled
+        ? finalNavItems
+        : finalNavItems.filter((item) => item.title !== "Lead Pool")
+    ).filter((item) => !(item.title === "Lead Pool" && isSalesExecutive));
+
+    if (userType === "miscellaneous") {
+      resolvedNavItems = resolvedNavItems.filter(
+        (item) =>
+          item.title === "My Task" ||
+          item.title === "Execution" ||
+          item.title === "Miscellaneous Module",
+      );
+    }
 
     return {
       navItems: resolvedNavItems,
@@ -825,11 +1042,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     isCrmEnabled,
     isBroadcastEnabled,
     isInventoryEnabled,
+    materialIssueProjectsCount,
+    isMaterialIssueProjectsLoading,
     isTrackTraceEnabled,
     isOnlineLeadFeatureEnabled,
     isScanPackEnabled,
     customPrivilegeCodes,
     isActiveFranchiseB2b,
+    handlesLargeScaleProjects,
   ]);
 
   const teams = React.useMemo(() => {

@@ -34,6 +34,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  canEditBasicAndGstAmount,
+  canEditGstAmount,
+  canAddAdditionalPayment,
+} from "@/components/utils/privileges";
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -348,14 +353,28 @@ export default function ProjectFinanceSummary({
     },
   });
 
+  const customPrivilegeCodes = useAppSelector(
+    (s) => s.customPrivileges.codes,
+  );
+
   const updateBookingAmountMutation = useUpdateBookingAmount();
   const updateBasicAmountMutation = useUpdateBasicAmount();
   const updateGstPercentageMutation = useUpdateGstPercentage();
 
   const canEditLargeScaleBookingAmount =
-    isSuperAdmin && handlesLargeScaleProjects && activeProductTypeId != null;
+    (isSuperAdmin ||
+      (userType?.toLowerCase() === "custom" &&
+        customPrivilegeCodes.includes("leads.booking_done.booking_amount.edit"))) &&
+    handlesLargeScaleProjects &&
+    activeProductTypeId != null;
   const canEditLargeScaleBasicAmount =
-    isSuperAdmin && handlesLargeScaleProjects && activeProductTypeId != null;
+    canEditBasicAndGstAmount(userType, customPrivilegeCodes) &&
+    handlesLargeScaleProjects &&
+    activeProductTypeId != null;
+  const canEditLargeScaleGstAmount =
+    canEditGstAmount(userType, customPrivilegeCodes) &&
+    handlesLargeScaleProjects &&
+    activeProductTypeId != null;
 
   const bookingAmountDelta = Math.max(
     0,
@@ -644,7 +663,7 @@ export default function ProjectFinanceSummary({
                 <p className="font-bold text-lg">
                   {formatCurrencyINR(scopedGstAmount || 0)}
                 </p>
-                {canEditLargeScaleBasicAmount && (
+                {canEditLargeScaleGstAmount && (
                   <Button
                     type="button"
                     variant="ghost"
@@ -713,7 +732,7 @@ export default function ProjectFinanceSummary({
       </Card>
 
       {/* ── Add Additional Payment Form ───────────────────────────────────────── */}
-      {!isAuditor && !hideAddPaymentForm && (
+      {canAddAdditionalPayment(userType, customPrivilegeCodes) && !hideAddPaymentForm && (
         <Card className="p-4 shadow-sm">
           <h3 className="text-md font-semibold mb-3">Add Additional Payment</h3>
 

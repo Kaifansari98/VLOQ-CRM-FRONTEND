@@ -20,7 +20,10 @@ import { useDetails } from "../details-context";
 import { useAppSelector } from "@/redux/store";
 import { useSubmitDesigns } from "@/api/designingStageQueries";
 import { useQueryClient } from "@tanstack/react-query";
-import { useLeadUniqueProductTypes, useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
+import {
+  useLeadUniqueProductTypes,
+  useLeadProductStructureInstances,
+} from "@/hooks/useLeadsQueries";
 import {
   useDesignsDoc,
   useLeadSpecifications,
@@ -53,12 +56,12 @@ const designsSchema = z.object({
       (files: File[]) =>
         files.every((f) =>
           /\.(pdf|zip|pyo|pytha|dwg|dxf|stl|step|stp|iges|igs|3ds|obj|skp|sldprt|sldasm|prt|catpart|catproduct)$/i.test(
-            f.name
-          )
+            f.name,
+          ),
         ),
       {
         message: "Only PDF, ZIP or supported design formats are allowed.",
-      }
+      },
     ),
 });
 
@@ -78,17 +81,17 @@ const getDefaultDesignValues = (): DesignsFormValues => ({
 });
 
 const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
-  const { leadId, accountId } = useDetails();
+  const { leadId } = useDetails();
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id)!;
   const userId = useAppSelector((s) => s.auth.user?.id)!;
-  const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
-  const isAuditor = userType?.trim().toLowerCase() === "auditor";
   const isCustomVendor = useAppSelector((s) => s.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only);
   const handlesLargeScaleProjects = useAppSelector(
     (s) => s.auth.user?.vendor?.handlesLargeScaleProjects === true,
   );
 
-  const [b2bReqTypes, setB2BReqTypes] = useState<{ id: number; typeName: string }[]>([]);
+  const [b2bReqTypes, setB2BReqTypes] = useState<
+    { id: number; typeName: string }[]
+  >([]);
   const [submitting, setSubmitting] = useState(false);
 
   const queryClient = useQueryClient();
@@ -97,14 +100,17 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
     defaultValues: getDefaultDesignValues(),
   });
 
+  // B2B logic must NEVER run or fetch when handlesLargeScaleProjects is true
   useEffect(() => {
-    if (open && vendorId && leadId) {
+    if (open && vendorId && leadId && !handlesLargeScaleProjects) {
       fetchLeadB2BRequirementMappingsApi(leadId, vendorId)
         .then((res) => {
           if (res?.success && Array.isArray(res?.data)) {
             const mapped = res.data.map((item: any) => ({
               id: item.b2b_requirement_type_id,
-              typeName: item.b2bRequirementType?.type || `Requirement #${item.b2b_requirement_type_id}`,
+              typeName:
+                item.b2bRequirementType?.type ||
+                `Requirement #${item.b2b_requirement_type_id}`,
             }));
             setB2BReqTypes(mapped);
             if (mapped.length > 0) {
@@ -112,9 +118,11 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
             }
           }
         })
-        .catch((err) => console.error("Error fetching B2B requirement mappings:", err));
+        .catch((err) =>
+          console.error("Error fetching B2B requirement mappings:", err),
+        );
     }
-  }, [open, vendorId, leadId, form]);
+  }, [open, vendorId, leadId, handlesLargeScaleProjects, form]);
 
   React.useEffect(() => {
     if (!open) {
@@ -124,30 +132,27 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
 
   const submitDesignsMutation = useSubmitDesigns();
 
-  const { data: uniqueProductTypes } = useLeadUniqueProductTypes(leadId, vendorId, open);
-  const { data: structureInstancesData } = useLeadProductStructureInstances(leadId, vendorId, open);
+  const { data: uniqueProductTypes } = useLeadUniqueProductTypes(
+    leadId,
+    vendorId,
+    open,
+  );
+  const { data: structureInstancesData } = useLeadProductStructureInstances(
+    leadId,
+    vendorId,
+    open,
+  );
   const { data: specifications = [] } = useLeadSpecifications(vendorId, leadId);
-  const { data: designDocsResponse } = useDesignsDoc(vendorId, leadId);
 
   const productTypes = uniqueProductTypes?.data ?? [];
   const shouldRenderProductTypeField =
     isCustomVendor || handlesLargeScaleProjects;
   const showProductTypeSelect =
-    shouldRenderProductTypeField &&
-    (!productTypes || productTypes.length > 1);
+    shouldRenderProductTypeField && (!productTypes || productTypes.length > 1);
   const selectedProductType = form.watch("product_type");
   const structureInstances = Array.isArray(structureInstancesData?.data)
     ? structureInstancesData.data
     : [];
-  const linkedSpecificationIds = useMemo(
-    () =>
-      new Set(
-        (designDocsResponse?.data?.documents ?? [])
-          .map((doc) => doc.specification?.id)
-          .filter((id): id is number => typeof id === "number"),
-      ),
-    [designDocsResponse?.data?.documents],
-  );
 
   const filteredSpecifications = useMemo(() => {
     if (!handlesLargeScaleProjects || !selectedProductType) {
@@ -173,7 +178,7 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
     }
 
     return specifications.filter((spec) => {
-      if (!spec.item_code_id || linkedSpecificationIds.has(spec.id)) {
+      if (!spec.item_code_id) {
         return false;
       }
 
@@ -181,7 +186,6 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
     });
   }, [
     handlesLargeScaleProjects,
-    linkedSpecificationIds,
     selectedProductType,
     specifications,
     structureInstances,
@@ -200,9 +204,13 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
   }, [form, selectedProductType]);
 
   const onSubmit = async (data: DesignsFormValues) => {
-    const b2bReqTypeId = data.b2b_requirement_type_id
-      ? Number(data.b2b_requirement_type_id)
-      : b2bReqTypes[0]?.id;
+    // For handlesLargeScaleProjects, B2B logic must NEVER interfere!
+    const b2bReqTypeId =
+      !handlesLargeScaleProjects && data.b2b_requirement_type_id
+        ? Number(data.b2b_requirement_type_id)
+        : !handlesLargeScaleProjects && b2bReqTypes.length > 0
+        ? b2bReqTypes[0]?.id
+        : null;
 
     if (b2bReqTypeId) {
       try {
@@ -218,7 +226,10 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
             created_by: userId,
           });
         }
-        toastManager.add({ title: "Design files uploaded successfully!", type: "success" });
+        toastManager.add({
+          title: "Design files uploaded successfully!",
+          type: "success",
+        });
 
         queryClient.invalidateQueries({
           queryKey: ["getDesignsDoc", vendorId, leadId],
@@ -231,7 +242,10 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
         onOpenChange(false);
       } catch (error: any) {
         toastManager.add({
-          title: error?.response?.data?.message || error?.message || "Failed to upload design files",
+          title:
+            error?.response?.data?.message ||
+            error?.message ||
+            "Failed to upload design files",
           type: "error",
         });
       } finally {
@@ -248,7 +262,7 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
       return;
     }
 
-    if (isCustomVendor && !data.product_type) {
+    if ((isCustomVendor || handlesLargeScaleProjects) && showProductTypeSelect && !data.product_type) {
       form.setError("product_type", {
         type: "manual",
         message: "Product type is required",
@@ -257,19 +271,23 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
     }
 
     try {
+      setSubmitting(true);
       let productStructureInstanceIds: number[] = [];
       const specificationId =
         data.specification_id && data.specification_id !== "none"
           ? Number(data.specification_id)
           : null;
 
-      if (data.product_type) {
+      const activeProductType =
+        data.product_type || (productTypes.length === 1 ? productTypes[0].type : "");
+
+      if (activeProductType) {
         if (structureInstances.length > 0) {
           productStructureInstanceIds = structureInstances
             .filter((inst: any) => {
               const type1 = inst.productType?.type;
               const type2 = inst.productItemCode?.productStructure?.productType?.type;
-              return type1 === data.product_type || type2 === data.product_type;
+              return type1 === activeProductType || type2 === activeProductType;
             })
             .map((inst: any) => inst.id);
         }
@@ -285,7 +303,10 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
         specificationId,
       });
 
-      toastManager.add({ title: "Design files uploaded successfully!", type: "success" });
+      toastManager.add({
+        title: "Design files uploaded successfully!",
+        type: "success",
+      });
 
       queryClient.invalidateQueries({
         queryKey: ["getDesignsDoc", vendorId, leadId],
@@ -308,6 +329,8 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
         title: errorMessage,
         type: "error",
       });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -322,11 +345,10 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
       description="Upload design files in supported CAD or document formats."
       size="smd"
     >
-
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-5">
-          {/* Requirement Type Dropdown for B2B */}
-          {b2bReqTypes.length > 0 && (
+          {/* Requirement Type Dropdown for B2B (only when NOT handlesLargeScaleProjects) */}
+          {!handlesLargeScaleProjects && b2bReqTypes.length > 0 && (
             <FormField
               control={form.control}
               name="b2b_requirement_type_id"
@@ -334,7 +356,10 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
                 <FormItem>
                   <FormLabel>Requirement Type</FormLabel>
                   <Select
-                    value={field.value || (b2bReqTypes[0]?.id ? String(b2bReqTypes[0].id) : "")}
+                    value={
+                      field.value ||
+                      (b2bReqTypes[0]?.id ? String(b2bReqTypes[0].id) : "")
+                    }
                     onValueChange={field.onChange}
                   >
                     <FormControl>
@@ -356,7 +381,7 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
             />
           )}
 
-          {(isCustomVendor || shouldRenderProductTypeField) && (
+          {(isCustomVendor || showProductTypeSelect) && (
             <div
               className={
                 isCustomVendor && showProductTypeSelect
@@ -372,9 +397,9 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
                     <FormItem>
                       <FormLabel>Design Type *</FormLabel>
                       <Select
-                        value={field.value}
-                        onValueChange={(value) => {
-                          field.onChange(value);
+                        value={field.value || ""}
+                        onValueChange={(val) => {
+                          field.onChange(val);
                           form.clearErrors("design_type");
                         }}
                       >
@@ -386,7 +411,9 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
                         <SelectContent>
                           <SelectItem value="2D">2D Design</SelectItem>
                           <SelectItem value="3D">3D Design</SelectItem>
-                          <SelectItem value="2D + 3D">2D + 3D Design</SelectItem>
+                          <SelectItem value="2D + 3D">
+                            2D + 3D Design
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -402,7 +429,7 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        Product Type {isCustomVendor ? "*" : ""}
+                        Product Type {isCustomVendor || handlesLargeScaleProjects ? "*" : ""}
                       </FormLabel>
                       <Select
                         value={field.value || ""}
@@ -438,7 +465,7 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
             </div>
           )}
 
-          {handlesLargeScaleProjects && selectedProductType ? (
+          {handlesLargeScaleProjects && selectedProductType && (
             <FormField
               control={form.control}
               name="specification_id"
@@ -446,8 +473,8 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
                 <FormItem>
                   <FormLabel>Specification (Optional)</FormLabel>
                   <Select
-                    onValueChange={field.onChange}
                     value={field.value || "none"}
+                    onValueChange={(value) => field.onChange(value === "none" ? "" : value)}
                   >
                     <FormControl>
                       <SelectTrigger className="w-full">
@@ -467,7 +494,7 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
                 </FormItem>
               )}
             />
-          ) : null}
+          )}
 
           <FormField
             control={form.control}
@@ -479,7 +506,7 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
                   <DocumentsUploader
                     value={field.value}
                     onChange={field.onChange}
-                    accept=".pdf,.zip,.pyo,.pytha,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.csv"
                   />
                 </FormControl>
                 <FormMessage />
@@ -492,14 +519,18 @@ const DesignsModal: React.FC<DesignsModalProps> = ({ open, onOpenChange }) => {
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
+              disabled={submitting || submitDesignsMutation.isPending}
             >
               Cancel
             </Button>
+
             <Button
               type="submit"
-              disabled={submitDesignsMutation.isPending || submitting}
+              disabled={submitting || submitDesignsMutation.isPending}
             >
-              {submitDesignsMutation.isPending || submitting ? "Uploading..." : "Submit Designs"}
+              {submitting || submitDesignsMutation.isPending
+                ? "Uploading..."
+                : "Submit Designs"}
             </Button>
           </div>
         </form>

@@ -9,7 +9,14 @@ import {
   useUpsertProductionFilesRemark,
 } from "@/api/production/order-login";
 import { useAppSelector } from "@/redux/store";
-import { FolderOpen, Upload, Loader2, Paperclip } from "lucide-react";
+import {
+  FolderOpen,
+  Upload,
+  Loader2,
+  Paperclip,
+  Download,
+  FileSpreadsheet,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { toastManager } from "@/components/ui/toast";
@@ -36,6 +43,9 @@ import { Badge } from "@/components/ui/badge";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import { useSearchParams } from "next/navigation";
 import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
+import ProductionFilePreviewModal from "./ProductionFilePreviewModal";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
 
 
 import CustomeTooltip from "@/components/custom-tooltip";
@@ -45,15 +55,50 @@ interface ProductionFilesSectionProps {
   leadId: number;
   accountId: number | null;
   readOnly?: boolean;
+  showRequiredMaterials?: boolean;
   instanceId?: number | null;
   orderLoginApprovalPending?: boolean;
   orderLoginApprovalPendingTooltip?: string;
 }
 
+const MATERIAL_REQUIRED_TEMPLATE_HEADERS = [
+  "Sr.",
+  "Type",
+  "Category",
+  "Qty.",
+  "Unit",
+  "Name",
+  "Article Code",
+  "Edgeband",
+  "Size",
+  "Description",
+  "Vendor Code",
+  "Area",
+  "Face Coat 1",
+  "Face Coat 2",
+  "Alternate Unit Qty.",
+  "Minimum Order Qty.",
+  "Unit",
+  "Cost",
+  "Amt.",
+  "Tax Amt.",
+  "Total",
+];
+
+const MATERIAL_REQUIRED_TEMPLATE_HIGHLIGHT_HEADERS = new Set([
+  "Type",
+  "Category",
+  "Qty.",
+  "Unit",
+  "Name",
+  "Article Code",
+]);
+
 export default function ProductionFilesSection({
   leadId,
   accountId,
   readOnly = false,
+  showRequiredMaterials = false,
   instanceId,
   orderLoginApprovalPending = false,
   orderLoginApprovalPendingTooltip = "Accounts approval for Order Login is still pending",
@@ -67,6 +112,15 @@ export default function ProductionFilesSection({
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
   const userId = useAppSelector((s) => s.auth.user?.id);
+  const handlesLargeScaleProjects = useAppSelector(
+    (s) => s.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const isInventoryEnabled = useAppSelector(
+    (s) => s.auth.user?.vendor?.is_inventory_enabled === true,
+  );
+  // Vendors that both run large-scale projects and have inventory switched on
+  // must upload a strict Excel-only sheet whose columns match the template.
+  const strictExcelMode = showRequiredMaterials || (handlesLargeScaleProjects && isInventoryEnabled);
   const customPrivilegeCodes = useAppSelector(
     (s) => s.customPrivileges.codes,
   );
@@ -94,6 +148,16 @@ export default function ProductionFilesSection({
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const hasFiles = Array.isArray(productionFiles) && productionFiles.length > 0;
+  const allowedLargeScaleExtensions = strictExcelMode
+    ? [".xlsx"]
+    : [".xlsx", ".csv"];
+  const productionFileAccept = handlesLargeScaleProjects
+    ? allowedLargeScaleExtensions.join(",")
+    : ".png,.jpg,.jpeg,.pdf,.pyo,.pytha,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip";
+
+  // Strict mode (handlesLargeScaleProjects + is_inventory_enabled) uploads through
+  // ProductionFilePreviewModal, which parses/validates/matches the sheet itself.
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
 
   const { data: savedRemark } = useProductionFilesRemark(vendorId, leadId);
   const { mutateAsync: saveRemark, isPending: savingRemark } =
@@ -128,6 +192,7 @@ export default function ProductionFilesSection({
   }, [savedRemark]);
 
   const handleRemarkSave = async () => {
+    if (readOnly) return;
     if (!remark.trim()) {
       toastManager.add({ title: "Remark cannot be empty.", type: "error" });
       return;
@@ -151,9 +216,27 @@ export default function ProductionFilesSection({
 
   // ✅ Handle Upload
   const handleUpload = async () => {
+    if (readOnly) return;
     if (selectedFiles.length === 0) {
       toastManager.add({ title: "Please select at least one file to upload.", type: "error" });
       return;
+    }
+
+    if (handlesLargeScaleProjects) {
+      const invalidFiles = selectedFiles.filter((file) => {
+        const fileName = file.name.toLowerCase();
+        return !allowedLargeScaleExtensions.some((ext) => fileName.endsWith(ext));
+      });
+
+      if (invalidFiles.length > 0) {
+        toastManager.add({
+          title: strictExcelMode
+            ? "Only .xlsx (Excel) files are allowed."
+            : "Only .xlsx and .csv files are allowed for large-scale vendors.",
+          type: "error",
+        });
+        return;
+      }
     }
 
     try {
@@ -165,6 +248,7 @@ export default function ProductionFilesSection({
       await uploadFiles(formData);
       toastManager.add({ title: "Production files uploaded successfully!", type: "success" });
       setSelectedFiles([]);
+      setPreviewModalOpen(false);
 
       queryClient.invalidateQueries({
         queryKey: [
@@ -192,6 +276,7 @@ export default function ProductionFilesSection({
   };
 
   const handleConfirmDelete = () => {
+    if (readOnly) return;
     if (confirmDelete) {
       deleteDocument({
         vendorId: vendorId!,
@@ -199,6 +284,41 @@ export default function ProductionFilesSection({
         deleted_by: userId!,
       });
       setConfirmDelete(null);
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Material Report For Production");
+
+      worksheet.addRow(MATERIAL_REQUIRED_TEMPLATE_HEADERS);
+      const headerRow = worksheet.getRow(1);
+      headerRow.font = { bold: true };
+
+      headerRow.eachCell((cell, colNumber) => {
+        const header = MATERIAL_REQUIRED_TEMPLATE_HEADERS[colNumber - 1];
+        if (!MATERIAL_REQUIRED_TEMPLATE_HIGHLIGHT_HEADERS.has(header)) return;
+
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFFFFF00" },
+        };
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      saveAs(blob, "material_required_template.xlsx");
+    } catch (error) {
+      console.error("Failed to download production template", error);
+      toastManager.add({
+        title: "Failed to download template",
+        type: "error",
+      });
     }
   };
 
@@ -213,6 +333,7 @@ export default function ProductionFilesSection({
     !isAuditor &&
     canUploadOrDeleteOrderLogin(userType ?? "", effectiveStage);
   const canUploadProductionFiles =
+    !readOnly &&
     !shouldDisableActions &&
     (
       userType === "custom"
@@ -223,6 +344,7 @@ export default function ProductionFilesSection({
     );
 
   const canDeleteProductionFiles =
+    !readOnly &&
     !shouldDisableActions &&
     (
       userType === "custom"
@@ -237,6 +359,24 @@ export default function ProductionFilesSection({
       <ClientRequiredDeliveryDateBanner leadId={leadId} />
 
       <div className="border rounded-lg bg-background shadow-sm">
+        {showRequiredMaterials ? (
+          <>
+            {shouldDisableActions && <p role="status" className="border-b px-6 py-3 text-sm text-muted-foreground">{effectiveBlockedTooltip}</p>}
+            <ProductionFilePreviewModal
+              embedded
+              open
+              onOpenChange={() => {}}
+              files={selectedFiles}
+              onFilesChange={setSelectedFiles}
+              vendorId={vendorId}
+              uploading={isPending}
+              canUpload={canUploadProductionFiles}
+              onUpload={handleUpload}
+              onDownloadTemplate={handleDownloadTemplate}
+            />
+          </>
+        ) : (
+          <>
         {/* -------------------------------- HEADER -------------------------------- */}
         <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between px-6 py-4 border-b bg-muted/30 ">
           <div className="space-y-0.5">
@@ -247,22 +387,38 @@ export default function ProductionFilesSection({
               </h2>
             </div>
             <p className="text-xs text-muted-foreground ml-7">
-              Upload and manage production files associated with this
+              {readOnly
+                ? "Preview and download production files associated with this"
+                : "Upload and manage production files associated with this"}
             </p>
           </div>
 
-          {hasFiles && (
-            <Badge variant="secondary">
-              {productionFiles.length} File
-              {productionFiles.length > 1 && "s"}
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {!readOnly && handlesLargeScaleProjects && (
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                onClick={handleDownloadTemplate}
+                className="flex items-center gap-2"
+              >
+                <Download size={16} />
+                Download Template
+              </Button>
+            )}
+            {hasFiles && (
+              <Badge variant="secondary">
+                {productionFiles.length} File
+                {productionFiles.length > 1 && "s"}
+              </Badge>
+            )}
+          </div>
         </div>
 
         {/* -------------------------------- UPLOAD AREA -------------------------------- */}
 
 
-        {shouldDisableActions ? (
+        {!readOnly && shouldDisableActions ? (
           <div className="p-6 border-b space-y-4">
             <CustomeTooltip
               value={effectiveBlockedTooltip}
@@ -280,13 +436,39 @@ export default function ProductionFilesSection({
 
        
           </div>
-        ) : (
-          canUploadProductionFiles && (
+        ) : !readOnly ? (
+          canUploadProductionFiles &&
+          (strictExcelMode ? (
+            <div className="p-6 border-b">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-dashed p-6 bg-muted/20">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg border bg-background p-2.5 text-primary shrink-0">
+                    <FileSpreadsheet className="size-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Upload via Excel</p>
+                    <p className="text-xs text-muted-foreground">
+                      Only .xlsx files matching the template are accepted. You'll
+                      preview and confirm the inventory match before uploading.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => setPreviewModalOpen(true)}
+                  className="flex items-center gap-2 shrink-0"
+                >
+                  <Upload size={16} />
+                  Upload via Excel
+                </Button>
+              </div>
+            </div>
+          ) : (
             <div className="p-6 border-b space-y-4">
               <FileUploadField
                 value={selectedFiles}
                 onChange={setSelectedFiles}
-                accept=".png,.jpg,.jpeg,.pdf,.pyo,.pytha,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip"
+                accept={productionFileAccept}
                 multiple
               />
 
@@ -311,62 +493,68 @@ export default function ProductionFilesSection({
                 </Button>
               </div>
             </div>
-          )
+          ))
+        ) : null}
+
+
+        {!readOnly && !handlesLargeScaleProjects && (
+          <div className="p-6 border-b space-y-2">
+            <p className="text-sm font-semibold tracking-tight">Remark</p>
+            {shouldDisableActions ? (
+              <CustomeTooltip
+                value={effectiveBlockedTooltip}
+                truncateValue={
+                  <div>
+                    <TextAreaInput
+                      value={remark}
+                      onChange={() => { }}
+                      disabled
+                      maxLength={500}
+                      placeholder="Add any notes related to production files..."
+                      className="h-[130px] bg-muted/20 rounded-lg"
+                    />
+                  </div>
+                }
+              />
+            ) : (
+              <TextAreaInput
+                value={remark}
+                onChange={setRemark}
+                maxLength={500}
+                disabled={!canUploadProductionFiles}
+                placeholder="Add any notes related to production files..."
+                className="h-[130px] bg-muted/20 rounded-lg"
+              />
+            )}
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                onClick={handleRemarkSave}
+                disabled={
+                  !remark.trim() || !canUploadProductionFiles || savingRemark
+                }
+                className="flex items-center gap-2"
+              >
+                {savingRemark ? (
+                  <>
+                    <Loader2 className="animate-spin size-4" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Paperclip size={16} />
+                    {savedRemark && savedRemark !== "N/A"
+                      ? "Update Remark"
+                      : "Add Remark"}
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
         )}
 
-
-        {/* -------------------------------- REMARK SECTION -------------------------------- */}
-        <div className="p-6 border-b space-y-2">
-          <p className="text-sm font-semibold tracking-tight">Remark</p>
-          {shouldDisableActions ? (
-            <CustomeTooltip
-              value={effectiveBlockedTooltip}
-              truncateValue={
-                <div>
-                  <TextAreaInput
-                    value={remark}
-                    onChange={() => { }}
-                    disabled
-                    maxLength={500}
-                    placeholder="Add any notes related to production files..."
-                    className="h-[130px] bg-muted/20 rounded-lg"
-                  />
-                </div>
-              }
-            />
-          ) : (
-            <TextAreaInput
-              value={remark}
-              onChange={setRemark}
-              maxLength={500}
-              disabled={!canUploadProductionFiles}
-              placeholder="Add any notes related to production files..."
-              className="h-[130px] bg-muted/20 rounded-lg"
-            />
-          )}
-          <div className="flex justify-end">
-            <Button
-              size="sm"
-              onClick={handleRemarkSave}
-              disabled={
-                !remark.trim() || !canUploadProductionFiles || savingRemark
-              }
-              className="flex items-center gap-2"
-            >
-              {savingRemark ? (
-                <>
-                  <Loader2 className="animate-spin size-4" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Paperclip size={16} />
-                  {savedRemark && savedRemark !== "N/A" ? "Update Remark" : "Add Remark"}
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
+          </>
+        )}
 
         {/* -------------------------------- FILE LIST SECTION -------------------------------- */}
         <div className="p-6 space-y-4">
@@ -388,7 +576,11 @@ export default function ProductionFilesSection({
                 No production files uploaded yet.
               </p>
               <p className="text-xs text-muted-foreground">
-                Start by uploading your CAD, Pytha, or image files.
+                {readOnly
+                  ? "No files are available to preview or download."
+                  : strictExcelMode
+                  ? "Select an Excel workbook above to review the required materials."
+                  : "Start by uploading your CAD, Pytha, or image files."}
               </p>
             </div>
           ) : (
@@ -397,7 +589,7 @@ export default function ProductionFilesSection({
                 const isImage = doc.doc_og_name?.match(
                   /\.(jpg|jpeg|png|gif|webp)$/i,
                 );
-                if (isImage) {
+                if (isImage && !readOnly) {
                   return (
                     <ImageComponent
                       key={doc.id}
@@ -457,6 +649,22 @@ export default function ProductionFilesSection({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* -------------------------------- EXCEL IMPORT PREVIEW -------------------------------- */}
+        <ProductionFilePreviewModal
+          open={!showRequiredMaterials && strictExcelMode && previewModalOpen}
+          onOpenChange={(open) => {
+            if (isPending) return;
+            setPreviewModalOpen(open);
+          }}
+          files={selectedFiles}
+          onFilesChange={setSelectedFiles}
+          vendorId={vendorId}
+          uploading={isPending}
+          canUpload={canUploadProductionFiles}
+          onUpload={handleUpload}
+          onDownloadTemplate={handleDownloadTemplate}
+        />
       </div>
     </div>
   );

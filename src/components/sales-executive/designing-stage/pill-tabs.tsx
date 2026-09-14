@@ -123,11 +123,15 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
       !leadDetailsData ||
       assignedDesigners.length > 0;
 
+    const normalizedUserType = userType?.trim().toLowerCase();
+    const isCaller = normalizedUserType === "telecaller" || normalizedUserType === "telecaller-team-lead" || normalizedUserType === "telecaller team lead" || normalizedUserType === "caller";
+
     const isAdmin =
       userType?.toLowerCase() === "admin" ||
       userType?.toLowerCase() === "super-admin";
-    const canShowButtons = isAdmin || leadCurrentStatus === "Type 3";
+    const canShowButtons = !isCaller && (isAdmin || leadCurrentStatus === "Type 3");
     const canUploadQuotation =
+      !isCaller &&
       !isAuditor &&
       (userType?.toLowerCase() === "custom"
         ? customPrivilegeCodes.includes(
@@ -135,17 +139,20 @@ const PillTabs = React.forwardRef<HTMLDivElement, PillTabsProps>(
           )
         : true);
     const canUploadMeetings =
+      !isCaller &&
       !isAuditor &&
       (userType?.toLowerCase() === "custom"
         ? customPrivilegeCodes.includes("leads.designing_stage.meetings.upload")
         : true);
     const canUploadDesigns =
+      !isCaller &&
       !isAuditor &&
       (userType?.toLowerCase() === "custom"
         ? customPrivilegeCodes.includes("leads.designing_stage.designs.upload")
         : true);
     const isSuperAdmin = userType?.toLowerCase() === "super-admin";
     const canAssignDesigner =
+      !isCaller &&
       vendorCustomUserTypeOnly &&
       (isSuperAdmin ||
         customPrivilegeCodes.includes(

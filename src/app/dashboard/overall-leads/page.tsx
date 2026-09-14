@@ -16,6 +16,7 @@ import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { UniversalTable } from "@/components/custom/UniversalTable";
 import { LeadColumn } from "@/components/utils/column/column-type";
+import { useAppSelector } from "@/redux/store";
 
 const STAGE_PATH_BY_TAG: Record<string, string> = {
   "Type 1": "/dashboard/leads/leadstable/details",
@@ -59,21 +60,28 @@ const STAGE_PATH_BY_NAME: Record<string, string> = {
   "Project Completed": "/dashboard/installation/final-handover/details",
 };
 
-const navigateOverallLeads = (row: LeadColumn) => {
-  const basePath =
-    (row.statusTag && STAGE_PATH_BY_TAG[row.statusTag]) ||
-    (row.status && STAGE_PATH_BY_NAME[row.status]);
-
-  if (!basePath) {
-    return "/dashboard/overall-leads";
-  }
-
-  return `${basePath}/${row.id}?accountId=${row.accountId}${
-    row.instanceId ? `&instance_id=${row.instanceId}` : ""
-  }`;
-};
-
 export default function OverallLeadsPage() {
+  const isOnlineLeadFeatureEnabled = useAppSelector(
+    (s) => s.auth.user?.vendor?.is_online_lead_feature_enabled === true,
+  );
+
+  const navigateOverallLeads = (row: LeadColumn) => {
+    let basePath =
+      (row.statusTag && STAGE_PATH_BY_TAG[row.statusTag]) ||
+      (row.status && STAGE_PATH_BY_NAME[row.status]);
+
+    if (basePath === "/dashboard/leads/draft-lead/details" && isOnlineLeadFeatureEnabled) {
+      basePath = "/dashboard/leads/online-lead/details";
+    }
+
+    if (!basePath) {
+      return "/dashboard/overall-leads";
+    }
+
+    return `${basePath}/${row.id}?accountId=${row.accountId}${
+      row.instanceId ? `&instance_id=${row.instanceId}` : ""
+    }`;
+  };
   return (
     <>
       <header className="flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">

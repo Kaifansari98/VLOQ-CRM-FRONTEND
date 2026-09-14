@@ -31,7 +31,9 @@ import {
   FolderOpen,
   LockOpen,
   Lock,
+  Store as StoreIcon,
 } from "lucide-react";
+import ChangeStoreModal from "@/components/sales-executive/Lead/change-store-modal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -109,6 +111,8 @@ export default function SiteMeasurementLead() {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type,
   );
+  const normalizedUserType = userType?.trim().toLowerCase();
+  const isCaller = normalizedUserType === "telecaller" || normalizedUserType === "telecaller-team-lead" || normalizedUserType === "telecaller team lead" || normalizedUserType === "caller";
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
@@ -117,6 +121,9 @@ export default function SiteMeasurementLead() {
     (state) =>
       state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
   );
+  const isOnlineLeadFeatureEnabled = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_online_lead_feature_enabled === true,
+  );
 
   const [openDelete, setOpenDelete] = useState(false);
   const [openMoveToDesigning, setOpenMoveToDesigning] = useState(false);
@@ -124,6 +131,7 @@ export default function SiteMeasurementLead() {
   const [openMeasurement, setOpenMeasurement] = useState(false);
   const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [changeStoreOpen, setChangeStoreOpen] = useState(false);
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
@@ -137,6 +145,7 @@ export default function SiteMeasurementLead() {
   const blockLeadMutation = useBlockLead();
   const unblockLeadMutation = useUnblockLead();
   const isAuditor = userType?.trim().toLowerCase() === "auditor";
+  const isSuperAdmin = userType?.trim().toLowerCase() === "super-admin";
 
   const { data: ismUploadData } = useCheckIsmUploaded(leadIdNum);
   const isIsmUploaded = ismUploadData?.isUploaded;
@@ -202,6 +211,7 @@ export default function SiteMeasurementLead() {
     // - User has upload permission
     // - User is NOT admin or super-admin
     if (
+      !isCaller &&
       !lead.is_draft &&
       !isLeadBlocked &&
       canUploadISM(userType) &&
@@ -299,13 +309,14 @@ export default function SiteMeasurementLead() {
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
 
   const canReassign =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
           "leads.ism_leads.ism_details.reassign_lead",
         )
-      : canReassignLeadButton(userType);
-  const canDelete = canDeleteLeadButton(userType);
-  const canEdit = canEditLeadForSalesExecutiveButton(userType);
+      : canReassignLeadButton(userType));
+  const canDelete = !isCaller && canDeleteLeadButton(userType);
+  const canEdit = !isCaller && canEditLeadForSalesExecutiveButton(userType);
   const canViewPayment =
     isAuditor ||
     (userType?.toLowerCase() === "custom"
@@ -327,35 +338,40 @@ export default function SiteMeasurementLead() {
         )
       : true;
   const canUploadMeasurement =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
           "leads.ism_leads.ism_details.upload_measurement",
         )
-      : canUploadISM(userType);
+      : canUploadISM(userType));
   const canMarkOnHold =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
           "leads.ism_leads.ism_details.mark_on_hold",
         )
-      : true;
+      : true);
   const canMarkAsLost =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
           "leads.ism_leads.ism_details.mark_as_lost",
         )
-      : true;
+      : true);
   const canMoveToDesigning =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
           "leads.ism_leads.ism_details.move_to_designing",
         )
-      : canUploadISM(userType);
+      : canUploadISM(userType));
   const canBlockLead =
-    userType?.toLowerCase() === "custom"
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
       ? customPrivilegeCodes.includes(
           "leads.ism_leads.ism_details.block_lead",
         )
-      : userType?.toLowerCase() === "super-admin";
+      : userType?.toLowerCase() === "super-admin");
   const canSeeLeadStatusMenu = canMarkOnHold || canMarkAsLost;
 
   console.log("assigned to", lead?.assignedTo?.id);
@@ -443,7 +459,7 @@ export default function SiteMeasurementLead() {
                 )}
               </>
             )}
-          {!isAuditor && (
+          {!isAuditor && !isCaller && (
             <Button
               size="sm"
               className="hidden md:block"
@@ -452,10 +468,11 @@ export default function SiteMeasurementLead() {
               Assign Task
             </Button>
           )}
+
           <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
           {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
-          {!isAuditor && (
+          {!isAuditor && !isCaller && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -550,6 +567,16 @@ export default function SiteMeasurementLead() {
                       </DropdownMenuSubContent>
                     </DropdownMenuSub>
                   ))}
+
+                {isOnlineLeadFeatureEnabled && isSuperAdmin && (
+                  <DropdownMenuItem
+                    onSelect={() => setChangeStoreOpen(true)}
+                    disabled={isLoading || !lead || shouldDisableBlockedActions}
+                  >
+                    <StoreIcon className="h-4 w-4 mr-2" />
+                    Store Transfer
+                  </DropdownMenuItem>
+                )}
 
                 {/* Edit */}
                 {canEdit &&
@@ -649,9 +676,8 @@ export default function SiteMeasurementLead() {
               <HouseIcon size={16} className="mr-1 opacity-60" />
               Lead Details
             </TabsTrigger>
-            {!isAuditor &&
-               
-              (shouldDisableBlockedActions ? (
+            {!isAuditor && !isCaller && (
+              shouldDisableBlockedActions ? (
                 <CustomeTooltip
                   value={blockedTooltip}
                   truncateValue={
@@ -879,6 +905,13 @@ export default function SiteMeasurementLead() {
           }
         }}
         data={{ id: leadIdNum, accountId, name: "" }}
+      />
+
+      <ChangeStoreModal
+        open={changeStoreOpen}
+        onOpenChange={setChangeStoreOpen}
+        leadId={leadIdNum}
+        currentStoreId={lead?.franchise_id}
       />
     </>
   );

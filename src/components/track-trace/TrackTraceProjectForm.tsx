@@ -16,11 +16,20 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { FileUploadField } from "../custom/file-upload";
 import { useAppSelector } from "@/redux/store";
 import { toastManager } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 
+import { Separator } from "@/components/ui/separator";
 import {
   Loader2,
   FolderPlus,
@@ -34,6 +43,7 @@ import {
   ArrowLeft,
   Plus,
   Trash2,
+  Package,
 } from "lucide-react";
 
 import {
@@ -76,60 +86,101 @@ const boxInfoFieldSchema = z.object({
     .default(true),
 });
 
-const projectFormSchema = z.object({
-  projectName: z
-    .string()
-    .min(1, "Project name is required")
-    .min(3, "Project name must be at least 3 characters")
-    .max(100, "Project name must not exceed 100 characters"),
+const getProjectFormSchema = (mode: "create" | "edit" = "create") =>
+  z
+    .object({
+      projectName: z
+        .string()
+        .trim()
+        .min(1, "Project name is required")
+        .min(3, "Project name must be at least 3 characters")
+        .max(100, "Project name must not exceed 100 characters"),
 
-  lead_id: z.number().nullable().optional(),
+      lead_id: z.number().nullable().optional(),
 
-  order_no: z.string().optional(),
-  client_name: z.string().optional(),
-  client_address: z.string().optional(),
-  client_contact_no: z.string().optional(),
-  packing_type:
-    z.enum(
-      PackingType
-    ),
+      order_no: z.string().optional(),
+      client_name: z.string().optional(),
+      client_address: z.string().optional(),
+      client_contact_no: z.string().optional(),
+      packing_type: z.enum(PackingType),
 
-  no_of_boxes: z.coerce
-    .number()
-    .int("No of boxes must be an integer")
-    .min(0, "No of boxes cannot be negative")
-    .default(0),
+      no_of_boxes: z.coerce
+        .number()
+        .int("No of boxes must be an integer")
+        .min(0, "No of boxes cannot be negative")
+        .default(0),
 
-  box_info_fields: z
-    .array(boxInfoFieldSchema)
-    .default([]),
+      box_info_fields: z.array(boxInfoFieldSchema).default([]),
 
+      file: z
+        .array(z.instanceof(File))
+        .max(1, "Only one file is allowed")
+        .optional()
+        .default([])
+        .refine(
+          (files) => {
+            if (files.length === 0) return true;
 
-  file: z
-    .array(z.instanceof(File))
-    .max(1, "Only one file is allowed")
-    .optional()
-    .default([])
-    .refine(
-      (files) => {
-        if (files.length === 0) return true;
+            const file = files[0];
 
-        const file = files[0];
+            return (
+              file.type ===
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+              file.type === "application/vnd.ms-excel" ||
+              file.name.toLowerCase().endsWith(".xlsx") ||
+              file.name.toLowerCase().endsWith(".xls")
+            );
+          },
+          {
+            message: "Only Excel files (.xlsx, .xls) are allowed",
+          }
+        ),
+    })
+    .superRefine((data, ctx) => {
+      if (!data.lead_id) {
+        if (!data.order_no || !data.order_no.trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Order number is required",
+            path: ["order_no"],
+          });
+        }
 
-        return (
-          file.type ===
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
-          file.type === "application/vnd.ms-excel" ||
-          file.name.toLowerCase().endsWith(".xlsx") ||
-          file.name.toLowerCase().endsWith(".xls")
-        );
-      },
-      {
-        message: "Only Excel files (.xlsx, .xls) are allowed",
+        if (!data.client_name || !data.client_name.trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Client name is required",
+            path: ["client_name"],
+          });
+        }
+
+        if (!data.client_contact_no || !data.client_contact_no.trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Client contact number is required",
+            path: ["client_contact_no"],
+          });
+        }
+
+        if (!data.client_address || !data.client_address.trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Client address is required",
+            path: ["client_address"],
+          });
+        }
       }
-    ),
-});
 
+      if (mode === "create" && (!data.file || data.file.length === 0)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Excel file is required",
+          path: ["file"],
+        });
+      }
+    });
+
+const projectFormSchema = getProjectFormSchema("create");
 
 type ProjectFormInput = z.input<typeof projectFormSchema>;
 type ProjectFormData = z.output<typeof projectFormSchema>;
@@ -242,15 +293,7 @@ function LeadSearchBox({
         )}
       </div>
 
-      {selectedLead && !open && (
-        <div className="mt-2 rounded-xl border bg-emerald-50 px-3 py-2 text-xs text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 size={14} />
-            <span className="font-semibold">Selected Lead:</span>
-            <span>{leadLabel}</span>
-          </div>
-        </div>
-      )}
+
 
       {open && !disabled && (
         <div className="absolute z-50 mt-2 max-h-72 w-full overflow-y-auto rounded-2xl border bg-background p-2 shadow-xl">
@@ -372,7 +415,7 @@ export default function TrackTraceProjectForm({
   const [pendingUpdatePayload, setPendingUpdatePayload] = useState<any | null>(null);
 
   const form = useForm<ProjectFormInput, unknown, ProjectFormData>({
-    resolver: zodResolver(projectFormSchema),
+    resolver: zodResolver(getProjectFormSchema(mode)),
     defaultValues: {
       projectName: "",
       lead_id: null,
@@ -688,16 +731,6 @@ export default function TrackTraceProjectForm({
       return;
     }
 
-    if (!validateManualFields(data)) return;
-
-    if (mode === "create" && (!data.file || data.file.length === 0)) {
-      toastManager.add({
-        title: "Please upload an Excel file",
-        type: "error",
-      });
-      return;
-    }
-
     const payload = {
       vendorId,
       lead_id: isCrmEnabled && data.lead_id ? Number(data.lead_id) : null,
@@ -815,97 +848,97 @@ export default function TrackTraceProjectForm({
   }
 
   return (
-    <div className="mx-auto">
-      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-xl font-bold">
-            {mode === "edit" ? "Edit Track & Trace Project" : "Create Project"}
+    <div className="flex flex-col gap-6 w-full">
+      {/* ── Title Row ── */}
+      <div>
+        <div className="flex items-center gap-2">
+          <h1 className="text-lg font-semibold">
+            {mode === "edit" ? "Edit Track & Trace Project" : "Create New Project"}
           </h1>
-
-          <p className="text-sm text-muted-foreground">
-            {mode === "edit"
-              ? "Update project details. Excel upload is optional while editing."
-              : "Create a Track & Trace project by selecting a lead or entering client details manually."}
-          </p>
+          {mode === "edit" && (
+            <Badge
+              variant="secondary"
+              className="text-xs font-semibold bg-primary/10 text-primary border-primary/20"
+            >
+              Edit Mode
+            </Badge>
+          )}
         </div>
-
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => router.push("/dashboard/track-trace/manage-project")}
-        >
-          <ArrowLeft size={15} className="mr-2" />
-          Back
-        </Button>
+        <p className="text-sm text-muted-foreground">
+          {mode === "edit"
+            ? "Update project details, packing rules, and excel data"
+            : "Define a new Track & Trace project by selecting a lead or entering client details manually"}
+        </p>
       </div>
 
-      <div className="rounded-2xl border bg-card shadow-sm">
-
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-5">
-            <div className="rounded-xl border border-foreground/10 bg-muted/40 p-4">
-              <div className="flex gap-3">
-                <Info className="mt-0.5 h-5 w-5 shrink-0" />
-
-                <div className="flex-1 space-y-3">
-                  <div className="space-y-2 text-sm">
-                    <p className="font-medium">Quick Setup Guide</p>
-
-                    <ol className="list-inside list-decimal space-y-1.5 text-muted-foreground">
-                      {isCrmEnabled && (
-                        <li>
-                          Select the lead/project this cutlist belongs to, if
-                          available.
-                        </li>
-                      )}
-                      <li>
-                        If lead is not available, enter order and client details
-                        manually.
-                      </li>
-                      <li>Download and fill the Excel template.</li>
-                      <li>Upload the completed file.</li>
-                    </ol>
-                  </div>
-
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={handleDownloadTemplate}
-                    disabled={isPending}
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    Download Template
-                  </Button>
+      {/* ── Form Container ── */}
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-6">
+          {/* Quick Setup Guide Card */}
+          <div className="rounded-2xl border bg-muted/20 p-5">
+            <div className="flex gap-3">
+              <Info className="mt-0.5 h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-400" />
+              <div className="flex-1 space-y-3">
+                <div className="space-y-1.5 text-sm">
+                  <p className="font-semibold text-foreground">Quick Setup Guide</p>
+                  <ol className="list-inside list-decimal space-y-1 text-xs text-muted-foreground leading-relaxed">
+                    {isCrmEnabled && (
+                      <li>Select the lead/project this cutlist belongs to, if available.</li>
+                    )}
+                    <li>If lead is not available, enter order and client details manually.</li>
+                    <li>Download and fill the Excel template.</li>
+                    <li>Upload the completed file.</li>
+                  </ol>
                 </div>
+
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleDownloadTemplate}
+                  disabled={isPending}
+                  className="h-8 text-xs gap-1.5"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Download Excel Template
+                </Button>
               </div>
             </div>
+          </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+          {/* Project & Client Details Card */}
+          <div className="rounded-2xl border bg-card p-6 space-y-5">
+            <div>
+              <h3 className="text-sm font-bold text-foreground">Project & Client Details</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Basic project identification, client contacts, and site location.
+              </p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               <FormField
                 control={form.control}
                 name="projectName"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
+                  <FormItem className="md:col-span-2 lg:col-span-2">
+                    <FormLabel className="text-xs font-semibold">
                       Project Name <span className="text-destructive">*</span>
                     </FormLabel>
-
                     <FormControl>
                       <Input
                         placeholder="e.g., Villa A Track & Trace Project"
                         {...field}
                         disabled={isPending}
-                        className="h-10"
+                        className="h-10 text-sm"
                       />
                     </FormControl>
-
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
               {configLoading ? (
-                <div className="rounded-xl border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+                <div className="rounded-xl border bg-muted/40 px-4 py-3 text-xs text-muted-foreground">
                   Checking CRM configuration...
                 </div>
               ) : isCrmEnabled ? (
@@ -913,14 +946,10 @@ export default function TrackTraceProjectForm({
                   control={form.control}
                   name="lead_id"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        Select Lead{" "}
-                        <span className="text-xs text-muted-foreground">
-                          (optional)
-                        </span>
+                    <FormItem className="md:col-span-2 lg:col-span-1">
+                      <FormLabel className="text-xs font-semibold">
+                        Select Lead <span className="text-xs text-muted-foreground font-normal">(optional)</span>
                       </FormLabel>
-
                       <FormControl>
                         <LeadSearchBox
                           vendorId={vendorId}
@@ -934,15 +963,13 @@ export default function TrackTraceProjectForm({
                           }}
                         />
                       </FormControl>
-
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               ) : (
-                <div className="rounded-xl border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-                  CRM is disabled for this vendor. Project will be created
-                  without lead mapping.
+                <div className="rounded-xl border bg-muted/40 px-4 py-3 text-xs text-muted-foreground">
+                  CRM is disabled for this vendor.
                 </div>
               )}
 
@@ -951,19 +978,17 @@ export default function TrackTraceProjectForm({
                 name="order_no"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
+                    <FormLabel className="text-xs font-semibold">
                       Order Number <span className="text-destructive">*</span>
                     </FormLabel>
-
                     <FormControl>
                       <Input
                         placeholder="Enter order number"
                         {...field}
                         disabled={isPending || isLeadSelected}
-                        className="h-10 disabled:bg-muted/60"
+                        className="h-10 text-sm disabled:bg-muted/60"
                       />
                     </FormControl>
-
                     <FormMessage />
                   </FormItem>
                 )}
@@ -974,19 +999,17 @@ export default function TrackTraceProjectForm({
                 name="client_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
+                    <FormLabel className="text-xs font-semibold">
                       Client Name <span className="text-destructive">*</span>
                     </FormLabel>
-
                     <FormControl>
                       <Input
                         placeholder="Enter client name"
                         {...field}
                         disabled={isPending || isLeadSelected}
-                        className="h-10 disabled:bg-muted/60"
+                        className="h-10 text-sm disabled:bg-muted/60"
                       />
                     </FormControl>
-
                     <FormMessage />
                   </FormItem>
                 )}
@@ -997,106 +1020,82 @@ export default function TrackTraceProjectForm({
                 name="client_contact_no"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
-                      Client Contact No{" "}
-                      <span className="text-destructive">*</span>
+                    <FormLabel className="text-xs font-semibold">
+                      Client Contact No <span className="text-destructive">*</span>
                     </FormLabel>
-
                     <FormControl>
                       <Input
                         placeholder="Enter contact number"
                         {...field}
                         disabled={isPending || isLeadSelected}
-                        className="h-10 disabled:bg-muted/60"
+                        className="h-10 text-sm disabled:bg-muted/60"
                       />
                     </FormControl>
-
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <br />
 
+              <FormField
+                control={form.control}
+                name="client_address"
+                render={({ field }) => (
+                  <FormItem className="md:col-span-2 lg:col-span-3">
+                    <FormLabel className="text-xs font-semibold">
+                      Client Address <span className="text-destructive">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <textarea
+                        placeholder="Enter client address"
+                        {...field}
+                        disabled={isPending || isLeadSelected}
+                        aria-invalid={Boolean(form.formState.errors.client_address)}
+                        className={cn(
+                          "min-h-[80px] w-full rounded-md border bg-background px-3 py-2 text-sm outline-none disabled:bg-muted/60 focus:ring-2 focus:ring-indigo-300",
+                          form.formState.errors.client_address && "border-destructive aria-invalid:border-destructive"
+                        )}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
+
+          {/* Packing & Box Rules Card */}
+          <div className="rounded-2xl border bg-card p-6 space-y-6">
+            <div>
+              <h3 className="text-sm font-bold text-foreground">Packing & Box Configuration</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Define box limits, packing rules, and custom mobile app box attributes.
+              </p>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2">
               <FormField
                 control={form.control}
                 name="packing_type"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
-                      Packing Type{" "}
-                      <span className="text-destructive">
-                        *
-                      </span>
+                    <FormLabel className="text-xs font-semibold">
+                      Packing Type <span className="text-destructive">*</span>
                     </FormLabel>
-
                     <FormControl>
-                      <select
-                        value={
-                          field.value ||
-                          PackingType.DEFAULT
-                        }
-                        onChange={(event) =>
-                          field.onChange(
-                            event.target
-                              .value as PackingType
-                          )
-                        }
+                      <Select
+                        value={field.value || PackingType.DEFAULT}
+                        onValueChange={(val) => field.onChange(val as PackingType)}
                         disabled={isPending}
-                        className="
-            h-10
-            w-full
-            rounded-md
-            border
-            border-input
-            bg-background
-            px-3
-            py-2
-            text-sm
-            outline-none
-            transition-colors
-            focus:border-indigo-500
-            focus:ring-2
-            focus:ring-indigo-200
-            disabled:cursor-not-allowed
-            disabled:opacity-50
-          "
                       >
-                        <option
-                          value={
-                            PackingType.DEFAULT
-                          }
-                        >
-                          Default
-                        </option>
-
-                        <option
-                          value={
-                            PackingType.GROUPWISE
-                          }
-                        >
-                          Groupwise
-                        </option>
-                      </select>
+                        <SelectTrigger className="h-10 text-sm w-full">
+                          <SelectValue placeholder="Select packing type..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={PackingType.DEFAULT}>Default</SelectItem>
+                          <SelectItem value={PackingType.GROUPWISE}>Groupwise</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </FormControl>
-
-                    {field.value ===
-                      PackingType.GROUPWISE ? (
-                      <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
-                        Items belonging to one
-                        group can be packed only
-                        with items from the same
-                        group. One group may be
-                        packed across multiple
-                        boxes.
-                      </div>
-                    ) : (
-                      <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-800 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300">
-                        Any item can be packed in
-                        any box without group
-                        restrictions.
-                      </div>
-                    )}
-
                     <FormMessage />
                   </FormItem>
                 )}
@@ -1107,13 +1106,9 @@ export default function TrackTraceProjectForm({
                 name="no_of_boxes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
-                      No of Boxes{" "}
-                      <span className="text-xs text-muted-foreground">
-                        (optional)
-                      </span>
+                    <FormLabel className="text-xs font-semibold">
+                      No of Boxes <span className="text-xs text-muted-foreground font-normal">(optional)</span>
                     </FormLabel>
-
                     <FormControl>
                       <Input
                         type="number"
@@ -1124,284 +1119,235 @@ export default function TrackTraceProjectForm({
                         disabled={isPending}
                         onChange={(event) => {
                           const value = event.target.value;
-
                           field.onChange(value === "" ? 0 : Number(value));
                         }}
-                        className="h-10"
+                        className="h-10 text-sm w-full"
                       />
                     </FormControl>
-
-                    <p className="text-xs leading-5 text-muted-foreground">
-                      When creating a project, boxes will be generated as 1, 2,
-                      3... up to this number. While editing, reducing this
-                      number will require selecting empty boxes to remove.
-                    </p>
-
                     <FormMessage />
                   </FormItem>
                 )}
               />
+            </div>
 
-              <FormField
-                control={form.control}
-                name="client_address"
-                render={({ field }) => (
-                  <FormItem className="md:col-span-2">
-                    <FormLabel>
-                      Client Address <span className="text-destructive">*</span>
-                    </FormLabel>
+            <Separator />
 
-                    <FormControl>
-                      <textarea
-                        placeholder="Enter client address"
-                        {...field}
-                        disabled={isPending || isLeadSelected}
-                        className="min-h-[95px] w-full rounded-md border bg-background px-3 py-2 text-sm outline-none disabled:bg-muted/60 focus:ring-2 focus:ring-indigo-300"
-                      />
-                    </FormControl>
-
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="md:col-span-2 rounded-2xl border bg-muted/20 p-4">
-                <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <h3 className="text-sm font-semibold">
-                      Box Information Fields
-                    </h3>
-
-                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                      Configure extra box fields for the mobile app. Example: Floor Name,
-                      Room Name, Zone, Area, Tower, Flat No.
-                    </p>
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={isPending}
-                    onClick={() =>
-                      appendBoxInfoField({
-                        field_label: "",
-                        field_type: "TEXT",
-                        is_required: false,
-                        active: true,
-                        sort_order: boxInfoFields.length + 1,
-                      })
-                    }
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add New
-                  </Button>
+            {/* Dynamic Box Information Fields Sub-Section */}
+            <div className="space-y-4 pt-1">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    Custom Box Information Fields
+                  </h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Extra mobile app box fields (e.g. Floor Name, Room Name, Zone, Area, Tower).
+                  </p>
                 </div>
 
-                {boxInfoFields.length === 0 ? (
-                  <div className="rounded-xl border border-dashed bg-background px-4 py-6 text-center">
-                    <p className="text-sm font-medium">
-                      No box information fields configured
-                    </p>
-
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Click Add New to create fields that will appear in the mobile app while
-                      creating or editing a box.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {boxInfoFields.map((item, index) => (
-                      <div
-                        key={item.id}
-                        className="grid gap-3 rounded-xl border bg-background p-3 md:grid-cols-[1fr_150px_120px_44px]"
-                      >
-                        <FormField
-                          control={form.control}
-                          name={`box_info_fields.${index}.field_label`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">
-                                Field Name
-                              </FormLabel>
-
-                              <FormControl>
-                                <Input
-                                  placeholder="e.g., Floor Name"
-                                  disabled={isPending}
-                                  {...field}
-                                  className="h-10"
-                                />
-                              </FormControl>
-
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name={`box_info_fields.${index}.field_type`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">
-                                Type
-                              </FormLabel>
-
-                              <FormControl>
-                                <select
-                                  value={field.value || "TEXT"}
-                                  disabled={isPending}
-                                  onChange={(event) =>
-                                    field.onChange(event.target.value)
-                                  }
-                                  className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                  <option value="TEXT">
-                                    Text
-                                  </option>
-
-                                  <option value="NUMBER">
-                                    Number
-                                  </option>
-
-                                  <option value="DATE">
-                                    Date
-                                  </option>
-
-                                  <option value="TEXTAREA">
-                                    Textarea
-                                  </option>
-                                </select>
-                              </FormControl>
-
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name={`box_info_fields.${index}.is_required`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs">
-                                Required
-                              </FormLabel>
-
-                              <FormControl>
-                                <label className="flex h-10 items-center gap-2 rounded-md border bg-background px-3 text-sm">
-                                  <input
-                                    type="checkbox"
-                                    checked={Boolean(field.value)}
-                                    disabled={isPending}
-                                    onChange={(event) =>
-                                      field.onChange(event.target.checked)
-                                    }
-                                    className="h-4 w-4"
-                                  />
-
-                                  Yes
-                                </label>
-                              </FormControl>
-
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <div className="flex items-end justify-end">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            disabled={isPending}
-                            onClick={() => removeBoxInfoField(index)}
-                            className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isPending}
+                  onClick={() =>
+                    appendBoxInfoField({
+                      field_label: "",
+                      field_type: "TEXT",
+                      is_required: false,
+                      active: true,
+                      sort_order: boxInfoFields.length + 1,
+                    })
+                  }
+                  className="h-8 text-xs gap-1.5 shrink-0 self-start sm:self-auto"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add Box Field
+                </Button>
               </div>
 
-              <FormField
-                control={form.control}
-                name="file"
-                render={({ field }) => (
-                  <FormItem className="md:col-span-2">
-                    <FormLabel>
-                      Upload Excel File{" "}
-                      {mode === "create" && (
-                        <span className="text-destructive">*</span>
-                      )}
-                      {mode === "edit" && (
-                        <span className="text-xs text-muted-foreground">
-                          {" "}
-                          (optional)
-                        </span>
-                      )}
-                    </FormLabel>
-
-                    <FormControl>
-                      <FileUploadField
-                        value={field.value || []}
-                        onChange={field.onChange}
-                        accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
-                        multiple={false}
-                        disabled={isPending}
-                        maxFiles={1}
+              {boxInfoFields.length === 0 ? (
+                <div className="flex flex-col items-center justify-center rounded-xl border border-dashed bg-muted/20 py-8 px-4 text-center">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted mb-2">
+                    <Package className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <p className="text-xs font-semibold text-foreground">
+                    No custom box information fields configured
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 max-w-sm">
+                    Click "Add Box Field" above to collect extra custom attributes when scanning or managing boxes in the mobile app.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {boxInfoFields.map((item, index) => (
+                    <div
+                      key={item.id}
+                      className="grid gap-3 rounded-xl border bg-muted/20 p-3.5 md:grid-cols-[1fr_160px_120px_40px] items-end"
+                    >
+                      <FormField
+                        control={form.control}
+                        name={`box_info_fields.${index}.field_label`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-[11px] font-semibold text-muted-foreground uppercase">
+                              Field Label
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="e.g., Floor Name"
+                                disabled={isPending}
+                                {...field}
+                                className="h-9 text-sm bg-background"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </FormControl>
 
-                    {mode === "edit" && (
-                      <p className="text-xs text-muted-foreground">
-                        Leave empty if you do not want to upload a new Excel
-                        file.
-                      </p>
-                    )}
+                      <FormField
+                        control={form.control}
+                        name={`box_info_fields.${index}.field_type`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-[11px] font-semibold text-muted-foreground uppercase">
+                              Data Type
+                            </FormLabel>
+                            <FormControl>
+                              <Select
+                                value={field.value || "TEXT"}
+                                onValueChange={(val) => field.onChange(val)}
+                                disabled={isPending}
+                              >
+                                <SelectTrigger className="h-9 text-xs w-full bg-background">
+                                  <SelectValue placeholder="Type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="TEXT">Text</SelectItem>
+                                  <SelectItem value="NUMBER">Number</SelectItem>
+                                  <SelectItem value="DATE">Date</SelectItem>
+                                  <SelectItem value="TEXTAREA">Textarea</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      <FormField
+                        control={form.control}
+                        name={`box_info_fields.${index}.is_required`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-[11px] font-semibold text-muted-foreground uppercase">
+                              Requirement
+                            </FormLabel>
+                            <FormControl>
+                              <label className="flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-xs cursor-pointer hover:bg-accent/50">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(field.value)}
+                                  disabled={isPending}
+                                  onChange={(event) =>
+                                    field.onChange(event.target.checked)
+                                  }
+                                  className="h-3.5 w-3.5 rounded border-input"
+                                />
+                                <span className="font-medium">Required</span>
+                              </label>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="flex items-center justify-end">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          disabled={isPending}
+                          onClick={() => removeBoxInfoField(index)}
+                          className="h-9 w-9 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Excel File Import Card */}
+          <div className="rounded-2xl border bg-card p-6 space-y-4">
+            <div>
+              <h3 className="text-sm font-bold text-foreground">Excel Data Import</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Upload the completed project cutlist Excel spreadsheet (`.xlsx`, `.xls`).
+              </p>
             </div>
 
-            <div className="flex justify-end gap-3 border-t pt-5">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isPending}
-                onClick={() => router.push("/dashboard/track-trace/manage-project")}
-                className="min-w-[100px]"
-              >
-                Cancel
-              </Button>
+            <FormField
+              control={form.control}
+              name="file"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <FileUploadField
+                      value={field.value || []}
+                      onChange={field.onChange}
+                      accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                      multiple={false}
+                      disabled={isPending}
+                      maxFiles={1}
+                    />
+                  </FormControl>
+                  {mode === "edit" && (
+                    <p className="text-xs text-muted-foreground">
+                      Leave empty if you do not want to replace the current Excel file.
+                    </p>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
-              <Button
-                type="submit"
-                disabled={isPending}
-                className="min-w-[150px]"
-              >
-                {isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {mode === "edit" ? "Updating..." : "Creating..."}
-                  </>
-                ) : (
-                  <>
-                    {mode === "edit" ? "Update Project" : "Create Project"}
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </>
-                )}
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </div>
+          {/* Action Footer */}
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isPending}
+              onClick={() => router.push("/dashboard/track-trace/manage-project")}
+              className="h-10 min-w-[100px]"
+            >
+              Cancel
+            </Button>
+
+            <Button
+              type="submit"
+              disabled={isPending}
+              className="h-10 min-w-[150px]"
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {mode === "edit" ? "Updating..." : "Creating..."}
+                </>
+              ) : (
+                <>
+                  {mode === "edit" ? "Update Project" : "Create Project"}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </Form>
 
       {boxRemovalDialogOpen && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4">
@@ -1544,7 +1490,6 @@ export default function TrackTraceProjectForm({
           </div>
         </div>
       )}
-
     </div>
   );
 }

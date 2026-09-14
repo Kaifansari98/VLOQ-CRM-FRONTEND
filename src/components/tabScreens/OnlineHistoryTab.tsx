@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAppSelector } from "@/redux/store";
 import {
   Clock,
   User,
@@ -15,12 +16,13 @@ import {
   Zap,
   UserPlus,
   FileText,
-  Loader2
+  Loader2,
+  PenLine,
 } from "lucide-react";
 
 interface OnlineHistoryEvent {
   id: string;
-  event_type: "creation" | "status_change" | "assignment" | "store_assignment" | "stage_move";
+  event_type: "creation" | "status_change" | "assignment" | "store_assignment" | "stage_move" | "product_details";
   action: string;
   remark: string | null;
   created_at: string;
@@ -35,7 +37,10 @@ interface OnlineHistoryTabProps {
   vendorId: number;
 }
 
-const getOnlineEventIcon = (eventType: string) => {
+const getOnlineEventIcon = (eventType: string, action?: string) => {
+  if (action?.toLowerCase().includes("product structure instance added")) {
+    return PenLine;
+  }
   switch (eventType) {
     case "creation":
       return UserPlus;
@@ -47,6 +52,8 @@ const getOnlineEventIcon = (eventType: string) => {
       return MapPin;
     case "stage_move":
       return Zap;
+    case "product_details":
+      return PenLine;
     default:
       return FileText;
   }
@@ -57,6 +64,7 @@ const getEventBadgeColor = (eventType: string) => {
     case "creation":
       return "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400 border-green-200/50";
     case "status_change":
+    case "product_details":
       return "bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 border-blue-200/50";
     case "assignment":
       return "bg-purple-50 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400 border-purple-200/50";
@@ -74,6 +82,7 @@ const getEventBadgeLabel = (eventType: string) => {
     case "creation":
       return "Ingestion";
     case "status_change":
+    case "product_details":
       return "Status Change";
     case "assignment":
       return "Assignment";
@@ -82,11 +91,52 @@ const getEventBadgeLabel = (eventType: string) => {
     case "stage_move":
       return "Stage Movement";
     default:
-      return "System Log";
+      return "Status Change";
   }
 };
 
 export default function OnlineHistoryTab({ leadId, vendorId }: OnlineHistoryTabProps) {
+  const isOnlineLeadFeatureEnabled = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_online_lead_feature_enabled === true
+  );
+
+  const formatOnlineHistoryText = React.useCallback(
+    (text: string | null) => {
+      if (!text) return "";
+      let formatted = text;
+      if (isOnlineLeadFeatureEnabled) {
+        formatted = formatted
+          .replace(
+            /Lead conversion approved and moved to Draft Lead stage/gi,
+            "Lead conversion approved and moved to Online Lead stage"
+          )
+          .replace(
+            /Lead conversion to Draft submitted for approval/gi,
+            "Lead conversion to Online submitted for approval"
+          );
+      }
+
+      // Fallback: If text still contains legacy "Product Details:" block, format as "Product structure instance added : {name}"
+      if (
+        formatted.includes("Product Structures:") ||
+        formatted.includes("Product Types:") ||
+        formatted.includes("Product Details:")
+      ) {
+        const structMatch = formatted.match(/(?:•\s*)?Product Structures:\s*([^\n•*]+)/i);
+        const typeMatch = formatted.match(/(?:•\s*)?Product Types:\s*([^\n•*]+)/i);
+        const item = (structMatch ? structMatch[1] : typeMatch ? typeMatch[1] : "")
+          .replace(/\*\*/g, "")
+          .trim();
+        if (item && item !== "—" && item !== "Not Specified") {
+          return `Product structure instance added : ${item}`;
+        }
+      }
+
+      return formatted.replace(/\*\*/g, "").trim();
+    },
+    [isOnlineLeadFeatureEnabled]
+  );
+
   const { data: events = [], isLoading, error } = useQuery<OnlineHistoryEvent[]>({
     queryKey: ["leadOnlineHistory", leadId, vendorId],
     queryFn: () => fetchLeadOnlineHistory({ leadId, vendorId }),
@@ -129,7 +179,7 @@ export default function OnlineHistoryTab({ leadId, vendorId }: OnlineHistoryTabP
           <div className="space-y-4">
             <AnimatePresence mode="popLayout">
               {events.map((event, index) => {
-                const ActionIcon = getOnlineEventIcon(event.event_type);
+                const ActionIcon = getOnlineEventIcon(event.event_type, event.action);
 
                 return (
                   <motion.div
@@ -162,13 +212,13 @@ export default function OnlineHistoryTab({ leadId, vendorId }: OnlineHistoryTabP
                         </Badge>
                       </div>
 
-                      <p className="text-sm text-foreground font-medium leading-relaxed">
-                        {event.action}
+                      <p className="text-sm text-foreground font-medium leading-relaxed whitespace-pre-line">
+                        {formatOnlineHistoryText(event.action)}
                       </p>
 
                       {event.remark && (
-                        <p className="text-xs text-muted-foreground italic border-l-2 border-slate-300 dark:border-slate-700 pl-2 py-0.5">
-                          {event.remark}
+                        <p className="text-xs text-muted-foreground italic border-l-2 border-slate-300 dark:border-slate-700 pl-2 py-0.5 whitespace-pre-line">
+                          {formatOnlineHistoryText(event.remark)}
                         </p>
                       )}
 

@@ -21,6 +21,7 @@ import {
   X,
   ExternalLink,
   FileText,
+  Clock,
 } from "lucide-react";
 import { formatDateTime } from "../utils/privileges";
 import RequirementDocUpload from "./RequirementDocUpload";
@@ -81,13 +82,20 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toastManager } from "@/components/ui/toast";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   useProductItemCodes,
   useProductStructureTypes,
   useProductTypes,
   useB2BRequirementTypes,
   useProcessBriefs,
 } from "@/hooks/useTypesMaster";
-import { updateLeadProductType, clearLeadProductStructures } from "@/api/leads";
+import { updateLeadProductType, clearLeadProductStructures, updateLead } from "@/api/leads";
 import { saveLeadProcessBriefsApi, fetchLeadProcessBriefsApi, saveLeadB2BRequirementMappingsApi } from "@/api/typesMasterApi";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 import { useFranchisesByVendorId } from "@/api/franchise";
@@ -278,6 +286,9 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
   );
+  const isOnlineLeadFeatureEnabled = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_online_lead_feature_enabled === true,
+  );
 
   // ✅ 2. QUERY HOOKS
   const { data, isLoading, isPlaceholderData } = useLeadById(
@@ -309,6 +320,160 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     vendorId,
     !!vendorId,
   );
+
+  const latestRemarkInfo = useMemo(() => {
+    const leadObj = data?.data?.lead;
+    if (!leadObj) return null;
+    const isInvalidRemark = (r?: string | null) => {
+      if (!r) return true;
+      const t = r.trim().toLowerCase();
+      return !t || t === "n/a" || t === "-" || t === "none" || t === "null";
+    };
+
+    const logs = (leadObj as any).call_log || [];
+    if (logs.length > 0) {
+      const sorted = [...logs].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      const latest = sorted.find((l: any) => !isInvalidRemark(l.remark));
+      if (latest) {
+        return {
+          id: latest.id,
+          remark: latest.remark,
+          status: latest.status?.status_name,
+          telecaller: latest.telecaller?.user_name,
+          date: latest.created_at,
+        };
+      }
+    }
+    const histories = (leadObj as any).online_lead_history || [];
+    if (histories.length > 0) {
+      const sortedH = [...histories].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      const latestH = sortedH.find((h: any) => !isInvalidRemark(h.remark));
+      if (latestH) {
+        return {
+          id: latestH.id,
+          remark: latestH.remark,
+          status: latestH.status?.status_name,
+          telecaller: latestH.createdBy?.user_name,
+          date: latestH.created_at,
+        };
+      }
+    }
+    return null;
+  }, [data?.data?.lead]);
+
+  const renderRemarkContent = (remarkText: string | null, defaultText = "No remarks provided") => {
+    if (!remarkText || remarkText.trim() === "" || remarkText.trim() === "-" || remarkText.trim() === "N/A") {
+      return <p className="text-[15px] font-medium text-heading dark:text-neutral-200">{defaultText}</p>;
+    }
+
+    const cleanText = remarkText.replace(/_/g, " ");
+
+    if (cleanText.includes("**") && !cleanText.includes("\n")) {
+      let prefix = "";
+      let remaining = cleanText;
+      const firstStarIdx = cleanText.indexOf("**");
+      if (firstStarIdx > 0) {
+        prefix = cleanText.substring(0, firstStarIdx).trim();
+        remaining = cleanText.substring(firstStarIdx);
+      }
+
+      const regex = /\*\*\s*•?\s*([^*]+?)\s*\*\*\s*([^*]+)/g;
+      const matches: { question: string; answer: string }[] = [];
+      let match;
+      while ((match = regex.exec(remaining)) !== null) {
+        matches.push({
+          question: match[1].trim(),
+          answer: match[2].trim(),
+        });
+      }
+
+      if (matches.length > 0) {
+        return (
+          <div className="space-y-3">
+            {prefix && (
+              <p className="text-xs font-semibold text-subtle uppercase tracking-wider mb-2">
+                {prefix}
+              </p>
+            )}
+            {matches.map((item, idx) => (
+              <div key={idx} className="space-y-1">
+                <p className="font-bold text-heading dark:text-neutral-200 text-[14px] flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-heading dark:bg-neutral-200 inline-block shrink-0" />
+                  <span>{item.question.replace(/^•\s*/, "")}</span>
+                </p>
+                <p className="text-[14px] text-heading dark:text-neutral-300 pl-3">{item.answer || "N/A"}</p>
+              </div>
+            ))}
+          </div>
+        );
+      }
+    }
+
+    if (cleanText.includes(" | ") && !cleanText.includes("\n")) {
+      const parts = cleanText.split(" | ");
+      return (
+        <div className="space-y-3">
+          {parts.map((part, idx) => {
+            const colonIdx = part.indexOf(":");
+            if (colonIdx !== -1) {
+              const label = part.substring(0, colonIdx).trim();
+              const val = part.substring(colonIdx + 1).trim();
+              let questionLabel = label;
+              if (label === "Modular Solution Interested In") questionLabel = "What modular solution are you interested in?";
+              else if (label === "Need Ready By") questionLabel = "When do you need your modular kitchen/wardrobe ready?";
+              else if (label === "Preferred Showroom") questionLabel = "Which showroom would you prefer to visit?";
+              else if (label === "Project Location") questionLabel = "Where is your project located?";
+              else if (!questionLabel.endsWith("?")) questionLabel = `${questionLabel}?`;
+
+              return (
+                <div key={idx} className="space-y-1">
+                  <p className="font-bold text-heading dark:text-neutral-200 text-[14px] flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-heading dark:bg-neutral-200 inline-block shrink-0" />
+                    <span>{questionLabel}</span>
+                  </p>
+                  <p className="text-[14px] text-heading dark:text-neutral-300 pl-3">{val || "N/A"}</p>
+                </div>
+              );
+            }
+            return <p key={idx} className="text-[14px] text-heading dark:text-neutral-300">{part}</p>;
+          })}
+        </div>
+      );
+    }
+
+    const blocks = cleanText.split(/\n\s*\n/);
+    return (
+      <div className="space-y-3">
+        {blocks.map((block, bIdx) => {
+          const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
+          return (
+            <div key={bIdx} className="space-y-1">
+              {lines.map((line, lIdx) => {
+                const isBoldHeader = (line.startsWith("**") && line.endsWith("**")) || line.endsWith("?");
+                if (isBoldHeader) {
+                  let cleanHeader = line.replace(/^\*\*|\*\*$/g, "").trim();
+                  if (cleanHeader.startsWith("•")) {
+                    cleanHeader = cleanHeader.replace(/^•\s*/, "").trim();
+                  }
+                  return (
+                    <p key={lIdx} className="font-bold text-heading dark:text-neutral-200 text-[14px] flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-heading dark:bg-neutral-200 inline-block shrink-0" />
+                      <span>{cleanHeader}</span>
+                    </p>
+                  );
+                }
+                return (
+                  <p key={lIdx} className="text-[14px] text-heading dark:text-neutral-300 leading-relaxed pl-3">
+                    {line}
+                  </p>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   // ✅ 3. ALL useState HOOKS
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
@@ -473,6 +638,38 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         });
       },
     });
+
+  const { mutate: updatePriority, isPending: updatingPriority } = useMutation({
+    mutationFn: async (priority: string) => {
+      return updateLead(
+        { priority, updated_by: userId! },
+        leadId,
+        userId!
+      );
+    },
+    onSuccess: () => {
+      toastManager.add({
+        title: "Lead priority updated successfully.",
+        type: "success",
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["lead", leadId, vendorId, userId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["leads"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["draft-lead-table-data"],
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to update priority.",
+        type: "error",
+      });
+    },
+  });
+
   // ✅ 6. DERIVED VALUES (non-hook)
   const lead = data?.data?.lead;
   const isB2b = useMemo(() => {
@@ -493,6 +690,39 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
           });
         } else {
           const primaryTypeId = typeIds[0];
+          const currentTypeIds: number[] = Array.from(
+            new Set<number>(
+              (lead?.productMappings || [])
+                .map((mapping: any) =>
+                  Number(mapping.product_type_id || mapping.productType?.id),
+                )
+                .filter((id: number) => Number.isFinite(id) && id > 0),
+            ),
+          );
+          const nextTypeIds: number[] = Array.from(new Set<number>(typeIds));
+          const productTypeChanged =
+            currentTypeIds.length !== nextTypeIds.length ||
+            currentTypeIds.some((id) => !nextTypeIds.includes(id));
+          const hasMismatchedStructures = (structureInstancesData?.data || []).some(
+            (instance: any) => {
+              const structureProductTypeId = Number(
+                instance.productStructure?.productType?.id ||
+                  instance.productItemCode?.productStructure?.productType?.id,
+              );
+              return (
+                Number.isFinite(structureProductTypeId) &&
+                structureProductTypeId > 0 &&
+                structureProductTypeId !== primaryTypeId
+              );
+            },
+          );
+
+          // Product structures belong to their product type. Remove them when
+          // switching between different product types.
+          if (productTypeChanged || hasMismatchedStructures) {
+            await clearLeadProductStructures(vendorId!, leadId, userId);
+          }
+
           const nextTypeLabel = productTypes?.data?.find(
             (t: any) => t.id === primaryTypeId,
           )?.type;
@@ -534,6 +764,23 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const { mutateAsync: uploadMoreSitePhotos, isPending: uploading } =
     useUploadMoreSitePhotos();
   const structureInstances = structureInstancesData?.data || [];
+  const displayInstances = useMemo(() => {
+    // An empty fetched list means structures were cleared; do not render the
+    // stale legacy mapping as a fallback.
+    if (Array.isArray(structureInstancesData?.data)) {
+      return structureInstances;
+    }
+    return (lead?.leadProductStructureMapping || []).map((ps: any, index: number) => ({
+      id: ps.id || index,
+      product_structure_id: ps.product_structure_id,
+      quantity_index: index + 1,
+      title: ps.productStructure?.type || "—",
+      productStructure: {
+        type: ps.productStructure?.type || "—"
+      },
+      description: null
+    }));
+  }, [structureInstancesData?.data, structureInstances, lead?.leadProductStructureMapping]);
   const productItemCodes = productItemCodesData?.data || [];
   const leadDocuments = lead?.documents || [];
   const imageDocuments = leadDocuments.filter((doc: any) =>
@@ -588,13 +835,13 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const isCallerAndDraft = isCaller && isDraftLead;
 
   const canEditStructures =
-    !isCallerAndDraft &&
+    !isCaller &&
     !isAuditor &&
     (normalizedUserType === "custom"
       ? canEditLeadDetailsForCustomUser
       : canEditAtCurrentStage);
   const canEditProductType =
-    !isCallerAndDraft &&
+    !isCaller &&
     !isAuditor &&
     (normalizedUserType === "custom"
       ? canEditLeadDetailsForCustomUser
@@ -709,7 +956,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     const normalized = String(typeLabel).toLowerCase();
     if (normalized.includes("kitchen")) return "Kitchen";
     if (normalized.includes("wardrobe")) return "Wardrobe";
-    return "Others";
+    return normalized;
   };
 
   const getStructureOptions = (parentFilter: string | null) => {
@@ -718,6 +965,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
         id: structure.id,
         label: structure.type,
         parent: structure.parent,
+        product_type_id: structure.product_type_id,
       })) || [];
 
     const uniqueOptions: any[] = [];
@@ -731,39 +979,51 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     }
 
     if (!parentFilter) return uniqueOptions;
-    return uniqueOptions.filter((structure: any) => {
+    const normParent = parentFilter.toLowerCase();
+
+    const filtered = uniqueOptions.filter((structure: any) => {
       const normLabel = String(structure.label || "").toLowerCase();
       const parent = String(structure.parent || "").toLowerCase();
 
-      if (parentFilter === "Kitchen") {
-        // Only kitchen-specific structures, no Others
-        return normLabel.includes("kitchen") || parent === "kitchen";
+      if (normParent === "kitchen" || normParent.includes("kitchen")) {
+        return normLabel.includes("kitchen") || parent.includes("kitchen");
       }
-      if (parentFilter === "Wardrobe") {
-        // Only wardrobe-specific structures, no Others
-        return normLabel.includes("wardrobe") || parent === "wardrobe";
+      if (normParent === "wardrobe" || normParent.includes("wardrobe")) {
+        return normLabel.includes("wardrobe") || parent.includes("wardrobe");
       }
-      // For all other types (Consoles, Small Order, Office Furniture, etc.) → only Others
-      return normLabel === "others";
+      if (normLabel.includes(normParent) || normParent.includes(normLabel) || parent.includes(normParent)) {
+        return true;
+      }
+      return normLabel === "others" || (!normLabel.includes("kitchen") && !normLabel.includes("wardrobe"));
     });
+
+    return filtered.length > 0 ? filtered : uniqueOptions;
   };
 
   // ✅ 8. ALL useMemo HOOKS
   const structureSummary = useMemo(() => {
-    const total = structureInstances.length;
+    const total = displayInstances.length;
     const uniqueStructures = new Set(
-      structureInstances.map((item: any) => item.product_structure_id),
+      displayInstances.map((item: any) => item.product_structure_id),
     ).size;
     return { total, uniqueStructures };
-  }, [structureInstances]);
+  }, [displayInstances]);
 
   const currentProductTypeLabel = useMemo(() => {
-    return (
+    // Primary: from productMappings join
+    const fromMapping =
       lead?.productMappings?.[0]?.productType?.type ||
-      lead?.productMappings?.[0]?.product_type?.type ||
-      ""
-    );
-  }, [lead?.productMappings]);
+      lead?.productMappings?.[0]?.product_type?.type;
+    if (fromMapping) return fromMapping;
+    // Fallback 1: from structureInstances (draft leads from Lead Pool with instances created)
+    const fromInstance = structureInstances?.[0]?.productType?.type ||
+      structureInstances?.[0]?.product_type?.type;
+    if (fromInstance) return fromInstance;
+    // Fallback 2: from leadProductStructureMapping
+    const fromMapping2 = lead?.leadProductStructureMapping?.[0]?.productStructure?.productType?.type;
+    if (fromMapping2) return fromMapping2;
+    return "";
+  }, [lead?.productMappings, lead?.leadProductStructureMapping, structureInstances]);
 
   const isModularKitchenType = useMemo(() => {
     const label = String(currentProductTypeLabel).toLowerCase();
@@ -811,8 +1071,12 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     if (isB2b) {
       return b2bReqTypesData?.data || [];
     }
-    return productTypes?.data || [];
-  }, [isB2b, b2bReqTypesData?.data, productTypes?.data]);
+    const list = productTypes?.data || [];
+    if (!handlesLargeScaleProjects) {
+      return list.filter((pt: any) => pt.type?.trim().toLowerCase() !== "small order");
+    }
+    return list;
+  }, [isB2b, b2bReqTypesData?.data, productTypes?.data, handlesLargeScaleProjects]);
 
   useEffect(() => {
     if (!lead) return;
@@ -1094,7 +1358,9 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const handleSaveProductType = () => {
     if (selectedProductTypeIds.length === 0 && !selectedProductTypeId) {
       toastManager.add({
-        title: "Please select at least one requirement type.",
+        title: isB2b
+          ? "Please select at least one requirement type."
+          : "Please select a product type.",
         type: "error",
       });
       return;
@@ -1293,12 +1559,32 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     if (editStructureError) setEditStructureError("");
   };
 
+  const getFilteredProductStructures = (selectedTypeId?: number) => {
+    const parentFilter = getParentFilter(selectedTypeId);
+    const options = getStructureOptions(parentFilter);
+    return options.map((opt: any) => ({
+      id: opt.id,
+      type: opt.label,
+      product_type_id: opt.product_type_id,
+    }));
+  };
+
   const handleEditSave = () => {
     if (!editStructure || !vendorId) return;
-    if (!editStructure.title.trim()) {
-      setEditTitleError("Title is required.");
-      return;
-    }
+    const allStructures = productStructureTypes?.data || [];
+    const selectedTypeObj = (productTypes?.data || []).find(
+      (pt: any) => pt.id === editStructure.product_type_id,
+    );
+    const selectedStruct = allStructures.find(
+      (ps: any) => ps.id === editStructure.product_structure_id,
+    );
+    const structTypeLabel = selectedStruct?.type;
+    const resolvedTitle =
+      editStructure.title.trim() ||
+      (structTypeLabel && structTypeLabel.toLowerCase() !== "others"
+        ? structTypeLabel
+        : selectedTypeObj?.type || "General");
+
     if (!editStructure.product_structure_id) {
       setEditStructureError("Please select a structure.");
       return;
@@ -1309,7 +1595,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       instanceId: editStructure.id,
       payload: {
         product_structure_id: editStructure.product_structure_id,
-        title: editStructure.title.trim(),
+        title: resolvedTitle,
         description: editStructure.description.trim() || undefined,
         updated_by: userId,
       },
@@ -1330,10 +1616,20 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 
   const handleAddSave = () => {
     if (!addStructure || !vendorId || !userId) return;
-    if (!addStructure.title.trim()) {
-      setEditTitleError("Title is required.");
-      return;
-    }
+    const allStructures = productStructureTypes?.data || [];
+    const selectedTypeObj = (productTypes?.data || []).find(
+      (pt: any) => pt.id === addStructure.product_type_id,
+    );
+    const selectedStruct = allStructures.find(
+      (ps: any) => ps.id === addStructure.product_structure_id,
+    );
+    const structTypeLabel = selectedStruct?.type;
+    const resolvedTitle =
+      addStructure.title.trim() ||
+      (structTypeLabel && structTypeLabel.toLowerCase() !== "others"
+        ? structTypeLabel
+        : selectedTypeObj?.type || "General");
+
     if (!addStructure.product_structure_id) {
       setEditStructureError("Please select a structure.");
       return;
@@ -1343,7 +1639,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       leadId,
       payload: {
         product_structure_id: addStructure.product_structure_id,
-        title: addStructure.title.trim(),
+        title: resolvedTitle,
         description: addStructure.description.trim() || undefined,
         created_by: userId,
       },
@@ -1579,7 +1875,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                     label={
                       <span className="inline-flex items-center gap-2">
                         <span>Product Types</span>
-                        {canEditProductType && (
+                        {canEditProductType && !isOnlineLeadFeatureEnabled && (
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <button
@@ -1611,10 +1907,107 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                         )}
                       </span>
                     }
-                    value={lead.productMappings
-                      ?.map((pm: any) => pm.productType?.type)
-                      ?.filter(Boolean)
-                      ?.join(", ")}
+                    value={
+                      (() => {
+                        const derivedTypes: string[] = [];
+                        const instancesToUse = (structureInstancesData?.data || displayInstances || []);
+
+                        instancesToUse.forEach((si: any) => {
+                          // 1. Structure master lookup for specific structure types (Kitchen, Wardrobe, etc.)
+                          const structId = si.product_structure_id;
+                          const pstObj = productStructureTypes?.data?.find(
+                            (pst: any) => pst.id === structId,
+                          );
+
+                          if (pstObj) {
+                            const pstName = (pstObj.type || "").trim().toLowerCase();
+                            if (pstName && productTypes?.data) {
+                              const matchedPt = productTypes.data.find((pt: any) => {
+                                const ptName = pt.type.trim().toLowerCase();
+                                if (ptName === pstName) return true;
+                                if (pstName.includes("kitchen") && ptName.includes("kitchen")) return true;
+                                if (pstName.includes("wardrobe") && ptName.includes("wardrobe")) return true;
+                                return false;
+                              });
+                              if (matchedPt?.type) {
+                                derivedTypes.push(matchedPt.type);
+                                return;
+                              }
+                            }
+                            if (pstObj.product_type_id && productTypes?.data) {
+                              const pt = productTypes.data.find(
+                                (t: any) => t.id === pstObj.product_type_id,
+                              );
+                              if (pt?.type && pt.type.toLowerCase() !== "others" && pt.type.toLowerCase() !== "other furniture") {
+                                derivedTypes.push(pt.type);
+                                return;
+                              }
+                            }
+                          }
+
+                          // 2. Direct product_type_id or productType relation on instance
+                          const typeId = si.product_type_id;
+                          if (typeId && productTypes?.data) {
+                            const found = productTypes.data.find((pt: any) => pt.id === typeId);
+                            if (found?.type) {
+                              derivedTypes.push(found.type);
+                              return;
+                            }
+                          }
+
+                          const directType = si.productType?.type || si.product_type?.type;
+                          if (directType) {
+                            derivedTypes.push(directType);
+                            return;
+                          }
+
+                          // 3. Match si.title against valid productTypes in master list (flexible matching e.g. "Consoles" / "Console")
+                          if (si.title && productTypes?.data) {
+                            const titleName = si.title.trim().toLowerCase();
+                            const matchedType = productTypes.data.find((pt: any) => {
+                              const ptName = pt.type.trim().toLowerCase();
+                              if (ptName === titleName) return true;
+                              if (ptName.length >= 3 && (titleName.includes(ptName) || ptName.includes(titleName))) return true;
+                              return false;
+                            });
+                            if (matchedType?.type) {
+                              derivedTypes.push(matchedType.type);
+                              return;
+                            }
+                          }
+
+                          // 4. Fallback to instance title if clean and not generic
+                          if (si.title && si.title !== "—" && si.title.toLowerCase() !== "others") {
+                            derivedTypes.push(si.title);
+                          }
+                        });
+
+                        // 5. From productMappings if no derived types from instances
+                        if (derivedTypes.length === 0 && lead.productMappings && Array.isArray(lead.productMappings)) {
+                          lead.productMappings.forEach((pm: any) => {
+                            const pType = pm.productType?.type || pm.product_type?.type;
+                            if (pType) derivedTypes.push(pType);
+                          });
+                        }
+
+                        // 6. From leadProductStructureMapping if still empty
+                        if (derivedTypes.length === 0 && lead.leadProductStructureMapping && Array.isArray(lead.leadProductStructureMapping)) {
+                          lead.leadProductStructureMapping.forEach((ps: any) => {
+                            const pType = ps.productStructure?.productType?.type;
+                            if (pType) derivedTypes.push(pType);
+                          });
+                        }
+
+                        const uniqueTypes = Array.from(new Set(derivedTypes.filter(Boolean)));
+                        if (uniqueTypes.length > 0) return uniqueTypes.join(", ");
+
+                        const fromMappings = lead.productMappings
+                          ?.map((pm: any) => pm.productType?.type || pm.product_type?.type)
+                          ?.filter(Boolean)
+                          ?.join(", ");
+                        return fromMappings || undefined;
+                      })()
+                    }
                   />
                   {(structureSummary.total > 0 ||
                     structureSummary.uniqueStructures > 0) && (
@@ -1642,18 +2035,15 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
                     Loading product information...
                   </div>
-                ) : structureInstances.length === 0 ? (
+                ) : displayInstances.length === 0 ? (
                   <InfoRow
                     icon={Package}
                     label="Product Structures"
-                    value={lead.leadProductStructureMapping
-                      ?.map((ps: any) => ps.productStructure?.type)
-                      ?.filter(Boolean)
-                      ?.join(", ")}
+                    value="—"
                   />
                 ) : (
                   <div className="grid gap-4 md:grid-cols-2">
-                    {structureInstances.map((item: any) => (
+                    {displayInstances.map((item: any) => (
                       <div
                         key={`${item.product_structure_id}-${item.quantity_index}`}
                         className="group rounded-xl border bg-white/60 p-5 transition-all hover:border-border/80 dark:bg-[#0a0a0a] min-w-0"
@@ -1665,7 +2055,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                                 {item.title || item.productStructure?.type || "—"}
                               </p>
                               <div className="flex items-center gap-1 shrink-0">
-                                {canEditStructures && (
+                                {canEditStructures && structureInstances.length > 0 && (
                                   <>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
@@ -2446,8 +2836,38 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   label="Site Type"
                   value={lead.siteType?.type}
                 />
-                <InfoRow icon={Magnet} label="Source" value={lead.source?.type} />
-                <InfoRow icon={Package} label="Priority" value={lead.priority} />
+                <InfoRow icon={Magnet} label="Source" value={lead?.source?.type} />
+                <InfoRow
+                  icon={Package}
+                  label="Priority"
+                  value={
+                    (() => {
+                      const tagNum = Number(lead?.statusType?.tag?.replace("Type ", ""));
+                      const isAdminOrSuperAdmin =
+                        userType?.toLowerCase() === "admin" ||
+                        userType?.toLowerCase() === "super-admin";
+                      const isEditable = isAdminOrSuperAdmin && !isNaN(tagNum) && tagNum <= 4;
+                      return isEditable ? (
+                        <Select
+                          value={lead?.priority || "Medium"}
+                          disabled={updatingPriority}
+                          onValueChange={(val) => updatePriority(val)}
+                        >
+                          <SelectTrigger className="h-auto w-auto border-none shadow-none focus:ring-0 p-0 bg-transparent flex items-center gap-1.5 text-[15px] font-medium text-heading dark:text-neutral-200 cursor-pointer select-none">
+                            <SelectValue placeholder="Select Priority" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="High">High</SelectItem>
+                            <SelectItem value="Medium">Medium</SelectItem>
+                            <SelectItem value="Low">Low</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        lead?.priority || "—"
+                      );
+                    })()
+                  }
+                />
               </div>
             </SectionCard>
           )}
@@ -2474,23 +2894,61 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
           {/* ADDITIONAL INFORMATION */}
           {!isB2b && (
             <SectionCard title="Additional Information">
-              <div className="space-y-4">
+              <div className="space-y-6">
+                {/* Latest Remark (only if isOnlineLeadFeatureEnabled is true) */}
+                {isOnlineLeadFeatureEnabled && (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2 text-sm text-subtle font-medium">
+                        <Clock className="w-4 h-4" />
+                        Latest Remark
+                        {latestRemarkInfo?.status && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                            Status: {latestRemarkInfo.status}
+                          </span>
+                        )}
+                      </div>
+                      {latestRemarkInfo?.date && (
+                        <span className="text-xs text-subtle">
+                          {new Date(latestRemarkInfo.date).toLocaleDateString("en-IN", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="bg-[#fff] dark:bg-[#0a0a0a] border border-border rounded-xl p-4 ml-6">
+                      {latestRemarkInfo && latestRemarkInfo.remark && latestRemarkInfo.remark.trim() !== "N/A" && latestRemarkInfo.remark.trim() !== "-" ? (
+                        <>
+                          {renderRemarkContent(latestRemarkInfo.remark, "No follow up performed yet")}
+                          {latestRemarkInfo.telecaller && (
+                            <p className="text-xs text-subtle pt-2 border-t border-border/50">
+                              Logged by: <span className="font-semibold text-heading dark:text-neutral-200">{latestRemarkInfo.telecaller}</span>
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-[15px] font-medium text-heading dark:text-neutral-200">
+                          No follow up performed yet
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Design Remarks */}
                 <div>
                   <div className="flex items-center gap-2 text-sm text-subtle mb-2">
                     <MessageSquare className="w-4 h-4" />
                     Design Remarks
                   </div>
 
-                  <div
-                    className="
-    bg-[#fff] dark:bg-[#0a0a0a]
-    border border-border
-    rounded-xl p-4 ml-6
-  "
-                  >
-                    <p className="text-[15px] leading-relaxed text-heading dark:text-neutral-200">
-                      {lead.designer_remark || "No remarks provided"}
-                    </p>
+                  <div className="bg-[#fff] dark:bg-[#0a0a0a] border border-border rounded-xl p-4 ml-6">
+                    {renderRemarkContent(lead?.designer_remark || lead?.remark || null, "No remarks provided")}
                   </div>
                 </div>
               </div>
@@ -2976,45 +3434,81 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                 setEditProductTypeOpen(false);
               }
             }}
-            title="Requirement Details"
-            description="Select requirement types and dependent process briefs."
-            size="md"
+            title={
+              isB2b
+                ? "Requirement Details"
+                : currentProductTypeId
+                ? "Edit Product Type"
+                : "Set Product Type"
+            }
+            description={
+              isB2b
+                ? "Select requirement types and dependent process briefs."
+                : "Select the product type for this lead."
+            }
+            size="sm"
           >
-            <div className="space-y-5 p-5 max-h-[75vh] overflow-y-auto">
-              <div>
-                <label className="text-xs font-semibold text-foreground flex items-center justify-between">
-                  <span>Requirement Types {isB2b ? "(Multi-Select)" : "(Single-Select)"} <span className="text-red-500">*</span></span>
-                  <span className="text-[11px] text-muted-foreground font-normal">
-                    {selectedProductTypeIds.length} selected
-                  </span>
-                </label>
-                <div className="flex flex-wrap gap-2 mt-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-muted/10">
-                  {displayedTypesInModal.length === 0 ? (
-                    <p className="text-xs text-muted-foreground italic p-2">
-                      {isB2b ? "No B2B requirement types found." : "No product types found."}
-                    </p>
-                  ) : (
-                    displayedTypesInModal.map((t: any) => {
-                      const isSelected = selectedProductTypeIds.includes(t.id);
-                      return (
-                        <Badge
-                          key={t.id}
-                          variant={isSelected ? "default" : "outline"}
-                          className={`cursor-pointer py-1.5 px-3 text-xs flex items-center gap-1.5 transition-all select-none ${
-                            isSelected ? "bg-primary text-primary-foreground shadow-sm" : "hover:bg-muted"
-                          }`}
-                          onClick={() => toggleRequirementType(t.id)}
-                        >
-                          <Checkbox checked={isSelected} className="h-3.5 w-3.5 pointer-events-none" />
-                          <span>{t.type}</span>
-                        </Badge>
-                      );
-                    })
-                  )}
+            <div className="space-y-4 p-5">
+              {isB2b ? (
+                <div>
+                  <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                    <span>Requirement Types (Multi-Select) <span className="text-red-500">*</span></span>
+                    <span className="text-[11px] text-muted-foreground font-normal">
+                      {selectedProductTypeIds.length} selected
+                    </span>
+                  </label>
+                  <div className="flex flex-wrap gap-2 mt-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-muted/10">
+                    {displayedTypesInModal.length === 0 ? (
+                      <p className="text-xs text-muted-foreground italic p-2">
+                        No B2B requirement types found.
+                      </p>
+                    ) : (
+                      displayedTypesInModal.map((t: any) => {
+                        const isSelected = selectedProductTypeIds.includes(t.id);
+                        return (
+                          <Badge
+                            key={t.id}
+                            variant={isSelected ? "default" : "outline"}
+                            className={`cursor-pointer py-1.5 px-3 text-xs flex items-center gap-1.5 transition-all select-none ${
+                              isSelected ? "bg-primary text-primary-foreground shadow-sm" : "hover:bg-muted"
+                            }`}
+                            onClick={() => toggleRequirementType(t.id)}
+                          >
+                            <Checkbox checked={isSelected} className="h-3.5 w-3.5 pointer-events-none" />
+                            <span>{t.type}</span>
+                          </Badge>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
-              </div>
-
-
+              ) : (
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Product Type <span className="text-red-500">*</span>
+                  </label>
+                  <div className="mt-2">
+                    <AssignToPicker
+                      data={
+                        displayedTypesInModal.map((t: any) => ({
+                          id: t.id,
+                          label: t.type,
+                        })) ?? []
+                      }
+                      value={selectedProductTypeId ?? undefined}
+                      onChange={(id) => {
+                        setSelectedProductTypeId(id);
+                        if (id) {
+                          setSelectedProductTypeIds([id]);
+                        } else {
+                          setSelectedProductTypeIds([]);
+                        }
+                      }}
+                      placeholder="Search product type..."
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-end gap-2 pt-3 border-t">
                 <Button
@@ -3089,14 +3583,14 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                 setEditStructureError("");
               }
             }}
-            title="Edit Product Instance"
-            description="Update title, structure, and description."
+            title="Edit Furniture Structure"
+            description="Update the product structure instance details."
             size="md"
           >
             <div className="space-y-4 p-5">
               <div>
                 <label className="text-xs font-medium text-muted-foreground">
-                  Title <span className="text-red-500">*</span>
+                  Title (optional)
                 </label>
                 <Input
                   value={editStructure?.title || ""}
@@ -3107,29 +3601,100 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                     if (editTitleError) setEditTitleError("");
                   }}
                   placeholder="Enter title"
-                  className="mt-1"
+                  className="mt-1 h-10 text-sm bg-background"
                 />
                 {editTitleError && (
                   <p className="mt-1 text-xs text-red-500">{editTitleError}</p>
                 )}
               </div>
+
               <div>
                 <label className="text-xs font-medium text-muted-foreground">
-                  Product Structure <span className="text-red-500">*</span>
+                  Product Type (optional)
                 </label>
                 <div className="mt-1">
-                  <AssignToPicker
-                    data={editStructureOptions}
-                    value={editStructure?.product_structure_id}
-                    onChange={(selectedId) => {
-                      if (!selectedId) {
-                        setEditStructureError("Please select a structure.");
-                        return;
-                      }
-                      handleEditStructureChange(selectedId);
+                  <Select
+                    value={
+                      editStructure?.product_type_id
+                        ? String(editStructure.product_type_id)
+                        : undefined
+                    }
+                    onValueChange={(val) => {
+                      const newTypeId = Number(val);
+                      const filteredStructs = getFilteredProductStructures(newTypeId);
+                      const isCurrentValid = filteredStructs.some(
+                        (ps: any) => ps.id === editStructure?.product_structure_id,
+                      );
+                      setEditStructure((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              product_type_id: newTypeId,
+                              product_structure_id: isCurrentValid
+                                ? prev.product_structure_id
+                                : filteredStructs.length === 1
+                                ? filteredStructs[0].id
+                                : 0,
+                            }
+                          : prev,
+                      );
                     }}
-                    placeholder="Select structure..."
-                  />
+                  >
+                    <SelectTrigger className="w-full h-10 bg-background text-sm">
+                      <SelectValue placeholder="Select Product Type" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover text-popover-foreground">
+                      {(productTypes?.data || []).map((pt: any) => (
+                        <SelectItem key={pt.id} value={String(pt.id)}>
+                          {pt.type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Product Structure (optional)
+                </label>
+                <div className="mt-1">
+                  <Select
+                    value={
+                      editStructure?.product_structure_id
+                        ? String(editStructure.product_structure_id)
+                        : undefined
+                    }
+                    onValueChange={(val) => {
+                      const selectedId = Number(val);
+                      const selectedStruct = getFilteredProductStructures(
+                        editStructure?.product_type_id,
+                      ).find((ps: any) => ps.id === selectedId);
+                      setEditStructure((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              product_structure_id: selectedId,
+                              title: selectedStruct?.type || prev.title,
+                            }
+                          : prev,
+                      );
+                      if (editStructureError) setEditStructureError("");
+                    }}
+                  >
+                    <SelectTrigger className="w-full h-10 bg-background text-sm">
+                      <SelectValue placeholder="Select Structure Type" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover text-popover-foreground">
+                      {getFilteredProductStructures(
+                        editStructure?.product_type_id,
+                      ).map((ps: any) => (
+                        <SelectItem key={ps.id} value={String(ps.id)}>
+                          {ps.type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 {editStructureError && (
                   <p className="mt-1 text-xs text-red-500">
@@ -3137,21 +3702,29 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   </p>
                 )}
               </div>
+
               <div>
                 <label className="text-xs font-medium text-muted-foreground">
                   Description (optional)
                 </label>
-                <TextAreaInput
+                <textarea
                   value={editStructure?.description || ""}
-                  onChange={(value) =>
-                    setEditStructure((prev) =>
-                      prev ? { ...prev, description: value } : prev,
-                    )
-                  }
+                  onChange={(e) => {
+                    if (e.target.value.length <= 1000) {
+                      setEditStructure((prev) =>
+                        prev ? { ...prev, description: e.target.value } : prev,
+                      );
+                    }
+                  }}
                   placeholder="Add description..."
-                  className="mt-1"
+                  rows={4}
+                  className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
                 />
+                <p className="text-right text-xs text-muted-foreground mt-0.5">
+                  {1000 - (editStructure?.description?.length || 0)} characters left
+                </p>
               </div>
+
               <div className="flex justify-end gap-2">
                 <Button
                   type="button"
@@ -3192,7 +3765,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
             <div className="space-y-4 p-5">
               <div>
                 <label className="text-xs font-medium text-muted-foreground">
-                  Title <span className="text-red-500">*</span>
+                  Title (optional)
                 </label>
                 <Input
                   value={addStructure?.title || ""}
@@ -3203,37 +3776,91 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                     if (editTitleError) setEditTitleError("");
                   }}
                   placeholder="Enter title"
-                  className="mt-1"
+                  className="mt-1 h-10 text-sm bg-background"
                 />
                 {editTitleError && (
                   <p className="mt-1 text-xs text-red-500">{editTitleError}</p>
                 )}
               </div>
+
               <div>
                 <label className="text-xs font-medium text-muted-foreground">
-                  Product Structure <span className="text-red-500">*</span>
+                  Product Type (optional)
                 </label>
                 <div className="mt-1">
-                  <AssignToPicker
-                    data={addStructureOptions}
-                    value={addStructure?.product_structure_id}
-                    onChange={(selectedId) => {
-                      if (!selectedId) {
-                        setEditStructureError("Please select a structure.");
-                        return;
-                      }
+                  <Select
+                    value={
+                      addStructure?.product_type_id
+                        ? String(addStructure.product_type_id)
+                        : undefined
+                    }
+                    onValueChange={(val) => {
+                      const newTypeId = Number(val);
+                      const filteredStructs = getFilteredProductStructures(newTypeId);
+                      const isCurrentValid = filteredStructs.some(
+                        (ps: any) => ps.id === addStructure?.product_structure_id,
+                      );
                       setAddStructure((prev) =>
                         prev
                           ? {
-                            ...prev,
-                            product_structure_id: selectedId,
-                          }
+                              ...prev,
+                              product_type_id: newTypeId,
+                              product_structure_id: isCurrentValid
+                                ? prev.product_structure_id
+                                : filteredStructs.length === 1
+                                ? filteredStructs[0].id
+                                : 0,
+                            }
                           : prev,
+                      );
+                    }}
+                  >
+                    <SelectTrigger className="w-full h-10 bg-background text-sm">
+                      <SelectValue placeholder="Select Product Type" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover text-popover-foreground">
+                      {(productTypes?.data || []).map((pt: any) => (
+                        <SelectItem key={pt.id} value={String(pt.id)}>
+                          {pt.type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Product Structure (optional)
+                </label>
+                <div className="mt-1">
+                  <Select
+                    value={
+                      addStructure?.product_structure_id
+                        ? String(addStructure.product_structure_id)
+                        : undefined
+                    }
+                    onValueChange={(val) => {
+                      const selectedId = Number(val);
+                      setAddStructure((prev) =>
+                        prev ? { ...prev, product_structure_id: selectedId } : prev,
                       );
                       if (editStructureError) setEditStructureError("");
                     }}
-                    placeholder="Select structure..."
-                  />
+                  >
+                    <SelectTrigger className="w-full h-10 bg-background text-sm">
+                      <SelectValue placeholder="Select Structure Type" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover text-popover-foreground">
+                      {getFilteredProductStructures(
+                        addStructure?.product_type_id,
+                      ).map((ps: any) => (
+                        <SelectItem key={ps.id} value={String(ps.id)}>
+                          {ps.type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 {editStructureError && (
                   <p className="mt-1 text-xs text-red-500">
@@ -3241,21 +3868,29 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   </p>
                 )}
               </div>
+
               <div>
                 <label className="text-xs font-medium text-muted-foreground">
                   Description (optional)
                 </label>
-                <TextAreaInput
+                <textarea
                   value={addStructure?.description || ""}
-                  onChange={(value) =>
-                    setAddStructure((prev) =>
-                      prev ? { ...prev, description: value } : prev,
-                    )
-                  }
+                  onChange={(e) => {
+                    if (e.target.value.length <= 1000) {
+                      setAddStructure((prev) =>
+                        prev ? { ...prev, description: e.target.value } : prev,
+                      );
+                    }
+                  }}
                   placeholder="Add description..."
-                  className="mt-1"
+                  rows={4}
+                  className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
                 />
+                <p className="text-right text-xs text-muted-foreground mt-0.5">
+                  {1000 - (addStructure?.description?.length || 0)} characters left
+                </p>
               </div>
+
               <div className="flex justify-end gap-2">
                 <Button
                   type="button"

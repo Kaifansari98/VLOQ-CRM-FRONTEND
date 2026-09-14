@@ -72,7 +72,10 @@ export default function LeadsGenerationPage() {
 
   const privileged = isPrivilegedUser(userType);
 
-  const { data: franchises = [] } = useFranchisesByVendorId(vendorId, !!vendorId);
+  const { data: franchises = [] } = useFranchisesByVendorId(
+    vendorId,
+    !!vendorId,
+  );
   const isB2bFranchise = useMemo(() => {
     const activeFranchise = franchises.find((f) => f.id === franchiseId);
     return activeFranchise?.moduled_for_b2b ?? false;
@@ -81,18 +84,16 @@ export default function LeadsGenerationPage() {
     (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
   );
 
-  const canShowOnHoldTab =
-    isB2bFranchise
-      ? false
-      : normalizedUserType === "custom"
+  const canShowOnHoldTab = isB2bFranchise
+    ? false
+    : normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
           "leads.open_leads.details_of_lead.mark_on_hold",
         )
       : true;
-  const canShowLostTabs =
-    isB2bFranchise
-      ? false
-      : normalizedUserType === "custom"
+  const canShowLostTabs = isB2bFranchise
+    ? false
+    : normalizedUserType === "custom"
       ? customPrivilegeCodes.includes(
           "leads.open_leads.details_of_lead.mark_as_lost",
         )
@@ -107,7 +108,10 @@ export default function LeadsGenerationPage() {
   // --- Read tab from URL initially ---
   const initialTab = useMemo<LeadTab>(() => {
     const urlParam = searchParams.get("tab") as LeadTab | null;
-    if (!canShowLostTabs && (urlParam === "lost" || urlParam === "lostApproval")) {
+    if (
+      !canShowLostTabs &&
+      (urlParam === "lost" || urlParam === "lostApproval")
+    ) {
       return "open"; // restrict access
     }
     if (!canShowOnHoldTab && urlParam === "onHold") {
@@ -121,9 +125,9 @@ export default function LeadsGenerationPage() {
   // Sync tab state with URL when privilege changes or URL changes
   useEffect(() => {
     if (
-      ((!canShowLostTabs &&
+      (!canShowLostTabs &&
         (initialTab === "lostApproval" || initialTab === "lost")) ||
-        (!canShowOnHoldTab && initialTab === "onHold"))
+      (!canShowOnHoldTab && initialTab === "onHold")
     ) {
       handleTabChange("open");
       return;
@@ -346,7 +350,9 @@ export default function LeadsGenerationPage() {
                             <span className="truncate">{item.label}</span>
                           </span>
 
-                          <span className="opacity-70 shrink-0">{item.count}</span>
+                          <span className="opacity-70 shrink-0">
+                            {item.count}
+                          </span>
                         </button>
                       ))}
                     </div>
@@ -358,7 +364,11 @@ export default function LeadsGenerationPage() {
             {/* ✅ Show only for admin, super-admin, sales-executive */}
             {canShowAddNewLeadButton && (
               <>
-                <Button size="sm" className="hidden sm:flex" onClick={() => setOpenCreateLead(true)}>
+                <Button
+                  size="sm"
+                  className="hidden sm:flex"
+                  onClick={() => setOpenCreateLead(true)}
+                >
                   Add New Lead
                 </Button>
 

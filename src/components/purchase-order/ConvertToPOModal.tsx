@@ -113,7 +113,7 @@ export default function ConvertToPOModal({
       })
       .catch(() => {
         toastManager.add({
-          title: "Failed to load intent",
+          title: "Failed to load enquiry",
           type: "error",
         });
       })
@@ -512,7 +512,7 @@ export default function ConvertToPOModal({
         ) : !pi ? (
           <div className="flex flex-1 items-center justify-center py-16 text-muted-foreground">
             <AlertCircle size={20} className="mr-2" />
-            Failed to load purchase intent.
+            Failed to load purchase enquiry.
           </div>
         ) : (
           <>

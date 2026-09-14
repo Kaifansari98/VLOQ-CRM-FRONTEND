@@ -152,7 +152,9 @@ export default function UsableHandover({
       "installation.under_installation.usable_handover.handover_document.upload",
       "installation.under_installation.move_to_final_handover.enable_disable_action",
     ].some((code) => customPrivilegeCodes.includes(code))
-    : userType === "super-admin" || userType === "site-supervisor";
+    : userType === "super-admin" ||
+      userType === "site-supervisor" ||
+      userType === "head-site-supervisor";
 
   useEffect(() => {
     if (handoverData?.pending_work_details) {

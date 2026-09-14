@@ -196,7 +196,7 @@ function ApprovalModal({
       >
         <div>
           <h3 className="text-base font-bold">
-            {isReject ? "Reject" : "Approve"} Purchase Intent
+            {isReject ? "Reject" : "Approve"} Purchase Enquiry
           </h3>
           <p className="text-xs text-muted-foreground">{intentNo}</p>
         </div>
@@ -265,7 +265,7 @@ export default function PurchaseIntentDetailPage() {
       .then(setData)
       .catch(() => {
         toastManager.add({
-          title: "Failed to load intent details",
+          title: "Failed to load enquiry details",
           type: "error",
         });
       })
@@ -283,7 +283,7 @@ export default function PurchaseIntentDetailPage() {
       await updatePIStatus(vendorId, intentId, status, remarks || undefined);
 
       toastManager.add({
-        title: `Intent ${getStatusCfg(status).label}`,
+        title: `Enquiry ${getStatusCfg(status).label}`,
         type: "success",
       });
 
@@ -315,7 +315,7 @@ export default function PurchaseIntentDetailPage() {
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
                 <BreadcrumbLink href="/dashboard/inventory/purchase-intents">
-                  Purchase Intents
+                  Purchase Enquiries
                 </BreadcrumbLink>
               </BreadcrumbItem>
 
@@ -335,7 +335,7 @@ export default function PurchaseIntentDetailPage() {
       </header>
 
       <main className="min-h-[calc(100vh-4rem)] bg-zinc-50 p-4 dark:bg-zinc-950 md:p-6">
-        <div className="mx-auto max-w-7xl space-y-5">
+        <div className="w-full space-y-5">
           <div className="flex flex-col gap-3 rounded-2xl border bg-background p-4 shadow-sm md:flex-row md:items-center md:justify-between">
             <div>
               <div className="mb-2 flex items-center gap-2">
@@ -353,7 +353,7 @@ export default function PurchaseIntentDetailPage() {
               </div>
 
               <h1 className="text-xl font-bold">
-                {loading ? "Loading..." : data?.intent_no || "Purchase Intent"}
+                {loading ? "Loading..." : data?.intent_no || "Purchase Enquiry"}
               </h1>
 
               {data && (
@@ -444,7 +444,7 @@ export default function PurchaseIntentDetailPage() {
             </div>
           ) : !data ? (
             <div className="rounded-2xl border bg-background p-10 text-center text-muted-foreground">
-              Failed to load intent details.
+              Failed to load enquiry details.
             </div>
           ) : (
             <>

@@ -31,6 +31,7 @@ interface GroupedSmoothTabProps {
   defaultTabId: StageId;
   onChange?: (tabId: StageId) => void;
   maxVisibleStage?: StageId;
+  hideGroupNavigation?: boolean;
 }
 
 interface StageRenderBoundaryProps {
@@ -153,6 +154,7 @@ export default function GroupedSmoothTab({
   defaultTabId,
   onChange,
   maxVisibleStage,
+  hideGroupNavigation = false,
 }: GroupedSmoothTabProps) {
   const [activeTab, setActiveTab] = React.useState<StageId>(defaultTabId);
 
@@ -178,7 +180,7 @@ export default function GroupedSmoothTab({
   }, []);
 
   const userType = useAppSelector(
-    (state) => state.auth?.user?.user_type.user_type as string | undefined
+    (state) => state.auth?.user?.user_type?.user_type as string | undefined
   );
   const customPrivilegeCodes = useAppSelector(
     (state) => state.customPrivileges.codes,
@@ -301,8 +303,8 @@ export default function GroupedSmoothTab({
 
   return (
     <div className="flex flex-col h-full" ref={containerRef}>
-      {/* ShadCN-style tabs with hover dropdowns */}
-      <div className="flex flex-wrap items-center gap-2 border-b px-1 -mt-2">
+      {!hideGroupNavigation ? (
+        <div className="flex flex-wrap items-center gap-2 border-b px-1 -mt-2">
         {nonEmptyGroupKeys.map((g) => {
           const isActive = activeGroup === g;
           const isHovered = hoveredGroup === g;
@@ -372,7 +374,7 @@ export default function GroupedSmoothTab({
                           const canViewReadyToDispatch =
                             userType === "custom"
                               ? customPrivilegeCodes.includes(
-                                "production.production.ready_to_dispatch.enable_disable",
+                                "production.ready_to_dispatch.enable_disable",
                               )
                               : true;
                           const canViewTechCheckForCustomUser =
@@ -484,10 +486,16 @@ export default function GroupedSmoothTab({
             {getActiveTabTitle()}
           </p>
         </div>
-      </div>
+        </div>
+      ) : null}
 
       {/* Active content with smooth transitions */}
-      <div className="relative flex-1 mt-4">
+      <div
+        className={cn(
+          "relative flex-1",
+          hideGroupNavigation ? "mt-0" : "mt-4",
+        )}
+      >
         <AnimatePresence mode="wait">
           <StageRenderBoundary
             key={activeTab}
