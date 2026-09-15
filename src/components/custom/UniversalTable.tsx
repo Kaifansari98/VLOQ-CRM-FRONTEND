@@ -529,6 +529,7 @@ export function UniversalTable({
     normalizedUserType === "super-admin" ||
     normalizedUserType === "auditor" ||
     normalizedUserType === "sales-executive" ||
+    normalizedUserType === "site-supervisor" ||
     normalizedUserType === "head-site-supervisor";
   const normalizedType = String(type || "")
     .trim()

@@ -653,7 +653,11 @@ const MyTaskTable = () => {
         router.push(
           `/dashboard/installation/site-readiness/details/${row.leadId}?accountId=${row.accountId}`,
         );
-      } else if (row.taskType === "Miscellaneous") {
+      } else if (
+        row.taskType === "Miscellaneous" ||
+        row.taskType === "Miscellaneous Approval" ||
+        row.taskType === "Miscellaneous Production ERD"
+      ) {
         const isDeliveryTask = (row.remark || "")
           .toLowerCase()
           .includes("required delivery date");
@@ -1149,6 +1153,8 @@ const MyTaskTable = () => {
               taskId: rowAction.row.original.id,
               dueDate: rowAction.row.original.dueDate,
               remark: rowAction.row.original.remark,
+              taskStatus: (rowAction.row.original as any)?.status,
+              requiredDeliveryDate: rowAction.row.original.dueDate,
             }
             : undefined
         }

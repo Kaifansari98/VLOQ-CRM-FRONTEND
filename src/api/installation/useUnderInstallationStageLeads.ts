@@ -71,6 +71,13 @@ export interface MiscellaneousEntry {
     remark?: string | null;
     due_date?: string | null;
   } | null;
+  erd_task?: {
+    id: number;
+    task_type: string;
+    status?: string;
+    remark?: string | null;
+    due_date?: string | null;
+  } | null;
   teams: MiscellaneousTeam[];
   documents: MiscellaneousDocument[];
 }
@@ -91,6 +98,23 @@ export interface CreateMiscellaneousPayload {
   teams?: number[]; // Array of team IDs
   created_by: number;
   files: File[];
+}
+
+export interface UpdateMiscellaneousPayload {
+  vendorId: number;
+  leadId: number;
+  miscId: number;
+  misc_type_id: number;
+  problem_description?: string;
+  reorder_material_details?: string;
+  quantity?: number;
+  cost?: number;
+  supervisor_remark?: string;
+  expected_ready_date?: string;
+  solution?: string;
+  teams?: number[];
+  updated_by: number;
+  files?: File[];
 }
 
 export interface MiscType {
@@ -690,6 +714,99 @@ export const useCreateMiscellaneousEntry = () => {
   });
 };
 
+export const updateMiscellaneousEntry = async (
+  payload: UpdateMiscellaneousPayload,
+) => {
+  const formData = new FormData();
+
+  formData.append("misc_type_id", payload.misc_type_id.toString());
+  formData.append("updated_by", payload.updated_by.toString());
+
+  if (payload.problem_description !== undefined) {
+    formData.append("problem_description", payload.problem_description);
+  }
+  if (payload.reorder_material_details !== undefined) {
+    formData.append(
+      "reorder_material_details",
+      payload.reorder_material_details,
+    );
+  }
+  if (payload.quantity !== undefined && payload.quantity !== null) {
+    formData.append("quantity", payload.quantity.toString());
+  }
+  if (payload.cost !== undefined && payload.cost !== null) {
+    formData.append("cost", payload.cost.toString());
+  }
+  if (payload.supervisor_remark !== undefined) {
+    formData.append("supervisor_remark", payload.supervisor_remark);
+  }
+  if (payload.expected_ready_date !== undefined) {
+    formData.append("expected_ready_date", payload.expected_ready_date);
+  }
+  if (payload.solution !== undefined) {
+    formData.append("solution", payload.solution);
+  }
+
+  if (payload.teams && payload.teams.length > 0) {
+    formData.append("teams", payload.teams.join(","));
+  }
+
+  if (payload.files && payload.files.length > 0) {
+    payload.files.forEach((file) => {
+      formData.append("files", file);
+    });
+  }
+
+  const { data } = await apiClient.put(
+    `/leads/installation/under-installation/vendorId/${payload.vendorId}/leadId/${payload.leadId}/miscId/${payload.miscId}/update`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    },
+  );
+
+  return data?.data;
+};
+
+export const useUpdateMiscellaneousEntry = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateMiscellaneousEntry,
+
+    onSuccess: (data, variables) => {
+      toastManager.add({
+        title: "Miscellaneous entry updated successfully",
+        type: "success",
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: [
+          "miscellaneousEntries",
+          variables.vendorId,
+          variables.leadId,
+        ],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["miscellaneous-details"],
+      });
+    },
+
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          "Failed to update miscellaneous entry",
+        type: "error",
+      });
+    },
+  });
+};
+
+
 /* ==========================================================
    📥 GET - All Miscellaneous Entries
    @route GET /leads/installation/under-installation/vendorId/:vendorId/leadId/:leadId/get-all
@@ -771,8 +888,8 @@ export const updateMiscExpectedReadyDate = async ({
 }: {
   vendorId: number;
   miscId: number;
-  expected_ready_date?: string;
-  solution?: string;
+  expected_ready_date: string;
+  solution: string;
   updated_by: number;
 }) => {
   const response = await apiClient.put(
@@ -1961,4 +2078,94 @@ export const useCreateMiscFollowupTask = () => {
     },
   });
 };
+
+export interface MiscFollowupEntry {
+  id: number;
+  vendor_id: number;
+  lead_id: number;
+  miscellaneous_id: number;
+  followup_date: string;
+  solution: string;
+  created_by: number;
+  created_at: string;
+  updated_at?: string;
+  createdBy: {
+    id: number;
+    user_name: string;
+    user_email?: string;
+    user_type?: {
+      id: number;
+      user_type: string;
+    };
+  };
+}
+
+export interface CreateMiscFollowupRecordPayload {
+  vendorId: number;
+  miscId: number;
+  leadId: number;
+  followupDate: string;
+  solution: string;
+  createdBy?: number;
+}
+
+const getMiscFollowups = async (
+  vendorId: number,
+  miscId: number,
+): Promise<MiscFollowupEntry[]> => {
+  const { data } = await apiClient.get(
+    `/leads/installation/under-installation/vendorId/${vendorId}/miscId/${miscId}/followups`,
+  );
+  return data?.data ?? [];
+};
+
+export const useMiscFollowups = (vendorId?: number, miscId?: number) => {
+  return useQuery({
+    queryKey: ["miscFollowups", vendorId, miscId],
+    queryFn: () => getMiscFollowups(vendorId!, miscId!),
+    enabled: !!vendorId && !!miscId,
+    staleTime: 10 * 1000,
+    refetchOnWindowFocus: false,
+  });
+};
+
+const createMiscFollowup = async (payload: CreateMiscFollowupRecordPayload) => {
+  const { data } = await apiClient.post(
+    `/leads/installation/under-installation/vendorId/${payload.vendorId}/miscId/${payload.miscId}/followup`,
+    {
+      lead_id: payload.leadId,
+      followup_date: payload.followupDate,
+      solution: payload.solution,
+      created_by: payload.createdBy,
+    },
+  );
+  return data?.data;
+};
+
+export const useCreateMiscFollowup = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createMiscFollowup,
+    onSuccess: (_data, variables) => {
+      toastManager.add({
+        title: "Followup recorded successfully",
+        type: "success",
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["miscFollowups", variables.vendorId, variables.miscId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["miscFollowupTasks", variables.vendorId, variables.miscId],
+      });
+    },
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to record followup",
+        type: "error",
+      });
+    },
+  });
+};
+
 
