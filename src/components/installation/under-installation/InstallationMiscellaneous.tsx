@@ -1473,7 +1473,7 @@ export default function InstallationMiscellaneous({
             <TabsList className="grid w-full grid-cols-3 mb-4">
               <TabsTrigger value="misc-details">Misc Details</TabsTrigger>
               <TabsTrigger value="actions-scheduling">Actions & Scheduling</TabsTrigger>
-              <TabsTrigger value="followup">Followup</TabsTrigger>
+              <TabsTrigger value="followup">Follow Up</TabsTrigger>
             </TabsList>
 
             {/* ── Tab 1: Misc Details ────────────────────────────────────── */}
@@ -2327,10 +2327,10 @@ export default function InstallationMiscellaneous({
               </div>
             </TabsContent>
 
-            {/* ── Tab 3: Followup ────────────────────────────────────────── */}
+            {/* ── Tab 3: Follow Up ────────────────────────────────────────── */}
             <TabsContent value="followup">
               <div className="flex-1 overflow-y-auto py-2 space-y-5 px-1">
-                {/* 1. Add Followup Form */}
+                {/* 1. Add Follow Up Form */}
                 <div className="rounded-xl border border-border bg-card p-5 shadow-sm space-y-4">
                   <div className="flex items-center gap-2.5 border-b pb-3">
                     <div className="p-2 rounded-lg bg-primary/10 text-primary">
@@ -2338,7 +2338,7 @@ export default function InstallationMiscellaneous({
                     </div>
                     <div>
                       <h4 className="text-sm font-semibold text-foreground">
-                        Log Followup & Solution
+                        Log Follow Up & Solution
                       </h4>
                       <p className="text-xs text-muted-foreground">
                         Record calls, discussions, and solutions agreed between supervisor, factory, client, or admin.
@@ -2350,7 +2350,7 @@ export default function InstallationMiscellaneous({
                     <div className="space-y-1.5 md:col-span-1">
                       <label className="text-xs font-semibold text-foreground flex items-center gap-1">
                         <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
-                        Followup Date <span className="text-destructive">*</span>
+                        Follow Up Date <span className="text-destructive">*</span>
                       </label>
                       <CustomeDatePicker
                         value={followupDate}
@@ -2389,12 +2389,12 @@ export default function InstallationMiscellaneous({
                       )}
                       {createFollowupMutation.isPending
                         ? "Saving..."
-                        : "Add Followup"}
+                        : "Add Follow Up"}
                     </Button>
                   </div>
                 </div>
 
-                {/* 2. Followup History */}
+                {/* 2. Follow Up History */}
                 <div className="rounded-xl border border-border bg-card p-5 shadow-sm space-y-4">
                   <div className="flex items-center justify-between border-b pb-3">
                     <div className="flex items-center gap-2.5">
@@ -2403,7 +2403,7 @@ export default function InstallationMiscellaneous({
                       </div>
                       <div>
                         <h4 className="text-sm font-semibold text-foreground">
-                          Followup History
+                          Follow Up History
                         </h4>
                         <p className="text-xs text-muted-foreground">
                           Chronological timeline of discussions and updates for this miscellaneous request.
@@ -2418,7 +2418,7 @@ export default function InstallationMiscellaneous({
                   {loadingFollowups ? (
                     <div className="py-8 flex items-center justify-center gap-2 text-xs text-muted-foreground">
                       <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                      Loading follow-up history...
+                      Loading follow up history...
                     </div>
                   ) : followups.length === 0 ? (
                     <div className="py-10 text-center flex flex-col items-center justify-center gap-2 text-muted-foreground">
@@ -2426,7 +2426,7 @@ export default function InstallationMiscellaneous({
                         <Clock className="w-6 h-6 text-muted-foreground/60" />
                       </div>
                       <p className="text-sm font-medium text-foreground">
-                        No follow-ups recorded for this entry.
+                        No follow ups recorded for this entry.
                       </p>
                       <p className="text-xs text-muted-foreground max-w-sm">
                         Use the form above to log call details, solutions, and updates with factory, site supervisors, and admins.
@@ -2457,7 +2457,7 @@ export default function InstallationMiscellaneous({
                             <div className="flex items-center gap-2 flex-wrap text-xs">
                               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 text-primary font-medium">
                                 <Calendar className="w-3.5 h-3.5" />
-                                <span>Followup: <strong>{formatDate(item.followup_date)}</strong></span>
+                                <span>Follow Up: <strong>{formatDate(item.followup_date)}</strong></span>
                               </span>
                             </div>
                           </div>

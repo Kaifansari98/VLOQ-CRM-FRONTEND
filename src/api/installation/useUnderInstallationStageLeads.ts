@@ -2149,7 +2149,7 @@ export const useCreateMiscFollowup = () => {
     mutationFn: createMiscFollowup,
     onSuccess: (_data, variables) => {
       toastManager.add({
-        title: "Followup recorded successfully",
+        title: "Follow up recorded successfully",
         type: "success",
       });
       queryClient.invalidateQueries({
@@ -2161,7 +2161,7 @@ export const useCreateMiscFollowup = () => {
     },
     onError: (error: AxiosError<ApiErrorResponse>) => {
       toastManager.add({
-        title: error?.response?.data?.error || "Failed to record followup",
+        title: error?.response?.data?.error || "Failed to record follow up",
         type: "error",
       });
     },
