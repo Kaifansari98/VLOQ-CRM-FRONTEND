@@ -71,6 +71,13 @@ export interface MiscellaneousEntry {
     remark?: string | null;
     due_date?: string | null;
   } | null;
+  erd_task?: {
+    id: number;
+    task_type: string;
+    status?: string;
+    remark?: string | null;
+    due_date?: string | null;
+  } | null;
   teams: MiscellaneousTeam[];
   documents: MiscellaneousDocument[];
 }
@@ -2059,4 +2066,94 @@ export const useCreateMiscFollowupTask = () => {
     },
   });
 };
+
+export interface MiscFollowupEntry {
+  id: number;
+  vendor_id: number;
+  lead_id: number;
+  miscellaneous_id: number;
+  followup_date: string;
+  solution: string;
+  created_by: number;
+  created_at: string;
+  updated_at?: string;
+  createdBy: {
+    id: number;
+    user_name: string;
+    user_email?: string;
+    user_type?: {
+      id: number;
+      user_type: string;
+    };
+  };
+}
+
+export interface CreateMiscFollowupRecordPayload {
+  vendorId: number;
+  miscId: number;
+  leadId: number;
+  followupDate: string;
+  solution: string;
+  createdBy?: number;
+}
+
+const getMiscFollowups = async (
+  vendorId: number,
+  miscId: number,
+): Promise<MiscFollowupEntry[]> => {
+  const { data } = await apiClient.get(
+    `/leads/installation/under-installation/vendorId/${vendorId}/miscId/${miscId}/followups`,
+  );
+  return data?.data ?? [];
+};
+
+export const useMiscFollowups = (vendorId?: number, miscId?: number) => {
+  return useQuery({
+    queryKey: ["miscFollowups", vendorId, miscId],
+    queryFn: () => getMiscFollowups(vendorId!, miscId!),
+    enabled: !!vendorId && !!miscId,
+    staleTime: 10 * 1000,
+    refetchOnWindowFocus: false,
+  });
+};
+
+const createMiscFollowup = async (payload: CreateMiscFollowupRecordPayload) => {
+  const { data } = await apiClient.post(
+    `/leads/installation/under-installation/vendorId/${payload.vendorId}/miscId/${payload.miscId}/followup`,
+    {
+      lead_id: payload.leadId,
+      followup_date: payload.followupDate,
+      solution: payload.solution,
+      created_by: payload.createdBy,
+    },
+  );
+  return data?.data;
+};
+
+export const useCreateMiscFollowup = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createMiscFollowup,
+    onSuccess: (_data, variables) => {
+      toastManager.add({
+        title: "Followup recorded successfully",
+        type: "success",
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["miscFollowups", variables.vendorId, variables.miscId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["miscFollowupTasks", variables.vendorId, variables.miscId],
+      });
+    },
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to record followup",
+        type: "error",
+      });
+    },
+  });
+};
+
 

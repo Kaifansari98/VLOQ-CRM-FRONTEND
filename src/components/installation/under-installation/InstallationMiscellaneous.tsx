@@ -60,6 +60,8 @@ import {
   useUpdateMiscRequiredDeliveryDate,
   useUploadMiscellaneousDocuments,
   MiscellaneousEntry,
+  useMiscFollowups,
+  useCreateMiscFollowup,
 } from "@/api/installation/useUnderInstallationStageLeads";
 import { useAppSelector } from "@/redux/store";
 import TextSelectPicker from "@/components/TextSelectPicker";
@@ -200,8 +202,22 @@ export default function InstallationMiscellaneous({
   onModalClose,
   hideAddButton,
 }: InstallationMiscellaneousProps) {
-  const userId = useAppSelector((s) => s.auth.user?.id);
-  const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const authUser = useAppSelector((s) => s.auth.user);
+  const userId = authUser?.id;
+  const rawUserType = useAppSelector(
+    (s) =>
+      (typeof s.auth.user?.user_type === "object"
+        ? (s.auth.user?.user_type as any)?.user_type ||
+          (s.auth.user?.user_type as any)?.user_type_name ||
+          (s.auth.user?.user_type as any)?.name ||
+          (s.auth.user?.user_type as any)?.type
+        : s.auth.user?.user_type) ||
+      s.auth.user?.user_role ||
+      (s.auth.user as any)?.role ||
+      "",
+  );
+  const userType = typeof rawUserType === "string" ? rawUserType : "";
+  const userRole = typeof authUser?.user_role === "string" ? authUser.user_role : "";
   const customPrivilegeCodes = useAppSelector((s) => s.customPrivileges.codes);
 
   const { data: miscTypes = [], isLoading: loadingTypes } = useMiscTypes(vendorId);
@@ -310,12 +326,128 @@ export default function InstallationMiscellaneous({
   const [rejectReason, setRejectReason] = useState("");
   const [openDeliveryTaskModal, setOpenDeliveryTaskModal] = useState(false);
 
-  const normalizedUserType = userType?.toLowerCase().trim().replace(/_/g, "-").replace(/\s+/g, "-");
-  const isFactoryUser = normalizedUserType === "factory";
-  const isSupervisorUser = normalizedUserType === "site-supervisor" || normalizedUserType === "head-site-supervisor";
-  const isAdminOrSuper = normalizedUserType === "admin" || normalizedUserType === "super-admin";
-  const isSuperAdmin = normalizedUserType === "super-admin";
-  const isMiscellaneousUser = normalizedUserType === "miscellaneous";
+  const [followupDate, setFollowupDate] = useState<string | undefined>(undefined);
+  const [followupSolution, setFollowupSolution] = useState<string>("");
+
+  const { data: followups = [], isLoading: loadingFollowups } = useMiscFollowups(
+    vendorId,
+    viewModalData?.id,
+  );
+  const createFollowupMutation = useCreateMiscFollowup();
+
+  const handleAddFollowup = () => {
+    if (!viewModalData?.id) return;
+    if (!followupDate) {
+      toastManager.add({
+        title: "Please select a date",
+        type: "error",
+      });
+      return;
+    }
+    if (!followupSolution.trim()) {
+      toastManager.add({
+        title: "Please enter solution / discussion details",
+        type: "error",
+      });
+      return;
+    }
+
+    createFollowupMutation.mutate(
+      {
+        vendorId,
+        miscId: viewModalData.id,
+        leadId,
+        followupDate,
+        solution: followupSolution.trim(),
+        createdBy: userId,
+      },
+      {
+        onSuccess: () => {
+          setFollowupSolution("");
+          setFollowupDate(undefined);
+        },
+      },
+    );
+  };
+
+  const getFollowupRoleBadge = (roleName?: string) => {
+    const norm = (roleName || "").toLowerCase().trim().replace(/_/g, "-").replace(/\s+/g, "-");
+    if (norm === "super-admin" || norm === "admin") {
+      return (
+        <Badge className="bg-indigo-500/15 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 font-medium text-[11px]">
+          Super Admin
+        </Badge>
+      );
+    }
+    if (norm === "site-supervisor" || norm === "head-site-supervisor") {
+      return (
+        <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 font-medium text-[11px]">
+          Site Supervisor
+        </Badge>
+      );
+    }
+    if (norm === "factory") {
+      return (
+        <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800 font-medium text-[11px]">
+          Factory
+        </Badge>
+      );
+    }
+    if (norm === "miscellaneous") {
+      return (
+        <Badge className="bg-purple-500/15 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800 font-medium text-[11px]">
+          Miscellaneous
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="secondary" className="font-medium text-[11px]">
+        {roleName || "User"}
+      </Badge>
+    );
+  };
+
+  const getFollowupInitials = (name?: string) => {
+    if (!name) return "U";
+    const parts = name.trim().split(" ");
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+  };
+
+  const normalizedUserType = (
+    typeof userType === "string" ? userType : ""
+  )
+    .toLowerCase()
+    .trim()
+    .replace(/_/g, "-")
+    .replace(/\s+/g, "-");
+  const normalizedRole = userRole.toLowerCase().trim().replace(/_/g, "-").replace(/\s+/g, "-");
+
+  const isFactoryUser =
+    normalizedUserType === "factory" ||
+    normalizedUserType === "factory-user" ||
+    normalizedUserType.includes("factory") ||
+    normalizedRole === "factory" ||
+    normalizedRole.includes("factory");
+  const isSupervisorUser =
+    normalizedUserType === "site-supervisor" ||
+    normalizedUserType === "head-site-supervisor" ||
+    normalizedUserType.includes("supervisor") ||
+    normalizedRole.includes("supervisor");
+  const isAdminOrSuper =
+    normalizedUserType === "admin" ||
+    normalizedUserType === "super-admin" ||
+    normalizedUserType.includes("admin") ||
+    normalizedRole.includes("admin");
+  const isSuperAdmin =
+    normalizedUserType === "super-admin" ||
+    normalizedRole === "super-admin";
+  const isMiscellaneousUser =
+    normalizedUserType === "miscellaneous" ||
+    normalizedUserType.includes("miscellaneous") ||
+    normalizedRole.includes("miscellaneous");
 
   const canDoERDDate = canDoERDMiscellaneousDate(normalizedUserType || userType, leadStatus);
   const canDoMarkAsResolved = canMiscellaneousMarkAsResolved(normalizedUserType || userType, leadStatus);
@@ -468,10 +600,18 @@ export default function InstallationMiscellaneous({
 
   useEffect(() => {
     if (!initialTaskId || initialModalHandled || !entries?.length) return;
-    const matched = entries.find((item) => item.task?.id === initialTaskId);
+    const matched = entries.find(
+      (item) =>
+        item.task?.id === initialTaskId ||
+        item.delivery_task?.id === initialTaskId ||
+        item.erd_task?.id === initialTaskId,
+    );
     if (matched) {
       setViewModal({ open: true, id: matched.id });
       setInitialModalHandled(true);
+      if (matched.delivery_task?.id === initialTaskId) {
+        setOpenDeliveryTaskModal(true);
+      }
     }
   }, [initialTaskId, entries, initialModalHandled]);
 
@@ -737,7 +877,7 @@ export default function InstallationMiscellaneous({
   const isRejected = miscApproved === false;
   const isApproved = miscApproved === true;
   const isReady = viewModalData?.task?.status === "completed";
-  const canResolveRole = ["super-admin", "site-supervisor", "head-site-supervisor", "admin", "miscellaneous"].includes(normalizedUserType || userType || "");
+  const canResolveRole = isSuperAdmin || isSupervisorUser;
   const canApproveReject =
     isAdminOrSuper ||
     normalizedUserType === "miscellaneous";
@@ -758,7 +898,9 @@ export default function InstallationMiscellaneous({
 
   const showApprovalActions = canApproveReject && miscApproved == null;
   const canUpdateERD = canDoERDDate && !isTaskReady && isApproved;
-  const isDeliveryTaskCompleted = viewModalData?.delivery_task?.status === "completed";
+  const isDeliveryTaskCompleted =
+    Boolean(viewModalData?.required_delivery_date) &&
+    viewModalData?.delivery_task?.status === "completed";
   const canUpdateRequiredDelivery =
     (isSupervisorUser || isAdminOrSuper) &&
     isApproved &&
@@ -767,7 +909,7 @@ export default function InstallationMiscellaneous({
     !viewModalData?.is_resolved;
   // Factory user and Admin/Super-Admin manage delivery task; Site supervisor does NOT manage it
   const canManageDeliveryTask =
-    (isFactoryUser || isAdminOrSuper) && !isDeliveryTaskCompleted;
+    (isFactoryUser || isAdminOrSuper) && !viewModalData?.is_resolved;
 
   // ✅ Effective action flags — blocked overrides all
   const effectiveCanWork = canWork && !shouldDisableBlockedActions;
@@ -1831,6 +1973,12 @@ export default function InstallationMiscellaneous({
                                               queryClient.invalidateQueries({
                                                 queryKey: ["miscellaneousEntries", vendorId, leadId],
                                               });
+                                              queryClient.invalidateQueries({
+                                                queryKey: ["vendorUserTasks"],
+                                              });
+                                              queryClient.invalidateQueries({
+                                                queryKey: ["vendorAllTasks"],
+                                              });
                                             },
                                           }
                                         );
@@ -1979,8 +2127,12 @@ export default function InstallationMiscellaneous({
                                   truncateValue={
                                     <span className="block">
                                       <CustomeDatePicker
-                                        key={`${viewModalData?.id}-delivery`}
-                                        value={viewModalData?.required_delivery_date || undefined}
+                                        key={`${viewModalData?.id}-delivery-${viewModalData?.delivery_task?.due_date || viewModalData?.required_delivery_date || ""}`}
+                                        value={
+                                          viewModalData?.delivery_task?.due_date
+                                            ? new Date(viewModalData.delivery_task.due_date).toISOString().slice(0, 10)
+                                            : (viewModalData?.required_delivery_date || undefined)
+                                        }
                                         restriction="futureOnly"
                                         disabledReason={
                                           shouldDisableBlockedActions
@@ -2006,7 +2158,7 @@ export default function InstallationMiscellaneous({
                                 />
 
                                 <div className="flex gap-2">
-                                  {viewModalData?.required_delivery_date && viewModalData?.delivery_task?.id && !isDeliveryTaskCompleted && effectiveCanManageDeliveryTask && (
+                                  {viewModalData?.required_delivery_date && !viewModalData?.is_resolved && effectiveCanManageDeliveryTask && (
                                     <CustomeTooltip
                                       value={shouldDisableBlockedActions ? blockedTooltip : ""}
                                       truncateValue={
@@ -2177,7 +2329,8 @@ export default function InstallationMiscellaneous({
 
             {/* ── Tab 3: Followup ────────────────────────────────────────── */}
             <TabsContent value="followup">
-              <div className="flex-1 overflow-y-auto py-2 space-y-6 px-1">
+              <div className="flex-1 overflow-y-auto py-2 space-y-5 px-1">
+                {/* 1. Add Followup Form */}
                 <div className="rounded-xl border border-border bg-card p-5 shadow-sm space-y-4">
                   <div className="flex items-center gap-2.5 border-b pb-3">
                     <div className="p-2 rounded-lg bg-primary/10 text-primary">
@@ -2185,16 +2338,137 @@ export default function InstallationMiscellaneous({
                     </div>
                     <div>
                       <h4 className="text-sm font-semibold text-foreground">
-                        Followup Details
+                        Log Followup & Solution
                       </h4>
                       <p className="text-xs text-muted-foreground">
-                        View follow-up notes and history for this miscellaneous request.
+                        Record calls, discussions, and solutions agreed between supervisor, factory, client, or admin.
                       </p>
                     </div>
                   </div>
-                  <div className="p-6 text-center text-xs text-muted-foreground">
-                    No follow-ups recorded for this entry.
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-1.5 md:col-span-1">
+                      <label className="text-xs font-semibold text-foreground flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                        Followup Date <span className="text-destructive">*</span>
+                      </label>
+                      <CustomeDatePicker
+                        value={followupDate}
+                        onChange={setFollowupDate}
+                      />
+                    </div>
+
+                    <div className="space-y-1.5 md:col-span-2">
+                      <label className="text-xs font-semibold text-foreground flex items-center gap-1">
+                        <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                        Solution / Discussion Details <span className="text-destructive">*</span>
+                      </label>
+                      <TextAreaInput
+                        value={followupSolution}
+                        onChange={setFollowupSolution}
+                        placeholder="Enter phone call discussion, who was contacted (e.g. factory, client, supervisor), decisions made, and solution..."
+                        maxLength={2000}
+                      />
+                    </div>
                   </div>
+
+                  <div className="flex justify-end pt-1">
+                    <Button
+                      onClick={handleAddFollowup}
+                      disabled={
+                        createFollowupMutation.isPending ||
+                        !followupSolution.trim() ||
+                        !followupDate
+                      }
+                      className="gap-2"
+                    >
+                      {createFollowupMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Send className="w-4 h-4" />
+                      )}
+                      {createFollowupMutation.isPending
+                        ? "Saving..."
+                        : "Add Followup"}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* 2. Followup History */}
+                <div className="rounded-xl border border-border bg-card p-5 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between border-b pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-lg bg-muted text-foreground">
+                        <Clock className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-semibold text-foreground">
+                          Followup History
+                        </h4>
+                        <p className="text-xs text-muted-foreground">
+                          Chronological timeline of discussions and updates for this miscellaneous request.
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-xs font-semibold">
+                      {followups.length} {followups.length === 1 ? "Record" : "Records"}
+                    </Badge>
+                  </div>
+
+                  {loadingFollowups ? (
+                    <div className="py-8 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                      <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                      Loading follow-up history...
+                    </div>
+                  ) : followups.length === 0 ? (
+                    <div className="py-10 text-center flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                      <div className="p-3 rounded-full bg-muted/60 mb-1">
+                        <Clock className="w-6 h-6 text-muted-foreground/60" />
+                      </div>
+                      <p className="text-sm font-medium text-foreground">
+                        No follow-ups recorded for this entry.
+                      </p>
+                      <p className="text-xs text-muted-foreground max-w-sm">
+                        Use the form above to log call details, solutions, and updates with factory, site supervisors, and admins.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 pt-1">
+                      {followups.map((item) => (
+                        <div
+                          key={item.id}
+                          className="rounded-xl border border-border/70 bg-background/50 hover:bg-muted/10 p-4 transition-all duration-150 space-y-2.5 shadow-sm"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2.5">
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20">
+                                {getFollowupInitials(item.createdBy?.user_name)}
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-xs font-semibold text-foreground">
+                                  {item.createdBy?.user_name || "Unknown"}
+                                </span>
+                                <div className="mt-0.5">
+                                  {getFollowupRoleBadge(item.createdBy?.user_type?.user_type)}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 flex-wrap text-xs">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 text-primary font-medium">
+                                <Calendar className="w-3.5 h-3.5" />
+                                <span>Followup: <strong>{formatDate(item.followup_date)}</strong></span>
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="rounded-lg bg-muted/40 p-3 text-xs md:text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed border border-border/40">
+                            {item.solution}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </TabsContent>
@@ -2235,6 +2509,12 @@ export default function InstallationMiscellaneous({
                       queryClient.invalidateQueries({
                         queryKey: ["miscellaneousEntries", vendorId, leadId],
                       });
+                      queryClient.invalidateQueries({
+                        queryKey: ["vendorUserTasks"],
+                      });
+                      queryClient.invalidateQueries({
+                        queryKey: ["vendorAllTasks"],
+                      });
                       setShowApproveModal(false);
                     },
                   },
@@ -2274,7 +2554,15 @@ export default function InstallationMiscellaneous({
                   { vendorId, miscId: viewModalData.id, misc_approved: false, exp_of_rejection: rejectReason.trim(), updated_by: userId! },
                   {
                     onSuccess: () => {
-                      queryClient.invalidateQueries({ queryKey: ["miscellaneousEntries", vendorId, leadId] });
+                      queryClient.invalidateQueries({
+                        queryKey: ["miscellaneousEntries", vendorId, leadId],
+                      });
+                      queryClient.invalidateQueries({
+                        queryKey: ["vendorUserTasks"],
+                      });
+                      queryClient.invalidateQueries({
+                        queryKey: ["vendorAllTasks"],
+                      });
                       setShowRejectModal(false);
                       setRejectReason("");
                     },
@@ -2303,7 +2591,20 @@ export default function InstallationMiscellaneous({
                 if (!viewModalData || !selectedRequiredDelivery) return;
                 updateRequiredDeliveryMutation.mutate(
                   { vendorId, miscId: viewModalData.id, required_delivery_date: selectedRequiredDelivery, updated_by: userId! },
-                  { onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["miscellaneousEntries", vendorId, leadId] }); setShowDeliveryConfirm(false); } },
+                  {
+                    onSuccess: () => {
+                      queryClient.invalidateQueries({
+                        queryKey: ["miscellaneousEntries", vendorId, leadId],
+                      });
+                      queryClient.invalidateQueries({
+                        queryKey: ["vendorUserTasks"],
+                      });
+                      queryClient.invalidateQueries({
+                        queryKey: ["vendorAllTasks"],
+                      });
+                      setShowDeliveryConfirm(false);
+                    },
+                  },
                 );
               }}
             >
@@ -2406,6 +2707,12 @@ export default function InstallationMiscellaneous({
                       queryClient.invalidateQueries({
                         queryKey: ["miscellaneousEntries", vendorId, leadId],
                       });
+                      queryClient.invalidateQueries({
+                        queryKey: ["vendorUserTasks"],
+                      });
+                      queryClient.invalidateQueries({
+                        queryKey: ["vendorAllTasks"],
+                      });
                       setShowReadyConfirm(false);
                       setReadyFiles([]);
                     },
@@ -2448,15 +2755,15 @@ export default function InstallationMiscellaneous({
         open={openDeliveryTaskModal}
         onOpenChange={setOpenDeliveryTaskModal}
         data={
-          viewModalData?.delivery_task?.id
+          (viewModalData?.delivery_task?.id || viewModalData?.task?.id)
             ? {
               leadId,
               accountId,
-              taskId: viewModalData.delivery_task.id,
-              dueDate: viewModalData.delivery_task.due_date || undefined,
-              remark: viewModalData.delivery_task.remark || undefined,
-              taskStatus: viewModalData.delivery_task.status || undefined,
-              requiredDeliveryDate: viewModalData.required_delivery_date || undefined,
+              taskId: (viewModalData.delivery_task?.id ?? viewModalData.task?.id)!,
+              dueDate: viewModalData.delivery_task?.due_date || viewModalData.required_delivery_date || undefined,
+              remark: viewModalData.delivery_task?.remark || undefined,
+              taskStatus: viewModalData.delivery_task?.status || undefined,
+              requiredDeliveryDate: viewModalData.delivery_task?.due_date || viewModalData.required_delivery_date || undefined,
             }
             : undefined
         }

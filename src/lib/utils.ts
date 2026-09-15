@@ -132,8 +132,11 @@ export function extractTitleText(input: string = ""): string {
 export function sanitizeRemark(input: string = ""): string {
   if (!input) return "";
 
-  // remove patterns like ||OL:37|| , ||ANYTHING||
-  return input.replace(/\|\|.*?\|\|/g, "").trim();
+  // remove patterns like ||OL:37|| , ||ANYTHING||, and misc tags like [misc-erd:123]
+  return input
+    .replace(/\|\|.*?\|\|/g, "")
+    .replace(/\[misc[^\]]*\]\s*/gi, "")
+    .trim();
 }
 
 export const tableMultiValueFilter: FilterFn<any> = (

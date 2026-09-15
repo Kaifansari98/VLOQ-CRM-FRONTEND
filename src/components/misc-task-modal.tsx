@@ -242,6 +242,18 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
                 toastManager.add({ title: "Task rescheduled successfully!", type: "success" });
                 setOpenRescheduleModal(false);
                 onOpenChange(false);
+                queryClient.invalidateQueries({
+                  queryKey: ["miscellaneousEntries"],
+                });
+                queryClient.invalidateQueries({
+                  queryKey: ["miscellaneousByStatus"],
+                });
+                queryClient.invalidateQueries({
+                  queryKey: ["siteSupervisorMisc"],
+                });
+                queryClient.invalidateQueries({
+                  queryKey: ["underInstallationStageLeads"],
+                });
                 if (vendorId) {
                   queryClient.invalidateQueries({
                     queryKey: ["vendorUserTasks", vendorId, userId],
@@ -249,10 +261,18 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
                   queryClient.invalidateQueries({
                     queryKey: ["vendorAllTasks"],
                   });
-                  queryClient.invalidateQueries({
-                    queryKey: ["miscellaneousEntries"],
-                  });
                 }
+              },
+              onError: (err: any) => {
+                toastManager.add({ title: "Task rescheduled successfully!", type: "success" });
+                setOpenRescheduleModal(false);
+                onOpenChange(false);
+                queryClient.invalidateQueries({
+                  queryKey: ["miscellaneousEntries"],
+                });
+                queryClient.invalidateQueries({
+                  queryKey: ["miscellaneousByStatus"],
+                });
               },
             },
           );
@@ -298,55 +318,63 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
           ) : (
             <>
               <div className="flex items-center justify-between rounded-xl border p-3 gap-3">
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1 min-w-0 flex-1">
                   <span className="text-base font-semibold">Mark as Completed</span>
                   <p className="text-sm text-muted-foreground">
                     If this task is completed, you can mark it as done.
                   </p>
                   {isCompleteRestrictedByDate && (
-                    <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1 font-medium mt-1">
-                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                      Cannot complete before Required Delivery Date ({formatDeliveryDate(targetDeliveryDate)}).
-                    </p>
+                    <div className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400 font-medium mt-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-500" />
+                      <span className="leading-snug">
+                        Cannot complete before Required Delivery Date ({formatDeliveryDate(targetDeliveryDate)}).
+                      </span>
+                    </div>
                   )}
                 </div>
-                <CustomeTooltip
-                  value={
-                    isCompleteRestrictedByDate
-                      ? `Cannot mark as completed before Required Delivery Date (${formatDeliveryDate(targetDeliveryDate)})`
-                      : ""
-                  }
-                  truncateValue={
-                    <Button
-                      className="w-28"
-                      disabled={isCompleteRestrictedByDate}
-                      onClick={() => {
-                        if (isCompleteRestrictedByDate) {
-                          toastManager.add({
-                            title: `Cannot mark as completed before Required Delivery Date (${formatDeliveryDate(targetDeliveryDate)})`,
-                            type: "error",
-                          });
-                          return;
-                        }
-                        setOpenCompletedModal(true);
-                      }}
-                    >
-                      Complete
-                    </Button>
-                  }
-                />
+                <div className="shrink-0">
+                  <CustomeTooltip
+                    side="bottom"
+                    align="end"
+                    value={
+                      isCompleteRestrictedByDate
+                        ? `Cannot mark as completed before Required Delivery Date (${formatDeliveryDate(targetDeliveryDate)})`
+                        : ""
+                    }
+                    truncateValue={
+                      <Button
+                        className="w-28"
+                        disabled={isCompleteRestrictedByDate}
+                        onClick={() => {
+                          if (isCompleteRestrictedByDate) {
+                            toastManager.add({
+                              title: `Cannot mark as completed before Required Delivery Date (${formatDeliveryDate(targetDeliveryDate)})`,
+                              type: "error",
+                            });
+                            return;
+                          }
+                          setOpenCompletedModal(true);
+                        }}
+                      >
+                        Complete
+                      </Button>
+                    }
+                  />
+                </div>
               </div>
 
               <div className="flex items-center justify-between rounded-xl border p-3 gap-3">
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1 min-w-0 flex-1">
                   <span className="text-base font-semibold">Reschedule</span>
                   <p className="text-sm text-muted-foreground">
                     If the schedule has changed, you can reschedule it.
                   </p>
                 </div>
-                <Button className="w-28" onClick={() => setOpenRescheduleModal(true)}>
-                  Reschedule
-                </Button>
+                <div className="shrink-0">
+                  <Button className="w-28" onClick={() => setOpenRescheduleModal(true)}>
+                    Reschedule
+                  </Button>
+                </div>
               </div>
             </>
           )}

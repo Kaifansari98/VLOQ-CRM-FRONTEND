@@ -445,15 +445,13 @@ export function canDoERDMiscellaneousDate(
 
 export function canMiscellaneousMarkAsResolved(
   role: string,
-  stage: string,
+  stage?: string,
 ): boolean {
-  // can work and view both and factory work only final-handover-stage.
+  const normalizedRole = role?.toLowerCase().trim().replace(/_/g, "-").replace(/\s+/g, "-");
   return (
-    role === "admin" ||
-    role === "super-admin" ||
-    role === "site-supervisor" ||
-    role === "head-site-supervisor" ||
-    role === "miscellaneous"
+    normalizedRole === "super-admin" ||
+    normalizedRole === "site-supervisor" ||
+    normalizedRole === "head-site-supervisor"
   );
 }
 
