@@ -22,6 +22,7 @@ import {
   ExternalLink,
   FileText,
   Clock,
+  Cpu,
 } from "lucide-react";
 import { formatDateTime } from "../utils/privileges";
 import RequirementDocUpload from "./RequirementDocUpload";
@@ -95,6 +96,7 @@ import {
   useB2BRequirementTypes,
   useProcessBriefs,
 } from "@/hooks/useTypesMaster";
+import { useMachinesByVendor } from "@/hooks/track-trace-hooks/useTrackTraceMasterHooks";
 import { updateLeadProductType, clearLeadProductStructures, updateLead } from "@/api/leads";
 import { saveLeadProcessBriefsApi, fetchLeadProcessBriefsApi, saveLeadB2BRequirementMappingsApi } from "@/api/typesMasterApi";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
@@ -310,6 +312,14 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const { data: processBriefsData } = useProcessBriefs();
   const processBriefs = useMemo(() => processBriefsData?.data || [], [processBriefsData]);
 
+  const { data: rawVendorMachines } = useMachinesByVendor(vendorId || 0);
+  const allVendorMachines = useMemo(() => {
+    if (!rawVendorMachines) return [];
+    if (Array.isArray(rawVendorMachines)) return rawVendorMachines;
+    if (Array.isArray((rawVendorMachines as any)?.data)) return (rawVendorMachines as any).data;
+    return [];
+  }, [rawVendorMachines]);
+
   const { data: reqMaterialsData, refetch: refetchReqMaterials } = useQuery({
     queryKey: ["lead-requirement-materials", leadId, vendorId],
     queryFn: () => fetchLeadRequirementMaterialsApi(leadId, vendorId!),
@@ -505,6 +515,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   const [reqStatuses, setReqStatuses] = useState<Record<number, string>>({});
   const [openGlobalStatusDropdown, setOpenGlobalStatusDropdown] = useState(false);
   const [selectedProcessBriefIds, setSelectedProcessBriefIds] = useState<Record<number, number[]>>({});
+  const [selectedBriefMachines, setSelectedBriefMachines] = useState<Record<number, Record<number, number | null>>>({});
   const [briefModalTypeId, setBriefModalTypeId] = useState<number | null>(null);
   const [materialModalTypeId, setMaterialModalTypeId] = useState<number | null>(null);
   const [editingMaterialItem, setEditingMaterialItem] = useState<any | null>(null);
@@ -1122,15 +1133,27 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
       .then((res: any) => {
         if (res?.success && Array.isArray(res?.data)) {
           const mappingObj: Record<number, number[]> = {};
+          const machinesObj: Record<number, Record<number, number | null>> = {};
           res.data.forEach((item: any) => {
             const tId = item.b2b_requirement_type_id || item.product_type_id || item.b2bRequirementType?.id;
             const bId = item.process_brief_id;
+            const mId = item.machine_id ?? item.machine?.id ?? null;
             if (tId && bId) {
               if (!mappingObj[tId]) mappingObj[tId] = [];
               if (!mappingObj[tId].includes(bId)) mappingObj[tId].push(bId);
+              if (!machinesObj[tId]) machinesObj[tId] = {};
+              machinesObj[tId][bId] = mId;
             }
           });
-          setSelectedProcessBriefIds((prev) => ({ ...mappingObj, ...prev }));
+          setSelectedProcessBriefIds((prev) => ({ ...prev, ...mappingObj }));
+          setSelectedBriefMachines((prev) => {
+            const merged = { ...prev };
+            Object.entries(machinesObj).forEach(([tStr, bMap]) => {
+              const tNum = Number(tStr);
+              merged[tNum] = { ...(merged[tNum] || {}), ...bMap };
+            });
+            return merged;
+          });
         }
       })
       .catch((err) => {
@@ -1141,15 +1164,27 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
   useEffect(() => {
     if (lead?.leadProcessBriefs && Array.isArray(lead.leadProcessBriefs)) {
       const mappingObj: Record<number, number[]> = {};
+      const machinesObj: Record<number, Record<number, number | null>> = {};
       lead.leadProcessBriefs.forEach((item: any) => {
         const tId = item.b2b_requirement_type_id || item.product_type_id || item.b2bRequirementType?.id;
         const bId = item.process_brief_id || item.processBrief?.id;
+        const mId = item.machine_id ?? item.machine?.id ?? null;
         if (tId && bId) {
           if (!mappingObj[tId]) mappingObj[tId] = [];
           if (!mappingObj[tId].includes(bId)) mappingObj[tId].push(bId);
+          if (!machinesObj[tId]) machinesObj[tId] = {};
+          machinesObj[tId][bId] = mId;
         }
       });
-      setSelectedProcessBriefIds((prev) => ({ ...mappingObj, ...prev }));
+      setSelectedProcessBriefIds((prev) => ({ ...prev, ...mappingObj }));
+      setSelectedBriefMachines((prev) => {
+        const merged = { ...prev };
+        Object.entries(machinesObj).forEach(([tStr, bMap]) => {
+          const tNum = Number(tStr);
+          merged[tNum] = { ...(merged[tNum] || {}), ...bMap };
+        });
+        return merged;
+      });
     }
   }, [lead?.leadProcessBriefs]);
 
@@ -1191,27 +1226,59 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
 
     try {
       setSavingProcessBriefs(true);
-      const mappingsList: { product_type_id: number; b2b_requirement_type_id?: number; process_brief_id: number }[] = [];
+      const mappingsList: {
+        product_type_id: number;
+        b2b_requirement_type_id?: number;
+        process_brief_id: number;
+        machine_id?: number | null;
+      }[] = [];
 
       Object.entries(selectedProcessBriefIds).forEach(([typeIdStr, briefIds]) => {
         const typeId = Number(typeIdStr);
         if (typeId > 0 && Array.isArray(briefIds)) {
           briefIds.forEach((bId) => {
+            const machineId = selectedBriefMachines[typeId]?.[bId] ?? null;
             mappingsList.push({
               product_type_id: typeId,
               b2b_requirement_type_id: typeId,
               process_brief_id: bId,
+              machine_id: machineId,
             });
           });
         }
       });
 
-      await saveLeadProcessBriefsApi({
+      const res = await saveLeadProcessBriefsApi({
         lead_id: leadId,
         vendor_id: vendorId,
         mappings: mappingsList,
         created_by: userId || 1,
       });
+
+      if (res?.success && Array.isArray(res?.data)) {
+        const mappingObj: Record<number, number[]> = {};
+        const machinesObj: Record<number, Record<number, number | null>> = {};
+        res.data.forEach((item: any) => {
+          const tId = item.b2b_requirement_type_id || item.product_type_id || item.b2bRequirementType?.id;
+          const bId = item.process_brief_id;
+          const mId = item.machine_id ?? item.machine?.id ?? null;
+          if (tId && bId) {
+            if (!mappingObj[tId]) mappingObj[tId] = [];
+            if (!mappingObj[tId].includes(bId)) mappingObj[tId].push(bId);
+            if (!machinesObj[tId]) machinesObj[tId] = {};
+            machinesObj[tId][bId] = mId;
+          }
+        });
+        setSelectedProcessBriefIds((prev) => ({ ...prev, ...mappingObj }));
+        setSelectedBriefMachines((prev) => {
+          const merged = { ...prev };
+          Object.entries(machinesObj).forEach(([tStr, bMap]) => {
+            const tNum = Number(tStr);
+            merged[tNum] = { ...(merged[tNum] || {}), ...bMap };
+          });
+          return merged;
+        });
+      }
 
       toastManager.add({
         title: "Process Briefs saved successfully!",
@@ -1289,12 +1356,108 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
     }
   };
 
+  const getEligibleMachinesForBrief = (brief: any, currentMachineId?: number | null) => {
+    const list: { id: number; name: string }[] = [];
+    const seenIds = new Set<number>();
+
+    (brief?.machineMappings || []).forEach((m: any) => {
+      const directMachineId = m.machine_id || m.machine?.id;
+      if (directMachineId && !seenIds.has(Number(directMachineId))) {
+        seenIds.add(Number(directMachineId));
+        const vendorMach = allVendorMachines.find((vm: any) => Number(vm.id) === Number(directMachineId));
+        const name =
+          m.machine?.machine_name ||
+          m.machine?.machine_code ||
+          vendorMach?.machine_name ||
+          vendorMach?.machine_code ||
+          `Machine #${directMachineId}`;
+        list.push({
+          id: Number(directMachineId),
+          name,
+        });
+      }
+      if (m.machine_type_id && allVendorMachines) {
+        allVendorMachines
+          .filter((vm: any) => Number(vm.machine_type_id) === Number(m.machine_type_id) && !seenIds.has(Number(vm.id)))
+          .forEach((vm: any) => {
+            seenIds.add(Number(vm.id));
+            list.push({
+              id: Number(vm.id),
+              name: vm.machine_name || vm.machine_code || `Machine #${vm.id}`,
+            });
+          });
+      }
+    });
+
+    if (currentMachineId && !seenIds.has(Number(currentMachineId))) {
+      seenIds.add(Number(currentMachineId));
+      const vendorMach = allVendorMachines.find((vm: any) => Number(vm.id) === Number(currentMachineId));
+      const fallbackMapping = (lead?.leadProcessBriefs || []).find((lpb: any) => Number(lpb.machine_id) === Number(currentMachineId));
+      const name =
+        vendorMach?.machine_name ||
+        vendorMach?.machine_code ||
+        fallbackMapping?.machine?.machine_name ||
+        fallbackMapping?.machine?.machine_code ||
+        `Machine #${currentMachineId}`;
+      list.push({
+        id: Number(currentMachineId),
+        name,
+      });
+    }
+
+    return list;
+  };
+
+  const getMachineDisplayName = (machineId: number) => {
+    const vMach = allVendorMachines.find((m: any) => Number(m.id) === Number(machineId));
+    if (vMach) return vMach.machine_name || vMach.machine_code || `Machine #${vMach.id}`;
+    const briefMapping = (lead?.leadProcessBriefs || []).find((lpb: any) => Number(lpb.machine_id) === Number(machineId));
+    if (briefMapping?.machine) {
+      return briefMapping.machine.machine_name || briefMapping.machine.machine_code || `Machine #${briefMapping.machine.id}`;
+    }
+    return `Machine #${machineId}`;
+  };
+
+  const handleSelectBriefMachine = (typeId: number, briefId: number, machineId: number | null) => {
+    setSelectedBriefMachines((prev) => ({
+      ...prev,
+      [typeId]: {
+        ...(prev[typeId] || {}),
+        [briefId]: machineId,
+      },
+    }));
+  };
+
   const toggleProcessBrief = (typeId: number, briefId: number) => {
     setSelectedProcessBriefIds((prev) => {
       const current = prev[typeId] || [];
-      const next = current.includes(briefId)
+      const isCurrentlyChecked = current.includes(briefId);
+      const next = isCurrentlyChecked
         ? current.filter((b) => b !== briefId)
         : [...current, briefId];
+
+      if (!isCurrentlyChecked) {
+        const briefObj = processBriefs.find((b: any) => b.id === briefId);
+        if (briefObj) {
+          const eligible = getEligibleMachinesForBrief(briefObj);
+          if (eligible.length === 1) {
+            setSelectedBriefMachines((mPrev) => ({
+              ...mPrev,
+              [typeId]: {
+                ...(mPrev[typeId] || {}),
+                [briefId]: eligible[0].id,
+              },
+            }));
+          }
+        }
+      } else {
+        setSelectedBriefMachines((mPrev) => {
+          const typeMachines = { ...(mPrev[typeId] || {}) };
+          delete typeMachines[briefId];
+          return { ...mPrev, [typeId]: typeMachines };
+        });
+      }
+
       return { ...prev, [typeId]: next };
     });
   };
@@ -1761,7 +1924,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
               productTypes?.data?.find((t: any) => t.id === briefModalTypeId)?.type || ""
             }`}
             description="Select process briefs for this requirement type."
-            size="md"
+            size="smd"
           >
             <div className="space-y-4 p-5">
               <div className="relative">
@@ -1783,18 +1946,62 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                   filteredBriefsForModal.map((brief: any) => {
                     const selectedList = selectedProcessBriefIds[briefModalTypeId!] || [];
                     const isChecked = selectedList.includes(brief.id);
+                    const selectedMachineId = selectedBriefMachines[briefModalTypeId!]?.[brief.id] ?? null;
+                    const eligibleMachines = getEligibleMachinesForBrief(brief, selectedMachineId);
+
                     return (
                       <div
                         key={brief.id}
-                        onClick={() => toggleProcessBrief(briefModalTypeId!, brief.id)}
-                        className={`flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer select-none ${
+                        className={`flex items-center justify-between gap-3 p-2.5 rounded-lg border transition-all ${
                           isChecked
-                            ? "bg-muted/30 border-emerald-600/40 font-medium"
+                            ? "bg-muted/30 border-emerald-600/40"
                             : "bg-background border-border/60 hover:bg-muted/20"
                         }`}
                       >
-                        <Checkbox checked={isChecked} className="h-4 w-4 pointer-events-none" />
-                        <span className="text-xs text-foreground">{brief.name}</span>
+                        <div
+                          onClick={() => toggleProcessBrief(briefModalTypeId!, brief.id)}
+                          className="flex items-center gap-3 cursor-pointer select-none min-w-0 flex-1 py-0.5"
+                        >
+                          <Checkbox checked={isChecked} className="h-4 w-4 pointer-events-none shrink-0" />
+                          <span className={`text-xs text-foreground truncate ${isChecked ? "font-medium" : ""}`}>
+                            {brief.name}
+                          </span>
+                        </div>
+
+                        {isB2b && isChecked && (
+                          <div
+                            className="shrink-0 flex items-center gap-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {eligibleMachines.length > 0 ? (
+                              <Select
+                                value={selectedMachineId ? String(selectedMachineId) : "none"}
+                                onValueChange={(val) => {
+                                  handleSelectBriefMachine(
+                                    briefModalTypeId!,
+                                    brief.id,
+                                    val === "none" ? null : Number(val)
+                                  );
+                                }}
+                              >
+                                <SelectTrigger className="h-7 text-xs w-44 bg-background">
+                                  <SelectValue placeholder="Select Machine..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {eligibleMachines.map((m) => (
+                                    <SelectItem key={m.id} value={String(m.id)} className="text-xs">
+                                      {m.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <span className="text-[11px] text-muted-foreground italic bg-muted/40 px-2 py-0.5 rounded shrink-0">
+                                No machine selected
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })
@@ -2266,12 +2473,31 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                                 <h4 className="text-sm font-semibold text-foreground">{typeObj?.type}</h4>
                                 <p className="text-xs text-muted-foreground font-medium mt-0.5">
                                   {selectedBriefs.length} Process Brief{selectedBriefs.length === 1 ? "" : "s"}
-                                  {selectedBriefs.length > 0 && (
-                                    <span className="ml-1 text-foreground font-normal">
-                                      ({selectedBriefs.map(bId => processBriefs.find((b: any) => b.id === bId)?.name).filter(Boolean).join(", ")})
-                                    </span>
-                                  )}
                                 </p>
+                                {selectedBriefs.length > 0 && (
+                                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                    {selectedBriefs.map((bId) => {
+                                      const brief = processBriefs.find((b: any) => b.id === bId);
+                                      if (!brief) return null;
+                                      const machineId = selectedBriefMachines[typeId]?.[bId];
+                                      const machineName = machineId ? getMachineDisplayName(machineId) : null;
+
+                                      return (
+                                        <span
+                                          key={bId}
+                                          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] bg-background border border-border/80 text-foreground"
+                                        >
+                                          <span className="font-medium">{brief.name}</span>
+                                          {machineName ? (
+                                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">
+                                              • {machineName}
+                                            </span>
+                                          ) : null}
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
+                                )}
                               </div>
                             </div>
 
