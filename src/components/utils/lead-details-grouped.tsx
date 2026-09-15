@@ -90,6 +90,7 @@ export default function LeadDetailsGrouped({
   const pathname = usePathname();
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const userType = useAppSelector((state) => state.auth?.user?.user_type?.user_type);
   const { data: leadResponse } = useLeadById(leadId, vendorId, userId);
   const lead = leadResponse?.data?.lead;
   const servicingSource = searchParams.get("source");
@@ -302,6 +303,8 @@ export default function LeadDetailsGrouped({
     "servicing",
   ];
 
+  const isMiscUser = userType?.trim().toLowerCase() === "miscellaneous";
+
   const visibleGroups = React.useMemo(() => {
     const smallOrderAllowedTabs = new Set<StageId>([
       "details",
@@ -330,6 +333,22 @@ export default function LeadDetailsGrouped({
     >;
 
     for (const key of allowedKeys) {
+      if (isMiscUser) {
+        if (key === "production" || key === "project" || key === "servicing") {
+          continue;
+        }
+        if (key === "leads") {
+          filtered[key] = groups.leads.filter((s) => s.id === "details");
+          continue;
+        }
+        if (key === "installation") {
+          filtered[key] = groups.installation.filter(
+            (s) => s.id === "underInstallation",
+          );
+          continue;
+        }
+      }
+
       const stages = groups[key];
 
       // agar ye last allowed group hai to andar se cutoff lagao
@@ -359,6 +378,7 @@ export default function LeadDetailsGrouped({
     showServicingTab,
     smallOrderRequestSource,
     status,
+    isMiscUser,
   ]);
 
   React.useEffect(() => {

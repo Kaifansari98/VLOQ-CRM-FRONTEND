@@ -170,6 +170,11 @@ const MyTaskTable = () => {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type as string | undefined,
   );
+  const skipFranchiseFilter =
+    userType?.toLowerCase() === "factory" ||
+    userType?.toLowerCase() === "site-supervisor" ||
+    userType?.toLowerCase() === "backend" ||
+    userType?.toLowerCase() === "miscellaneous";
   const isAuditor = userType?.toLowerCase() === "auditor";
   const isAdminUser =
     userType?.toLowerCase() === "admin" ||
@@ -321,7 +326,7 @@ const MyTaskTable = () => {
       limit: myPagination.pageSize,
       created_at: sortOrder,
       global_search: myGlobalFilter || "",
-      franchise_id: selectedFranchiseId!,
+      franchise_id: skipFranchiseFilter ? undefined : selectedFranchiseId,
 
       // ✅ FIX: Add task_type from state
       task_type: mappedFilters.task_type,
@@ -343,6 +348,7 @@ const MyTaskTable = () => {
     myColumnFilters,
     myTaskTypeFilter, // ✅ ADD DEPENDENCY
     selectedFranchiseId,
+    skipFranchiseFilter,
   ]);
 
   // ✅ OVERALL TASKS PAYLOAD - FIXED
@@ -355,7 +361,7 @@ const MyTaskTable = () => {
       limit: overallPagination.pageSize,
       created_at: sortOrder,
       global_search: overallGlobalFilter || "",
-      franchise_id: selectedFranchiseId!,
+      franchise_id: skipFranchiseFilter ? undefined : selectedFranchiseId,
 
       // ✅ FIX: Add task_type from state
       task_type: mappedFilters.task_type,
@@ -516,6 +522,7 @@ const MyTaskTable = () => {
           "Pending Work",
           "Order Login Completed",
           "Pre Prod Completed",
+          "Miscellaneous Followup",
         ].includes(row.taskType) ||
           selfAssignTaskTypeNames.has(row.taskType) ||
           (row.taskType === "Miscellaneous" && (row.remark || "").toLowerCase().includes("required delivery date"));
@@ -530,7 +537,9 @@ const MyTaskTable = () => {
       }
 
       const isBlocked = row.is_blocked;
-      const isFollowUpTask = row.taskType === "Follow Up";
+      const isFollowUpTask =
+        row.taskType === "Follow Up" ||
+        row.taskType === "Miscellaneous Followup";
 
       if (isBlocked && !isFollowUpTask) {
         const blockTime = row.lead_blocked_at ? ` at ${formatBlockedAt(row.lead_blocked_at)}` : "";
@@ -618,6 +627,12 @@ const MyTaskTable = () => {
         setRowAction({
           row: { original: row } as any,
           variant: "Pending Work",
+        });
+        setOpenFollowUp(true);
+      } else if (row.taskType === "Miscellaneous Followup") {
+        setRowAction({
+          row: { original: row } as any,
+          variant: "Miscellaneous Followup",
         });
         setOpenFollowUp(true);
       } else if (selfAssignTaskTypeNames.has(row.taskType)) {
@@ -899,12 +914,18 @@ const MyTaskTable = () => {
     );
   };
 
-  const followUpVariant: "Follow Up" | "Pending Materials" | "Pending Work" =
+  const followUpVariant:
+    | "Follow Up"
+    | "Pending Materials"
+    | "Pending Work"
+    | "Miscellaneous Followup" =
     rowAction?.variant === "Pending Materials"
       ? "Pending Materials"
       : rowAction?.variant === "Pending Work"
         ? "Pending Work"
-        : "Follow Up";
+        : rowAction?.variant === "Miscellaneous Followup"
+          ? "Miscellaneous Followup"
+          : "Follow Up";
 
   const dueDateFilterLabel =
     (activeColumnFilters.find((f) => f.id === "dueDate")?.value as string) ||

@@ -1480,7 +1480,9 @@ export function ProductMasterFormPage({
                     .filter(Boolean);
 
                   const availableSuppliers = masters.suppliers.filter(
-                    (s) => !selectedIds.includes(s.id)
+                    (s) =>
+                      !selectedIds.includes(s.id) &&
+                      s.is_inventory_company_vendor === true
                   );
 
                   return (

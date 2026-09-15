@@ -17,6 +17,7 @@ export interface MiscellaneousDocument {
   signed_url: string;
   uploaded_at: string;
   doc_type_tag?: string | null;
+  doc_type_name?: string | null;
 }
 
 export interface MiscellaneousTeam {
@@ -39,6 +40,7 @@ export interface MiscellaneousEntry {
   cost: number | null;
   supervisor_remark: string | null;
   expected_ready_date: string | null;
+  solution?: string | null;
   required_delivery_date?: string | null;
   misc_approved?: boolean | null;
   exp_of_rejection?: string | null;
@@ -55,6 +57,12 @@ export interface MiscellaneousEntry {
     task_type: string;
     remark?: string | null;
     status?: string;
+    closed_at?: string | null;
+    closed_by?: number | null;
+    closed_user?: {
+      id: number;
+      user_name: string;
+    } | null;
   } | null;
   delivery_task?: {
     id: number;
@@ -78,6 +86,7 @@ export interface CreateMiscellaneousPayload {
   cost?: number;
   supervisor_remark?: string;
   expected_ready_date?: string;
+  solution?: string;
   is_resolved: boolean;
   teams?: number[]; // Array of team IDs
   created_by: number;
@@ -616,6 +625,9 @@ export const createMiscellaneousEntry = async (
   if (payload.expected_ready_date) {
     formData.append("expected_ready_date", payload.expected_ready_date);
   }
+  if (payload.solution) {
+    formData.append("solution", payload.solution);
+  }
 
   // Append teams as comma-separated string
   if (payload.teams && payload.teams.length > 0) {
@@ -752,17 +764,20 @@ export const updateMiscExpectedReadyDate = async ({
   vendorId,
   miscId,
   expected_ready_date,
+  solution,
   updated_by,
 }: {
   vendorId: number;
   miscId: number;
   expected_ready_date?: string;
+  solution?: string;
   updated_by: number;
 }) => {
   const response = await apiClient.put(
     `/leads/installation/under-installation/vendorId/${vendorId}/miscId/${miscId}/update-erd`,
     {
       expected_ready_date,
+      solution,
       updated_by,
     },
   );
@@ -1496,14 +1511,25 @@ export const markMiscellaneousTaskReady = async (payload: {
   leadId: number;
   miscId: number;
   ready_by: number;
+  files?: File[];
 }) => {
-  const bodyData = {
-    ready_by: payload.ready_by,
-  };
+  const formData = new FormData();
+  formData.append("ready_by", payload.ready_by.toString());
+
+  if (payload.files && payload.files.length > 0) {
+    payload.files.forEach((file) => {
+      formData.append("files", file);
+    });
+  }
 
   const { data } = await apiClient.put(
     `/leads/installation/under-installation/vendorId/${payload.vendorId}/leadId/${payload.leadId}/misc/${payload.miscId}/mark-ready`,
-    bodyData,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    },
   );
 
   return data?.data;
@@ -1794,3 +1820,133 @@ export const useUploadMiscellaneousDocuments = () => {
     },
   });
 };
+
+// ── Miscellaneous Followup Types & Hooks ────────────────────────────────────
+
+export interface MiscFollowupUser {
+  id: number;
+  user_name: string;
+  user_email?: string;
+  user_contact?: string;
+  user_type: {
+    id: number;
+    user_type: string;
+  };
+}
+
+export interface MiscFollowupTask {
+  id: number;
+  lead_id: number;
+  task_type: string;
+  due_date: string;
+  remark: string | null;
+  display_remark?: string;
+  status: string;
+  created_at: string;
+  closed_at?: string | null;
+  user: {
+    id: number;
+    user_name: string;
+    user_email?: string;
+    user_type: {
+      id: number;
+      user_type: string;
+    };
+  };
+  createdBy: {
+    id: number;
+    user_name: string;
+  };
+  closedBy?: {
+    id: number;
+    user_name: string;
+  } | null;
+}
+
+export interface CreateMiscFollowupPayload {
+  vendorId: number;
+  miscId: number;
+  leadId: number;
+  userId: number;
+  dueDate: string;
+  remark: string;
+}
+
+const getMiscFollowupEligibleUsers = async (
+  vendorId: number,
+): Promise<MiscFollowupUser[]> => {
+  const { data } = await apiClient.get(
+    `/leads/installation/under-installation/vendorId/${vendorId}/miscellaneous/followup-users`,
+  );
+  return data?.data ?? [];
+};
+
+export const useMiscFollowupEligibleUsers = (vendorId?: number) => {
+  return useQuery({
+    queryKey: ["miscFollowupEligibleUsers", vendorId],
+    queryFn: () => getMiscFollowupEligibleUsers(vendorId!),
+    enabled: !!vendorId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+};
+
+const getMiscFollowupTasks = async (
+  vendorId: number,
+  miscId: number,
+): Promise<MiscFollowupTask[]> => {
+  const { data } = await apiClient.get(
+    `/leads/installation/under-installation/vendorId/${vendorId}/miscId/${miscId}/followups`,
+  );
+  return data?.data ?? [];
+};
+
+export const useMiscFollowupTasks = (vendorId?: number, miscId?: number) => {
+  return useQuery({
+    queryKey: ["miscFollowupTasks", vendorId, miscId],
+    queryFn: () => getMiscFollowupTasks(vendorId!, miscId!),
+    enabled: !!vendorId && !!miscId,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: false,
+  });
+};
+
+const createMiscFollowupTask = async (payload: CreateMiscFollowupPayload) => {
+  const { data } = await apiClient.post(
+    `/leads/installation/under-installation/vendorId/${payload.vendorId}/miscId/${payload.miscId}/followup`,
+    {
+      lead_id: payload.leadId,
+      user_id: payload.userId,
+      due_date: payload.dueDate,
+      remark: payload.remark,
+    },
+  );
+  return data?.data;
+};
+
+export const useCreateMiscFollowupTask = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createMiscFollowupTask,
+    onSuccess: (_data, variables) => {
+      toastManager.add({
+        title: "Followup task scheduled successfully",
+        type: "success",
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["miscFollowupTasks", variables.vendorId, variables.miscId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["adminTasks"],
+      });
+    },
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to schedule followup task",
+        type: "error",
+      });
+    },
+  });
+};
+

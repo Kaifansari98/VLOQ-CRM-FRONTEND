@@ -45,6 +45,8 @@ export function LeadRemarkCell({ lead }: { lead: any }) {
         cleaned === "N/A" ||
         cleaned === "-" ||
         cleaned.toLowerCase().includes("lead conversion to draft") ||
+        cleaned.toLowerCase().includes("lead conversion to online") ||
+        cleaned.toLowerCase().includes("lead conversion approved") ||
         cleaned.toLowerCase().includes("lead created from") ||
         cleaned.toLowerCase().includes("registered as walk-in") ||
         cleaned.toLowerCase().includes("call completed with outcome") ||

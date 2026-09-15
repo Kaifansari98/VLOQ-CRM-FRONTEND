@@ -36,6 +36,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toastManager } from "@/components/ui/toast";
 import { useAppSelector } from "@/redux/store";
+import { cn } from "@/lib/utils";
 
 import {
   Plus,
@@ -336,20 +337,27 @@ export default function EditPurchaseIntentPage() {
     product: PIProduct,
     supplier: PICompanyVendor
   ) => {
-    const isSameState = Number(supplier.state_id) === Number(stateId);
+    const cgst = Number(product.cgst_rate || 0);
+    const sgst = Number(product.sgst_rate || 0);
+    const igst = Number(product.igst_rate || 0);
+    const taxPct = Number(product.tax_pct || 0);
+
+    const totalTax = taxPct > 0 ? taxPct : (igst > 0 ? igst : (cgst + sgst));
+
+    const isSameState =
+      Boolean(stateId && supplier.state_id) &&
+      Number(supplier.state_id) === Number(stateId);
 
     if (isSameState) {
-      entry.cgst_pct = String(product.cgst_rate || 0);
-      entry.sgst_pct = String(product.sgst_rate || 0);
+      entry.cgst_pct = cgst > 0 ? String(cgst) : String(totalTax / 2);
+      entry.sgst_pct = sgst > 0 ? String(sgst) : String(totalTax / 2);
       entry.igst_pct = "0";
-      entry.tax_pct = String(
-        Number(product.cgst_rate || 0) + Number(product.sgst_rate || 0)
-      );
+      entry.tax_pct = String(totalTax);
     } else {
       entry.cgst_pct = "0";
       entry.sgst_pct = "0";
-      entry.igst_pct = String(product.igst_rate || product.tax_pct || 0);
-      entry.tax_pct = String(product.igst_rate || product.tax_pct || 0);
+      entry.igst_pct = igst > 0 ? String(igst) : String(totalTax);
+      entry.tax_pct = String(totalTax);
     }
 
     return entry;
@@ -745,14 +753,14 @@ export default function EditPurchaseIntentPage() {
       });
 
       toastManager.add({
-        title: "Purchase Intent updated successfully",
+        title: "Purchase Enquiry updated successfully",
         type: "success",
       });
 
       router.push("/dashboard/inventory/purchase-intents");
     } catch {
       toastManager.add({
-        title: "Failed to update Purchase Intent",
+        title: "Failed to update Purchase Enquiry",
         type: "error",
       });
     } finally {
@@ -774,12 +782,12 @@ export default function EditPurchaseIntentPage() {
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
                   <BreadcrumbLink href="/dashboard/inventory/purchase-intents">
-                    Purchase Intents
+                    Purchase Enquiries
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>Edit Intent</BreadcrumbPage>
+                  <BreadcrumbPage>Edit Enquiry</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
@@ -788,9 +796,9 @@ export default function EditPurchaseIntentPage() {
 
         <div className="flex flex-1 items-center justify-center p-6">
           <div className="max-w-md rounded-2xl border bg-card p-8 text-center shadow-sm">
-            <h1 className="text-lg font-semibold">Cannot edit this intent</h1>
+            <h1 className="text-lg font-semibold">Cannot edit this enquiry</h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Only Draft purchase intents can be modified.
+              Only Draft purchase enquiries can be modified.
             </p>
             <Button
               type="button"
@@ -821,7 +829,7 @@ export default function EditPurchaseIntentPage() {
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
                 <BreadcrumbLink href="/dashboard/inventory/purchase-intents">
-                  Purchase Intents
+                  Purchase Enquiries
                 </BreadcrumbLink>
               </BreadcrumbItem>
 
@@ -829,7 +837,7 @@ export default function EditPurchaseIntentPage() {
 
               <BreadcrumbItem>
                 <BreadcrumbPage>
-                  Edit {intent?.intent_no || "Intent"}
+                  Edit {intent?.intent_no || "Enquiry"}
                 </BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
@@ -846,7 +854,7 @@ export default function EditPurchaseIntentPage() {
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
             <h1 className="text-xl font-bold">
-              Edit Purchase Intent {intent?.intent_no ? `- ${intent.intent_no}` : ""}
+              Edit Purchase Enquiry {intent?.intent_no ? `- ${intent.intent_no}` : ""}
             </h1>
             <p className="text-sm text-muted-foreground">
               Edit products and supplier quotation in a simple table.
@@ -1310,15 +1318,13 @@ function ProductSupplierTable({
                     <input
                       type="number"
                       value={entry.tax_pct || ""}
-                      onChange={(e) =>
-                        updateSupplierRow(
-                          rowIndex,
-                          vendorIndex,
-                          "tax_pct",
-                          e.target.value
-                        )
-                      }
-                      className={tableInputClass}
+                      readOnly
+                      disabled
+                      className={cn(
+                        tableInputClass,
+                        "bg-muted/50 cursor-not-allowed text-muted-foreground font-semibold"
+                      )}
+                      title="GST % is auto-filled from product HSN and cannot be edited"
                     />
                   </td>
 
