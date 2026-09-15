@@ -186,7 +186,7 @@ const renderStatusBadge = (entry: MiscellaneousItem) => {
       label = "DISPATCHED";
     } else if (entry.required_delivery_date) {
       label = "DISPATCH SCHEDULED";
-    } else if (entry.task?.status === "completed") {
+    } else if (entry.expected_ready_date && entry.task?.status === "completed") {
       label = "RTD";
     } else if (entry.expected_ready_date) {
       label = "UNDER PROCESS";
@@ -266,6 +266,7 @@ export function MiscellaneousStatusTable({
   );
   const userType = user?.user_type?.user_type
     ?.toLowerCase()
+    .trim()
     .replace(/_/g, "-")
     .replace(/\s+/g, "-");
   const vendorId = user?.vendor_id ?? 0;
@@ -276,6 +277,8 @@ export function MiscellaneousStatusTable({
     userType === "factory" ||
     userType === "miscellaneous" ||
     userType === "super-admin" ||
+    userType === "site-supervisor" ||
+    userType === "head-site-supervisor" ||
     userType === "auditor";
 
   const payload = React.useMemo(

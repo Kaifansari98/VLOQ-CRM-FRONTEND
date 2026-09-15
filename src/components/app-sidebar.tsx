@@ -553,6 +553,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     userType === "factory" ||
     userType === "miscellaneous" ||
     userType === "super-admin" ||
+    userType === "site-supervisor" ||
+    userType === "head-site-supervisor" ||
     userType === "auditor";
 
   const {

@@ -479,7 +479,7 @@ export default function InstallationMiscellaneous({
 
   const canSeeActionsColumn = isMiscellaneousUser || isSuperAdmin;
 
-  const isTaskReady = viewModalData?.task?.status === "completed";
+  const isTaskReady = Boolean(viewModalData?.expected_ready_date) && viewModalData?.task?.status === "completed";
 
   const isBeforeExpectedReadyDate = (erdDateValue?: string | Date | null) => {
     if (!erdDateValue) return false;
@@ -876,7 +876,7 @@ export default function InstallationMiscellaneous({
   const miscApproved = viewModalData?.misc_approved;
   const isRejected = miscApproved === false;
   const isApproved = miscApproved === true;
-  const isReady = viewModalData?.task?.status === "completed";
+  const isReady = isTaskReady;
   const canResolveRole = isSuperAdmin || isSupervisorUser;
   const canApproveReject =
     isAdminOrSuper ||
@@ -1099,7 +1099,7 @@ export default function InstallationMiscellaneous({
                       else if (entry.is_resolved) { label = "RESOLVED"; className = "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"; }
                       else if (hasDispatchDocs) { label = "DISPATCHED"; className = "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"; }
                       else if (entry.required_delivery_date) { label = "DISPATCH SCHEDULED"; className = "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300"; }
-                      else if (entry.task?.status === "completed") { label = "RTD"; className = "bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300"; }
+                      else if (entry.misc_approved === true && entry.expected_ready_date && entry.task?.status === "completed") { label = "RTD"; className = "bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300"; }
                       else if (entry.misc_approved === true && entry.expected_ready_date) { label = "UNDER PROCESS"; className = "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300"; }
                       else if (entry.misc_approved === true) { label = "MISCL APPROVED"; className = "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300"; }
                       else { label = "AWAITING APPROVAL"; className = "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"; }
