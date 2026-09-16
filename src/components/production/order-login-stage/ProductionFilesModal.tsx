@@ -110,6 +110,7 @@ export default function ProductionFilesSection({
   const instanceFromUrl = searchParams.get("instance_id");
   const resolvedInstanceId =
     instanceId ?? (instanceFromUrl ? Number(instanceFromUrl) : undefined);
+  const isMaterialIssueView = searchParams.get("source") === "material-issue";
 
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
@@ -365,7 +366,7 @@ export default function ProductionFilesSection({
 
   return (
     <div className="space-y-4">
-      <ClientRequiredDeliveryDateBanner leadId={leadId} />
+      {!isMaterialIssueView && <ClientRequiredDeliveryDateBanner leadId={leadId} />}
 
       <div className="border rounded-lg bg-background shadow-sm">
         {showRequiredMaterials ? (

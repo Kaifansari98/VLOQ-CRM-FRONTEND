@@ -484,6 +484,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
         defaultTabId={resolvedDefaultTab}
         className="-mt-3"
         items={tabItems}
+        hideTabHeader={isMaterialIssueView}
         headerRight={
           !isMaterialIssueView && !handlesLargeScaleProjects ? (
           <div className="flex items-start gap-3 xl:pt-1 -mt-3">

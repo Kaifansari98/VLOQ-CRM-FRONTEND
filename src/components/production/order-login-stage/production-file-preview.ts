@@ -155,9 +155,12 @@ export function applyInventoryMatches(preview: ProductionPreview, matches: Map<s
         message = "Inventory quantity is unavailable for this product.";
       } else {
         const available = remaining.get(product.id) ?? Math.max(0, stock);
+        // Frozen/issued quantity has already been deducted from stock, so only the
+        // still-outstanding requirement needs to be covered by what's left.
+        const need = Math.max(0, Math.round((row.qty - (row.issuedQty ?? 0)) * 1e8) / 1e8);
         row.available = available;
-        row.shortage = Math.max(0, Math.round((row.qty - available) * 1e8) / 1e8);
-        remaining.set(product.id, Math.max(0, Math.round((available - row.qty) * 1e8) / 1e8));
+        row.shortage = Math.max(0, Math.round((need - available) * 1e8) / 1e8);
+        remaining.set(product.id, Math.max(0, Math.round((available - need) * 1e8) / 1e8));
         row.status = row.shortage > 0 ? "shortage" : "ready";
         if (row.shortage) message = `Short by ${row.shortage} ${row.unit}. Available stock accounts for earlier rows in this selection.`;
       }
