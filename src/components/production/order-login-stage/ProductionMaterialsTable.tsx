@@ -9,16 +9,16 @@ import { cn } from "@/lib/utils";
 import { type ProductionPreviewRow } from "./production-file-preview";
 
 const stockColors = {
-  ready: "text-emerald-700 dark:text-emerald-400",
-  low: "text-orange-700 dark:text-orange-400",
-  unavailable: "text-red-700 dark:text-red-400",
+  ready: "text-green-500",
+  low: "text-orange-500",
+  unavailable: "text-red-500",
 };
 
 export function getMaterialStockState(row: ProductionPreviewRow): keyof typeof stockColors {
   if (row.status !== "ready" || row.available === undefined) return "unavailable";
   const minimum = row.product?.min_stock_qty;
   const remaining = Math.round((row.available - row.qty) * 1e8) / 1e8;
-  return minimum != null && minimum !== "" && Number.isFinite(Number(minimum)) && remaining <= Number(minimum)
+  return minimum != null && minimum !== "" && Number.isFinite(Number(minimum)) && remaining >= Number(minimum)
     ? "low" : "ready";
 }
 
@@ -34,6 +34,13 @@ export default function ProductionMaterialsTable({ rows, checked = true, busy = 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [page, setPage] = useState(1);
+  const stockCounts = useMemo(() => {
+    const counts = { ready: 0, low: 0, unavailable: 0 };
+    if (isMaterialIssueView && checked) {
+      rows.forEach((row) => { counts[getMaterialStockState(row)] += 1; });
+    }
+    return counts;
+  }, [rows, isMaterialIssueView, checked]);
   const filtered = useMemo(() => rows.filter((row) => {
     const query = search.trim().toLowerCase();
     return (filter === "all" || (filter === "attention" ? row.status !== "ready" : row.status === "ready")) &&
@@ -48,9 +55,9 @@ export default function ProductionMaterialsTable({ rows, checked = true, busy = 
                 <div className="flex gap-1">{[["all", "All rows"], ["attention", "Needs attention"], ["ready", "In stock"]].map(([value, label]) => <Button key={value} size="sm" variant={filter === value ? "secondary" : "ghost"} disabled={!checked && value !== "all"} onClick={() => { setFilter(value); setPage(1); }}>{label}</Button>)}</div>
               </div>
               {isMaterialIssueView && <div aria-label="Stock color legend" className="flex flex-wrap gap-x-5 gap-y-2 text-xs">
-                <span className={stockColors.ready}>● In stock</span>
-                <span className={stockColors.unavailable}>● Unavailable / insufficient stock</span>
-                <span className={stockColors.low}>● Updated stock at or below minimum</span>
+                <span className={stockColors.ready}>● In stock ({stockCounts.ready})</span>
+                <span className={stockColors.unavailable}>● Unavailable / insufficient stock ({stockCounts.unavailable})</span>
+                <span className={stockColors.low}>● In stock · Updated stock at or above minimum ({stockCounts.low})</span>
               </div>}
               <div className="overflow-x-auto rounded-xl border">
                 <table className="w-full min-w-[1000px] text-left text-sm">
