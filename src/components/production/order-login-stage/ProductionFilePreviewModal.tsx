@@ -13,10 +13,11 @@ import {
   type InventoryProduct, type ProductionPreview, type ProductionPreviewRow,
 } from "./production-file-preview";
 
-import { type RequiredProductionMaterial } from "@/api/production/order-login";
+import { useFreezeProductionMaterials, type RequiredProductionMaterial } from "@/api/production/order-login";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 import ProductionMaterialsTable from "./ProductionMaterialsTable";
+import FreezeMaterialsModal from "./FreezeMaterialsModal";
 
 interface Props {
   savedMaterials?: RequiredProductionMaterial[];
@@ -28,6 +29,8 @@ interface Props {
   files: File[];
   onFilesChange: (files: File[]) => void;
   vendorId?: number;
+  leadId?: number;
+  instanceId?: number | null;
   uploading: boolean;
   canUpload: boolean;
   onUpload: (rows: ProductionPreviewRow[], replace: boolean) => Promise<void>;
@@ -35,7 +38,7 @@ interface Props {
 }
 
 export default function ProductionFilePreviewModal({ savedMaterials = [], materialsLoading = false, materialsError = false, embedded = false, open, onOpenChange, files, onFilesChange, vendorId,
-  uploading, canUpload, onUpload, onDownloadTemplate }: Props) {
+  leadId, instanceId, uploading, canUpload, onUpload, onDownloadTemplate }: Props) {
   const searchParams = useSearchParams();
   const isMaterialIssueView = searchParams.get("source") === "material-issue";
   const [confirmReplace, setConfirmReplace] = useState(false);
@@ -46,6 +49,8 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
   const [tab, setTab] = useState<"products" | "logs">("products");
   // Tie the result to the exact selection and vendor; an old preview can never approve new files.
   const [checkedSelection, setCheckedSelection] = useState<{ files: File[]; vendorId: number } | null>(null);
+  const [freezeKeys, setFreezeKeys] = useState<string[] | null>(null);
+  const freezeMutation = useFreezeProductionMaterials(vendorId, leadId, instanceId);
 
   useEffect(() => {
     if (!open) return;
@@ -85,10 +90,11 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
       matches.set(material.article_code, [material.product]);
       return { key: String(material.id), source: "", type: material.type, category: material.category,
         qty: Number(material.qty), unit: material.unit, name: material.name, articleCode: material.article_code,
-        errors: [], status: "unmatched" };
+        issuedQty: Number(material.issued_item_qty) || 0, errors: [], status: "unmatched" };
     }) };
     return applyInventoryMatches(savedPreview, matches).rows;
   }, [savedMaterials]);
+  const freezeRows = useMemo(() => savedRows.filter((row) => freezeKeys?.includes(row.key)), [savedRows, freezeKeys]);
   const rows = preview?.rows ?? [];
   const errors = preview?.logs.filter((log) => log.level === "error").length ?? 0;
   const warnings = preview?.logs.filter((log) => log.level === "warning").length ?? 0;
@@ -116,7 +122,13 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
           {materialsLoading && <p role="status">Loading saved materials…</p>}
           {materialsError && <p role="alert" className="text-destructive">Could not load saved materials. Reload this page to retry.</p>}
           {!!savedMaterials.length && <div className="space-y-3">
-            <ProductionMaterialsTable rows={savedRows} enableRowSelection={isMaterialIssueView} isMaterialIssueView={isMaterialIssueView} />
+            <ProductionMaterialsTable
+              rows={savedRows}
+              enableRowSelection={isMaterialIssueView}
+              isMaterialIssueView={isMaterialIssueView}
+              onFreezeSelected={(selected) => setFreezeKeys(selected.map((row) => row.key))}
+              hideSelectionBar={freezeKeys !== null}
+            />
           </div>}
           <div className="rounded-xl border p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -169,6 +181,13 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
             <AlertDialogDescription>Submitting this upload will delete the previous {savedMaterials.length} material rows and replace them with {saveableRows.length} valid rows from the selected files. The previous material data will be lost.</AlertDialogDescription>
           </AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction disabled={!canConfirm} onClick={() => { if (canConfirm) void onUpload(saveableRows, true); }}>Replace and upload</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
         </AlertDialog>
+        <FreezeMaterialsModal
+          open={freezeKeys !== null}
+          onOpenChange={(next) => { if (!next) setFreezeKeys(null); }}
+          rows={freezeRows}
+          submitting={freezeMutation.isPending}
+          onConfirm={async (items) => { await freezeMutation.mutateAsync(items); }}
+        />
     </>
   );
 

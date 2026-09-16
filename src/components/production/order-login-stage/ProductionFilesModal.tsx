@@ -373,6 +373,8 @@ export default function ProductionFilesSection({
             {shouldDisableActions && <p role="status" className="border-b px-6 py-3 text-sm text-muted-foreground">{effectiveBlockedTooltip}</p>}
             <ProductionFilePreviewModal
               key={`${leadId}-${resolvedInstanceId ?? "all"}`}
+              leadId={leadId}
+              instanceId={resolvedInstanceId}
               savedMaterials={savedMaterials}
               materialsLoading={materialsLoading}
               materialsError={materialsError}

@@ -20,7 +20,7 @@ export type ProductionPreviewRow = {
   key: string; source: string; type: string; category: string; qty: number; unit: string;
   name: string; articleCode: string; errors: string[]; product?: InventoryProduct;
   status: "invalid" | "unmatched" | "ambiguous" | "inactive" | "unknown" | "shortage" | "ready";
-  available?: number; shortage?: number; stockUnit?: string;
+  available?: number; shortage?: number; stockUnit?: string; issuedQty?: number;
 };
 export type ProductionPreview = { rows: ProductionPreviewRow[]; logs: PreviewLog[]; fileCount: number };
 const normalize = (value: string) => value.trim().toLowerCase().replace(/\s+/g, " ");

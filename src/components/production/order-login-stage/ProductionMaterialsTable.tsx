@@ -44,9 +44,9 @@ export function getMaterialStockState(row: ProductionPreviewRow): keyof typeof s
 const quantity = (value: number | string | null | undefined) => value == null || value === "" || !Number.isFinite(Number(value))
   ? "—" : Number(value).toLocaleString(undefined, { maximumFractionDigits: 8 });
 
-export default function ProductionMaterialsTable({ rows, checked = true, busy = false, enableRowSelection = false, isMaterialIssueView = false, onFreezeSelected, onIssueSelected }: {
+export default function ProductionMaterialsTable({ rows, checked = true, busy = false, enableRowSelection = false, isMaterialIssueView = false, onFreezeSelected, onIssueSelected, hideSelectionBar = false }: {
   rows: ProductionPreviewRow[]; checked?: boolean; busy?: boolean; enableRowSelection?: boolean; isMaterialIssueView?: boolean;
-  onFreezeSelected?: (rows: ProductionPreviewRow[]) => void; onIssueSelected?: (rows: ProductionPreviewRow[]) => void;
+  onFreezeSelected?: (rows: ProductionPreviewRow[]) => void; onIssueSelected?: (rows: ProductionPreviewRow[]) => void; hideSelectionBar?: boolean;
 }) {
   const [selectedRowKeys, setSelectedRowKeys] = useState<Set<string>>(() => new Set());
   const selectedRows = useMemo(() => rows.filter((row) => selectedRowKeys.has(row.key)), [rows, selectedRowKeys]);
@@ -165,23 +165,23 @@ export default function ProductionMaterialsTable({ rows, checked = true, busy = 
                 </div>
               </div>
               <p className="text-xs leading-relaxed text-muted-foreground">Inventory stock is the current vendor-wide quantity. Updated Stock is Inventory stock minus Required when stock covers it, or Required minus Inventory stock (shown in amber) when it falls short. Quantities with different units are not compared. This preview does not reserve stock.</p>
-              {enableRowSelection && selectedCount > 0 && typeof document !== "undefined" && createPortal(
-                <div className="fixed inset-x-0 bottom-6 z-100 flex justify-center px-4 animate-in fade-in slide-in-from-bottom-4 duration-200">
-                  <div className="pointer-events-auto flex items-center gap-2 rounded-full border bg-background/95 py-2 pl-4 pr-2 shadow-lg shadow-black/10 backdrop-blur supports-backdrop-filter:bg-background/80 sm:gap-3">
+              {enableRowSelection && selectedCount > 0 && !hideSelectionBar && typeof document !== "undefined" && createPortal(
+                <div className="fixed inset-x-0 bottom-14 z-100 flex justify-center px-4 animate-in fade-in slide-in-from-bottom-4 duration-200">
+                  <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-green-500 bg-background/95 py-2 pl-4 pr-2 shadow-lg shadow-black/10 backdrop-blur supports-backdrop-filter:bg-background/80 sm:gap-3">
                     <span className="whitespace-nowrap text-sm font-medium tabular-nums">{selectedCount} item{selectedCount === 1 ? "" : "s"} selected</span>
                     <div className="h-5 w-px bg-border" />
                     <div className="flex items-center gap-1.5">
-                      <Button size="sm" variant="outline" className="gap-1.5 rounded-full" onClick={() => onFreezeSelected?.(selectedRows)}>
+                      <Button size="sm" className="gap-1.5 rounded-full border-0 bg-blue-500 text-white hover:bg-blue-600" onClick={() => onFreezeSelected?.(selectedRows)}>
                         <Snowflake className="size-3.5" />Freeze Item
                       </Button>
-                      <Button size="sm" className="gap-1.5 rounded-full" onClick={() => onIssueSelected?.(selectedRows)}>
+                      <Button size="sm" className="gap-1.5 rounded-full border-0 bg-green-500 text-white hover:bg-green-600" onClick={() => onIssueSelected?.(selectedRows)}>
                         <Truck className="size-3.5" />Issue Item
                       </Button>
                       <Button
                         size="icon"
                         variant="ghost"
                         aria-label="Clear selection"
-                        className="size-8 shrink-0 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                        className="size-8 shrink-0 rounded-full border border-slate-200 text-muted-foreground hover:bg-muted hover:text-foreground dark:border-slate-700"
                         onClick={clearSelection}
                       >
                         <X className="size-4" />
