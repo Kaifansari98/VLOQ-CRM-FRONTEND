@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type FocusEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -20,21 +27,25 @@ import {
   useSourceTypes,
   useProductStructureTypes,
   useProductTypes,
+  useB2BRequirementTypes,
 } from "@/hooks/useTypesMaster";
 import { PhoneInput } from "@/components/ui/phone-input";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createLead } from "@/api/leads";
+import { createLead, unshortenUrl, assignDesignerToLead, createWalkInLead } from "@/api/leads";
 import { useAppSelector } from "@/redux/store";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
-import { FileUploadField } from "@/components/custom/file-upload";
+
 import MultipleSelector, { Option } from "@/components/ui/multiselect";
 import { canReassingLead } from "@/components/utils/privileges";
 import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUsers";
 import TextAreaInput from "@/components/origin-text-area";
 import CustomeDatePicker from "@/components/date-picker";
 import MapPicker from "@/components/MapPicker";
-import { MapPin } from "lucide-react";
+import { MapPin, Loader2, ExternalLink } from "lucide-react";
+import Link from "next/link";
+import { useFranchisesByVendorId } from "@/api/franchise";
+import { useClients } from "@/hooks/useClientMaster";
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -48,86 +59,285 @@ import {
 } from "@/components/ui/alert-dialog";
 import AssignToPicker from "@/components/assign-to-picker";
 import { useRouter } from "next/navigation";
-import { useCheckContactOrEmailExists } from "@/hooks/useLeadsQueries";
+import {
+  useCheckContactOrEmailExists,
+  useCheckSimilarLeadExists,
+} from "@/hooks/useLeadsQueries";
+import { useArchitectureMastersDropdownList } from "@/hooks/useArchitectureMaster";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import StructureQuantityCards from "@/components/sales-executive/Lead/structure-quantity-cards";
+import { getErrorMessage } from "@/lib/utils";
+import { FileUploadField } from "@/components/custom/file-upload";
+
+const priorityOptions = [
+  { id: 1, label: "High", value: "High" },
+  { id: 2, label: "Medium", value: "Medium" },
+  { id: 3, label: "Low", value: "Low" },
+] as const;
+
+const formatFileDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const sanitizeFileSegment = (value: string) =>
+  value
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const getFileExtension = (fileName: string) => {
+  const lastDotIndex = fileName.lastIndexOf(".");
+  return lastDotIndex >= 0 ? fileName.slice(lastDotIndex) : "";
+};
+
+const renameLeadSitePhotoFiles = ({
+  files,
+  clientName,
+  targetLabel,
+  uploadDate,
+}: {
+  files: File[];
+  clientName: string;
+  targetLabel: string;
+  uploadDate: string;
+}) => {
+  const safeClientName = sanitizeFileSegment(clientName || "Client");
+  const safeTargetLabel = sanitizeFileSegment(targetLabel || "Furniture Type");
+
+  return files.map(
+    (file, index) =>
+      new File(
+        [file],
+        `CSP${index + 1}-${safeClientName}-${safeTargetLabel}-${uploadDate}${getFileExtension(
+          file.name,
+        )}`,
+        {
+          type: file.type,
+          lastModified: file.lastModified,
+        },
+      ),
+  );
+};
 
 // Schema for Create Lead - all fields required as per business logic
-const createFormSchema = (userType: string | undefined) => {
+const createFormSchema = (
+  userType: string | undefined,
+  requiresFurnitureSelection: boolean,
+  isB2b: boolean,
+  referenceSourceIds: string[],
+  mode?: "standard" | "lead-pool",
+) => {
   const isAdminOrSuperAdmin =
-    userType === "admin" || userType === "super_admin";
+    userType === "admin" || userType === "super-admin";
 
-  return z.object({
-    firstname: z.string().min(1, "First name is required").max(300),
-    lastname: z.string().min(1, "Last name is required").max(300),
-    contact_no: z.string().min(1, "This Contact number isn't valid").max(20),
-    alt_contact_no: z.string().optional().or(z.literal("")),
-    email: z
-      .string()
-      .email("Please enter a valid email")
-      .optional()
-      .or(z.literal("")),
-    site_type_id: z.string().min(1, "Please select a site type"),
-    site_address: z.string().min(1, "Site Address is required").max(2000),
-    source_id: z.string().min(1, "Please select a source"),
-    product_types: z
-      .array(z.string())
-      .min(1, "Please select at least one product type"),
-    product_structures: z
-      .array(z.string())
-      .min(1, "Please select at least one product structure"),
-    assign_to: isAdminOrSuperAdmin
-      ? z.string().min(1, "Please select an assignee")
-      : z.string().optional(),
-    assigned_by: isAdminOrSuperAdmin ? z.string() : z.string().optional(),
-    documents: z.string().optional(),
-    archetech_name: z.string().max(300).optional(),
-    designer_remark: z.string().max(2000).optional(),
-    initial_site_measurement_date: z.string().optional(),
-  });
+  const isLeadPool = mode === "lead-pool";
+
+  return z
+    .object({
+      firstname: z.string().trim().min(1, "First name is required").max(300),
+      lastname: z
+        .string()
+        .trim()
+        .min(1, isB2b ? "Project name is required" : "Last name is required")
+        .max(300),
+      contact_no: isB2b
+        ? z.string().optional().or(z.literal(""))
+        : z.string().min(1, "This Contact number isn't valid").max(20),
+      alt_contact_no: z.string().optional().or(z.literal("")),
+      email: z
+        .string()
+        .email("Please enter a valid email")
+        .optional()
+        .or(z.literal("")),
+      site_type_id: (isB2b || isLeadPool)
+        ? z.string().optional().or(z.literal(""))
+        : z.string().min(1, "Please select a site type"),
+      site_address: (isB2b || isLeadPool)
+        ? z
+          .string()
+          .optional()
+          .or(z.literal(""))
+          .refine(
+            (val) => !val || !/^(https?:\/\/[^\s]+)/i.test(val.trim()),
+            { message: "Invalid link" }
+          )
+        : z
+          .string()
+          .min(1, "Site Address is required")
+          .max(2000)
+          .refine(
+            (val) => !/^(https?:\/\/[^\s]+)/i.test(val.trim()),
+            { message: "Invalid link" }
+          ),
+      source_id: isLeadPool
+        ? z.string().optional().or(z.literal(""))
+        : z.string().min(1, "Please select a source"),
+      refered_by: z.string().max(300).optional().or(z.literal("")),
+      client_id: isB2b
+        ? z.string().min(1, "Please select a client")
+        : z.string().optional().or(z.literal("")),
+      order_number: z.string().max(100).optional().or(z.literal("")),
+      product_types: (requiresFurnitureSelection && !isB2b && !isLeadPool)
+        ? z.array(z.string()).min(1, "Please select at least one product type")
+        : z.array(z.string()).optional(),
+      b2b_requirement_type_ids: (requiresFurnitureSelection && isB2b)
+        ? z.array(z.string()).min(1, "Please select at least one requirement type")
+        : z.array(z.string()).optional(),
+      product_structures: (requiresFurnitureSelection && !isLeadPool)
+        ? z
+          .array(z.string())
+          .min(1, "Please select at least one product structure")
+        : z.array(z.string()).optional(),
+      assign_to: (isAdminOrSuperAdmin && !isLeadPool)
+        ? z.string().min(1, "Please select an assignee")
+        : z.string().optional(),
+      assigned_by: isAdminOrSuperAdmin ? z.string() : z.string().optional(),
+      documents: z.string().optional(),
+      archetech_name: z.string().max(300).optional(),
+      architect_id: z.string().optional(),
+      archetech_number: z
+        .string()
+        .regex(/^\+?\d{7,20}$/, "Please enter a valid architect number")
+        .optional()
+        .or(z.literal("")),
+      designer_id: z.string().optional(),
+      designer_remark: z.string().max(2000).optional(),
+      initial_site_measurement_date: z.string().optional(),
+      priority: isLeadPool
+        ? z.enum(["High", "Medium", "Low"], {
+            message: "Please select a priority",
+          }).optional()
+        : z.enum(["High", "Medium", "Low"], {
+            message: "Please select a priority",
+          }),
+    })
+    .superRefine((values, ctx) => {
+      const requiresReferenceField =
+        isB2b &&
+        typeof values.source_id === "string" &&
+        referenceSourceIds.includes(values.source_id);
+
+      if (requiresReferenceField && !values.refered_by?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["refered_by"],
+          message: "Please enter referred by",
+        });
+      }
+    });
 };
 
 // Schema for Draft - only name, contact, and assign_to (for admin) required
-const draftFormSchema = (userType: string | undefined) => {
+const draftFormSchema = (
+  userType: string | undefined,
+  isB2b: boolean,
+  referenceSourceIds: string[],
+) => {
   const isAdminOrSuperAdmin =
-    userType === "admin" || userType === "super_admin";
+    userType === "admin" || userType === "super-admin";
 
-  return z.object({
-    firstname: z.string().min(1, "First name is required").max(300),
-    lastname: z.string().min(1, "Last name is required").max(300),
-    contact_no: z.string().min(1, "Contact number is required").max(20),
-    // Admin must assign even in draft
-    assign_to: isAdminOrSuperAdmin
-      ? z.string().min(1, "Please select an assignee")
-      : z.string().optional(),
-    // All other fields are optional for draft
-    alt_contact_no: z.string().optional().or(z.literal("")),
-    email: z.string().optional().or(z.literal("")),
-    site_type_id: z.string().optional().or(z.literal("")),
-    site_address: z.string().optional().or(z.literal("")),
-    source_id: z.string().optional().or(z.literal("")),
-    product_types: z.array(z.string()).optional(),
-    product_structures: z.array(z.string()).optional(),
-    assigned_by: z.string().optional(),
-    documents: z.string().optional(),
-    archetech_name: z.string().optional(),
-    designer_remark: z.string().optional(),
-    initial_site_measurement_date: z.string().optional(),
-  });
+  return z
+    .object({
+      firstname: z.string().trim().min(1, "First name is required").max(300),
+      lastname: z
+        .string()
+        .trim()
+        .min(1, isB2b ? "Project name is required" : "Last name is required")
+        .max(300),
+      contact_no: isB2b
+        ? z.string().optional().or(z.literal(""))
+        : z.string().min(1, "Contact number is required").max(20),
+      assign_to: isAdminOrSuperAdmin
+        ? z.string().min(1, "Please select an assignee")
+        : z.string().optional(),
+      alt_contact_no: z.string().optional().or(z.literal("")),
+      email: z.string().optional().or(z.literal("")),
+      site_type_id: z.string().optional().or(z.literal("")),
+      site_address: z
+        .string()
+        .optional()
+        .or(z.literal(""))
+        .refine(
+          (val) => !val || !/^(https?:\/\/[^\s]+)/i.test(val.trim()),
+          { message: "Invalid link" }
+        ),
+      source_id: isB2b
+        ? z.string().min(1, "Please select a source")
+        : z.string().optional().or(z.literal("")),
+      refered_by: z.string().max(300).optional().or(z.literal("")),
+      client_id: isB2b
+        ? z.string().min(1, "Please select a client")
+        : z.string().optional().or(z.literal("")),
+      order_number: z.string().max(100).optional().or(z.literal("")),
+      product_types: z.array(z.string()).optional(),
+      product_structures: z.array(z.string()).optional(),
+      assigned_by: z.string().optional(),
+      documents: z.string().optional(),
+      archetech_name: z.string().optional(),
+      architect_id: z.string().optional(),
+      archetech_number: z
+        .string()
+        .regex(/^\+?\d{7,20}$/, "Please enter a valid architect number")
+        .optional()
+        .or(z.literal("")),
+      designer_id: z.string().optional(),
+      designer_remark: z.string().optional(),
+      initial_site_measurement_date: z.string().optional(),
+      priority: z.enum(["High", "Medium", "Low"]).optional(),
+    })
+    .superRefine((values, ctx) => {
+      const requiresReferenceField =
+        isB2b &&
+        typeof values.source_id === "string" &&
+        referenceSourceIds.includes(values.source_id);
+
+      if (requiresReferenceField && !values.refered_by?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["refered_by"],
+          message: "Please enter referred by",
+        });
+      }
+    });
 };
 
 interface LeadsGenerationFormProps {
   onClose: () => void;
+  mode?: "standard" | "lead-pool";
 }
 export default function LeadsGenerationForm({
   onClose,
+  mode = "standard",
 }: LeadsGenerationFormProps) {
   const [files, setFiles] = useState<File[]>([]);
   const vendorId = useAppSelector((state: any) => state.auth.user?.vendor_id);
+  const franchiseId = useAppSelector((state: any) => state.auth.user?.franchise_id);
+  const vendorCustomUserTypeMode = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only as
+      | boolean
+      | null
+      | undefined,
+  );
+  const isCustomDocNomenclatureEnabled = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_custom_doc_nomenclature_enabled === true,
+  );
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const isOnlineLeadFeatureEnabled = useAppSelector(
+    (state: any) =>
+      state.auth.user?.vendor?.is_online_lead_feature_enabled === true,
+  );
   const userId = useAppSelector((state) => state.auth.user?.id);
   const createdBy = useAppSelector((state: any) => state.auth.user?.id);
   const [mapOpen, setMapOpen] = useState(false);
@@ -137,6 +347,9 @@ export default function LeadsGenerationForm({
   const [structureInstanceDetails, setStructureInstanceDetails] = useState<
     { title: string; desc: string }[]
   >([]);
+  const [instanceSitePhotoUploads, setInstanceSitePhotoUploads] = useState<
+    Record<string, File[]>
+  >({});
   const previousStructuresRef = useRef<string[]>([]);
   const [duplicatePrompt, setDuplicatePrompt] = useState<{
     open: boolean;
@@ -148,18 +361,209 @@ export default function LeadsGenerationForm({
     alt_contact_no: string;
     email: string;
   }>({ contact_no: "", alt_contact_no: "", email: "" });
+  const [similarLeadWarning, setSimilarLeadWarning] = useState<{
+    lead_id: number;
+    lead_code: string | null;
+    lead_name: string;
+  } | null>(null);
+  const [lastSimilarLeadCheckKey, setLastSimilarLeadCheckKey] = useState("");
 
   const [savedMapLocation, setSavedMapLocation] = useState<{
     lat: number;
     lng: number;
     address: string;
   } | null>(null);
+  const [isResolvingAddress, setIsResolvingAddress] = useState(false);
+
+  const handleAddressChange = async (value: string, onChangeField: (v: string) => void) => {
+    onChangeField(value);
+
+    const isUrl = /^(https?:\/\/[^\s]+)/i.test(value.trim());
+    if (!isUrl) {
+      form.clearErrors("site_address");
+      if (savedMapLocation) {
+        setSavedMapLocation((prev) =>
+          prev ? { ...prev, address: value } : prev
+        );
+      }
+      return;
+    }
+
+    const isGoogleMapsUrl = /^(https?:\/\/)?(www\.)?(google\.[a-z.]{2,6}\/maps|maps\.google\.[a-z.]{2,6}|maps\.app\.goo\.gl|goo\.gl\/maps|share\.google)/i.test(value.trim());
+    if (!isGoogleMapsUrl) {
+      form.setError("site_address", { type: "manual", message: "Invalid link" });
+      return;
+    }
+
+    setIsResolvingAddress(true);
+    form.clearErrors("site_address");
+
+    try {
+      let targetUrl = value.trim();
+      if (/maps\.app\.goo\.gl|goo\.gl\/maps|share\.google/i.test(targetUrl)) {
+        try {
+          targetUrl = await unshortenUrl(targetUrl);
+        } catch (e) {
+          form.setError("site_address", { type: "manual", message: "Invalid link" });
+          setIsResolvingAddress(false);
+          return;
+        }
+      }
+
+      let lat: number | null = null;
+      let lng: number | null = null;
+
+      const atMatch = targetUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+      const llMatch = targetUrl.match(/ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
+
+      if (atMatch) {
+        lat = parseFloat(atMatch[1]);
+        lng = parseFloat(atMatch[2]);
+      } else if (llMatch) {
+        lat = parseFloat(llMatch[1]);
+        lng = parseFloat(llMatch[2]);
+      }
+
+      let searchQuery: string | null = null;
+      const placeNameMatch = targetUrl.match(/\/place\/([^\/]+)/);
+      const qQueryMatch = targetUrl.match(/[?&]q=([^&]+)/);
+
+      if (placeNameMatch) {
+        const decoded = decodeURIComponent(placeNameMatch[1].replace(/\+/g, ' '));
+        if (!/^-?\d+\.\d+,-?\d+\.\d+$/.test(decoded.trim())) {
+          searchQuery = decoded;
+        }
+      }
+      if (!searchQuery && qQueryMatch) {
+        const decoded = decodeURIComponent(qQueryMatch[1].replace(/\+/g, ' '));
+        if (!/^-?\d+\.\d+,-?\d+\.\d+$/.test(decoded.trim())) {
+          searchQuery = decoded;
+        }
+      }
+
+      if (typeof window === "undefined" || !(window as any).google?.maps) {
+        form.setError("site_address", { type: "manual", message: "Maps API not loaded" });
+        setIsResolvingAddress(false);
+        return;
+      }
+
+      const geocoder = new (window as any).google.maps.Geocoder();
+
+      if (searchQuery) {
+        geocoder.geocode({ address: searchQuery }, (results: any, status: any) => {
+          if (form.getValues("site_address") !== value) {
+            setIsResolvingAddress(false);
+            return;
+          }
+          if (status === "OK" && results?.[0]) {
+            const address = results[0].formatted_address;
+            const location = results[0].geometry.location;
+            onChangeField(address);
+            setSavedMapLocation({ lat: location.lat(), lng: location.lng(), address });
+            form.clearErrors("site_address");
+            setIsResolvingAddress(false);
+          } else if (lat !== null && lng !== null) {
+            // Fallback to coordinates
+            geocoder.geocode({ location: { lat, lng } }, (res: any, st: any) => {
+              if (form.getValues("site_address") !== value) return;
+              if (st === "OK" && res?.[0]) {
+                const address = res[0].formatted_address;
+                onChangeField(address);
+                setSavedMapLocation({ lat, lng, address });
+                form.clearErrors("site_address");
+              } else {
+                form.setError("site_address", { type: "manual", message: "Invalid link" });
+              }
+              setIsResolvingAddress(false);
+            });
+          } else {
+            form.setError("site_address", { type: "manual", message: "Invalid link" });
+            setIsResolvingAddress(false);
+          }
+        });
+      } else if (lat !== null && lng !== null) {
+        geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
+          if (form.getValues("site_address") !== value) {
+            setIsResolvingAddress(false);
+            return;
+          }
+          if (status === "OK" && results?.[0]) {
+            const address = results[0].formatted_address;
+            onChangeField(address);
+            setSavedMapLocation({ lat, lng, address });
+            form.clearErrors("site_address");
+          } else {
+            form.setError("site_address", { type: "manual", message: "Invalid link" });
+          }
+          setIsResolvingAddress(false);
+        });
+      } else {
+        form.setError("site_address", { type: "manual", message: "Invalid link" });
+        setIsResolvingAddress(false);
+      }
+    } catch (error) {
+      form.setError("site_address", { type: "manual", message: "Invalid link" });
+      setIsResolvingAddress(false);
+    }
+  };
+
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type.user_type as string | undefined
   );
 
+  const { data: franchisesForB2b = [] } = useFranchisesByVendorId(
+    vendorId,
+    !!vendorId,
+  );
+  const isB2b = useMemo(() => {
+    const activeFranchise = franchisesForB2b.find(
+      (franchise) => franchise.id === franchiseId,
+    );
+    return activeFranchise?.moduled_for_b2b ?? false;
+  }, [franchisesForB2b, franchiseId]);
+  const requiresFurnitureSelection = !handlesLargeScaleProjects && !isB2b;
+
+  const { data: clientsData, isLoading: isClientsLoading } = useClients({
+    vendor_id: vendorId,
+    limit: 200,
+    activeOnly: true,
+  });
+  const clientsList = clientsData?.data?.data ?? [];
+  const { data: sourceTypes, isLoading: isSourceTypesLoading } =
+    useSourceTypes();
+  const sourcePickerData = useMemo(
+    () =>
+      sourceTypes?.data?.map((source: any) => ({
+        id: source.id,
+        label: source.type,
+      })) || [],
+    [sourceTypes?.data],
+  );
+  const referenceSourceIds = useMemo(
+    () =>
+      sourceTypes?.data
+        ?.filter(
+          (source: any) =>
+            String(source.type || "").trim().toLowerCase() === "reference",
+        )
+        .map((source: any) => String(source.id)) || [],
+    [sourceTypes?.data],
+  );
+
+  const formSchema = useMemo(
+    () =>
+      createFormSchema(
+        userType,
+        requiresFurnitureSelection,
+        isB2b,
+        referenceSourceIds,
+        mode,
+      ),
+    [requiresFurnitureSelection, userType, isB2b, referenceSourceIds, mode],
+  );
+
   const form = useForm({
-    resolver: zodResolver(createFormSchema(userType)), // Always use create schema initially
+    resolver: zodResolver(formSchema),
     defaultValues: {
       firstname: "",
       lastname: "",
@@ -169,11 +573,19 @@ export default function LeadsGenerationForm({
       site_type_id: "",
       site_address: "",
       source_id: "",
+      refered_by: "",
+      client_id: "",
+      order_number: "",
       product_types: [],
+      b2b_requirement_type_ids: [],
       product_structures: [],
       documents: "",
       archetech_name: "",
+      architect_id: "",
+      archetech_number: "",
+      designer_id: "",
       designer_remark: "N/A",
+      priority: "Medium",
       assign_to: "",
       assigned_by: "",
     },
@@ -181,13 +593,57 @@ export default function LeadsGenerationForm({
     reValidateMode: "onSubmit",
   });
 
-  type FormValues = z.infer<ReturnType<typeof createFormSchema>>;
+  type FormValues = z.infer<typeof formSchema>;
+
+  const selectedClientId = form.watch("client_id");
+  const selectedSourceId = form.watch("source_id");
+  const selectedClient = useMemo(
+    () => clientsList.find((c) => String(c.id) === selectedClientId),
+    [clientsList, selectedClientId],
+  );
+  const showReferredByField =
+    isB2b && selectedSourceId && referenceSourceIds.includes(selectedSourceId);
+
+  useEffect(() => {
+    if (!isB2b || !selectedClient) return;
+
+    const companyName = selectedClient.company_name || selectedClient.name || "";
+    if (form.getValues("firstname") !== companyName) {
+      form.setValue("firstname", companyName, { shouldValidate: false });
+    }
+
+    const digits = (selectedClient.contact || "").replace(/\D/g, "");
+    const normalizedDigits =
+      digits.length > 10 && digits.startsWith("91") ? digits.slice(2) : digits;
+    if (form.getValues("contact_no") !== normalizedDigits) {
+      form.setValue("contact_no", normalizedDigits, { shouldValidate: false });
+    }
+
+    const clientEmail = selectedClient.email || "";
+    if (form.getValues("email") !== clientEmail) {
+      form.setValue("email", clientEmail, { shouldValidate: false });
+    }
+  }, [isB2b, selectedClient, form]);
+
+  useEffect(() => {
+    if (mode === "lead-pool" && sourceTypes?.data && !form.getValues("source_id") && !handlesLargeScaleProjects) {
+      const onlineSource = sourceTypes.data.find(
+        (s: any) => s.type?.toLowerCase() === "online"
+      );
+      if (onlineSource) {
+        form.setValue("source_id", String(onlineSource.id));
+      }
+    }
+  }, [sourceTypes?.data, form, handlesLargeScaleProjects, mode]);
+
   const selectedProductTypes = form.watch("product_types");
   const selectedProductStructures = form.watch("product_structures");
   const { data: productStructures, isLoading: isStructuresLoading } =
     useProductStructureTypes();
   const { data: productTypes, isLoading: isProductTypesLoading } =
     useProductTypes();
+  const { data: b2bRequirementTypes, isLoading: isB2bRequirementTypesLoading } =
+    useB2BRequirementTypes();
 
   const selectedTypeId = selectedProductTypes?.[0];
   const selectedTypeLabel =
@@ -207,7 +663,7 @@ export default function LeadsGenerationForm({
   }
   const allowDuplicatesForWardrobe =
     parentFilter === "Wardrobe" || parentFilter === "Others";
-  const isKitchenSingleSelect = parentFilter === "Kitchen";
+  const isKitchenStructureSingleSelect = parentFilter === "Kitchen";
 
   useEffect(() => {
     return () => {
@@ -229,7 +685,7 @@ export default function LeadsGenerationForm({
         })
         ?.map((p: any) => ({
           value: String(p.id),
-          label: p.type,
+          label: p.type ? p.type.charAt(0).toUpperCase() + p.type.slice(1) : "",
         })) ?? [],
     [parentFilter, productStructures?.data]
   );
@@ -305,6 +761,54 @@ export default function LeadsGenerationForm({
       }),
     [selectedProductStructures, structureInstanceDetails, structureOptions]
   );
+  const isCustomVendorFlow = vendorCustomUserTypeMode === true;
+  const isMultiInstanceSitePhotoUploadFlow =
+    requiresFurnitureSelection &&
+    structureQuantityItems.length > 1 &&
+    (isCustomVendorFlow || isCustomDocNomenclatureEnabled);
+
+  useEffect(() => {
+    if (requiresFurnitureSelection) return;
+
+    form.setValue("product_types", [], {
+      shouldDirty: false,
+      shouldValidate: false,
+    });
+    form.setValue("product_structures", [], {
+      shouldDirty: false,
+      shouldValidate: false,
+    });
+    setStructureInstanceDetails([]);
+    previousStructuresRef.current = [];
+    setSimilarLeadWarning(null);
+    setLastSimilarLeadCheckKey("");
+  }, [form, requiresFurnitureSelection]);
+
+  useEffect(() => {
+    if (!isMultiInstanceSitePhotoUploadFlow) {
+      setInstanceSitePhotoUploads({});
+      return;
+    }
+
+    setInstanceSitePhotoUploads((prev) => {
+      const next: Record<string, File[]> = {};
+      for (const item of structureQuantityItems) {
+        next[item.key] = prev[item.key] ?? [];
+      }
+      return next;
+    });
+  }, [isMultiInstanceSitePhotoUploadFlow, structureQuantityItems]);
+
+  useEffect(() => {
+    if (!isKitchenStructureSingleSelect) return;
+
+    const currentStructures = form.getValues("product_structures") || [];
+    if (currentStructures.length <= 1) return;
+
+    form.setValue("product_structures", [currentStructures[0]], {
+      shouldValidate: true,
+    });
+  }, [form, isKitchenStructureSingleSelect]);
 
   useEffect(() => {
     if (!hasSelectedFurnitureType) return;
@@ -341,69 +845,190 @@ export default function LeadsGenerationForm({
 
   const queryClient = useQueryClient();
   const checkContactMutation = useCheckContactOrEmailExists();
+  const checkSimilarLeadMutation = useCheckSimilarLeadExists();
 
   // fetch data once at top of component (after form etc.)
   const { data: vendorUsers, isLoading: isVendorUsersLoading } =
-    useVendorSalesExecutiveUsers(vendorId);
+    useVendorSalesExecutiveUsers(
+      vendorId,
+      franchiseId,
+      vendorCustomUserTypeMode === true
+        ? {
+          assigneeUserType: "custom",
+          requiredPrivilegeCode:
+            "leads.open_leads.details_of_lead.add_lead",
+        }
+        : undefined,
+    );
   const router = useRouter();
 
   const vendorUserss = vendorUsers?.data?.sales_executives ?? [];
 
-  const createLeadMutation = useMutation({
-    mutationFn: ({ payload, files }: { payload: any; files: File[] }) =>
-      createLead(payload, files),
-    onSuccess: () => {
-      toast.success("Lead created successfully!");
+  const { data: architectData, isLoading: isArchitectsLoading } = useArchitectureMastersDropdownList(vendorId);
+  const architectsList = architectData?.data || [];
+
+  const { data: designerUsers, isLoading: isDesignersLoading } =
+    useVendorSalesExecutiveUsers(
+      vendorId,
+      franchiseId,
+      vendorCustomUserTypeMode === true
+        ? {
+            assigneeUserType: "custom",
+            requiredPrivilegeCode: "leads.open_leads.details_of_lead.move_to_designing_stage",
+          }
+        : {
+          assigneeUserType: "designer",
+        },
+    );
+  const designersList = Array.isArray(designerUsers?.data)
+    ? designerUsers.data
+    : (designerUsers?.data?.sales_executives || []);
+
+  const invalidateLeadTableQueries = useCallback(async () => {
+    await Promise.all([
       queryClient.invalidateQueries({
         queryKey: ["leadStats", vendorId, userId],
-      });
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["activityStatusCounts"],
+      }),
       queryClient.invalidateQueries({
         queryKey: ["universal-stage-leads"],
         exact: false,
-      });
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["vendorOverallLeads"],
+        exact: false,
+      }),
       queryClient.invalidateQueries({
         queryKey: ["vendorUserLeads", vendorId, userId],
-      });
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["vendorUserLeadsOpen"],
+        exact: false,
+      }),
+    ]);
+  }, [queryClient, userId, vendorId]);
+
+  const createLeadMutation = useMutation({
+    mutationFn: ({
+      payload,
+      files,
+    }: {
+      payload: any;
+      files: File[];
+    }) => {
+      if (mode === "lead-pool") {
+        const walkInPayload = {
+          vendor_id: payload.vendor_id,
+          leads_name: `${payload.firstname} ${payload.lastname}`.trim(),
+          email: payload.email,
+          contact: payload.contact_no,
+          store_id: undefined,
+          remark: payload.designer_remark || "Walk-In customer",
+          created_by: payload.created_by,
+          firstname: payload.firstname,
+          lastname: payload.lastname,
+          alt_contact_no: payload.alt_contact_no,
+          site_address: payload.site_address,
+          site_type_id: payload.site_type_id,
+          source_id: payload.source_id,
+          refered_by: payload.refered_by,
+          archetech_name: payload.archetech_name,
+          archetech_number: payload.archetech_number,
+          priority: payload.priority,
+          product_types: payload.product_types,
+          product_structures: payload.product_structures,
+        };
+        return createWalkInLead(walkInPayload);
+      }
+      return createLead(payload, files);
+    },
+    onSuccess: async (data: any) => {
+      if (mode === "lead-pool") {
+        toastManager.add({ title: "Walk-in lead created successfully!", type: "success" });
+        await invalidateLeadTableQueries();
+        form.reset();
+        setFiles([]);
+        onClose();
+        router.push("/dashboard/online-leads");
+        if (typeof window !== "undefined") {
+          window.location.reload();
+        }
+        return;
+      }
+
+      const selectedDesignerId = form.getValues("designer_id");
+      const createdLead = data?.data?.lead || data?.data || data;
+      const leadId = createdLead?.id || createdLead?.lead_id;
+
+      if (selectedDesignerId && leadId) {
+        try {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          await assignDesignerToLead(vendorId, leadId, {
+            account_id: Number(createdLead?.account_id || 0),
+            assign_to_user_id: Number(selectedDesignerId),
+            created_by: Number(createdBy || userId),
+            user_type_or_role: "designer",
+          });
+        } catch (e) {
+          console.error("Failed to assign designer", e);
+        }
+      }
+
+      toastManager.add({ title: "Lead created successfully!", type: "success" });
+      await invalidateLeadTableQueries();
       form.reset();
       setFiles([]);
       onClose();
+      router.push("/dashboard/leads/leadstable");
     },
     onError: (error: any) => {
       console.error("Form submission error:", error);
-      const errorMessage =
-        error?.response?.data?.details ||
-        error?.response?.data?.error ||
-        "Failed to create lead";
-      toast.error(errorMessage);
+      toastManager.add({ title: getErrorMessage(error), type: "error" });
     },
   });
 
   const saveDraftMutation = useMutation({
     mutationFn: ({ payload, files }: { payload: any; files: File[] }) =>
       createLead(payload, files),
-    onSuccess: () => {
-      toast.success("Lead saved as draft!");
+    onSuccess: async (data: any) => {
+      const selectedDesignerId = form.getValues("designer_id");
+      const createdLead = data?.data?.lead || data?.data || data;
+      const leadId = createdLead?.id || createdLead?.lead_id;
+
+      if (selectedDesignerId && leadId) {
+        try {
+          // Delay execution to prevent backend race conditions where concurrent mapping creation causes the backend to assign the wrong role (ISM instead of designer)
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          await assignDesignerToLead(vendorId, leadId, {
+            account_id: Number(createdLead?.account_id || 0),
+            assign_to_user_id: Number(selectedDesignerId),
+            created_by: Number(createdBy || userId),
+            user_type_or_role: "designer",
+          });
+        } catch (e) {
+          console.error("Failed to assign designer", e);
+        }
+      }
+
+      toastManager.add({ title: "Lead saved as draft!", type: "success" });
+      await invalidateLeadTableQueries();
       queryClient.invalidateQueries({
-        queryKey: ["leadStats", vendorId, userId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["universal-stage-leads"],
-        exact: false,
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["vendorUserLeads", vendorId, userId],
+        queryKey: ["draft-lead-table-data"],
       });
       form.reset();
       setFiles([]);
       onClose();
+      router.push(
+        isOnlineLeadFeatureEnabled
+          ? "/dashboard/leads/online-lead"
+          : "/dashboard/leads/draft-lead"
+      );
     },
     onError: (error: any) => {
       console.error("Draft save error:", error);
-      const errorMessage =
-        error?.response?.data?.details ||
-        error?.response?.data?.error ||
-        "Failed to save draft";
-      toast.error(errorMessage);
+      toastManager.add({ title: getErrorMessage(error), type: "error" });
     },
   });
 
@@ -413,6 +1038,85 @@ export default function LeadsGenerationForm({
     if (parsed) return parsed.nationalNumber;
     return value.replace(/\D/g, "");
   };
+
+  const resetSimilarLeadValidation = useCallback(() => {
+    setSimilarLeadWarning(null);
+    setLastSimilarLeadCheckKey("");
+  }, []);
+
+  const getSimilarLeadCheckPayload = useCallback(() => {
+    const phoneNumber = normalizePhone(form.getValues("contact_no"));
+    const productTypes = (form.getValues("product_types") || [])
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value));
+
+    if (!phoneNumber || productTypes.length === 0) {
+      return null;
+    }
+
+    const signature = [
+      phoneNumber,
+      [...productTypes].sort((a, b) => a - b).join(","),
+    ].join("|");
+
+    return {
+      signature,
+      payload: {
+        phone_number: phoneNumber,
+        product_types: productTypes,
+      },
+    };
+  }, [form]);
+
+  const handleSimilarLeadCheck = useCallback(() => {
+    if (!vendorId) return;
+
+    const details = getSimilarLeadCheckPayload();
+    if (!details) {
+      resetSimilarLeadValidation();
+      return;
+    }
+
+    if (lastSimilarLeadCheckKey === details.signature) return;
+    setLastSimilarLeadCheckKey(details.signature);
+
+    checkSimilarLeadMutation.mutate(
+      { vendorId, payload: details.payload },
+      {
+        onSuccess: (res) => {
+          setSimilarLeadWarning(res?.exists ? res.lead : null);
+        },
+        onError: (err: any) => {
+          setLastSimilarLeadCheckKey("");
+          toastManager.add({
+            title: err?.message || "Could not verify similar lead",
+            type: "error",
+          });
+        },
+      }
+    );
+  }, [
+    checkSimilarLeadMutation,
+    getSimilarLeadCheckPayload,
+    lastSimilarLeadCheckKey,
+    resetSimilarLeadValidation,
+    vendorId,
+  ]);
+
+  const handleSimilarityFieldBlur = useCallback(
+    (event: FocusEvent<HTMLElement>) => {
+      const nextFocused = event.relatedTarget;
+      if (nextFocused && event.currentTarget.contains(nextFocused as Node)) {
+        return;
+      }
+
+      handleSimilarLeadCheck();
+    },
+    [handleSimilarLeadCheck]
+  );
+
+  const similarLeadErrorMessage =
+    "Similar lead already exists in the CRM, Hence it cannot be created.";
 
   const handleDuplicateCheck = (
     field: "contact_no" | "alt_contact_no" | "email"
@@ -458,9 +1162,7 @@ export default function LeadsGenerationForm({
           }
         },
         onError: (err: any) => {
-          toast.error(
-            err?.message || "Could not verify contact/email uniqueness"
-          );
+          toastManager.add({ title: err?.message || "Could not verify contact/email uniqueness", type: "error" });
         },
       }
     );
@@ -478,21 +1180,70 @@ export default function LeadsGenerationForm({
     setDuplicatePrompt({ open: false });
   };
 
+  const buildRenamedSitePhotoFiles = useCallback(() => {
+    const clientName = `${form.getValues("firstname") || ""} ${form.getValues("lastname") || ""
+      }`.trim();
+    const furnitureTypeName =
+      productTypes?.data?.find(
+        (type: any) => String(type.id) === selectedProductTypes?.[0],
+      )?.type || "Furniture Type";
+    const uploadDate = formatFileDate(new Date());
+
+    if (isMultiInstanceSitePhotoUploadFlow) {
+      return structureQuantityItems.flatMap((item) =>
+        renameLeadSitePhotoFiles({
+          files: instanceSitePhotoUploads[item.key] ?? [],
+          clientName,
+          targetLabel: item.title || item.label,
+          uploadDate,
+        }),
+      );
+    }
+
+    return isCustomVendorFlow || isCustomDocNomenclatureEnabled
+      ? renameLeadSitePhotoFiles({
+        files,
+        clientName,
+        targetLabel: furnitureTypeName,
+        uploadDate,
+      })
+      : files;
+  }, [
+    files,
+    form,
+    instanceSitePhotoUploads,
+    isCustomDocNomenclatureEnabled,
+    isCustomVendorFlow,
+    isMultiInstanceSitePhotoUploadFlow,
+    productTypes?.data,
+    selectedProductTypes,
+    structureQuantityItems,
+  ]);
+
   function onSubmit(values: FormValues) {
+    if (similarLeadWarning) {
+      toastManager.add({ title: similarLeadErrorMessage, type: "error" });
+      return;
+    }
+
     if (!vendorId || !createdBy) {
-      toast.error("User authentication required");
+      toastManager.add({ title: "User authentication required", type: "error" });
       return;
     }
 
     // Parse phone number properly
-    const phone = values.contact_no
-      ? parsePhoneNumberFromString(values.contact_no)
-      : null;
-
-    const countryCode = phone?.countryCallingCode
-      ? `+${phone.countryCallingCode}`
-      : "";
-    const phoneNumber = phone?.nationalNumber || "";
+    let countryCode: string;
+    let phoneNumber: string;
+    if (isB2b) {
+      countryCode = "+91";
+      phoneNumber = (values.contact_no || "").replace(/\D/g, "");
+    } else {
+      const phone = values.contact_no
+        ? parsePhoneNumberFromString(values.contact_no)
+        : null;
+      countryCode = phone?.countryCallingCode ? `+${phone.countryCallingCode}` : "";
+      phoneNumber = phone?.nationalNumber || "";
+    }
 
     // Alt contact number (just keep digits)
     const altContactNo = values.alt_contact_no?.replace(/\D/g, "") || undefined;
@@ -501,13 +1252,20 @@ export default function LeadsGenerationForm({
       firstname: values.firstname,
       lastname: values.lastname,
       email: values.email,
-      site_address: values.site_address,
-      site_type_id: Number(values.site_type_id),
-      source_id: Number(values.source_id),
+      site_address: values.site_address || undefined,
+      site_type_id: values.site_type_id ? Number(values.site_type_id) : undefined,
+      source_id: values.source_id ? Number(values.source_id) : undefined,
+      refered_by: values.refered_by?.trim() || undefined,
+      client_id: isB2b && values.client_id ? Number(values.client_id) : undefined,
+      order_number: values.order_number || undefined,
       archetech_name: values.archetech_name || undefined,
+      architect_id: values.architect_id ? Number(values.architect_id) : undefined,
+      archetech_number: values.archetech_number || undefined,
       designer_remark: values.designer_remark || undefined,
       vendor_id: vendorId,
+      franchise_id: franchiseId,
       created_by: createdBy,
+      priority: values.priority || "Medium",
       // ✅ new field
       site_map_link: savedMapLocation
         ? `https://www.google.com/maps?q=${savedMapLocation.lat},${savedMapLocation.lng}`
@@ -518,9 +1276,18 @@ export default function LeadsGenerationForm({
       contact_no: phoneNumber,
       alt_contact_no: altContactNo,
 
-      product_types: values.product_types || [],
-      product_structures: values.product_structures || [],
-      product_structure_instances: buildStructureInstancesPayload(),
+      product_types: requiresFurnitureSelection ? values.product_types || [] : [],
+      b2b_requirement_type_ids: requiresFurnitureSelection && isB2b
+        ? (values.b2b_requirement_type_ids || [])
+          .map((id) => Number(id))
+          .filter((id) => Number.isFinite(id))
+        : [],
+      product_structures: requiresFurnitureSelection
+        ? values.product_structures || []
+        : [],
+      product_structure_instances: requiresFurnitureSelection
+        ? buildStructureInstancesPayload()
+        : [],
       initial_site_measurement_date: values.initial_site_measurement_date
         ? new Date(values.initial_site_measurement_date).toISOString()
         : undefined,
@@ -528,26 +1295,40 @@ export default function LeadsGenerationForm({
       // Assignment logic based on user role
       ...(canReassingLead(userType)
         ? {
-            // Admin/Super-admin can assign to anyone
-            assign_to: values.assign_to ? Number(values.assign_to) : undefined,
-            assigned_by: createdBy ? createdBy : undefined,
-          }
+          // Admin/Super-admin can assign to anyone
+          assign_to: values.assign_to ? Number(values.assign_to) : undefined,
+          assigned_by: createdBy ? createdBy : undefined,
+        }
         : {
-            // Sales executive self-assigns
-            assign_to: createdBy,
-            assigned_by: createdBy,
-          }),
+          // Sales executive self-assigns
+          assign_to: createdBy,
+          assigned_by: createdBy,
+        }),
     };
 
-    createLeadMutation.mutate(
-      { payload, files },
-      {
-        onSuccess: () => {
-          // ✅ Refetch lead count after success
-          queryClient.invalidateQueries({
-            queryKey: ["leadStats", vendorId, userId],
-          });
+    // ── Pre-flight validation ──────────────────────────────────────────────
+    if (files.length > 40) {
+      toastManager.add({
+        title: "Maximum 40 files allowed. Please remove some files.",
+        type: "error",
+      });
+      return;
+    }
+    const totalSizeBytes = files.reduce((sum, f) => sum + f.size, 0);
+    const MAX_TOTAL_MB = 400;
+    if (totalSizeBytes > MAX_TOTAL_MB * 1024 * 1024) {
+      toastManager.add({
+        title: `Total upload size exceeds ${MAX_TOTAL_MB}MB limit.`,
+        type: "error",
+      });
+      return;
+    }
 
+    createLeadMutation.mutate(
+      { payload, files: buildRenamedSitePhotoFiles() },
+      {
+        onSuccess: async () => {
+          await invalidateLeadTableQueries();
           router.push("/dashboard/leads/leadstable");
         },
       }
@@ -556,7 +1337,7 @@ export default function LeadsGenerationForm({
 
   async function handleSaveAsDraft() {
     // Temporarily switch to draft schema for validation
-    const draftSchema = draftFormSchema(userType);
+    const draftSchema = draftFormSchema(userType, isB2b, referenceSourceIds);
     const values = form.getValues();
 
     // Validate against draft schema
@@ -571,22 +1352,27 @@ export default function LeadsGenerationForm({
           message: messages?.[0] || "Invalid value",
         });
       });
-      toast.error("Please fill required fields for draft");
+      toastManager.add({ title: "Please fill required fields for draft", type: "error" });
       return;
     }
 
     if (!vendorId || !createdBy) {
-      toast.error("User authentication required");
+      toastManager.add({ title: "User authentication required", type: "error" });
       return;
     }
 
-    const phone = values.contact_no
-      ? parsePhoneNumberFromString(values.contact_no)
-      : null;
-    const countryCode = phone?.countryCallingCode
-      ? `+${phone.countryCallingCode}`
-      : "";
-    const phoneNumber = phone?.nationalNumber || "";
+    let countryCode: string;
+    let phoneNumber: string;
+    if (isB2b) {
+      countryCode = "+91";
+      phoneNumber = (values.contact_no || "").replace(/\D/g, "");
+    } else {
+      const phone = values.contact_no
+        ? parsePhoneNumberFromString(values.contact_no)
+        : null;
+      countryCode = phone?.countryCallingCode ? `+${phone.countryCallingCode}` : "";
+      phoneNumber = phone?.nationalNumber || "";
+    }
 
     const payload = {
       firstname: values.firstname,
@@ -597,10 +1383,17 @@ export default function LeadsGenerationForm({
         ? Number(values.site_type_id)
         : undefined,
       source_id: values.source_id ? Number(values.source_id) : undefined,
+      refered_by: values.refered_by?.trim() || undefined,
+      client_id: isB2b && values.client_id ? Number(values.client_id) : undefined,
+      order_number: values.order_number || undefined,
       archetech_name: values.archetech_name || undefined,
+      architect_id: values.architect_id ? Number(values.architect_id) : undefined,
+      archetech_number: values.archetech_number || undefined,
       designer_remark: values.designer_remark || undefined,
       vendor_id: vendorId,
+      franchise_id: franchiseId,
       created_by: createdBy,
+      priority: values.priority || undefined,
       site_map_link: savedMapLocation
         ? `https://www.google.com/maps?q=${savedMapLocation.lat},${savedMapLocation.lng}`
         : undefined,
@@ -609,232 +1402,391 @@ export default function LeadsGenerationForm({
       alt_contact_no: values.alt_contact_no
         ? values.alt_contact_no.replace(/\D/g, "") // remove + or non-digits
         : undefined,
-      product_types: values.product_types || [],
-      product_structures: values.product_structures || [],
-      product_structure_instances: buildStructureInstancesPayload(),
+      product_types: requiresFurnitureSelection ? values.product_types || [] : [],
+      b2b_requirement_type_ids: requiresFurnitureSelection && isB2b
+        ? (values.b2b_requirement_type_ids || [])
+          .map((id) => Number(id))
+          .filter((id) => Number.isFinite(id))
+        : [],
+      product_structures: requiresFurnitureSelection
+        ? values.product_structures || []
+        : [],
+      product_structure_instances: requiresFurnitureSelection
+        ? buildStructureInstancesPayload()
+        : [],
       initial_site_measurement_date: values.initial_site_measurement_date
         ? new Date(values.initial_site_measurement_date).toISOString()
         : undefined,
       ...(canReassingLead(userType)
         ? {
-            assign_to: values.assign_to ? Number(values.assign_to) : undefined,
-            assigned_by: createdBy,
-          }
+          assign_to: values.assign_to ? Number(values.assign_to) : undefined,
+          assigned_by: createdBy,
+        }
         : {
-            assign_to: createdBy,
-            assigned_by: createdBy,
-          }),
+          assign_to: createdBy,
+          assigned_by: createdBy,
+        }),
       is_draft: true,
     };
 
-    saveDraftMutation.mutate({ payload, files });
+    saveDraftMutation.mutate({ payload, files: buildRenamedSitePhotoFiles() });
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 p-5">
+      <form
+        onSubmit={form.handleSubmit(onSubmit, (errors) => {
+          const errorKeys = Object.keys(errors);
+          if (errorKeys.length > 0) {
+            const firstErrorKey = errorKeys[0];
+            const el = document.querySelector(`[data-name="${firstErrorKey}"]`);
+            if (el) {
+              const isHidden = el.getBoundingClientRect().height === 0;
+              const targetScrollEl = isHidden ? (el.parentElement || el) : el;
+
+              const scrollContainer = targetScrollEl.closest("[data-radix-scroll-area-viewport]") || targetScrollEl.closest("form");
+              if (scrollContainer instanceof HTMLElement) {
+                const containerRect = scrollContainer.getBoundingClientRect();
+                const elRect = targetScrollEl.getBoundingClientRect();
+                const scrollOffset = elRect.top - containerRect.top + scrollContainer.scrollTop - (containerRect.height / 2) + (elRect.height / 2);
+                scrollContainer.scrollTo({
+                  top: scrollOffset,
+                  behavior: "smooth",
+                });
+              } else {
+                targetScrollEl.scrollIntoView({ behavior: "smooth", block: "center" });
+              }
+
+              const focusable = el.querySelector("input, select, textarea, button");
+              if (focusable instanceof HTMLElement) {
+                focusable.focus({ preventScroll: true });
+              }
+            }
+          }
+        })}
+        className="space-y-4 p-5">
         {/* File Upload */}
 
-        {/* First Name & Last Name */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <FormField
-            control={form.control}
-            name="firstname"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm">First Name *</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter first name"
-                    type="text"
-                    className="text-sm"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        {/* Client / Project (B2B) or First Name & Last Name */}
+        {isB2b ? (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="client_id"
+                render={({ field }) => {
+                  const pickerData = clientsList.map((c) => ({
+                    id: c.id,
+                    label: c.company_name || c.name,
+                    subLabel: c.clientCode,
+                  }));
 
-          <FormField
-            control={form.control}
-            name="lastname"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm">Last Name *</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter last name"
-                    type="text"
-                    className="text-sm"
-                    {...field}
-                  />
-                </FormControl>
-                {/* <FormDescription className="text-xs">
-                    Lead's last name.
-                  </FormDescription> */}
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+                  return (
+                    <FormItem data-name={field?.name || ""}>
+                      <div className="w-full flex items-center justify-between">
+                        <FormLabel className="text-sm">Select Client{mode !== "lead-pool" ? " *" : ""}</FormLabel>
+                        <Link
+                          href="/dashboard/masters-management/client-master"
+                          target="_blank"
+                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          New client
+                        </Link>
+                      </div>
+                      {isClientsLoading ? (
+                        <p className="text-xs text-muted-foreground">
+                          Loading clients...
+                        </p>
+                      ) : (
+                        <AssignToPicker
+                          data={pickerData}
+                          value={field.value ? Number(field.value) : undefined}
+                          onChange={(selectedId: number | null) => {
+                            field.onChange(selectedId ? String(selectedId) : "");
+                          }}
+                          placeholder="Search client..."
+                        />
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
 
-        {/* Contact Numbers */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-          <FormField
-            control={form.control}
-            name="contact_no"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm">Phone Number *</FormLabel>
-                <FormControl>
-                  <PhoneInput
-                    defaultCountry="IN"
-                    placeholder="Enter phone number"
-                    className="text-sm"
-                    value={field.value}
-                    onChange={(val) => field.onChange(val)}
-                    onBlur={() => {
-                      field.onBlur();
-                      handleDuplicateCheck("contact_no");
-                    }}
-                  />
-                </FormControl>
-                {/* <FormDescription className="text-xs">
-                    Primary phone number.
-                  </FormDescription> */}
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="alt_contact_no"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm">Alt. Phone Number</FormLabel>
-                <FormControl>
-                  {/* Use regular Input instead of PhoneInput */}
-                  {/* <Input
-                        placeholder="Enter alternate number"
-                        type="tel"
+              <FormField
+                control={form.control}
+                name="lastname"
+                render={({ field }) => (
+                  <FormItem data-name={field?.name || ""} >
+                    <FormLabel className="text-sm">Project Name{mode !== "lead-pool" ? " *" : ""}</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter project name"
+                        type="text"
                         className="text-sm"
                         {...field}
-                        /> */}
-                  <PhoneInput
-                    defaultCountry="IN"
-                    placeholder="Enter alt number"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="order_number"
+              render={({ field }) => (
+                <FormItem data-name={field?.name || ""} >
+                  <FormLabel className="text-sm">Order Number</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter order number"
+                      type="text"
+                      className="text-sm"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <FormField
+              control={form.control}
+              name="firstname"
+              render={({ field }) => (
+                <FormItem data-name={field?.name || ""} >
+                  <FormLabel className="text-sm">First Name *</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter first name"
+                      type="text"
+                      className="text-sm"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="lastname"
+              render={({ field }) => (
+                <FormItem data-name={field?.name || ""} >
+                  <FormLabel className="text-sm">Last Name *</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter last name"
+                      type="text"
+                      className="text-sm"
+                      {...field}
+                    />
+                  </FormControl>
+                  {/* <FormDescription className="text-xs">
+                      Lead's last name.
+                    </FormDescription> */}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        )}
+
+        {/* Contact Numbers */}
+        {!isB2b && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+            <FormField
+              control={form.control}
+              name="contact_no"
+              render={({ field }) => (
+                <FormItem data-name={field?.name || ""} >
+                  <FormLabel className="text-sm">Phone Number *</FormLabel>
+                  <FormControl>
+                    <PhoneInput
+                      defaultCountry="IN"
+                      placeholder="Enter phone number"
+                      className="text-sm"
+                      value={field.value}
+                      onChange={(val) => {
+                        field.onChange(val);
+                        resetSimilarLeadValidation();
+                      }}
+                      onBlur={() => {
+                        field.onBlur();
+                        handleDuplicateCheck("contact_no");
+                        handleSimilarLeadCheck();
+                      }}
+                      validateIndianNumber={true}
+                    />
+                  </FormControl>
+                  {/* <FormDescription className="text-xs">
+                      Primary phone number.
+                    </FormDescription> */}
+                  <FormMessage />
+                  {similarLeadWarning && (
+                    <p className="text-sm font-medium text-destructive">
+                      {similarLeadErrorMessage}
+                    </p>
+                  )}
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="alt_contact_no"
+              render={({ field }) => (
+                <FormItem data-name={field?.name || ""} >
+                  <FormLabel className="text-sm">Alt. Phone Number</FormLabel>
+                  <FormControl>
+                    <PhoneInput
+                      defaultCountry="IN"
+                      placeholder="Enter alt number"
+                      className="text-sm"
+                      value={field.value}
+                      onChange={(val) => field.onChange(val)}
+                      onBlur={() => {
+                        field.onBlur();
+                        handleDuplicateCheck("alt_contact_no");
+                      }}
+                      validateIndianNumber={true}
+                    />
+                  </FormControl>
+                  {/* <FormDescription className="text-xs">
+                      Optional alternate number (without country code).
+                    </FormDescription> */}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        )}
+
+        {/* Email */}
+        {!isB2b && (
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem data-name={field?.name || ""} >
+                <FormLabel className="text-sm">Email</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Enter email address"
+                    type="email"
                     className="text-sm"
                     value={field.value}
-                    onChange={(val) => field.onChange(val)}
-                    onBlur={() => {
+                    onChange={field.onChange}
+                    onBlur={(e) => {
                       field.onBlur();
-                      handleDuplicateCheck("alt_contact_no");
+                      handleDuplicateCheck("email");
                     }}
                   />
                 </FormControl>
                 {/* <FormDescription className="text-xs">
-                    Optional alternate number (without country code).
+                    Lead's email address.
                   </FormDescription> */}
                 <FormMessage />
               </FormItem>
             )}
           />
-        </div>
-
-        {/* Email */}
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-sm">Email</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="Enter email address"
-                  type="email"
-                  className="text-sm"
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={(e) => {
-                    field.onBlur();
-                    handleDuplicateCheck("email");
-                  }}
-                />
-              </FormControl>
-              {/* <FormDescription className="text-xs">
-                  Lead's email address.
-                </FormDescription> */}
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        )}
 
         {/* Site Type */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-          <FormField
-            control={form.control}
-            name="site_type_id"
-            render={({ field }) => {
-              const { data: siteTypes, isLoading } = useSiteTypes();
+        {!isB2b && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+            <FormField
+              control={form.control}
+              name="site_type_id"
+              render={({ field }) => {
+                const { data: siteTypes, isLoading } = useSiteTypes();
 
-              // ✅ Transform API data into AssignToPicker format
-              const pickerData =
-                siteTypes?.data?.map((site: any) => ({
-                  id: site.id,
-                  label: site.type, // Display field
-                })) || [];
+                // ✅ Transform API data into AssignToPicker format
+                const pickerData =
+                  siteTypes?.data?.map((site: any) => ({
+                    id: site.id,
+                    label: site.type, // Display field
+                  })) || [];
 
-              return (
-                <FormItem>
-                  <FormLabel className="text-sm">Site Type *</FormLabel>
+                return (
+                  <FormItem data-name={field?.name || ""} >
+                    <FormLabel className="text-sm">
+                      Site Type{mode !== "lead-pool" ? " *" : ""}
+                    </FormLabel>
 
-                  {isLoading ? (
-                    <p className="text-xs text-muted-foreground">
-                      Loading site types...
-                    </p>
-                  ) : (
-                    <AssignToPicker
-                      data={pickerData}
-                      value={field.value ? Number(field.value) : undefined}
-                      onChange={(selectedId: number | null) => {
-                        field.onChange(selectedId ? String(selectedId) : ""); // ✅ cast to string
-                      }}
-                      placeholder="Search site type..."
-                    />
-                  )}
+                    {isLoading ? (
+                      <p className="text-xs text-muted-foreground">
+                        Loading site types...
+                      </p>
+                    ) : (
+                      <AssignToPicker
+                        data={pickerData}
+                        value={field.value ? Number(field.value) : undefined}
+                        onChange={(selectedId: number | null) => {
+                          field.onChange(selectedId ? String(selectedId) : ""); // ✅ cast to string
+                        }}
+                        placeholder="Search site type..."
+                      />
+                    )}
 
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+
+            <FormField
+              control={form.control}
+              name="priority"
+              render={({ field }) => (
+                <FormItem data-name={field?.name || ""} >
+                  <FormLabel className="text-sm">Priority{mode !== "lead-pool" ? " *" : ""}</FormLabel>
+                  <AssignToPicker
+                    data={priorityOptions.map((option) => ({
+                      id: option.id,
+                      label: option.label,
+                    }))}
+                    value={
+                      priorityOptions.find((option) => option.value === field.value)
+                        ?.id
+                    }
+                    onChange={(selectedId: number | null) => {
+                      const selected = priorityOptions.find(
+                        (option) => option.id === selectedId
+                      );
+                      if (selected) field.onChange(selected.value);
+                    }}
+                    placeholder="Select priority..."
+                  />
                   <FormMessage />
                 </FormItem>
-              );
-            }}
-          />
+              )}
+            />
+          </div>
+        )}
 
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
           <FormField
             control={form.control}
             name="source_id"
             render={({ field }) => {
-              const { data: sourceTypes, isLoading } = useSourceTypes();
-
-              // Convert backend data to AssignToPicker format
-              const pickerData =
-                sourceTypes?.data?.map((source: any) => ({
-                  id: source.id,
-                  label: source.type, // or whatever field you want to show
-                })) || [];
-
               return (
-                <FormItem>
-                  <FormLabel className="text-sm">Source *</FormLabel>
+                <FormItem data-name={field?.name || ""} >
+                  <FormLabel className="text-sm">Source{mode !== "lead-pool" ? " *" : ""}</FormLabel>
 
-                  {isLoading ? (
+                  {isSourceTypesLoading ? (
                     <p className="text-xs text-muted-foreground">
                       Loading sources...
                     </p>
                   ) : (
                     <AssignToPicker
-                      data={pickerData}
+                      data={sourcePickerData}
                       value={field.value ? Number(field.value) : undefined}
                       onChange={(selectedId: number | null) => {
                         field.onChange(selectedId ? String(selectedId) : "");
@@ -848,16 +1800,134 @@ export default function LeadsGenerationForm({
               );
             }}
           />
+
+          {isB2b && (
+            <FormField
+              control={form.control}
+              name="alt_contact_no"
+              render={({ field }) => (
+                <FormItem data-name={field?.name || ""} >
+                  <FormLabel className="text-sm">Phone Number</FormLabel>
+                  <FormControl>
+                    <PhoneInput
+                      defaultCountry="IN"
+                      placeholder="Enter phone number"
+                      className="text-sm"
+                      value={field.value}
+                      onChange={(val) => field.onChange(val)}
+                      onBlur={() => {
+                        field.onBlur();
+                        handleDuplicateCheck("alt_contact_no");
+                      }}
+                      validateIndianNumber={!isB2b}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
         </div>
+
+        {(showReferredByField || canReassingLead(userType) || isB2b) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+            {showReferredByField && (
+              <FormField
+                control={form.control}
+                name="refered_by"
+                render={({ field }) => (
+                  <FormItem data-name={field?.name || ""} >
+                    <FormLabel className="text-sm">Referred By{mode !== "lead-pool" ? " *" : ""}</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter referred by"
+                        type="text"
+                        className="text-sm"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {canReassingLead(userType) && (
+              <FormField
+                control={form.control}
+                name="assign_to"
+                render={({ field }) => {
+                  const pickerData =
+                    vendorUserss?.map((user: any) => ({
+                      id: user.id,
+                      label: user.user_type?.user_type === 'super-admin'
+                        ? `${user.user_name} - super admin`
+                        : user.user_name,
+                    })) || [];
+
+                  return (
+                    <FormItem data-name={field?.name || ""} >
+                      <FormLabel className="text-sm">Assign Lead To{mode !== "lead-pool" ? " *" : ""}</FormLabel>
+
+                      <AssignToPicker
+                        data={pickerData}
+                        value={field.value ? Number(field.value) : undefined}
+                        onChange={(selectedId) => {
+                          field.onChange(selectedId ? String(selectedId) : "");
+                        }}
+                        placeholder="Search assignee..."
+                        disabled={isVendorUsersLoading}
+                      />
+
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+            )}
+
+            {isB2b && (
+              <FormField
+                control={form.control}
+                name="designer_id"
+                render={({ field }) => {
+                  const pickerData = designersList.map((d: any) => ({
+                    id: d.id,
+                    label: d.user_name || "",
+                    subLabel: d.user_email || d.email || "",
+                  }));
+                  return (
+                    <FormItem data-name={field?.name || ""} >
+                      <FormLabel className="text-sm">Assign Designer</FormLabel>
+                      <AssignToPicker
+                        data={pickerData}
+                        textClassName="text-sm font-medium"
+                        value={field.value ? Number(field.value) : undefined}
+                        onChange={(selectedId) => {
+                          field.onChange(selectedId ? String(selectedId) : "");
+                        }}
+                        placeholder="Select Designer..."
+                        disabled={isDesignersLoading}
+                      />
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+            )}
+          </div>
+        )}
 
         {/* Site Address */}
         <FormField
           control={form.control}
           name="site_address"
           render={({ field }) => (
-            <FormItem>
+            <FormItem data-name={field?.name || ""} >
               <div className="w-full flex justify-between ">
-                <FormLabel className="text-sm">Site Address *</FormLabel>
+                <FormLabel className="text-sm">
+                  {isB2b ? "Site Address" : `Site Address${mode !== "lead-pool" ? " *" : ""}`}
+                </FormLabel>
                 <Button
                   type="button"
                   variant="outline"
@@ -871,21 +1941,22 @@ export default function LeadsGenerationForm({
               </div>
               <div className="flex gap-2">
                 <FormControl className="flex-1">
-                  <div className="w-full">
+                  <div className="w-full relative">
                     <TextAreaInput
                       value={field.value}
                       onChange={(value) => {
-                        field.onChange(value);
-
-                        // ✅ Preserve the lat/lng even if user edits text
-                        if (savedMapLocation) {
-                          setSavedMapLocation((prev) =>
-                            prev ? { ...prev, address: value } : prev
-                          );
-                        }
+                        handleAddressChange(value, field.onChange);
                       }}
                       placeholder="Enter address or use map"
+                      disabled={isResolvingAddress}
+                      className={isResolvingAddress ? "text-transparent" : ""}
                     />
+                    {isResolvingAddress && (
+                      <div className="absolute top-2 left-3 z-10 flex items-center gap-1.5 text-sm text-muted-foreground pointer-events-none">
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        <span>Resolving address...</span>
+                      </div>
+                    )}
                   </div>
                 </FormControl>
               </div>
@@ -916,170 +1987,308 @@ export default function LeadsGenerationForm({
           )}
         />
 
-        <StructureQuantityCards
-          items={structureQuantityItems}
-          className="mt-2"
-          onRemove={(removeIndex) => {
-            const current = form.getValues("product_structures") || [];
-            const next = current.filter((_, index) => index !== removeIndex);
-            form.setValue("product_structures", next, {
-              shouldValidate: true,
-            });
-          }}
-          onSave={(index, details) => {
-            setStructureInstanceDetails((prev) => {
-              const next = [...prev];
-              next[index] = details;
-              return next;
-            });
-          }}
-        />
-
-        {/* Product Types & Structures */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
-          <FormField
-            control={form.control}
-            name="product_types"
-            render={({ field }) => {
-              const pickerData =
-                productTypes?.data?.map((p: any) => ({
-                  id: p.id,
-                  label: p.type,
-                })) || [];
-
-              return (
-                <FormItem>
-                  <FormLabel className="text-sm">Furniture Type *</FormLabel>
-
-                  {isProductTypesLoading ? (
-                    <p className="text-xs text-muted-foreground">Loading...</p>
-                  ) : (
-                    <AssignToPicker
-                      data={pickerData}
-                      value={
-                        field.value?.length ? Number(field.value[0]) : undefined
-                      } // ✅ array → single
-                      onChange={(selectedId) => {
-                        field.onChange(selectedId ? [String(selectedId)] : []); // ✅ single → array
-                      }}
-                      placeholder="Search furniture type..."
-                    />
-                  )}
-
-                  <FormMessage />
-                </FormItem>
-              );
-            }}
-          />
-
-          <FormField
-            control={form.control}
-            name="product_structures"
-            render={({ field }) => {
-              // Transform selected IDs back to Option[] format for display
-              const selectedOptions = (field.value || [])
-                .filter((id) =>
-                  structureOptions.some((opt) => opt.value === id)
-                )
-                .map((id) => {
-                  const option = structureOptions.find(
-                    (opt) => opt.value === id
-                  );
-                  return option || { value: id, label: id };
+        {requiresFurnitureSelection && (
+          <>
+            <StructureQuantityCards
+              items={structureQuantityItems}
+              className="mt-2"
+              onRemove={(removeIndex) => {
+                const current = form.getValues("product_structures") || [];
+                const next = current.filter((_, index) => index !== removeIndex);
+                form.setValue("product_structures", next, {
+                  shouldValidate: true,
                 });
-              const shouldShowMaxTooltip =
-                showMaxStructureTooltip && hasSelectedFurnitureType;
-              const tooltipMessage = !hasSelectedFurnitureType
-                ? "Select a furniture type first."
-                : shouldShowMaxTooltip
-                ? "Maximum limit is 10 per item."
-                : "";
+              }}
+              onSave={(index, details) => {
+                setStructureInstanceDetails((prev) => {
+                  const next = [...prev];
+                  next[index] = details;
+                  return next;
+                });
+              }}
+            />
 
-              return (
-                <FormItem>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+              {isB2b ? (
+                <FormField
+                  control={form.control}
+                  name="b2b_requirement_type_ids"
+                  render={({ field }) => {
+                    const pickerData =
+                      b2bRequirementTypes?.data?.map((p: any) => ({
+                        value: String(p.id),
+                        label: p.type,
+                      })) || [];
+
+                    const selectedOptions = (field.value || [])
+                      .filter((id) =>
+                        pickerData.some((opt: Option) => opt.value === id)
+                      )
+                      .map((id) =>
+                        pickerData.find((opt: Option) => opt.value === id)
+                      ) as Option[];
+
+                    return (
+                      <FormItem data-name={field?.name || ""}>
+                        <FormLabel className="text-sm">
+                          Requirement Type (Multi-Select){mode !== "lead-pool" ? " *" : ""}
+                        </FormLabel>
+                        {isB2bRequirementTypesLoading ? (
+                          <p className="text-xs text-muted-foreground">Loading...</p>
+                        ) : (
+                          <div onBlurCapture={handleSimilarityFieldBlur}>
+                            <MultipleSelector
+                              value={selectedOptions}
+                              onChange={(options) => {
+                                resetSimilarLeadValidation();
+                                field.onChange(options.map((o) => o.value));
+                              }}
+                              defaultOptions={pickerData}
+                              placeholder="Select requirement types..."
+                              emptyIndicator={
+                                <p className="text-center text-xs leading-5 text-muted-foreground">
+                                  No results found.
+                                </p>
+                              }
+                              maxSelected={10}
+                            />
+                          </div>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
+              ) : (
+                <FormField
+                  control={form.control}
+                  name="product_types"
+                  render={({ field }) => {
+                    const list = productTypes?.data || [];
+                    const filteredList = handlesLargeScaleProjects
+                      ? list
+                      : list.filter((p: any) => p.type?.trim().toLowerCase() !== "small order");
+                    const pickerData = filteredList.map((p: any) => ({
+                      id: p.id,
+                      label: p.type,
+                    }));
+
+                    return (
+                      <FormItem data-name={field?.name || ""} >
+                        <FormLabel className="text-sm">Furniture Type{mode !== "lead-pool" ? " *" : ""}</FormLabel>
+
+                        {isProductTypesLoading ? (
+                          <p className="text-xs text-muted-foreground">Loading...</p>
+                        ) : (
+                          <div onBlurCapture={handleSimilarityFieldBlur}>
+                            <AssignToPicker
+                              data={pickerData}
+                              value={
+                                field.value?.length ? Number(field.value[0]) : undefined
+                              }
+                              onChange={(selectedId) => {
+                                resetSimilarLeadValidation();
+                                field.onChange(selectedId ? [String(selectedId)] : []);
+                              }}
+                              placeholder="Search furniture type..."
+                            />
+                          </div>
+                        )}
+
+                        <FormMessage />
+                        {similarLeadWarning && (
+                          <p className="text-sm font-medium text-destructive">
+                            {similarLeadErrorMessage}
+                          </p>
+                        )}
+                      </FormItem>
+                    );
+                  }}
+                />
+              )}
+
+              <FormField
+                control={form.control}
+                name="product_structures"
+                render={({ field }) => {
+                  const selectedOptions = (field.value || [])
+                    .filter((id) =>
+                      structureOptions.some((opt) => opt.value === id)
+                    )
+                    .map((id) => {
+                      const option = structureOptions.find(
+                        (opt) => opt.value === id
+                      );
+                      return option || { value: id, label: id };
+                    });
+                  const shouldShowMaxTooltip =
+                    showMaxStructureTooltip && hasSelectedFurnitureType;
+                  const tooltipMessage = !hasSelectedFurnitureType
+                    ? "Select a furniture type first."
+                    : isKitchenStructureSingleSelect && shouldShowMaxTooltip
+                      ? "Kitchen allows only 1 furniture structure."
+                      : shouldShowMaxTooltip
+                        ? "Maximum limit is 10 per item."
+                        : "";
+
+                  return (
+                    <FormItem data-name={field?.name || ""} >
+                      <FormLabel className="text-sm">
+                        Furniture Structure{mode !== "lead-pool" ? " *" : ""}
+                      </FormLabel>
+                      <FormControl>
+                        <Tooltip {...(shouldShowMaxTooltip ? { open: true } : {})}>
+                          <TooltipTrigger asChild>
+                            <div className="w-full">
+                              <MultipleSelector
+                                value={selectedOptions}
+                                onChange={(selectedOptions) => {
+                                  const selectedIds = selectedOptions.map(
+                                    (opt) => opt.value
+                                  );
+                                  field.onChange(selectedIds);
+                                }}
+                                options={structureOptions}
+                                placeholder="Select furniture structures"
+                                disabled={
+                                  isStructuresLoading || !hasSelectedFurnitureType
+                                }
+                                maxSelected={
+                                  isKitchenStructureSingleSelect ? 1 : undefined
+                                }
+                                hidePlaceholderWhenSelected
+                                showSelectedOptionsInDropdown
+                                allowDuplicateSelections={allowDuplicatesForWardrobe}
+                                onMaxSelected={() => {
+                                  if (!isKitchenStructureSingleSelect) return;
+                                  setShowMaxStructureTooltip(true);
+                                  if (maxStructureTooltipTimerRef.current) {
+                                    window.clearTimeout(
+                                      maxStructureTooltipTimerRef.current
+                                    );
+                                  }
+                                  maxStructureTooltipTimerRef.current =
+                                    window.setTimeout(() => {
+                                      setShowMaxStructureTooltip(false);
+                                    }, 1500);
+                                }}
+                                maxSelectedPerOption={10}
+                                onMaxSelectedPerOption={() => {
+                                  setShowMaxStructureTooltip(true);
+                                  if (maxStructureTooltipTimerRef.current) {
+                                    window.clearTimeout(
+                                      maxStructureTooltipTimerRef.current
+                                    );
+                                  }
+                                  maxStructureTooltipTimerRef.current =
+                                    window.setTimeout(() => {
+                                      setShowMaxStructureTooltip(false);
+                                    }, 1500);
+                                }}
+                              />
+                            </div>
+                          </TooltipTrigger>
+                          {tooltipMessage && (
+                            <TooltipContent side="top" sideOffset={6}>
+                              {tooltipMessage}
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+            </div>
+          </>
+        )}
+
+        {!isB2b && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start mb-3">
+            <FormField
+              control={form.control}
+              name="initial_site_measurement_date"
+              render={({ field }) => (
+                <FormItem data-name={field?.name || ""} >
                   <FormLabel className="text-sm">
-                    Furniture Structure *
+                    Initial Site Measurement Date
                   </FormLabel>
                   <FormControl>
-                    <Tooltip {...(shouldShowMaxTooltip ? { open: true } : {})}>
-                      <TooltipTrigger asChild>
-                        <div className="w-full">
-                          <MultipleSelector
-                            value={selectedOptions} // Pass Option[] with proper labels
-                            onChange={(selectedOptions) => {
-                              const nextOptions = isKitchenSingleSelect
-                                ? selectedOptions.slice(-1)
-                                : selectedOptions;
-                              const selectedIds = nextOptions.map(
-                                (opt) => opt.value
-                              );
-                              field.onChange(selectedIds);
-                            }}
-                            options={structureOptions}
-                            placeholder="Select furniture structures"
-                            disabled={
-                              isStructuresLoading || !hasSelectedFurnitureType
-                            }
-                            hidePlaceholderWhenSelected
-                            showSelectedOptionsInDropdown
-                            allowDuplicateSelections={allowDuplicatesForWardrobe}
-                            maxSelectedPerOption={10}
-                            onMaxSelectedPerOption={() => {
-                              setShowMaxStructureTooltip(true);
-                              if (maxStructureTooltipTimerRef.current) {
-                                window.clearTimeout(
-                                  maxStructureTooltipTimerRef.current
-                                );
-                              }
-                              maxStructureTooltipTimerRef.current =
-                                window.setTimeout(() => {
-                                  setShowMaxStructureTooltip(false);
-                                }, 1500);
-                            }}
-                          />
-                        </div>
-                      </TooltipTrigger>
-                      {tooltipMessage && (
-                        <TooltipContent side="top" sideOffset={6}>
-                          {tooltipMessage}
-                        </TooltipContent>
-                      )}
-                    </Tooltip>
+                    <CustomeDatePicker
+                      value={field.value}
+                      onChange={field.onChange}
+                      restriction="futureOnly"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
-              );
-            }}
-          />
-        </div>
-
-        {canReassingLead(userType) && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Assign To */}
+              )}
+            />
+          </div>
+        )}
+        {vendorCustomUserTypeMode && !isB2b && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start mb-3">
             <FormField
               control={form.control}
-              name="assign_to"
+              name="architect_id"
               render={({ field }) => {
-                const pickerData =
-                  vendorUserss?.map((user: any) => ({
-                    id: user.id,
-                    label: user.user_name,
-                  })) || [];
-
+                const pickerData = architectsList.map((a: any) => ({
+                  id: a.id,
+                  label: a.name || "",
+                  subLabel: a.mobile || "",
+                }));
                 return (
-                  <FormItem>
-                    <FormLabel className="text-sm">Assign Lead To *</FormLabel>
-
+                  <FormItem data-name={field?.name || ""} >
+                    <FormLabel className="text-sm">Architect</FormLabel>
                     <AssignToPicker
                       data={pickerData}
-                      value={field.value ? Number(field.value) : undefined} // ✅ string → number
+                      textClassName="text-sm font-medium"
+                      value={field.value ? Number(field.value) : undefined}
                       onChange={(selectedId) => {
-                        field.onChange(selectedId ? String(selectedId) : ""); // ✅ number → string
+                        field.onChange(selectedId ? String(selectedId) : "");
+                        if (selectedId) {
+                          const selectedArchitect = architectsList.find((a: any) => a.id === selectedId);
+                          if (selectedArchitect) {
+                            form.setValue("archetech_name", selectedArchitect.name);
+                            form.setValue("archetech_number", selectedArchitect.mobile);
+                          }
+                        } else {
+                          form.setValue("archetech_name", "");
+                          form.setValue("archetech_number", "");
+                        }
                       }}
-                      placeholder="Search assignee..."
-                      disabled={isVendorUsersLoading}
-                    />
+                      placeholder="Select Architect..."
+                      disabled={isArchitectsLoading}
 
+                    />
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+            <FormField
+              control={form.control}
+              name="designer_id"
+              render={({ field }) => {
+                const pickerData = designersList.map((d: any) => ({
+                  id: d.id,
+                  label: d.user_name || "",
+                  subLabel: d.user_email || d.email || "",
+                }));
+                return (
+                  <FormItem data-name={field?.name || ""} >
+                    <FormLabel className="text-sm">Designer</FormLabel>
+                    <AssignToPicker
+                      data={pickerData}
+                      textClassName="text-sm font-medium"
+                      value={field.value ? Number(field.value) : undefined}
+                      onChange={(selectedId) => {
+                        field.onChange(selectedId ? String(selectedId) : "");
+                      }}
+                      placeholder="Select Designer..."
+                      disabled={isDesignersLoading}
+                    />
                     <FormMessage />
                   </FormItem>
                 );
@@ -1087,81 +2296,129 @@ export default function LeadsGenerationForm({
             />
           </div>
         )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
-          {/* Architect Name */}
+        {!vendorCustomUserTypeMode && !isB2b && (
+          <div className="grid grid-cols-1 gap-3 items-start sm:grid-cols-2">
+            {/* Architect Name */}
+            <FormField
+              control={form.control}
+              name="archetech_name"
+              render={({ field }) => (
+                <FormItem data-name={field?.name || ""} >
+                  <FormLabel className="text-sm">Architect Name</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter architect name"
+                      type="text"
+                      className="text-sm"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="archetech_number"
+              render={({ field }) => (
+                <FormItem data-name={field?.name || ""} >
+                  <FormLabel className="text-sm">Architect Number</FormLabel>
+                  <FormControl>
+                    <PhoneInput
+                      defaultCountry="IN"
+                      placeholder="Enter architect number"
+                      className="text-sm"
+                      value={field.value}
+                      onChange={(val) => field.onChange(val)}
+                      validateIndianNumber={!isB2b}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        )}
+
+        {/* Designer Remark */}
+        {!isB2b && (
           <FormField
             control={form.control}
-            name="archetech_name"
+            name="designer_remark"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm">Architect Name</FormLabel>
+              <FormItem data-name={field?.name || ""} >
+                <FormLabel className="text-sm">Designer's Remark</FormLabel>
                 <FormControl>
-                  <Input
-                    placeholder="Enter architect name"
-                    type="text"
-                    className="text-sm"
-                    {...field}
-                  />
+                  <TextAreaInput placeholder="Enter your remarks" {...field} />
                 </FormControl>
+                {/* <FormDescription className="text-xs">
+                    Additional remarks or notes.
+                  </FormDescription> */}
                 <FormMessage />
               </FormItem>
             )}
           />
+        )}
+
+        {!isB2b && (
           <FormField
             control={form.control}
-            name="initial_site_measurement_date"
+            name="documents"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm">
-                  Initial Site Measurement Date
-                </FormLabel>
+              <FormItem data-name={field?.name || ""} >
+                <FormLabel className="text-sm">Site Photos</FormLabel>
                 <FormControl>
-                  <CustomeDatePicker
-                    value={field.value}
-                    onChange={field.onChange}
-                    restriction="futureOnly"
-                  />
+                  {isMultiInstanceSitePhotoUploadFlow ? (
+                    <div className="space-y-4">
+                      <div className="text-xs text-muted-foreground border-b pb-4">
+                        Upload site photos for each selected instance.
+                      </div>
+                      <div className="grid gap-2">
+                        {structureQuantityItems.map((item) => (
+                          <div key={item.key}>
+                            <div className="space-y-2">
+                              <div>
+                                <h4 className="text-sm font-semibold">
+                                  {item.title || item.label}
+                                </h4>
+                                {item.desc ? (
+                                  <p className="text-xs text-muted-foreground">
+                                    {item.desc}
+                                  </p>
+                                ) : null}
+                              </div>
+                              <FileUploadField
+                                value={instanceSitePhotoUploads[item.key] ?? []}
+                                onChange={(nextFiles) =>
+                                  setInstanceSitePhotoUploads((prev) => ({
+                                    ...prev,
+                                    [item.key]: nextFiles,
+                                  }))
+                                }
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <FileUploadField
+                      value={files}
+                      onChange={setFiles}
+                      multiple={true}
+                      maxFiles={40}
+                      maxSizeMB={400}
+                    />
+                  )}
                 </FormControl>
+                <FormDescription className="text-xs">
+                  Upload photos or documents.
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
-          />{" "}
-        </div>
-
-        {/* Designer Remark */}
-        <FormField
-          control={form.control}
-          name="designer_remark"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-sm">Designer's Remark</FormLabel>
-              <FormControl>
-                <TextAreaInput placeholder="Enter your remarks" {...field} />
-              </FormControl>
-              {/* <FormDescription className="text-xs">
-                  Additional remarks or notes.
-                </FormDescription> */}
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="documents"
-          render={() => (
-            <FormItem>
-              <FormLabel className="text-sm">Site Photos</FormLabel>
-              <FormControl>
-                <FileUploadField value={files} onChange={setFiles} />
-              </FormControl>
-              <FormDescription className="text-xs">
-                Upload photos or documents.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+          />
+        )}
 
         <AlertDialog
           open={duplicatePrompt.open}
@@ -1177,8 +2434,8 @@ export default function LeadsGenerationForm({
                 {duplicatePrompt.field === "contact_no"
                   ? "phone number"
                   : duplicatePrompt.field === "alt_contact_no"
-                  ? "alternate phone number"
-                  : "email"}{" "}
+                    ? "alternate phone number"
+                    : "email"}{" "}
                 already exists for another lead.
               </AlertDialogDescription>
               {duplicatePrompt.lead && (
@@ -1205,45 +2462,51 @@ export default function LeadsGenerationForm({
 
         <div className="flex flex-row justify-end gap-2 pt-4">
           {/* Save as Draft */}
-          <AlertDialog open={openDraftModal} onOpenChange={setOpenDraftModal}>
-            <AlertDialogTrigger asChild>
-              <Button
-                type="button"
-                variant="secondary"
-                className="text-sm"
-                disabled={saveDraftMutation.isPending}
-              >
-                {saveDraftMutation.isPending ? "Saving..." : "Save as Draft"}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Save Lead as Draft?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Only the name and contact number will be required. You can
-                  fill the rest later.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => {
-                    setOpenDraftModal(false);
-                    handleSaveAsDraft();
-                  }}
-                  className="bg-primary"
+          {mode !== "lead-pool" && (
+            <AlertDialog open={openDraftModal} onOpenChange={setOpenDraftModal}>
+              <AlertDialogTrigger asChild>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="text-sm"
+                  disabled={saveDraftMutation.isPending}
                 >
-                  Confirm Save
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                  {saveDraftMutation.isPending ? "Saving..." : "Save as Draft"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Save Lead as Draft?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Only the name and contact number will be required. You can
+                    fill the rest later.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      setOpenDraftModal(false);
+                      handleSaveAsDraft();
+                    }}
+                    className="bg-primary"
+                  >
+                    Confirm Save
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
 
-          {/* Create Lead */}
+          {/* Create Lead Button */}
           <Button
             type="submit"
             className="text-sm"
-            disabled={createLeadMutation.isPending}
+            disabled={
+              createLeadMutation.isPending ||
+              checkSimilarLeadMutation.isPending ||
+              Boolean(similarLeadWarning)
+            }
           >
             {createLeadMutation.isPending ? "Creating..." : "Create Lead"}
           </Button>

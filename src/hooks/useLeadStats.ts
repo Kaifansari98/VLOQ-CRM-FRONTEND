@@ -6,7 +6,9 @@ interface LeadStatsResponse {
   data: {
     total_leads: number;
     total_overall_leads: number;
+    total_lead_pool: number;
     total_open_leads: number;
+    total_draft_leads: number;
     total_initial_site_measurement_leads: number;
     total_designing_stage_leads: number;
     total_booking_stage_leads: number;
@@ -21,6 +23,9 @@ interface LeadStatsResponse {
     total_dispatch_planning_stage_leads: number;
     total_my_tasks: number;
     total_under_installation_stage_leads: number;
+    total_final_handover_stage_leads: number;
+    total_project_completed_stage_leads: number;
+    total_servicing_stage_leads: number;
 
     // group totals (NEW)
     total_leads_group: number;
@@ -32,20 +37,27 @@ interface LeadStatsResponse {
 
 const fetchLeadStats = async (
   vendorId: number,
-  userId?: number
+  userId?: number,
+  franchiseId?: number
 ): Promise<LeadStatsResponse> => {
-  const url = userId
-    ? `/leads/stats/count/vendor/${vendorId}?userId=${userId}`
-    : `/leads/stats/count/vendor/${vendorId}`;
+  const params = new URLSearchParams();
+  if (userId) params.set("userId", String(userId));
+  if (franchiseId) params.set("franchise_id", String(franchiseId));
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  const url = `/leads/stats/count/vendor/${vendorId}${suffix}`;
 
   const response = await apiClient.get<LeadStatsResponse>(url);
   return response.data;
 };
 
-export const useLeadStats = (vendorId?: number, userId?: number) => {
+export const useLeadStats = (
+  vendorId?: number,
+  userId?: number,
+  franchiseId?: number
+) => {
   return useQuery({
-    queryKey: ["leadStats", vendorId, userId],
-    queryFn: () => fetchLeadStats(vendorId!, userId),
+    queryKey: ["leadStats", vendorId, userId, franchiseId],
+    queryFn: () => fetchLeadStats(vendorId!, userId, franchiseId),
     enabled: !!vendorId, // Only run query if vendorId exists
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,

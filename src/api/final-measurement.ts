@@ -6,8 +6,11 @@ export interface FinalMeasurementPayload {
   vendor_id: number;
   created_by: number;
   critical_discussion_notes?: string; // optional
-  final_measurement_docs: File[]; // accept multiple PDF or image files
-  site_photos: File[]; // multiple images
+  final_measurement_docs?: File[]; // accept multiple PDF or image files (optional)
+  site_photos?: File[]; // multiple images (optional)
+  final_measurement_doc_instance_ids?: Array<number | null>;
+  site_photo_instance_ids?: Array<number | null>;
+  skip_final_measurement?: boolean;
 }
 
 export interface AssignToFinalMeasurementPayload {
@@ -16,6 +19,34 @@ export interface AssignToFinalMeasurementPayload {
   remark?: string;
   user_id: number;
   created_by: number;
+}
+
+export interface RestrictedTaskConflict {
+  id: number;
+  task_type: "BookingDone - ISM" | "Final Measurements";
+  status: string;
+  due_date: string;
+  assignee: {
+    id: number;
+    user_name: string;
+  } | null;
+}
+
+export interface FollowUpTaskConflict {
+  id: number;
+  task_type: "Follow Up";
+  status: string;
+  due_date: string;
+  assignee: {
+    id: number;
+    user_name: string;
+  } | null;
+}
+
+export interface RescheduleFinalMeasurementPayload {
+  updated_by: number;
+  due_date: string;
+  remark: string;
 }
 
 export const assignToFinalMeasurement = async (
@@ -28,6 +59,32 @@ export const assignToFinalMeasurement = async (
   );
 
   return data;
+};
+
+export const rescheduleFinalMeasurementTask = async (
+  leadId: number,
+  taskId: number,
+  payload: RescheduleFinalMeasurementPayload
+) => {
+  const { data } = await apiClient.patch(
+    `/leads/final-measurement/leadId/${leadId}/taskId/${taskId}/reschedule`,
+    payload
+  );
+
+  return data;
+};
+
+export const getRestrictedTaskConflicts = async (leadId: number) => {
+  const { data } = await apiClient.get(
+    `/leads/final-measurement/leadId/${leadId}/task-conflicts`
+  );
+
+  return {
+    restrictedTaskConflicts: (data?.data?.conflicts?.restrictedTaskConflicts ??
+      []) as RestrictedTaskConflict[],
+    followUpConflicts: (data?.data?.conflicts?.followUpConflicts ??
+      []) as FollowUpTaskConflict[],
+  };
 };
 
 export const UploadFinalMeasurement = async (
@@ -44,15 +101,33 @@ export const UploadFinalMeasurement = async (
     payload.critical_discussion_notes || ""
   );
 
+  if (payload.skip_final_measurement) {
+    formData.append("skip_final_measurement", "true");
+  }
+
   if (payload.final_measurement_docs?.length) {
     payload.final_measurement_docs.forEach((file) => {
       formData.append("final_measurement_doc", file); // ✅ multiple files with same field name
     });
   }
+  if (payload.final_measurement_doc_instance_ids) {
+    formData.append(
+      "final_measurement_doc_instance_ids",
+      JSON.stringify(payload.final_measurement_doc_instance_ids),
+    );
+  }
 
-  payload.site_photos.forEach((file) => {
-    formData.append("site_photos", file);
-  });
+  if (payload.site_photos?.length) {
+    payload.site_photos.forEach((file) => {
+      formData.append("site_photos", file);
+    });
+  }
+  if (payload.site_photo_instance_ids) {
+    formData.append(
+      "site_photo_instance_ids",
+      JSON.stringify(payload.site_photo_instance_ids),
+    );
+  }
 
   const { data } = await apiClient.post(
     `/leads/final-measurement/onboard`,
@@ -83,6 +158,7 @@ export interface uploadClientDocPayload {
   accountId: number;
   vendorId: number;
   createdBy: number;
+  productStructureInstanceId?: number;
   pptDocuments: File[];
   pythaDocuments: File[];
 }
@@ -95,6 +171,12 @@ export const UploadClientDocumantation = async (
   formData.append("account_id", payload.accountId.toString());
   formData.append("vendor_id", payload.vendorId.toString());
   formData.append("created_by", payload.createdBy.toString());
+  if (payload.productStructureInstanceId) {
+    formData.append(
+      "product_structure_instance_id",
+      payload.productStructureInstanceId.toString()
+    );
+  }
 
   payload.pptDocuments.forEach((file) => {
     formData.append("client_documentations_ppt", file);
@@ -175,6 +257,7 @@ export interface AddMoreFinalMeasurementFilesPayload {
   vendorId: number;
   createdBy: number;
   sitePhotos: File[];
+  productStructureInstanceId?: number;
 }
 
 export const addMoreFinalMeasurementFiles = async (
@@ -184,6 +267,12 @@ export const addMoreFinalMeasurementFiles = async (
   formData.append("lead_id", payload.leadId.toString());
   formData.append("vendor_id", payload.vendorId.toString());
   formData.append("created_by", payload.createdBy.toString());
+  if (payload.productStructureInstanceId) {
+    formData.append(
+      "product_structure_instance_id",
+      payload.productStructureInstanceId.toString(),
+    );
+  }
 
   payload.sitePhotos.forEach((file) => {
     formData.append("final_measurement_doc", file);
@@ -207,6 +296,7 @@ export interface AddMoreFinalMeasurementSitePhotosPayload {
   vendorId: number;
   createdBy: number;
   sitePhotos: File[];
+  productStructureInstanceId?: number;
 }
 
 export const addMoreFinalMeasurementSitePhotos = async (
@@ -216,6 +306,12 @@ export const addMoreFinalMeasurementSitePhotos = async (
   formData.append("lead_id", payload.leadId.toString());
   formData.append("vendor_id", payload.vendorId.toString());
   formData.append("created_by", payload.createdBy.toString());
+  if (payload.productStructureInstanceId) {
+    formData.append(
+      "product_structure_instance_id",
+      payload.productStructureInstanceId.toString(),
+    );
+  }
 
   payload.sitePhotos.forEach((file) => {
     formData.append("site_photos", file);
@@ -293,4 +389,22 @@ export const getCSPBookingPhotos = async (
   );
 
   return data.data;
+};
+
+export interface SkipFinalMeasurementPayload {
+  lead_id: number;
+  account_id: number;
+  vendor_id: number;
+  created_by: number;
+  critical_discussion_notes?: string;
+}
+
+export const skipFinalMeasurementStage = async (
+  payload: SkipFinalMeasurementPayload
+) => {
+  const { data } = await apiClient.post(
+    `/leads/final-measurement/skip`,
+    payload
+  );
+  return data;
 };

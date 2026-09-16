@@ -28,12 +28,14 @@ export default function GlobalLeadSearchModal({ open, onOpenChange }: Props) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
   const userId = useAppSelector((s) => s.auth.user?.id) || 0;
   const userType = useAppSelector((s) => s.auth.user?.user_type.user_type);
+  const franchiseId = useAppSelector((s) => s.auth.franchise_id) ?? undefined;
 
   const isAdminUser =
     userType?.toLowerCase() === "admin" ||
     userType?.toLowerCase() === "super-admin";
   const { data: adminStageData } = useGetAdminDashboardAllLeads(
     isAdminUser ? vendorId : 0,
+    isAdminUser ? franchiseId : undefined,
   );
   const { data: salesStageData } = useGetDashboardAllLeads(
     vendorId,
@@ -68,7 +70,7 @@ export default function GlobalLeadSearchModal({ open, onOpenChange }: Props) {
       "/dashboard/installation/under-installation/details",
     finalHandoverStage: "/dashboard/installation/final-handover/details",
 
-    projectCompletedStage: "", // no details page
+    projectCompletedStage: "/dashboard/installation/final-handover/details",
   };
 
   // -----------------------------------------------
@@ -118,7 +120,13 @@ export default function GlobalLeadSearchModal({ open, onOpenChange }: Props) {
       return;
     }
 
-    router.push(`${basePath}/${lead.id}?accountId=${lead.account_id}`);
+    if (stageKey === "projectCompletedStage") {
+      router.push(
+        `${basePath}/${lead.id}?accountId=${lead.account_id}&tab=servicing&source=servicing`
+      );
+    } else {
+      router.push(`${basePath}/${lead.id}?accountId=${lead.account_id}`);
+    }
   };
 
   return (

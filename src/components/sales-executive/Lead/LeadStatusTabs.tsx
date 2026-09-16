@@ -23,13 +23,20 @@ export function LeadStatusTabs({
   );
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const franchiseId = useAppSelector(
+    (state) => state.auth.franchise_id ?? state.auth.user?.franchise_id
+  );
 
-  const { data: myOpenLeads } = useVendorUserLeadsOpen(vendorId!, userId!);
+  const { data: myOpenLeads } = useVendorUserLeadsOpen(
+    vendorId!,
+    userId!,
+    franchiseId
+  );
 
   const isAdmin = useMemo(
     () =>
       userType?.toLowerCase() === "admin" ||
-      userType?.toLowerCase() === "super_admin",
+      userType?.toLowerCase() === "super-admin",
     [userType]
   );
 

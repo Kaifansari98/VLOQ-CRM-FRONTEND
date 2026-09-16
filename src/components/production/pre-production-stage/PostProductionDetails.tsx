@@ -19,7 +19,7 @@ import {
   FormControl,
   FormMessage,
 } from "@/components/ui/form";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -34,12 +34,15 @@ import {
   useGetNoOfBoxes,
   useUpdateNoOfBoxes,
 } from "@/api/production/production-api";
-import { useClientRequiredCompletionDate } from "@/api/tech-check";
-import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import { useInstanceStage, useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkProductionStage } from "@/components/utils/privileges";
 import WoodworkPackingDetailsSection from "../post-production-stage/WoodworkPackingDetailsSection";
 import HardwarePackingDetailsSection from "../post-production-stage/HardwarePackingDetailsSection";
 import PostProductionQcPhotosSection from "../post-production-stage/PostProductionQcPhotosSection";
+import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
+
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useLeadById } from "@/hooks/useLeadsQueries";
 
 // ✅ Define Zod Schema
 const boxSchema = z.object({
@@ -56,29 +59,68 @@ type BoxFormValues = z.infer<typeof boxSchema>;
 interface PostProductionDetailsProps {
   leadId: number;
   accountId?: number;
+  instanceId?: number | null;
 }
 
 export default function PostProductionDetails({
   leadId,
   accountId,
+  instanceId,
 }: PostProductionDetailsProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const customPrivilegeCodes = useAppSelector(
+    (s) => s.customPrivileges.codes,
+  );
+  const effectiveUserType =
+    userType === "admin" || userType === "head-site-supervisor"
+      ? "sales-executive"
+      : userType;
   const userId = useAppSelector((s) => s.auth.user?.id);
   const queryClient = useQueryClient();
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
 
-  const { data: boxesData, isLoading } = useGetNoOfBoxes(vendorId, leadId);
+    const { data, isLoading: instanceLoading } = useInstanceStage(
+    vendorId,
+    leadId,
+    instanceId!,
+  );
+  const leadStatusIns = data?.derived_stage;
+
+  const { data: boxesData, isLoading } = useGetNoOfBoxes(
+    vendorId,
+    leadId,
+    instanceId ?? undefined
+  );
   const noOfBoxesValue = boxesData?.data?.no_of_boxes || null;
+
+
+  const { data: leadResponse } = useLeadById(
+  leadId,
+  vendorId,
+  userId,
+);
+
+const lead = leadResponse?.data?.lead;
+
+const {
+  blockedTooltip,
+  shouldDisableBlockedActions,
+} = useLeadAccessControl({
+  leadId,
+  userType,
+  lead,
+});
 
   const [open, setOpen] = useState(false);
 
   // 🧩 API hook for update
   const { mutateAsync: updateNoBoxes, isPending } = useUpdateNoOfBoxes(
     vendorId,
-    leadId
+    leadId,
+    instanceId ?? undefined
   );
 
   // ✅ Form setup with live validation
@@ -88,10 +130,33 @@ export default function PostProductionDetails({
     mode: "onChange", // 🔥 ensures validation messages show immediately
   });
 
-  const { data: clientRequiredCompletionDateData } =
-    useClientRequiredCompletionDate(vendorId, leadId);
-
-  const canViewAndWork = canViewAndWorkProductionStage(userType, leadStatus);
+  const canViewAndWork = canViewAndWorkProductionStage(effectiveUserType ?? "", leadStatusIns ?? leadStatus);
+  const isAuditor = userType?.trim().toLowerCase() === "auditor";
+  const canEditBoxes =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.set_no_of_boxes.update_edit",
+        )
+      : canViewAndWork &&
+        userType?.toLowerCase() !== "pre-prod";
+  const canViewWoodwork =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.post_production_woodwork.view",
+        )
+      : true;
+  const canViewHardware =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.post_production_hardware.view",
+        )
+      : true;
+  const canViewQcPhotos =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.production.post_production_qc_photos.view",
+        )
+      : true;
 
   // ✅ Submit handler (fully validated)
   const onSubmit = async (values: BoxFormValues) => {
@@ -100,17 +165,20 @@ export default function PostProductionDetails({
       formData.append("user_id", String(userId || 0));
       formData.append("account_id", String(accountId || 0));
       formData.append("no_of_boxes", values.noOfBoxes);
+      if (instanceId != null) {
+        formData.append("instance_id", String(instanceId));
+      }
 
       await updateNoBoxes(formData);
 
-      toast.success("No. of Boxes updated successfully!");
+      toastManager.add({ title: "No. of Boxes updated successfully!", type: "success" });
       queryClient.invalidateQueries({ queryKey: ["noOfBoxes"] });
+
+      queryClient.invalidateQueries({ queryKey: ["lead-product-structure-instances"],exact: false }); // Invalidate related queries to reflect changes across the board
       form.reset();
       setOpen(false);
     } catch (err: any) {
-      toast.error(
-        err?.response?.data?.message || "Failed to update No. of Boxes"
-      );
+      toastManager.add({ title: err?.response?.data?.message || "Failed to update No. of Boxes", type: "error" });
     }
   };
 
@@ -124,10 +192,13 @@ export default function PostProductionDetails({
         </div>
       ),
       color: "bg-zinc-900 hover:bg-zinc-900",
+      disabled: !canViewWoodwork,
+      disabledReason: "You don’t have permission to access Woodwork.",
       cardContent: (
         <WoodworkPackingDetailsSection
           leadId={leadId}
           accountId={accountId ?? null}
+          instanceId={instanceId}
         />
       ),
     },
@@ -139,10 +210,13 @@ export default function PostProductionDetails({
         </div>
       ),
       color: "bg-zinc-900 hover:bg-zinc-900",
+      disabled: !canViewHardware,
+      disabledReason: "You don’t have permission to access Hardware.",
       cardContent: (
         <HardwarePackingDetailsSection
           leadId={leadId}
           accountId={accountId ?? null}
+          instanceId={instanceId}
         />
       ),
     },
@@ -154,10 +228,13 @@ export default function PostProductionDetails({
         </div>
       ),
       color: "bg-zinc-900 hover:bg-zinc-900",
+      disabled: !canViewQcPhotos,
+      disabledReason: "You don’t have permission to access QC Photos.",
       cardContent: (
         <PostProductionQcPhotosSection
           leadId={leadId}
           accountId={accountId ?? null}
+          instanceId={instanceId}
         />
       ),
     },
@@ -181,55 +258,17 @@ export default function PostProductionDetails({
         animate="visible"
         className="w-full space-y-4 mb-3"
       >
-        {/* -------- Client Required Completion Section -------- */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between bg-muted/50 dark:bg-neutral-900/50 border border-border rounded-xl px-4 py-3 backdrop-blur-sm"
+          className="flex flex-col gap-3 rounded-2xl border border-border bg-muted/30 px-4 py-3  md:flex-row md:items-center md:justify-between"
         >
-          <div className="flex items-center gap-4">
-            {/* Animated green indicator */}
-            <motion.div
-              className="
-        w-3 h-3 rounded-full
-        bg-green-500 
-        shadow-[0_0_8px_rgba(34,197,94,0.6)]
-      "
-              animate={{
-                scale: [1, 1.25, 1],
-                opacity: [0.75, 1, 0.75],
-              }}
-              transition={{
-                repeat: Infinity,
-                duration: 1.6,
-                ease: "easeInOut",
-              }}
-            />
-
-            {/* Text + Date */}
-            <div className="flex flex-col">
-              <p className="text-xs font-medium text-muted-foreground tracking-wide">
-                Client Required Delivery Date
-              </p>
-
-              <span className="text-sm font-semibold text-foreground">
-                {clientRequiredCompletionDateData?.client_required_order_login_complition_date
-                  ? new Date(
-                      clientRequiredCompletionDateData?.client_required_order_login_complition_date
-                    ).toLocaleDateString("en-GB", {
-                      weekday: "long",
-                      day: "2-digit",
-                      month: "long",
-                      year: "numeric",
-                    })
-                  : "Not specified"}
-              </span>
-            </div>
-          </div>
-
-          {/* ---------- RIGHT: No Of Boxes section restored ---------- */}
-          <div className="flex items-center justify-center">
+          <ClientRequiredDeliveryDateBanner
+            leadId={leadId}
+            className="flex-1 border-0 bg-transparent px-0 py-0 shadow-none dark:bg-transparent"
+          />
+          <div className="flex items-center justify-center md:justify-end">
             {isLoading ? (
               <Badge
                 variant="secondary"
@@ -238,95 +277,113 @@ export default function PostProductionDetails({
                 Loading...
               </Badge>
             ) : noOfBoxesValue ? (
-              <CustomeTooltip
-                truncateValue={
-                  <Card
-                    className={`
-                  flex items-center gap-4 px-4 py-1 
-                  border border-border/60 
-                  rounded-lg 
-                  bg-background backdrop-blur-sm 
-                  transition-all duration-300 hover:border-primary/40
-                  ${!canViewAndWork ? "opacity-70" : ""}
-                `}
-                  >
-                    <CardContent className="flex items-center gap-4 p-0">
-                      <div className="flex flex-col items-start">
-                        <span className="text-xs text-muted-foreground uppercase tracking-wide">
-                          No. of Boxes
-                        </span>
-                        <span className="text-sm font-semibold text-foreground">
-                          {noOfBoxesValue} Box{noOfBoxesValue > 1 ? "es" : ""}
-                        </span>
-                      </div>
+<CustomeTooltip
+  truncateValue={
+    <span>
+      <Card
+        className={`
+          flex min-w-[230px] items-center gap-4 rounded-2xl bg-background px-4 py-2
+          transition-all duration-300 hover:border-primary/40
+          ${
+            !canEditBoxes || shouldDisableBlockedActions
+              ? "opacity-70"
+              : ""
+          }
+        `}
+      >
+        <CardContent className="flex items-center gap-4 p-0">
+          <div className="flex flex-col items-start">
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              No. of Boxes
+            </span>
 
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          form.setValue("noOfBoxes", String(noOfBoxesValue));
-                          setOpen(true);
-                        }}
-                        disabled={!canViewAndWork}
-                        className="
-                      rounded-full 
-                      hover:bg-primary/10 
-                      transition-colors duration-200
-                    "
-                      >
-                        <Pencil
-                          size={18}
-                          className={`${
-                            !canViewAndWork
-                              ? "text-muted-foreground"
-                              : "text-primary"
-                          }`}
-                        />
-                      </Button>
-                    </CardContent>
-                  </Card>
-                }
-                value={
-                  !canViewAndWork && userType === "factory"
-                    ? "This lead stage has progressed. Factory users cannot modify this section."
-                    : !canViewAndWork
-                    ? "You do not have access to edit the number of boxes."
-                    : "Click to edit the number of boxes for this order."
-                }
-              />
-            ) : (
-              <CustomeTooltip
-                truncateValue={
-                  <div
-                    className={`
-                  ${!canViewAndWork ? "opacity-70 pointer-events-none" : ""}
-                `}
-                  >
-                    <Button
-                      onClick={() => setOpen(true)}
-                      disabled={!canViewAndWork}
-                      className="
-                    flex items-center gap-2 
-                    px-4 py-2.5 
-                    rounded-lg 
-                    bg-gradient-to-r from-zinc-700 to-zinc-800
-                    text-white font-medium 
-                    shadow-sm
-                    hover:shadow-md hover:brightness-105
-                    transition-all duration-300
-                  "
-                    >
-                      <PackagePlus className="h-4 w-4" />
-                      <span>Set No. Of Boxes</span>
-                    </Button>
-                  </div>
-                }
-                value={
-                  !canViewAndWork
-                    ? "You do not have access to set the number of boxes."
-                    : "Click to set the number of boxes for this order."
-                }
-              />
+            <span className="text-sm font-semibold text-foreground sm:text-base">
+              {noOfBoxesValue} Box{noOfBoxesValue > 1 ? "es" : ""}
+            </span>
+          </div>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              if (shouldDisableBlockedActions) return;
+
+              form.setValue(
+                "noOfBoxes",
+                String(noOfBoxesValue)
+              );
+
+              setOpen(true);
+            }}
+            disabled={
+              !canEditBoxes ||
+              shouldDisableBlockedActions
+            }
+            className="rounded-full hover:bg-primary/10 transition-colors duration-200"
+          >
+            <Pencil
+              size={18}
+              className={`${
+                !canEditBoxes ||
+                shouldDisableBlockedActions
+                  ? "text-muted-foreground"
+                  : "text-primary"
+              }`}
+            />
+          </Button>
+        </CardContent>
+      </Card>
+    </span>
+  }
+  value={
+    shouldDisableBlockedActions
+      ? blockedTooltip
+      : userType?.toLowerCase() === "pre-prod"
+      ? "You cannot edit the number of boxes."
+      : !canEditBoxes
+      ? "You do not have access to edit the number of boxes."
+      : "Click to edit the number of boxes for this order."
+  }
+/>
+            ) : isAuditor ? null : (
+        <CustomeTooltip
+  truncateValue={
+    <span>
+      <Button
+        onClick={() => {
+          if (shouldDisableBlockedActions) return;
+          setOpen(true);
+        }}
+        disabled={
+          !canEditBoxes ||
+          shouldDisableBlockedActions
+        }
+        className="
+          flex items-center gap-2
+          px-4 py-2.5
+          rounded-lg
+          bg-gradient-to-r from-zinc-700 to-zinc-800
+          text-white font-medium
+          shadow-sm
+          hover:shadow-md hover:brightness-105
+          transition-all duration-300
+        "
+      >
+        <PackagePlus className="h-4 w-4" />
+        <span>Set No. Of Boxes</span>
+      </Button>
+    </span>
+  }
+  value={
+    shouldDisableBlockedActions
+      ? blockedTooltip
+      : userType?.toLowerCase() === "pre-prod"
+      ? "You cannot set the number of boxes."
+      : !canEditBoxes
+      ? "You do not have access to set the number of boxes."
+      : "Click to set the number of boxes for this order."
+  }
+/>
             )}
           </div>
         </motion.div>

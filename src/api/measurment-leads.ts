@@ -37,6 +37,7 @@ export interface CompletedPayload {
   updated_by: number;
   closed_at: string;
   closed_by: number;
+  remark?: string;
 }
 
 export const CompletedUpdateTheTaskIsmAndFollowUp = async (
@@ -88,6 +89,12 @@ export interface ReschedulePayload {
   remark: string;
 }
 
+export interface RescheduleInitialSiteMeasurementPayload {
+  updated_by: number;
+  due_date: string;
+  remark: string;
+}
+
 export const RescheduleTaskFollowUp = async (
   leadId: number,
   taskId: number,
@@ -105,9 +112,65 @@ export const RescheduleTaskFollowUp = async (
   }
 };
 
+export const rescheduleInitialSiteMeasurementTask = async (
+  leadId: number,
+  taskId: number,
+  payload: RescheduleInitialSiteMeasurementPayload
+) => {
+  try {
+    const { data } = await apiClient.patch(
+      `/leads/leadId/${leadId}/taskId/${taskId}/reschedule-initial-site-measurement`,
+      payload
+    );
+    return data;
+  } catch (error) {
+    console.error("Error rescheduling Initial Site Measurement task:", error);
+    throw error;
+  }
+};
+
 export const getSiteMeasurmentLeadById = async (leadId: number) => {
   const { data } = await apiClient.get(
     `/leads/initial-site-measurement/leadId/${leadId}`
   );
   return data.data;
+};
+
+export interface CheckIsmUploadedResponse {
+  isUploaded: boolean;
+}
+
+export const checkIsmUploadedAPI = async (
+  leadId: number
+): Promise<CheckIsmUploadedResponse> => {
+  const { data } = await apiClient.get<{ success: boolean; data: CheckIsmUploadedResponse }>(
+    `/leads/initial-site-measurement/leadId/${leadId}/check-ism-uploaded`
+  );
+  return data.data;
+};
+
+export const uploadAdditionalSitePhotosAPI = async (formData: FormData) => {
+  const { data } = await apiClient.post(
+    `/leads/initial-site-measurement/site-photos/upload`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+  return data;
+};
+
+export const uploadMeasurementDocumentsAPI = async (formData: FormData) => {
+  const { data } = await apiClient.post(
+    `/leads/initial-site-measurement/measurement-documents/upload`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+  return data;
 };

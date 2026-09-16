@@ -22,13 +22,15 @@ interface CustomeDatePickerProps {
     | "futureAfterTwoDays"
     | "pastWeekOnly"
     | "pastMonthOnly"
-    | "installationInterval";
+    | "installationInterval"
+    | "lastThreeDays";
   minDate?: string; // ✅ new
   disabledReason?: string; // ✅ new
   intervalStartDate?: string;
   intervalEndDate?: string;
   disabledDates?: string[];
   disabledDatesReason?: string;
+  disableSundays?: boolean;
 }
 
 export default function CustomeDatePicker({
@@ -41,6 +43,7 @@ export default function CustomeDatePicker({
   intervalEndDate,
   disabledDates,
   disabledDatesReason,
+  disableSundays = false,
 }: CustomeDatePickerProps) {
   const [date, setDate] = React.useState<Date | undefined>(
     value ? parseISO(value) : undefined
@@ -98,6 +101,9 @@ export default function CustomeDatePicker({
   const disableDates = (date: Date) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
+    if (disableSundays && date.getDay() === 0) return true;
+
     if (disabledDateSet.size > 0) {
       const dateKey = format(date, "yyyy-MM-dd");
       if (disabledDateSet.has(dateKey)) return true;
@@ -151,6 +157,17 @@ export default function CustomeDatePicker({
       return date < monthAgo || date > today;
     }
 
+
+    if (restriction === "lastThreeDays") {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const twoDaysAgo = new Date(today);
+  twoDaysAgo.setDate(today.getDate() - 2);
+
+  // Allow only: today, yesterday, day before yesterday
+  return date < twoDaysAgo || date > today;
+}
     return false;
   };
 

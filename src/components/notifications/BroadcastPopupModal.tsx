@@ -1,0 +1,386 @@
+"use client";
+
+import React, { useState, useEffect, useMemo } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useAppSelector } from "@/redux/store";
+import {
+  useBroadcasts,
+  getReadBroadcastIds,
+  markBroadcastAsReadLocal,
+  stripHtmlAndEntities,
+} from "@/api/broadcast";
+import { BroadcastItem } from "@/types/broadcast";
+import { Button } from "@/components/ui/button";
+import {
+  Megaphone,
+  FileText,
+  ArrowRight,
+  Clock,
+  Sparkles,
+  User,
+  Paperclip,
+  Video,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+
+const POPUP_DURATION_SECONDS = 15;
+
+export function BroadcastPopupModal() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const user = useAppSelector((state) => state.auth.user);
+  const userId = user?.id;
+  const vendorId = user?.vendor_id;
+
+  const isBroadcastPage = useMemo(() => {
+    if (typeof window !== "undefined") {
+      const currentPath = window.location.pathname;
+      if (currentPath.startsWith("/dashboard/broadcast") || currentPath.includes("/broadcast")) {
+        return true;
+      }
+    }
+    return Boolean(
+      pathname?.startsWith("/dashboard/broadcast") || pathname?.includes("/broadcast")
+    );
+  }, [pathname]);
+
+  const isMasterAdmin = useMemo(() => {
+    if (!user) return false;
+    const roleName = (
+      user.user_type?.user_type ||
+      user.user_role ||
+      ""
+    ).toLowerCase().trim();
+    return (
+      roleName === "master-admin" ||
+      roleName === "masteradmin" ||
+      roleName === "master" ||
+      roleName === "vloq master" ||
+      roleName === "master_admin"
+    );
+  }, [user]);
+
+  const isSuperAdmin = useMemo(() => {
+    if (!user) return false;
+    const roleName = (
+      user.user_type?.user_type ||
+      user.user_role ||
+      ""
+    ).toLowerCase().trim();
+    return (
+      roleName === "super-admin" ||
+      roleName === "superadmin" ||
+      roleName === "super admin" ||
+      roleName === "super_admin"
+    );
+  }, [user]);
+
+  // Fetch broadcasts for current user every 10 seconds (disabled for super admins)
+  const { data: broadcasts = [] } = useBroadcasts({
+    vendorId: isSuperAdmin ? undefined : (vendorId ?? undefined),
+    forMe: true,
+  });
+
+  const [dismissedIds, setDismissedIds] = useState<string[]>([]);
+  const [readIds, setReadIds] = useState<string[]>([]);
+  const [activeBroadcast, setActiveBroadcast] = useState<BroadcastItem | null>(null);
+  const [timeLeft, setTimeLeft] = useState<number>(POPUP_DURATION_SECONDS);
+  const [isNavigating, setIsNavigating] = useState<boolean>(false);
+
+  // Sync read and dismissed IDs from localStorage
+  useEffect(() => {
+    if (typeof window === "undefined" || !userId || isSuperAdmin) return;
+
+    const loadLocalState = () => {
+      setReadIds(getReadBroadcastIds(userId));
+      try {
+        const storedDismissed = localStorage.getItem(`dismissed_popup_ids_${userId}`);
+        setDismissedIds(storedDismissed ? JSON.parse(storedDismissed) : []);
+      } catch (e) {
+        setDismissedIds([]);
+      }
+    };
+
+    loadLocalState();
+    window.addEventListener("broadcasts-read-updated", loadLocalState);
+    window.addEventListener("storage", loadLocalState);
+
+    return () => {
+      window.removeEventListener("broadcasts-read-updated", loadLocalState);
+      window.removeEventListener("storage", loadLocalState);
+    };
+  }, [userId, isSuperAdmin]);
+
+  // Reset navigation state on any route change
+  useEffect(() => {
+    setIsNavigating(false);
+  }, [pathname]);
+
+  // Find candidate unread & undismissed published broadcast
+  useEffect(() => {
+    const currentIsBroadcastPage =
+      (typeof window !== "undefined" &&
+        (window.location.pathname.startsWith("/dashboard/broadcast") ||
+         window.location.pathname.includes("/broadcast"))) ||
+      isBroadcastPage;
+
+    const isInactiveUser = Boolean(
+      user?.status && user.status.toLowerCase() !== "active"
+    );
+
+    if (
+      isSuperAdmin ||
+      isInactiveUser ||
+      currentIsBroadcastPage ||
+      isNavigating ||
+      !broadcasts ||
+      broadcasts.length === 0 ||
+      !userId
+    ) {
+      if (activeBroadcast) setActiveBroadcast(null);
+      return;
+    }
+
+    const publishedBroadcasts = broadcasts
+      .filter((b) => b.status === "published")
+      .slice()
+      .sort((a, b) => {
+        if (a.numericId && b.numericId) {
+          return a.numericId - b.numericId;
+        }
+        const timeA = new Date(a.rawPublishAt || a.updatedAt || a.publishDate || 0).getTime();
+        const timeB = new Date(b.rawPublishAt || b.updatedAt || b.publishDate || 0).getTime();
+        return timeA - timeB;
+      });
+
+    const parseDateToMs = (val: any): number => {
+      if (!val) return 0;
+      if (typeof val === "number") return val;
+      const parsed = new Date(val).getTime();
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    const userCreatedAtTime = parseDateToMs((user as any)?.created_at || (user as any)?.createdAt);
+    const userUpdatedAtTime = parseDateToMs((user as any)?.updated_at || (user as any)?.updatedAt);
+    const userBaselineTime = Math.max(userCreatedAtTime, userUpdatedAtTime);
+
+    const pendingBroadcast = publishedBroadcasts.find((b) => {
+      const numIdStr = String(b.numericId ?? "");
+      const fullIdStr = String(b.id ?? "");
+
+      const isRead = Boolean(b.isRead || readIds.includes(numIdStr) || readIds.includes(fullIdStr));
+      const isDismissed =
+        dismissedIds.includes(numIdStr) || dismissedIds.includes(fullIdStr);
+
+      if (isRead || isDismissed) return false;
+
+      // STRICT RULE: Only trigger popup modal for users captured in notification list at broadcast send time
+      if (b.wasSentToMe === false) return false;
+
+      // Do NOT trigger popup modal for broadcasts published BEFORE the user was added or reactivated
+      if (userBaselineTime > 0) {
+        const rawTime = b.rawPublishAt || (b as any).publish_at || (b as any).created_at;
+        const broadcastTime = parseDateToMs(rawTime);
+        if (broadcastTime > 0 && broadcastTime < userBaselineTime - 30000) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
+    if (pendingBroadcast) {
+      if (!activeBroadcast || activeBroadcast.id !== pendingBroadcast.id) {
+        setActiveBroadcast(pendingBroadcast);
+        setTimeLeft(POPUP_DURATION_SECONDS);
+      }
+    } else {
+      setActiveBroadcast(null);
+    }
+  }, [
+    broadcasts,
+    readIds,
+    dismissedIds,
+    userId,
+    activeBroadcast,
+    isSuperAdmin,
+    isBroadcastPage,
+    isNavigating,
+  ]);
+
+  const handleDismiss = () => {
+    if (!activeBroadcast || !userId) return;
+
+    const bId = String(activeBroadcast.numericId || activeBroadcast.id);
+    const updated = Array.from(new Set([...dismissedIds, bId, activeBroadcast.id]));
+
+    setDismissedIds(updated);
+    try {
+      localStorage.setItem(`dismissed_popup_ids_${userId}`, JSON.stringify(updated));
+    } catch (e) {
+      // ignore
+    }
+    setActiveBroadcast(null);
+  };
+
+  // 15-second Countdown timer
+  useEffect(() => {
+    if (isSuperAdmin || isBroadcastPage || isNavigating || !activeBroadcast) return;
+
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => prev - 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [activeBroadcast, isSuperAdmin, isBroadcastPage, isNavigating]);
+
+  // Auto-dismiss when timer reaches 0
+  useEffect(() => {
+    if (timeLeft <= 0 && activeBroadcast) {
+      handleDismiss();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeLeft, activeBroadcast]);
+
+  const handleViewBroadcast = () => {
+    if (!activeBroadcast || !userId) return;
+
+    const targetId = activeBroadcast.id;
+    const numericId = activeBroadcast.numericId || activeBroadcast.id;
+    const numIdStr = String(numericId);
+
+    // Suppress further popup triggers during navigation
+    setIsNavigating(true);
+
+    // Mark as read locally (both numeric and string ID)
+    markBroadcastAsReadLocal(numericId, userId);
+    markBroadcastAsReadLocal(targetId, userId);
+
+    // Update dismissed IDs in state and localStorage
+    const updated = Array.from(new Set([...dismissedIds, numIdStr, targetId]));
+    setDismissedIds(updated);
+    try {
+      localStorage.setItem(`dismissed_popup_ids_${userId}`, JSON.stringify(updated));
+    } catch (e) {
+      // ignore
+    }
+
+    // Immediately close current modal
+    setActiveBroadcast(null);
+
+    // Navigate directly to broadcast page with target ID query param
+    router.push(`/dashboard/broadcast?id=${targetId}`);
+  };
+
+  const isInactive = Boolean(user?.status && user.status.toLowerCase() !== "active");
+  if (isSuperAdmin || isMasterAdmin || isInactive || isBroadcastPage || isNavigating || !activeBroadcast || !user) return null;
+
+  const contentSnippet = stripHtmlAndEntities(activeBroadcast.content || "");
+  const timerPercentage = (timeLeft / POPUP_DURATION_SECONDS) * 100;
+  const fileCount = activeBroadcast.attachments?.length || 0;
+  const videoCount = activeBroadcast.videoLinks?.length || 0;
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md font-sans">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.9, y: 20 }}
+          transition={{ type: "spring", stiffness: 350, damping: 25 }}
+          className="relative w-full max-w-2xl bg-card text-card-foreground border border-border/80 shadow-2xl rounded-3xl overflow-hidden p-7 sm:p-8"
+        >
+          {/* Top Progress Timer Bar (Black/Grey Gradient) */}
+          <div className="absolute top-0 left-0 right-0 h-1 bg-muted/40 overflow-hidden">
+            <motion.div
+              className="h-full bg-gradient-to-r from-zinc-900 via-zinc-700 to-zinc-900 dark:from-zinc-100 dark:via-zinc-300 dark:to-zinc-100"
+              initial={{ width: "100%" }}
+              animate={{ width: `${timerPercentage}%` }}
+              transition={{ duration: 1, ease: "linear" }}
+            />
+          </div>
+
+          {/* 1. Title at Top */}
+          <div className="pt-1 mb-3 pr-10">
+            <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-foreground line-clamp-2 leading-snug">
+              {activeBroadcast.title}
+            </h2>
+          </div>
+
+          {/* 2. Badges Below Title */}
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
+              <Sparkles className="w-3.5 h-3.5" /> New Broadcast
+            </span>
+
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-muted text-foreground border border-border/60">
+              {activeBroadcast.type === "circular" ? (
+                <Megaphone className="w-3.5 h-3.5" />
+              ) : (
+                <FileText className="w-3.5 h-3.5" />
+              )}
+              {activeBroadcast.type}
+            </span>
+
+            {activeBroadcast.type === "document" && activeBroadcast.category && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/50">
+                {activeBroadcast.category}
+              </span>
+            )}
+
+            {/* File Attachments Count Badge */}
+            {fileCount > 0 && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50">
+                <Paperclip className="w-3.5 h-3.5" />
+                +{fileCount} {fileCount === 1 ? "File" : "Files"}
+              </span>
+            )}
+
+            {/* Video Attachments Count Badge */}
+            {videoCount > 0 && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-900/50">
+                <Video className="w-3.5 h-3.5" />
+                +{videoCount} {videoCount === 1 ? "Video" : "Videos"}
+              </span>
+            )}
+
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground ml-auto">
+              <Clock className="w-3.5 h-3.5" /> {timeLeft}s
+            </span>
+          </div>
+
+          {/* Author & Date metadata */}
+          <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground mb-4">
+            <User className="w-4 h-4 text-primary" />
+            <span>
+              Created by{" "}
+              <strong className="text-foreground font-semibold">
+                {activeBroadcast.updatedBy?.name || "Super Admin"}
+              </strong>
+            </span>
+            <span>•</span>
+            <span>{activeBroadcast.publishDate || activeBroadcast.updatedAt}</span>
+          </div>
+
+          {/* Preview Snippet */}
+          <div className="p-4 rounded-2xl bg-muted/30 border border-border/40 mb-6 overflow-hidden max-h-48 overflow-y-auto">
+            <p className="text-sm text-muted-foreground leading-relaxed break-words">
+              {contentSnippet || "New announcement details are available to read."}
+            </p>
+          </div>
+
+          {/* Footer Action Buttons */}
+          <div className="flex items-center justify-end gap-3 pt-2 border-t">
+            <Button
+              size="sm"
+              onClick={handleViewBroadcast}
+              className="rounded-xl h-9 text-xs px-4 gap-1.5 shadow-md bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
+            >
+              View Broadcast <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  );
+}

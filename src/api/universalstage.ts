@@ -28,6 +28,43 @@ export interface ProductStructureMapping {
   productStructure: ProductStructure;
 }
 
+export interface B2BRequirementType {
+  id: number;
+  type: string;
+}
+
+export interface LeadB2BRequirementMapping {
+  b2bRequirementType: B2BRequirementType;
+}
+
+export interface LeadProcessBriefMapping {
+  processBrief: {
+    id: number;
+    name: string;
+  };
+  b2bRequirementType?: B2BRequirementType | null;
+}
+
+export interface ProductStructureInstance {
+  id: number;
+  title: string;
+  description?: string | null;
+  quantity_index: number;
+  product_structure_id: number;
+  is_tech_check_completed?: boolean | null;
+  tech_check_completed_at?: string | null;
+  is_order_login_filled?: boolean | null;
+  is_order_login_completed?: boolean | null;
+  order_login_completed_at?: string | null;
+  is_pre_prod_done?: boolean | null;
+  pre_prod_done_at?: string | null;
+  is_under_production?: boolean | null;
+  under_production_at?: string | null;
+  is_post_production?: boolean | null;
+  is_production_completed?: boolean | null;
+  productStructure?: ProductStructure | null;
+}
+
 // -------------------------
 // Needed Child Objects
 // -------------------------
@@ -66,6 +103,8 @@ export interface pagination {
 export interface UniversalStageLead {
   id: number;
   lead_code: string;
+  is_small_order_request?: boolean;
+  is_draft?: boolean;
 
   firstname: string;
   lastname: string;
@@ -79,6 +118,7 @@ export interface UniversalStageLead {
   site_map_link: string | null;
 
   archetech_name: string | null;
+  priority?: string | null;
 
   designer_remark: string | null;
 
@@ -93,9 +133,16 @@ export interface UniversalStageLead {
   source: SourceInfo | null;
 
   assignedTo?: AssignedUser | null;
+  smallOrderRequest?: {
+    is_request_resolved?: boolean;
+    request_source?: string | null;
+  } | null;
 
   productMappings: ProductMapping[];
+  leadB2BReqMappings?: LeadB2BRequirementMapping[];
+  leadProcessBriefs?: LeadProcessBriefMapping[];
   leadProductStructureMapping: ProductStructureMapping[];
+  productStructureInstances?: ProductStructureInstance[];
 }
 
 // -------------------------
@@ -112,6 +159,7 @@ export interface UniversalStageLeadResponse {
 export const getUniversalStageLeads = async (
   vendorId: number,
   userId: number,
+  franchiseId: number,
   tag: string,
   page: number,
   limit: number,
@@ -119,7 +167,7 @@ export const getUniversalStageLeads = async (
   const { data } = await apiClient.get(
     `/leads/bookingStage/universal-table-data/vendorId/${vendorId}`,
     {
-      params: { userId, tag, page, limit },
+      params: { userId, franchise_id: franchiseId, tag, page, limit },
     },
   );
 
@@ -129,15 +177,31 @@ export const getUniversalStageLeads = async (
 export const useUniversalStageLeads = (
   vendorId: number,
   userId: number,
+  franchiseId: number,
   tag: string,
   page: number,
   pageSize: number,
 ) => {
   return useQuery<UniversalStageLeadResponse>({
-    queryKey: ["universal-stage-leads", vendorId, userId, tag, page, pageSize],
+    queryKey: [
+      "universal-stage-leads",
+      vendorId,
+      userId,
+      franchiseId,
+      tag,
+      page,
+      pageSize,
+    ],
     queryFn: () =>
-      getUniversalStageLeads(vendorId, userId, tag, page, pageSize),
-    enabled: !!vendorId && !!userId,
+      getUniversalStageLeads(
+        vendorId,
+        userId,
+        franchiseId,
+        tag,
+        page,
+        pageSize
+      ),
+    enabled: !!vendorId && !!userId && !!franchiseId,
     refetchOnWindowFocus: false,
     staleTime: 5 * 60 * 1000,
   });
@@ -145,12 +209,14 @@ export const useUniversalStageLeads = (
 
 export interface UniversalStagePostPayload {
   userId: number;
+  franchise_id?: number;
+  franchise_ids?: number[];
   tag?: string;
   page: number;
   limit: number;
 
   filter_name: string;
-  filter_lead_code: string;
+  filter_lead_code?: string;
   contact: string;
   alt_contact_no: string;
   email: string;
@@ -164,15 +230,25 @@ export interface UniversalStagePostPayload {
   source: number[];
   stagetag?: string[];
   assign_to: number[];
+  priority?: string[];
   site_map_link: boolean | null;
 
   created_at: SortOrder;
+  global_search?: string;
+  date_range?: {
+    from: string;
+    to: string;
+  };
+  production_status?: string;
+  pending_services?: boolean;
+  franchises?: number[];
 }
 
 export const postUniversalStageLeads = async (
   vendorId: number,
   payload: UniversalStagePostPayload,
 ): Promise<UniversalStageLeadResponse> => {
+  console.log("[API] postUniversalStageLeads", { vendorId, payload });
   const { data } = await apiClient.post(
     `/leads/bookingStage/universal-table-data-2/vendorId/${vendorId}`,
     payload,
@@ -219,14 +295,18 @@ export const useUniversalStageLeadsPost = (
 
     enabled: !!vendorId && !!payload?.userId,
 
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    staleTime: 10 * 1000,
+    refetchOnWindowFocus: true,
   });
 };
+
+
 
 // hooks/postVendorLeadsByTag.ts
 export interface VendorLeadsByTagPostPayload {
   userId?: number | null; // optional (for exclusion logic)
+  franchise_id?: number;
+  franchise_ids?: number[];
   tag: string;
 
   page: number;
@@ -250,6 +330,7 @@ export interface VendorLeadsByTagPostPayload {
   source?: number[];
   stagetag?: string[];
   assign_to?: number[];
+  priority?: string[];
   site_map_link?: boolean | null;
 
   created_at?: SortOrder;
@@ -257,12 +338,19 @@ export interface VendorLeadsByTagPostPayload {
     from: string;
     to: string;
   };
+  activity_status?: string;
+  production_status?: string;
+  pending_services?: boolean;
+  franchises?: number[];
+  strict_status_tag?: boolean;
+  material_issue_ready_only?: boolean;
 }
 
 export const postVendorLeadsByTag = async (
   vendorId: number,
   payload: VendorLeadsByTagPostPayload,
 ): Promise<UniversalStageLeadResponse> => {
+  console.log("[API] postVendorLeadsByTag", { vendorId, payload });
   const { data } = await apiClient.post(
     `/leads/bookingStage/vendorId/${vendorId}/vendor-leads-by-tag/all-leads`,
     payload,
@@ -282,7 +370,74 @@ export const useVendorLeadsByTagPost = (
 
     enabled: !!vendorId && !!payload?.tag,
 
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
+    staleTime: 10 * 1000,
+    refetchOnWindowFocus: true,
+  });
+};
+
+// -------------------------
+// Draft Lead Table Data
+// -------------------------
+export interface DraftLeadTableDataPostPayload {
+  userId: number;
+  franchise_id?: number;
+  tag?: string;
+
+  page: number;
+  limit: number;
+
+  global_search?: string;
+
+  filter_lead_code?: string;
+  filter_name?: string;
+  contact?: string;
+
+  alt_contact_no?: string;
+  email?: string;
+  site_address?: string;
+  archetech_name?: string;
+  designer_remark?: string;
+
+  furniture_type?: number[];
+  furniture_structure?: number[];
+  site_type?: number[];
+  source?: number[];
+  assign_to?: number[];
+  priority?: string[];
+  site_map_link?: boolean | null;
+
+  created_at?: SortOrder;
+  date_range?: {
+    from: string;
+    to: string;
+  };
+}
+
+export const postDraftLeadTableData = async (
+  vendorId: number,
+  payload: DraftLeadTableDataPostPayload,
+): Promise<UniversalStageLeadResponse> => {
+  console.log("[API] postDraftLeadTableData", { vendorId, payload });
+  const { data } = await apiClient.post(
+    `/leads/bookingStage/draft-lead-table-data/vendorId/${vendorId}`,
+    payload,
+  );
+
+  return data;
+};
+
+export const useDraftLeadTableDataPost = (
+  vendorId: number,
+  payload: DraftLeadTableDataPostPayload,
+) => {
+  return useQuery<UniversalStageLeadResponse>({
+    queryKey: ["draft-lead-table-data", vendorId, payload],
+
+    queryFn: () => postDraftLeadTableData(vendorId, payload),
+
+    enabled: !!vendorId && !!payload?.userId,
+
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 };

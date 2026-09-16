@@ -33,7 +33,7 @@ import {
   useEditBooking,
   useSiteSupervisors,
 } from "@/hooks/booking-stage/use-booking";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
 
 // ✅ Zod schema
@@ -71,7 +71,6 @@ const BookingEditModal: React.FC<LeadViewModalProps> = ({
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const leadId = data?.id;
-  const clientId = 1;
   const accountId = data?.accountId;
 
   const {
@@ -106,14 +105,13 @@ const BookingEditModal: React.FC<LeadViewModalProps> = ({
   }, [data, form]);
 
   const handleSubmit = (values: BookingFormValues) => {
-    if (!leadId || !vendorId || !userId || !accountId || !clientId) return;
+    if (!leadId || !vendorId || !userId || !accountId) return;
     editBooking(
       {
         lead_id: leadId,
         account_id: accountId,
         vendor_id: vendorId,
         created_by: userId,
-        client_id: clientId,
         bookingAmount: values.amount_received,
         finalBookingAmount: values.final_booking_amount,
         siteSupervisorId: Number(values.assign_to),
@@ -121,14 +119,14 @@ const BookingEditModal: React.FC<LeadViewModalProps> = ({
       },
       {
         onSuccess: () => {
-          toast.success("Booking updated successfully");
+          toastManager.add({ title: "Booking updated successfully", type: "success" });
           queryClient.invalidateQueries({
             queryKey: ["bookingLeads", vendorId],
           });
           form.reset();
         },
         onError: (error: any) => {
-          toast.error(error?.response?.data?.message || "Something went wrong");
+          toastManager.add({ title: error?.response?.data?.message || "Something went wrong", type: "error" });
           console.log("Error updating booking:", error);
         },
       }
@@ -160,7 +158,22 @@ const BookingEditModal: React.FC<LeadViewModalProps> = ({
           <div className="px-5 py-4">
             <Form {...form}>
               <form
-                onSubmit={form.handleSubmit(handleSubmit)}
+                onSubmit={form.handleSubmit(handleSubmit, (errors) => {
+                  const errorKeys = Object.keys(errors);
+                  if (errorKeys.length > 0) {
+                    const firstErrorKey = errorKeys[0];
+                    const el = document.querySelector(`[data-name="${firstErrorKey}"]`);
+                    if (el) {
+                      const isHidden = el.getBoundingClientRect().height === 0;
+                      const targetScrollEl = isHidden ? (el.parentElement || el) : el;
+                      targetScrollEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                      const focusable = el.querySelector("input, select, textarea, button");
+                      if (focusable instanceof HTMLElement) {
+                        focusable.focus({ preventScroll: true });
+                      }
+                    }
+                  }
+                })}
                 className="space-y-6"
               >
                 {/* Amount fields */}
@@ -169,7 +182,7 @@ const BookingEditModal: React.FC<LeadViewModalProps> = ({
                     control={form.control}
                     name="amount_received"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem data-name="amount_received">
                         <FormLabel className="text-sm">
                           Booking Advance Received
                         </FormLabel>
@@ -197,7 +210,7 @@ const BookingEditModal: React.FC<LeadViewModalProps> = ({
                     control={form.control}
                     name="final_booking_amount"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem data-name="final_booking_amount">
                         <FormLabel className="text-sm">
                         Total Booking Value *
                         </FormLabel>
@@ -226,7 +239,7 @@ const BookingEditModal: React.FC<LeadViewModalProps> = ({
                   control={form.control}
                   name="assign_to"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem data-name="assign_to">
                       <FormLabel className="text-sm">Assign To *</FormLabel>
                       <Select
                         value={field.value || ""}
@@ -255,7 +268,7 @@ const BookingEditModal: React.FC<LeadViewModalProps> = ({
                   control={form.control}
                   name="payment_text"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem data-name="payment_text">
                       <FormLabel className="text-sm">Payment Details</FormLabel>
                       <FormControl>
                         <TextAreaInput

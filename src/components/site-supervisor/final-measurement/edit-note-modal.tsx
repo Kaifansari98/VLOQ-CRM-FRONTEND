@@ -17,7 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { useUpdateNotes } from "@/hooks/final-measurement/use-final-measurement";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import TextAreaInput from "@/components/origin-text-area";
 
 // ✅ schema
@@ -53,7 +53,7 @@ const EditNotesModal = ({ open, onOpenChange, data }: Props) => {
 
   const onSubmit = (values: FormValues) => {
     if (!vendorId || !data?.leadId) {
-      toast.error("Missing identifiers");
+      toastManager.add({ title: "Missing identifiers", type: "error" });
       return;
     }
 
@@ -65,14 +65,14 @@ const EditNotesModal = ({ open, onOpenChange, data }: Props) => {
       },
       {
         onSuccess: () => {
-          toast.success("Notes updated successfully");
+          toastManager.add({ title: "Notes updated successfully", type: "success" });
           queryClient.invalidateQueries({
             queryKey: ["finalMeasurementLead", vendorId, data.leadId],
           });
           onOpenChange(false);
         },
         onError: (err) => {
-          toast.error(err?.message || "Failed to update notes");
+          toastManager.add({ title: err?.message || "Failed to update notes", type: "error" });
         },
       }
     );

@@ -1,7 +1,7 @@
 import { apiClient } from "@/lib/apiClient";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { AxiosError } from "axios";
 
 export interface ApiErrorResponse<T = unknown> {
@@ -16,6 +16,8 @@ export interface MiscellaneousDocument {
   file_key: string;
   signed_url: string;
   uploaded_at: string;
+  doc_type_tag?: string | null;
+  doc_type_name?: string | null;
 }
 
 export interface MiscellaneousTeam {
@@ -38,6 +40,10 @@ export interface MiscellaneousEntry {
   cost: number | null;
   supervisor_remark: string | null;
   expected_ready_date: string | null;
+  solution?: string | null;
+  required_delivery_date?: string | null;
+  misc_approved?: boolean | null;
+  exp_of_rejection?: string | null;
   is_resolved: boolean;
   resolved_at: string | null;
   created_by: number;
@@ -51,6 +57,26 @@ export interface MiscellaneousEntry {
     task_type: string;
     remark?: string | null;
     status?: string;
+    closed_at?: string | null;
+    closed_by?: number | null;
+    closed_user?: {
+      id: number;
+      user_name: string;
+    } | null;
+  } | null;
+  delivery_task?: {
+    id: number;
+    task_type: string;
+    status?: string;
+    remark?: string | null;
+    due_date?: string | null;
+  } | null;
+  erd_task?: {
+    id: number;
+    task_type: string;
+    status?: string;
+    remark?: string | null;
+    due_date?: string | null;
   } | null;
   teams: MiscellaneousTeam[];
   documents: MiscellaneousDocument[];
@@ -67,10 +93,28 @@ export interface CreateMiscellaneousPayload {
   cost?: number;
   supervisor_remark?: string;
   expected_ready_date?: string;
+  solution?: string;
   is_resolved: boolean;
   teams?: number[]; // Array of team IDs
   created_by: number;
   files: File[];
+}
+
+export interface UpdateMiscellaneousPayload {
+  vendorId: number;
+  leadId: number;
+  miscId: number;
+  misc_type_id: number;
+  problem_description?: string;
+  reorder_material_details?: string;
+  quantity?: number;
+  cost?: number;
+  supervisor_remark?: string;
+  expected_ready_date?: string;
+  solution?: string;
+  teams?: number[];
+  updated_by: number;
+  files?: File[];
 }
 
 export interface MiscType {
@@ -157,11 +201,11 @@ export interface UpdateIssueLogPayload {
 export const moveLeadToUnderInstallation = async (
   vendorId: number,
   leadId: number,
-  updated_by: number
+  updated_by: number,
 ) => {
   const { data } = await apiClient.put(
     `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/move-to-under-installation`,
-    { updated_by }
+    { updated_by },
   );
   return data?.data;
 };
@@ -184,18 +228,18 @@ export const useMoveLeadToUnderInstallation = () => {
     }) => moveLeadToUnderInstallation(vendorId, leadId, updated_by),
 
     onSuccess: () => {
-      toast.success("Lead successfully moved to Under Installation stage");
-      // 🔄 Refresh any affected lists (e.g., dispatch or under-installation leads)
       queryClient.invalidateQueries({
         queryKey: ["leadStats"],
       });
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toast.error(
-        error?.response?.data?.message ||
-          "Failed to move lead to Under Installation stage"
-      );
+      toastManager.add({
+        title:
+          error?.response?.data?.message ||
+          "Failed to move lead to Under Installation stage",
+        type: "error",
+      });
     },
   });
 };
@@ -208,13 +252,13 @@ export const getUnderInstallationStageLeads = async (
   vendorId: number,
   userId: number,
   page: number = 1,
-  limit: number = 10
+  limit: number = 10,
 ) => {
   const { data } = await apiClient.get(
     `/leads/installation/under-installation/vendorId/${vendorId}/userId/${userId}`,
     {
       params: { page, limit },
-    }
+    },
   );
 
   return data?.data;
@@ -227,7 +271,7 @@ export const useUnderInstallationStageLeads = (
   vendorId?: number,
   userId?: number,
   page: number = 1,
-  limit: number = 10
+  limit: number = 10,
 ) => {
   return useQuery({
     queryKey: ["underInstallationStageLeads", vendorId, userId, page, limit],
@@ -243,10 +287,10 @@ export const useUnderInstallationStageLeads = (
    ========================================================== */
 export const getUnderInstallationDetails = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ) => {
   const { data } = await apiClient.get(
-    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/some_under_installation_details`
+    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/some_under_installation_details`,
   );
   return data?.data;
 };
@@ -256,7 +300,7 @@ export const getUnderInstallationDetails = async (
  */
 export const useUnderInstallationDetails = (
   vendorId?: number,
-  leadId?: number
+  leadId?: number,
 ) => {
   return useQuery({
     queryKey: ["underInstallationDetails", vendorId, leadId],
@@ -287,7 +331,7 @@ export const setActualInstallationStartDate = async ({
     {
       updated_by,
       actual_installation_start_date,
-    }
+    },
   );
 
   return data;
@@ -303,7 +347,10 @@ export const useSetActualInstallationStartDate = () => {
     mutationFn: setActualInstallationStartDate,
 
     onSuccess: () => {
-      toast.success("Installation start date updated!");
+      toastManager.add({
+        title: "Installation start date updated!",
+        type: "success",
+      });
 
       // 🔄 Refetch relevant queries
       queryClient.invalidateQueries({
@@ -315,7 +362,10 @@ export const useSetActualInstallationStartDate = () => {
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toast.error(error?.message || "Failed to update installation start date");
+      toastManager.add({
+        title: error?.message || "Failed to update installation start date",
+        type: "error",
+      });
     },
   });
 };
@@ -323,7 +373,7 @@ export const useSetActualInstallationStartDate = () => {
 /** GET mapped installers */
 export const getMappedInstallers = async (vendorId: number, leadId: number) => {
   const { data } = await apiClient.get(
-    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/installers`
+    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/installers`,
   );
   return data.data;
 };
@@ -352,7 +402,7 @@ export const addInstallersAndEndDate = async ({
 }) => {
   const res = await apiClient.post(
     `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/add-installers`,
-    payload
+    payload,
   );
   return res.data;
 };
@@ -384,7 +434,7 @@ export const updateInstallationDetailsAPI = async ({
 }) => {
   const res = await apiClient.put(
     `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/update-installation-details`,
-    payload
+    payload,
   );
   return res.data;
 };
@@ -402,7 +452,7 @@ export const useUpdateInstallationDetails = () => {
 
 export const getAllInstallersAPI = async (vendorId: number) => {
   const res = await apiClient.get(
-    `/installer-users/vendorId/${vendorId}/get-all-installers`
+    `/installer-users/vendorId/${vendorId}/get-all-installers`,
   );
   return res.data;
 };
@@ -435,7 +485,7 @@ export const setInstallationCompletionAPI = async ({
       updated_by,
       is_carcass_installation_completed,
       is_shutter_installation_completed,
-    }
+    },
   );
   return res.data;
 };
@@ -460,7 +510,7 @@ export const updateInstallationCompletionAPI = async ({
       updated_by,
       is_carcass_installation_completed,
       is_shutter_installation_completed,
-    }
+    },
   );
   return res.data;
 };
@@ -474,6 +524,8 @@ export const useSetInstallationCompletion = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["underInstallationDetails"] });
       qc.invalidateQueries({ queryKey: ["mappedInstallers"] });
+      qc.invalidateQueries({ queryKey: ["usableHandoverReady"] });
+      qc.invalidateQueries({ queryKey: ["finalHandoverReady"] });
     },
   });
 };
@@ -487,6 +539,8 @@ export const useUpdateInstallationCompletion = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["underInstallationDetails"] });
       qc.invalidateQueries({ queryKey: ["mappedInstallers"] });
+      qc.invalidateQueries({ queryKey: ["usableHandoverReady"] });
+      qc.invalidateQueries({ queryKey: ["finalHandoverReady"] });
     },
   });
 };
@@ -524,7 +578,7 @@ export const uploadInstallationDayWise = async ({
       headers: {
         "Content-Type": "multipart/form-data",
       },
-    }
+    },
   );
 
   return response.data;
@@ -539,7 +593,7 @@ export const fetchInstallationUpdates = async ({
   leadId: number;
 }) => {
   const response = await apiClient.get(
-    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/installation-updates-day-wise`
+    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/installation-updates-day-wise`,
   );
 
   return response.data.data;
@@ -563,7 +617,7 @@ export const useInstallationUpdates = (vendorId: number, leadId: number) => {
    @route POST /leads/installation/under-installation/vendorId/:vendorId/leadId/:leadId/create
    ========================================================== */
 export const createMiscellaneousEntry = async (
-  payload: CreateMiscellaneousPayload
+  payload: CreateMiscellaneousPayload,
 ) => {
   const formData = new FormData();
 
@@ -580,7 +634,7 @@ export const createMiscellaneousEntry = async (
   if (payload.reorder_material_details) {
     formData.append(
       "reorder_material_details",
-      payload.reorder_material_details
+      payload.reorder_material_details,
     );
   }
   if (payload.quantity !== undefined) {
@@ -594,6 +648,9 @@ export const createMiscellaneousEntry = async (
   }
   if (payload.expected_ready_date) {
     formData.append("expected_ready_date", payload.expected_ready_date);
+  }
+  if (payload.solution) {
+    formData.append("solution", payload.solution);
   }
 
   // Append teams as comma-separated string
@@ -613,7 +670,7 @@ export const createMiscellaneousEntry = async (
       headers: {
         "Content-Type": "multipart/form-data",
       },
-    }
+    },
   );
 
   return data?.data;
@@ -629,7 +686,10 @@ export const useCreateMiscellaneousEntry = () => {
     mutationFn: createMiscellaneousEntry,
 
     onSuccess: (data, variables) => {
-      toast.success("Miscellaneous entry created successfully");
+      toastManager.add({
+        title: "Miscellaneous entry created successfully",
+        type: "success",
+      });
 
       // Invalidate and refetch the list
       queryClient.invalidateQueries({
@@ -639,15 +699,113 @@ export const useCreateMiscellaneousEntry = () => {
           variables.leadId,
         ],
       });
+      queryClient.invalidateQueries({ queryKey: ["miscellaneousStatusCounts"] });
+      queryClient.invalidateQueries({ queryKey: ["miscellaneousByStatus"] });
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toast.error(
-        error?.response?.data?.error || "Failed to create miscellaneous entry"
-      );
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          "Failed to create miscellaneous entry",
+        type: "error",
+      });
     },
   });
 };
+
+export const updateMiscellaneousEntry = async (
+  payload: UpdateMiscellaneousPayload,
+) => {
+  const formData = new FormData();
+
+  formData.append("misc_type_id", payload.misc_type_id.toString());
+  formData.append("updated_by", payload.updated_by.toString());
+
+  if (payload.problem_description !== undefined) {
+    formData.append("problem_description", payload.problem_description);
+  }
+  if (payload.reorder_material_details !== undefined) {
+    formData.append(
+      "reorder_material_details",
+      payload.reorder_material_details,
+    );
+  }
+  if (payload.quantity !== undefined && payload.quantity !== null) {
+    formData.append("quantity", payload.quantity.toString());
+  }
+  if (payload.cost !== undefined && payload.cost !== null) {
+    formData.append("cost", payload.cost.toString());
+  }
+  if (payload.supervisor_remark !== undefined) {
+    formData.append("supervisor_remark", payload.supervisor_remark);
+  }
+  if (payload.expected_ready_date !== undefined) {
+    formData.append("expected_ready_date", payload.expected_ready_date);
+  }
+  if (payload.solution !== undefined) {
+    formData.append("solution", payload.solution);
+  }
+
+  if (payload.teams && payload.teams.length > 0) {
+    formData.append("teams", payload.teams.join(","));
+  }
+
+  if (payload.files && payload.files.length > 0) {
+    payload.files.forEach((file) => {
+      formData.append("files", file);
+    });
+  }
+
+  const { data } = await apiClient.put(
+    `/leads/installation/under-installation/vendorId/${payload.vendorId}/leadId/${payload.leadId}/miscId/${payload.miscId}/update`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    },
+  );
+
+  return data?.data;
+};
+
+export const useUpdateMiscellaneousEntry = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateMiscellaneousEntry,
+
+    onSuccess: (data, variables) => {
+      toastManager.add({
+        title: "Miscellaneous entry updated successfully",
+        type: "success",
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: [
+          "miscellaneousEntries",
+          variables.vendorId,
+          variables.leadId,
+        ],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["miscellaneous-details"],
+      });
+    },
+
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          "Failed to update miscellaneous entry",
+        type: "error",
+      });
+    },
+  });
+};
+
 
 /* ==========================================================
    📥 GET - All Miscellaneous Entries
@@ -655,10 +813,10 @@ export const useCreateMiscellaneousEntry = () => {
    ========================================================== */
 export const getMiscellaneousEntries = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ): Promise<MiscellaneousEntry[]> => {
   const { data } = await apiClient.get(
-    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/get-all`
+    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/get-all`,
   );
 
   return data?.data || [];
@@ -681,7 +839,7 @@ export const useMiscellaneousEntries = (vendorId?: number, leadId?: number) => {
    ========================================================== */
 export const getMiscTypes = async (vendorId: number): Promise<MiscType[]> => {
   const { data } = await apiClient.get(
-    `/miscellaneous-master/type/vendor/${vendorId}`
+    `/miscellaneous-master/type/vendor/${vendorId}`,
   );
 
   return data?.data || [];
@@ -704,7 +862,7 @@ export const useMiscTypes = (vendorId?: number) => {
      ========================================================== */
 export const getMiscTeams = async (vendorId: number): Promise<MiscTeam[]> => {
   const { data } = await apiClient.get(
-    `/miscellaneous-master/team/vendor/${vendorId}`
+    `/miscellaneous-master/team/vendor/${vendorId}`,
   );
 
   return data?.data || [];
@@ -725,19 +883,50 @@ export const updateMiscExpectedReadyDate = async ({
   vendorId,
   miscId,
   expected_ready_date,
+  solution,
   updated_by,
 }: {
   vendorId: number;
   miscId: number;
-  expected_ready_date?: string;
+  expected_ready_date: string;
+  solution: string;
   updated_by: number;
 }) => {
   const response = await apiClient.put(
     `/leads/installation/under-installation/vendorId/${vendorId}/miscId/${miscId}/update-erd`,
     {
       expected_ready_date,
+      solution,
       updated_by,
-    }
+    },
+  );
+
+  return response.data.data;
+};
+
+export const updateMiscApproval = async ({
+  vendorId,
+  miscId,
+  misc_approved,
+  exp_of_rejection,
+  approval_remark,
+  updated_by,
+}: {
+  vendorId: number;
+  miscId: number;
+  misc_approved: boolean;
+  exp_of_rejection?: string;
+  approval_remark?: string;
+  updated_by: number;
+}) => {
+  const response = await apiClient.put(
+    `/leads/installation/under-installation/vendorId/${vendorId}/miscId/${miscId}/update-approval`,
+    {
+      misc_approved,
+      exp_of_rejection,
+      approval_remark,
+      updated_by,
+    },
   );
 
   return response.data.data;
@@ -750,14 +939,187 @@ export const useUpdateMiscERD = () => {
     mutationFn: updateMiscExpectedReadyDate,
 
     onSuccess: () => {
-      toast.success("Expected ready date updated!");
+      toastManager.add({
+        title: "Expected ready date updated!",
+        type: "success",
+      });
 
       client.invalidateQueries({ queryKey: ["miscellaneous-details"] });
       client.invalidateQueries({ queryKey: ["miscellaneousEntries"] });
+      client.invalidateQueries({ queryKey: ["miscellaneousStatusCounts"] });
+      client.invalidateQueries({ queryKey: ["miscellaneousByStatus"] });
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toast.error(error?.message || "Failed to update date");
+      toastManager.add({
+        title: error?.message || "Failed to update date",
+        type: "error",
+      });
+    },
+  });
+};
+
+export const updateMiscRequiredDeliveryDate = async ({
+  vendorId,
+  miscId,
+  required_delivery_date,
+  updated_by,
+}: {
+  vendorId: number;
+  miscId: number;
+  required_delivery_date?: string;
+  updated_by: number;
+}) => {
+  const response = await apiClient.put(
+    `/leads/installation/under-installation/vendorId/${vendorId}/miscId/${miscId}/update-required-delivery-date`,
+    {
+      required_delivery_date,
+      updated_by,
+    },
+  );
+
+  return response.data.data;
+};
+
+export const useUpdateMiscRequiredDeliveryDate = () => {
+  const client = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateMiscRequiredDeliveryDate,
+
+    onSuccess: () => {
+      toastManager.add({
+        title: "Required delivery date updated!",
+        type: "success",
+      });
+
+      client.invalidateQueries({ queryKey: ["miscellaneous-details"] });
+      client.invalidateQueries({ queryKey: ["miscellaneousEntries"] });
+      client.invalidateQueries({ queryKey: ["miscellaneousStatusCounts"] });
+      client.invalidateQueries({ queryKey: ["miscellaneousByStatus"] });
+    },
+
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title: error?.message || "Failed to update delivery date",
+        type: "error",
+      });
+    },
+  });
+};
+
+export const updateMiscRequiredDeliveryDateByTaskId = async ({
+  vendorId,
+  taskId,
+  required_delivery_date,
+  updated_by,
+}: {
+  vendorId: number;
+  taskId: number;
+  required_delivery_date?: string;
+  updated_by: number;
+}) => {
+  const response = await apiClient.put(
+    `/leads/installation/under-installation/vendorId/${vendorId}/taskId/${taskId}/update-required-delivery-date`,
+    {
+      required_delivery_date,
+      updated_by,
+    },
+  );
+
+  return response.data.data;
+};
+
+export const useUpdateMiscRequiredDeliveryDateByTaskId = () => {
+  const client = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateMiscRequiredDeliveryDateByTaskId,
+
+    onSuccess: () => {
+      toastManager.add({
+        title: "Required delivery date updated!",
+        type: "success",
+      });
+
+      client.invalidateQueries({ queryKey: ["miscellaneous-details"] });
+      client.invalidateQueries({ queryKey: ["miscellaneousEntries"] });
+      client.invalidateQueries({ queryKey: ["miscellaneousStatusCounts"] });
+      client.invalidateQueries({ queryKey: ["miscellaneousByStatus"] });
+    },
+
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title: error?.message || "Failed to update delivery date",
+        type: "error",
+      });
+    },
+  });
+};
+
+export const uploadMiscCompletionDocumentsByTaskId = async ({
+  vendorId,
+  taskId,
+  formData,
+}: {
+  vendorId: number;
+  taskId: number;
+  formData: FormData;
+}) => {
+  const response = await apiClient.post(
+    `/leads/installation/under-installation/vendorId/${vendorId}/taskId/${taskId}/upload-completion-docs`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    },
+  );
+
+  return response.data.data;
+};
+
+export const useUploadMiscCompletionDocumentsByTaskId = () => {
+  const client = useQueryClient();
+
+  return useMutation({
+    mutationFn: uploadMiscCompletionDocumentsByTaskId,
+
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ["miscellaneousEntries"] });
+      client.invalidateQueries({ queryKey: ["miscellaneousStatusCounts"] });
+      client.invalidateQueries({ queryKey: ["miscellaneousByStatus"] });
+    },
+
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title: error?.message || "Failed to upload documents",
+        type: "error",
+      });
+    },
+  });
+};
+
+export const useUpdateMiscApproval = () => {
+  const client = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateMiscApproval,
+
+    onSuccess: () => {
+      toastManager.add({ title: "Miscellaneous updated!", type: "success" });
+
+      client.invalidateQueries({ queryKey: ["miscellaneous-details"] });
+      client.invalidateQueries({ queryKey: ["miscellaneousEntries"] });
+      client.invalidateQueries({ queryKey: ["miscellaneousStatusCounts"] });
+      client.invalidateQueries({ queryKey: ["miscellaneousByStatus"] });
+    },
+
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title: error?.message || "Failed to update miscellaneous",
+        type: "error",
+      });
     },
   });
 };
@@ -768,7 +1130,7 @@ export const useUpdateMiscERD = () => {
  */
 export const getIssueTypes = async (vendorId: number): Promise<IssueType[]> => {
   const { data } = await apiClient.get(
-    `/issue-logs/issue-type/vendor/${vendorId}`
+    `/issue-logs/issue-type/vendor/${vendorId}`,
   );
   return data?.data || [];
 };
@@ -779,10 +1141,10 @@ export const getIssueTypes = async (vendorId: number): Promise<IssueType[]> => {
  */
 export const getInstallationIssueLogs = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ): Promise<InstallationIssueLog[]> => {
   const { data } = await apiClient.get(
-    `/leads/installation/under-installation/issue-log/vendor/${vendorId}/lead/${leadId}`
+    `/leads/installation/under-installation/issue-log/vendor/${vendorId}/lead/${leadId}`,
   );
   return data?.data || [];
 };
@@ -792,10 +1154,10 @@ export const getInstallationIssueLogs = async (
  * @route GET /leads/installation/under-installation/issue-log/:id
  */
 export const getInstallationIssueLogById = async (
-  id: number
+  id: number,
 ): Promise<InstallationIssueLog> => {
   const { data } = await apiClient.get(
-    `/leads/installation/under-installation/issue-log/${id}`
+    `/leads/installation/under-installation/issue-log/${id}`,
   );
   return data?.data;
 };
@@ -805,11 +1167,11 @@ export const getInstallationIssueLogById = async (
  * @route POST /leads/installation/under-installation/issue-log/create
  */
 export const createInstallationIssueLog = async (
-  payload: CreateIssueLogPayload
+  payload: CreateIssueLogPayload,
 ): Promise<InstallationIssueLog> => {
   const { data } = await apiClient.post(
     `/leads/installation/under-installation/issue-log/create`,
-    payload
+    payload,
   );
   return data?.data;
 };
@@ -820,11 +1182,11 @@ export const createInstallationIssueLog = async (
  */
 export const updateInstallationIssueLog = async (
   id: number,
-  payload: UpdateIssueLogPayload
+  payload: UpdateIssueLogPayload,
 ): Promise<InstallationIssueLog> => {
   const { data } = await apiClient.put(
     `/leads/installation/under-installation/issue-log/${id}/update`,
-    payload
+    payload,
   );
   return data?.data;
 };
@@ -850,7 +1212,7 @@ export const useGetIssueTypes = (vendorId: number) => {
  */
 export const useGetInstallationIssueLogs = (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ) => {
   return useQuery({
     queryKey: ["installationIssueLogs", vendorId, leadId],
@@ -881,7 +1243,10 @@ export const useCreateInstallationIssueLog = () => {
       createInstallationIssueLog(payload),
 
     onSuccess: (data, variables) => {
-      toast.success("Issue log created successfully");
+      toastManager.add({
+        title: "Issue log created successfully",
+        type: "success",
+      });
 
       // Invalidate and refetch issue logs for this lead
       queryClient.invalidateQueries({
@@ -899,9 +1264,10 @@ export const useCreateInstallationIssueLog = () => {
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toast.error(
-        error?.response?.data?.message || "Failed to create issue log"
-      );
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to create issue log",
+        type: "error",
+      });
     },
   });
 };
@@ -922,7 +1288,10 @@ export const useUpdateInstallationIssueLog = () => {
     }) => updateInstallationIssueLog(id, payload),
 
     onSuccess: (data) => {
-      toast.success("Issue log updated successfully");
+      toastManager.add({
+        title: "Issue log updated successfully",
+        type: "success",
+      });
 
       // Invalidate the specific issue log
       queryClient.invalidateQueries({
@@ -936,9 +1305,10 @@ export const useUpdateInstallationIssueLog = () => {
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toast.error(
-        error?.response?.data?.message || "Failed to update issue log"
-      );
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to update issue log",
+        type: "error",
+      });
     },
   });
 };
@@ -964,6 +1334,7 @@ export interface UsableHandoverData {
   pending_work_details: string | null;
   final_site_photos: LeadDocument[];
   handover_documents: LeadDocument[];
+  usable_handover_completed?: boolean;
 }
 
 export interface UpdateUsableHandoverPayload {
@@ -991,10 +1362,10 @@ export interface UpdateRemarksPayload {
  */
 export const getUsableHandover = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ): Promise<UsableHandoverData> => {
   const { data } = await apiClient.get(
-    `/leads/installation/under-installation/${vendorId}/${leadId}`
+    `/leads/installation/under-installation/${vendorId}/${leadId}`,
   );
   return data?.data;
 };
@@ -1011,7 +1382,7 @@ export const updateUsableHandover = async (formData: FormData) => {
       headers: {
         "Content-Type": "multipart/form-data",
       },
-    }
+    },
   );
 
   return data.data;
@@ -1024,7 +1395,7 @@ export const updateUsableHandover = async (formData: FormData) => {
 export const updateRemarks = async (payload: UpdateRemarksPayload) => {
   const { data } = await apiClient.put(
     `/leads/installation/under-installation/update-remarks`,
-    payload
+    payload,
   );
   return data?.data;
 };
@@ -1055,7 +1426,10 @@ export const useUpdateUsableHandover = () => {
     mutationFn: (formData: FormData) => updateUsableHandover(formData),
 
     onSuccess: (data, variables) => {
-      toast.success("Files uploaded successfully");
+      toastManager.add({
+        title: "Files uploaded successfully",
+        type: "success",
+      });
 
       // Extract vendor_id and lead_id from FormData
       const vendorId = variables.get("vendor_id");
@@ -1065,10 +1439,6 @@ export const useUpdateUsableHandover = () => {
       queryClient.invalidateQueries({
         queryKey: ["usableHandover", Number(vendorId), Number(leadId)],
       });
-    },
-
-    onError: (error: AxiosError<ApiErrorResponse>) => {
-      toast.error(error?.response?.data?.message || "Failed to upload files");
     },
   });
 };
@@ -1083,7 +1453,10 @@ export const useUpdateRemarks = () => {
     mutationFn: (payload: UpdateRemarksPayload) => updateRemarks(payload),
 
     onSuccess: (data, variables) => {
-      toast.success("Remarks updated successfully");
+      toastManager.add({
+        title: "Remarks updated successfully",
+        type: "success",
+      });
 
       // Invalidate and refetch usable handover data
       queryClient.invalidateQueries({
@@ -1092,7 +1465,38 @@ export const useUpdateRemarks = () => {
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toast.error(error?.response?.data?.message || "Failed to update remarks");
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to update remarks",
+        type: "error",
+      });
+    },
+  });
+};
+
+export const markUsableHandoverCompleted = async ({
+  vendorId,
+  leadId,
+  updated_by,
+}: {
+  vendorId: number;
+  leadId: number;
+  updated_by: number;
+}) => {
+  const { data } = await apiClient.put(
+    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/mark-usable-handover-completed`,
+    { updated_by },
+  );
+  return data?.data;
+};
+
+export const useMarkUsableHandoverCompleted = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: markUsableHandoverCompleted,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["usableHandover", variables.vendorId, variables.leadId],
+      });
     },
   });
 };
@@ -1101,20 +1505,17 @@ export const useUpdateRemarks = () => {
 export async function moveToFinalHandoverApi(
   vendorId: number,
   leadId: number,
-  updated_by: number
+  updated_by: number,
 ) {
   const response = await apiClient.put(
     `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/move-to-final-handover`,
-    { updated_by }
+    { updated_by },
   );
 
   return response.data;
 }
 
 export function useMoveToFinalHandover() {
-  const router = useRouter();
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: ({
       vendorId,
@@ -1126,31 +1527,21 @@ export function useMoveToFinalHandover() {
       updated_by: number;
     }) => moveToFinalHandoverApi(vendorId, leadId, updated_by),
 
-    onSuccess: () => {
-      toast.success("Lead moved to Final Handover stage");
-      queryClient.invalidateQueries({ queryKey: ["leadStats"] });
-      queryClient.invalidateQueries({
-        queryKey: ["universal-stage-leads"],
-          exact: false,
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["vendorOverallLeads"],
-      });
-      router.push("/dashboard/installation/final-handover");
-    },
-
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toast.error(error?.response?.data?.error || "Failed to move lead");
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to move lead",
+        type: "error",
+      });
     },
   });
 }
 
 export const fetchUsableHandoverReady = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ) => {
   const res = await apiClient.get(
-    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/check-ready-flag`
+    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/check-ready-flag`,
   );
   return res.data.data;
 };
@@ -1166,10 +1557,10 @@ export const useUsableHandoverReady = (vendorId: number, leadId: number) => {
 // 🔥 NEW — Check Lead Ready for Final Handover
 export const fetchFinalHandoverReady = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ) => {
   const res = await apiClient.get(
-    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/check-final-handover-ready`
+    `/leads/installation/under-installation/vendorId/${vendorId}/leadId/${leadId}/check-final-handover-ready`,
   );
 
   return res.data.data; // contains { success, isReady, message, step }
@@ -1200,7 +1591,7 @@ export const resolveMiscellaneousEntry = async (payload: {
 
   const { data } = await apiClient.put(
     `/leads/installation/under-installation/vendorId/${payload.vendorId}/leadId/${payload.leadId}/misc/${payload.miscId}/resolve`,
-    bodyData
+    bodyData,
   );
 
   return data?.data;
@@ -1216,7 +1607,7 @@ export const useResolveMiscellaneousEntry = () => {
     mutationFn: resolveMiscellaneousEntry,
 
     onSuccess: (data, variables) => {
-      toast.success("Marked as resolved");
+      toastManager.add({ title: "Marked as resolved", type: "success" });
 
       // Refetch miscellaneous list
       queryClient.invalidateQueries({
@@ -1229,9 +1620,12 @@ export const useResolveMiscellaneousEntry = () => {
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toast.error(
-        error?.response?.data?.error || "Failed to resolve miscellaneous entry"
-      );
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          "Failed to resolve miscellaneous entry",
+        type: "error",
+      });
     },
   });
 };
@@ -1246,14 +1640,25 @@ export const markMiscellaneousTaskReady = async (payload: {
   leadId: number;
   miscId: number;
   ready_by: number;
+  files?: File[];
 }) => {
-  const bodyData = {
-    ready_by: payload.ready_by,
-  };
+  const formData = new FormData();
+  formData.append("ready_by", payload.ready_by.toString());
+
+  if (payload.files && payload.files.length > 0) {
+    payload.files.forEach((file) => {
+      formData.append("files", file);
+    });
+  }
 
   const { data } = await apiClient.put(
     `/leads/installation/under-installation/vendorId/${payload.vendorId}/leadId/${payload.leadId}/misc/${payload.miscId}/mark-ready`,
-    bodyData
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    },
   );
 
   return data?.data;
@@ -1269,7 +1674,7 @@ export const useMarkMiscellaneousTaskReady = () => {
     mutationFn: markMiscellaneousTaskReady,
 
     onSuccess: (data, variables) => {
-      toast.success("Marked as ready");
+      toastManager.add({ title: "Marked as ready", type: "success" });
 
       queryClient.invalidateQueries({
         queryKey: [
@@ -1281,9 +1686,486 @@ export const useMarkMiscellaneousTaskReady = () => {
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toast.error(
-        error?.response?.data?.error || "Failed to mark task as ready"
-      );
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to mark task as ready",
+        type: "error",
+      });
     },
   });
 };
+
+export interface MiscellaneousResolutionStatus {
+  vendor_id: number;
+  lead_id: number;
+  all_resolved: boolean;
+}
+
+// 🔹 API Call
+export const getMiscellaneousResolutionStatus = async (
+  vendorId: number,
+  leadId: number,
+): Promise<MiscellaneousResolutionStatus> => {
+  const { data } = await apiClient.get(
+    `/leads/installation/under-installation/vendor/${vendorId}/lead/${leadId}/resolution-status`,
+  );
+
+  return data?.data;
+};
+
+export const useMiscellaneousResolutionStatus = (
+  vendorId?: number,
+  leadId?: number,
+) => {
+  return useQuery<MiscellaneousResolutionStatus>({
+    queryKey: ["miscellaneous-status", vendorId, leadId],
+    queryFn: () => getMiscellaneousResolutionStatus(vendorId!, leadId!),
+    enabled: !!vendorId && !!leadId, // prevents unwanted calls
+    staleTime: 5 * 60 * 1000, // cache for 5 minutes
+  });
+};
+
+// ===============================
+// Request Payload
+// ===============================
+export interface PendingMiscellaneousPayload {
+  franchise_id?: number;
+  user_type?: string;
+  user_id?: number;
+  page?: number;
+  limit?: number;
+
+  global_search?: string;
+  filter_lead_code?: string;
+  filter_name?: string;
+  contact?: string;
+
+  furniture_type?: Array<number | string>;
+  furniture_structure?: Array<number | string>;
+  site_map_link?: boolean;
+  site_type?: Array<number | string>;
+  assign_to?: Array<number | string>;
+
+  site_address?: string;
+  archetech_name?: string;
+  source?: Array<number | string>;
+
+  date_range?: {
+    from: string;
+    to: string;
+  };
+}
+
+// ===============================
+// Lead Row Returned
+// ===============================
+export interface PendingMiscLead {
+  id: number;
+  lead_code: string;
+  firstname: string;
+  lastname: string;
+
+  contact_no: string;
+  alt_contact_no?: string | null;
+  email?: string | null;
+
+  site_address?: string | null;
+  site_map_link?: string | null;
+  archetech_name?: string | null;
+
+  assign_to?: number | null;
+  source_id?: number | null;
+  site_type_id?: number | null;
+
+  created_at: string;
+
+  productMappings: {
+    product_type_id: number;
+  }[];
+
+  leadProductStructureMapping: {
+    product_structure_id: number;
+  }[];
+}
+
+export interface PendingMiscellaneousResponse {
+  success: boolean;
+  message: string;
+  count: number;
+  data: PendingMiscLead[];
+
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalRecords: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
+
+export const postPendingMiscellaneousLeads = async (
+  vendorId: number,
+  payload: PendingMiscellaneousPayload,
+): Promise<PendingMiscellaneousResponse> => {
+  const { data } = await apiClient.post(
+    `/miscellaneous-master/vendor/${vendorId}/pending-miscellaneous`,
+    payload,
+  );
+
+  return data;
+};
+
+export const usePendingMiscellaneousLeads = (
+  vendorId: number,
+  payload: PendingMiscellaneousPayload,
+) => {
+  return useQuery<PendingMiscellaneousResponse>({
+    queryKey: ["pendingMiscellaneousLeads", vendorId, payload],
+    queryFn: () => postPendingMiscellaneousLeads(vendorId, payload),
+    enabled: !!vendorId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+};
+
+export interface PendingMiscellaneousCountResponse {
+  success: boolean;
+  pending_miscellaneous_leads: number;
+}
+
+export const getPendingMiscellaneousLeadCount = async (
+  vendorId: number,
+  franchiseId?: number,
+  userType?: string,
+  userId?: number,
+): Promise<PendingMiscellaneousCountResponse> => {
+  const { data } = await apiClient.get(
+    `/miscellaneous-master/vendor/${vendorId}/pending-miscellaneous/count`,
+    {
+      params: {
+        ...(franchiseId ? { franchise_id: franchiseId } : {}),
+        ...(userType ? { user_type: userType } : {}),
+        ...(userId ? { user_id: userId } : {}),
+      },
+    },
+  );
+
+  return data;
+};
+
+export const usePendingMiscellaneousCount = (
+  vendorId: number,
+  franchiseId?: number,
+  userType?: string,
+  userId?: number,
+) => {
+  return useQuery<PendingMiscellaneousCountResponse>({
+    queryKey: ["pendingMiscellaneousCount", vendorId, franchiseId, userType, userId],
+    queryFn: () =>
+      getPendingMiscellaneousLeadCount(vendorId, franchiseId, userType, userId),
+    enabled: !!vendorId,
+    staleTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: true,
+  });
+};
+
+export type UploadMiscDocumentsPayload = {
+  vendorId: number;
+  leadId: number;
+  miscId: number;
+  created_by: number;
+  files: any[]; // React Native file objects
+};
+
+export type UploadMiscDocumentsResponse = {
+  doc_id: number;
+  misc_doc_id: number;
+}[];
+
+export const uploadMiscellaneousDocuments = async (
+  payload: UploadMiscDocumentsPayload,
+): Promise<UploadMiscDocumentsResponse> => {
+  const formData = new FormData();
+
+  // ✅ Required fields
+  formData.append("vendor_id", payload.vendorId.toString());
+  formData.append("lead_id", payload.leadId.toString());
+  formData.append("created_by", payload.created_by.toString());
+
+  // ✅ Files
+  payload.files.forEach((file) => {
+    formData.append("files", file);
+  });
+
+  const { data } = await apiClient.post(
+    `/leads/installation/under-installation/miscellaneous/${payload.miscId}/documents`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    },
+  );
+
+  return data?.data;
+};
+
+export const useUploadMiscellaneousDocuments = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: uploadMiscellaneousDocuments,
+
+    onSuccess: (data, variables) => {
+      toastManager.add({
+        title: "Documents uploaded successfully",
+        type: "success",
+      });
+
+      // ✅ Refetch misc documents or details
+      queryClient.invalidateQueries({
+        queryKey: [
+          "miscellaneousDocuments",
+          variables.vendorId,
+          variables.leadId,
+          variables.miscId,
+        ],
+      });
+
+      // Optional: refresh misc list also
+      queryClient.invalidateQueries({
+        queryKey: [
+          "miscellaneousEntries",
+          variables.vendorId,
+          variables.leadId,
+        ],
+      });
+    },
+
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to upload documents",
+        type: "error",
+      });
+    },
+  });
+};
+
+// ── Miscellaneous Followup Types & Hooks ────────────────────────────────────
+
+export interface MiscFollowupUser {
+  id: number;
+  user_name: string;
+  user_email?: string;
+  user_contact?: string;
+  user_type: {
+    id: number;
+    user_type: string;
+  };
+}
+
+export interface MiscFollowupTask {
+  id: number;
+  lead_id: number;
+  task_type: string;
+  due_date: string;
+  remark: string | null;
+  display_remark?: string;
+  status: string;
+  created_at: string;
+  closed_at?: string | null;
+  user: {
+    id: number;
+    user_name: string;
+    user_email?: string;
+    user_type: {
+      id: number;
+      user_type: string;
+    };
+  };
+  createdBy: {
+    id: number;
+    user_name: string;
+  };
+  closedBy?: {
+    id: number;
+    user_name: string;
+  } | null;
+}
+
+export interface CreateMiscFollowupPayload {
+  vendorId: number;
+  miscId: number;
+  leadId: number;
+  userId: number;
+  dueDate: string;
+  remark: string;
+}
+
+const getMiscFollowupEligibleUsers = async (
+  vendorId: number,
+): Promise<MiscFollowupUser[]> => {
+  const { data } = await apiClient.get(
+    `/leads/installation/under-installation/vendorId/${vendorId}/miscellaneous/followup-users`,
+  );
+  return data?.data ?? [];
+};
+
+export const useMiscFollowupEligibleUsers = (vendorId?: number) => {
+  return useQuery({
+    queryKey: ["miscFollowupEligibleUsers", vendorId],
+    queryFn: () => getMiscFollowupEligibleUsers(vendorId!),
+    enabled: !!vendorId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+};
+
+const getMiscFollowupTasks = async (
+  vendorId: number,
+  miscId: number,
+): Promise<MiscFollowupTask[]> => {
+  const { data } = await apiClient.get(
+    `/leads/installation/under-installation/vendorId/${vendorId}/miscId/${miscId}/followups`,
+  );
+  return data?.data ?? [];
+};
+
+export const useMiscFollowupTasks = (vendorId?: number, miscId?: number) => {
+  return useQuery({
+    queryKey: ["miscFollowupTasks", vendorId, miscId],
+    queryFn: () => getMiscFollowupTasks(vendorId!, miscId!),
+    enabled: !!vendorId && !!miscId,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: false,
+  });
+};
+
+const createMiscFollowupTask = async (payload: CreateMiscFollowupPayload) => {
+  const { data } = await apiClient.post(
+    `/leads/installation/under-installation/vendorId/${payload.vendorId}/miscId/${payload.miscId}/followup`,
+    {
+      lead_id: payload.leadId,
+      user_id: payload.userId,
+      due_date: payload.dueDate,
+      remark: payload.remark,
+    },
+  );
+  return data?.data;
+};
+
+export const useCreateMiscFollowupTask = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createMiscFollowupTask,
+    onSuccess: (_data, variables) => {
+      toastManager.add({
+        title: "Followup task scheduled successfully",
+        type: "success",
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["miscFollowupTasks", variables.vendorId, variables.miscId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["adminTasks"],
+      });
+    },
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to schedule followup task",
+        type: "error",
+      });
+    },
+  });
+};
+
+export interface MiscFollowupEntry {
+  id: number;
+  vendor_id: number;
+  lead_id: number;
+  miscellaneous_id: number;
+  followup_date: string;
+  solution: string;
+  created_by: number;
+  created_at: string;
+  updated_at?: string;
+  createdBy: {
+    id: number;
+    user_name: string;
+    user_email?: string;
+    user_type?: {
+      id: number;
+      user_type: string;
+    };
+  };
+}
+
+export interface CreateMiscFollowupRecordPayload {
+  vendorId: number;
+  miscId: number;
+  leadId: number;
+  followupDate: string;
+  solution: string;
+  createdBy?: number;
+}
+
+const getMiscFollowups = async (
+  vendorId: number,
+  miscId: number,
+): Promise<MiscFollowupEntry[]> => {
+  const { data } = await apiClient.get(
+    `/leads/installation/under-installation/vendorId/${vendorId}/miscId/${miscId}/followups`,
+  );
+  return data?.data ?? [];
+};
+
+export const useMiscFollowups = (vendorId?: number, miscId?: number) => {
+  return useQuery({
+    queryKey: ["miscFollowups", vendorId, miscId],
+    queryFn: () => getMiscFollowups(vendorId!, miscId!),
+    enabled: !!vendorId && !!miscId,
+    staleTime: 10 * 1000,
+    refetchOnWindowFocus: false,
+  });
+};
+
+const createMiscFollowup = async (payload: CreateMiscFollowupRecordPayload) => {
+  const { data } = await apiClient.post(
+    `/leads/installation/under-installation/vendorId/${payload.vendorId}/miscId/${payload.miscId}/followup`,
+    {
+      lead_id: payload.leadId,
+      followup_date: payload.followupDate,
+      solution: payload.solution,
+      created_by: payload.createdBy,
+    },
+  );
+  return data?.data;
+};
+
+export const useCreateMiscFollowup = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createMiscFollowup,
+    onSuccess: (_data, variables) => {
+      toastManager.add({
+        title: "Follow up recorded successfully",
+        type: "success",
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["miscFollowups", variables.vendorId, variables.miscId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["miscFollowupTasks", variables.vendorId, variables.miscId],
+      });
+    },
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to record follow up",
+        type: "error",
+      });
+    },
+  });
+};
+
+

@@ -16,6 +16,8 @@ import {
   getPendingLeadsColumns,
   PendingLeadRow,
 } from "./pending-leads-columns";
+import { formatSalesExecutiveName } from "@/lib/utils";
+import { useFranchisesByVendorId } from "@/api/franchise";
 
 import {
   AlertDialog,
@@ -29,7 +31,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import RevertRemarkModal from "@/components/generics/RevertRemarkModal";
 import { useRevertActivityStatus } from "@/hooks/useActivityStatus";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useRouter } from "next/navigation";
 import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useQueryClient } from "@tanstack/react-query";
@@ -57,6 +59,21 @@ export default function PendingLeadsTable({
   const queryClient = useQueryClient();
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
+  const franchiseId = useAppSelector(
+    (s) => s.auth.franchise_id ?? s.auth.user?.franchise_id
+  );
+  const reduxModuledForB2b = useAppSelector(
+    (s) => s.auth.moduled_for_b2b ?? s.auth.user?.moduled_for_b2b ?? false
+  );
+  const { data: franchisesForB2b = [] } = useFranchisesByVendorId(
+    vendorId,
+    !!vendorId
+  );
+  const isB2b = React.useMemo(() => {
+    if (!franchiseId) return reduxModuledForB2b;
+    const activeFranchise = franchisesForB2b.find((f: any) => f.id === franchiseId);
+    return activeFranchise?.moduled_for_b2b ?? reduxModuledForB2b;
+  }, [franchisesForB2b, franchiseId, reduxModuledForB2b]);
   const router = useRouter();
 
   // ============================================
@@ -106,7 +123,7 @@ export default function PendingLeadsTable({
     { id: "createdAt", desc: true },
   ]);
   const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({});
+    React.useState<VisibilityState>({}); 
   const [rowSelection, setRowSelection] = React.useState({});
 
   const [rowAction, setRowAction] = React.useState<{
@@ -123,6 +140,7 @@ export default function PendingLeadsTable({
     const mappedFilters = mapTableFiltersToPayload(onHoldColumnFilters);
 
     return {
+      franchise_id: franchiseId ?? undefined,
       page: onHoldPagination.pageIndex + 1,
       limit: onHoldPagination.pageSize,
       global_search: onHoldGlobalFilter || "",
@@ -140,13 +158,14 @@ export default function PendingLeadsTable({
       date_range: mappedFilters.date_range,
       status: mappedFilters.stagetag,
     };
-  }, [onHoldPagination, onHoldGlobalFilter, onHoldColumnFilters, sorting]);
+  }, [franchiseId, onHoldPagination, onHoldGlobalFilter, onHoldColumnFilters, sorting]);
 
   const lostPayload: ActivityStatusFilterPayload = React.useMemo(() => {
     const sortOrder: "asc" | "desc" = sorting[0]?.desc ? "desc" : "asc";
     const mappedFilters = mapTableFiltersToPayload(lostColumnFilters);
 
     return {
+      franchise_id: franchiseId ?? undefined,
       page: lostPagination.pageIndex + 1,
       limit: lostPagination.pageSize,
       global_search: lostGlobalFilter || "",
@@ -166,13 +185,14 @@ export default function PendingLeadsTable({
       site_map_link: mappedFilters.site_map_link,
       created_at: sortOrder,
     };
-  }, [lostPagination, lostGlobalFilter, lostColumnFilters, sorting]);
+  }, [franchiseId, lostPagination, lostGlobalFilter, lostColumnFilters, sorting]);
 
   const lostApprovalPayload: ActivityStatusFilterPayload = React.useMemo(() => {
     const sortOrder: "asc" | "desc" = sorting[0]?.desc ? "desc" : "asc";
     const mappedFilters = mapTableFiltersToPayload(lostApprovalColumnFilters);
 
     return {
+      franchise_id: franchiseId ?? undefined,
       page: lostApprovalPagination.pageIndex + 1,
       limit: lostApprovalPagination.pageSize,
       global_search: lostApprovalGlobalFilter || "",
@@ -196,6 +216,7 @@ export default function PendingLeadsTable({
     lostApprovalPagination,
     lostApprovalGlobalFilter,
     lostApprovalColumnFilters,
+    franchiseId,
     sorting,
   ]);
   // ============================================
@@ -256,20 +277,39 @@ export default function PendingLeadsTable({
       architechName: lead.archetech_name || "",
       designerRemark: lead.designer_remark || "",
       activity_status: lead.activity_status || "",
-      furnitureType:
-        lead.productMappings
-          ?.map((pm: any) => pm.productType.type)
-          .join(", ") || "",
-      furnitueStructures:
-        lead.leadProductStructureMapping
-          ?.map((psm: any) => psm.productStructure.type)
-          .join(", ") || "",
+      furnitureType: isB2b
+        ? (Array.isArray(lead.leadB2BReqMappings)
+            ? lead.leadB2BReqMappings
+                .map((p: any) => p.b2bRequirementType?.type)
+                .filter(Boolean)
+                .join(", ")
+            : "")
+        : (Array.isArray(lead.productMappings)
+            ? lead.productMappings
+                .map((pm: any) => pm.productType?.type)
+                .filter(Boolean)
+                .join(", ")
+            : ""),
+
+      furnitueStructures: isB2b
+        ? (Array.isArray(lead.leadProcessBriefs)
+            ? lead.leadProcessBriefs
+                .map((p: any) => p.processBrief?.name)
+                .filter(Boolean)
+            : [])
+        : (lead.leadProductStructureMapping
+            ?.map((psm: any) => psm.productStructure?.type)
+            .filter(Boolean) ?? []),
+
       source: lead.source?.type || "",
       siteType: lead.siteType?.type || "",
       createdAt: lead.created_at ? new Date(lead.created_at).getTime() : "",
       updatedAt: lead.updated_at || "",
       altContact: lead.alt_contact_no || "",
       status: lead.statusType?.type || "",
+      isDraft: lead.is_draft === true,
+      sales_executive: formatSalesExecutiveName(lead.assignedTo),
+      assignedToId: lead.assignedTo?.id ?? undefined,
       initial_site_measurement_date: lead.initial_site_measurement_date || "",
       accountId: lead.account?.id ?? lead.account_id ?? 0,
       site_map_link: lead.site_map_link || "",
@@ -384,8 +424,9 @@ export default function PendingLeadsTable({
         onMarkAsLost: (lead) => {
           setRowAction({ row: lead, variant: "lost" });
         },
+        isB2b,
       }),
-    [tab],
+    [tab, isB2b],
   );
 
   // ============================================
@@ -399,7 +440,7 @@ export default function PendingLeadsTable({
 
   const onSubmitRemark = (remark: string) => {
     if (!activeLead || !vendorId || !userId) {
-      toast.error("Missing vendor/user/lead info");
+      toastManager.add({ title: "Missing vendor/user/lead info", type: "error" });
       return;
     }
 
@@ -471,6 +512,9 @@ export default function PendingLeadsTable({
 
     getCoreRowModel: getCoreRowModel(),
     getRowId: (row) => row.id.toString(),
+    meta: {
+      isB2b,
+    },
   });
 
   // ============================================
@@ -600,7 +644,11 @@ export default function PendingLeadsTable({
         open={openActivityStatus}
         onOpenChange={setOpenActivityStatus}
         statusType="lost"
-        onSubmitRemark={(remark) => {
+        vendorId={vendorId}
+        franchiseId={(activeLead as any)?.franchise_id ?? null}
+        leadId={activeLead?.id}
+        existingRemark={activeLead?.designerRemark || ""}
+        onSubmitRemark={(remark, dueDate, selection) => {
           if (!activeLead || !vendorId || !userId) return;
 
           markAsLostMutation.mutate(
@@ -613,11 +661,19 @@ export default function PendingLeadsTable({
                 status: "lost",
                 remark,
                 createdBy: userId,
+                ...(selection ?? {}),
               },
             },
             {
-              onSuccess: () => {
-                toast.success("Lead marked as Lost!");
+              onSuccess: (res: any) => {
+                const finalStatus = res?.data?.activity_status ?? res?.data?.lead?.activity_status;
+                toastManager.add({
+                  title:
+                    finalStatus === "lostApproval"
+                      ? "Lead sent for Lost Approval!"
+                      : "Lead marked as Lost!",
+                  type: "success",
+                });
                 setOpenActivityStatus(false);
                 setActiveLead(null);
                 queryClient.invalidateQueries({

@@ -11,10 +11,18 @@ import { useRouter } from "next/navigation";
 import RemarkTooltip from "@/components/origin-tooltip";
 import { MapPin } from "lucide-react";
 import {
+  sanitizeRemark,
   siteMapLinkSort,
   tableMultiValueFilter,
   tableSingleValueMultiSelectFilter,
 } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export type ProcessedTask = {
   id: number; // userLeadTask.id
@@ -28,7 +36,7 @@ export type ProcessedTask = {
   leadStage?: string; // leadMaster.lead_status
   siteType: string; // leadMaster.site_type
   furnitureType: string; // joined string from array
-  furnitueStructures: string; // joined string from array
+  furnitueStructures: string[]; // joined string from array
   taskType: string; // userLeadTask.task_type
   dueDate: string; // userLeadTask.due_date
   assignedBy: number; // userLeadTask.created_by
@@ -37,6 +45,11 @@ export type ProcessedTask = {
   assignedToName?: string | null;
   remark?: string;
   site_map_link: string;
+  instance_id: number;
+  is_blocked?: boolean;
+  lead_blocked_at?: string | null;
+  isFastProductionRequestTask?: boolean;
+  isOnlineLead?: boolean;
 };
 
 export function getVendorLeadsTableColumns({
@@ -162,19 +175,40 @@ export function getVendorLeadsTableColumns({
       },
     },
 
-    // Task type
+    // Status
+    {
+      accessorKey: "leadStage",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Status" />
+      ),
+      cell: ({ row }) => {
+        const status = (row.getValue("leadStage") as string) || "-";
+        return <span className="capitalize font-medium">{status}</span>;
+      },
+      meta: {
+        label: "Status",
+      },
+      enableSorting: true,
+      enableColumnFilter: true,
+      enableHiding: true,
+      filterFn: tableMultiValueFilter,
+    },
+
     {
       accessorKey: "taskType",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Task Type" />
       ),
+      cell: ({ row }) => {
+        const taskType = (row.getValue("taskType") as string) || "—";
+        return <span className="font-medium">{taskType}</span>;
+      },
       meta: {
         label: "Task Type",
       },
-
       enableSorting: false,
-      enableColumnFilter: true,
       enableHiding: true,
+      enableColumnFilter: true,
       filterFn: tableMultiValueFilter,
     },
 
@@ -190,19 +224,33 @@ export function getVendorLeadsTableColumns({
       enableHiding: true,
       enableColumnFilter: true,
       cell: ({ row }) => {
-        const remark = row.getValue("remark") as string;
+        const rawRemark = row.getValue("remark") as string;
+
+        // 🔹 Step 1: Remove system markers like ||OL:37||
+        const remark = sanitizeRemark(rawRemark);
+
         const maxLength = 20;
 
+        // 🔹 Step 2: If short → no tooltip needed
         if (remark.length <= maxLength) {
           return <span>{remark}</span>;
         }
 
+        // 🔹 Step 3: Truncate for display
         const truncateValue = remark.slice(0, maxLength) + "...";
 
-        return <RemarkTooltip remark={truncateValue} remarkFull={remark} />;
+        // 🔹 Step 4: Use your CustomeTooltip
+        return (
+          <CustomeTooltip
+            truncateValue={<span>{truncateValue}</span>}
+            value={remark}
+            side="top"
+            align="center"
+            contentClassName="w-100 break-words"
+          />
+        );
       },
     },
-
     {
       accessorKey: "dueDate",
       header: ({ column }) => (
@@ -299,14 +347,62 @@ export function getVendorLeadsTableColumns({
     {
       accessorKey: "furnitueStructures",
       filterFn: tableMultiValueFilter,
+
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Furniture Structures" />
       ),
-      enableSorting: false,
-      enableColumnFilter: true,
-      enableHiding: true,
+
       meta: {
         label: "Furniture Structures",
+      },
+
+      enableSorting: false,
+      enableHiding: true,
+      enableColumnFilter: true,
+
+      cell: ({ row }) => {
+        const structures: string[] = row.original.furnitueStructures ?? [];
+
+        if (!structures.length) return "—";
+
+        const visible = structures.slice(0, 2);
+        const remaining = structures.slice(2);
+
+        return (
+          <div className="space-x-1">
+            {visible.map((name: string, index: number) => (
+              <Badge key={index} variant="secondary" className="text-xs px-2 capitalize">
+                {name}
+              </Badge>
+            ))}
+
+            {remaining.length > 0 && (
+              <TooltipProvider delayDuration={100}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge
+                      variant="outline"
+                      className="text-xs px-2 cursor-pointer hover:bg-muted transition-colors"
+                    >
+                      +{remaining.length}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="bottom"
+                    align="start"
+                    className="max-w-[220px] p-2 space-y-1"
+                  >
+                    {remaining.map((name: string, index: number) => (
+                      <p key={index} className="text-xs capitalize">
+                        • {name}
+                      </p>
+                    ))}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
+        );
       },
     },
 

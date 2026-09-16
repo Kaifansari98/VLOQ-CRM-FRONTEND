@@ -23,15 +23,41 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
 import { Controller, useForm } from "react-hook-form";
 import z from "zod";
-import { useAssignToFinalMeasurement } from "@/hooks/useLeadsQueries";
+import {
+  useAssignToFinalMeasurement,
+  useCheckSiteSupervisorAssigned,
+  useLeadSuperAdminApprovalLockIns,
+  useRestrictedTaskConflicts,
+  useCheckFastProductionLimit,
+  useFastProductionRequestDraft,
+} from "@/hooks/useLeadsQueries";
 import { AssignToFinalMeasurementPayload } from "@/api/final-measurement";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useVendorSiteSupervisorUsers } from "@/hooks/useVendorSiteSupervisorUsers";
 import { useRouter } from "next/navigation";
 import { FileUploadField } from "@/components/custom/file-upload";
 import { useUploadCSPBooking } from "@/hooks/useUploadCSPBooking";
 import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUsers";
+import { useLeadById } from "@/hooks/useLeadsQueries";
+import { useFollowUpUsers } from "@/hooks/useFollowUpUsers";
+import {
+  useApprovalRequestAssignableUsers,
+  useCreateApprovalRequest,
+} from "@/hooks/useApprovalRequests";
+import { useSelfAssignTaskTypes } from "@/hooks/useSelfAssignTaskTypes";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import CustomeTooltip from "@/components/custom-tooltip";
+import { canUserShowApprovalRequest, canUserShowFollowUp } from "@/lib/approval-request-privilege";
+import FastProductionRequestModal from "@/components/sales-executive/Lead/fast-production-request-modal";
+import FastProductionTermsModal from "@/components/sales-executive/Lead/fast-production-terms-modal";
+
+function formatLocalDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 interface Props {
   open: boolean;
@@ -39,20 +65,20 @@ interface Props {
   data?: {
     id: number;
     name: string;
-    accountId: number; // ✅ REQUIRED
+    accountId: number;
   };
+  isFastProductionEnabled?: boolean;
 }
 
 const formSchema = z
   .object({
     assign_lead_to: z.number().min(1, "Assign lead to is required"),
-    task_type: z.enum(["Final Measurements", "Follow Up", "BookingDone - ISM"]),
+    task_type: z.string().min(1, "Task Type is required"),
     due_date: z.string().min(1, "Due Date is required"),
     remark: z.string().optional(),
     current_site_photos: z.array(z.instanceof(File)).optional(),
   })
   .superRefine((data, ctx) => {
-    // 🔴 Final Measurements → site photos mandatory
     if (data.task_type === "Final Measurements") {
       if (!data.current_site_photos || data.current_site_photos.length === 0) {
         ctx.addIssue({
@@ -63,12 +89,25 @@ const formSchema = z
       }
     }
 
-    // 🔴 Follow Up → remark mandatory
     if (data.task_type === "Follow Up") {
       if (!data.remark || !data.remark.trim()) {
         ctx.addIssue({
           path: ["remark"],
           message: "Remark is required for Follow Up",
+          code: z.ZodIssueCode.custom,
+        });
+      }
+    }
+
+    if (data.task_type === "Approval Request") {
+      if (
+        !data.remark ||
+        !data.remark.trim() ||
+        data.remark.trim().toLowerCase() === "n/a"
+      ) {
+        ctx.addIssue({
+          path: ["remark"],
+          message: "Remark is required",
           code: z.ZodIssueCode.custom,
         });
       }
@@ -79,8 +118,55 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   open,
   onOpenChange,
   data,
+  isFastProductionEnabled = false,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const isAccountLocInEnabled = useAppSelector(
+    (state) => state.auth.user?.vendor?.IsAccountLocInEnabled ?? false,
+  );
+  const vendorCustomUserTypeMode = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only as
+      | boolean
+      | null
+      | undefined,
+  );
+  const isApprovalTaskEnabled = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_approval_task_enabled as
+      | boolean
+      | null
+      | undefined,
+  );
+  const isSelfAssignTaskTypeMasterEnabled = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_self_assign_task_type_master_enabed !== false,
+  );
+  const userRole = useAppSelector(
+    (state) => state.auth?.user?.user_type.user_type
+  );
+  const loggedInUserName = useAppSelector(
+    (state) => state.auth.user?.user_name ?? "",
+  );
+  const userTypeId = useAppSelector((state) => state.auth.user?.user_type_id);
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
+
+  const isCustomUser = (userRole ?? "").toLowerCase() === "custom";
+  const canAccessRestrictedTasks = ["super-admin", "admin", "sales-executive"].includes(userRole ?? "");
+  const normalizedUserRole = (userRole ?? "").toLowerCase();
+  const dueDateMinDate = React.useMemo(() => {
+    const minDate = new Date();
+    minDate.setHours(0, 0, 0, 0);
+
+    if (normalizedUserRole === "super-admin") {
+      return formatLocalDate(minDate);
+    }
+
+    minDate.setDate(minDate.getDate() + 2);
+    return formatLocalDate(minDate);
+  }, [normalizedUserRole]);
+
   const {
     data: siteSupervisors,
     isLoading: loadingSupervisors,
@@ -90,58 +176,824 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
     data: salesExecutives,
     isLoading: loadingSalesExecs,
     error: salesExecError,
-  } = useVendorSalesExecutiveUsers(vendorId!);
+  } = useVendorSalesExecutiveUsers(
+    vendorId!,
+    undefined,
+    isCustomUser
+      ? {
+        assigneeUserType: "custom",
+        requiredPrivilegeCode:
+          "leads.booking_done.assign_task.final_measurement",
+      }
+      : undefined,
+  );
+  const {
+    data: customFinalMeasurementUsers,
+    isLoading: loadingCustomFinalMeasurementUsers,
+    error: customFinalMeasurementUsersError,
+  } = useVendorSalesExecutiveUsers(vendorId!, undefined, {
+    assigneeUserType: "custom",
+    requiredPrivilegeCode:
+      "project.final_measurement.fm_action_upload_of_fm.enable_disable",
+  });
+
   const router = useRouter();
   const leadId = data?.id!;
   const accountId = data?.accountId!;
   if (!leadId || !accountId) {
-    toast.error("Lead or Account information is missing");
+    toastManager.add({ title: "Lead or Account information is missing", type: "error" });
     return null;
   }
+
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const { data: siteSupervisorCheck } = useCheckSiteSupervisorAssigned(vendorId, leadId);
+  console.log("Assigned site supervisor: ", siteSupervisorCheck)
+  const isSiteSupervisorAssigned = siteSupervisorCheck?.isSiteSupervisorAssigned ?? false;
+  const {
+    data: taskConflicts,
+    isLoading: restrictedTaskConflictsLoading,
+  } = useRestrictedTaskConflicts(leadId);
+  const { data: bookingDoneLockIns = [], isLoading: bookingDoneLockInsLoading } =
+    useLeadSuperAdminApprovalLockIns(vendorId, leadId, "booking_done");
   const mutation = useAssignToFinalMeasurement(leadId);
+  const approvalRequestMutation = useCreateApprovalRequest(leadId);
   const queryClient = useQueryClient();
   const uploadCSPMutation = useUploadCSPBooking();
+  const { data: leadData } = useLeadById(leadId, vendorId, userId);
+  const lead = leadData?.data?.lead;
+  const isLeadFastProductionAlready = lead?.is_fast_production === true;
+  const isFastProductionPending = lead?.has_pending_fast_production_request === true;
+  const franchiseId = useAppSelector(
+    (state) => state.auth.franchise_id ?? state.auth.user?.franchise_id
+  );
+  
+  const { 
+    isLoading: limitLoading, 
+    isError: isLimitReachedRaw 
+  } = useCheckFastProductionLimit(vendorId, userId, franchiseId ?? undefined, open);
+
+  const { data: draftResponse } = useFastProductionRequestDraft(vendorId, leadId);
+  const hasDraft = !!draftResponse?.data?.requests?.length;
+
+  const isLimitReached = (userRole ?? "").toLowerCase() === "super-admin" ? false : isLimitReachedRaw;
+
+
+  console.log("isLimitReached", isLimitReached)
+
+  const assignedSiteSupervisorFromMapping =
+    leadData?.data?.lead?.assigned_site_supervisor_from_mapping ?? null;
+  const assignedSiteSupervisorId =
+    assignedSiteSupervisorFromMapping?.user_id ??
+    leadData?.data?.lead?.siteSupervisors?.[0]?.supervisor?.id ??
+    leadData?.data?.lead?.siteSupervisors?.[0]?.user_id ??
+    undefined;
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       assign_lead_to: undefined,
-      task_type: "Final Measurements",
+      task_type: canAccessRestrictedTasks ? "Final Measurements" : "Follow Up",
       due_date: "",
       remark: "N/A",
       current_site_photos: [],
     },
   });
 
+  const hasUserChangedTaskTypeRef = React.useRef(false);
+  const [approvalFiles, setApprovalFiles] = React.useState<File[]>([]);
+  const [fastProductionModalOpen, setFastProductionModalOpen] =
+    React.useState(false);
+  const [fastProductionTermsOpen, setFastProductionTermsOpen] =
+    React.useState(false);
+
   const taskType = form.watch("task_type");
+  const isApprovalRequestTask = taskType === "Approval Request";
+  const isFastProductionTask = taskType === "Request Fast Production";
+
+  const resetForm = React.useCallback(() => {
+    setApprovalFiles([]);
+    hasUserChangedTaskTypeRef.current = false;
+    form.reset({
+      assign_lead_to: undefined,
+      task_type: canAccessRestrictedTasks ? "Final Measurements" : "Follow Up",
+      due_date: "",
+      remark: "N/A",
+      current_site_photos: [],
+    });
+  }, [canAccessRestrictedTasks, form]);
+
+  const openFastProductionModal = React.useCallback(() => {
+    resetForm();
+    onOpenChange(false);
+    if (hasDraft) {
+      setFastProductionModalOpen(true);
+    } else {
+      setFastProductionTermsOpen(true);
+    }
+  }, [onOpenChange, resetForm, hasDraft]);
+
+  const {
+    data: selfAssignTaskTypes = [],
+    isLoading: loadingSelfAssignTaskTypes,
+    error: selfAssignTaskTypesError,
+  } = useSelfAssignTaskTypes(
+    vendorId,
+    userTypeId,
+    isSelfAssignTaskTypeMasterEnabled,
+  );
+  const selfAssignTaskTypeNames = React.useMemo(
+    () =>
+      Array.from(
+        new Set(
+          selfAssignTaskTypes
+            .map((taskType) => taskType.type?.trim())
+            .filter(
+              (taskType): taskType is string =>
+                !!taskType &&
+                ![
+                  "Final Measurements",
+                  "Follow Up",
+                  "BookingDone - ISM",
+                  "Approval Request",
+                ].includes(taskType),
+            ),
+        ),
+      ),
+    [selfAssignTaskTypes],
+  );
+
+  const {
+    isLeadBlocked,
+    blockedTooltip,
+    shouldDisableBlockedActions,
+  } = useLeadAccessControl({
+    leadId,
+    userType: userRole,
+    lead,
+  });
+
+  const isSelfAssignTask = selfAssignTaskTypeNames.includes(taskType);
+  const restrictedTaskConflicts = taskConflicts?.restrictedTaskConflicts ?? [];
+  const followUpConflicts = taskConflicts?.followUpConflicts ?? [];
+  const finalMeasurementsConflict = restrictedTaskConflicts.find(
+    (task) => task.task_type === "Final Measurements",
+  );
+  const bookingDoneConflict = restrictedTaskConflicts.find(
+    (task) => task.task_type === "BookingDone - ISM",
+  );
+  const hasPendingBookingDoneApproval = bookingDoneLockIns.some(
+    (lockIn) => !lockIn.is_approved
+  );
+  const requiresBookingDoneApproval = isAccountLocInEnabled;
+  const finalMeasurementsConflictTooltip = finalMeasurementsConflict
+    ? "Final Measurements task already created and not completed"
+    : null;
+  const bookingDoneConflictTooltip = bookingDoneConflict
+    ? "BookingDone - ISM task already created and not completed"
+    : null;
+  const canUseRestrictedTaskAssignments =
+    canAccessRestrictedTasks || isCustomUser;
+  const isFinalMeasurementsDisabled =
+    restrictedTaskConflictsLoading ||
+    !!finalMeasurementsConflict ||
+    (!vendorCustomUserTypeMode &&
+      requiresBookingDoneApproval &&
+      (bookingDoneLockInsLoading || hasPendingBookingDoneApproval)) ||
+    !canUseRestrictedTaskAssignments ||
+    (!vendorCustomUserTypeMode && !isSiteSupervisorAssigned);
+  const finalMeasurementsTooltip =
+    restrictedTaskConflictsLoading
+      ? "Checking existing tasks"
+      : finalMeasurementsConflictTooltip
+        ? finalMeasurementsConflictTooltip
+        : !vendorCustomUserTypeMode && requiresBookingDoneApproval && bookingDoneLockInsLoading
+          ? "Checking accounts approval status"
+          : !vendorCustomUserTypeMode && requiresBookingDoneApproval && hasPendingBookingDoneApproval
+            ? "Accounts approval for Booking Done is pending"
+            : !canUseRestrictedTaskAssignments
+              ? "You don't have permission to select this"
+              : !vendorCustomUserTypeMode && !isSiteSupervisorAssigned
+                ? "Site supervisor is not assigned yet"
+                : null;
+  const isBookingDoneDisabled =
+    restrictedTaskConflictsLoading ||
+    !!bookingDoneConflict ||
+    !canUseRestrictedTaskAssignments;
+  const bookingDoneTooltip =
+    restrictedTaskConflictsLoading
+      ? "Checking existing tasks"
+      : bookingDoneConflictTooltip
+        ? bookingDoneConflictTooltip
+        : !canUseRestrictedTaskAssignments
+          ? "You don't have permission to select this"
+          : null;
+  const hasFinalMeasurementPrivilege = isCustomUser
+    ? customPrivilegeCodes.includes(
+      "leads.booking_done.assign_task.final_measurement",
+    )
+    : true;
+  const hasFollowUpPrivilege = canUserShowFollowUp({
+    isCustomUser,
+    customPrivilegeCodes,
+    lead,
+  });
+  const hasBookingDoneIsmPrivilege = isCustomUser
+    ? customPrivilegeCodes.includes(
+      "leads.booking_done.assign_task.bookingdone_ism",
+    )
+    : true;
+  const canShowApprovalRequestOption = canUserShowApprovalRequest({
+    isCustomUser,
+    customPrivilegeCodes,
+    isApprovalTaskEnabled,
+    lead,
+  });
+  const allowedFastProductionRoles = ["super-admin", "admin", "sales-executive"];
+  const canShowFastProductionOption = isFastProductionEnabled && allowedFastProductionRoles.includes(normalizedUserRole);
+
+  const availableTaskTypes = React.useMemo(() => {
+    if (shouldDisableBlockedActions) {
+      return hasFollowUpPrivilege ? ["Follow Up"] : [];
+    }
+
+    return [
+      hasFinalMeasurementPrivilege ? "Final Measurements" : null,
+      hasFollowUpPrivilege ? "Follow Up" : null,
+      hasBookingDoneIsmPrivilege ? "BookingDone - ISM" : null,
+      canShowApprovalRequestOption ? "Approval Request" : null,
+      canShowFastProductionOption ? "Request Fast Production" : null,
+      ...selfAssignTaskTypeNames,
+    ].filter(Boolean) as string[];
+  }, [
+    shouldDisableBlockedActions,
+    hasFinalMeasurementPrivilege,
+    hasFollowUpPrivilege,
+    hasBookingDoneIsmPrivilege,
+    canShowApprovalRequestOption,
+    canShowFastProductionOption,
+    selfAssignTaskTypeNames,
+  ]);
+
+  const { data: followUpUsersData } = useFollowUpUsers(
+    vendorId,
+    leadId,
+    franchiseId
+  );
+  const {
+    data: approvalRequestAssignableUsersData,
+    isLoading: loadingApprovalRequestUsers,
+    error: approvalRequestUsersError,
+  } = useApprovalRequestAssignableUsers(vendorId, leadId);
+  const followUpTooltip =
+    "A Follow Up Task is already assigned to this user, which is not yet completed.";
+  const eligibleCustomUsers = (salesExecutives?.data?.sales_executives ?? []).filter(
+    (user: any) =>
+      String(user.user_type?.user_type ?? "").toLowerCase() !== "master-admin",
+  );
+  const eligibleFinalMeasurementCustomUsers =
+    (customFinalMeasurementUsers?.data?.sales_executives ?? []).filter(
+      (user: any) =>
+        String(user.user_type?.user_type ?? "").toLowerCase() !== "master-admin",
+    );
+
+  const baseFinalMeasurementUsers = React.useMemo(() => {
+    if (assignedSiteSupervisorId) {
+      const assigned = (siteSupervisors?.data?.site_supervisors ?? []).find(
+        (user: any) => user.id === assignedSiteSupervisorId
+      );
+      return assigned &&
+        String(assigned.user_type?.user_type ?? "").toLowerCase() !== "master-admin"
+        ? [assigned]
+        : [];
+    }
+
+    return (siteSupervisors?.data?.site_supervisors ?? []).filter(
+      (user: any) =>
+        String(user.user_type?.user_type ?? "").toLowerCase() !== "master-admin",
+    );
+  }, [assignedSiteSupervisorId, siteSupervisors]);
+
+  const finalMeasurementUsers = React.useMemo(() => {
+    if (vendorCustomUserTypeMode === true) {
+      return eligibleFinalMeasurementCustomUsers;
+    }
+
+    if (vendorCustomUserTypeMode === false) {
+      const mergedUsers = [
+        ...baseFinalMeasurementUsers,
+        ...eligibleFinalMeasurementCustomUsers,
+      ];
+
+      return mergedUsers.filter(
+        (user: any, index: number, array: any[]) =>
+          array.findIndex((candidate: any) => candidate.id === user.id) === index,
+      );
+    }
+
+    return baseFinalMeasurementUsers;
+  }, [
+    baseFinalMeasurementUsers,
+    eligibleFinalMeasurementCustomUsers,
+    vendorCustomUserTypeMode,
+  ]);
+
+  const approvalRequestUsers = React.useMemo(() => {
+    const users = approvalRequestAssignableUsersData?.users ?? [];
+    const leadFranchiseId = approvalRequestAssignableUsersData?.leadFranchiseId;
+
+    return users.filter((user) => {
+      const normalizedAssignableUserType = String(
+        user.user_type?.user_type ?? "",
+      ).toLowerCase();
+
+      if (user.id === userId) return false;
+      if (normalizedAssignableUserType === "master-admin") return false;
+
+      if (leadFranchiseId !== undefined && leadFranchiseId !== null) {
+        if (
+          user.franchise_id !== leadFranchiseId &&
+          ["sales-executive", "admin"].includes(normalizedAssignableUserType)
+        ) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [
+    approvalRequestAssignableUsersData?.users,
+    approvalRequestAssignableUsersData?.leadFranchiseId,
+    userId,
+  ]);
+  const approvalRequestMappedUsers = React.useMemo(
+    () =>
+      approvalRequestUsers.map((user) => ({
+        id: user.id,
+        label: user.user_name,
+      })),
+    [approvalRequestUsers],
+  );
+
+  const followUpAssignableUsers = (followUpUsersData?.data?.users ?? []).filter(
+    (u: any) =>
+      String(u.user_type?.user_type ?? "").toLowerCase() !== "master-admin",
+  );
+  const customFollowUpAssignableUsers = React.useMemo(() => {
+    const superAdminUsers = (followUpUsersData?.data?.users ?? []).filter(
+      (u: any) =>
+        String(u.user_type?.user_type ?? "").toLowerCase() === "super-admin",
+    );
+    const users = [...eligibleCustomUsers, ...superAdminUsers];
+
+    if (!userId || !loggedInUserName || !isCustomUser) {
+      return users.filter(
+        (user: any, index: number, array: any[]) =>
+          array.findIndex((candidate: any) => candidate.id === user.id) ===
+          index,
+      );
+    }
+
+    const hasSelf = users.some((u: any) => u.id === userId);
+    if (hasSelf) return users;
+
+    return [
+      ...users,
+      {
+        id: userId,
+        user_name: loggedInUserName,
+        user_type: { user_type: "custom" },
+      },
+    ].filter(
+      (user: any, index: number, array: any[]) =>
+        array.findIndex((candidate: any) => candidate.id === user.id) ===
+        index,
+    );
+  }, [
+    eligibleCustomUsers,
+    followUpUsersData?.data?.users,
+    isCustomUser,
+    loggedInUserName,
+    userId,
+  ]);
 
   const mappedData = React.useMemo(() => {
+    if (taskType === "Approval Request") {
+      return approvalRequestMappedUsers;
+    }
+
+    if (isSelfAssignTask) {
+      return normalizedUserRole === "master-admin"
+        ? []
+        : [{ id: userId ?? 0, label: loggedInUserName }];
+    }
+
+    if (vendorCustomUserTypeMode === true && taskType === "Final Measurements") {
+      return eligibleFinalMeasurementCustomUsers.map((user: any) => ({
+        id: user.id,
+        label: user.user_name,
+      }));
+    }
+
+    if (isCustomUser) {
+      return customFollowUpAssignableUsers.map((user: any) => ({
+        id: user.id,
+        label: user.user_name,
+        disabled:
+          taskType === "Follow Up" &&
+          user.id !== userId &&
+          followUpConflicts.some((task) => task.assignee?.id === user.id),
+        tooltip:
+          taskType === "Follow Up" &&
+            user.id !== userId &&
+            followUpConflicts.some((task) => task.assignee?.id === user.id)
+            ? followUpTooltip
+            : undefined,
+      }));
+    }
+
+    if (taskType === "Follow Up") {
+      return followUpAssignableUsers.map((u: any) => ({
+        id: u.id,
+        label: u.user_name,
+        disabled:
+          u.id !== userId &&
+          followUpConflicts.some((task) => task.assignee?.id === u.id),
+        tooltip:
+          u.id !== userId &&
+            followUpConflicts.some((task) => task.assignee?.id === u.id)
+            ? followUpTooltip
+            : undefined,
+      }));
+    }
+
     if (taskType === "BookingDone - ISM") {
       return (
-        salesExecutives?.data?.sales_executives?.map((user: any) => ({
+        eligibleCustomUsers.map((user: any) => ({
           id: user.id,
           label: user.user_name,
         })) ?? []
       );
     }
 
-    // Default → Site Supervisors
     return (
-      siteSupervisors?.data?.site_supervisors?.map((user: any) => ({
+      finalMeasurementUsers.map((user: any) => ({
         id: user.id,
         label: user.user_name,
       })) ?? []
     );
-  }, [taskType, siteSupervisors, salesExecutives]);
+  }, [
+    approvalRequestMappedUsers,
+    eligibleFinalMeasurementCustomUsers,
+    eligibleCustomUsers,
+    finalMeasurementUsers,
+    followUpConflicts,
+    followUpTooltip,
+    followUpAssignableUsers,
+    isCustomUser,
+    isSelfAssignTask,
+    loggedInUserName,
+    normalizedUserRole,
+    taskType,
+    userId,
+  ]);
+
+  React.useEffect(() => {
+    if (
+      taskType === "Approval Request" &&
+      form.getValues("remark")?.trim().toLowerCase() === "n/a"
+    ) {
+      form.setValue("remark", "");
+    }
+  }, [form, taskType]);
+
+  React.useEffect(() => {
+    if (
+      isSelfAssignTask &&
+      userId &&
+      form.getValues("assign_lead_to") !== userId
+    ) {
+      form.setValue("assign_lead_to", userId, { shouldValidate: true });
+    }
+  }, [form, isSelfAssignTask, userId]);
+
+  React.useEffect(() => {
+    if (
+      !open ||
+      vendorCustomUserTypeMode !== true ||
+      taskType !== "Final Measurements"
+    ) {
+      return;
+    }
+
+    if (mappedData.length === 1) {
+      const onlyUserId = mappedData[0]?.id;
+      if (onlyUserId && form.getValues("assign_lead_to") !== onlyUserId) {
+        form.setValue("assign_lead_to", onlyUserId, { shouldValidate: true });
+      }
+    }
+  }, [form, mappedData, open, taskType, vendorCustomUserTypeMode]);
+
+  React.useEffect(() => {
+    if (isCustomUser || vendorCustomUserTypeMode !== null && vendorCustomUserTypeMode !== undefined) {
+      return;
+    }
+
+    if (taskType === "Final Measurements" && assignedSiteSupervisorId) {
+      form.setValue("assign_lead_to", assignedSiteSupervisorId, { shouldValidate: true });
+    }
+  }, [taskType, assignedSiteSupervisorId, form, isCustomUser, vendorCustomUserTypeMode]);
+
+  React.useEffect(() => {
+    if (siteSupervisorCheck !== undefined && !isSiteSupervisorAssigned && !vendorCustomUserTypeMode) {
+      form.setValue("task_type", "Follow Up");
+    }
+  }, [siteSupervisorCheck, isSiteSupervisorAssigned, form, hasFollowUpPrivilege, vendorCustomUserTypeMode]);
+
+  React.useEffect(() => {
+    if (!open) {
+      hasUserChangedTaskTypeRef.current = false;
+      return;
+    }
+
+    const currentTaskType = form.getValues("task_type");
+    if (!availableTaskTypes.includes(currentTaskType)) {
+      const fallbackTaskType =
+        availableTaskTypes[0] ??
+        (canAccessRestrictedTasks ? "Final Measurements" : "Follow Up");
+      form.setValue("task_type", fallbackTaskType, { shouldValidate: true });
+      return;
+    }
+
+    if (
+      hasFinalMeasurementPrivilege &&
+      isFinalMeasurementsDisabled &&
+      !hasUserChangedTaskTypeRef.current &&
+      form.getValues("task_type") !== "Follow Up"
+    ) {
+      const fallbackTaskType = hasFollowUpPrivilege
+        ? "Follow Up"
+        : hasBookingDoneIsmPrivilege
+          ? "BookingDone - ISM"
+          : currentTaskType;
+      form.setValue("task_type", fallbackTaskType, { shouldValidate: true });
+      return;
+    }
+
+    if (
+      hasFinalMeasurementPrivilege &&
+      !isFinalMeasurementsDisabled &&
+      !hasUserChangedTaskTypeRef.current &&
+      form.getValues("task_type") !== "Final Measurements"
+    ) {
+      form.setValue("task_type", "Final Measurements", { shouldValidate: true });
+    }
+  }, [
+    availableTaskTypes,
+    canAccessRestrictedTasks,
+    form,
+    hasBookingDoneIsmPrivilege,
+    hasFinalMeasurementPrivilege,
+    hasFollowUpPrivilege,
+    isFinalMeasurementsDisabled,
+    open,
+  ]);
+
+  React.useEffect(() => {
+    if (
+      form.getValues("task_type") === "Final Measurements" &&
+      isFinalMeasurementsDisabled
+    ) {
+      if (hasFollowUpPrivilege) {
+        form.setValue("task_type", "Follow Up");
+      } else if (hasBookingDoneIsmPrivilege) {
+        form.setValue("task_type", "BookingDone - ISM");
+      }
+    }
+  }, [form, hasBookingDoneIsmPrivilege, hasFollowUpPrivilege, isFinalMeasurementsDisabled]);
+
+  React.useEffect(() => {
+    if (
+      form.getValues("task_type") === "BookingDone - ISM" &&
+      isBookingDoneDisabled
+    ) {
+      if (hasFollowUpPrivilege) {
+        form.setValue("task_type", "Follow Up");
+      } else if (hasFinalMeasurementPrivilege && !isFinalMeasurementsDisabled) {
+        form.setValue("task_type", "Final Measurements");
+      }
+    }
+  }, [
+    form,
+    hasFinalMeasurementPrivilege,
+    hasFollowUpPrivilege,
+    isBookingDoneDisabled,
+    isFinalMeasurementsDisabled,
+  ]);
+
+  React.useEffect(() => {
+    if (
+      form.getValues("task_type") === "Approval Request" &&
+      !canShowApprovalRequestOption
+    ) {
+      if (hasFollowUpPrivilege) {
+        form.setValue("task_type", "Follow Up");
+      } else if (hasFinalMeasurementPrivilege && !isFinalMeasurementsDisabled) {
+        form.setValue("task_type", "Final Measurements");
+      } else if (hasBookingDoneIsmPrivilege && !isBookingDoneDisabled) {
+        form.setValue("task_type", "BookingDone - ISM");
+      }
+    }
+  }, [
+    canShowApprovalRequestOption,
+    form,
+    hasBookingDoneIsmPrivilege,
+    hasFinalMeasurementPrivilege,
+    hasFollowUpPrivilege,
+    isBookingDoneDisabled,
+    isFinalMeasurementsDisabled,
+  ]);
+
+  React.useEffect(() => {
+    if (
+      form.getValues("task_type") === "Request Fast Production" &&
+      (!canShowFastProductionOption || isLimitReached)
+    ) {
+      if (hasFollowUpPrivilege) {
+        form.setValue("task_type", "Follow Up");
+      } else if (hasFinalMeasurementPrivilege && !isFinalMeasurementsDisabled) {
+        form.setValue("task_type", "Final Measurements");
+      } else if (hasBookingDoneIsmPrivilege && !isBookingDoneDisabled) {
+        form.setValue("task_type", "BookingDone - ISM");
+      }
+    }
+  }, [
+    canShowFastProductionOption,
+    isLimitReached,
+    form,
+    hasBookingDoneIsmPrivilege,
+    hasFinalMeasurementPrivilege,
+    hasFollowUpPrivilege,
+    isBookingDoneDisabled,
+    isFinalMeasurementsDisabled,
+  ]);
+
+  React.useEffect(() => {
+    if (taskType !== "Follow Up") return;
+
+    const selectedUserId = form.getValues("assign_lead_to");
+    if (
+      selectedUserId &&
+      selectedUserId !== userId &&
+      followUpConflicts.some((task) => task.assignee?.id === selectedUserId)
+    ) {
+      form.resetField("assign_lead_to");
+    }
+  }, [form, taskType, followUpConflicts, userId]);
+
+  React.useEffect(() => {
+    const selectedUserId = form.getValues("assign_lead_to");
+    if (!selectedUserId) return;
+
+    const isSelectedUserStillAvailable = mappedData.some(
+      (user: any) => user.id === selectedUserId,
+    );
+
+    if (!isSelectedUserStillAvailable) {
+      form.resetField("assign_lead_to");
+    }
+  }, [form, mappedData]);
+
+
+  React.useEffect(() => {
+    if (!open) return;
+
+    if (
+      shouldDisableBlockedActions &&
+      hasFollowUpPrivilege &&
+      form.getValues("task_type") !== "Follow Up"
+    ) {
+      form.setValue("task_type", "Follow Up", {
+        shouldValidate: true,
+      });
+    }
+  }, [
+    open,
+    shouldDisableBlockedActions,
+    hasFollowUpPrivilege,
+    form,
+  ]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      // 🔴 STEP 1: Upload CSP Photos (ONLY for Final Measurements)
+      if (values.task_type === "Approval Request") {
+        approvalRequestMutation.mutate(
+          {
+            due_date: values.due_date,
+            remark: values.remark?.trim() ?? "",
+            user_id: values.assign_lead_to!,
+            created_by: userId!,
+            files: approvalFiles,
+          },
+          {
+            onSuccess: () => {
+              toastManager.add({
+                title: "Approval request assigned successfully!",
+                type: "success",
+              });
+              queryClient.invalidateQueries({
+                queryKey: ["universal-stage-leads"],
+                exact: false,
+              });
+              queryClient.invalidateQueries({
+                queryKey: ["leadStats", vendorId, userId],
+              });
+              queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
+              queryClient.invalidateQueries({ queryKey: ["vendorUserTasks"] });
+              queryClient.invalidateQueries({ queryKey: ["leadLogs"] });
+              setApprovalFiles([]);
+              form.reset({
+                assign_lead_to: undefined,
+                task_type: canAccessRestrictedTasks ? "Final Measurements" : "Follow Up",
+                due_date: "",
+                remark: "N/A",
+                current_site_photos: [],
+              });
+              onOpenChange(false);
+            },
+            onError: (error: any) => {
+              toastManager.add({
+                title:
+                  error?.response?.data?.message ||
+                  error.message ||
+                  "Something went wrong",
+                type: "error",
+              });
+            },
+          },
+        );
+        return;
+      }
+
+      if (values.task_type === "Final Measurements" && finalMeasurementsConflict) {
+        toastManager.add({
+          title: "Final Measurements task already created and not completed",
+          type: "error",
+        });
+        return;
+      }
+
+      if (values.task_type === "BookingDone - ISM" && bookingDoneConflict) {
+        toastManager.add({
+          title: "BookingDone - ISM task already created and not completed",
+          type: "error",
+        });
+        return;
+      }
+
+      if (
+        values.task_type === "Follow Up" &&
+        values.assign_lead_to !== userId &&
+        followUpConflicts.some((task) => task.assignee?.id === values.assign_lead_to)
+      ) {
+        toastManager.add({ title: followUpTooltip, type: "error" });
+        return;
+      }
+
+      if (isSelfAssignTask && values.assign_lead_to !== userId) {
+        toastManager.add({
+          title: "This task type can only be assigned to yourself.",
+          type: "error",
+        });
+        return;
+      }
+
+      if (
+        values.task_type === "Final Measurements" &&
+        requiresBookingDoneApproval &&
+        hasPendingBookingDoneApproval
+      ) {
+        toastManager.add({
+          title: "Accounts approval for Booking Done is pending",
+          type: "error",
+        });
+        return;
+      }
+
+      if (
+        values.task_type === "Final Measurements" &&
+        !lead?.site_map_link?.trim()
+      ) {
+        toastManager.add({
+          title: "Site Map Link is compulsory before assigning lead to Final Measurement",
+          type: "error",
+        });
+        return;
+      }
+
       if (values.task_type === "Final Measurements") {
         await uploadCSPMutation.mutateAsync({
           lead_id: leadId,
-          account_id: accountId, // ✅ guaranteed value
+          account_id: accountId,
           vendor_id: vendorId!,
           assigned_to: values.assign_lead_to!,
           created_by: userId!,
@@ -149,7 +1001,6 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
         });
       }
 
-      // 🔴 STEP 2: Assign Task
       const payload: AssignToFinalMeasurementPayload = {
         task_type: values.task_type,
         due_date: values.due_date,
@@ -160,8 +1011,10 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
 
       mutation.mutate(payload, {
         onSuccess: () => {
-          toast.success("Final Measurement assigned successfully!");
-
+          toastManager.add({
+            title: "Final Measurement assigned successfully!",
+            type: "success",
+          });
           queryClient.invalidateQueries({
             queryKey: ["leadStats", vendorId, userId],
           });
@@ -169,7 +1022,6 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
             queryKey: ["universal-stage-leads"],
             exact: false,
           });
-
           onOpenChange(false);
 
           if (values.task_type === "Final Measurements") {
@@ -177,88 +1029,276 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
           }
         },
         onError: (error: any) => {
-          toast.error(
-            error?.response?.data?.message || "Failed to assign task"
-          );
+          const errorMessage =
+            error?.response?.data?.error ||
+            error?.response?.data?.message ||
+            error?.message ||
+            "Failed to assign task";
+
+          toastManager.add({ title: errorMessage, type: "error" });
         },
       });
     } catch (error: any) {
-      toast.error(error?.message || "Failed to upload site photos");
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to upload site photos";
+
+      toastManager.add({ title: errorMessage, type: "error" });
     }
   };
 
-  if (loadingSupervisors || loadingSalesExecs) {
+  if (
+    loadingSupervisors ||
+    loadingSalesExecs ||
+    loadingCustomFinalMeasurementUsers ||
+    loadingApprovalRequestUsers ||
+    loadingSelfAssignTaskTypes
+  ) {
     return (
-      <BaseModal
-        open={open}
-        onOpenChange={onOpenChange}
-        title="Loading..."
-        size="lg"
-      >
+      <BaseModal open={open} onOpenChange={onOpenChange} title="Loading..." size="lg">
         <div className="p-6">Loading users...</div>
       </BaseModal>
     );
   }
 
-  if (supervisorError || salesExecError) {
+  if (
+    supervisorError ||
+    salesExecError ||
+    customFinalMeasurementUsersError ||
+    approvalRequestUsersError ||
+    selfAssignTaskTypesError
+  ) {
     return (
-      <BaseModal
-        open={open}
-        onOpenChange={onOpenChange}
-        title="Error"
-        size="lg"
-      >
+      <BaseModal open={open} onOpenChange={onOpenChange} title="Error" size="lg">
         <div className="p-6">Error loading users</div>
       </BaseModal>
     );
   }
 
   return (
-    <BaseModal
-      open={open}
-      onOpenChange={onOpenChange}
-      title={
-        form.watch("task_type") === "Follow Up"
-          ? "Assign Task for Follow Up"
-          : "Assign Task for Final Site Measurements"
-      }
-      description={
-        form.watch("task_type") === "Follow Up"
-          ? "Use this form to assign a follow up task."
-          : "Use this form to assign a final measurement task."
-      }
-      size="lg"
-    >
-      <div className="px-6 py-6 space-y-8">
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-            {/* Task Type */}
-            <Controller
-              control={form.control}
-              name="task_type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm">Task Type</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <FormControl>
-                      <SelectTrigger className="text-sm w-full">
-                        <SelectValue placeholder="Select task type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="Final Measurements">
-                        Final Measurements
-                      </SelectItem>
-                      <SelectItem value="Follow Up">Follow Up</SelectItem>
-                      <SelectItem value="BookingDone - ISM">
-                        BookingDone - ISM
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+    <>
+      <BaseModal
+        open={open}
+        onOpenChange={onOpenChange}
+        title={
+          form.watch("task_type") === "Approval Request"
+            ? "Assign Approval Request"
+            : isFastProductionTask
+            ? "Assign Task for Request Fast Production"
+            : isSelfAssignTask
+              ? `Assign Task for ${form.watch("task_type")}`
+              : form.watch("task_type") === "Follow Up"
+              ? "Assign Task for Follow Up"
+              : "Assign Task for Final Site Measurements"
+        }
+        description={
+          form.watch("task_type") === "Approval Request"
+            ? "Use this form to assign an approval request."
+            : isFastProductionTask
+            ? "Use this form to assign a fast production request task."
+            : isSelfAssignTask
+              ? `Use this form to assign a ${form.watch("task_type").toLowerCase()} task to yourself.`
+              : form.watch("task_type") === "Follow Up"
+              ? "Use this form to assign a follow up task."
+              : "Use this form to assign a final measurement task."
+        }
+        size="lg"
+      >
+        <div className="px-6 py-6 space-y-8">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+              {/* Task Type */}
+              <Controller
+                control={form.control}
+                name="task_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm">Task Type</FormLabel>
+                    <Select
+                      value={field.value}
+                      onValueChange={(value) => {
+                        if (value === "Request Fast Production") {
+                          openFastProductionModal();
+                          return;
+                        }
+
+                        hasUserChangedTaskTypeRef.current = true;
+                        field.onChange(value);
+                      }}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="text-sm w-full">
+                          <SelectValue placeholder="Select task type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                      {/* ── Final Measurements ── */}
+                      {hasFinalMeasurementPrivilege && (
+                        shouldDisableBlockedActions ? (
+                          <CustomeTooltip
+                            value={blockedTooltip}
+                            truncateValue={
+                              <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                <span>Final Measurements</span>
+                                <span className="text-xs italic">(blocked)</span>
+                              </div>
+                            }
+                          />
+                        ) : isFinalMeasurementsDisabled ? (
+                          <CustomeTooltip
+                            value={finalMeasurementsTooltip ?? ""}
+                            truncateValue={
+                              <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                <span>Final Measurements</span>
+                                <span className="text-xs italic">(locked)</span>
+                              </div>
+                            }
+                          />
+                        ) : (
+                          <SelectItem value="Final Measurements">
+                            Final Measurements
+                          </SelectItem>
+                        )
+                      )}
+
+                      {/* ── Follow Up — always selectable even when blocked ── */}
+                      {hasFollowUpPrivilege && (
+                        <SelectItem value="Follow Up">Follow Up</SelectItem>
+                      )}
+
+                      {/* ── Approval Request ── */}
+                      {canShowApprovalRequestOption && (
+                        shouldDisableBlockedActions ? (
+                          <CustomeTooltip
+                            value={blockedTooltip}
+                            truncateValue={
+                              <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                <span>Approval Request</span>
+                                <span className="text-xs italic">(blocked)</span>
+                              </div>
+                            }
+                          />
+                        ) : (
+                          <SelectItem value="Approval Request">
+                            Approval Request
+                          </SelectItem>
+                        )
+                      )}
+
+                      {canShowFastProductionOption && (
+                        isLeadFastProductionAlready ? (
+                          <CustomeTooltip
+                            value="lead is already in fast production"
+                            truncateValue={
+                              <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                <span>Request Fast Production</span>
+                                <span className="text-xs italic">(locked)</span>
+                              </div>
+                            }
+                          />
+                        ) : isFastProductionPending ? (
+                          <CustomeTooltip
+                            value="request has been already send for approval"
+                            truncateValue={
+                              <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                <span>Request Fast Production</span>
+                                <span className="text-xs italic">(locked)</span>
+                              </div>
+                            }
+                          />
+                        ) : shouldDisableBlockedActions ? (
+                          <CustomeTooltip
+                            value={blockedTooltip}
+                            truncateValue={
+                              <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                <span>Request Fast Production</span>
+                                <span className="text-xs italic">(blocked)</span>
+                              </div>
+                            }
+                          />
+                        ) : limitLoading ? (
+                          <CustomeTooltip
+                            value="Checking fast production limit..."
+                            truncateValue={
+                              <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                <span>Request Fast Production</span>
+                                <span className="text-xs italic">(loading)</span>
+                              </div>
+                            }
+                          />
+                        ) : isLimitReached ? (
+                          <CustomeTooltip
+                            value="Fast production creation limit reached for the current month (Max 2)"
+                            truncateValue={
+                              <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                <span>Request Fast Production</span>
+                                <span className="text-xs italic">(locked)</span>
+                              </div>
+                            }
+                          />
+                        ) : (
+                          <SelectItem value="Request Fast Production">
+                            Request Fast Production
+                          </SelectItem>
+                        )
+                      )}
+
+                      {/* ── BookingDone - ISM ── */}
+                      {hasBookingDoneIsmPrivilege && (
+                        shouldDisableBlockedActions ? (
+                          <CustomeTooltip
+                            value={blockedTooltip}
+                            truncateValue={
+                              <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                <span>BookingDone - ISM</span>
+                                <span className="text-xs italic">(blocked)</span>
+                              </div>
+                            }
+                          />
+                        ) : isBookingDoneDisabled ? (
+                          <CustomeTooltip
+                            value={bookingDoneTooltip ?? ""}
+                            truncateValue={
+                              <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                <span>BookingDone - ISM</span>
+                                <span className="text-xs italic">(locked)</span>
+                              </div>
+                            }
+                          />
+                        ) : (
+                          <SelectItem value="BookingDone - ISM">
+                            BookingDone - ISM
+                          </SelectItem>
+                        )
+                      )}
+
+                      {/* ── Self Assign Task Types ── */}
+                      {selfAssignTaskTypeNames.map((taskTypeName) =>
+                        shouldDisableBlockedActions ? (
+                          <CustomeTooltip
+                            key={taskTypeName}
+                            value={blockedTooltip}
+                            truncateValue={
+                              <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                <span>{taskTypeName}</span>
+                                <span className="text-xs italic">(blocked)</span>
+                              </div>
+                            }
+                          />
+                        ) : (
+                          <SelectItem key={taskTypeName} value={taskTypeName}>
+                            {taskTypeName}
+                          </SelectItem>
+                        )
+                      )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
             {/* Assign Lead To + Due Date */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -273,6 +1313,12 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                         data={mappedData}
                         value={field.value}
                         onChange={field.onChange}
+                        disabled={
+                          isSelfAssignTask ||
+                          (taskType === "Final Measurements" &&
+                            !!assignedSiteSupervisorId &&
+                            vendorCustomUserTypeMode == null)
+                        }
                       />
                     </FormControl>
                     <FormMessage />
@@ -291,6 +1337,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                         value={field.value}
                         onChange={field.onChange}
                         restriction="futureOnly"
+                        minDate={dueDateMinDate}
                       />
                     </FormControl>
                     <FormMessage />
@@ -317,6 +1364,21 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                 </FormItem>
               )}
             />
+
+            {isApprovalRequestTask && (
+              <FormItem>
+                <FormLabel className="text-sm">File Upload</FormLabel>
+                <FormControl>
+                  <FileUploadField
+                    value={approvalFiles}
+                    onChange={setApprovalFiles}
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.zip,.pyo"
+                    multiple
+                    maxFiles={10}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
 
             {form.watch("task_type") === "Final Measurements" && (
               <FormField
@@ -348,7 +1410,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                 type="button"
                 variant="outline"
                 className="text-sm"
-                onClick={() => form.reset()}
+                onClick={resetForm}
               >
                 Reset
               </Button>
@@ -367,10 +1429,25 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                   : "Submit"}
               </Button>
             </div>
-          </form>
-        </Form>
-      </div>
-    </BaseModal>
+            </form>
+          </Form>
+        </div>
+      </BaseModal>
+
+      <FastProductionRequestModal
+        open={fastProductionModalOpen}
+        onOpenChange={setFastProductionModalOpen}
+        leadId={data?.id}
+      />
+      <FastProductionTermsModal
+        open={fastProductionTermsOpen}
+        onOpenChange={setFastProductionTermsOpen}
+        onAgree={() => {
+          setFastProductionTermsOpen(false);
+          setFastProductionModalOpen(true);
+        }}
+      />
+    </>
   );
 };
 

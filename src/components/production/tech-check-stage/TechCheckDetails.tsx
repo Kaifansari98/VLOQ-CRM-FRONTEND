@@ -1,11 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAppSelector } from "@/redux/store";
 import { useClientDocumentationDetails } from "@/hooks/client-documentation/use-clientdocumentation";
 import { useSiteMeasurementLeadById } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
 import { useFinalMeasurementLeadById } from "@/hooks/final-measurement/use-final-measurement";
+import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
+import { LeadProductStructureInstance } from "@/api/leads";
+
 import {
   FileText,
   Camera,
@@ -14,8 +18,13 @@ import {
   AlertCircle,
   Ban,
   Layers3,
+  FolderOpen,
 } from "lucide-react";
-import { useClientRequiredCompletionDate } from "@/api/tech-check";
+import {
+  useClientRequiredCompletionDate,
+  useTechCheckInstanceStatus,
+} from "@/api/tech-check";
+
 import { useDeleteDocument } from "@/api/leads";
 import {
   AlertDialog,
@@ -32,9 +41,14 @@ import { ImageComponent } from "@/components/utils/ImageCard";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { useSelectionData } from "@/hooks/designing-stage/designing-leads-hooks";
 import SectionHeader from "@/utils/sectionHeader";
+import { Card, CardContent } from "@/components/ui/card";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 type Props = {
   leadId: number;
+  instanceId?: number | null;
+  selectedProductTypeId?: number | null;
+  onProductTypeChange?: (productTypeId: number) => void;
 };
 
 const containerVariants = {
@@ -47,34 +61,147 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.2 } },
 };
 
-export default function TechCheckDetails({ leadId }: Props) {
+export default function TechCheckDetails({
+  leadId,
+  instanceId,
+  selectedProductTypeId: selectedProductTypeIdProp,
+  onProductTypeChange,
+}: Props) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id)!;
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type
+    (state) => state.auth.user?.user_type.user_type,
   );
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const isHoUser = useAppSelector((state) => state.auth.is_ho_user);
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
+  const searchParams = useSearchParams();
+  const instanceIdFromUrlRaw = searchParams.get("instance_id");
+  const instanceIdFromUrl = instanceIdFromUrlRaw
+    ? Number(instanceIdFromUrlRaw)
+    : null;
+  const lockInstanceFromUrl =
+    Number.isFinite(instanceIdFromUrl) && !!instanceIdFromUrl;
+  const resolvedInstanceId =
+    Number.isFinite(instanceIdFromUrl) && instanceIdFromUrl
+      ? instanceIdFromUrl
+      : (instanceId ?? null);
 
   // ✅ Hooks
-  const { data: clientDocs } = useClientDocumentationDetails(vendorId, leadId);
+  const { data: leadData } = useLeadStatus(leadId, vendorId);
+  const leadStatus = leadData?.status;
+
+  const handlesLargeScaleProjectsFromAuth = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const handlesLargeScaleProjects =
+    handlesLargeScaleProjectsFromAuth ||
+    (leadData as any)?.lead?.createdBy?.vendor?.handlesLargeScaleProjects ===
+      true ||
+    (leadData as any)?.lead?.assignedTo?.vendor?.handlesLargeScaleProjects ===
+      true;
+
+  const { data: structureInstancesData } = useLeadProductStructureInstances(
+    leadId,
+    vendorId,
+  );
+
+  const largeScaleGroups = useMemo(() => {
+    if (!handlesLargeScaleProjects) return [];
+
+    const rawInstances: LeadProductStructureInstance[] = Array.isArray(
+      structureInstancesData?.data,
+    )
+      ? structureInstancesData.data
+      : [];
+
+    const map = new Map<
+      number,
+      {
+        productTypeId: number;
+        title: string;
+        subtitle: string;
+      }
+    >();
+
+    rawInstances.forEach((inst: any) => {
+      const typeId =
+        inst.product_type_id ||
+        inst.product_type?.id ||
+        inst.productType?.id ||
+        inst.productItemCode?.productStructure?.productType?.id;
+
+      if (typeId && !map.has(Number(typeId))) {
+        const title =
+          inst.product_type?.name ||
+          inst.productType?.type ||
+          inst.productItemCode?.productStructure?.productType?.type ||
+          inst.title ||
+          "Item Group";
+
+        const subtitle =
+          inst.code ||
+          inst.productItemCode?.item_code ||
+          inst.description ||
+          title;
+
+        map.set(Number(typeId), {
+          productTypeId: Number(typeId),
+          title,
+          subtitle,
+        });
+      }
+    });
+
+    return Array.from(map.values());
+  }, [handlesLargeScaleProjects, structureInstancesData?.data]);
+
+  const [selectedProductTypeId, setSelectedProductTypeId] = useState<
+    number | null
+  >(selectedProductTypeIdProp ?? null);
+
+  useEffect(() => {
+    if (selectedProductTypeIdProp != null) {
+      setSelectedProductTypeId(selectedProductTypeIdProp);
+    }
+  }, [selectedProductTypeIdProp]);
+
+  useEffect(() => {
+    if (handlesLargeScaleProjects && largeScaleGroups.length > 0) {
+      if (
+        !selectedProductTypeId ||
+        !largeScaleGroups.some((g) => g.productTypeId === selectedProductTypeId)
+      ) {
+        const defaultTypeId = largeScaleGroups[0].productTypeId;
+        setSelectedProductTypeId(defaultTypeId);
+        onProductTypeChange?.(defaultTypeId);
+      }
+    }
+  }, [
+    handlesLargeScaleProjects,
+    largeScaleGroups,
+    selectedProductTypeId,
+    onProductTypeChange,
+  ]);
+
+  const { data: clientDocs } = useClientDocumentationDetails(
+    vendorId,
+    leadId,
+    userId!,
+    handlesLargeScaleProjects ? undefined : (instanceIdFromUrl ?? undefined),
+    handlesLargeScaleProjects
+      ? (selectedProductTypeId ?? undefined)
+      : undefined,
+  );
   const { data: siteMeasurement } = useSiteMeasurementLeadById(leadId);
   const { data: finalMeasurement } = useFinalMeasurementLeadById(
     vendorId,
-    leadId
+    leadId,
   );
 
   console.log("Client Documentation: ", clientDocs);
   const { data } = useClientRequiredCompletionDate(vendorId, leadId);
-
-  const { data: selectionsData } = useSelectionData(vendorId!, leadId);
-
-  const selections = {
-    carcas: selectionsData?.data?.find((s: any) => s.type === "Carcas")?.desc,
-    shutter: selectionsData?.data?.find((s: any) => s.type === "Shutter")?.desc,
-    handles: selectionsData?.data?.find((s: any) => s.type === "Handles")?.desc,
-  };
-
-  const { data: leadData } = useLeadStatus(leadId, vendorId);
-  const leadStatus = leadData?.status;
 
   // filter: "ALL" | "APPROVED" | "PENDING" | "REJECTED"
   const [activeFilter, setActiveFilter] = useState<
@@ -88,7 +215,7 @@ export default function TechCheckDetails({ leadId }: Props) {
         (d) =>
           !d.tech_check_status ||
           d.tech_check_status === "PENDING" ||
-          d.tech_check_status === "REVISED"
+          d.tech_check_status === "REVISED",
       );
     }
 
@@ -96,8 +223,177 @@ export default function TechCheckDetails({ leadId }: Props) {
   };
 
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
-  const pptDocs = clientDocs?.documents?.ppt ?? [];
-  const pythaDocs = clientDocs?.documents?.pytha ?? [];
+  const groupedDocs = clientDocs?.documents_by_instance ?? [];
+  const instances = clientDocs?.product_structure_instances ?? [];
+  const hasMultipleInstances = (clientDocs?.instance_count ?? 0) > 1;
+  const [activeInstanceId, setActiveInstanceId] = useState<number | null>(
+    resolvedInstanceId,
+  );
+
+  useEffect(() => {
+    if (!hasMultipleInstances) {
+      setActiveInstanceId(resolvedInstanceId);
+      return;
+    }
+    if (resolvedInstanceId) {
+      setActiveInstanceId(resolvedInstanceId);
+      return;
+    }
+    if (!activeInstanceId && instances.length > 0) {
+      setActiveInstanceId(instances[0]?.id ?? null);
+    }
+  }, [hasMultipleInstances, resolvedInstanceId, instances, activeInstanceId]);
+
+  const scopedInstanceId = hasMultipleInstances
+    ? activeInstanceId
+    : resolvedInstanceId;
+
+  const { data: techCheckInstanceStatus } = useTechCheckInstanceStatus(
+    vendorId,
+    leadId,
+    scopedInstanceId,
+  );
+
+  useEffect(() => {
+    if (!scopedInstanceId) return;
+    console.log("Tech Check Instance Status:", techCheckInstanceStatus);
+  }, [scopedInstanceId, techCheckInstanceStatus]);
+
+  const showInstanceTabs =
+    hasMultipleInstances &&
+    instances.length > 0 &&
+    techCheckInstanceStatus?.is_tech_check_completed === true &&
+    techCheckInstanceStatus?.is_order_login_completed === true &&
+    techCheckInstanceStatus?.is_production_completed === true &&
+    !lockInstanceFromUrl;
+
+  console.log("showInstanceTabs", showInstanceTabs);
+  const { data: selectionsData } = useSelectionData(
+    vendorId!,
+    leadId,
+    scopedInstanceId ?? undefined,
+  );
+
+  const selections = {
+    carcas: selectionsData?.data?.find((s: any) => s.type === "Carcas")?.desc,
+    shutter: selectionsData?.data?.find((s: any) => s.type === "Shutter")?.desc,
+    handles: selectionsData?.data?.find((s: any) => s.type === "Handles")?.desc,
+  };
+
+  const docInstanceMap = useMemo(() => {
+    const map = new Map<number, string>();
+    groupedDocs.forEach((group: any) => {
+      const title = group?.instance_title || "Instance";
+      const docs = [
+        ...(group?.documents?.ppt || []),
+        ...(group?.documents?.pytha || []),
+      ];
+      docs.forEach((doc: any) => {
+        if (doc?.id) map.set(doc.id, title);
+      });
+    });
+    return map;
+  }, [groupedDocs]);
+
+  const getInstanceTitleForDoc = (doc: any) =>
+    docInstanceMap.get(doc?.id) ||
+    (doc?.product_structure_instance_id
+      ? `Instance #${doc.product_structure_instance_id}`
+      : "General");
+  const scopedGroup = scopedInstanceId
+    ? groupedDocs.find((group: any) => group?.instance_id === scopedInstanceId)
+    : null;
+
+  const fallbackPptDocsByInstance = scopedInstanceId
+    ? (clientDocs?.documents?.ppt ?? []).filter(
+        (doc: any) => doc?.product_structure_instance_id === scopedInstanceId,
+      )
+    : [];
+  const fallbackPythaDocsByInstance = scopedInstanceId
+    ? (clientDocs?.documents?.pytha ?? []).filter(
+        (doc: any) => doc?.product_structure_instance_id === scopedInstanceId,
+      )
+    : [];
+
+  const instanceToProductTypeMap = useMemo(() => {
+    const map = new Map<number, number>();
+    const rawInstances: any[] = Array.isArray(structureInstancesData?.data)
+      ? structureInstancesData.data
+      : [];
+    rawInstances.forEach((inst) => {
+      const typeId =
+        inst.product_type_id ||
+        inst.product_type?.id ||
+        inst.productType?.id ||
+        inst.productItemCode?.productStructure?.productType?.id;
+      if (inst.id && typeId) {
+        map.set(Number(inst.id), Number(typeId));
+      }
+    });
+    return map;
+  }, [structureInstancesData?.data]);
+
+  const rawPptDocs = clientDocs?.documents?.ppt ?? [];
+  const rawPythaDocs = clientDocs?.documents?.pytha ?? [];
+
+  const pptDocs = handlesLargeScaleProjects
+    ? selectedProductTypeId
+      ? rawPptDocs.filter((doc: any) => {
+          if (
+            doc.product_type_id &&
+            Number(doc.product_type_id) === Number(selectedProductTypeId)
+          ) {
+            return true;
+          }
+          if (doc.product_structure_instance_id) {
+            const instPTypeId = instanceToProductTypeMap.get(
+              Number(doc.product_structure_instance_id),
+            );
+            if (
+              instPTypeId &&
+              Number(instPTypeId) === Number(selectedProductTypeId)
+            ) {
+              return true;
+            }
+          }
+          return !doc.product_type_id && !doc.product_structure_instance_id;
+        })
+      : rawPptDocs
+    : scopedInstanceId && scopedGroup
+      ? (scopedGroup?.documents?.ppt ?? [])
+      : scopedInstanceId
+        ? fallbackPptDocsByInstance
+        : rawPptDocs;
+
+  const pythaDocs = handlesLargeScaleProjects
+    ? selectedProductTypeId
+      ? rawPythaDocs.filter((doc: any) => {
+          if (
+            doc.product_type_id &&
+            Number(doc.product_type_id) === Number(selectedProductTypeId)
+          ) {
+            return true;
+          }
+          if (doc.product_structure_instance_id) {
+            const instPTypeId = instanceToProductTypeMap.get(
+              Number(doc.product_structure_instance_id),
+            );
+            if (
+              instPTypeId &&
+              Number(instPTypeId) === Number(selectedProductTypeId)
+            ) {
+              return true;
+            }
+          }
+          return !doc.product_type_id && !doc.product_structure_instance_id;
+        })
+      : rawPythaDocs
+    : scopedInstanceId && scopedGroup
+      ? (scopedGroup?.documents?.pytha ?? [])
+      : scopedInstanceId
+        ? fallbackPythaDocsByInstance
+        : rawPythaDocs;
+
   const allDocs = [...pptDocs, ...pythaDocs];
 
   // ✅ Delete mutation
@@ -128,40 +424,45 @@ export default function TechCheckDetails({ leadId }: Props) {
 
   const filteredPptImages = filteredPptDocs.filter((file) =>
     imageExtensions.includes(
-      file.doc_og_name?.split(".").pop()?.toLowerCase() || ""
-    )
+      file.doc_og_name?.split(".").pop()?.toLowerCase() || "",
+    ),
   );
   const filteredPptDocuments = filteredPptDocs.filter((file) =>
     documentExtensions.includes(
-      file.doc_og_name?.split(".").pop()?.toLowerCase() || ""
-    )
+      file.doc_og_name?.split(".").pop()?.toLowerCase() || "",
+    ),
   );
 
   const filteredPythaDocuments = filteredPythaDocs.filter((file) =>
     documentExtensions.includes(
-      file.doc_og_name?.split(".").pop()?.toLowerCase() || ""
-    )
+      file.doc_og_name?.split(".").pop()?.toLowerCase() || "",
+    ),
   );
 
   // Calculate stats from ALL docs (ppt + pytha)
   const approvedDocs = allDocs.filter(
-    (d) => d.tech_check_status === "APPROVED"
+    (d) => d.tech_check_status === "APPROVED",
   ).length;
   const rejectedDocs = allDocs.filter(
-    (d) => d.tech_check_status === "REJECTED"
+    (d) => d.tech_check_status === "REJECTED",
   ).length;
   const pendingDocs = allDocs.filter(
     (d) =>
       !d.tech_check_status ||
       d.tech_check_status === "PENDING" ||
-      d.tech_check_status === "REVISED"
+      d.tech_check_status === "REVISED",
   ).length;
 
   // ✅ Permissions
   const canDelete =
-    userType === "admin" ||
     userType === "super-admin" ||
     (userType === "tech-check" && leadStatus === "tech-check-stage");
+  const canDeleteTechCheckDocs =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.tech_check.tech_check_details.delete",
+        )
+      : canDelete;
 
   const handleConfirmDelete = () => {
     if (confirmDelete) {
@@ -187,59 +488,90 @@ export default function TechCheckDetails({ leadId }: Props) {
         animate="visible"
         className="w-full space-y-4"
       >
-        {/* -------- Client Required Completion Section -------- */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="
-      flex items-center gap-3 
-      bg-muted/50 
-      dark:bg-neutral-900/50
-      border border-border 
-      rounded-xl 
-      px-4 py-3 
-      backdrop-blur-sm
-    "
-        >
-          {/* Animated green indicator */}
-          <motion.div
-            className="
-        w-3 h-3 rounded-full 
-        bg-green-500 
-        shadow-[0_0_8px_rgba(34,197,94,0.6)]
-      "
-            animate={{
-              scale: [1, 1.25, 1],
-              opacity: [0.75, 1, 0.75],
-            }}
-            transition={{
-              repeat: Infinity,
-              duration: 1.6,
-              ease: "easeInOut",
-            }}
-          />
+        {handlesLargeScaleProjects && largeScaleGroups.length > 0 && (
+          <motion.div>
+            <div className="border-b border-border">
+              <ScrollArea className="w-full whitespace-nowrap">
+                <div className="flex items-end gap-2 sm:flex-wrap">
+                  {largeScaleGroups.map((group) => {
+                    const isActive =
+                      selectedProductTypeId === group.productTypeId;
+                    return (
+                      <div
+                        key={group.productTypeId}
+                        onClick={() => {
+                          setSelectedProductTypeId(group.productTypeId);
+                          onProductTypeChange?.(group.productTypeId);
+                        }}
+                        className={`
+                          cursor-pointer transition-all shrink-0
+                          px-3 py-2 rounded-t-lg border border-b-0
+                          min-w-[100px] max-w-[160px]
+                          ${
+                            isActive
+                              ? "bg-background text-foreground border-border"
+                              : "bg-muted/40 text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/60"
+                          }
+                        `}
+                      >
+                        <div className="flex flex-col items-start">
+                          <span className="text-xs font-semibold leading-none truncate w-full">
+                            {group.title}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground mt-1 truncate w-full">
+                            {group.subtitle}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <ScrollBar orientation="horizontal" />
+              </ScrollArea>
+            </div>
+          </motion.div>
+        )}
 
-          {/* Text + Date */}
-          <div className="flex flex-col">
-            <p className="text-xs font-medium text-muted-foreground tracking-wide">
-              Client Required Delivery Date
-            </p>
-
-            <span className="text-sm font-semibold text-foreground">
-              {data?.client_required_order_login_complition_date
-                ? new Date(
-                    data.client_required_order_login_complition_date
-                  ).toLocaleDateString("en-GB", {
-                    weekday: "long",
-                    day: "2-digit",
-                    month: "long",
-                    year: "numeric",
-                  })
-                : "Not specified"}
-            </span>
-          </div>
-        </motion.div>
+        {!handlesLargeScaleProjects && showInstanceTabs && (
+          <motion.div>
+            <div className="border-b border-border">
+              <ScrollArea className="w-full whitespace-nowrap">
+                <div className="flex items-end gap-2 sm:flex-wrap">
+                  {instances.map((instance: any) => {
+                    const isActive = scopedInstanceId === instance.id;
+                    return (
+                      <div
+                        key={instance.id}
+                        onClick={() => setActiveInstanceId(instance.id)}
+                        className={`
+                  cursor-pointer transition-all shrink-0
+                  px-3 py-2 rounded-t-lg border border-b-0
+                  min-w-[100px] max-w-[160px]
+                  ${
+                    isActive
+                      ? "bg-background text-foreground border-border"
+                      : "bg-muted/40 text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/60"
+                  }
+                `}
+                      >
+                        <div className="flex flex-col items-start">
+                          <span className="text-xs font-semibold leading-none truncate w-full">
+                            {instance.title}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground mt-1 truncate w-full">
+                            {instance.productStructure?.type ||
+                              "Product Structure"}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <ScrollBar orientation="horizontal" />
+              </ScrollArea>
+            </div>
+          </motion.div>
+        )}
       </motion.div>
 
       {/* -------- Header Stats (Premium CRM Style) -------- */}
@@ -405,13 +737,13 @@ export default function TechCheckDetails({ leadId }: Props) {
           {/* Main Header */}
           <div
             className="
-      flex items-center justify-between px-5 py-3
+      flex flex-col sm:flex-row sm:items-center justify-between gap-2 items-start px-5 py-3
       border-b border-border
       bg-[#fff] dark:bg-[#0a0a0a]
     "
           >
             <div className="flex items-center gap-2">
-              <Layers3 size={20} className="opacity-70" />
+              <Layers3 size={20} className="opacity-70 shrink-0" />
               <h1 className="text-lg font-semibold tracking-tight">
                 Client Documentation
               </h1>
@@ -430,21 +762,21 @@ export default function TechCheckDetails({ leadId }: Props) {
             >
               <div
                 className="
-          flex items-center justify-between 
+          flex flex-col sm:flex-row sm:items-center justify-between items-start gap-1 sm:gap-2 
           px-4 py-2 border border-border rounded-xl
           bg-[#fff] dark:bg-[#0a0a0a]
         "
               >
                 <div className="flex items-center gap-2">
-                  <Layers3 size={18} className="opacity-70" />
+                  <Layers3 size={18} className="opacity-70 shrink-0" />
                   <h2 className="text-base font-semibold tracking-tight">
                     Project Files
                   </h2>
-                  <span className="text-xs text-muted-foreground">
-                    ({filteredPptDocs.length}{" "}
-                    {filteredPptDocs.length === 1 ? "Document" : "Documents"})
-                  </span>
                 </div>
+                <span className="text-xs text-muted-foreground shrink-0 text-right">
+                  {filteredPptDocs.length}{" "}
+                  {filteredPptDocs.length === 1 ? "Document" : "Documents"}
+                </span>
               </div>
 
               {/* Body */}
@@ -467,38 +799,50 @@ export default function TechCheckDetails({ leadId }: Props) {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
                   {/* Image Files */}
                   {filteredPptImages?.map((doc: any, index: number) => (
-                    <ImageComponent
-                      key={doc.id}
-                      doc={{
-                        id: doc.id,
-                        doc_og_name: doc.doc_og_name,
-                        signedUrl: doc.signed_url,
-                        created_at: doc.created_at,
-                      }}
-                      index={index}
-                      status={doc.tech_check_status ?? "PENDING"}
-                      canDelete={canDelete}
-                      onDelete={(id) => setConfirmDelete(Number(id))}
-                    />
+                    <div key={doc.id} className="space-y-2 min-w-0">
+                      {hasMultipleInstances && (
+                        <div className="text-xs px-2 py-1 rounded-md border bg-muted/40 w-fit">
+                          {getInstanceTitleForDoc(doc)}
+                        </div>
+                      )}
+                      <ImageComponent
+                        doc={{
+                          id: doc.id,
+                          doc_og_name: doc.doc_og_name,
+                          signedUrl: doc.signed_url,
+                          created_at: doc.created_at,
+                        }}
+                        index={index}
+                        status={doc.tech_check_status ?? "PENDING"}
+                        canDelete={canDeleteTechCheckDocs}
+                        onDelete={(id) => setConfirmDelete(Number(id))}
+                      />
+                    </div>
                   ))}
 
                   {/* Document Files */}
                   {filteredPptDocuments.map((doc) => (
-                    <DocumentCard
-                      key={doc.id}
-                      doc={{
-                        id: doc.id,
-                        originalName: doc.doc_og_name,
-                        signedUrl: doc.signed_url,
-                        created_at: doc.created_at,
-                      }}
-                      canDelete={canDelete}
-                      status={doc.tech_check_status ?? "PENDING"}
-                      onDelete={(id) => setConfirmDelete(id)}
-                    />
+                    <div key={doc.id} className="space-y-2 min-w-0">
+                      {hasMultipleInstances && (
+                        <div className="text-xs px-2 py-1 rounded-md border bg-muted/40 w-fit">
+                          {getInstanceTitleForDoc(doc)}
+                        </div>
+                      )}
+                      <DocumentCard
+                        doc={{
+                          id: doc.id,
+                          originalName: doc.doc_og_name,
+                          signedUrl: doc.signed_url,
+                          created_at: doc.created_at,
+                        }}
+                        canDelete={canDeleteTechCheckDocs}
+                        status={doc.tech_check_status ?? "PENDING"}
+                        onDelete={(id) => setConfirmDelete(id)}
+                      />
+                    </div>
                   ))}
                 </div>
               )}
@@ -508,21 +852,21 @@ export default function TechCheckDetails({ leadId }: Props) {
             <motion.div variants={itemVariants} className="space-y-4">
               <div
                 className="
-          flex items-center justify-between 
+          flex flex-col sm:flex-row sm:items-center justify-between items-start gap-1 sm:gap-2 
           px-4 py-2 border border-border rounded-xl
           bg-[#fff] dark:bg-[#0a0a0a]
         "
               >
                 <div className="flex items-center gap-2">
-                  <Layers3 size={18} className="opacity-70" />
+                  <Layers3 size={18} className="opacity-70 shrink-0" />
                   <h2 className="text-base font-semibold tracking-tight">
                     Design Files
                   </h2>
-                  <span className="text-xs text-muted-foreground">
-                    ({filteredPythaDocs.length}{" "}
-                    {filteredPythaDocs.length === 1 ? "Document" : "Documents"})
-                  </span>
                 </div>
+                <span className="text-xs text-muted-foreground shrink-0 text-right">
+                  {filteredPythaDocs.length}{" "}
+                  {filteredPythaDocs.length === 1 ? "Document" : "Documents"}
+                </span>
               </div>
 
               {/* Body */}
@@ -545,20 +889,26 @@ export default function TechCheckDetails({ leadId }: Props) {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
                   {filteredPythaDocuments.map((doc: any) => (
-                    <DocumentCard
-                      key={doc.id}
-                      doc={{
-                        id: doc.id,
-                        originalName: doc.doc_og_name,
-                        signedUrl: doc.signed_url,
-                        created_at: doc.created_at,
-                      }}
-                      canDelete={canDelete}
-                      status={doc.tech_check_status ?? "PENDING"}
-                      onDelete={(id) => setConfirmDelete(id)}
-                    />
+                    <div key={doc.id} className="space-y-2 min-w-0">
+                      {hasMultipleInstances && (
+                        <div className="text-xs px-2 py-1 rounded-md border bg-muted/40 w-fit">
+                          {getInstanceTitleForDoc(doc)}
+                        </div>
+                      )}
+                      <DocumentCard
+                        doc={{
+                          id: doc.id,
+                          originalName: doc.doc_og_name,
+                          signedUrl: doc.signed_url,
+                          created_at: doc.created_at,
+                        }}
+                        canDelete={canDeleteTechCheckDocs}
+                        status={doc.tech_check_status ?? "PENDING"}
+                        onDelete={(id) => setConfirmDelete(id)}
+                      />
+                    </div>
                   ))}
                 </div>
               )}
@@ -567,7 +917,7 @@ export default function TechCheckDetails({ leadId }: Props) {
         </div>
       </motion.div>
 
-      {activeFilter === "ALL" && (
+      {!handlesLargeScaleProjects && activeFilter === "ALL" && (
         <>
           {/* ---------------------------------------------------------- */}
           {/* -------- Design Selections -------- */}
@@ -633,22 +983,22 @@ export default function TechCheckDetails({ leadId }: Props) {
             {/* Header */}
             <div
               className="
-      flex items-center justify-between 
+      flex flex-col sm:flex-row sm:items-center justify-between items-start gap-1 sm:gap-2 
       px-5 py-3 
       border-b border-border 
       bg-[#fff] dark:bg-[#0a0a0a]
     "
             >
               <div className="flex items-center gap-2">
-                <Camera size={20} className="opacity-80" />
-                <h1 className="text-lg font-semibold tracking-tight flex items-center gap-1">
+                <Camera size={20} className="opacity-80 shrink-0" />
+                <h1 className="text-lg font-semibold tracking-tight">
                   Initial Site Measurement
-                  <span className="text-xs font-medium text-muted-foreground">
-                    ({ismDocs.length}{" "}
-                    {ismDocs.length === 1 ? "Document" : "Documents"})
-                  </span>
                 </h1>
               </div>
+              <span className="text-xs font-medium text-muted-foreground shrink-0 text-right">
+                {ismDocs.length}{" "}
+                {ismDocs.length === 1 ? "Document" : "Documents"}
+              </span>
             </div>
 
             {/* Body */}
@@ -673,20 +1023,23 @@ export default function TechCheckDetails({ leadId }: Props) {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
                   {ismDocs.map((doc: any) => (
-                    <DocumentCard
-                      key={doc.id}
-                      doc={{
-                        id: doc.id,
-                        originalName: doc.originalName,
-                        signedUrl: doc.signedUrl,
-                        created_at: doc.created_at,
-                      }}
-                      canDelete={canDelete}
-                      status={doc.tech_check_status}
-                      onDelete={(id) => setConfirmDelete(id)}
-                    />
+                    <div key={doc.id} className="min-w-0">
+                      <DocumentCard
+                        key={doc.id}
+                        doc={{
+                          id: doc.id,
+                          originalName: doc.originalName,
+                          signedUrl: doc.signedUrl,
+                          created_at: doc.created_at,
+                        }}
+                        canDelete={canDeleteTechCheckDocs}
+                        status={doc.tech_check_status}
+                        onDelete={(id) => setConfirmDelete(id)}
+                        alwaysShowText={true}
+                      />
+                    </div>
                   ))}
                 </div>
               )}
@@ -705,22 +1058,22 @@ export default function TechCheckDetails({ leadId }: Props) {
             {/* Header */}
             <div
               className="
-      flex items-center justify-between 
+      flex flex-col sm:flex-row sm:items-center justify-between items-start gap-1 sm:gap-2 
       px-5 py-3 
       border-b border-border 
       bg-[#fff] dark:bg-[#0a0a0a]
     "
             >
               <div className="flex items-center gap-2">
-                <Layers3 size={20} className="opacity-80" />
-                <h1 className="text-lg font-semibold tracking-tight flex items-center gap-1">
+                <Layers3 size={20} className="opacity-80 shrink-0" />
+                <h1 className="text-lg font-semibold tracking-tight">
                   Final Measurement Documents
-                  <span className="text-xs font-medium text-muted-foreground">
-                    ({finalDocs.length}{" "}
-                    {finalDocs.length === 1 ? "Document" : "Documents"})
-                  </span>
                 </h1>
               </div>
+              <span className="text-xs font-medium text-muted-foreground shrink-0 text-right">
+                {finalDocs.length}{" "}
+                {finalDocs.length === 1 ? "Document" : "Documents"}
+              </span>
             </div>
 
             {/* Body */}
@@ -740,24 +1093,25 @@ export default function TechCheckDetails({ leadId }: Props) {
                     No Final Measurement Documents
                   </h3>
                   <p className="text-xs text-muted-foreground text-center max-w-xs">
-                    Once final measurement documents are uploaded, they will appear
-                    here.
+                    Once final measurement documents are uploaded, they will
+                    appear here.
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] gap-5">
                   {finalDocs.map((doc: any) => (
                     <DocumentCard
                       key={doc.id}
                       doc={{
                         id: doc.id,
                         originalName: doc.doc_og_name,
-                        signedUrl: doc.signed_url,
                         created_at: doc.created_at,
+                        signedUrl: doc.signedUrl,
                       }}
-                      canDelete={canDelete}
+                      canDelete={canDeleteTechCheckDocs}
                       status={doc.tech_check_status}
                       onDelete={(id) => setConfirmDelete(id)}
+                      alwaysShowText={true}
                     />
                   ))}
                 </div>

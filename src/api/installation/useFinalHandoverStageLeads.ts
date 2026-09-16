@@ -7,7 +7,7 @@
 import { apiClient } from "@/lib/apiClient";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 
 /* ==========================================================
       🔹 TYPES & INTERFACES
@@ -51,6 +51,13 @@ export interface TotalProjectPaymentStatus {
   total_project_amount: number;
 }
 
+export interface UpdateAmcOptedPayload {
+  vendorId: number;
+  leadId: number;
+  updated_by: number;
+  is_amc_opted: boolean;
+}
+
 /* ==========================================================
       🔹 API FUNCTIONS
       ========================================================== */
@@ -63,11 +70,11 @@ export const getFinalHandoverStageLeads = async (
   vendorId: number,
   userId: number,
   page: number = 1,
-  limit: number = 10
+  limit: number = 10,
 ): Promise<FinalHandoverLeadsResponse> => {
   const { data } = await apiClient.get(
     `/leads/installation/final-handover/vendorId/${vendorId}/userId/${userId}`,
-    { params: { page, limit } }
+    { params: { page, limit } },
   );
 
   return data?.data; // { total, leads }
@@ -79,10 +86,10 @@ export const getFinalHandoverStageLeads = async (
  */
 export const getFinalHandoverDocuments = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ): Promise<FinalHandoverDocument[]> => {
   const { data } = await apiClient.get(
-    `/leads/installation/final-handover/vendorId/${vendorId}/leadId/${leadId}/documents`
+    `/leads/installation/final-handover/vendorId/${vendorId}/leadId/${leadId}/documents`,
   );
 
   return data?.data || [];
@@ -93,7 +100,7 @@ export const getFinalHandoverDocuments = async (
  * @route POST /leads/installation/final-handover/upload
  */
 export const uploadFinalHandoverDocuments = async (
-  formData: FormData
+  formData: FormData,
 ): Promise<FinalHandoverDocument[]> => {
   const { data } = await apiClient.post(
     `/leads/installation/final-handover/upload`,
@@ -102,7 +109,7 @@ export const uploadFinalHandoverDocuments = async (
       headers: {
         "Content-Type": "multipart/form-data",
       },
-    }
+    },
   );
 
   return data?.data || [];
@@ -119,7 +126,7 @@ export const useFinalHandoverStageLeads = (
   vendorId?: number,
   userId?: number,
   page: number = 1,
-  limit: number = 10
+  limit: number = 10,
 ) => {
   return useQuery({
     queryKey: ["finalHandoverStageLeads", vendorId, userId, page, limit],
@@ -133,13 +140,12 @@ export const useFinalHandoverStageLeads = (
  */
 export const useGetFinalHandoverDocuments = (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ) => {
   return useQuery({
     queryKey: ["finalHandoverDocuments", vendorId, leadId],
     queryFn: () => getFinalHandoverDocuments(vendorId, leadId),
     enabled: !!vendorId && !!leadId,
-    refetchOnMount: true,
   });
 };
 
@@ -153,8 +159,6 @@ export const useUploadFinalHandoverDocuments = () => {
     mutationFn: (formData: FormData) => uploadFinalHandoverDocuments(formData),
 
     onSuccess: (data, variables) => {
-
-
       // Extract vendorId and leadId from FormData
       const vendorId = variables.get("vendorId");
       const leadId = variables.get("leadId");
@@ -172,19 +176,15 @@ export const useUploadFinalHandoverDocuments = () => {
         queryKey: ["finalHandoverStageLeads"],
       });
     },
-
-    onError: (err: AxiosError<ApiErrorResponse>) => {
-      toast.error(err?.response?.data?.message || "Failed to upload documents");
-    },
   });
 };
 
 export const fetchFinalHandoverReadiness = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ) => {
   const { data } = await apiClient.get(
-    `/leads/installation/final-handover/vendorId/${vendorId}/leadId/${leadId}/ready-status`
+    `/leads/installation/final-handover/vendorId/${vendorId}/leadId/${leadId}/ready-status`,
   );
 
   return data?.data; // { docs_complete, pending_tasks_clear, can_move_to_final_handover }
@@ -192,7 +192,7 @@ export const fetchFinalHandoverReadiness = async (
 
 export const useFinalHandoverReadiness = (
   vendorId?: number,
-  leadId?: number
+  leadId?: number,
 ) => {
   return useQuery({
     queryKey: ["finalHandoverReadiness", vendorId, leadId],
@@ -203,10 +203,10 @@ export const useFinalHandoverReadiness = (
 
 export const fetchIsTotalProjectAmountPaid = async (
   vendorId: number,
-  leadId: number
+  leadId: number,
 ): Promise<TotalProjectPaymentStatus> => {
   const { data } = await apiClient.get(
-    `/leads/installation/final-handover/vendorId/${vendorId}/leadId/${leadId}/is-total-project-amount-paid`
+    `/leads/installation/final-handover/vendorId/${vendorId}/leadId/${leadId}/is-total-project-amount-paid`,
   );
 
   return data?.data;
@@ -214,7 +214,7 @@ export const fetchIsTotalProjectAmountPaid = async (
 
 export const useIsTotalProjectAmountPaid = (
   vendorId?: number,
-  leadId?: number
+  leadId?: number,
 ) => {
   return useQuery({
     queryKey: ["isTotalProjectAmountPaid", vendorId, leadId],
@@ -228,14 +228,28 @@ export const useIsTotalProjectAmountPaid = (
 export const moveLeadToProjectCompleted = async (
   vendorId: number,
   leadId: number,
-  updated_by: number
+  updated_by: number,
 ) => {
   const { data } = await apiClient.put(
     `/leads/installation/final-handover/vendorId/${vendorId}/leadId/${leadId}/move-to-project-completed`,
-    { updated_by }
+    { updated_by },
   );
 
   return data;
+};
+
+export const updateAmcOptedStatus = async ({
+  vendorId,
+  leadId,
+  updated_by,
+  is_amc_opted,
+}: UpdateAmcOptedPayload) => {
+  const { data } = await apiClient.put(
+    `/leads/installation/final-handover/vendorId/${vendorId}/leadId/${leadId}/amc-opted`,
+    { updated_by, is_amc_opted },
+  );
+
+  return data?.data;
 };
 
 export const useMoveProjectCompleted = () => {
@@ -249,5 +263,27 @@ export const useMoveProjectCompleted = () => {
       leadId: number;
       updated_by: number;
     }) => moveLeadToProjectCompleted(vendorId, leadId, updated_by),
+  });
+};
+
+export const useUpdateAmcOptedStatus = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: UpdateAmcOptedPayload) => updateAmcOptedStatus(payload),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["lead-status", variables.leadId, variables.vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["finalHandoverStageLeads"],
+      });
+    },
+    onError: (err: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title: err?.response?.data?.message || "Failed to update AMC opted status",
+        type: "error",
+      });
+    },
   });
 };

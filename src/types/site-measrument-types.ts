@@ -208,6 +208,7 @@ export interface SiteMeasurementFile {
   s3Key: string;
   signedUrl: string;
   uploadedAt: string;
+  product_structure_instance_id?: number | null;
 }
 
 export interface PaymentInfo {

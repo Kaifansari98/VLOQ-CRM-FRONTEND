@@ -12,6 +12,11 @@ import RemarkTooltip from "@/components/origin-tooltip";
 import { motion, AnimatePresence } from "framer-motion";
 import FollowUpModal from "@/components/follow-up-modal";
 
+
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
+import { toastManager } from "@/components/ui/toast";
+
 export default function PendingWorkTab({
   leadId,
   accountId,
@@ -21,6 +26,19 @@ export default function PendingWorkTab({
 }) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const { data: tasks = [], isLoading } = usePendingWorkTasks(vendorId, leadId);
+
+
+  const userType = useAppSelector(
+  (s) => s.auth.user?.user_type?.user_type
+);
+
+const {
+  shouldDisableBlockedActions,
+  blockedTooltip,
+} = useLeadAccessControl({
+  leadId,
+  userType,
+});
 
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [openTaskModal, setOpenTaskModal] = useState(false);
@@ -113,21 +131,32 @@ export default function PendingWorkTab({
                       transition={{ duration: 0.25, delay: idx * 0.05 }}
                     >
                       <Card
-                        onClick={() => {
-                          if (
-                            task.status === "completed" ||
-                            task.status === "cancelled"
-                          )
-                            return;
-                          setSelectedTask({
-                            id: task.id,
-                            leadId,
-                            accountId,
-                            remark: task.remark,
-                            dueDate: task.due_date,
-                          });
-                          setOpenTaskModal(true);
-                        }}
+             onClick={() => {
+  if (shouldDisableBlockedActions) {
+    toastManager.add({
+      title: blockedTooltip,
+      type: "error",
+    });
+    return;
+  }
+
+  if (
+    task.status === "completed" ||
+    task.status === "cancelled"
+  ) {
+    return;
+  }
+
+  setSelectedTask({
+    id: task.id,
+    leadId,
+    accountId,
+    remark: task.remark,
+    dueDate: task.due_date,
+  });
+
+  setOpenTaskModal(true);
+}}
                         className="
                     group h-full rounded-xl 
                     border 

@@ -12,12 +12,21 @@ import {
 } from "@/types/comman-types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
+import { getErrorMessage } from "@/lib/utils";
 
 interface ApiErrorResponse {
   message?: string;
   error?: string;
+  details?: unknown;
 }
+
+export interface UploadProgressInfo {
+  percent: number;
+  uploadedBytes: number;
+  totalBytes: number;
+}
+
 export interface CreateLeadPayload {
   firstname: string;
   lastname: string;
@@ -28,10 +37,14 @@ export interface CreateLeadPayload {
   site_address: string;
   site_type_id: number;
   source_id: number;
+  refered_by?: string;
   archetech_name?: string;
+  archetech_number?: string;
   designer_remark?: string;
   vendor_id: number;
+  franchise_id: number;
   created_by: number;
+  priority: string;
   product_types: string[];
   product_structures: string[];
   product_structure_instances?: {
@@ -44,6 +57,12 @@ export interface CreateLeadPayload {
 export interface Lead {
   id: number;
   lead_code?: string;
+  is_draft?: boolean;
+  is_small_order_request?: boolean;
+  is_so_value_received?: boolean;
+  so_value_received_at?: string | null;
+  is_blocked?: boolean;
+  lead_blocked_at?: string | null;
   firstname: string;
   lastname: string;
   country_code: string;
@@ -53,14 +72,20 @@ export interface Lead {
   site_address: string;
   site_type_id: number;
   source_id: number;
+  refered_by?: string | null;
   account_id: number;
   archetech_name: string;
+  archetech_number?: string | null;
   designer_remark: string;
   created_by: number;
   created_at: number;
   updated_by: number | null;
   updated_at: string;
   vendor_id: number;
+  franchise_id?: number | null;
+  order_number?: string | null;
+  client_id?: number | null;
+  priority?: string;
   assign_to: number | null;
   assigned_by: number | null;
   account: Account;
@@ -73,9 +98,37 @@ export interface Lead {
   assignedTo: AssignTo | null;
   statusType: StatusType;
   initial_site_measurement_date: string;
+  usable_handover_completed_at?: string | null;
+  is_carcass_installation_completed?: boolean | null;
+  is_shutter_installation_completed?: boolean | null;
   activity_status?: string;
   count?: number;
   site_map_link: string;
+  has_pending_fast_production_request?: boolean;
+  productStructureInstances?: LeadProductStructureInstance[];
+  assigned_designers_from_mapping?: Array<{
+    user_id: number;
+    user_name: string | null;
+    created_at: string;
+  }>;
+  smallOrderRequest?: {
+    id: number;
+    is_request_resolved?: boolean;
+    request_source?: "post_dispatch" | "final_handover";
+    request_type_id: number;
+    documents?: {
+      id: number;
+      document_id: number;
+      original_name: string;
+      signed_url: string | null;
+      created_at: string;
+    }[];
+    requestType: {
+      id: number;
+      type: string;
+      type_key: string;
+    } | null;
+  } | null;
 }
 
 export interface LeadProductStructureInstance {
@@ -85,10 +138,21 @@ export interface LeadProductStructureInstance {
   account_id: number;
   product_type_id: number;
   product_structure_id: number;
+  sub_product_structure_id?: number | null;
+  product_item_code_id?: number | null;
   quantity_index: number;
+  quantity?: number | null;
   title: string;
   status: string;
   description?: string | null;
+  isLargeScaleProjectInstance?: boolean;
+  is_order_login_filled?: boolean | null;
+  is_order_login_completed?: boolean | null;
+  is_pre_prod_done?: boolean | null;
+  is_under_production?: boolean | null;
+  is_post_production?: boolean | null;
+  is_production_completed?: boolean | null;
+  production_erd_date?: string | null;
   created_by: number;
   created_at: string;
   updated_by?: number | null;
@@ -101,6 +165,28 @@ export interface LeadProductStructureInstance {
   productType?: {
     id: number;
     type: string;
+  };
+  subProductStructure?: {
+    id: number;
+    type: string;
+  };
+  productItemCode?: {
+    id: number;
+    item_code: string;
+    description?: string | null;
+    specification?: string | null;
+    productStructure?: {
+      id: number;
+      type: string;
+      productType?: {
+        id: number;
+        type: string;
+      } | null;
+    } | null;
+    subProductStructure?: {
+      id: number;
+      type: string;
+    } | null;
   };
 }
 
@@ -120,6 +206,20 @@ export interface ContactOrEmailCheckResult {
   } | null;
 }
 
+export interface SimilarLeadCheckPayload {
+  phone_number: string;
+  product_types: number[];
+}
+
+export interface SimilarLeadCheckResult {
+  exists: boolean;
+  lead: {
+    lead_id: number;
+    lead_code: string | null;
+    lead_name: string;
+  } | null;
+}
+
 export interface AssignToPayload {
   assign_to: number;
   assign_by: number;
@@ -127,22 +227,182 @@ export interface AssignToPayload {
 }
 
 export interface EditLeadPayload {
-  firstname: string;
-  lastname: string;
-  country_code: string;
-  contact_no: string;
+  firstname?: string;
+  lastname?: string;
+  country_code?: string;
+  contact_no?: string;
   alt_contact_no?: string;
   email?: string;
   site_address?: string;
   site_map_link?: string;
   site_type_id?: number;
   source_id?: number;
+  priority?: string;
   archetech_name?: string;
+  archetech_number?: string;
   designer_remark?: string;
-  product_types?: number[];
-  product_structures?: number[];
   updated_by: number;
   initial_site_measurement_date?: string;
+  client_id?: number;
+  order_number?: string;
+  refered_by?: string;
+}
+
+export interface CreateClientVisitPayload {
+  leadId: number;
+  created_by: number;
+  visit_type: "physical_visit" | "follow_up_call";
+  date: string;
+  meeting_type_id: number;
+  remark: string;
+  location?: string;
+  expense_incurred?: number;
+  documents?: File[];
+  payment_proof_documents?: File[];
+}
+
+export interface CreateSmallOrderRequestPayload {
+  leadId: number;
+  vendorId: number;
+  createdBy: number;
+  requestSource: "post_dispatch" | "final_handover";
+  requestTypeId: number;
+  requiredDate: string;
+  remarks?: string;
+  documents?: File[];
+}
+
+export interface CreateFastProductionRequestPayload {
+  leadId: number;
+  vendorId: number;
+  createdBy: number;
+  instanceId: number;
+  carcassFinishCategory: string[];
+  carcassFinishDescription: string;
+  shutterFinishCategory: string[];
+  shutterFinishDescription: string;
+  handlesFinishCategory: string[];
+  handlesFinishDescription: string;
+  hardwareSelection: string;
+  accessorySelection: string;
+  specialRequirements: string;
+  tentativeOrderLoginDate: string;
+  clientRequiredDeliveryDate: string;
+  remarks?: string;
+  termsVersion?: string;
+  documents?: File[];
+}
+
+export interface FinalizeFastProductionRequestPayload {
+  leadId: number;
+  vendorId: number;
+  createdBy: number;
+  batchId?: number;
+}
+
+export interface CheckFastProductionLimitPayload {
+  vendorId: number;
+  userId: number;
+  franchiseId?: number;
+}
+
+export interface CheckFastProductionLimitResponse {
+  success: boolean;
+  message: string;
+  data: {
+    canCreate: boolean;
+  };
+}
+
+export interface CheckFastProductionLimitPayload {
+  vendorId: number;
+  userId: number;
+  franchiseId?: number;
+}
+
+export interface CheckFastProductionLimitResponse {
+  success: boolean;
+  message: string;
+  data: {
+    canCreate: boolean;
+  };
+}
+
+export interface SmallOrderRequestListItem {
+  id: number;
+  parent_lead_code: string;
+  so_code: string | null;
+  is_request_resolved: boolean;
+  customer_name: string;
+  status: "pending_approval" | "pending_approvals" | "approved" | "rejected";
+  request_source: "post_dispatch" | "final_handover";
+  required_date: string;
+  remarks: string | null;
+  supervisor_approved: boolean;
+  supervisor_approved_at: string | null;
+  admin_approved: boolean;
+  admin_approved_at: string | null;
+  created_at: string;
+  document_count: number;
+  documents: {
+    id: number;
+    document_id: number;
+    original_name: string;
+    signed_url: string | null;
+    created_at: string;
+  }[];
+  requestType: {
+    id: number;
+    type: string;
+    type_key: string;
+  } | null;
+  createdBy: {
+    id: number;
+    user_name: string | null;
+    user_email: string | null;
+  } | null;
+  linked_lead: {
+    id: number;
+    lead_code: string | null;
+    account_id: number | null;
+  } | null;
+}
+
+export interface ClientVisitDocument {
+  id: number;
+  role: "supporting_document" | "payment_proof";
+  original_name: string;
+  signedUrl: string;
+  created_at: string;
+}
+
+export interface ClientVisit {
+  id: number;
+  visit_type: "physical_visit" | "follow_up_call";
+  date: string;
+  location: string | null;
+  remark: string;
+  expense_incurred: number | null;
+  created_at: string;
+  meeting_type: {
+    id: number;
+    type: string;
+  } | null;
+  created_by: {
+    id: number;
+    user_name: string | null;
+    user_email: string | null;
+  } | null;
+  documents: ClientVisitDocument[];
+  supporting_documents: ClientVisitDocument[];
+  payment_proof_documents: ClientVisitDocument[];
+}
+
+export interface LeadBlockStatus {
+  id: number;
+  vendor_id: number;
+  is_blocked: boolean;
+  lead_blocked_at: string | null;
 }
 
 export const uploadMoreSitePhotos = async ({
@@ -171,9 +431,313 @@ export const uploadMoreSitePhotos = async ({
   return response.data;
 };
 
+export const createSmallOrderRequest = async (
+  payload: CreateSmallOrderRequestPayload,
+) => {
+  const formData = new FormData();
+  formData.append("lead_id", payload.leadId.toString());
+  formData.append("vendor_id", payload.vendorId.toString());
+  formData.append("created_by", payload.createdBy.toString());
+  formData.append("request_source", payload.requestSource);
+  formData.append("request_type_id", payload.requestTypeId.toString());
+  formData.append("required_date", payload.requiredDate);
+
+  if (payload.remarks?.trim()) {
+    formData.append("remarks", payload.remarks.trim());
+  }
+
+  (payload.documents ?? []).forEach((file) => {
+    formData.append("documents", file);
+  });
+
+  const response = await apiClient.post("/leads/small-order-requests", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+
+  return response.data;
+};
+
+export const createFastProductionRequest = async (
+  payload: CreateFastProductionRequestPayload,
+) => {
+  const formData = new FormData();
+
+  formData.append("lead_id", payload.leadId.toString());
+  formData.append("vendor_id", payload.vendorId.toString());
+  formData.append("created_by", payload.createdBy.toString());
+  formData.append("instance_id", payload.instanceId.toString());
+  payload.carcassFinishCategory.forEach((value) =>
+    formData.append("carcass_finish_category", value),
+  );
+  formData.append(
+    "carcass_finish_description",
+    payload.carcassFinishDescription,
+  );
+  payload.shutterFinishCategory.forEach((value) =>
+    formData.append("shutter_finish_category", value),
+  );
+  formData.append(
+    "shutter_finish_description",
+    payload.shutterFinishDescription,
+  );
+  payload.handlesFinishCategory.forEach((value) =>
+    formData.append("handles_finish_category", value),
+  );
+  formData.append(
+    "handles_finish_description",
+    payload.handlesFinishDescription,
+  );
+  formData.append("hardware_selection", payload.hardwareSelection);
+  formData.append("accessory_selection", payload.accessorySelection);
+  formData.append("special_requirements", payload.specialRequirements);
+  formData.append(
+    "tentative_order_login_date",
+    payload.tentativeOrderLoginDate,
+  );
+  formData.append(
+    "client_required_delivery_date",
+    payload.clientRequiredDeliveryDate,
+  );
+
+  if (payload.remarks?.trim()) {
+    formData.append("remarks", payload.remarks.trim());
+  }
+
+  if (payload.termsVersion?.trim()) {
+    formData.append("terms_version", payload.termsVersion.trim());
+  }
+
+  (payload.documents ?? []).forEach((file) => {
+    formData.append("documents", file);
+  });
+
+  const response = await apiClient.post("/leads/fast-production-requests", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+
+  return response.data;
+};
+
+export const finalizeFastProductionRequest = async (
+  payload: FinalizeFastProductionRequestPayload,
+) => {
+  const response = await apiClient.post(
+    "/leads/fast-production-requests/finalize",
+    {
+      lead_id: payload.leadId,
+      vendor_id: payload.vendorId,
+      created_by: payload.createdBy,
+      ...(payload.batchId ? { batch_id: payload.batchId } : {}),
+    },
+  );
+
+  return response.data;
+};
+
+export const checkFastProductionLimit = async ({
+  vendorId,
+  userId,
+  franchiseId,
+}: CheckFastProductionLimitPayload): Promise<CheckFastProductionLimitResponse> => {
+  const params: Record<string, string | number> = {
+    vendor_id: vendorId,
+    user_id: userId,
+  };
+
+  if (franchiseId) {
+    params.franchise_id = franchiseId;
+  }
+
+  const response = await apiClient.get(
+    "/leads/fast-production-requests/check-limit",
+    { params },
+  );
+
+  return response.data;
+};
+
+export const checkFastProductionStatus = async ({
+  vendorId,
+  leadId,
+  franchiseId,
+}: {
+  vendorId: number;
+  leadId: number;
+  franchiseId?: number;
+}) => {
+  const params: Record<string, any> = {};
+  if (franchiseId) {
+    params.franchise_id = franchiseId;
+  }
+
+  const response = await apiClient.get(
+    `/leads/fast-production-requests/vendor/${vendorId}/lead/${leadId}/status`,
+    { params },
+  );
+
+  return response.data as {
+    data: boolean;
+    message: string;
+    success?: boolean;
+  };
+};
+
+export const getFastProductionRequestDraft = async (
+  vendorId: number,
+  leadId: number,
+) => {
+  const response = await apiClient.get(
+    `/leads/fast-production-requests/draft/vendor/${vendorId}/lead/${leadId}`,
+  );
+  return response.data;
+};
+
+export const getFastProductionDetailsForLead = async ({
+  vendorId,
+  leadId,
+  franchiseId,
+}: {
+  vendorId: number;
+  leadId: number;
+  franchiseId?: number;
+}) => {
+  const params: Record<string, any> = {};
+  if (franchiseId) {
+    params.franchise_id = franchiseId;
+  }
+
+  const response = await apiClient.get(
+    `/leads/fast-production-requests/vendor/${vendorId}/lead/${leadId}/details`,
+    { params },
+  );
+
+  return response.data as {
+    data: Array<{
+      id: number;
+      lead_id: number;
+      instance_id: number;
+      tentative_order_login_date: string;
+      client_required_delivery_date: string;
+      status: string;
+      instance?: {
+        title: string;
+      };
+    }>;
+    message: string;
+    success?: boolean;
+  };
+};
+
+export interface RevokeFastProductionPayload {
+  leadId: number;
+  vendorId: number;
+  userId: number;
+  remark: string;
+}
+
+export const revokeFastProductionRequest = async (
+  payload: RevokeFastProductionPayload,
+) => {
+  const response = await apiClient.post(
+    "/leads/fast-production-requests/revoke",
+    payload,
+  );
+  return response.data;
+};
+
+export const getSmallOrderRequestsByLead = async (
+  vendorId: number,
+  leadId: number,
+) => {
+  const response = await apiClient.get(
+    `/leads/small-order-requests/vendor/${vendorId}/lead/${leadId}`,
+  );
+
+  return response.data as {
+    data: SmallOrderRequestListItem[];
+    message: string;
+    success?: boolean;
+  };
+};
+
+export const markSmallOrderRequestResolved = async ({
+  vendorId,
+  requestId,
+  updatedBy,
+}: {
+  vendorId: number;
+  requestId: number;
+  updatedBy: number;
+}) => {
+  const response = await apiClient.patch(
+    `/leads/small-order-requests/vendor/${vendorId}/request/${requestId}/resolve`,
+    { updated_by: updatedBy },
+  );
+
+  return response.data;
+};
+
+export const createClientVisit = async (payload: CreateClientVisitPayload) => {
+  const formData = new FormData();
+
+  formData.append("created_by", payload.created_by.toString());
+  formData.append("visit_type", payload.visit_type);
+  formData.append("date", new Date(payload.date).toISOString());
+  formData.append("meeting_type_id", payload.meeting_type_id.toString());
+  formData.append("remark", payload.remark);
+
+  if (payload.location?.trim()) {
+    formData.append("location", payload.location.trim());
+  }
+
+  if (payload.expense_incurred != null) {
+    formData.append("expense_incurred", payload.expense_incurred.toString());
+  }
+
+  (payload.documents ?? []).forEach((file) => {
+    formData.append("documents", file);
+  });
+
+  (payload.payment_proof_documents ?? []).forEach((file) => {
+    formData.append("payment_proof_documents", file);
+  });
+
+  const response = await apiClient.post(
+    `/leads/client-visits/leadId/${payload.leadId}`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    },
+  );
+
+  return response.data;
+};
+
+export const getClientVisits = async (leadId: number) => {
+  const response = await apiClient.get<{
+    success: boolean;
+    message: string;
+    data: ClientVisit[];
+  }>(`/leads/client-visits/leadId/${leadId}`);
+
+  return response.data.data ?? [];
+};
+
+export const createWalkInLead = async (payload: any) => {
+  const response = await apiClient.post("/online-leads/walk-in", payload);
+  return response.data;
+};
+
 export const createLead = async (
   payload: CreateLeadPayload,
   files: File[] = [],
+  onUploadProgress?: (info: UploadProgressInfo) => void,
 ) => {
   const formData = new FormData();
 
@@ -199,21 +763,35 @@ export const createLead = async (
     formData.append("documents", file);
   });
 
-  for (const pair of formData.entries()) {
-    console.log(pair[0] + ": " + pair[1]);
-  }
+  // Pre-calculate total file bytes for accurate progress reporting
+  const totalBytes = files.reduce((sum, f) => sum + f.size, 0);
 
   try {
     const response = await apiClient.post("leads/create", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
+      onUploadProgress: onUploadProgress
+        ? (progressEvent) => {
+          const serverTotal = progressEvent.total ?? totalBytes;
+          const loaded = progressEvent.loaded ?? 0;
+          const percent =
+            serverTotal > 0
+              ? Math.min(99, Math.round((loaded / serverTotal) * 100))
+              : 0;
+          onUploadProgress({
+            percent,
+            uploadedBytes: Math.min(loaded, totalBytes),
+            totalBytes,
+          });
+        }
+        : undefined,
     });
 
     return response.data;
   } catch (error: unknown) {
     const err = error as AxiosError<ApiErrorResponse>;
-    console.error("Failed to create lead:", err.response?.data?.error);
+    console.error("Failed to create lead:", getErrorMessage(err));
     throw err;
   }
 };
@@ -230,6 +808,37 @@ export const updateLead = async (
   return response.data;
 };
 
+export const updateLeadProductType = async (
+  leadId: number,
+  userId: number,
+  payload: { productTypeId?: number; productTypeIds?: number[]; productType?: string },
+) => {
+  const response = await apiClient.put(
+    `/leads/update-product-type/${leadId}/userId/${userId}`,
+    {
+      ...(payload.productTypeIds && payload.productTypeIds.length > 0
+        ? { product_type_ids: payload.productTypeIds }
+        : {}),
+      ...(payload.productTypeId
+        ? { product_type_id: payload.productTypeId }
+        : {}),
+      ...(payload.productType ? { product_type: payload.productType } : {}),
+    },
+  );
+  return response.data;
+};
+
+export const updateRequirementMetaApi = async (payload: {
+  lead_id: number;
+  vendor_id: number;
+  product_type_id: number;
+  approximate_budget?: number | null;
+  project_status?: string | null;
+}) => {
+  const response = await apiClient.post("/leads/update-requirement-meta", payload);
+  return response.data;
+};
+
 export const getLeadProductStructureInstances = async (
   vendorId: number,
   leadId: number,
@@ -240,13 +849,37 @@ export const getLeadProductStructureInstances = async (
   return response.data;
 };
 
+export const getLeadUniqueProductTypes = async (
+  vendorId: number,
+  leadId: number,
+) => {
+  const response = await apiClient.get(
+    `/leads/lead/${leadId}/vendor/${vendorId}/unique-product-types`,
+  );
+  return response.data;
+};
+
 export const deleteLeadProductStructureInstance = async (
   vendorId: number,
   leadId: number,
   instanceId: number,
+  updatedBy?: number,
 ) => {
   const response = await apiClient.delete(
     `/leads/lead/${leadId}/vendor/${vendorId}/product-structure-instances/${instanceId}`,
+    updatedBy ? { data: { updated_by: updatedBy } } : undefined,
+  );
+  return response.data;
+};
+
+export const clearLeadProductStructures = async (
+  vendorId: number,
+  leadId: number,
+  updatedBy?: number,
+) => {
+  const response = await apiClient.delete(
+    `/leads/lead/${leadId}/vendor/${vendorId}/clear-structures`,
+    updatedBy ? { data: { updated_by: updatedBy } } : undefined,
   );
   return response.data;
 };
@@ -259,6 +892,8 @@ export const updateLeadProductStructureInstance = async (
     product_structure_id: number;
     title: string;
     description?: string;
+    pre_prod_remark?: string;
+    quantity?: number;
     updated_by?: number;
   },
 ) => {
@@ -277,6 +912,10 @@ export const createLeadProductStructureInstance = async (
     title: string;
     description?: string;
     created_by: number;
+    sub_product_structure_id?: number;
+    product_item_code_id?: number;
+    quantity?: number;
+    isLargeScaleProjectInstance?: boolean;
   },
 ) => {
   const response = await apiClient.post(
@@ -314,10 +953,16 @@ export const getVendorUserLeads = async (
 export const getVendorUserLeadsOpen = async (
   vendorId: number,
   userId: number,
+  franchiseId?: number | null,
 ): Promise<VendorUserLeadsOpenResponse> => {
   const response = await apiClient.get(
     `/leads/bookingStage/status1-leads/vendorId/${vendorId}`,
-    { params: { userId } },
+    {
+      params: {
+        userId,
+        ...(franchiseId ? { franchise_id: franchiseId } : {}),
+      },
+    },
   );
   return response.data;
 };
@@ -329,9 +974,78 @@ export const deleteLead = async (leadId: number, userId: number) => {
   return response.data;
 };
 
-export const getVendorSalesExecutiveUsers = async (vendorId: number) => {
+export const changeLeadStoreAPI = async (
+  vendorId: number,
+  leadId: number,
+  toStoreId: number,
+  updatedBy: number,
+) => {
+  const response = await apiClient.post(
+    `/leads/vendorId/${vendorId}/leadId/${leadId}/change-store`,
+    {
+      to_store_id: toStoreId,
+      updated_by: updatedBy,
+    },
+  );
+  return response.data;
+};
+
+export const getVendorSalesExecutiveUsers = async (
+  vendorId: number,
+  franchiseId?: number,
+  options?: {
+    assigneeUserType?: string;
+    requiredPrivilegeCode?: string;
+    taskType?: string;
+  },
+) => {
+  const params: Record<string, string | number> = {};
+  if (franchiseId) params.franchise_id = franchiseId;
+  if (options?.assigneeUserType) {
+    params.assignee_user_type = options.assigneeUserType;
+  }
+  if (options?.requiredPrivilegeCode) {
+    params.required_privilege_code = options.requiredPrivilegeCode;
+  }
+  if (options?.taskType) {
+    params.task_type = options.taskType;
+  }
+
   const response = await apiClient.get(
     `/leads/sales-executives/vendor/${vendorId}`,
+    Object.keys(params).length > 0 ? { params } : undefined,
+  );
+  return response.data;
+};
+
+export const assignDesignerToLead = async (
+  vendorId: number,
+  leadId: number,
+  payload: {
+    account_id: number;
+    assign_to_user_id: number;
+    created_by: number;
+    user_type_or_role?: string;
+  },
+) => {
+  const response = await apiClient.post(
+    `/leads/vendorId/${vendorId}/leadId/${leadId}/assign-designer`,
+    payload,
+  );
+  return response.data;
+};
+
+export const unassignDesignerFromLead = async (
+  vendorId: number,
+  leadId: number,
+  payload: {
+    user_id: number;
+    updated_by: number;
+  },
+) => {
+  const response = await apiClient.post(
+    `/leads/vendorId/${vendorId}/leadId/${leadId}/unassign-designer`,
+    payload,
   );
   return response.data;
 };
@@ -339,6 +1053,18 @@ export const getVendorSalesExecutiveUsers = async (vendorId: number) => {
 export const getVendorSiteSuppervisorUsers = async (vendorId: number) => {
   const response = await apiClient.get(
     `/leads/site-supervisor/vendor/${vendorId}`,
+  );
+  return response.data;
+};
+
+export const getFollowUpUsers = async (
+  vendorId: number,
+  leadId: number,
+  franchiseId?: number | null,
+) => {
+  const params = franchiseId ? `?franchise_id=${franchiseId}` : "";
+  const response = await apiClient.get(
+    `/leads/follow-up-users/vendor/${vendorId}/lead/${leadId}${params}`,
   );
   return response.data;
 };
@@ -354,6 +1080,40 @@ export const getLeadById = async (
   return response.data;
 };
 
+export const getLeadBlockStatus = async (
+  vendorId: number,
+  leadId: number,
+): Promise<LeadBlockStatus> => {
+  const response = await apiClient.get(
+    `/leads/vendorId/${vendorId}/leadId/${leadId}/block-status`,
+  );
+  return response.data?.data as LeadBlockStatus;
+};
+
+export const blockLead = async (
+  vendorId: number,
+  leadId: number,
+  updatedBy: number,
+): Promise<LeadBlockStatus> => {
+  const response = await apiClient.patch(
+    `/leads/vendorId/${vendorId}/leadId/${leadId}/block`,
+    { updated_by: updatedBy },
+  );
+  return response.data?.data as LeadBlockStatus;
+};
+
+export const unblockLead = async (
+  vendorId: number,
+  leadId: number,
+  updatedBy: number,
+): Promise<LeadBlockStatus> => {
+  const response = await apiClient.patch(
+    `/leads/vendorId/${vendorId}/leadId/${leadId}/unblock`,
+    { updated_by: updatedBy },
+  );
+  return response.data?.data as LeadBlockStatus;
+};
+
 export const checkContactOrEmailExists = async (
   vendorId: number,
   payload: ContactOrEmailCheckPayload,
@@ -363,6 +1123,17 @@ export const checkContactOrEmailExists = async (
     payload,
   );
   return data?.data as ContactOrEmailCheckResult;
+};
+
+export const checkSimilarLeadExists = async (
+  vendorId: number,
+  payload: SimilarLeadCheckPayload,
+): Promise<SimilarLeadCheckResult> => {
+  const { data } = await apiClient.post(
+    `/leads/vendorId/${vendorId}/check-similar-lead`,
+    payload,
+  );
+  return data?.data as SimilarLeadCheckResult;
 };
 
 export const assignLeadToAnotherSalesExecutive = async (
@@ -425,6 +1196,28 @@ export interface AssignToSiteMeasurementPayload {
   created_by: number;
 }
 
+export interface InitialSiteMeasurementTaskConflict {
+  id: number;
+  task_type: "Initial Site Measurement";
+  status: string;
+  due_date: string;
+  assignee: {
+    id: number;
+    user_name: string;
+  } | null;
+}
+
+export interface InitialSiteMeasurementFollowUpTaskConflict {
+  id: number;
+  task_type: "Follow Up";
+  status: string;
+  due_date: string;
+  assignee: {
+    id: number;
+    user_name: string;
+  } | null;
+}
+
 export const assignToSiteMeasurement = async (
   leadId: number,
   payload: AssignToSiteMeasurementPayload,
@@ -437,20 +1230,42 @@ export const assignToSiteMeasurement = async (
   return data;
 };
 
+export const getInitialSiteMeasurementTaskConflicts = async (leadId: number) => {
+  const { data } = await apiClient.get(
+    `/leads/initial-site-measurement/leadId/${leadId}/task-conflicts`
+  );
+
+  return {
+    restrictedTaskConflicts: (data?.data?.conflicts?.restrictedTaskConflicts ??
+      []) as InitialSiteMeasurementTaskConflict[],
+    followUpConflicts: (data?.data?.conflicts?.followUpConflicts ??
+      []) as InitialSiteMeasurementFollowUpTaskConflict[],
+  };
+};
+
 export const fetchLeadLogs = async ({
   leadId,
   vendorId,
   limit = 10,
   cursor,
+  historyType,
+  search,
+  userTypeId,
 }: {
   leadId: number;
   vendorId: number;
   limit?: number;
   cursor?: number;
+  historyType?: "Lead" | "Task" | "FollowUp" | "Approval";
+  search?: string;
+  userTypeId?: number;
 }) => {
   const query = new URLSearchParams();
   query.append("limit", String(limit));
   if (cursor) query.append("cursor", String(cursor));
+  if (historyType) query.append("history_type", historyType);
+  if (search?.trim()) query.append("search", search.trim());
+  if (userTypeId) query.append("user_type_id", String(userTypeId));
 
   const response = await apiClient.get(
     `/leads/vendorId/${vendorId}/leadId/${leadId}/logs?${query.toString()}`,
@@ -463,10 +1278,24 @@ export const fetchLeadLogs = async ({
   };
 };
 
+export const fetchLeadOnlineHistory = async ({
+  leadId,
+  vendorId,
+}: {
+  leadId: number;
+  vendorId: number;
+}) => {
+  const response = await apiClient.get(
+    `/leads/vendorId/${vendorId}/leadId/${leadId}/online-history`,
+  );
+  return response.data.data;
+};
+
 // vendor all user list
 export interface VendorUserItem {
   id: number;
   user_name: string;
+  user_email: string;
 }
 
 export interface VendorUsersResponse {
@@ -557,26 +1386,29 @@ export const useDeleteDocument = (leadId?: number) => {
       return data;
     },
     onSuccess: () => {
-      toast.success("Document deleted successfully!");
+      toastManager.add({
+        title: "Document deleted successfully!",
+        type: "success",
+      });
 
       // ✅ Invalidate both queries safely
       queryClient.invalidateQueries({ queryKey: ["lead"] });
 
       if (leadId) {
         queryClient.invalidateQueries({
-          queryKey: ["siteMeasurementLeadDetails", leadId],
+          queryKey: ["siteMeasurementLeadDetails"],
         });
 
         queryClient.invalidateQueries({
-          queryKey: ["getQuotationDoc", leadId],
+          queryKey: ["getQuotationDoc"],
         });
 
         queryClient.invalidateQueries({
-          queryKey: ["meetings", leadId],
+          queryKey: ["meetings"],
         });
 
         queryClient.invalidateQueries({
-          queryKey: ["getDesignsDoc", leadId],
+          queryKey: ["getDesignsDoc"],
         });
 
         queryClient.invalidateQueries({
@@ -585,6 +1417,14 @@ export const useDeleteDocument = (leadId?: number) => {
 
         queryClient.invalidateQueries({
           queryKey: ["bookingLead"],
+        });
+
+        queryClient.invalidateQueries({
+          queryKey: ["csp-booking-photos"],
+        });
+
+        queryClient.invalidateQueries({
+          queryKey: ["finalMeasurementLead"],
         });
 
         queryClient.invalidateQueries({
@@ -630,14 +1470,149 @@ export const useDeleteDocument = (leadId?: number) => {
         });
 
         queryClient.invalidateQueries({
+          queryKey: ["usableHandover"],
+        });
+
+        queryClient.invalidateQueries({
           queryKey: ["underInstallationDetails"],
         });
+
+        queryClient.invalidateQueries({
+          queryKey: ["installation-updates"],
+        });
+
+        queryClient.invalidateQueries({
+          queryKey: ["miscellaneousEntries"],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["lead-product-structure-instances"],
+          exact: false,
+        });
       }
+
+      queryClient.invalidateQueries({
+        queryKey: ["postProductionReady"],
+        exact: false,
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["postProductionCompleteness"],
+        exact: false,
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["checkSiteReadinessCompletion"],
+        exact: false,
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["preProductionFiles"],
+        exact: false,
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["currentSitePhotosAtSiteReadiness"],
+        exact: false,
+      });
     },
     onError: (error: AxiosError<ApiErrorResponse>) => {
-      toast.error(
-        error?.response?.data?.message || "Failed to delete document",
-      );
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to delete document",
+        type: "error",
+      });
     },
   });
+};
+
+// @/api/leads.ts
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface LeadDocument {
+  id: number;
+  doc_og_name: string;
+  doc_sys_name: string;
+  doc_type_id: number;
+  doc_type_tag: string;
+  doc_type_type: string;
+  doc_title: string | null;
+  stage: string | null;
+  tech_check_status: string | null;
+  product_structure_instance_id: number | null;
+  instance_title: string | null;
+  instance_type: string | null;
+  created_at: string;
+  signed_url: string;
+}
+
+export interface DocGroup {
+  title: string;
+  totalDocs: number;
+  docs: LeadDocument[];
+}
+
+export interface InstanceGroup {
+  instanceId: number | null;
+  instanceTitle: string | null;
+  instanceType: string | null;
+  docGroups: DocGroup[];
+}
+
+export interface StageDocResult {
+  stageId: string;
+  totalFiles: number;
+  instanceGroups: InstanceGroup[];
+}
+
+
+export const useAllLeadDocuments = (
+  vendorId?: number,
+  leadId?: number,
+  instanceId?: number | null,
+) => {
+  return useQuery<StageDocResult[]>({
+    queryKey: ["allLeadDocuments", vendorId, leadId, instanceId],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (instanceId) params.set("instance_id", String(instanceId));
+
+      const { data } = await apiClient.get(
+        `/leads/vendorId/${vendorId}/leadId/${leadId}/all-documents?${params.toString()}`,
+      );
+
+      return data.data as StageDocResult[];
+    },
+    enabled: !!vendorId && !!leadId,
+    staleTime: 2 * 60 * 1000,
+  });
+};
+
+export const unshortenUrl = async (url: string): Promise<string> => {
+  const { data } = await apiClient.get<{ success: boolean; resolvedUrl: string }>(
+    `/leads/unshorten-url?url=${encodeURIComponent(url)}`
+  );
+  return data.resolvedUrl;
+};
+
+export interface UpdateLeadStagePayload {
+  stageTag: string;
+  actionMessage?: string;
+  vendor_id?: number;
+  updated_by?: number;
+}
+
+export const updateLeadStageAPI = async (
+  leadId: number,
+  payload: UpdateLeadStagePayload
+): Promise<any> => {
+  try {
+    const { data } = await apiClient.patch(`/leads/${leadId}/stage`, payload);
+    return data;
+  } catch (error) {
+    if (error instanceof AxiosError && error.response) {
+      throw new Error(getErrorMessage(error.response.data));
+    }
+    throw error;
+  }
 };

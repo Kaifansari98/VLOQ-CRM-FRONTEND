@@ -24,7 +24,9 @@ type row = {
 };
 // 🔵 Navigation for Tech-Check rows
 const navigateTechCheck = (row: row) =>
-  `/dashboard/production/tech-check/details/${row.id}?accountId=${row.accountId}`;
+  `/dashboard/production/tech-check/details/${row.id}?accountId=${row.accountId}${
+    (row as any).instanceId ? `&instance_id=${(row as any).instanceId}` : ""
+  }`;
 
 export default function TechCheckStagePage() {
   return (
@@ -69,7 +71,8 @@ export default function TechCheckStagePage() {
             title="Tech-Check Stage"
             description="Monitor and validate all technical review tasks before transitioning to order login, ensuring accuracy and production-readiness."
             type="Type 8"
-            enableAdminTabs={true}
+            enableAdminTabs={false}
+            enableOverallData={false}
             onRowNavigate={navigateTechCheck}
           />
         </Suspense>

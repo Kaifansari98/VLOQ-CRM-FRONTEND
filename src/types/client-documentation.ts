@@ -145,3 +145,16 @@ export interface ClientDocDetails {
 export interface ClientDocDetailsResponse {
   documents: ClientDocDetails[] | undefined;
 }
+
+export interface ClientDocMoveEligibilityData {
+  can_move: boolean;
+  missing_requirements: string[];
+  handlesLargeScaleProjects: boolean;
+  isFastProduction: boolean;
+}
+
+export interface ClientDocMoveEligibilityResponse {
+  success: boolean;
+  message: string;
+  data: ClientDocMoveEligibilityData;
+}

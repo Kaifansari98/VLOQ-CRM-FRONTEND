@@ -2,12 +2,15 @@ import { useMutation, useQuery } from "@tanstack/react-query"
 import { apiClient } from "@/lib/apiClient"
 import { useDispatch } from "react-redux"
 import { setCredentials } from "@/redux/slices/authSlice"
-import { toast } from "react-toastify"
+import { setCustomPrivileges } from "@/redux/slices/customPrivilegesSlice"
+import { setActiveTheme } from "@/redux/slices/themeSlice"
 
 interface LoginPayload {
   identifier: string,
-  // user_contact: string
   password: string
+  device_id?: string
+  device_name?: string
+  platform?: string
 }
 
 export function useLogin() {
@@ -19,13 +22,27 @@ export function useLogin() {
         const res = await apiClient.post("/auth/login", payload);
         return res.data;
       } catch (error: any) {
-        // ✅ Throw actual backend error message
-        toast.error(error.response?.data?.message || "Login failed")
         throw new Error(error.response?.data?.message || "Login failed");
       }
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       dispatch(setCredentials({ user: data.user, token: data.token }));
+      dispatch(
+        setCustomPrivileges(
+          Array.isArray(data.customPrivileges) ? data.customPrivileges : [],
+        ),
+      );
+
+      // Fetch and store active theme for this vendor
+      try {
+        const vendorId = data.user?.vendor_id;
+        if (vendorId) {
+          const themeRes = await apiClient.get(`/themes/vendorId/${vendorId}/active`);
+          dispatch(setActiveTheme(themeRes.data?.data ?? null));
+        }
+      } catch {
+        // Theme fetch failure is non-blocking
+      }
     },
   });
 }

@@ -3,24 +3,53 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit"
 export interface User {
   id: number
   vendor_id: number
+  franchise_id?: number | null
+  moduled_for_b2b?: boolean
   user_name: string
   user_contact: string
   user_email: string
   user_type_id: number
   user_role: string
   status: string
-  vendor: Record<string, any>
+  vendor: {
+    id?: number
+    vendor_name?: string
+    vendor_code?: string
+    handlesLargeScaleProjects?: boolean | null
+    is_crm_enabled?: boolean | null
+    is_custom_doc_nomenclature_enabled?: boolean | null
+    is_this_vendor_is_custom_usertype_only?: boolean | null
+    is_year_wise_lead_code_enabled?: boolean | null
+    is_client_visit_enabled?: boolean | null
+    vendor_report_code?: string | null
+    eligible_booking_days?: number | null
+    is_self_assign_task_type_master_enabed?: boolean | null
+    is_broadcast_enabled?: boolean | null
+    logoUrl?: string
+    iconUrl?: string
+    ["vendor-report-code"]?: string | null
+    [key: string]: any
+  }
   user_type: Record<string, any>
+  is_ho_user: boolean
+  logoUrl?: string
+  iconUrl?: string
 }
 
 interface AuthState {
   user: User | null
   token: string | null
+  franchise_id: number | null
+  is_ho_user: boolean
+  moduled_for_b2b: boolean
 }
 
 const initialState: AuthState = {
   user: null,
   token: null,
+  franchise_id: null,
+  is_ho_user: false,
+  moduled_for_b2b: false,
 }
 
 const authSlice = createSlice({
@@ -33,6 +62,9 @@ const authSlice = createSlice({
     ) => {
       state.user = action.payload.user
       state.token = action.payload.token
+      state.franchise_id = action.payload.user.franchise_id ?? null
+      state.is_ho_user = action.payload.user.is_ho_user ?? false
+      state.moduled_for_b2b = action.payload.user.moduled_for_b2b ?? false
       if (typeof window !== "undefined") {
         localStorage.setItem("token", action.payload.token)
         localStorage.setItem("user", JSON.stringify(action.payload.user))
@@ -41,9 +73,13 @@ const authSlice = createSlice({
     logout: (state) => {
       state.user = null
       state.token = null
+      state.franchise_id = null
+      state.is_ho_user = false
+      state.moduled_for_b2b = false
       if (typeof window !== "undefined") {
         localStorage.removeItem("token")
         localStorage.removeItem("user")
+        localStorage.removeItem("activeTheme")
       }
     },
     loadSession: (state) => {
@@ -53,11 +89,33 @@ const authSlice = createSlice({
         if (token && user) {
           state.token = token
           state.user = JSON.parse(user)
+          state.franchise_id = state.user?.franchise_id ?? null
+          state.is_ho_user = state.user?.is_ho_user ?? false
+          state.moduled_for_b2b = state.user?.moduled_for_b2b ?? false
+        }
+      }
+    },
+    setFranchiseId: (state, action: PayloadAction<number | null>) => {
+      state.franchise_id = action.payload
+      if (state.user) {
+        state.user.franchise_id = action.payload
+      }
+      if (typeof window !== "undefined") {
+        const user = localStorage.getItem("user")
+        if (user) {
+          try {
+            const parsed = JSON.parse(user)
+            parsed.franchise_id = action.payload
+            localStorage.setItem("user", JSON.stringify(parsed))
+          } catch {
+            // ignore storage parse failures
+          }
         }
       }
     },
   },
 })
 
-export const { setCredentials, logout, loadSession } = authSlice.actions
+export const { setCredentials, logout, loadSession, setFranchiseId } =
+  authSlice.actions
 export default authSlice.reducer

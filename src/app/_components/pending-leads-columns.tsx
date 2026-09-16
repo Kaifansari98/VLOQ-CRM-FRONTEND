@@ -10,16 +10,22 @@ import type { ProcessedLead } from "./view-tables-coloumns";
 import {
   siteMapLinkSort,
   tableMultiValueFilter,
+  tableSingleValueMultiSelectFilter,
   tableTextSearchFilter,
 } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export type PendingLeadRow = ProcessedLead & { accountId?: number };
 
 // ✅ Columns for Pending Leads (OnHold + Lost)
-export function getPendingLeadsColumns({}: {
+export function getPendingLeadsColumns({
+  isB2b = false,
+}: {
   tab: "onHold" | "lostApproval" | "lost";
   onRevert: (lead: PendingLeadRow) => void;
   onMarkAsLost: (lead: PendingLeadRow) => void;
+  isB2b?: boolean;
 }): ColumnDef<PendingLeadRow>[] {
   return [
     {
@@ -94,7 +100,7 @@ export function getPendingLeadsColumns({}: {
         <DataTableColumnHeader column={column} title="Status" />
       ),
       cell: ({ row }) => {
-        const status = row.getValue("status") as string;
+        const status = row.original.isDraft ? "Draft" : (row.getValue("status") as string);
         return <CustomeStatusBadge title={status} />;
       },
       meta: {
@@ -115,6 +121,23 @@ export function getPendingLeadsColumns({}: {
       ),
       meta: {
         label: "Site Type",
+      },
+      enableSorting: false,
+      enableHiding: true,
+      enableColumnFilter: true,
+    },
+    {
+      accessorKey: "sales_executive",
+      filterFn: tableSingleValueMultiSelectFilter,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Sales Executive" />
+      ),
+      cell: ({ row }) => {
+        const salesExecutive = row.getValue("sales_executive") as string;
+        return salesExecutive || "—";
+      },
+      meta: {
+        label: "Sales Executive",
       },
       enableSorting: false,
       enableHiding: true,
@@ -191,10 +214,13 @@ export function getPendingLeadsColumns({}: {
       accessorKey: "furnitureType",
       filterFn: tableMultiValueFilter,
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Furniture Type" />
+        <DataTableColumnHeader
+          column={column}
+          title={isB2b ? "Requirement Type" : "Furniture Type"}
+        />
       ),
       meta: {
-        label: "Furniture Type",
+        label: isB2b ? "Requirement Type" : "Furniture Type",
       },
       enableSorting: false,
       enableHiding: true,
@@ -203,15 +229,66 @@ export function getPendingLeadsColumns({}: {
     {
       accessorKey: "furnitueStructures",
       filterFn: tableMultiValueFilter,
+
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Furniture Structures" />
+        <DataTableColumnHeader
+          column={column}
+          title={isB2b ? "Process Brief" : "Furniture Structures"}
+        />
       ),
+
       meta: {
-        label: "Furniture Structures",
+        label: isB2b ? "Process Brief" : "Furniture Structures",
       },
+
       enableSorting: false,
       enableHiding: true,
       enableColumnFilter: true,
+
+      cell: ({ row }) => {
+        const structures: string[] = row.original.furnitueStructures ?? [];
+
+        if (!structures.length) return "—";
+
+        const visible = structures.slice(0, 2);
+        const remaining = structures.slice(2);
+
+        return (
+          <div className="space-x-1">
+            {visible.map((name: string, index: number) => (
+              <Badge key={index} variant="secondary" className="text-xs px-2 capitalize">
+                {name}
+              </Badge>
+            ))}
+
+            {remaining.length > 0 && (
+              <TooltipProvider delayDuration={100}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge
+                      variant="outline"
+                      className="text-xs px-2 cursor-pointer hover:bg-muted transition-colors"
+                    >
+                      +{remaining.length}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="bottom"
+                    align="start"
+                    className="max-w-[220px] p-2 space-y-1"
+                  >
+                    {remaining.map((name: string, index: number) => (
+                      <p key={index} className="text-xs capitalize">
+                        • {name}
+                      </p>
+                    ))}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
+        );
+      },
     },
     {
       accessorKey: "createdAt",

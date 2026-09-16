@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  ChevronsUpDown,
-  LogOut,
-} from "lucide-react";
+import { ChevronsUpDown, KeyRound, LogOut, ShieldAlert } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -34,9 +31,12 @@ import {
 
 import { useState } from "react";
 import { useDispatch } from "react-redux";
-import { toast } from "react-toastify";
-import { logout } from "@/redux/slices/authSlice";
-
+import { toastManager } from "@/components/ui/toast";
+import { useAppSelector } from "@/redux/store";
+import { deactiveToken } from "@/api/notifications";
+import ChangePasswordModal from "@/components/auth/ChangePasswordModal";
+import { logoutActivityApi, logoutAllByVendorApi } from "@/api/auth";
+import { forceClientLogout } from "@/lib/sessionCleanup";
 export function NavUser({
   user,
 }: {
@@ -49,28 +49,85 @@ export function NavUser({
   const { isMobile } = useSidebar();
   const dispatch = useDispatch();
   const [open, setOpen] = useState(false);
+  const [logoutAllOpen, setLogoutAllOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isLoggingOutAll, setIsLoggingOutAll] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
+  const userId = useAppSelector((s) => s.auth.user?.id);
+  const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const canLogoutAllDevices = userType?.toLowerCase() === "super-admin";
+  const userInitials = user.name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
 
-  const handleLogout = () => {
-    setIsLoggingOut(true);
-    setMenuOpen(false);
-    setOpen(false);
+  const handleLogout = async () => {
+    let tokenKey: string | undefined;
+    try {
+      setIsLoggingOut(true);
+      setMenuOpen(false);
+      setOpen(false);
 
-    // ✅ Notify user first
-    toast.success("You have been logged out 👋");
+      const deviceId = localStorage.getItem("pushDeviceId");
 
-    // ✅ Clear Redux + LocalStorage (ProtectedLayout will redirect)
-    setTimeout(() => {
-      dispatch(logout());
-      localStorage.removeItem("token");
+      tokenKey = Object.keys(localStorage).find((k) =>
+        k.startsWith("pushToken:"),
+      );
 
-      // ✅ Just refresh the current page
-      window.location.reload();
+      const token = tokenKey ? tokenKey.split("pushToken:")[1] : undefined;
 
+      // 🔴 Call backend to deactivate this device
+      if (vendorId && userId && (deviceId || token)) {
+        await deactiveToken({
+          vendor_id: vendorId,
+          user_id: userId,
+          device_id: deviceId ?? undefined,
+          token: token ?? "",
+        }).catch(() => {});
+      }
+
+      // 🔴 Log logout activity
+      await logoutActivityApi().catch(() => {});
+
+      toastManager.add({ title: "You have been logged out", type: "success" });
+    } catch (error) {
+      console.error("Logout failed:", error);
+    } finally {
       setIsLoggingOut(false);
-    }, 300);
+      forceClientLogout(dispatch);
+    }
   };
+
+  const handleLogoutAll = async () => {
+    if (!vendorId) return;
+
+    try {
+      setIsLoggingOutAll(true);
+      setMenuOpen(false);
+      setLogoutAllOpen(false);
+
+      await logoutAllByVendorApi(vendorId);
+      toastManager.add({
+        title: "All active devices have been logged out",
+        type: "success",
+      });
+      forceClientLogout(dispatch);
+    } catch (error: any) {
+      toastManager.add({
+        title:
+          error?.response?.data?.message || "Failed to logout all devices",
+        type: "error",
+      });
+      console.error("Logout all devices failed:", error);
+    } finally {
+      setIsLoggingOutAll(false);
+    }
+  };
+
 
   return (
     <>
@@ -80,11 +137,19 @@ export function NavUser({
             <DropdownMenuTrigger asChild>
               <SidebarMenuButton
                 size="lg"
-                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                className="text-sidebar-foreground data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
                 <Avatar className="h-8 w-8 rounded-lg">
                   <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                  <AvatarFallback
+                    className="rounded-lg"
+                    style={{
+                      backgroundColor: "var(--theme-badge-bg)",
+                      color: "var(--theme-badge-text)",
+                    }}
+                  >
+                    {userInitials}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{user.name}</span>
@@ -104,7 +169,9 @@ export function NavUser({
                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                   <Avatar className="h-8 w-8 rounded-lg">
                     <AvatarImage src={user.avatar} alt={user.name} />
-                    <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                    <AvatarFallback className="rounded-lg">
+                      {userInitials}
+                    </AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-medium">{user.name}</span>
@@ -139,9 +206,35 @@ export function NavUser({
                 </DropdownMenuItem> */}
               {/* </DropdownMenuGroup> */}
 
-              {/* <DropdownMenuSeparator /> */}
 
               {/* 🔹 Open logout confirmation */}
+              <DropdownMenuItem
+                className="cursor-pointer"
+                onSelect={() => {
+                  setMenuOpen(false);
+                  setTimeout(() => setChangePasswordOpen(true), 0);
+                }}
+              >
+                <KeyRound />
+                Change Password
+              </DropdownMenuItem>
+              {canLogoutAllDevices && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setMenuOpen(false);
+                      setTimeout(() => setLogoutAllOpen(true), 0);
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <ShieldAlert />
+                    Log out all users
+                  </DropdownMenuItem>
+                </>
+              )}
+              <DropdownMenuSeparator />
               <DropdownMenuItem
                 onSelect={(e) => {
                   e.preventDefault();
@@ -158,6 +251,11 @@ export function NavUser({
         </SidebarMenuItem>
       </SidebarMenu>
 
+      <ChangePasswordModal
+        open={changePasswordOpen}
+        onOpenChange={setChangePasswordOpen}
+      />
+
       {/* 🔹 Logout confirmation dialog */}
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent>
@@ -172,6 +270,30 @@ export function NavUser({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleLogout} disabled={isLoggingOut}>
               {isLoggingOut ? "Logging out..." : "Log out"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={logoutAllOpen} onOpenChange={setLogoutAllOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Log out all users?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will revoke every active session for your vendor, including
+              the current browser. You will be redirected to the login page
+              immediately.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoggingOutAll}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLogoutAll}
+              disabled={isLoggingOutAll}
+            >
+              {isLoggingOutAll ? "Logging out all..." : "Log out all"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

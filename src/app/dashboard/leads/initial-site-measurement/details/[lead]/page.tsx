@@ -22,13 +22,18 @@ import {
   Users,
   XCircle,
   HouseIcon,
-  PanelsTopLeftIcon,
-  BoxIcon,
-  UsersRoundIcon,
   UserPlus,
   MessageSquare,
   ClipboardCheck,
+  PencilLine,
+  History,
+  IndianRupee,
+  FolderOpen,
+  LockOpen,
+  Lock,
+  Store as StoreIcon,
 } from "lucide-react";
+import ChangeStoreModal from "@/components/sales-executive/Lead/change-store-modal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,7 +60,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useDeleteLead } from "@/hooks/useDeleteLead";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import InitialSiteMeasuresMent from "@/components/sales-executive/Lead/initial-site-measurement-form";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -79,6 +84,15 @@ import {
   useIsChatNotification,
 } from "@/hooks/useChatTabFromUrl";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
+import {
+  useLeadBlockStatus,
+  useBlockLead,
+  useUnblockLead,
+  useUpdateLeadStage,
+} from "@/hooks/useLeadsQueries";
+import { formatBlockedAt } from "@/lib/utils";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useCheckIsmUploaded } from "@/hooks/Site-measruement/useSiteMeasruementLeadsQueries";
 
 export default function SiteMeasurementLead() {
   const router = useRouter();
@@ -95,48 +109,133 @@ export default function SiteMeasurementLead() {
   const userId = useAppSelector((state) => state.auth.user?.id);
 
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type
+    (state) => state.auth.user?.user_type.user_type,
+  );
+  const normalizedUserType = userType?.trim().toLowerCase();
+  const isCaller = normalizedUserType === "telecaller" || normalizedUserType === "telecaller-team-lead" || normalizedUserType === "telecaller team lead" || normalizedUserType === "caller";
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
+
+  const isCustomVendorFlowFromAuth = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
+  );
+  const isOnlineLeadFeatureEnabled = useAppSelector(
+    (state) => state.auth.user?.vendor?.is_online_lead_feature_enabled === true,
   );
 
   const [openDelete, setOpenDelete] = useState(false);
+  const [openMoveToDesigning, setOpenMoveToDesigning] = useState(false);
   // Modals
   const [openMeasurement, setOpenMeasurement] = useState(false);
+  const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [changeStoreOpen, setChangeStoreOpen] = useState(false);
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [activityModalOpen, setActivityModalOpen] = useState(false);
-  const [activityType, setActivityType] = useState<"onHold" | "lostApproval">(
-    "onHold"
-  );
+  const [activityType, setActivityType] = useState<
+    "onHold" | "lostApproval" | "lost"
+  >("onHold");
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
+
+  const blockLeadMutation = useBlockLead();
+  const unblockLeadMutation = useUnblockLead();
+  const isAuditor = userType?.trim().toLowerCase() === "auditor";
+  const isSuperAdmin = userType?.trim().toLowerCase() === "super-admin";
+
+  const { data: ismUploadData } = useCheckIsmUploaded(leadIdNum);
+  const isIsmUploaded = ismUploadData?.isUploaded;
+
+  const {
+    isLeadBlocked,
+    blockedTooltip,
+    shouldDisableBlockedActions,
+    isPending: isBlockActionPending,
+    isLoading: isLeadBlockStatusLoading,
+  } = useLeadAccessControl({
+    leadId: leadIdNum,
+    userType,
+    lead,
+  });
+
+  const { mutate: updateStage, isPending: isUpdateStagePending } =
+    useUpdateLeadStage();
+
+  const handleMoveToDesigning = () => {
+    updateStage(
+      {
+        leadId: leadIdNum,
+        payload: {
+          stageTag: "Type 3",
+          actionMessage: "Lead moved to Designing stage",
+          vendor_id: vendorId,
+          updated_by: userId,
+        },
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: "Lead moved to Designing stage successfully!",
+            type: "success",
+          });
+          queryClient.invalidateQueries({ queryKey: ["leadById", leadIdNum] });
+          setOpenMoveToDesigning(false);
+          router.push("/dashboard/leads/designing-stage");
+        },
+        onError: (err) => {
+          toastManager.add({
+            title: err.message || "Failed to move lead to Designing stage",
+            type: "error",
+          });
+        },
+      },
+    );
+  };
 
   const [activeTab, setActiveTab] = useState("details");
   useChatTabFromUrl(setActiveTab);
   const isChatNotification = useIsChatNotification();
 
   useEffect(() => {
-    if (isLoading || !lead || isChatNotification) return;
+    if (isLoading || isLeadBlockStatusLoading || !lead || isChatNotification)
+      return;
     if (activeTab !== "details") return;
 
     // ✅ Only open automatically if:
     // - Lead is not draft
+    // - Lead is not blocked
     // - User has upload permission
     // - User is NOT admin or super-admin
     if (
+      !isCaller &&
       !lead.is_draft &&
+      !isLeadBlocked &&
       canUploadISM(userType) &&
       userType?.toLowerCase() !== "admin" &&
       userType?.toLowerCase() !== "super-admin"
     ) {
       setOpenMeasurement(true);
     }
-  }, [isLoading, isChatNotification, lead, userType, activeTab]);
+  }, [
+    isLoading,
+    isLeadBlockStatusLoading,
+    isChatNotification,
+    lead,
+    userType,
+    activeTab,
+    isLeadBlocked,
+  ]);
 
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
-      toast.error("Vendor or User information is missing!");
+      toastManager.add({
+        title: "Vendor or User information is missing!",
+        type: "error",
+      });
       return;
     }
 
@@ -144,7 +243,10 @@ export default function SiteMeasurementLead() {
       { leadId: leadIdNum, vendorId, userId },
       {
         onSuccess: () => {
-          toast.success("Lead deleted successfully!");
+          toastManager.add({
+            title: "Lead deleted successfully!",
+            type: "success",
+          });
           setOpenDelete(false);
 
           queryClient.invalidateQueries({
@@ -157,25 +259,131 @@ export default function SiteMeasurementLead() {
           router.push("/dashboard/leads/initial-site-measurement");
         },
         onError: () => {
-          toast.error("Failed to delete lead!");
+          toastManager.add({ title: "Failed to delete lead!", type: "error" });
         },
-      }
+      },
+    );
+  };
+
+  const handleToggleLeadBlock = () => {
+    if (!vendorId || !userId || !leadIdNum) {
+      toastManager.add({
+        title: "Vendor, user, or lead information is missing!",
+        type: "error",
+      });
+      return;
+    }
+
+    const mutation = isLeadBlocked ? unblockLeadMutation : blockLeadMutation;
+
+    mutation.mutate(
+      {
+        vendorId,
+        leadId: leadIdNum,
+        updatedBy: userId,
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: isLeadBlocked
+              ? "Lead unblocked successfully!"
+              : "Lead blocked successfully!",
+            type: "success",
+          });
+
+          setOpenBlockConfirm(false);
+
+          queryClient.invalidateQueries({
+            queryKey: ["leadBlockStatus", vendorId, leadIdNum],
+          });
+
+          queryClient.invalidateQueries({
+            queryKey: ["lead", leadIdNum, vendorId, userId],
+          });
+        },
+      },
     );
   };
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
 
-  const canReassign = canReassignLeadButton(userType);
-  const canDelete = canDeleteLeadButton(userType);
-  const canEdit = canEditLeadForSalesExecutiveButton(userType);
-  const canViewPayment = canViewPaymentTab(userType);
-  const canViewSiteHistory = canViewSiteHistoryTab(userType);
+  const canReassign =
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.ism_leads.ism_details.reassign_lead",
+        )
+      : canReassignLeadButton(userType));
+  const canDelete = !isCaller && canDeleteLeadButton(userType);
+  const canEdit = !isCaller && canEditLeadForSalesExecutiveButton(userType);
+  const canViewPayment =
+    isAuditor ||
+    (userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.payment_information.enable_disable",
+        )
+      : canViewPaymentTab(userType));
+  const canViewSiteHistory =
+    isAuditor ||
+    (userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.site_history.enable_disable",
+        )
+      : canViewSiteHistoryTab(userType));
+  const canViewChats =
+    userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.chat.enable_disable",
+        )
+      : true;
+  const canUploadMeasurement =
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.ism_leads.ism_details.upload_measurement",
+        )
+      : canUploadISM(userType));
+  const canMarkOnHold =
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.ism_leads.ism_details.mark_on_hold",
+        )
+      : true);
+  const canMarkAsLost =
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.ism_leads.ism_details.mark_as_lost",
+        )
+      : true);
+  const canMoveToDesigning =
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.ism_leads.ism_details.move_to_designing",
+        )
+      : canUploadISM(userType));
+  const canBlockLead =
+    !isCaller &&
+    (userType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.ism_leads.ism_details.block_lead",
+        )
+      : userType?.toLowerCase() === "super-admin");
+  const canSeeLeadStatusMenu = canMarkOnHold || canMarkAsLost;
 
   console.log("assigned to", lead?.assignedTo?.id);
 
-  if (isLoading) {
+  if (isLoading && !lead) {
     return <p className="p-6">Loading lead details...</p>;
+  }
+
+  if (!lead) {
+    return (
+      <p className="p-6">Lead details not found or you do not have access.</p>
+    );
   }
 
   return (
@@ -199,112 +407,254 @@ export default function SiteMeasurementLead() {
           </Breadcrumb>
         </div>
         <div className="flex items-center space-x-2">
-          <Button
-            size="sm"
-            className="hidden md:block"
-            onClick={() => setAssignOpen(true)}
-          >
-            Assign Task
-          </Button>
+          {!isAuditor &&
+            !lead?.is_draft &&
+            (isIsmUploaded ? canMoveToDesigning : canUploadMeasurement) && (
+              <>
+                {shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <Button
+                        size="sm"
+                        className="hidden md:flex gap-1"
+                        variant="outline"
+                        disabled
+                      >
+                        <ClipboardCheck size={16} />
+                        {isIsmUploaded ? "Move to Designing" : "Upload ISM"}
+                      </Button>
+                    }
+                  />
+                ) : (
+                  <>
+                    {isIsmUploaded ? (
+                      <>
+                        <span className="text-sm font-medium text-green-600 hidden md:flex items-center gap-1 bg-green-50 px-2 py-1 rounded-md border border-green-200">
+                          <ClipboardCheck size={16} />
+                          Uploaded
+                        </span>
+                        <Button
+                          size="sm"
+                          className="hidden md:flex gap-1"
+                          onClick={() => setOpenMoveToDesigning(true)}
+                          disabled={isUpdateStagePending}
+                        >
+                          {isUpdateStagePending
+                            ? "Moving..."
+                            : "Move to Designing"}
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        size="sm"
+                        className="hidden md:flex gap-1"
+                        onClick={() => setOpenMeasurement(true)}
+                      >
+                        <ClipboardCheck size={16} />
+                        Upload ISM
+                      </Button>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+          {!isAuditor && !isCaller && (
+            <Button
+              size="sm"
+              className="hidden md:block"
+              onClick={() => setAssignOpen(true)}
+            >
+              Assign Task
+            </Button>
+          )}
+
           <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
-          <NotificationBell />
+          {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="relative bg-accent p-1.5 rounded-sm"
-              >
-                <EllipsisVertical size={25} />
-              </Button>
-            </DropdownMenuTrigger>
+          {!isAuditor && !isCaller && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="relative bg-accent p-1.5 rounded-sm"
+                >
+                  <EllipsisVertical size={25} />
+                </Button>
+              </DropdownMenuTrigger>
 
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                className="bloack md:hidden"
-                onClick={() => setAssignOpen(true)}
-              >
-                <UserPlus size={20} />
-                Assign Task
-              </DropdownMenuItem>
-              {canUploadISM(userType) && !lead?.is_draft ? (
-                <DropdownMenuItem onSelect={() => setOpenMeasurement(true)}>
-                  <ClipboardCheck size={20} />
-                  Upload Measurement
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="bloack md:hidden"
+                  onClick={() => setAssignOpen(true)}
+                >
+                  <UserPlus size={20} />
+                  Assign Task
                 </DropdownMenuItem>
-              ) : (
-                <CustomeTooltip
-                  truncateValue={
-                    <DropdownMenuItem disabled>
-                      <ClipboardCheck size={20} /> Upload Measurement
+                {!lead?.is_draft &&
+                (isIsmUploaded ? canMoveToDesigning : canUploadMeasurement) && (
+                  shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <ClipboardCheck size={20} />{" "}
+                          {isIsmUploaded ? "Move to Designing" : "Upload Measurement"}
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : isIsmUploaded ? (
+                    <DropdownMenuItem
+                      onSelect={() => setOpenMoveToDesigning(true)}
+                      disabled={isUpdateStagePending}
+                    >
+                      <ClipboardCheck size={20} />
+                      {isUpdateStagePending ? "Moving..." : "Move to Designing"}
                     </DropdownMenuItem>
-                  }
-                  value={
-                    lead?.is_draft
-                      ? "This action cannot be performed because the lead is still in Draft mode."
-                      : "You don't have permission to upload measurements."
-                  }
-                />
-              )}
+                  ) : (
+                    <DropdownMenuItem onSelect={() => setOpenMeasurement(true)}>
+                      <ClipboardCheck size={20} />
+                      Upload Measurement
+                    </DropdownMenuItem>
+                  )
+                )}
 
-              {/* Lead Status */}
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger className="flex items-center gap-2">
-                  <CircleArrowOutUpRight className="h-4 w-4" />
-                  <span>Lead Status</span>
-                </DropdownMenuSubTrigger>
+                {/* Lead Status */}
+                {canSeeLeadStatusMenu &&
+                  // Lead block handling added to prevent submenu opening
+                  (shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <CircleArrowOutUpRight className="h-4 w-4" />
+                          Lead Status
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger className="flex items-center gap-2">
+                        <CircleArrowOutUpRight className="h-4 w-4" />
+                        <span>Lead Status</span>
+                      </DropdownMenuSubTrigger>
 
-                <DropdownMenuSubContent>
+                      <DropdownMenuSubContent>
+                        {canMarkOnHold && (
+                          <DropdownMenuItem
+                            onSelect={() => {
+                              setActivityType("onHold");
+                              setActivityModalOpen(true);
+                            }}
+                          >
+                            <Clock className="h-4 w-4 " />
+                            Mark On Hold
+                          </DropdownMenuItem>
+                        )}
+
+                        {canMarkAsLost && (
+                          <DropdownMenuItem
+                            onSelect={() => {
+                              setActivityType("lost");
+                              setActivityModalOpen(true);
+                            }}
+                          >
+                            <XCircle className="h-4 w-4" />
+                            Mark As Lost
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  ))}
+
+                {isOnlineLeadFeatureEnabled && isSuperAdmin && (
                   <DropdownMenuItem
-                    onSelect={() => {
-                      setActivityType("onHold");
-                      setActivityModalOpen(true);
-                    }}
+                    onSelect={() => setChangeStoreOpen(true)}
+                    disabled={isLoading || !lead || shouldDisableBlockedActions}
                   >
-                    <Clock className="h-4 w-4 " />
-                    Mark On Hold
+                    <StoreIcon className="h-4 w-4 mr-2" />
+                    Store Transfer
                   </DropdownMenuItem>
+                )}
 
+                {/* Edit */}
+                {canEdit &&
+                  // Lead block handling added for DropdownMenu action
+                  (shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <SquarePen size={20} />
+                          Edit
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                      <SquarePen size={20} />
+                      Edit
+                    </DropdownMenuItem>
+                  ))}
+
+                {canBlockLead && (
                   <DropdownMenuItem
-                    onSelect={() => {
-                      setActivityType("lostApproval");
-                      setActivityModalOpen(true);
-                    }}
+                    onSelect={() => setOpenBlockConfirm(true)}
+                    disabled={isBlockActionPending}
                   >
-                    <XCircle className="h-4 w-4" />
-                    Mark As Lost
+                    {isLeadBlocked ? (
+                      <LockOpen className="h-4 w-4" />
+                    ) : (
+                      <Lock className="h-4 w-4" />
+                    )}
+
+                    {isLeadBlocked ? "Unblock Lead" : "Block Lead"}
                   </DropdownMenuItem>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
+                )}
 
-              {/* Edit */}
-              {canEdit && (
-                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                  <SquarePen size={20} />
-                  Edit
-                </DropdownMenuItem>
-              )}
+                {/* Reassign */}
+                {canReassign &&
+                  // Lead block handling added for DropdownMenu action
+                  (shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <Users size={20} />
+                          Reassign Lead
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                      <Users size={20} />
+                      Reassign Lead
+                    </DropdownMenuItem>
+                  ))}
 
-              {/* Reassign */}
-              {canReassign && (
-                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                  <Users size={20} />
-                  Reassign Lead
-                </DropdownMenuItem>
-              )}
-
-              {/* Delete */}
-              {canDelete && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
-                    Delete
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                {/* Delete */}
+                {canDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    {/* Lead block handling added for DropdownMenu action */}
+                    {shouldDisableBlockedActions ? (
+                      <CustomeTooltip
+                        value={blockedTooltip}
+                        truncateValue={
+                          <DropdownMenuItem disabled>Delete</DropdownMenuItem>
+                        }
+                      />
+                    ) : (
+                      <DropdownMenuItem onSelect={() => setOpenDelete(true)}>
+                        Delete
+                      </DropdownMenuItem>
+                    )}
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </header>
 
@@ -326,26 +676,41 @@ export default function SiteMeasurementLead() {
               <HouseIcon size={16} className="mr-1 opacity-60" />
               Lead Details
             </TabsTrigger>
-            <TabsTrigger value="tasks">
-              <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
-              To-Do Task
-            </TabsTrigger>
+            {!isAuditor && !isCaller && (
+              shouldDisableBlockedActions ? (
+                <CustomeTooltip
+                  value={blockedTooltip}
+                  truncateValue={
+                    <TabsTrigger value="tasks" disabled>
+                      <PencilLine size={16} className="mr-1 opacity-60" />
+                      To-Do Task
+                    </TabsTrigger>
+                  }
+                />
+              ) : (
+                <TabsTrigger value="tasks">
+                  <PencilLine size={16} className="mr-1 opacity-60" />
+                  To-Do Task
+                </TabsTrigger>
+              ))}
             {canViewSiteHistory && (
               <TabsTrigger value="history">
-                <BoxIcon size={16} className="mr-1 opacity-60" />
-                Site History
+                <History size={16} className="mr-1 opacity-60" />
+                History
               </TabsTrigger>
             )}
             {canViewPayment && (
               <TabsTrigger value="payments">
-                <UsersRoundIcon size={16} className="mr-1 opacity-60" />
-                Payment Information
+                <IndianRupee size={16} className="mr-1 opacity-60" />
+                Payment
               </TabsTrigger>
             )}
-            <TabsTrigger value="chats">
-              <MessageSquare size={16} className="mr-1 opacity-60" />
-              Chats
-            </TabsTrigger>
+            {canViewChats && (
+              <TabsTrigger value="chats">
+                <MessageSquare size={16} className="mr-1 opacity-60" />
+                Chats
+              </TabsTrigger>
+            )}
           </TabsList>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
@@ -353,7 +718,11 @@ export default function SiteMeasurementLead() {
         {/* Tab contents */}
         <TabsContent value="details">
           <main className="flex-1 h-fit">
-            <LeadDetailsUtil status="details" leadId={leadIdNum} />
+            <LeadDetailsUtil
+              status={isIsmUploaded ? "measurement" : "details"}
+              defaultTab={isIsmUploaded ? "measurement" : "details"}
+              leadId={leadIdNum}
+            />
           </main>
         </TabsContent>
 
@@ -369,9 +738,11 @@ export default function SiteMeasurementLead() {
           </TabsContent>
         )}
 
-        <TabsContent value="chats">
-          <LeadWiseChatScreen leadId={leadIdNum} />
-        </TabsContent>
+        {canViewChats && (
+          <TabsContent value="chats">
+            <LeadWiseChatScreen leadId={leadIdNum} />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Modals */}
@@ -395,7 +766,10 @@ export default function SiteMeasurementLead() {
         open={activityModalOpen}
         onOpenChange={setActivityModalOpen}
         statusType={activityType}
-        onSubmitRemark={(remark, dueDate) => {
+        vendorId={vendorId}
+        franchiseId={lead?.franchise_id ?? null}
+        leadId={leadIdNum}
+        onSubmitRemark={(remark, dueDate, selection) => {
           if (!vendorId || !userId || !accountId) return;
           updateStatusMutation.mutate(
             {
@@ -404,15 +778,33 @@ export default function SiteMeasurementLead() {
                 vendorId,
                 accountId,
                 userId,
-                status: activityType,
+                status: activityType === "onHold" ? "onHold" : "lost",
                 remark,
                 createdBy: userId,
-                ...(activityType === "onHold" ? { dueDate } : {}),
+                ...(dueDate ? { dueDate } : {}),
+                ...(selection ?? {}),
               },
             },
             {
-              onSuccess: () => {
-                toast.success("Lead status updated successfully!");
+              onSuccess: (res: any) => {
+                const finalStatus =
+                  res?.data?.activity_status ??
+                  res?.data?.lead?.activity_status;
+                toastManager.add({
+                  title:
+                    activityType === "onHold"
+                      ? "Lead marked as On Hold!"
+                      : finalStatus === "lostApproval"
+                        ? "Lead sent for Lost Approval!"
+                        : "Lead marked as Lost!",
+                  type: "success",
+                });
+                if (activityType === "onHold") {
+                  window.location.assign(
+                    "/dashboard/leads/leadstable?tab=onHold",
+                  );
+                  return;
+                }
                 queryClient.invalidateQueries({
                   queryKey: ["universal-stage-leads"],
                 });
@@ -421,7 +813,7 @@ export default function SiteMeasurementLead() {
                 });
                 router.back();
               },
-            }
+            },
           );
         }}
         loading={updateStatusMutation.isPending}
@@ -444,6 +836,66 @@ export default function SiteMeasurementLead() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={openBlockConfirm} onOpenChange={setOpenBlockConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isLeadBlocked ? "Unblock Lead?" : "Block Lead?"}
+            </AlertDialogTitle>
+
+            <AlertDialogDescription>
+              {isLeadBlocked
+                ? "This will unblock the lead and allow it to proceed normally."
+                : "This will block the lead and mark the block time in the system."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBlockActionPending}>
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={handleToggleLeadBlock}
+              disabled={isBlockActionPending}
+            >
+              {isBlockActionPending
+                ? isLeadBlocked
+                  ? "Unblocking..."
+                  : "Blocking..."
+                : isLeadBlocked
+                  ? "Unblock"
+                  : "Block"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={openMoveToDesigning}
+        onOpenChange={setOpenMoveToDesigning}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Move to Designing?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to move this lead to the Designing stage?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isUpdateStagePending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleMoveToDesigning}
+              disabled={isUpdateStagePending}
+            >
+              {isUpdateStagePending ? "Moving..." : "Confirm"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <InitialSiteMeasuresMent
         open={openMeasurement}
         onOpenChange={(open) => {
@@ -453,6 +905,13 @@ export default function SiteMeasurementLead() {
           }
         }}
         data={{ id: leadIdNum, accountId, name: "" }}
+      />
+
+      <ChangeStoreModal
+        open={changeStoreOpen}
+        onOpenChange={setChangeStoreOpen}
+        leadId={leadIdNum}
+        currentStoreId={lead?.franchise_id}
       />
     </>
   );

@@ -7,7 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { FolderOpen, Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FileUploadField } from "@/components/custom/file-upload";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 
 import {
   useCurrentSitePhotosAtSiteReadiness,
@@ -28,6 +28,9 @@ import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkSiteRedinessStage } from "@/components/utils/privileges";
+import CustomeTooltip from "@/components/custom-tooltip";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useLeadById } from "@/hooks/useLeadsQueries";
 
 interface CurrentSitePhotosReadinessSectionProps {
   leadId: number;
@@ -41,12 +44,15 @@ export default function CurrentSitePhotosReadinessSection({
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
   const queryClient = useQueryClient();
 
   // 🔹 Fetch existing site photos
   const { data: sitePhotos, isLoading } = useCurrentSitePhotosAtSiteReadiness(
     vendorId,
-    leadId
+    leadId,
   );
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
@@ -60,10 +66,28 @@ export default function CurrentSitePhotosReadinessSection({
   const { mutateAsync: uploadPhotos, isPending } =
     useUploadCurrentSitePhotosAtSiteReadiness();
 
+
+    const { data: leadResponse } = useLeadById(
+  leadId,
+  vendorId,
+  userId,
+);
+
+const lead = leadResponse?.data?.lead;
+
+const {
+  blockedTooltip,
+  shouldDisableBlockedActions,
+} = useLeadAccessControl({
+  leadId,
+  userType,
+  lead,
+});
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const hasFiles = Array.isArray(sitePhotos) && sitePhotos.length > 0;
   const imageExtensions = ["jpg", "jpeg", "png"];
   const documentExtensions = ["pdf", "zip"];
+
 
   const images =
     sitePhotos?.filter((file: any) => {
@@ -80,12 +104,15 @@ export default function CurrentSitePhotosReadinessSection({
   // 🔹 Handle Upload
   const handleUpload = async () => {
     if (!vendorId || !userId || !leadId) {
-      toast.error("Missing required IDs.");
+      toastManager.add({ title: "Missing required IDs.", type: "error" });
       return;
     }
 
     if (selectedFiles.length === 0) {
-      toast.error("Please select at least one photo to upload.");
+      toastManager.add({
+        title: "Please select at least one photo to upload.",
+        type: "error",
+      });
       return;
     }
 
@@ -98,7 +125,10 @@ export default function CurrentSitePhotosReadinessSection({
         files: selectedFiles,
       });
 
-      toast.success("Current Site Photos uploaded successfully!");
+      toastManager.add({
+        title: "Current Site Photos uploaded successfully!",
+        type: "success",
+      });
       setSelectedFiles([]);
 
       // Refresh data
@@ -108,20 +138,47 @@ export default function CurrentSitePhotosReadinessSection({
       queryClient.invalidateQueries({
         queryKey: ["checkSiteReadinessCompletion", vendorId, leadId],
       });
+
+      queryClient.invalidateQueries({
+        queryKey: ["allLeadDocuments"],
+      });
     } catch (error: any) {
-      toast.error(
+      const errorMessage =
+        error?.response?.data?.error ||
         error?.response?.data?.message ||
-          "Failed to upload Current Site Photos."
-      );
+        error?.message ||
+        "Failed to upload Current Site Photos.";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
     }
   };
 
   const canDelete =
-    userType === "admin" ||
     userType === "super-admin" ||
     (userType === "site-supervisor" && leadStatus === "site-readiness-stage");
 
   const canViewAndWork = canViewAndWorkSiteRedinessStage(userType, leadStatus);
+ const canUploadDocuments =
+  !shouldDisableBlockedActions &&
+  (
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.site_readiness.current_site_photos.upload",
+        )
+      : canViewAndWork
+  );
+const canDeleteDocuments =
+  !shouldDisableBlockedActions &&
+  (
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.site_readiness.current_site_photos.delete",
+        )
+      : canDelete
+  );
 
   // 🧩 --- Handlers ---
   const handleConfirmDelete = () => {
@@ -152,44 +209,65 @@ export default function CurrentSitePhotosReadinessSection({
         </div>
 
         {hasFiles && (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0 ml-3">
             {sitePhotos.length} File{sitePhotos.length > 1 && "s"}
           </span>
         )}
       </div>
 
       {/* -------------------------------- UPLOAD AREA -------------------------------- */}
-      {canViewAndWork && (
-        <div className="p-6 border-b space-y-4">
+  {shouldDisableBlockedActions ? (
+  <div className="p-6 border-b space-y-4">
+
+    <CustomeTooltip
+      value={blockedTooltip}
+      truncateValue={
+        <div>
           <FileUploadField
-            value={selectedFiles}
-            onChange={setSelectedFiles}
+            value={[]}
+            onChange={() => {}}
             accept=".jpg,.jpeg,.png,.pdf,.zip"
             multiple
+            disabled
           />
-
-          <div className="flex justify-end">
-            <Button
-              size="sm"
-              onClick={handleUpload}
-              disabled={isPending || selectedFiles.length === 0}
-              className="flex items-center gap-2"
-            >
-              {isPending ? (
-                <>
-                  <Loader2 className="animate-spin size-4" />
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Upload size={16} />
-                  Upload Photos
-                </>
-              )}
-            </Button>
-          </div>
         </div>
-      )}
+      }
+    />
+
+  </div>
+) : (
+  canUploadDocuments && (
+    <div className="p-6 border-b space-y-4">
+      <FileUploadField
+        value={selectedFiles}
+        onChange={setSelectedFiles}
+        accept=".jpg,.jpeg,.png,.pdf,.zip"
+        multiple
+      />
+
+      <div className="flex justify-end">
+        <Button
+          size="sm"
+          onClick={handleUpload}
+          disabled={isPending || selectedFiles.length === 0}
+          className="flex items-center gap-2"
+        >
+          {isPending ? (
+            <>
+              <Loader2 className="animate-spin size-4" />
+              Uploading...
+            </>
+          ) : (
+            <>
+              <Upload size={16} />
+              Upload Photos
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
+  )
+)}
 
       {/* -------------------------------- FILE LIST -------------------------------- */}
       <div className="p-6">
@@ -226,7 +304,7 @@ export default function CurrentSitePhotosReadinessSection({
                   created_at: doc.created_at,
                 }}
                 index={index}
-                canDelete={canDelete}
+                canDelete={canDeleteDocuments}
                 onDelete={(id) => setConfirmDelete(Number(id))}
               />
             ))}
@@ -240,7 +318,7 @@ export default function CurrentSitePhotosReadinessSection({
                   signedUrl: doc.signed_url,
                   created_at: doc.created_at,
                 }}
-                canDelete={canDelete}
+                canDelete={canDeleteDocuments}
                 onDelete={(id) => setConfirmDelete(id)}
               />
             ))}

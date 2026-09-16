@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { ColumnFiltersState, FilterFn, SortingFn } from "@tanstack/react-table";
 
 export function cn(...inputs: ClassValue[]) {
@@ -13,10 +13,38 @@ export function cn(...inputs: ClassValue[]) {
 export function getErrorMessage(error: unknown): string {
   if (!error) return "Something went wrong";
 
+  const responseData = (error as any)?.response?.data;
+  const details = responseData?.details;
+
+  if (Array.isArray(details) && details.length > 0) {
+    const detailMessage = details
+      .map((detail) => {
+        if (typeof detail === "string") return detail;
+        if (detail?.field && detail?.message) {
+          return `${detail.field}: ${detail.message}`;
+        }
+        if (detail?.message) return detail.message;
+        return "";
+      })
+      .filter(Boolean)
+      .join(", ");
+
+    if (detailMessage) return detailMessage;
+  }
+
+  if (details && typeof details === "object" && "message" in details) {
+    const detailMessage = (details as { message?: unknown }).message;
+    if (typeof detailMessage === "string" && detailMessage.trim()) {
+      return detailMessage;
+    }
+  }
+
+  if (typeof details === "string" && details.trim()) {
+    return details;
+  }
+
   // Axios error message
-  const axiosMessage =
-    (error as any)?.response?.data?.message ||
-    (error as any)?.response?.data?.error;
+  const axiosMessage = responseData?.message || responseData?.error;
 
   if (axiosMessage) return axiosMessage;
 
@@ -34,9 +62,18 @@ export function logError(context: string, err: unknown) {
   console.error(`${context}:`, getErrorMessage(err), err);
 }
 
-export function toastError(err: unknown) {
-  toast.error(getErrorMessage(err));
-}
+export const toastError = (error: any) => {
+  const message =
+    error?.response?.data?.error ||
+    error?.response?.data?.message ||
+    error?.message ||
+    "Something went wrong";
+
+  toastManager.add({
+    title: message,
+    type: "error",
+  });
+};
 
 export function getCssVariable(name: string) {
   if (typeof window === "undefined") return "";
@@ -68,20 +105,38 @@ export function getInitials(name: string) {
   return first; // Return only one initial
 }
 
+const AVATAR_COLORS = [
+  "bg-purple-500",
+  "bg-cyan-500",
+  "bg-blue-500",
+  "bg-green-500",
+  "bg-amber-500",
+  "bg-rose-500",
+];
+
+export function getAvatarColor(name: string) {
+  if (!name) return AVATAR_COLORS[0];
+  const charCodeSum = name
+    .split("")
+    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return AVATAR_COLORS[charCodeSum % AVATAR_COLORS.length];
+}
+
 export function extractTitleText(input: string = ""): string {
   if (!input) return "";
 
-  const index = input.indexOf("-");
-
-  // extract left side
-  const leftText = index !== -1 ? input.slice(0, index).trim() : input.trim();
-
-  // replace spaces between words with hyphens
-  return leftText.replace(/\s+/g, "-");
+  const match = input.match(/\(([^)]+)\)/);
+  return match ? match[1].trim() : "";
 }
 
-export function normalize(val: string) {
-  return val.trim().replace(/\s+/g, "-").toLowerCase();
+export function sanitizeRemark(input: string = ""): string {
+  if (!input) return "";
+
+  // remove patterns like ||OL:37|| , ||ANYTHING||, and misc tags like [misc-erd:123]
+  return input
+    .replace(/\|\|.*?\|\|/g, "")
+    .replace(/\[misc[^\]]*\]\s*/gi, "")
+    .trim();
 }
 
 export const tableMultiValueFilter: FilterFn<any> = (
@@ -270,6 +325,12 @@ export function mapTableFiltersToPayload(filters: ColumnFiltersState) {
         payload.source = value;
         break;
 
+      case "priority":
+        payload.priority = (Array.isArray(value) ? value : [value])
+          .map((item) => String(item).trim())
+          .filter(Boolean);
+        break;
+
       case "sales_executive":
         payload.assign_to = value;
         break;
@@ -309,7 +370,12 @@ export function mapTaskTableFiltersToPayload(filters: ColumnFiltersState) {
 
     switch (id) {
       case "dueDate":
-        if (value === "today" || value === "upcoming" || value === "overdue") {
+        if (
+          value === "today" ||
+          value === "upcoming" ||
+          value === "overdue" ||
+          value === "completed"
+        ) {
           payload.due_filter = value;
         }
         // ✅ HANDLE OBJECT FORMAT (from custom date picker)
@@ -418,3 +484,95 @@ export function mapTaskTableFiltersToPayload(filters: ColumnFiltersState) {
 
   return payload;
 }
+
+
+
+
+export const formatBlockedAt = (value?: string | null) => {
+  if (!value) return "";
+
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) return "";
+
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  }).format(parsedDate);
+};
+
+export function getYouTubeEmbedUrl(url: string): string | null {
+  if (!url) return null;
+  let formattedUrl = url.trim();
+  if (!formattedUrl) return null;
+
+  if (!/^https?:\/\//i.test(formattedUrl)) {
+    formattedUrl = `https://${formattedUrl}`;
+  }
+
+  try {
+    const parsed = new URL(formattedUrl);
+    const hostname = parsed.hostname.toLowerCase();
+
+    const isYouTube =
+      hostname.includes("youtube.com") ||
+      hostname.includes("youtu.be") ||
+      hostname.includes("youtube-nocookie.com");
+
+    if (isYouTube) {
+      const v = parsed.searchParams.get("v");
+      if (v && v.length >= 11) return `https://www.youtube.com/embed/${v.substring(0, 11)}`;
+
+      const pathSegments = parsed.pathname.split("/").filter(Boolean);
+
+      if (pathSegments[0] === "embed" && pathSegments[1]) {
+        return `https://www.youtube.com/embed/${pathSegments[1].substring(0, 11)}`;
+      }
+
+      if (pathSegments[0] === "shorts" && pathSegments[1]) {
+        return `https://www.youtube.com/embed/${pathSegments[1].substring(0, 11)}`;
+      }
+
+      if ((pathSegments[0] === "live" || pathSegments[0] === "v") && pathSegments[1]) {
+        return `https://www.youtube.com/embed/${pathSegments[1].substring(0, 11)}`;
+      }
+
+      if (hostname.includes("youtu.be") && pathSegments[0]) {
+        return `https://www.youtube.com/embed/${pathSegments[0].substring(0, 11)}`;
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  const regExp = /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|shorts\/|live\/))([\w-]{11})/;
+  const match = formattedUrl.match(regExp);
+  if (match && match[1]) {
+    return `https://www.youtube.com/embed/${match[1]}`;
+  }
+
+  return null;
+}
+
+export function formatSalesExecutiveName(assignedTo: any): string {
+  if (!assignedTo || !assignedTo.user_name) return "";
+  const name = String(assignedTo.user_name).trim();
+  const lowerName = name.toLowerCase();
+  const role = String(
+    assignedTo.user_type?.user_type || assignedTo.user_role || assignedTo.role || ""
+  ).trim().toLowerCase();
+
+  if (
+    lowerName === "super admin" ||
+    lowerName.includes("super admin") ||
+    role === "super-admin" ||
+    role === "admin"
+  ) {
+    return "";
+  }
+  return name;
+}
+

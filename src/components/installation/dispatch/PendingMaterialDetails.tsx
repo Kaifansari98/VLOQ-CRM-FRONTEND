@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import CustomeDatePicker from "@/components/date-picker";
 import { Button } from "@/components/ui/button";
@@ -11,11 +11,12 @@ import {
   useCreatePendingMaterialTask,
   useOrderLoginSummary,
 } from "@/api/installation/useDispatchStageLeads";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import TextSelectPicker from "@/components/TextSelectPicker";
 import { Checkbox } from "@/components/ui/checkbox";
 import CustomeTooltip from "@/components/custom-tooltip";
+import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 
 interface PendingMaterialDetailsProps {
   leadId: number;
@@ -43,21 +44,69 @@ export default function PendingMaterialDetails({
 
   const { data: orderLoginSummary = [], isLoading: loadingSummary } =
     useOrderLoginSummary(vendorId, leadId);
+  const { data: instancesResponse, isLoading: loadingInstances } =
+    useLeadProductStructureInstances(leadId, vendorId);
+
+  const instances = Array.isArray(instancesResponse?.data)
+    ? instancesResponse?.data
+    : instancesResponse?.data?.data || [];
 
   // Form State
   const [title, setTitle] = useState("");
   const [remark, setRemark] = useState("");
   const [dueDate, setDueDate] = useState<string | null>(null);
+  const [selectedInstanceLabel, setSelectedInstanceLabel] = useState("");
+
+  const instanceOptions = useMemo(() => {
+    if (!instances.length) return [];
+    return instances.map((instance: any) => {
+      const base =
+        instance?.title ||
+        `Instance ${instance?.quantity_index ?? instance?.id}`;
+      return base;
+    });
+  }, [instances]);
+
+  const instanceIdByLabel = useMemo(() => {
+    const map = new Map<string, number>();
+    instances.forEach((instance: any) => {
+      const label =
+        instance?.title ||
+        `Instance ${instance?.quantity_index ?? instance?.id}`;
+      if (!map.has(label)) {
+        map.set(label, instance?.id);
+      }
+    });
+    return map;
+  }, [instances]);
+
+  const selectedInstanceId = selectedInstanceLabel
+    ? instanceIdByLabel.get(selectedInstanceLabel)
+    : undefined;
+
+  useEffect(() => {
+    setTitle("");
+  }, [selectedInstanceId]);
+
+  const filteredOrderLoginSummary = useMemo(() => {
+    if (!selectedInstanceId) return orderLoginSummary ?? [];
+    return (orderLoginSummary ?? []).filter(
+      (item: any) => Number(item?.instance_id) === Number(selectedInstanceId),
+    );
+  }, [orderLoginSummary, selectedInstanceId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!title.trim() || !dueDate) {
-      toast.error("Please fill all required fields.");
+      toastManager.add({ title: "Please fill all required fields.", type: "error" });
       return;
     }
 
-    const combinedRemark = `${title.trim()} — ${remark.trim()}`;
+    const formattedTitle = selectedInstanceLabel
+      ? `${selectedInstanceLabel} - ${title.trim()}`
+      : title.trim();
+    const combinedRemark = remark.trim() ? `${formattedTitle} — ${remark.trim()}` : formattedTitle;
 
     try {
       await createPendingTask({
@@ -71,7 +120,7 @@ export default function PendingMaterialDetails({
         },
       });
 
-      toast.success("Pending Material added successfully!");
+      toastManager.add({ title: "Pending Material added successfully!", type: "success" });
       queryClient.invalidateQueries({
         queryKey: ["pendingMaterialTasks", vendorId, leadId],
       });
@@ -80,20 +129,21 @@ export default function PendingMaterialDetails({
       setRemark("");
       setDueDate(null);
     } catch (err) {
-      toast.error("Failed to add Pending Material.");
+      toastManager.add({ title: "Failed to add Pending Material.", type: "error" });
     }
   };
 
   return (
     <div className="h-full flex flex-col">
-      <div className="border rounded-lg bg-background h-full flex flex-col overflow-hidden">
+      <div className="border rounded-xl bg-background h-full flex flex-col overflow-hidden">
         {/* ---------- HEADER ---------- */}
-        <div className="px-6 py-4 border-b bg-muted/30 flex items-center justify-between">
-          <div className="">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2">
+        <div className="px-4 py-3 border-b bg-muted/30">
+          <div className="flex items-center justify-between gap-3">
+            {/* Left: Checkbox + Title + Description */}
+            <div className="flex items-center gap-2.5 min-w-0">
+              {/* Checkbox */}
+              <div className="shrink-0">
                 {disabled ? (
-                  // ✔ Normal interactive checkbox
                   <Checkbox
                     checked={allowForm}
                     onCheckedChange={(checked) =>
@@ -102,50 +152,51 @@ export default function PendingMaterialDetails({
                     disabled={false}
                   />
                 ) : (
-                  // ✔ Tooltip + disabled checkbox when disabled = false
                   <CustomeTooltip
                     truncateValue={
                       <Checkbox
                         checked={allowForm}
                         disabled={true}
-                        className="cursor-not-allowed"
+                        className="cursor-not-allowed opacity-50"
                       />
                     }
-                    value="Only Factory Users Can Access This Action"
+                    value="Only Factory Users Can Access This Action in dispatch stage."
                   />
                 )}
+              </div>
 
-                <h2 className="text-lg font-semibold tracking-tight">
+              {/* Title + Desc */}
+              <div className="min-w-0">
+                <h2 className="text-sm font-semibold whitespace-nowrap">
                   Add Pending Material
                 </h2>
+                <p className="text-xs text-muted-foreground whitespace-nowrap">
+                  Track materials that are pending for dispatch
+                </p>
               </div>
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Track materials that are pending for dispatch
-              </p>
-            </div>
-          </div>
 
-          {/* Submit */}
-          <Button
-            type="submit"
-            form="pending-material-form"
-            disabled={!allowForm || isPending || !title.trim() || !dueDate}
-            className="hidden sm:flex"
-          >
-            {isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Adding...
-              </>
-            ) : (
-              <>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Material
-              </>
-            )}
-          </Button>
+            {/* Right: Submit Button */}
+            <Button
+              type="submit"
+              form="pending-material-form"
+              disabled={!allowForm || isPending || !title.trim() || !dueDate}
+              className="shrink-0 hidden sm:flex"
+              size="sm"
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                <>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Add Material
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
         {/* ---------- CONTENT ---------- */}
@@ -160,6 +211,29 @@ export default function PendingMaterialDetails({
             className="space-y-6"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Instance */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1">
+                  <Package className="h-4 w-4" />
+                  Instance
+                </Label>
+
+                <TextSelectPicker
+                  options={instanceOptions}
+                  value={selectedInstanceLabel}
+                  onChange={(v) => setSelectedInstanceLabel(v)}
+                  placeholder={
+                    loadingInstances
+                      ? "Loading instances..."
+                      : "Select instance..."
+                  }
+                  emptyLabel={
+                    instanceOptions.length ? "Select instance" : "No instances"
+                  }
+                  disabled={loadingInstances || instanceOptions.length === 0}
+                />
+              </div>
+
               {/* Title */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-1">
@@ -169,8 +243,8 @@ export default function PendingMaterialDetails({
 
                 <TextSelectPicker
                   options={
-                    orderLoginSummary?.map(
-                      (item: any) => item.item_type || "Untitled Item"
+                    filteredOrderLoginSummary?.map(
+                      (item: any) => item.item_type || "Untitled Item",
                     ) ?? []
                   }
                   value={title}
@@ -181,7 +255,7 @@ export default function PendingMaterialDetails({
                       : "Select material..."
                   }
                   emptyLabel="Select Material"
-                  disabled={loadingSummary}
+                  disabled={loadingSummary || !selectedInstanceId}
                 />
               </div>
 

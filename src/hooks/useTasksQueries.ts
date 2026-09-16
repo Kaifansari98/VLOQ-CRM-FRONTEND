@@ -1,4 +1,4 @@
-import { useQuery, UseQueryResult } from "@tanstack/react-query";
+import { useMutation, useQuery, UseQueryResult } from "@tanstack/react-query";
 import { apiClient } from "@/lib/apiClient";
 
 // ===============================
@@ -15,6 +15,7 @@ export type ActiveLeadTasksResponse = ActiveLeadTask[];
 
 export interface VendorUserTask {
   userLeadTask: {
+    instance_id: any;
     id: number;
     status: string;
     due_date: string;
@@ -64,6 +65,19 @@ export interface ActiveLeadTask {
   } | null;
 }
 
+export interface ActOnSmallOrderRequestTaskPayload {
+  action: "approve" | "reject";
+  acted_by: number;
+  remark?: string | null;
+}
+
+export interface ActOnFastProductionRequestTaskPayload {
+  action: "approve" | "reject";
+  acted_by: number;
+  remark?: string | null;
+  production_target_date?: string | null;
+}
+
 // ===============================
 // FILTER PAYLOAD TYPE
 // ===============================
@@ -72,6 +86,7 @@ export interface TaskFilterPayload {
   page: number;
   limit: number;
   created_at: "asc" | "desc";
+  franchise_id?: number;
 
   global_search?: string;
 
@@ -84,7 +99,7 @@ export interface TaskFilterPayload {
   due_date?: string;
 
   // ✅ NEW
-  due_filter?: "today" | "upcoming" | "overdue";
+  due_filter?: "today" | "upcoming" | "overdue" | "completed";
 
   // ✅ DATE RANGE - ADD THIS
   date_range?: {
@@ -120,6 +135,7 @@ export interface VendorUserTasksApiResponse {
     today: number;
     upcoming: number;
     overdue: number;
+    completed: number;
   };
 
   data: VendorUserTask[];
@@ -175,6 +191,7 @@ export const useVendorUserTasksFilter = (
     queryKey: [
       "vendorUserTasks",
       vendorId,
+      payload.franchise_id,
       userId,
       payload.page,
       payload.limit,
@@ -196,11 +213,11 @@ export const useVendorUserTasksFilter = (
     ],
     queryFn: () => postVendorUserTasks(vendorId, userId, payload),
     enabled: !!vendorId && !!userId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
     refetchOnWindowFocus: false,
   });
 };
-
+ 
 export const useVendorAllTasksFilter = (
   vendorId: number,
   payload: TaskFilterPayload,
@@ -209,6 +226,7 @@ export const useVendorAllTasksFilter = (
     queryKey: [
       "vendorAllTasks",
       vendorId,
+      payload.franchise_id,
       payload.page,
       payload.limit,
       payload.created_at,
@@ -229,7 +247,7 @@ export const useVendorAllTasksFilter = (
     ],
     queryFn: () => postVendorAllTasksFilter(vendorId, payload),
     enabled: !!vendorId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
     refetchOnWindowFocus: false,
   });
 };
@@ -237,9 +255,11 @@ export const useVendorAllTasksFilter = (
 export const getActiveLeadTasks = async (
   vendorId: number,
   leadId: number,
+  franchiseId?: number,
 ): Promise<ActiveLeadTasksResponse> => {
   const response = await apiClient.get(
-    `/leads/tasks/vendorId/${vendorId}/leadId/${leadId}/active-tasks`,
+    `/leads/tasks/vendorId/${vendorId}/leadId/${leadId}/active-tasks${franchiseId ? `?franchise_id=${franchiseId}` : ""
+    }`,
   );
   return response.data.data;
 };
@@ -247,13 +267,104 @@ export const getActiveLeadTasks = async (
 export const useActiveLeadTasks = (
   vendorId: number,
   leadId: number,
+  franchiseId?: number,
   enabled: boolean = true,
 ): UseQueryResult<ActiveLeadTasksResponse, Error> => {
   return useQuery({
-    queryKey: ["activeLeadTasks", vendorId, leadId],
-    queryFn: () => getActiveLeadTasks(vendorId, leadId),
+    queryKey: ["activeLeadTasks", vendorId, leadId, franchiseId ?? null],
+    queryFn: () => getActiveLeadTasks(vendorId, leadId, franchiseId),
     enabled: enabled && !!vendorId && !!leadId,
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
   });
 };
+
+export const actOnSmallOrderRequestTask = async (
+  leadId: number,
+  taskId: number,
+  payload: ActOnSmallOrderRequestTaskPayload,
+) => {
+  const { data } = await apiClient.patch(
+    `/leads/tasks/leadId/${leadId}/taskId/${taskId}/small-order-request/action`,
+    payload,
+  );
+  return data;
+};
+
+export const useActOnSmallOrderRequestTask = () => {
+  return useMutation({
+    mutationFn: ({
+      leadId,
+      taskId,
+      payload,
+    }: {
+      leadId: number;
+      taskId: number;
+      payload: ActOnSmallOrderRequestTaskPayload;
+    }) => actOnSmallOrderRequestTask(leadId, taskId, payload),
+  });
+};
+
+export const actOnFastProductionRequestTask = async (
+  leadId: number,
+  taskId: number,
+  payload: ActOnFastProductionRequestTaskPayload,
+) => {
+  const { data } = await apiClient.patch(
+    `/leads/tasks/leadId/${leadId}/taskId/${taskId}/fast-production-request/action`,
+    payload,
+  );
+  return data;
+};
+
+export const useActOnFastProductionRequestTask = () => {
+  return useMutation({
+    mutationFn: ({
+      leadId,
+      taskId,
+      payload,
+    }: {
+      leadId: number;
+      taskId: number;
+      payload: ActOnFastProductionRequestTaskPayload;
+    }) => actOnFastProductionRequestTask(leadId, taskId, payload),
+  });
+};
+
+export const getFastProductionRequestDetails = async (
+  leadId: number,
+  taskId: number,
+) => {
+  const { data } = await apiClient.get(
+    `/leads/tasks/leadId/${leadId}/taskId/${taskId}/fast-production-request`,
+  );
+  return data;
+};
+
+export const useFastProductionRequestDetails = (
+  leadId: number,
+  taskId: number,
+  enabled: boolean,
+) => {
+  return useQuery({
+    queryKey: ["fastProductionRequestDetails", leadId, taskId],
+    queryFn: () => getFastProductionRequestDetails(leadId, taskId),
+    enabled: enabled && !!leadId && !!taskId,
+  });
+};
+
+export const getTaskDetails = async (taskId: number) => {
+  const { data } = await apiClient.get(
+    `/leads/tasks/${taskId}/details`,
+  );
+  return data;
+};
+
+export const useTaskDetails = (taskId: number, enabled: boolean) => {
+  return useQuery({
+    queryKey: ["taskDetails", taskId],
+    queryFn: () => getTaskDetails(taskId),
+    enabled: enabled && !!taskId,
+  });
+};
+

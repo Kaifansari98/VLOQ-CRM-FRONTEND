@@ -39,7 +39,7 @@ export default function UnderInstallationStagePage() {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="/dashboard">Project</BreadcrumbLink>
+                <BreadcrumbLink href="/dashboard">Execution</BreadcrumbLink>
               </BreadcrumbItem>
 
               <BreadcrumbSeparator className="hidden md:block" />

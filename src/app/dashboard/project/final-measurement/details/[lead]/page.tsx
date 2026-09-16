@@ -29,14 +29,28 @@ import {
   Users,
   XCircle,
   HouseIcon,
-  PanelsTopLeftIcon,
-  BoxIcon,
-  UsersRoundIcon,
   FileText,
   Clock,
   UserPlus,
   MessageSquare,
+  PencilLine,
+  History,
+  IndianRupee,
+  FolderOpen,
+  LockOpen,
+  Lock,
+  Zap,
 } from "lucide-react";
+
+import FastProductionDetailsModal from "@/components/sales-executive/Lead/fast-production-details-modal";
+
+import {
+  useBlockLead,
+  useUnblockLead,
+  useRevokeFastProductionRequest,
+} from "@/hooks/useLeadsQueries";
+import CancelFastProductionModal from "@/components/generics/CancelFastProductionModal";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 
 import {
   AlertDialog,
@@ -52,7 +66,12 @@ import {
 import AssignLeadModal from "@/components/sales-executive/Lead/assign-lead-moda";
 import { EditLeadModal } from "@/components/sales-executive/Lead/lead-edit-form-modal";
 import { useDeleteLead } from "@/hooks/useDeleteLead";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
+import { useRouter } from "next/navigation";
+import {
+  useFinalMeasurement,
+  useFinalMeasurementLeadById,
+} from "@/hooks/final-measurement/use-final-measurement";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -84,6 +103,7 @@ import ActivityStatusModal from "@/components/generics/ActivityStatusModal";
 import { useUpdateActivityStatus } from "@/hooks/useActivityStatus";
 import { useQueryClient } from "@tanstack/react-query";
 import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
+import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
 
 export default function FinalMeasurementLeadDetails() {
   const { lead: leadId } = useParams();
@@ -91,17 +111,33 @@ export default function FinalMeasurementLeadDetails() {
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const isCustomVendorFlow = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
+  );
+  const handlesLargeScaleProjects = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const isCustomDocNomenclatureEnabled = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_custom_doc_nomenclature_enabled === true,
+  );
 
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type.user_type
+    (state) => state.auth.user?.user_type.user_type,
   );
+  const isAuditor = userType?.trim().toLowerCase() === "auditor";
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
+  const effectiveUserType = userType;
 
   // UI STATES
   const [assignOpenLead, setAssignOpenLead] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [activeTab, setActiveTab] = useState(
-    userType === "site-supervisor" ? "todo" : "details"
+    userType === "site-supervisor" ? "todo" : "details",
   );
   useChatTabFromUrl(setActiveTab);
   const isChatNotification = useIsChatNotification();
@@ -111,21 +147,130 @@ export default function FinalMeasurementLeadDetails() {
 
   // Only MARK ON HOLD
   const [activityModalOpen, setActivityModalOpen] = useState(false);
+  const [openBlockConfirm, setOpenBlockConfirm] = useState(false);
+  const [openCancelFastProduction, setOpenCancelFastProduction] =
+    useState(false);
+  const [fastProductionDetailsOpen, setFastProductionDetailsOpen] =
+    useState(false);
+  const revokeFastProductionMutation = useRevokeFastProductionRequest();
+
+  const handleCancelFastProduction = (remark: string) => {
+    if (!vendorId || !userId || !leadIdNum) {
+      toastManager.add({
+        title: "Missing vendor, user, or lead info",
+        type: "error",
+      });
+      return;
+    }
+    revokeFastProductionMutation.mutate(
+      {
+        leadId: leadIdNum,
+        vendorId,
+        userId,
+        remark,
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: "Fast production status cancelled successfully!",
+            type: "success",
+          });
+          setOpenCancelFastProduction(false);
+          queryClient.invalidateQueries({
+            queryKey: ["lead", leadIdNum, vendorId, userId],
+          });
+        },
+        onError: (err: any) => {
+          toastManager.add({
+            title:
+              err?.response?.data?.message ||
+              err?.message ||
+              "Failed to cancel fast production",
+            type: "error",
+          });
+        },
+      },
+    );
+  };
 
   const updateStatusMutation = useUpdateActivityStatus();
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (userType === "site-supervisor" && !isChatNotification) {
-      setPreviousTab("details");
-      setOpenFinalDocModal(true);
-      setActiveTab("todo");
-    }
-  }, [isChatNotification, userType]);
+  const blockLeadMutation = useBlockLead();
+  const unblockLeadMutation = useUnblockLead();
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const lead = data?.data?.lead;
   const accountId = lead?.account_id;
+
+  const router = useRouter();
+  const [moveConfirmOpen, setMoveConfirmOpen] = useState(false);
+  const finalMeasurementMutation = useFinalMeasurement();
+  const { data: finalMeasurementData } = useFinalMeasurementLeadById(
+    vendorId ?? 0,
+    leadIdNum,
+  );
+
+  const sitePhotos = finalMeasurementData?.sitePhotos ?? [];
+  const measurementDocs = finalMeasurementData?.measurementDocs ?? [];
+  const hasAtLeastOneDocUploaded =
+    sitePhotos.length > 0 || measurementDocs.length > 0;
+
+  const canMoveToClientDoc =
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.final_measurement.move_to_client_documentation.action",
+        )
+      : true;
+
+  const showMoveButton =
+    hasAtLeastOneDocUploaded &&
+    isCustomVendorFlow &&
+    handlesLargeScaleProjects &&
+    canMoveToClientDoc;
+
+  const handleMoveToClientDocument = () => {
+    finalMeasurementMutation.mutate(
+      {
+        lead_id: leadIdNum,
+        account_id: lead?.account_id ?? 0,
+        vendor_id: vendorId ?? 0,
+        created_by: userId ?? 0,
+        critical_discussion_notes: "N/A",
+        final_measurement_docs: [],
+        site_photos: [],
+        final_measurement_doc_instance_ids: [],
+        site_photo_instance_ids: [],
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: "Lead moved to Client Document stage successfully!",
+            type: "success",
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["leadStats", vendorId, userId],
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["universal-stage-leads"],
+            exact: false,
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["allLeadDocuments"],
+          });
+          setMoveConfirmOpen(false);
+          router.push(`/dashboard/project/final-measurement`);
+        },
+        onError: (err: any) => {
+          toastManager.add({
+            title:
+              err?.message || "Failed to move lead to Client Document stage",
+            type: "error",
+          });
+        },
+      },
+    );
+  };
 
   const leadCode = lead?.lead_code ?? "";
   const clientName = `${lead?.firstname ?? ""} ${lead?.lastname ?? ""}`.trim();
@@ -139,32 +284,152 @@ export default function FinalMeasurementLeadDetails() {
     : undefined;
 
   const deleteLeadMutation = useDeleteLead();
+  const {
+    isLeadBlocked,
+    blockedTooltip,
+    shouldDisableBlockedActions,
+    isLoading: isLeadBlockStatusLoading,
+  } = useLeadAccessControl({
+    leadId: leadIdNum,
+    userType,
+    lead,
+  });
+
+  const isBlockActionPending =
+    blockLeadMutation.isPending || unblockLeadMutation.isPending;
+
+  useEffect(() => {
+    if (isLoading || isLeadBlockStatusLoading || !lead) return;
+    if (
+      userType === "site-supervisor" &&
+      !isChatNotification &&
+      !isLeadBlocked &&
+      !lead.is_draft
+    ) {
+      setPreviousTab("details");
+      setOpenFinalDocModal(true);
+      setActiveTab("todo");
+    }
+  }, [
+    isLoading,
+    isLeadBlockStatusLoading,
+    lead,
+    isChatNotification,
+    userType,
+    isLeadBlocked,
+  ]);
+
+  const handleToggleLeadBlock = () => {
+    if (!vendorId || !userId || !leadIdNum) {
+      toastManager.add({
+        title: "Vendor, user, or lead information is missing!",
+        type: "error",
+      });
+      return;
+    }
+
+    const mutation = isLeadBlocked ? unblockLeadMutation : blockLeadMutation;
+
+    mutation.mutate(
+      {
+        vendorId,
+        leadId: leadIdNum,
+        updatedBy: userId,
+      },
+      {
+        onSuccess: () => {
+          toastManager.add({
+            title: isLeadBlocked
+              ? "Lead unblocked successfully!"
+              : "Lead blocked successfully!",
+            type: "success",
+          });
+
+          setOpenBlockConfirm(false);
+
+          queryClient.invalidateQueries({
+            queryKey: ["leadBlockStatus", vendorId, leadIdNum],
+          });
+        },
+      },
+    );
+  };
+
   const handleDeleteLead = () => {
     if (!vendorId || !userId) {
-      toast.error("Missing vendor or user info!");
+      toastManager.add({
+        title: "Missing vendor or user info!",
+        type: "error",
+      });
       return;
     }
 
     deleteLeadMutation.mutate(
       { leadId: leadIdNum, vendorId, userId },
       {
-        onSuccess: () => toast.success("Lead deleted successfully!"),
-        onError: (err) => toast.error(err?.message || "Failed to delete lead"),
-      }
+        onSuccess: () =>
+          toastManager.add({
+            title: "Lead deleted successfully!",
+            type: "success",
+          }),
+        onError: (err) =>
+          toastManager.add({
+            title: err?.message || "Failed to delete lead",
+            type: "error",
+          }),
+      },
     );
 
     setOpenDelete(false);
   };
 
-  if (isLoading) {
+  if (isLoading && !lead) {
     return <p className="p-6">Loading final measurement lead details...</p>;
   }
 
-  const canReassign = canReassignLeadButton(userType);
-  const canDelete = canDeleteLeadButton(userType);
-  const canEdit = canEditLeadButton(userType);
-  const canViewPayment = canViewPaymentTab(userType);
-  const canViewSiteHistory = canViewSiteHistoryTab(userType);
+  if (!lead) {
+    return (
+      <p className="p-6">Lead details not found or you do not have access.</p>
+    );
+  }
+
+  const canReassign = canReassignLeadButton(effectiveUserType ?? "");
+  const canDelete = canDeleteLeadButton(effectiveUserType ?? "");
+  const canEdit = canEditLeadButton(effectiveUserType ?? "");
+  const canViewPayment =
+    isAuditor ||
+    (effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.payment_information.enable_disable",
+        )
+      : canViewPaymentTab(effectiveUserType ?? ""));
+  const canViewSiteHistory =
+    isAuditor ||
+    (effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.site_history.enable_disable",
+        )
+      : canViewSiteHistoryTab(effectiveUserType ?? ""));
+  const canViewChats =
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "leads.open_leads.details_of_lead.chat.enable_disable",
+        )
+      : true;
+  const canViewDocuments =
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.some((code) =>
+          code.startsWith(
+            "leads.open_leads.details_of_lead.documents_section.",
+          ),
+        )
+      : true;
+  const canAccessFinalMeasurementTodo =
+    effectiveUserType?.toLowerCase() === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.final_measurement.fm_action_upload_of_fm.enable_disable",
+        )
+      : canUploadFinalMeasurements(effectiveUserType ?? "");
 
   return (
     <>
@@ -189,85 +454,221 @@ export default function FinalMeasurementLeadDetails() {
 
         {/* ACTIONS */}
         <div className="flex items-center space-x-2">
-          <Button
-            size="sm"
-            className="hidden md:flex"
-            onClick={() => setAssignOpen(true)}
-          >
-            Assign Task
-          </Button>
+          {!isAuditor && (
+            <Button
+              size="sm"
+              className="hidden md:flex"
+              onClick={() => setAssignOpen(true)}
+            >
+              Assign Task
+            </Button>
+          )}
+
+          {showMoveButton && (
+            <Button
+              size="sm"
+              onClick={() => setMoveConfirmOpen(true)}
+              disabled={finalMeasurementMutation.isPending}
+              className="hidden md:flex"
+            >
+              {finalMeasurementMutation.isPending
+                ? "Moving..."
+                : "Move to Client Document"}
+            </Button>
+          )}
 
           <LeadTasksPopover vendorId={vendorId ?? 0} leadId={leadIdNum} />
-          <NotificationBell />
+          {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="relative bg-accent p-1.5 rounded-sm"
-              >
-                <EllipsisVertical size={25} />
-              </Button>
-            </DropdownMenuTrigger>
+          {!isAuditor && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="relative bg-accent p-1.5 rounded-sm"
+                >
+                  <EllipsisVertical size={25} />
+                </Button>
+              </DropdownMenuTrigger>
 
-            <DropdownMenuContent align="end">
-              {/* ✔ ONLY MARK ON HOLD */}
-              <DropdownMenuItem
-                className="flex md:hidden"
-                onSelect={() => setAssignOpen(true)}
-              >
-                <UserPlus size={20} />
-                Assign Task
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setActivityModalOpen(true)}>
-                <Clock className="mh-4 w-4" />
-                Mark On Hold
-              </DropdownMenuItem>
-              {canEdit && (
-                <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
-                  <SquarePen size={20} />
-                  Edit
+              <DropdownMenuContent align="end">
+                {/* ✔ ONLY MARK ON HOLD */}
+                <DropdownMenuItem
+                  className="flex md:hidden"
+                  onSelect={() => setAssignOpen(true)}
+                >
+                  <UserPlus size={20} />
+                  Assign Task
                 </DropdownMenuItem>
-              )}
 
-              {canReassign && (
-                <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
-                  <Users size={20} />
-                  Reassign Lead
-                </DropdownMenuItem>
-              )}
+                {showMoveButton && (
+                  <DropdownMenuItem
+                    className="flex md:hidden"
+                    onSelect={() => setMoveConfirmOpen(true)}
+                    disabled={finalMeasurementMutation.isPending}
+                  >
+                    <FileText size={20} />
+                    {finalMeasurementMutation.isPending
+                      ? "Moving..."
+                      : "Move to Client Document"}
+                  </DropdownMenuItem>
+                )}
+                {/* Lead block handling added for DropdownMenu action */}
+                {shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <Clock className="mh-4 w-4" />
+                        Mark On Hold
+                      </DropdownMenuItem>
+                    }
+                  />
+                ) : (
+                  <DropdownMenuItem onSelect={() => setActivityModalOpen(true)}>
+                    <Clock className="mh-4 w-4" />
+                    Mark On Hold
+                  </DropdownMenuItem>
+                )}
+                {canEdit &&
+                  // Lead block handling added for DropdownMenu action
+                  (shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <SquarePen size={20} />
+                          Edit
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem onClick={() => setOpenEditModal(true)}>
+                      <SquarePen size={20} />
+                      Edit
+                    </DropdownMenuItem>
+                  ))}
 
-              {/* Final Documentation */}
-              {canUploadFinalMeasurements(userType) ? (
-                <DropdownMenuItem onClick={() => setOpenFinalDocModal(true)}>
-                  <FileText size={20} />
-                  Final Documentation
-                </DropdownMenuItem>
-              ) : (
-                <CustomeTooltip
-                  truncateValue={
-                    <DropdownMenuItem disabled>
-                      <FileText size={18} />
+                {userType?.toLowerCase() === "super-admin" && (
+                  <DropdownMenuItem
+                    onSelect={() => setOpenBlockConfirm(true)}
+                    disabled={isBlockActionPending}
+                  >
+                    {isLeadBlocked ? (
+                      <LockOpen className="h-4 w-4" />
+                    ) : (
+                      <Lock className="h-4 w-4" />
+                    )}
+                    {isLeadBlocked ? "Unblock Lead" : "Block Lead"}
+                  </DropdownMenuItem>
+                )}
+
+                {userType?.toLowerCase() === "super-admin" &&
+                  lead?.is_fast_production === true && (
+                    <DropdownMenuItem
+                      onSelect={() => setOpenCancelFastProduction(true)}
+                      disabled={
+                        revokeFastProductionMutation.isPending || isLeadBlocked
+                      }
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Cancel Fast Production
+                    </DropdownMenuItem>
+                  )}
+
+                {(lead?.is_fast_production === true ||
+                  lead?.has_pending_fast_production_request === true) && (
+                  <DropdownMenuItem
+                    onSelect={() => setFastProductionDetailsOpen(true)}
+                  >
+                    <Zap className="h-4 w-4 mr-2 text-orange-500 fill-orange-500" />
+                    Fast Production Details
+                  </DropdownMenuItem>
+                )}
+
+                {canReassign &&
+                  // Lead block handling added for DropdownMenu action
+                  (shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <Users size={20} />
+                          Reassign Lead
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem onClick={() => setAssignOpenLead(true)}>
+                      <Users size={20} />
+                      Reassign Lead
+                    </DropdownMenuItem>
+                  ))}
+
+                {/* Final Documentation */}
+                {canAccessFinalMeasurementTodo ? (
+                  // Lead block handling added for DropdownMenu action
+                  shouldDisableBlockedActions ? (
+                    <CustomeTooltip
+                      value={blockedTooltip}
+                      truncateValue={
+                        <DropdownMenuItem disabled>
+                          <FileText size={20} />
+                          Final Documentation
+                        </DropdownMenuItem>
+                      }
+                    />
+                  ) : (
+                    <DropdownMenuItem
+                      onClick={() => setOpenFinalDocModal(true)}
+                    >
+                      <FileText size={20} />
                       Final Documentation
                     </DropdownMenuItem>
-                  }
-                  value="Only Site Supervisor can access this option"
-                />
-              )}
+                  )
+                ) : (
+                  <CustomeTooltip
+                    truncateValue={
+                      <DropdownMenuItem disabled>
+                        <FileText size={18} />
+                        Final Documentation
+                      </DropdownMenuItem>
+                    }
+                    value={
+                      shouldDisableBlockedActions
+                        ? blockedTooltip
+                        : "Only Site Supervisor can access this option"
+                    }
+                  />
+                )}
 
-              {canDelete && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setOpenDelete(true)}>
-                    <XCircle size={20} className="text-red-500" />
-                    Delete
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                {canDelete && (
+                  <>
+                    <DropdownMenuSeparator />
+                    {/* Lead block handling added for DropdownMenu action */}
+                    {shouldDisableBlockedActions ? (
+                      <CustomeTooltip
+                        value={blockedTooltip}
+                        truncateValue={
+                          <DropdownMenuItem disabled>
+                            <XCircle size={20} className="text-red-500" />
+                            Delete
+                          </DropdownMenuItem>
+                        }
+                      />
+                    ) : (
+                      <DropdownMenuItem onClick={() => setOpenDelete(true)}>
+                        <XCircle size={20} className="text-red-500" />
+                        Delete
+                      </DropdownMenuItem>
+                    )}
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </header>
 
@@ -292,50 +693,77 @@ export default function FinalMeasurementLeadDetails() {
               Lead Details
             </TabsTrigger>
 
-            {canUploadFinalMeasurements(userType) ? (
-              <TabsTrigger value="todo">
-                <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
-                To-Do Task
-              </TabsTrigger>
+            {!isAuditor && canAccessFinalMeasurementTodo ? (
+              shouldDisableBlockedActions ? (
+                <CustomeTooltip
+                  value={blockedTooltip}
+                  truncateValue={
+                    <TabsTrigger value="todo" disabled>
+                      <PencilLine size={16} className="mr-1 opacity-60" />
+                      To-Do Task
+                    </TabsTrigger>
+                  }
+                />
+              ) : (
+                <TabsTrigger value="todo">
+                  <PencilLine size={16} className="mr-1 opacity-60" />
+                  To-Do Task
+                </TabsTrigger>
+              )
             ) : (
-              <CustomeTooltip
-                truncateValue={
-                  <TabsTrigger value="todo" disabled>
-                    <PanelsTopLeftIcon size={16} className="mr-1 opacity-60" />
-                    To-Do Task
-                  </TabsTrigger>
-                }
-                value="Only Site Supervisor can access this tab"
-              />
+              !isAuditor && (
+                <CustomeTooltip
+                  value="Only Site Supervisor can access this tab"
+                  truncateValue={
+                    <TabsTrigger value="todo" disabled>
+                      <PencilLine size={16} className="mr-1 opacity-60" />
+                      To-Do Task
+                    </TabsTrigger>
+                  }
+                />
+              )
             )}
 
             {canViewSiteHistory && (
               <TabsTrigger value="history">
-                <BoxIcon size={16} className="mr-1 opacity-60" />
-                Site History
+                <History size={16} className="mr-1 opacity-60" />
+                History
               </TabsTrigger>
             )}
 
             {canViewPayment && (
               <TabsTrigger value="payment">
-                <UsersRoundIcon size={16} className="mr-1 opacity-60" />
-                Payment Information
+                <IndianRupee size={16} className="mr-1 opacity-60" />
+                Payment
               </TabsTrigger>
             )}
-            <TabsTrigger value="chats">
-              <MessageSquare size={16} className="mr-1 opacity-60" />
-              Chats
-            </TabsTrigger>
+            {canViewChats && (
+              <TabsTrigger value="chats">
+                <MessageSquare size={16} className="mr-1 opacity-60" />
+                Chats
+              </TabsTrigger>
+            )}
+            {canViewDocuments && (
+              <TabsTrigger value="documents">
+                <FolderOpen size={16} className="mr-1 opacity-60" />
+                Documents
+              </TabsTrigger>
+            )}
           </TabsList>
+
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
 
         {/* CONTENT */}
         <TabsContent value="details">
           <LeadDetailsUtil
-            status="booking"
+            status="finalMeasurement"
             leadId={leadIdNum}
-            defaultTab="booking"
+            defaultTab={
+              isCustomDocNomenclatureEnabled && hasAtLeastOneDocUploaded
+                ? "finalMeasurement"
+                : "booking"
+            }
           />
         </TabsContent>
 
@@ -351,9 +779,21 @@ export default function FinalMeasurementLeadDetails() {
           </TabsContent>
         )}
 
-        <TabsContent value="chats">
-          <LeadWiseChatScreen leadId={leadIdNum} />
-        </TabsContent>
+        {canViewChats && (
+          <TabsContent value="chats">
+            <LeadWiseChatScreen leadId={leadIdNum} />
+          </TabsContent>
+        )}
+
+        {canViewDocuments && (
+          <TabsContent value="documents">
+            <ProjectDocumentsTimeline
+              leadId={leadIdNum}
+              vendorId={vendorId ?? 0}
+              upToStage="ism"
+            />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* MODALS */}
@@ -369,7 +809,7 @@ export default function FinalMeasurementLeadDetails() {
         leadData={{ id: leadIdNum }}
       />
 
-      {canUploadFinalMeasurements(userType) && (
+      {canAccessFinalMeasurementTodo && (
         <FinalMeasurementModal
           open={openFinalDocModal}
           onOpenChange={(open) => {
@@ -384,6 +824,7 @@ export default function FinalMeasurementLeadDetails() {
         open={assignOpen}
         onOpenChange={setAssignOpen}
         onlyFollowUp
+        isFastProductionEnabled={true}
         data={{ id: leadIdNum, name: "" }}
       />
 
@@ -409,9 +850,15 @@ export default function FinalMeasurementLeadDetails() {
         open={activityModalOpen}
         onOpenChange={setActivityModalOpen}
         statusType="onHold"
-        onSubmitRemark={(remark, dueDate) => {
+        vendorId={vendorId}
+        franchiseId={lead?.franchise_id ?? null}
+        leadId={leadIdNum}
+        onSubmitRemark={(remark, dueDate, selection) => {
           if (!vendorId || !userId) {
-            toast.error("Vendor or User info missing!");
+            toastManager.add({
+              title: "Vendor or User info missing!",
+              type: "error",
+            });
             return;
           }
 
@@ -426,25 +873,99 @@ export default function FinalMeasurementLeadDetails() {
                 remark,
                 createdBy: userId,
                 dueDate,
+                ...(selection ?? {}),
               },
             },
             {
               onSuccess: () => {
-                toast.success("Lead marked as On Hold!");
-                setActivityModalOpen(false);
-
-                queryClient.invalidateQueries({
-                  queryKey: ["leadById", leadIdNum],
+                toastManager.add({
+                  title: "Lead marked as On Hold!",
+                  type: "success",
                 });
+                window.location.assign(
+                  "/dashboard/leads/leadstable?tab=onHold",
+                );
               },
               onError: (err) => {
-                toast.error(err?.message || "Failed to update lead status!");
+                toastManager.add({
+                  title: err?.message || "Failed to update lead status!",
+                  type: "error",
+                });
               },
-            }
+            },
           );
         }}
         loading={updateStatusMutation.isPending}
       />
+
+      <AlertDialog open={openBlockConfirm} onOpenChange={setOpenBlockConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isLeadBlocked ? "Unblock Lead?" : "Block Lead?"}
+            </AlertDialogTitle>
+
+            <AlertDialogDescription>
+              {isLeadBlocked
+                ? "This will unblock the lead and allow it to proceed normally."
+                : "This will block the lead and mark the block time in the system."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBlockActionPending}>
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={handleToggleLeadBlock}
+              disabled={isBlockActionPending}
+            >
+              {isBlockActionPending
+                ? "Processing..."
+                : isLeadBlocked
+                  ? "Unblock"
+                  : "Block"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <CancelFastProductionModal
+        open={openCancelFastProduction}
+        onOpenChange={setOpenCancelFastProduction}
+        onSubmit={handleCancelFastProduction}
+        loading={revokeFastProductionMutation.isPending}
+      />
+
+      <FastProductionDetailsModal
+        open={fastProductionDetailsOpen}
+        onOpenChange={setFastProductionDetailsOpen}
+        leadId={leadIdNum}
+      />
+
+      <AlertDialog open={moveConfirmOpen} onOpenChange={setMoveConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Move to Client Document stage?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to transition this lead to the Client
+              Document stage?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={finalMeasurementMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleMoveToClientDocument}
+              disabled={finalMeasurementMutation.isPending}
+            >
+              {finalMeasurementMutation.isPending ? "Moving..." : "Move"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

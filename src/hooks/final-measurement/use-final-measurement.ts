@@ -10,10 +10,14 @@ import {
   FinalMeasurementPayload,
   getAllFinalMeasurementLeads,
   getFinalMeasurmentLeadById,
+  RescheduleFinalMeasurementPayload,
+  rescheduleFinalMeasurementTask,
   UpdateNotes,
   uploadClientDocPayload,
   UploadClientDocumantation,
   UploadFinalMeasurement,
+  skipFinalMeasurementStage,
+  SkipFinalMeasurementPayload,
 } from "@/api/final-measurement";
 import {
   FinalMeasurementLeadDetails,
@@ -25,6 +29,20 @@ export const useFinalMeasurement = () => {
   return useMutation({
     mutationFn: (payload: FinalMeasurementPayload) =>
       UploadFinalMeasurement(payload),
+  });
+};
+
+export const useRescheduleFinalMeasurementTask = () => {
+  return useMutation({
+    mutationFn: ({
+      leadId,
+      taskId,
+      payload,
+    }: {
+      leadId: number;
+      taskId: number;
+      payload: RescheduleFinalMeasurementPayload;
+    }) => rescheduleFinalMeasurementTask(leadId, taskId, payload),
   });
 };
 
@@ -87,5 +105,12 @@ export const useAddMoreFinalMeasurementSitePhotos = () => {
   return useMutation({
     mutationFn: (payload: AddMoreFinalMeasurementSitePhotosPayload) =>
       addMoreFinalMeasurementSitePhotos(payload),
+  });
+};
+
+export const useSkipFinalMeasurement = () => {
+  return useMutation({
+    mutationFn: (payload: SkipFinalMeasurementPayload) =>
+      skipFinalMeasurementStage(payload),
   });
 };

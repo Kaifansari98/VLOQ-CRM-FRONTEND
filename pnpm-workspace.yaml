@@ -1,0 +1,7 @@
+allowBuilds:
+  '@firebase/util': true
+  '@tailwindcss/oxide': set this to true or false
+  core-js: true
+  protobufjs: true
+  sharp: true
+  unrs-resolver: true

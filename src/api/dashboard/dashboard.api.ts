@@ -132,12 +132,13 @@ export const getSalesExecutiveTaskStats = async (
 
 export const getPerformanceSnapshot = async (
   vendorId: number,
-  userId: number
+  userId: number,
+  franchiseId?: number
 ): Promise<UiPerformanceSnapshot> => {
   const res = await apiClient.get(
     "/dashboard/sales-executive/performance-snapshot",
     {
-      params: { vendor_id: vendorId, user_id: userId },
+      params: { vendor_id: vendorId, user_id: userId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
     }
   );
 
@@ -177,12 +178,53 @@ export interface AdminProjectsOverview {
 }
 
 export const getAdminProjectsOverview = async (
-  vendorId: number
+  vendorId: number,
+  franchiseId?: number
 ): Promise<AdminProjectsOverview> => {
   const res = await apiClient.get("/dashboard/admin/projects-overview", {
-    params: { vendor_id: vendorId },
+    params: { vendor_id: vendorId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
   });
   return res.data.data as AdminProjectsOverview;
+};
+
+export interface AdminCompletedOverview {
+  thisWeekArray: number[];
+  thisMonthArray: number[];
+  thisYearArray: number[];
+  thisWeekTotal: number;
+  thisMonthTotal: number;
+  thisYearTotal: number;
+  overall: number;
+}
+
+export const getAdminCompletedOverview = async (
+  vendorId: number,
+  franchiseId?: number
+): Promise<AdminCompletedOverview> => {
+  const res = await apiClient.get("/dashboard/admin/completed-overview", {
+    params: { vendor_id: vendorId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
+  });
+  return res.data.data as AdminCompletedOverview;
+};
+
+export interface AdminLostApprovalOverview {
+  thisWeekArray: number[];
+  thisMonthArray: number[];
+  thisYearArray: number[];
+  thisWeekTotal: number;
+  thisMonthTotal: number;
+  thisYearTotal: number;
+  overall: number;
+}
+
+export const getAdminLostApprovalOverview = async (
+  vendorId: number,
+  franchiseId?: number
+): Promise<AdminLostApprovalOverview> => {
+  const res = await apiClient.get("/dashboard/admin/lost-approval-overview", {
+    params: { vendor_id: vendorId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
+  });
+  return res.data.data as AdminLostApprovalOverview;
 };
 
 // Admin orders in pipeline
@@ -217,14 +259,26 @@ export interface AdminTotalRevenue {
   thisWeekTotal: number;
   thisMonthTotal: number;
   thisYearTotal: number;
+  lastSixMonthsAvg: number;
   overall: number;
+  usesBasicCollected?: boolean;
+  basicThisWeekArray?: number[];
+  basicThisMonthArray?: number[];
+  basicThisYearArray?: number[];
+  basicThisWeekTotal?: number;
+  basicThisMonthTotal?: number;
+  basicThisYearTotal?: number;
+  basicLastSixMonthsAvg?: number;
+  basicOverall?: number;
+  gstOverall?: number;
 }
 
 export const getAdminTotalRevenue = async (
-  vendorId: number
+  vendorId: number,
+  franchiseId?: number
 ): Promise<AdminTotalRevenue> => {
   const res = await apiClient.get("/dashboard/admin/total-revenue", {
-    params: { vendor_id: vendorId },
+    params: { vendor_id: vendorId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
   });
   return res.data.data as AdminTotalRevenue;
 };
@@ -241,18 +295,485 @@ export interface AdminStageCounts {
   installationAmount: number;
 }
 
-export const getAdminStageCounts = async (
+export interface FranchiseLeadCount {
+  franchise_id: number;
+  name: string;
+  code: string;
+  leads: number;
+}
+
+export interface FranchisePerformanceRow {
+  franchise_id: number;
+  name: string;
+  leads: number;
+  closures: number;
+  revenue: number;
+}
+
+export interface AvgDaysPerStage {
+  lead: number;
+  project: number;
+  production: number;
+  installation: number;
+}
+
+export const getAvgDaysPerStage = async (
+  vendorId: number,
+  franchiseId?: number
+): Promise<AvgDaysPerStage> => {
+  const res = await apiClient.get("/dashboard/admin/avg-days-per-stage", {
+    params: { vendor_id: vendorId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
+  });
+  return res.data.data as AvgDaysPerStage;
+};
+
+export const getFranchisePerformance = async (
   vendorId: number
-): Promise<AdminStageCounts> => {
-  const res = await apiClient.get("/dashboard/admin/stage-counts", {
+): Promise<FranchisePerformanceRow[]> => {
+  const res = await apiClient.get("/dashboard/admin/franchise-performance", {
     params: { vendor_id: vendorId },
   });
+  return res.data.data as FranchisePerformanceRow[];
+};
+
+export const getOverdueProjectsCount = async (
+  vendorId: number
+): Promise<{ count: number }> => {
+  const res = await apiClient.get("/dashboard/admin/overdue-projects-count", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as { count: number };
+};
+
+export const getLeadsByFranchise = async (
+  vendorId: number
+): Promise<FranchiseLeadCount[]> => {
+  const res = await apiClient.get("/dashboard/admin/leads-by-franchise", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as FranchiseLeadCount[];
+};
+
+export const getLeadsThisMonth = async (
+  vendorId: number
+): Promise<{ count: number }> => {
+  const res = await apiClient.get("/dashboard/admin/leads-this-month", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as { count: number };
+};
+
+export interface OverdueInstallation {
+  id: number;
+  lead_code: string | null;
+  name: string;
+  account_id: number | null;
+  franchise_name: string | null;
+  expected_end: string;
+  stage_tag: string | null;
+  instance_id: number | null;
+  instance_title: string | null;
+  quantity_index: number | null;
+  days_overdue: number;
+}
+
+export const getOverdueInstallations = async (
+  vendorId: number,
+  franchiseId?: number
+): Promise<OverdueInstallation[]> => {
+  const res = await apiClient.get("/dashboard/admin/overdue-installations", {
+    params: { vendor_id: vendorId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
+  });
+  return res.data.data as OverdueInstallation[];
+};
+
+export interface OverdueProduction {
+  id: number;
+  lead_code: string | null;
+  name: string;
+  account_id: number | null;
+  franchise_name: string | null;
+  client_required_date: string;
+  expected_ready_date: string;
+  stage_tag: string | null;
+  instance_id: number | null;
+  instance_title: string | null;
+  quantity_index: number | null;
+  days_overdue: number;
+}
+
+export const getOverdueProductionCount = async (
+  vendorId: number
+): Promise<{ count: number }> => {
+  const res = await apiClient.get("/dashboard/admin/overdue-production-count", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as { count: number };
+};
+
+export const getOverdueProduction = async (
+  vendorId: number,
+  franchiseId?: number
+): Promise<OverdueProduction[]> => {
+  const res = await apiClient.get("/dashboard/admin/overdue-production", {
+    params: { vendor_id: vendorId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
+  });
+  return res.data.data as OverdueProduction[];
+};
+
+export const getActiveFranchiseeCount = async (
+  vendorId: number
+): Promise<{ count: number }> => {
+  const res = await apiClient.get("/dashboard/admin/active-franchisee-count", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as { count: number };
+};
+
+export const getAdminStageCounts = async (
+  vendorId: number,
+  franchiseId?: number
+): Promise<AdminStageCounts> => {
+  const res = await apiClient.get("/dashboard/admin/stage-counts", {
+    params: { vendor_id: vendorId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
+  });
   return res.data.data as AdminStageCounts;
+};
+
+export interface PriorityLeadCounts {
+  open:      { high: number; medium: number; low: number };
+  ism:       { high: number; medium: number; low: number };
+  designing: { high: number; medium: number; low: number };
+}
+
+export const getPriorityLeadCounts = async (
+  vendorId: number,
+  franchiseId?: number
+): Promise<PriorityLeadCounts> => {
+  const res = await apiClient.get("/dashboard/admin/priority-leads", {
+    params: { vendor_id: vendorId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
+  });
+  return res.data.data as PriorityLeadCounts;
+};
+
+export interface LostApprovalLead {
+  id: number;
+  lead_code: string;
+  name: string;
+  contact: string;
+  furniture_type: string;
+  sales_executive: string;
+  priority: string;
+  account_id: number;
+}
+
+export const getAdminLostApprovalLeads = async (
+  vendorId: number,
+  franchiseId?: number
+): Promise<LostApprovalLead[]> => {
+  const res = await apiClient.get("/dashboard/admin/lost-approval-leads", {
+    params: { vendor_id: vendorId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
+  });
+  return res.data.data as LostApprovalLead[];
+};
+
+export interface AdminTaskOverviewRow {
+  id: number;
+  lead_code: string;
+  sales_executive: string;
+  task_type: string;
+  status: "open" | "in_progress" | "completed";
+  due_date: string;
+}
+
+export interface AdminTaskOverviewResponse {
+  data: AdminTaskOverviewRow[];
+  pagination: { total: number; page: number; limit: number; totalPages: number };
+}
+
+export interface AdminTaskOverviewParams {
+  franchiseId?: number;
+  salesExecutiveId?: number;
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: string;
+  overview?: string;
+}
+
+export const getAdminTaskOverview = async (
+  vendorId: number,
+  params: AdminTaskOverviewParams = {}
+): Promise<AdminTaskOverviewResponse> => {
+  const res = await apiClient.get("/dashboard/admin/task-overview", {
+    params: {
+      vendor_id: vendorId,
+      ...(params.franchiseId ? { franchise_id: params.franchiseId } : {}),
+      ...(params.salesExecutiveId ? { sales_executive_id: params.salesExecutiveId } : {}),
+      ...(params.page ? { page: params.page } : {}),
+      ...(params.limit ? { limit: params.limit } : {}),
+      ...(params.search ? { search: params.search } : {}),
+      ...(params.status && params.status !== "all" ? { status: params.status } : {}),
+      ...(params.overview && params.overview !== "all" ? { overview: params.overview } : {}),
+    },
+  });
+  return res.data.data as AdminTaskOverviewResponse;
 };
 
 // -------------------------------
 // 📌 EXPORT AS SINGLE OBJECT (Optional)
 // -------------------------------
+export interface SiteSupervisorServiceCounts {
+  count: number;
+}
+
+export interface SupervisorLeadRow {
+  id: number;
+  lead_id: number;
+  account_id: number | null;
+  lead_code: string;
+  client: string;
+  stage: string;
+}
+
+export interface SupervisorLeadsResponse {
+  rows: SupervisorLeadRow[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+  };
+}
+
+export const getSupervisorLeads = async (
+  vendorId: number,
+  params: {
+    siteSupervisorId?: number;
+    page?: number;
+    limit?: number;
+  } = {},
+): Promise<SupervisorLeadsResponse> => {
+  const res = await apiClient.get("/dashboard/site-supervisor/supervisor-leads", {
+    params: {
+      vendor_id: vendorId,
+      ...(params.siteSupervisorId ? { site_supervisor_id: params.siteSupervisorId } : {}),
+      ...(params.page ? { page: params.page } : {}),
+      ...(params.limit ? { limit: params.limit } : {}),
+    },
+  });
+
+  return res.data.data as SupervisorLeadsResponse;
+};
+
+export const getSiteSupervisorServiceCounts = async (
+  vendorId: number,
+  userId: number
+): Promise<SiteSupervisorServiceCounts> => {
+  const res = await apiClient.get("/dashboard/site-supervisor/service-counts", {
+    params: { vendor_id: vendorId, user_id: userId },
+  });
+  return res.data.data as SiteSupervisorServiceCounts;
+};
+
+export interface SiteSupervisorPendingService {
+  id: number;
+  lead_id: number;
+  account_id: number | null;
+  lead_code: string;
+  client: string;
+  service_no: number;
+  service_type: "free" | "amc";
+  scheduled_for: string;
+  status: string;
+}
+
+export const getSiteSupervisorPendingServices = async (
+  vendorId: number,
+  userId: number,
+  filter: "month" | "year"
+): Promise<SiteSupervisorPendingService[]> => {
+  const res = await apiClient.get("/dashboard/site-supervisor/pending-services", {
+    params: { vendor_id: vendorId, user_id: userId, filter },
+  });
+  return res.data.data as SiteSupervisorPendingService[];
+};
+
+export interface SiteSupervisorUpcomingSite {
+  id: number;
+  account_id: number | null;
+  lead_code: string;
+  client: string;
+  dispatch_date: string | null;
+  furniture_type: string;
+}
+
+export const getSiteSupervisorUpcomingSites = async (
+  vendorId: number,
+  userId: number
+): Promise<SiteSupervisorUpcomingSite[]> => {
+  const res = await apiClient.get("/dashboard/site-supervisor/upcoming-sites", {
+    params: { vendor_id: vendorId, user_id: userId },
+  });
+  return res.data.data as SiteSupervisorUpcomingSite[];
+};
+
+export interface SiteSupervisorMiscItem {
+  id: number;
+  lead_id: number;
+  account_id: number | null;
+  lead_code: string;
+  client: string;
+  misc_type: string;
+  expected_ready_date: string | null;
+  required_delivery_date: string | null;
+  misc_approved: boolean | null;
+  is_resolved: boolean;
+  task_status: string | null;
+  delivery_task_status: string | null;
+}
+
+export const getSiteSupervisorMiscItems = async (
+  vendorId: number,
+  userId: number
+): Promise<SiteSupervisorMiscItem[]> => {
+  const res = await apiClient.get("/dashboard/site-supervisor/misc-items", {
+    params: { vendor_id: vendorId, user_id: userId },
+  });
+  return res.data.data as SiteSupervisorMiscItem[];
+};
+
+export const getSiteSupervisorAvgDaysToInstallation = async (
+  vendorId: number,
+  userId: number
+): Promise<UiAvgDaysToBooking> => {
+  const res = await apiClient.get("/dashboard/site-supervisor/avg-days-to-installation", {
+    params: { vendor_id: vendorId, user_id: userId },
+  });
+  return res.data.data as UiAvgDaysToBooking;
+};
+
+export interface FactoryLeadBifurcation {
+  pendingCount: number;
+  preProdDoneCount: number;
+  underProdCount: number;
+  completedCount: number;
+}
+
+export interface TechCheckNewLeads {
+  count: number;
+}
+
+export const getTechCheckNewLeads = async (vendorId: number): Promise<TechCheckNewLeads> => {
+  const res = await apiClient.get("/dashboard/tech-check/new-leads", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as TechCheckNewLeads;
+};
+
+export const getTechCheckAvgApprovalTimeline = async (vendorId: number): Promise<FactoryAvgProductionToRTD> => {
+  const res = await apiClient.get("/dashboard/tech-check/avg-approval-timeline", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as FactoryAvgProductionToRTD;
+};
+
+export interface BackendNewOrderLoginLeads {
+  count: number;
+}
+
+export const getBackendNewOrderLoginLeads = async (vendorId: number): Promise<BackendNewOrderLoginLeads> => {
+  const res = await apiClient.get("/dashboard/backend/new-order-login-leads", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as BackendNewOrderLoginLeads;
+};
+
+export const getBackendAvgOLToProduction = async (vendorId: number): Promise<FactoryAvgProductionToRTD> => {
+  const res = await apiClient.get("/dashboard/backend/avg-ol-to-production", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as FactoryAvgProductionToRTD;
+};
+
+export interface PreProdNewSites {
+  count: number;
+}
+
+export const getPreProdNewSites = async (vendorId: number): Promise<PreProdNewSites> => {
+  const res = await apiClient.get("/dashboard/pre-prod/new-sites", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as PreProdNewSites;
+};
+
+export const getPreProdAvgTimeline = async (vendorId: number): Promise<FactoryAvgProductionToRTD> => {
+  const res = await apiClient.get("/dashboard/pre-prod/avg-timeline", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as FactoryAvgProductionToRTD;
+};
+
+export interface FactoryERDCalendarItem {
+  id: number;
+  lead_id: number;
+  account_id: number;
+  lead_code: string;
+  name: string;
+  production_erd_date: string | null;
+}
+
+export const getFactoryERDCalendar = async (
+  vendorId: number
+): Promise<FactoryERDCalendarItem[]> => {
+  const res = await apiClient.get("/dashboard/factory/erd-calendar", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as FactoryERDCalendarItem[];
+};
+
+export interface FactoryUpcomingDispatch {
+  id: number;
+  lead_id: number;
+  account_id: number;
+  lead_code: string;
+  name: string;
+  dispatch_date: string | null;
+}
+
+export const getFactoryUpcomingDispatches = async (
+  vendorId: number
+): Promise<FactoryUpcomingDispatch[]> => {
+  const res = await apiClient.get("/dashboard/factory/upcoming-dispatches", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as FactoryUpcomingDispatch[];
+};
+
+export interface FactoryAvgProductionToRTD {
+  avgDays: number;
+  readable: { days: number; hours: number; minutes: number };
+}
+
+export const getFactoryAvgProductionToRTD = async (
+  vendorId: number
+): Promise<FactoryAvgProductionToRTD> => {
+  const res = await apiClient.get("/dashboard/factory/avg-production-to-rtd", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as FactoryAvgProductionToRTD;
+};
+
+export const getFactoryLeadBifurcation = async (
+  vendorId: number
+): Promise<FactoryLeadBifurcation> => {
+  const res = await apiClient.get("/dashboard/factory/lead-bifurcation", {
+    params: { vendor_id: vendorId },
+  });
+  return res.data.data as FactoryLeadBifurcation;
+};
+
 export const DashboardApi = {
   getSalesExecutiveTaskStats,
   getPerformanceSnapshot,
@@ -268,11 +789,12 @@ export type UiAvgDaysToBooking = ApiAvgDaysToBooking;
 
 export const getAvgDaysToConvertLeadToBooking = async (
   vendorId: number,
-  userId: number
+  userId: number,
+  franchiseId?: number
 ): Promise<UiAvgDaysToBooking> => {
   const res = await apiClient.get(
     "/dashboard/avg-days-to-convert-lead-to-booking",
-    { params: { vendor_id: vendorId, user_id: userId } }
+    { params: { vendor_id: vendorId, user_id: userId, ...(franchiseId ? { franchise_id: franchiseId } : {}) } }
   );
   return res.data.data as UiAvgDaysToBooking;
 };
@@ -313,10 +835,11 @@ export interface SalesExecutiveStageLeads {
 
 export const getSalesExecutiveStageCounts = async (
   vendorId: number,
-  userId: number
+  userId: number,
+  franchiseId?: number
 ): Promise<SalesExecutiveStageCounts> => {
   const res = await apiClient.get("/dashboard/sales-executive/stage-counts", {
-    params: { vendor_id: vendorId, user_id: userId },
+    params: { vendor_id: vendorId, user_id: userId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
   });
   return res.data.data as SalesExecutiveStageCounts;
 };
@@ -413,14 +936,62 @@ export const getDashboardAllLeads = async (
 };
 
 export const getAdminDashboardAllLeads = async (
-  vendorId: number
+  vendorId: number,
+  franchiseId?: number
 ): Promise<StageData> => {
   const res = await apiClient.get<StageResponse>(
     "/dashboard/admin/all-stage-leads",
     {
-      params: { vendor_id: vendorId },
+      params: { vendor_id: vendorId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
     }
   );
 
   return res.data.data;
+};
+
+export interface StageWiseCount {
+  tag: string;
+  type: string;
+  count: number;
+}
+
+export const getStageWiseCounts = async (
+  vendorId: number,
+  franchiseId?: number
+): Promise<StageWiseCount[]> => {
+  const res = await apiClient.get("/dashboard/admin/stage-wise-counts", {
+    params: { vendor_id: vendorId, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
+  });
+  return res.data.data as StageWiseCount[];
+};
+
+export interface FranchiseLead {
+  id: number;
+  lead_code: string | null;
+  name: string;
+  franchise_name?: string | null;
+  account_id: number | null;
+  stage_tag: string | null;
+  instance_id: number | null;
+}
+
+export const getFranchiseLeads = async (
+  vendorId: number,
+  franchiseId: number
+): Promise<FranchiseLead[]> => {
+  const res = await apiClient.get("/dashboard/admin/franchise-leads", {
+    params: { vendor_id: vendorId, franchise_id: franchiseId },
+  });
+  return res.data.data as FranchiseLead[];
+};
+
+export const getStageLeads = async (
+  vendorId: number,
+  tag: string,
+  franchiseId?: number
+): Promise<FranchiseLead[]> => {
+  const res = await apiClient.get("/dashboard/admin/stage-leads", {
+    params: { vendor_id: vendorId, tag, ...(franchiseId ? { franchise_id: franchiseId } : {}) },
+  });
+  return res.data.data as FranchiseLead[];
 };

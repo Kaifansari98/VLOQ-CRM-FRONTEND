@@ -12,6 +12,7 @@ interface DispatchTabsWrapperProps {
   leadId: number;
   accountId: number;
   name?: string;
+  instanceId?: number | null;
 }
 
 const DispatchTabsWrapper: React.FC<DispatchTabsWrapperProps> = ({
@@ -20,6 +21,13 @@ const DispatchTabsWrapper: React.FC<DispatchTabsWrapperProps> = ({
   name,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id) || 0;
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type,
+  );
+  const normalizedUserType = userType?.toLowerCase() ?? "";
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
 
   // ✅ Fetch readiness info from API
   const { data: readinessData, isLoading } = useCheckReadyForPostDispatch(
@@ -33,6 +41,11 @@ const DispatchTabsWrapper: React.FC<DispatchTabsWrapperProps> = ({
     "Missing required fields to proceed to Post Dispatch.";
 
   // ✅ Setup tabs
+  const canViewPostDispatchTab =
+    userType === "custom"
+      ? customPrivilegeCodes.includes("installation.dispatch.post_dispatch.view")
+      : true;
+
   const tabItems = [
     {
       id: "dispatch",
@@ -61,10 +74,19 @@ const DispatchTabsWrapper: React.FC<DispatchTabsWrapperProps> = ({
       cardContent: (
         <PostDispatchStage leadId={leadId} accountId={accountId} />
       ),
-      disabled: !isReady && !isLoading,
-      disabledReason: !isReady ? disabledReason : undefined,
+      disabled:
+        normalizedUserType === "factory" ? false : (!isReady && !isLoading),
+      disabledReason:
+        normalizedUserType === "factory"
+          ? undefined
+          : !isReady
+            ? disabledReason
+            : undefined,
     },
-  ];
+  ].filter((tab) => {
+    if (tab.id === "post-dispatch") return canViewPostDispatchTab;
+    return true;
+  });
 
   return (
     <SmoothTab

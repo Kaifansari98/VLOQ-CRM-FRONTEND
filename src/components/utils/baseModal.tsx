@@ -16,8 +16,9 @@ interface BaseModalProps {
   title?: string;
   description?: string;
   children: ReactNode;
-  size?: "sm" | "md" | "lg" | "xl" | "smd";
+  size?: "sm" | "md" | "lg" | "xl" | "xxl" | "smd";
   icon?: ReactNode; // icon is optional
+  modal?: boolean;
 }
 
 const sizeClasses = {
@@ -37,9 +38,10 @@ const BaseModal: React.FC<BaseModalProps> = ({
   children,
   size = "lg",
   icon,
+  modal = true,
 }) => {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange} modal={modal}>
       <DialogContent
         className={`${sizeClasses[size]} max-h-[90vh] p-0 gap-0 overflow-hidden`}
         onPointerDownOutside={(event) => event.preventDefault()}
@@ -49,14 +51,14 @@ const BaseModal: React.FC<BaseModalProps> = ({
           <DialogHeader className="flex flex-row items-center gap-4 px-6 py-4 border-b bg-muted/30">
             {icon}
 
-            <div className="space-y-0.5 overflow-hidden">
+            <div className="space-y-1 min-w-0 flex-1 pr-12">
               {title && (
-                <DialogTitle className="text-base text-left  font-semibold leading-tight truncate">
+                <DialogTitle className="text-base text-left font-semibold leading-normal break-words">
                   {title}
                 </DialogTitle>
               )}
               {description && (
-                <DialogDescription className="text-left text-xs md:text-sm text-muted-foreground leading-snug truncate break-words  whitespace-normal">
+                <DialogDescription className="text-left text-xs md:text-sm text-muted-foreground leading-snug break-words whitespace-normal">
                   {description}
                 </DialogDescription>
               )}

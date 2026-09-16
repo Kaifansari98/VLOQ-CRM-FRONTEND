@@ -7,9 +7,11 @@ import UnderInstallationDetails from "./UnderInstallationDetails";
 import InstallationMiscellaneous from "./InstallationMiscellaneous";
 import InstallationIssueLog from "./InstallationIssueLog";
 import UsableHandover from "./UsableHandoverDetails";
+import SmallOrderRequestsTable from "../small-order/SmallOrderRequestsTable";
 
 import { useUnderInstallationDetails } from "@/api/installation/useUnderInstallationStageLeads";
 import { useUsableHandoverReady } from "@/api/installation/useUnderInstallationStageLeads";
+import { useSmallOrderRequestsByLead } from "@/hooks/useLeadsQueries";
 
 import { useAppSelector } from "@/redux/store";
 
@@ -21,8 +23,13 @@ export default function UnderInstallationTabsWrapper({
   leadId: number;
   accountId?: number;
   name?: string;
+  instanceId?: number | null;
 }) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
+  const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const customPrivilegeCodes = useAppSelector(
+    (s) => s.customPrivileges.codes,
+  );
   const account_id = accountId || 0;
   const searchParams = useSearchParams();
   const taskIdParam = searchParams.get("taskId");
@@ -37,15 +44,77 @@ export default function UnderInstallationTabsWrapper({
 
   // 🔥 Fetch usable handover readiness
   const { data: readyData } = useUsableHandoverReady(vendorId, leadId);
+  const { data: smallOrderRequestsData } = useSmallOrderRequestsByLead(
+    vendorId,
+    leadId,
+  );
+  const hasPostDispatchSmallOrderRequests =
+    (smallOrderRequestsData?.data ?? []).some(
+      (request) => request.request_source === "post_dispatch",
+    );
 
   const usableReady = readyData?.isReady ?? false;
 
-  // 🔥 Build tooltip message dynamically
-  const usableHandoverTooltip = usableReady
-    ? ""
-    : readyData
-      ? `Not ready yet :\n${readyData.pending.join(", ")} are required`
-      : "Loading status...";
+  // 🔥 derive pending properly
+ // 🔥 Always derive from flags — backend pending array pe trust mat karo
+  const derivedPending = React.useMemo(() => {
+    if (!readyData) return [];
+
+    const p: string[] = [];
+
+    if (!readyData.details?.carcassCompleted) {
+      p.push("Carcass Installation");
+    }
+
+    if (!readyData.details?.shutterCompleted) {
+      p.push("Shutter Installation");
+    }
+
+    if (!readyData.details?.expectedEndDateFilled) {
+      p.push("Expected Installation End Date");
+    }
+
+    if (!readyData.details?.installersAssigned) {
+      p.push("Installer Assignment");
+    }
+
+    return p;
+  }, [readyData]);
+
+
+  console.log(readyData)
+  // 🔥 Final Tooltip — always string return karo
+  const usableHandoverTooltip = React.useMemo(() => {
+    if (!readyData) return "Checking readiness...";
+    if (readyData.isReady) return "";
+    if (!derivedPending.length) return "Not ready yet.";
+
+    const list = derivedPending
+      .map((item: any) => ` ${item}`)
+      .join(", ");
+    return `Complete to unlock: ${list}`;
+  }, [readyData, derivedPending]);
+
+  const canViewMiscellaneousTab =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.under_installation.miscellaneous_section.enable_disable_action",
+        )
+      : true;
+  const canViewIssueLogTab =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.under_installation.issue_log.enable_disable_action",
+        )
+      : true;
+  const canViewUsableHandoverTab =
+    userType === "custom"
+      ? customPrivilegeCodes.some((code) =>
+          code.startsWith("installation.under_installation.usable_handover."),
+        )
+      : true;
+
+  const isMiscUser = userType?.trim().toLowerCase() === "miscellaneous";
 
   const tabs = [
     {
@@ -112,17 +181,48 @@ export default function UnderInstallationTabsWrapper({
         />
       ),
     },
-  ];
+    {
+      id: "smallOrderRequest",
+      title: "Partial Order Request",
+      color: "bg-zinc-900 hover:bg-zinc-900",
+      disabled: false,
+      disabledReason: "",
+      cardContent: (
+        <SmallOrderRequestsTable
+          vendorId={vendorId}
+          leadId={leadId}
+          requestSource="post_dispatch"
+        />
+      ),
+    },
+  ].filter((tab) => {
+    if (isMiscUser) {
+      if (
+        tab.id === "underInstallation" ||
+        tab.id === "handover" ||
+        tab.id === "smallOrderRequest"
+      ) {
+        return false;
+      }
+    }
+    if (tab.id === "misc") return canViewMiscellaneousTab;
+    if (tab.id === "issueLog") return canViewIssueLogTab;
+    if (tab.id === "handover") return canViewUsableHandoverTab;
+    if (tab.id === "smallOrderRequest")
+      return hasPostDispatchSmallOrderRequests;
+    return true;
+  });
 
   const preferredTabId = searchParams.get("tab");
+  const fallbackDefaultTabId = isMiscUser ? "misc" : "underInstallation";
   const resolvedDefaultTabId =
     preferredTabId &&
     tabs.some((tab) => !tab.disabled && tab.id === preferredTabId)
       ? preferredTabId
-      : "underInstallation";
+      : tabs.find((t) => !t.disabled)?.id || fallbackDefaultTabId;
 
   return (
-    <div className="w-full h-full bg-[#fff] dark:bg-[#0a0a0a]">
+    <div className="w-full h-full bg-white dark:bg-[#0a0a0a]">
       <SmoothTab
         key={resolvedDefaultTabId}
         items={tabs}

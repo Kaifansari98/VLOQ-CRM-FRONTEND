@@ -1,91 +1,250 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { ChevronsUpDown, Plus } from "lucide-react"
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import * as React from "react";
+import { ChevronsUpDown } from "lucide-react";
 
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
+import { useAppDispatch, useAppSelector } from "@/redux/store";
+import { setFranchiseId } from "@/redux/slices/authSlice";
+import TimeLoaderComponent from "@/components/utils/TimeLoaderComponent";
 
 export function TeamSwitcher({
   teams,
+  activeTeamId,
 }: {
   teams: {
-    name: string
-    logo: React.ElementType
-    plan: string
-  }[]
+    id: number;
+    name: string;
+    logo: React.ElementType;
+    plan: string;
+    moduledForB2b?: boolean;
+  }[];
+  activeTeamId?: number | null;
 }) {
-  const { isMobile } = useSidebar()
-  const [activeTeam, setActiveTeam] = React.useState(teams[0])
+  const { isMobile } = useSidebar();
+  const router = useRouter();
+  const dispatch = useAppDispatch();
+  const isShambhala =
+    typeof window !== "undefined" &&
+    window.location.hostname.includes("shambhala");
+  const user = useAppSelector((state) => state.auth.user);
+  const userType = user?.user_type?.user_type;
+  const normalizedUserType = userType?.toLowerCase();
+  const isSuperAdmin = normalizedUserType === "super-admin" || normalizedUserType === "auditor";
+  const [activeTeam, setActiveTeam] = React.useState(teams[0]);
+  const [isSwitching, setIsSwitching] = React.useState(false);
+  const [pendingTeam, setPendingTeam] = React.useState<
+    { id: number; name: string } | undefined
+  >(undefined);
+  const switchTimeoutRef = React.useRef<number | null>(null);
+
+  React.useEffect(() => {
+    if (!teams.length) return;
+    setActiveTeam((prev) => {
+      const preferred =
+        activeTeamId != null
+          ? teams.find((team) => team.id === activeTeamId)
+          : undefined;
+      if (preferred) return preferred;
+      if (prev) {
+        const stillExists = teams.find((team) => team.id === prev.id);
+        if (stillExists) return stillExists;
+      }
+      return teams[0];
+    });
+  }, [teams, activeTeamId]);
 
   if (!activeTeam) {
-    return null
+    return null;
   }
 
+  const handleTeamClick = (team: { id: number; name: string }) => {
+    if (team.id === activeTeam.id) return;
+    setPendingTeam(team);
+    setIsSwitching(true);
+
+    if (switchTimeoutRef.current) {
+      window.clearTimeout(switchTimeoutRef.current);
+    }
+
+    switchTimeoutRef.current = window.setTimeout(() => {
+      const nextTeam = teams.find((t) => t.id === team.id);
+      if (nextTeam) {
+        setActiveTeam(nextTeam);
+        dispatch(setFranchiseId(nextTeam.id));
+        router.push("/dashboard");
+      }
+      setIsSwitching(false);
+      setPendingTeam(undefined);
+      switchTimeoutRef.current = null;
+    }, 3000);
+  };
+
+  React.useEffect(() => {
+    return () => {
+      if (switchTimeoutRef.current) {
+        window.clearTimeout(switchTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const b2bTeams = teams.filter((team) => team.moduledForB2b);
+  const regularTeams = teams.filter((team) => !team.moduledForB2b);
+
   return (
-    <SidebarMenu>
-      <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            >
-              <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                <activeTeam.logo className="size-4" />
-              </div>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{activeTeam.name}</span>
-                <span className="truncate text-xs">{activeTeam.plan}</span>
-              </div>
-              <ChevronsUpDown className="ml-auto" />
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
-            align="start"
-            side={isMobile ? "bottom" : "right"}
-            sideOffset={4}
-          >
-            <DropdownMenuLabel className="text-muted-foreground text-xs">
-              Teams
-            </DropdownMenuLabel>
-            {teams.map((team, index) => (
-              <DropdownMenuItem
-                key={team.name}
-                onClick={() => setActiveTeam(team)}
-                className="gap-2 p-2"
+    <>
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <SidebarMenuButton
+                size="lg"
+                className="text-sidebar-foreground data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
-                <div className="flex size-6 items-center justify-center rounded-md border">
-                  <team.logo className="size-3.5 shrink-0" />
+                <div className="bg-black text-sidebar-primary-foreground relative aspect-square size-8 overflow-hidden rounded-lg border-none">
+                  {user?.vendor?.iconUrl ? (
+                    <Image
+                      src={user.vendor.iconUrl}
+                      alt="Vendor Icon"
+                      fill
+                      className="object-contain"
+                    />
+                  ) : isShambhala ? (
+                    <Image
+                      src="/logos/shambhala-short-logo.png"
+                      alt="Shambhala"
+                      fill
+                      className="object-contain"
+                    />
+                  ) : (
+                    <>
+                      <Image
+                        src="/logos/furnix-logo-light.png"
+                        alt="Logo"
+                        fill
+                        className="object-contain dark:hidden"
+                      />
+                      <Image  
+                        src="/logos/furnix-logo-light.png"
+                        alt="Logo"
+                        fill
+                        className="object-contain hidden dark:block"
+                      />
+                    </>
+                  )}
                 </div>
-                {team.name}
-                <DropdownMenuShortcut>⌘{index + 1}</DropdownMenuShortcut>
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="gap-2 p-2">
-              <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
-                <Plus className="size-4" />
-              </div>
-              <div className="text-muted-foreground font-medium">Add team</div>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </SidebarMenuItem>
-    </SidebarMenu>
-  )
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-medium">
+                    {activeTeam.name}
+                  </span>
+                  <span className="truncate text-xs">{activeTeam.plan}</span>
+                </div>
+                {isSuperAdmin && <ChevronsUpDown className="ml-auto" />}
+              </SidebarMenuButton>
+            </DropdownMenuTrigger>
+            {isSuperAdmin && (
+              <DropdownMenuContent
+                className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+                align="start"
+                side={isMobile ? "bottom" : "right"}
+                sideOffset={4}
+              >
+                {b2bTeams.length > 0 && (
+                  <>
+                    <DropdownMenuLabel className="text-muted-foreground text-xs">
+                      B2B Franchise
+                    </DropdownMenuLabel>
+                    {b2bTeams.map((team) => (
+                      <DropdownMenuItem
+                        key={team.id}
+                        onClick={() => handleTeamClick(team)}
+                        className={
+                          team.id === activeTeam.id
+                            ? "gap-2 p-2 bg-muted/50"
+                            : "gap-2 p-2"
+                        }
+                      >
+                        <div className="flex size-6 items-center justify-center rounded-md border">
+                          <team.logo className="size-3.5 shrink-0" />
+                        </div>
+                        {team.name}
+                        <DropdownMenuShortcut>
+                          {team.id === activeTeam.id ? (
+                            <span className="inline-flex items-center justify-end w-6">
+                              <span className="size-2 rounded-full bg-green-500 mr-1.5" />
+                            </span>
+                          ) : (
+                            `⌘${teams.indexOf(team) + 1}`
+                          )}
+                        </DropdownMenuShortcut>
+                      </DropdownMenuItem>
+                    ))}
+                  </>
+                )}
+                <DropdownMenuLabel className="text-muted-foreground text-xs">
+                  Franchise
+                </DropdownMenuLabel>
+                {regularTeams.map((team) => (
+                  <DropdownMenuItem
+                    key={team.id}
+                    onClick={() => handleTeamClick(team)}
+                    className={
+                      team.id === activeTeam.id
+                        ? "gap-2 p-2 bg-muted/50"
+                        : "gap-2 p-2"
+                    }
+                  >
+                    <div className="flex size-6 items-center justify-center rounded-md border">
+                      <team.logo className="size-3.5 shrink-0" />
+                    </div>
+                    {team.name}
+                    <DropdownMenuShortcut>
+                      {team.id === activeTeam.id ? (
+                        <span className="inline-flex items-center justify-end w-6">
+                          <span className="size-2 rounded-full bg-green-500 mr-1.5" />
+                        </span>
+                      ) : (
+                        `⌘${teams.indexOf(team) + 1}`
+                      )}
+                    </DropdownMenuShortcut>
+                  </DropdownMenuItem>
+                ))}
+                {/* <DropdownMenuSeparator /> */}
+                {/* <DropdownMenuItem className="gap-2 p-2">
+                  <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
+                    <Plus className="size-4" />
+                  </div>
+                  <div className="text-muted-foreground font-medium">Add team</div>
+                </DropdownMenuItem> */}
+              </DropdownMenuContent>
+            )}
+          </DropdownMenu>
+        </SidebarMenuItem>
+      </SidebarMenu>
+
+      <TimeLoaderComponent
+        open={isSwitching}
+        message={
+          pendingTeam?.name
+            ? `Switching to ${pendingTeam.name}...`
+            : "Switching franchise..."
+        }
+      />
+    </>
+  );
 }

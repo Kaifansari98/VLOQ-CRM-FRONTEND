@@ -9,10 +9,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useLeadChatMembers } from "@/hooks/useLeadChatRoom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils";
+import type { LeadChatMessage } from "@/api/lead-chats";
 
 interface ChatInputComponentProps {
   disabled?: boolean;
   leadId: number;
+  replyingTo?: LeadChatMessage | null;
+  onCancelReply?: () => void;
+  onSentReply?: () => void;
 }
 
 interface MentionTag {
@@ -25,6 +29,9 @@ interface MentionTag {
 export default function ChatInputComponent({
   disabled = false,
   leadId,
+  replyingTo = null,
+  onCancelReply,
+  onSentReply,
 }: ChatInputComponentProps) {
   const [messageText, setMessageText] = useState("");
   const [attachments, setAttachments] = useState<File[]>([]);
@@ -95,6 +102,7 @@ export default function ChatInputComponent({
         messageText: trimmed || undefined,
         files: attachments,
         mentionUserIds,
+        replyToMessageId: replyingTo?.id,
       },
       {
         onSuccess: () => {
@@ -105,6 +113,7 @@ export default function ChatInputComponent({
           setMentionStart(null);
           setMentionOpen(false);
           setSelectedMentionIndex(0);
+          onSentReply?.();
           if (fileInputRef.current) {
             fileInputRef.current.value = "";
           }
@@ -114,6 +123,19 @@ export default function ChatInputComponent({
         },
       }
     );
+  };
+
+  const getReplyPreviewText = (message: LeadChatMessage) => {
+    if (message.message_text?.trim()) {
+      return message.message_text.trim();
+    }
+    if (message.attachments?.length) {
+      const firstAttachment = message.attachments[0]?.doc_og_name;
+      return firstAttachment
+        ? `Document: ${firstAttachment}`
+        : `Attachment${message.attachments.length > 1 ? "s" : ""}`;
+    }
+    return "Message";
   };
 
   const insertMention = (memberId: number, memberName: string) => {
@@ -336,6 +358,30 @@ export default function ChatInputComponent({
     <div className="relative w-full bg-background/95 backdrop-blur">
       <div className="w-full pb-3 pt-2">
         <div className="relative rounded-2xl border bg-card p-3">
+          {replyingTo && (
+            <div className="mb-3 flex items-start justify-between gap-3 rounded-xl border bg-muted/50 px-3 py-2">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-primary">
+                  Replying to{" "}
+                  {members.find((member) => member.id === replyingTo.sender_id)
+                      ?.user_name ||
+                    "User"}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {getReplyPreviewText(replyingTo)}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+                onClick={onCancelReply}
+                aria-label="Cancel reply"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+
           {/* Attachments Preview */}
           {attachments.length > 0 && (
             <div className="mb-3 flex flex-wrap gap-2">

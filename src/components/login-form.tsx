@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLogin } from "@/hooks/useLogin";
 import { useDispatch, useSelector } from "react-redux";
-import { setCredentials } from "@/redux/slices/authSlice";
-import { useRouter } from "next/navigation";
-import { toast } from "react-toastify";
+import { useRouter, useSearchParams } from "next/navigation";
+import { toastManager } from "@/components/ui/toast";
 import { RootState } from "@/redux/store";
 import { PhoneInput } from "@/components/ui/phone-input";
 import PasswordInput from "@/components/password-input";
@@ -14,6 +13,73 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { apiClient } from "@/lib/apiClient";
+import { exchangeVendorLoginApi } from "@/api/auth";
+import { setCredentials, logout } from "@/redux/slices/authSlice";
+import { clearClientSessionStorage } from "@/lib/sessionCleanup";
+import { setCustomPrivileges } from "@/redux/slices/customPrivilegesSlice";
+import { setActiveTheme } from "@/redux/slices/themeSlice";
+
+const getLoginErrorMessage = (message?: string) => {
+  if (!message) {
+    return "Unable to sign in. Please try again.";
+  }
+
+  const normalizedMessage = message.toLowerCase();
+
+  if (normalizedMessage.includes("logout from another device first")) {
+    return "You have already reached the maximum of 10 active devices for this account. Please log out from one of your other devices and try again.";
+  }
+
+  return message;
+};
+
+const getPostLoginPath = (
+  user: RootState["auth"]["user"] | null | undefined,
+  vendorLoginToken?: string | null,
+) => {
+  if (user?.vendor?.is_crm_enabled === false) {
+    return "/dashboard/track-trace";
+  }
+  return "/dashboard";
+};
+
+const getOrCreateAuthDeviceId = () => {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+
+  const existingDeviceId = localStorage.getItem("authDeviceId");
+  if (existingDeviceId) {
+    return existingDeviceId;
+  }
+
+  const generatedDeviceId =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `device-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+  localStorage.setItem("authDeviceId", generatedDeviceId);
+  return generatedDeviceId;
+};
+
+const getNavigatorPlatform = () => {
+  if (typeof window === "undefined") {
+    return "unknown";
+  }
+
+  const navigatorWithUserAgentData = navigator as Navigator & {
+    userAgentData?: {
+      platform?: string;
+    };
+  };
+
+  return (
+    navigatorWithUserAgentData.userAgentData?.platform ||
+    navigator.platform ||
+    "unknown"
+  );
+};
 
 export function LoginForm({
   className,
@@ -25,46 +91,128 @@ export function LoginForm({
   const [password, setPassword] = useState("");
 
   const loginMutation = useLogin();
-  const dispatch = useDispatch();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const dispatch = useDispatch();
+  const vendorLoginToken = searchParams.get("vendorLoginToken");
+  const [isVendorLoginInProgress, setIsVendorLoginInProgress] = useState(false);
 
   const { user, token } = useSelector((state: RootState) => state.auth);
+  const hasAttemptedVendorExchangeRef = useRef<string | null>(null);
 
-  // ✅ Redirect if already logged in
+  // ✅ Redirect if already logged in (only when not performing a vendor login exchange)
   useEffect(() => {
-    if (user && token) {
-      router.replace("/dashboard/leads/leadstable");
+    if (!vendorLoginToken && user && token) {
+      router.replace(getPostLoginPath(user, vendorLoginToken));
     }
-  }, [user, token, router]);
+  }, [router, token, user, vendorLoginToken]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!identifier || !password) {
-      toast.error("Please enter your credentials");
+      toastManager.add({ title: "Please enter your credentials", type: "error" });
       return;
     }
-    loginMutation.mutate({ identifier, password });
+
+    const deviceId = getOrCreateAuthDeviceId();
+    const deviceName =
+      typeof window !== "undefined"
+        ? `${navigator.userAgent.includes("Mobile") ? "Mobile" : "Browser"} Device`
+        : "Browser Device";
+    const platform = getNavigatorPlatform();
+
+    loginMutation.mutate({
+      identifier,
+      password,
+      device_id: deviceId,
+      device_name: deviceName,
+      platform,
+    });
   };
 
   useEffect(() => {
     if (loginMutation.isSuccess && loginMutation.data) {
-      dispatch(
-        setCredentials({
-          user: loginMutation.data.user,
-          token: loginMutation.data.token,
-        })
+      toastManager.add({ title: "Login successful!", type: "success" });
+      router.push(
+        getPostLoginPath(loginMutation.data.user, vendorLoginToken),
       );
-      toast.success("Login successful 🎉");
-      router.push("/dashboard");
     }
-  }, [loginMutation.isSuccess, loginMutation.data, dispatch, router]);
+  }, [loginMutation.isSuccess, loginMutation.data, router, vendorLoginToken]);
+
+  useEffect(() => {
+    const exchangeVendorLogin = async () => {
+      if (
+        !vendorLoginToken ||
+        hasAttemptedVendorExchangeRef.current === vendorLoginToken
+      ) {
+        return;
+      }
+
+      hasAttemptedVendorExchangeRef.current = vendorLoginToken;
+
+      try {
+        // Clear any old session before setting up the new vendor credentials
+        dispatch(logout());
+        clearClientSessionStorage();
+
+        setIsVendorLoginInProgress(true);
+
+        const response = await exchangeVendorLoginApi(vendorLoginToken);
+        dispatch(setCredentials({ user: response.user, token: response.token }));
+        dispatch(
+          setCustomPrivileges(
+            Array.isArray(response.customPrivileges) ? response.customPrivileges : [],
+          ),
+        );
+
+        try {
+          const vendorId = response.user?.vendor_id;
+          if (vendorId) {
+            const themeRes = await apiClient.get(`/themes/vendorId/${vendorId}/active`);
+            dispatch(setActiveTheme(themeRes.data?.data ?? null));
+          }
+        } catch {
+          // Theme fetch failure is non-blocking
+        }
+
+        toastManager.add({ title: "Login successful!", type: "success" });
+        router.replace(getPostLoginPath(response.user, vendorLoginToken));
+      } catch (error: any) {
+        toastManager.add({
+          title:
+            error?.response?.data?.message ||
+            error?.message ||
+            "Vendor login failed",
+          type: "error",
+        });
+      } finally {
+        setIsVendorLoginInProgress(false);
+      }
+    };
+
+    exchangeVendorLogin();
+  }, [dispatch, router, vendorLoginToken]);
+
+  useEffect(() => {
+    if (loginMutation.isError) {
+      const errorMessage =
+        loginMutation.error instanceof Error
+          ? loginMutation.error.message
+          : undefined;
+
+      toastManager.add({
+        title: getLoginErrorMessage(errorMessage),
+        type: "error",
+      });
+    }
+  }, [loginMutation.isError, loginMutation.error]);
 
   return (
     <form
       onSubmit={handleSubmit}
       className={cn("flex flex-col gap-6", className)}
       {...props}
-    >
+    >                              
       
       {/* <div className="flex flex-col items-center gap-2 text-center">
         <h1 className="text-2xl font-bold">Login to your account</h1>
@@ -134,9 +282,13 @@ export function LoginForm({
       <Button
         type="submit"
         className="w-full"
-        disabled={loginMutation.isPending}
+        disabled={loginMutation.isPending || isVendorLoginInProgress}
       >
-        {loginMutation.isPending ? "Logging in..." : "Login"}
+        {isVendorLoginInProgress
+          ? "Redirecting..."
+          : loginMutation.isPending
+            ? "Logging in..."
+            : "Login"}
       </Button>
    {/* <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
     <span className="bg-background text-muted-foreground relative z-10 px-2">

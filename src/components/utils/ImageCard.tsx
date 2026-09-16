@@ -6,6 +6,11 @@ import ImageViewerModal from "./ImageViewerModal";
 
 import { useState } from "react";
 import Image from "next/image";
+import { apiClient } from "@/lib/apiClient";
+import { formatDate } from "@/lib/format";
+import { useParams } from "next/navigation";
+import { useAppSelector } from "@/redux/store";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 
 interface DocumentCardProps {
   doc: {
@@ -20,6 +25,7 @@ interface DocumentCardProps {
   onDelete?: (id: number | string) => void;
   status?: "APPROVED" | "REJECTED" | "PENDING" | string;
   isLoading?: boolean;
+  disableActions?: boolean;
 }
 
 // Skeleton Loading Component
@@ -68,13 +74,52 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
   onDelete,
   status,
   isLoading = false,
+  disableActions = false,
 }) => {
+  const params = useParams();
+  const routeLeadId = Number(params?.lead ?? params?.leadId ?? 0);
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type,
+  );
+  const { shouldDisableBlockedActions: shouldDisableRouteBlockedActions } =
+    useLeadAccessControl({
+      leadId: routeLeadId || undefined,
+      userType,
+    });
+  const shouldHideDelete =
+    disableActions || shouldDisableRouteBlockedActions;
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerUrl, setViewerUrl] = useState("");
 
+  const normalizeImageSrc = (src: string) => {
+    if (!src) return "";
+    const trimmed = src.trim();
+    if (
+      trimmed.startsWith("http://") ||
+      trimmed.startsWith("https://") ||
+      trimmed.startsWith("blob:") ||
+      trimmed.startsWith("data:")
+    ) {
+      return trimmed;
+    }
+    const apiBase = apiClient.defaults.baseURL ?? "";
+    const assetBase = apiBase.replace(/\/api\/?$/, "");
+    if (assetBase) {
+      return `${assetBase.replace(/\/+$/, "")}/${trimmed.replace(/^\/+/, "")}`;
+    }
+    return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  };
+
+  const imageSrc = normalizeImageSrc(doc.signedUrl);
+
   const handleView = () => {
-    setViewerUrl(doc.signedUrl);
+    setViewerUrl(imageSrc);
     setViewerOpen(true);
+  };
+
+  const handleDelete = () => {
+    if (shouldHideDelete) return;
+    onDelete?.(doc.id);
   };
 
   if (isLoading) return <DocumentCardSkeleton />;
@@ -95,12 +140,10 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
     }
   };
 
-
   const formatStatus = (status?: string) => {
-  if (!status) return "";
-  return status.toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
-};
-
+    if (!status) return "";
+    return status.toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
+  };
 
   return (
     <>
@@ -109,18 +152,22 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
         group relative flex items-center gap-4 rounded-xl p-4 
         border border-border bg-white dark:bg-neutral-900
         transition-all duration-200 hover:bg-muted/40 dark:hover:bg-neutral-800
+        w-full min-w-[250px] sm:min-w-[300px]
       "
       >
         {/* Delete Button */}
-        {canDelete && (
+        {canDelete && !shouldHideDelete && (
           <button
-            onClick={() => onDelete?.(doc.id)}
+            type="button"
+            onClick={handleDelete}
+            title="Delete"
             className="
-            absolute top-3 right-3 p-1 rounded-full 
-            border border-border bg-white dark:bg-neutral-900 
-            hover:bg-muted dark:hover:bg-neutral-800 
-            transition-colors
-          "
+              absolute top-3 right-3 p-1 rounded-full 
+              border border-border bg-white dark:bg-neutral-900 
+              hover:bg-muted dark:hover:bg-neutral-800 
+              transition-colors
+            "
+            aria-label="Delete image"
           >
             <Trash2 className="w-4 h-4 text-neutral-600 dark:text-neutral-300" />
           </button>
@@ -129,12 +176,18 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
         {/* Thumbnail */}
         <div className="flex-shrink-0">
           <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-border bg-muted dark:bg-neutral-800">
-            <Image
-              src={doc.signedUrl}
-              alt={doc.doc_og_name}
-              fill
-              className="w-full h-full object-cover object-center transition-transform duration-300 group-hover:scale-105"
-            />
+            {imageSrc ? (
+              <Image
+                src={imageSrc}
+                alt={doc.doc_og_name}
+                fill
+                className="w-full h-full object-cover object-center transition-transform duration-300 group-hover:scale-105"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
+                No Preview
+              </div>
+            )}
           </div>
         </div>
 
@@ -145,12 +198,13 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
               {doc.doc_og_name}
             </h3>
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-              Uploaded on{" "}
-              {new Date(doc.created_at!).toLocaleDateString("en-IN", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              })}
+              {doc.created_at
+                ? `Uploaded on ${formatDate(doc.created_at, {
+                  month: "short",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}`
+                : "Uploaded date not available"}
             </p>
           </div>
 
@@ -172,7 +226,9 @@ export const ImageComponent: React.FC<DocumentCardProps> = ({
             {status && (
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${getStatusColor()}`} />
-                <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400 capitalize">{formatStatus(status)}</span>
+                <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400 capitalize">
+                  {formatStatus(status)}
+                </span>
               </div>
             )}
           </div>

@@ -27,8 +27,11 @@ import { useLeadById } from "@/hooks/useLeadsQueries";
 import { useMutation } from "@tanstack/react-query";
 import BaseModal from "@/components/utils/baseModal";
 import { FileUploadField } from "@/components/custom/file-upload";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { canUploadClientApproval } from "@/components/utils/privileges";
+import ClientApprovalItemGroups from "./ClientApprovalItemGroups";
+import ClientApprovalModal from "./client-approval-modal";
+import ClientApprovalViewModal from "./ClientApprovalViewModal";
 
 interface Props {
   leadId: number;
@@ -39,15 +42,26 @@ export default function ClientApprovalDetails({ leadId }: Props) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type?.user_type
+    (state) => state.auth.user?.user_type?.user_type,
+  );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
   );
 
   // 🧩 Hooks
   const { data, isLoading, isError, refetch } = useClientApprovalDetails(
     vendorId,
-    leadId
+    leadId,
   );
   const { data: leadDetails } = useLeadById(leadId, vendorId, userId);
+
+  const handlesLargeScaleProjectsFromAuth = useAppSelector(
+    (state) => state.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const handlesLargeScaleProjects =
+    handlesLargeScaleProjectsFromAuth ||
+    leadDetails?.data?.lead?.createdBy?.vendor?.handlesLargeScaleProjects === true ||
+    leadDetails?.data?.lead?.assignedTo?.vendor?.handlesLargeScaleProjects === true;
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
@@ -60,6 +74,10 @@ export default function ClientApprovalDetails({ leadId }: Props) {
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
   const [openUploadMore, setOpenUploadMore] = useState(false);
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+  const [selectedInstanceForApproval, setSelectedInstanceForApproval] =
+    useState<any | null>(null);
+  const [viewInstanceForApproval, setViewInstanceForApproval] =
+    useState<any | null>(null);
 
   //🧩 Permissions
   const canDelete =
@@ -67,6 +85,36 @@ export default function ClientApprovalDetails({ leadId }: Props) {
     userType === "super-admin" ||
     (userType === "sales-executive" && leadStatus === "client-approval-stage");
   const canUpload = canUploadClientApproval(userType);
+  const canViewPaymentProof =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.client_approval.client_payment_details.payment_proof.view",
+        )
+      : true;
+  const canDeletePaymentProof =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.client_approval.client_payment_details.payment_proof.delete",
+        )
+      : canDelete;
+  const canViewClientApprovalScreenshots =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.client_approval.client_approval_screenshots.view",
+        )
+      : true;
+  const canUploadClientApprovalScreenshots =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.client_approval.client_approval_screenshots.upload",
+        )
+      : canUpload;
+  const canDeleteClientApprovalScreenshots =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "project.client_approval.client_approval_screenshots.delete",
+        )
+      : canDelete;
   const accountId =
     leadDetails?.data?.lead?.account_id ||
     leadDetails?.data?.lead?.account?.id ||
@@ -114,25 +162,35 @@ export default function ClientApprovalDetails({ leadId }: Props) {
         documents: uploadFiles,
       }),
     onSuccess: () => {
-      toast.success("Screenshots uploaded successfully");
+      toastManager.add({
+        title: "Screenshots uploaded successfully",
+        type: "success",
+      });
       setUploadFiles([]);
       setOpenUploadMore(false);
       refetch();
     },
     onError: (error: any) => {
-      toast.error(
-        error?.response?.data?.message || "Failed to upload screenshots"
-      );
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to upload screenshots",
+        type: "error",
+      });
     },
   });
 
   const handleUploadMore = () => {
     if (!vendorId || !userId || !accountId) {
-      toast.error("Missing required identifiers");
+      toastManager.add({
+        title: "Missing required identifiers",
+        type: "error",
+      });
       return;
     }
     if (uploadFiles.length === 0) {
-      toast.error("Please select at least one file");
+      toastManager.add({
+        title: "Please select at least one file",
+        type: "error",
+      });
       return;
     }
     uploadMoreMutation.mutate();
@@ -173,8 +231,18 @@ export default function ClientApprovalDetails({ leadId }: Props) {
       transition={{ duration: 0.4, ease: "easeOut" }}
       className="rounded-lg w-full h-full py-4 space-y-6 bg-[#fff] dark:bg-[#0a0a0a]"
     >
-      {/* -------- Payment Details Section -------- */}
-      {paymentInfo && (
+      {/* -------- Item Groups Section (Large Scale Projects) -------- */}
+      {handlesLargeScaleProjects && (
+        <ClientApprovalItemGroups
+          leadId={leadId}
+          accountId={accountId}
+          onUploadClick={(instance) => setSelectedInstanceForApproval(instance)}
+          onViewClick={(instance) => setViewInstanceForApproval(instance)}
+        />
+      )}
+
+      {/* -------- Payment Details Section (Non-Large Scale Projects) -------- */}
+      {paymentInfo && !handlesLargeScaleProjects && (
         <div
           className="
     bg-white dark:bg-neutral-900 
@@ -222,13 +290,13 @@ export default function ClientApprovalDetails({ leadId }: Props) {
           {/* Content */}
           <div className="p-6 space-y-6 bg-[#fff] dark:bg-[#0a0a0a]">
             {/* Payment Proof */}
-            {paymentFile && (
+            {paymentFile && canViewPaymentProof && (
               <div className="space-y-2">
                 <p className="text-xs font-medium text-muted-foreground tracking-wide">
                   Payment Proof
                 </p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <ImageComponent
                     doc={{
                       id: paymentFile.id,
@@ -241,7 +309,7 @@ export default function ClientApprovalDetails({ leadId }: Props) {
                       created_at: paymentFile.created_at,
                     }}
                     index={0}
-                    canDelete={canDelete}
+                    canDelete={canDeletePaymentProof}
                     onDelete={(id) => setConfirmDelete(Number(id))}
                   />
                 </div>
@@ -269,86 +337,91 @@ export default function ClientApprovalDetails({ leadId }: Props) {
         </div>
       )}
 
-      {/* -------- Approval Screenshots Section -------- */}
-      <div
-        className="
+      {/* -------- Approval Screenshots Section (Non-Large Scale Projects) -------- */}
+      {canViewClientApprovalScreenshots && !handlesLargeScaleProjects && (
+        <div
+          className="
     bg-[#fff] dark:bg-[#0a0a0a]
     rounded-2xl border border-border 
     overflow-hidden shadow-soft
   "
-      >
-        {/* Header */}
-        <div
-          className="
-      flex items-center justify-between 
-      px-5 py-3 
+        >
+          {/* Header */}
+          <div
+            className="
+      flex flex-col sm:flex-row sm:items-center justify-between 
+      px-5 py-3 gap-4
       border-b border-border 
       bg-[#fff] dark:bg-[#0a0a0a]
     "
-        >
-          <div className="flex items-center gap-2">
-            <FileText size={20} />
-            <h1 className="text-lg font-semibold tracking-tight">
-              Client Approval Screenshots
-            </h1>
-          </div>
+          >
+            <div className="flex items-center gap-2">
+              <FileText size={20} />
+              <h1 className="text-lg font-semibold tracking-tight">
+                Client Approval Screenshots
+              </h1>
+            </div>
 
-          {canUpload && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setOpenUploadMore(true)}
-              className="
+            {canUploadClientApprovalScreenshots && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setOpenUploadMore(true)}
+                className="
           rounded-lg border-border 
           bg-[#fff] dark:bg-[#0a0a0a]
           dark:border-neutral-700
+          w-full sm:w-auto
         "
-            >
-              Add More Screenshots
-            </Button>
-          )}
-        </div>
+              >
+                Add More Screenshots
+              </Button>
+            )}
+          </div>
 
-        {/* Body */}
-        <div className="p-6">
-          {screenshots && screenshots.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {screenshots.map((img: any, index: any) => (
-                <ImageComponent
-                  key={img.id}
-                  doc={{
-                    id: img.id,
-                    doc_og_name:
-                      img.doc_original_name || img.doc_og_name || "Screenshot",
-                    signedUrl: img.signedUrl || img.doc_sys_name,
-                    created_at: img.created_at,
-                  }}
-                  index={index}
-                  canDelete={canDelete}
-                  onDelete={(id) => setConfirmDelete(Number(id))}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-10 text-center">
-              <Images size={42} className="text-muted-foreground mb-3" />
-              <p className="text-sm text-muted-foreground">
-                No approval screenshots uploaded yet.
-              </p>
-              {canUpload && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-4"
-                  onClick={() => setOpenUploadMore(true)}
-                >
-                  Add More Screenshots
-                </Button>
-              )}
-            </div>
-          )}
+          {/* Body */}
+          <div className="p-6">
+            {screenshots && screenshots.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {screenshots.map((img: any, index: any) => (
+                  <ImageComponent
+                    key={img.id}
+                    doc={{
+                      id: img.id,
+                      doc_og_name:
+                        img.doc_original_name ||
+                        img.doc_og_name ||
+                        "Screenshot",
+                      signedUrl: img.signedUrl || img.doc_sys_name,
+                      created_at: img.created_at,
+                    }}
+                    index={index}
+                    canDelete={canDeleteClientApprovalScreenshots}
+                    onDelete={(id) => setConfirmDelete(Number(id))}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10 text-center">
+                <Images size={42} className="text-muted-foreground mb-3" />
+                <p className="text-sm text-muted-foreground">
+                  No approval screenshots uploaded yet.
+                </p>
+                {canUploadClientApprovalScreenshots && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-4"
+                    onClick={() => setOpenUploadMore(true)}
+                  >
+                    Add More Screenshots
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* -------- Delete Confirmation Dialog -------- */}
       <AlertDialog
@@ -375,7 +448,7 @@ export default function ClientApprovalDetails({ leadId }: Props) {
         </AlertDialogContent>
       </AlertDialog>
 
-      {canUpload && accountId ? (
+      {canUploadClientApprovalScreenshots && accountId ? (
         <BaseModal
           open={openUploadMore}
           onOpenChange={(open) => {
@@ -419,6 +492,40 @@ export default function ClientApprovalDetails({ leadId }: Props) {
           </div>
         </BaseModal>
       ) : null}
+
+      {/* -------- Client Approval Modal for Selected Item Group -------- */}
+      {selectedInstanceForApproval && (
+        <ClientApprovalModal
+          open={!!selectedInstanceForApproval}
+          onOpenChange={(open) => {
+            if (!open) setSelectedInstanceForApproval(null);
+          }}
+          data={{
+            id: leadId,
+            accountId: accountId,
+            productTypeId:
+              selectedInstanceForApproval.product_type_id ||
+              selectedInstanceForApproval.product_type?.id,
+            instanceName:
+              selectedInstanceForApproval.product_type?.name ||
+              selectedInstanceForApproval.name ||
+              selectedInstanceForApproval.code,
+          }}
+        />
+      )}
+
+      {/* -------- Client Approval View Modal for Uploaded Item Group -------- */}
+      {viewInstanceForApproval && (
+        <ClientApprovalViewModal
+          open={!!viewInstanceForApproval}
+          onOpenChange={(open) => {
+            if (!open) setViewInstanceForApproval(null);
+          }}
+          leadId={leadId}
+          accountId={accountId}
+          instance={viewInstanceForApproval}
+        />
+      )}
     </motion.div>
   );
 }

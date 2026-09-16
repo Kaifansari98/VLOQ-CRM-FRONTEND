@@ -15,7 +15,7 @@ import {
   FileUploadTrigger,
 } from "@/components/ui/file-upload";
 import { Upload, X } from "lucide-react";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 
 interface PdfUploadFieldProps {
   value: File[]; // will always hold 0 or 1 file
@@ -58,9 +58,9 @@ export function PdfUploadField({ value, onChange }: PdfUploadFieldProps) {
       const fileName =
         file.name.length > 20 ? file.name.slice(0, 20) + "..." : file.name;
       if (value.length >= 1) {
-        toast.error(`Only 1 PDF is allowed. "${fileName}" cannot be added.`);
+        toastManager.add({ title: `Only 1 PDF is allowed. "${fileName}" cannot be added.`, type: "error" });
       } else {
-        toast.error(`${message}: "${fileName}" has been rejected`);
+        toastManager.add({ title: `${message}: "${fileName}" has been rejected`, type: "error" });
       }
     },
     [value]

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import CustomeDatePicker from "@/components/date-picker";
@@ -15,7 +15,7 @@ import {
   useOrderLoginSummary,
   usePendingWorkTasks,
 } from "@/api/installation/useDispatchStageLeads";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
@@ -26,7 +26,9 @@ import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkUnderInstallationStage } from "@/components/utils/privileges";
 import { Checkbox } from "@/components/ui/checkbox";
 import CustomeTooltip from "@/components/custom-tooltip";
+import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 interface PendingWorkDetailsProps {
   leadId: number;
   accountId: number;
@@ -39,17 +41,18 @@ export default function PendingWorkDetails({
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const customPrivilegeCodes = useAppSelector((s) => s.customPrivileges.codes);
 
   const queryClient = useQueryClient();
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
 
   if (!vendorId) {
-    toast.error("Vendor information is missing.");
+    toastManager.add({ title: "Vendor information is missing.", type: "error" });
     return null;
   }
   if (!userId) {
-    toast.error("User information is missing.");
+    toastManager.add({ title: "User information is missing.", type: "error" });
     return null;
   }
 
@@ -61,29 +64,93 @@ export default function PendingWorkDetails({
 
   const { data: workTitleOptions = [], isLoading: loadingTitles } =
     useOrderLoginSummary(vendorId, leadId);
+  const { data: instancesResponse, isLoading: loadingInstances } =
+    useLeadProductStructureInstances(leadId, vendorId);
+  const instances = Array.isArray(instancesResponse?.data)
+    ? instancesResponse?.data
+    : instancesResponse?.data?.data || [];
 
   /* 📝 Form State */
   const [title, setTitle] = useState("");
   const [remark, setRemark] = useState("");
   const [dueDate, setDueDate] = useState<string | null>(null);
+  const [selectedInstanceLabel, setSelectedInstanceLabel] = useState("");
   const [pendingWorkAnswer, setPendingWorkAnswer] = useState<
     "yes" | "no" | null
-  >("no");
+  >(null);
   const [openTaskModal, setOpenTaskModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
 
+  const instanceOptions = useMemo(() => {
+    if (!instances.length) return [];
+    return instances.map((instance: any) => {
+      const base = instance?.title || `Instance ${instance?.quantity_index ?? instance?.id}`;
+      return base;
+    });
+  }, [instances]);
+
+  const instanceIdByLabel = useMemo(() => {
+    const map = new Map<string, number>();
+    instances.forEach((instance: any) => {
+      const label =
+        instance?.title || `Instance ${instance?.quantity_index ?? instance?.id}`;
+      if (!map.has(label)) {
+        map.set(label, instance?.id);
+      }
+    });
+    return map;
+  }, [instances]);
+
+  const selectedInstanceId = selectedInstanceLabel
+    ? instanceIdByLabel.get(selectedInstanceLabel)
+    : undefined;
+
+
+  const {
+    shouldDisableBlockedActions,
+    blockedTooltip,
+  } = useLeadAccessControl({
+    leadId,
+    userType,
+  });
+
+  const blockedReason = shouldDisableBlockedActions
+    ? blockedTooltip
+    : "";
+
+  const filteredWorkTitleOptions = useMemo(() => {
+    if (!selectedInstanceId) return workTitleOptions ?? [];
+    return (workTitleOptions ?? []).filter(
+      (item: any) => Number(item?.instance_id) === Number(selectedInstanceId)
+    );
+  }, [workTitleOptions, selectedInstanceId]);
+
+  useEffect(() => {
+    setTitle("");
+  }, [selectedInstanceId]);
+
   const canWork = canViewAndWorkUnderInstallationStage(userType, leadStatus);
-  const allowForm = canWork && pendingWorkAnswer === "yes";
+  const canAccessPendingWorkForCustomUser =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+        "installation.under_installation.usable_handover.pending_work.action",
+      )
+      : false;
+  const canWorkPendingWork = canWork || canAccessPendingWorkForCustomUser;
+  const allowForm = canWorkPendingWork && pendingWorkAnswer === "yes";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!title.trim() || !dueDate) {
-      toast.error("Please fill all required fields.");
+      toastManager.add({ title: "Please fill all required fields.", type: "error" });
       return;
     }
 
-    const combinedRemark = `${title.trim()} — ${remark.trim()}`;
+    const formattedTitle = selectedInstanceLabel
+      ? `${selectedInstanceLabel} - ${title.trim()}`
+      : title.trim();
+    const combinedRemark = `${formattedTitle} — ${remark.trim()}`;
 
     try {
       await createPendingWork({
@@ -97,7 +164,7 @@ export default function PendingWorkDetails({
         },
       });
 
-      toast.success("Pending Work added successfully!");
+      toastManager.add({ title: "Pending Work added successfully!", type: "success" });
 
       queryClient.invalidateQueries({
         queryKey: ["pendingWorkTasks", vendorId, leadId],
@@ -107,7 +174,7 @@ export default function PendingWorkDetails({
       setRemark("");
       setDueDate(null);
     } catch (err) {
-      toast.error("Failed to add Pending Work.");
+      toastManager.add({ title: "Failed to add Pending Work.", type: "error" });
     }
   };
 
@@ -124,6 +191,20 @@ export default function PendingWorkDetails({
     }
   };
 
+
+
+
+  const addWorkTooltip = shouldDisableBlockedActions
+    ? blockedTooltip
+    : !allowForm
+      ? "Please select Yes first"
+      : !title.trim()
+        ? "Please select Work Title"
+        : !dueDate
+          ? "Please select Due Date"
+          : "";
+
+
   return (
     <div className="space-y-6">
       {/* Add Work Card */}
@@ -134,28 +215,40 @@ export default function PendingWorkDetails({
 
           <div>
             <div className="flex gap-6 items-center">
-            <h2 className="text-lg font-semibold tracking-tight">
-              Any Pending Work Left ?
-            </h2>
+              <h2 className="text-lg font-semibold tracking-tight">
+                Any Pending Work Left ?
+              </h2>
 
             </div>
             <div className="flex gap-6 items-center mt-2">
-            {canWork ? (
+              {canWorkPendingWork ? (
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={pendingWorkAnswer === "yes"}
-                      onCheckedChange={(checked) =>
-                        setPendingWorkAnswer(checked ? "yes" : null)
+                    <CustomeTooltip
+                      value={blockedReason}
+                      truncateValue={
+                        <Checkbox
+                          disabled={shouldDisableBlockedActions}
+                          checked={pendingWorkAnswer === "yes"}
+                          onCheckedChange={(checked) =>
+                            setPendingWorkAnswer(checked ? "yes" : null)
+                          }
+                        />
                       }
                     />
                     Yes
                   </label>
                   <label className="flex items-center gap-2 text-sm">
-                    <Checkbox
-                      checked={pendingWorkAnswer === "no"}
-                      onCheckedChange={(checked) =>
-                        setPendingWorkAnswer(checked ? "no" : null)
+                    <CustomeTooltip
+                      value={blockedReason}
+                      truncateValue={
+                        <Checkbox
+                          disabled={shouldDisableBlockedActions}
+                          checked={pendingWorkAnswer === "no"}
+                          onCheckedChange={(checked) =>
+                            setPendingWorkAnswer(checked ? "no" : null)
+                          }
+                        />
                       }
                     />
                     No
@@ -178,108 +271,158 @@ export default function PendingWorkDetails({
                   value="Only Factory Users Can Access This Action"
                 />
               )}
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Select Yes to add pending work tasks
-            </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Select Yes to add pending work tasks
+              </p>
             </div>
           </div>
         </div>
 
         {/* ---------------- FORM BODY ---------------- */}
-        <div
-          className={`p-6 transition-all ${
-            allowForm ? "" : "opacity-50 pointer-events-none"
-          }`}
-        >
+       <div
+  className={`p-6 transition-all ${
+    !allowForm ? "opacity-50" : ""
+  }`}
+>
           <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Grid Inputs */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {/* Title Picker */}
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-1 text-sm font-medium">
-                    <Wrench className="h-4 w-4" />
-                    Work Title
-                    <span className="text-red-500">*</span>
-                  </Label>
-
-                  <TextSelectPicker
-                    options={
-                      workTitleOptions.map(
-                        (item: any) => item.item_type || "Untitled Work"
-                      ) || []
-                    }
-                    value={title}
-                    onChange={(text) => setTitle(text)}
-                    placeholder={
-                      loadingTitles
-                        ? "Loading work titles..."
-                        : "Select work..."
-                    }
-                    emptyLabel="Select Work"
-                    disabled={loadingTitles || !allowForm}
-                  />
-                </div>
-
-                {/* Due Date */}
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-1 text-sm font-medium">
-                    <Calendar className="h-4 w-4" />
-                    Due Date
-                    <span className="text-red-500">*</span>
-                  </Label>
-
-                  <CustomeDatePicker
-                    value={dueDate || ""}
-                    onChange={(value) => setDueDate(value || null)}
-                    restriction="futureOnly"
-                    disabledReason={
-                      !canWork
-                        ? "You don't have permission to add tasks."
-                        : undefined
-                    }
-                  />
-                </div>
-              </div>
-
-              {/* Remarks */}
+            {/* Grid Inputs */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Instance Picker */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-1 text-sm font-medium">
-                  <FileText className="h-4 w-4" />
-                  Additional Notes
+                  <Wrench className="h-4 w-4" />
+                  Instance
                 </Label>
 
-                  <Textarea
-                    placeholder="Describe the work, issue, or requirements..."
-                    value={remark}
-                    onChange={(e) => setRemark(e.target.value)}
-                    rows={3}
-                    disabled={!allowForm}
-                  />
-                </div>
-
-              {/* Submit Button */}
-              <div className="flex justify-end">
-                <Button
-                  type="submit"
-                  disabled={!allowForm || isPending || !title.trim() || !dueDate}
-                  className="w-full md:w-auto"
-                >
-                  {isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Adding...
-                    </>
-                  ) : (
-                    <>
-                      <PlusCircle size={20} />
-                      Add Work
-                    </>
-                  )}
-                </Button>
+                <TextSelectPicker
+                  options={instanceOptions}
+                  value={selectedInstanceLabel}
+                  onChange={(text) => setSelectedInstanceLabel(text)}
+                  placeholder={
+                    loadingInstances ? "Loading instances..." : "Select instance..."
+                  }
+                  emptyLabel={
+                    instanceOptions.length ? "Select instance" : "No instances"
+                  }
+                 disabled={
+  shouldDisableBlockedActions ||
+  loadingInstances ||
+  instanceOptions.length === 0
+}
+                />
               </div>
-            </form>
-          </div>
+
+              {/* Title Picker */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1 text-sm font-medium">
+                  <Wrench className="h-4 w-4" />
+                  Work Title
+                  <span className="text-red-500">*</span>
+                </Label>
+
+                <TextSelectPicker
+                  options={
+                    filteredWorkTitleOptions.map(
+                      (item: any) => item.item_type || "Untitled Work"
+                    ) || []
+                  }
+                  value={title}
+                  onChange={(text) => setTitle(text)}
+                  placeholder={
+                    loadingTitles
+                      ? "Loading work titles..."
+                      : "Select work..."
+                  }
+                  emptyLabel="Select Work"
+                 disabled={
+  shouldDisableBlockedActions ||
+  loadingTitles ||
+  !allowForm ||
+  !selectedInstanceId
+}
+                />
+              </div>
+
+              {/* Due Date */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1 text-sm font-medium">
+                  <Calendar className="h-4 w-4" />
+                  Due Date
+                  <span className="text-red-500">*</span>
+                </Label>
+
+                <CustomeDatePicker
+                  value={dueDate || ""}
+                  onChange={(value) => setDueDate(value || null)}
+                  restriction="futureOnly"
+                  disabledReason={
+    shouldDisableBlockedActions
+      ? blockedTooltip
+      : !canWork
+        ? "You don't have permission to add tasks."
+        : undefined
+  }
+                />
+              </div>
+            </div>
+
+            {/* Remarks */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1 text-sm font-medium">
+                <FileText className="h-4 w-4" />
+                Additional Notes
+              </Label>
+
+              <Textarea
+                placeholder="Describe the work, issue, or requirements..."
+                value={remark}
+                onChange={(e) => setRemark(e.target.value)}
+                rows={3}
+               disabled={
+  shouldDisableBlockedActions ||
+  !allowForm
+}
+              />
+            </div>
+
+            {/* Submit Button */}
+            <div className="flex justify-end">
+  <div className="inline-flex">
+           <CustomeTooltip
+  value={addWorkTooltip}
+  truncateValue={
+    <span className="inline-flex">
+      <Button
+        type="submit"
+        disabled={
+          shouldDisableBlockedActions ||
+          !allowForm ||
+          isPending ||
+          !title.trim() ||
+          !dueDate
+        }
+        className="w-full md:w-auto"
+      >
+        {isPending ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Adding...
+          </>
+        ) : (
+          <>
+            <PlusCircle size={20} />
+            Add Work
+          </>
+        )}
+      </Button>
+    </span>
+  }
+/>
+            </div>
+            </div>
+          </form>
         </div>
+      </div>
       {/* </div> */}
 
       {/* Pending Work Grid */}
@@ -353,32 +496,34 @@ export default function PendingWorkDetails({
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.25, delay: idx * 0.05 }}
                     >
-                      <Card
-                        onClick={() => {
-                          if (
-                            task.status === "completed" ||
-                            task.status === "cancelled"
-                          )
-                            return;
+                    <Card
+  onClick={() => {
+    if (shouldDisableBlockedActions) {
+      toastManager.add({
+        title: blockedTooltip,
+        type: "error",
+      });
+      return;
+    }
 
-                          setSelectedTask({
-                            id: task.id,
-                            leadId,
-                            accountId,
-                            remark: task.remark,
-                            dueDate: task.due_date,
-                          });
-                          setOpenTaskModal(true);
-                        }}
-                        className="
-                    group h-full rounded-xl 
-                    border 
-                    bg-background/80 
-                    hover:border-primary/40 
-                    hover:shadow-[0_8px_20px_-4px_rgba(0,0,0,0.12)]
-                    transition-all duration-300 cursor-pointer
-                  "
-                      >
+    if (
+      task.status === "completed" ||
+      task.status === "cancelled"
+    ) {
+      return;
+    }
+
+    setSelectedTask({
+      id: task.id,
+      leadId,
+      accountId,
+      remark: task.remark,
+      dueDate: task.due_date,
+    });
+
+    setOpenTaskModal(true);
+  }}
+>
                         <CardContent className="px-5 space-y-3 flex flex-col h-full justify-between">
                           {/* HEADER */}
                           <div>

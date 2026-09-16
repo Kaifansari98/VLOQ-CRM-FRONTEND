@@ -19,7 +19,9 @@ import { UniversalTable } from "@/components/custom/UniversalTable";
 
 // 🔵 Navigation for Order Login rows
 const navigateOrderLogin = (row: any) =>
-  `/dashboard/production/order-login/details/${row.id}?accountId=${row.accountId}`;
+  `/dashboard/production/order-login/details/${row.id}?accountId=${row.accountId}${
+    row.instanceId ? `&instance_id=${row.instanceId}` : ""
+  }`;
 
 export default function OrderLoginPage() {
   return (
@@ -61,7 +63,8 @@ export default function OrderLoginPage() {
             title="Order Login"
             description="Review and verify all order login entries before progressing to production workflows."
             type="Type 9"
-            enableAdminTabs={true}
+            enableAdminTabs={false}
+            enableOverallData={false}
             onRowNavigate={navigateOrderLogin}
           />
         </Suspense>

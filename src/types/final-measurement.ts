@@ -134,6 +134,7 @@ export interface FinalMeasurementDoc {
   doc_type_id: number;
   created_at: string;
   signedUrl: string;
+  product_structure_instance_id?: number | null;
 }
 
 export interface FinalMeasurementLeadDetails {

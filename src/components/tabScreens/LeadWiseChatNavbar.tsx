@@ -4,8 +4,12 @@ import { useLeadById } from "@/hooks/useLeadsQueries";
 import { useLeadChatMembers } from "@/hooks/useLeadChatRoom";
 import { useAppSelector } from "@/redux/store";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { getInitials } from "@/lib/utils";
-import { Search, Users } from "lucide-react";
 
 interface LeadWiseChatNavbarProps {
   leadId: number;
@@ -46,11 +50,18 @@ export default function LeadWiseChatNavbar({
       <div className="flex flex-row gap-5 items-center">
         <div className="flex -space-x-2">
           {(membersData?.data ?? []).map((member) => (
-            <Avatar key={member.id} className="h-9 w-9 ring-2 ring-background">
-              <AvatarFallback className="text-xs font-semibold">
-                {getInitials(member.user_name || "User")}
-              </AvatarFallback>
-            </Avatar>
+            <Tooltip key={member.id}>
+              <TooltipTrigger asChild>
+                <Avatar className="h-9 w-9 ring-2 ring-background cursor-pointer">
+                  <AvatarFallback className="text-xs font-semibold">
+                    {getInitials(member.user_name || "User")}
+                  </AvatarFallback>
+                </Avatar>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                {member.user_name || "User"}
+              </TooltipContent>
+            </Tooltip>
           ))}
         </div>
       </div>

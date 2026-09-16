@@ -7,20 +7,33 @@ import { Command, CommandGroup, CommandItem } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 
-const options = [
-  { label: "Option A", value: "a" },
-  { label: "Option B", value: "b" },
-  { label: "Option C", value: "c" },
-]
+export interface MultiSelectOption {
+  label: string;
+  value: string;
+}
 
-export function MultiSelect() {
+interface MultiSelectProps {
+  options: MultiSelectOption[];
+  selected: string[];
+  onChange: (selected: string[]) => void;
+  placeholder?: string;
+  className?: string;
+}
+
+export function MultiSelect({
+  options = [],
+  selected = [],
+  onChange,
+  placeholder = "Select options",
+  className,
+}: MultiSelectProps) {
   const [open, setOpen] = React.useState(false)
-  const [selected, setSelected] = React.useState<string[]>([])
 
   const toggleOption = (value: string) => {
-    setSelected((prev) =>
-      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
-    )
+    const nextSelected = selected.includes(value)
+      ? selected.filter((v) => v !== value)
+      : [...selected, value];
+    onChange(nextSelected);
   }
 
   return (
@@ -29,19 +42,24 @@ export function MultiSelect() {
         <Button
           variant="outline"
           role="combobox"
-          className="w-[200px] justify-between"
+          className={cn("w-full justify-between text-left font-normal", className)}
         >
-          {selected.length > 0 ? `${selected.length} selected` : "Select options"}
+          <span className="truncate">
+            {selected.length > 0
+              ? `${selected.length} selected`
+              : placeholder}
+          </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0">
+      <PopoverContent className="w-full min-w-[200px] p-0" align="start">
         <Command>
-          <CommandGroup>
+          <CommandGroup className="max-h-60 overflow-y-auto">
             {options.map((opt) => (
               <CommandItem
                 key={opt.value}
                 onSelect={() => toggleOption(opt.value)}
+                className="cursor-pointer"
               >
                 <Check
                   className={cn(
@@ -58,3 +76,4 @@ export function MultiSelect() {
     </Popover>
   )
 }
+

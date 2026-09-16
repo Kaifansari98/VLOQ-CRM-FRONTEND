@@ -1,16 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAppSelector } from "@/redux/store";
 import {
-  // ClientDocDetailsResponse,
   ClientDocumentationResponse,
+  ClientDocMoveEligibilityData,
 } from "@/types/client-documentation";
 import {
   getClientDocumentationDetails,
   getClientDocumentationLeads,
+  moveLeadToClientApproval,
   uploadMoreClientDocumentation,
+  getClientDocMoveEligibility,
   UploadMoreDocPayload,
 } from "@/api/client-documentation";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 
 export interface ClientDoc {
   id: number;
@@ -19,16 +21,43 @@ export interface ClientDoc {
   signed_url: string;
   tech_check_status: string;
   created_at: string;
+  product_structure_instance_id?: number | null;
+}
+
+export interface ClientDocInstanceGroup {
+  instance_id: number | null;
+  instance_title: string;
+  quantity_index: number | null;
+  product_structure: {
+    id: number;
+    type: string;
+  } | null;
+  documents: {
+    ppt: ClientDoc[];
+    pytha: ClientDoc[];
+  };
 }
 
 export interface ClientDocDetailsResponse {
   id: number;
   vendor_id: number;
   status_id: number;
+  instance_count?: number;
+  product_structure_instances?: {
+    id: number;
+    title: string;
+    quantity_index: number;
+    no_of_client_documents_initially_submitted?: number | null;
+    productStructure?: {
+      id: number;
+      type: string;
+    };
+  }[];
   documents: {
     ppt: ClientDoc[];
     pytha: ClientDoc[];
   };
+  documents_by_instance?: ClientDocInstanceGroup[];
 }
 
 export const useClientDocumentationLeads = () => {
@@ -48,12 +77,29 @@ export const useClientDocumentationLeads = () => {
 
 export const useClientDocumentationDetails = (
   vendorId: number,
-  leadId: number
+  leadId: number,
+  userId?: number,
+  instanceId?: number,
+  productTypeId?: number,
 ) => {
   return useQuery<ClientDocDetailsResponse>({
-    queryKey: ["clientDocumentationDetails", vendorId, leadId],
-    queryFn: () => getClientDocumentationDetails(vendorId, leadId),
-    enabled: !!vendorId && !!leadId,
+    queryKey: [
+      "clientDocumentationDetails",
+      vendorId,
+      leadId,
+      userId,
+      instanceId,
+      productTypeId,
+    ],
+    queryFn: () =>
+      getClientDocumentationDetails(
+        vendorId,
+        leadId,
+        userId,
+        instanceId,
+        productTypeId,
+      ),
+    enabled: !!vendorId && !!leadId && userId !== undefined && userId !== null,
     staleTime: 5 * 60 * 1000,
   });
 };
@@ -64,7 +110,10 @@ export const useUploadMoreClientDocumentation = () => {
     mutationFn: (payload: UploadMoreDocPayload) =>
       uploadMoreClientDocumentation(payload),
     onSuccess: async (data, variables) => {
-      toast.success("Documents uploaded successfully!");
+      toastManager.add({
+        title: "Documents uploaded successfully!",
+        type: "success",
+      });
       await queryClient.refetchQueries({
         queryKey: [
           "clientDocumentationDetails",
@@ -75,8 +124,64 @@ export const useUploadMoreClientDocumentation = () => {
     },
     onError: (error: any) => {
       const message =
-        error?.response?.data?.message || error?.message || "Upload failed";
-      toast.error(message);
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Upload failed";
+      toastManager.add({ title: message, type: "error" });
     },
+  });
+};
+
+export const useMoveLeadToClientApproval = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: {
+      leadId: number;
+      vendorId: number;
+      updatedBy: number;
+    }) => moveLeadToClientApproval(payload),
+    onSuccess: async (_data, variables) => {
+      toastManager.add({
+        title: "Lead moved to Client Approval",
+        type: "success",
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["clientDocumentationDetails"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["clientDocumentationLeads"],
+          exact: false,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["getSelectionData"],
+          exact: false,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["leadStatus"],
+        }),
+      ]);
+    },
+    onError: (error: any) => {
+      const message =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to move lead";
+      toastManager.add({ title: message, type: "error" });
+    },
+  });
+};
+
+export const useClientDocMoveEligibility = (
+  vendorId?: number,
+  leadId?: number,
+) => {
+  return useQuery<ClientDocMoveEligibilityData>({
+    queryKey: ["clientDocMoveEligibility", vendorId, leadId],
+    queryFn: () => getClientDocMoveEligibility(vendorId!, leadId!),
+    enabled: !!vendorId && !!leadId,
+    staleTime: 1000 * 15,
   });
 };

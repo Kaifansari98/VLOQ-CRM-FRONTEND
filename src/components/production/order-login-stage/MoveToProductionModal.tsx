@@ -30,7 +30,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { z } from "zod";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useAppSelector } from "@/redux/store";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -39,6 +39,9 @@ import {
   useFactoryUsers,
 } from "@/api/production/order-login";
 import AssignToPicker from "@/components/assign-to-picker";
+import { useLeadById } from "@/hooks/useLeadsQueries";
+import { createLeadChatRoom } from "@/api/lead-chats";
+import { useClientRequiredCompletionDate } from "@/api/tech-check";
 
 const schema = z.object({
   assign_to_user_id: z.number().min(1, "Please select a Factory user"),
@@ -52,8 +55,9 @@ interface MoveToProductionModalProps {
   data: {
     id: number;
     accountId: number;
+    instanceId?: number | null;
   };
-  client_required_order_login_complition_date? : string;
+  client_required_order_login_complition_date?: string;
 }
 
 export default function MoveToProductionModal({
@@ -66,13 +70,38 @@ export default function MoveToProductionModal({
   const queryClient = useQueryClient();
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userId = useAppSelector((s) => s.auth.user?.id);
+  const vendorCustomUserTypeMode = useAppSelector(
+    (s) =>
+      s.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only as
+        | boolean
+        | null
+        | undefined,
+  );
 
   const { data: factoryUsers, isLoading } = useFactoryUsers(vendorId!);
   const { mutate, isPending } = useRequestToProduction();
-
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedUserName, setSelectedUserName] = useState<string | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const dialogTitle =
+    vendorCustomUserTypeMode === true
+      ? "Assign User for Production"
+      : "Move Lead to Production";
+  const assignUserLabel =
+    vendorCustomUserTypeMode === true
+      ? "Assign Eligible User for Production"
+      : "Assign To Factory User";
+  const loadingUsersLabel =
+    vendorCustomUserTypeMode === true
+      ? "Loading users..."
+      : "Loading factory users...";
+  const confirmTitle =
+    vendorCustomUserTypeMode === true
+      ? "Confirm Production Assignment"
+      : "Confirm Move To Production";
+
+  const { data: leadDetails } = useLeadById(data?.id, vendorId, userId);
+  const { data: dateDetails } = useClientRequiredCompletionDate(vendorId, data?.id);
 
   const mappedUsers =
     factoryUsers?.map((user: any) => ({
@@ -85,29 +114,24 @@ export default function MoveToProductionModal({
     defaultValues: { assign_to_user_id: 0 },
   });
 
-  // ✅ Auto-open confirmation if there’s only one user
-  useEffect(() => {
-    if (open && factoryUsers && factoryUsers.length === 1) {
-      const singleUser = factoryUsers[0];
-      form.setValue("assign_to_user_id", singleUser.id);
-      setSelectedUserId(singleUser.id);
-      setSelectedUserName(singleUser.user_name);
-      onOpenChange(false);
-      setConfirmOpen(true);
-    }
-  }, [open, factoryUsers, form, onOpenChange]);
+
 
   // ✅ Handle confirm submit
   const handleConfirmSubmit = () => {
     const assign_to_user_id =
       selectedUserId || form.getValues("assign_to_user_id");
     if (!vendorId || !userId || !assign_to_user_id) {
-      toast.error("Missing information!");
+      toastManager.add({ title: "Missing information!", type: "error" });
       return;
     }
 
-    if (!client_required_order_login_complition_date) {
-      toast.error("Client required completion date missing!");
+    const requiredDate =
+      client_required_order_login_complition_date ??
+      dateDetails?.client_required_order_login_complition_date ??
+      leadDetails?.data?.lead?.client_required_order_login_complition_date;
+
+    if (!requiredDate) {
+      toastManager.add({ title: "Client required completion date missing!", type: "error" });
       return;
     }
 
@@ -118,24 +142,39 @@ export default function MoveToProductionModal({
         accountId: data.accountId,
         assign_to_user_id,
         created_by: userId,
-        client_required_order_login_complition_date,
+        client_required_order_login_complition_date: requiredDate,
+        instanceId: data.instanceId ?? undefined,
       },
       {
-        onSuccess: () => {
-          toast.success("Lead moved to Production stage successfully!");
+        onSuccess: (response: any) => {
+          // Add factory and pre-prod users to lead chatroom
+          createLeadChatRoom(data.id, userId!).catch(() => {
+            // best-effort — don't block on chat member sync failure
+          });
+
+          const movedToProduction = Boolean(
+            response?.data?.moved_to_production ||
+            response?.moved_to_production,
+          );
+          toastManager.add({ title: movedToProduction
+              ? "All instances completed. Lead moved to Production successfully!"
+              : data.instanceId
+                ? "Order Login marked complete for this instance."
+                : "Lead moved to Production stage successfully!", type: "success" });
           router.push("/dashboard/production/pre-post-prod");
+          queryClient.invalidateQueries({ queryKey: ["leadStats"] });
           queryClient.invalidateQueries({ queryKey: ["leadStats"] });
           queryClient.invalidateQueries({ queryKey: ["universal-stage-leads"] });
           setConfirmOpen(false);
           onOpenChange(false);
         },
-      }
+      },
     );
   };
 
   const onSubmit: SubmitHandler<FormValues> = (values) => {
     const selectedUser = mappedUsers.find(
-      (u: any) => u.id === values.assign_to_user_id
+      (u: any) => u.id === values.assign_to_user_id,
     );
     setSelectedUserName(selectedUser?.label || null);
     setSelectedUserId(values.assign_to_user_id);
@@ -144,17 +183,16 @@ export default function MoveToProductionModal({
 
   return (
     <>
-      {factoryUsers?.length !== 1 && (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={onOpenChange}>
           <DialogContent className="max-w-md w-full">
             <DialogHeader>
-              <DialogTitle>Move Lead to Production</DialogTitle>
+              <DialogTitle>{dialogTitle}</DialogTitle>
             </DialogHeader>
 
             <ScrollArea className="pt-4 max-h-[60vh]">
               {isLoading ? (
                 <div className="p-6 text-center text-muted-foreground">
-                  Loading factory users...
+                  {loadingUsersLabel}
                 </div>
               ) : (
                 <Form {...form}>
@@ -168,7 +206,7 @@ export default function MoveToProductionModal({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-sm">
-                            Assign To Factory User
+                            {assignUserLabel}
                           </FormLabel>
                           <FormControl>
                             <AssignToPicker
@@ -202,16 +240,18 @@ export default function MoveToProductionModal({
             </ScrollArea>
           </DialogContent>
         </Dialog>
-      )}
+
 
       {/* ✅ Confirmation Dialog */}
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Move To Production</AlertDialogTitle>
+            <AlertDialogTitle>{confirmTitle}</AlertDialogTitle>
             <AlertDialogDescription>
               {selectedUserName
-                ? `Are you sure you want to assign this lead to ${selectedUserName} for Production?`
+                ? vendorCustomUserTypeMode === true
+                  ? `Are you sure you want to assign this lead to the eligible user ${selectedUserName} for Production?`
+                  : `Are you sure you want to assign this lead to ${selectedUserName} for Production?`
                 : `Are you sure you want to move this lead to Production stage?`}
             </AlertDialogDescription>
           </AlertDialogHeader>

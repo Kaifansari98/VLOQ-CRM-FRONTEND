@@ -25,25 +25,41 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import React from "react";
 import { Controller, useForm } from "react-hook-form";
 import z from "zod";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useAssignToSiteReadiness } from "@/api/production/useReadyToDispatchLeads";
 import {
   AssignToSiteReadinessPayload,
   useCurrentSitePhotosCount,
+  useSiteReadinessTaskConflicts,
 } from "@/api/production/useReadyToDispatchLeads";
-import { useVendorSiteSupervisorUsers } from "@/hooks/useVendorSiteSupervisorUsers"; // ✅ now using supervisors
+import { useVendorSiteSupervisorUsers } from "@/hooks/useVendorSiteSupervisorUsers";
 import { canAssignSR } from "@/components/utils/privileges";
 import CustomeTooltip from "@/components/custom-tooltip";
+import { canUserShowApprovalRequest, canUserShowFollowUp } from "@/lib/approval-request-privilege";
+import { useAssignedSiteSupervisor } from "@/api/installation/useSiteReadinessLeads";
+import { useFollowUpUsers } from "@/hooks/useFollowUpUsers";
+import { FileUploadField } from "@/components/custom/file-upload";
+import {
+  useApprovalRequestAssignableUsers,
+  useCreateApprovalRequest,
+} from "@/hooks/useApprovalRequests";
+import { useSelfAssignTaskTypes } from "@/hooks/useSelfAssignTaskTypes";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useVendorSalesExecutiveUsers } from "@/hooks/useVendorSalesExecutiveUsers";
 
-// ✅ Validation schema
+function formatLocalDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 const formSchema = z
   .object({
     assign_lead_to: z.number().min(1, "Assign lead to is required"),
-    task_type: z.enum(["Site Readiness", "Follow Up"], {
-      message: "Task Type is required",
-    }),
+    task_type: z.string().min(1, "Task Type is required"),
     due_date: z
       .string()
       .min(1, "Due Date is required")
@@ -62,7 +78,23 @@ const formSchema = z
     {
       message: "Remark is required for Follow Up",
       path: ["remark"],
-    }
+    },
+  )
+  .refine(
+    (data) => {
+      if (data.task_type === "Approval Request") {
+        return (
+          !!data.remark &&
+          data.remark.trim().length > 0 &&
+          data.remark.trim().toLowerCase() !== "n/a"
+        );
+      }
+      return true;
+    },
+    {
+      message: "Remark is required",
+      path: ["remark"],
+    },
   );
 
 interface Props {
@@ -71,9 +103,10 @@ interface Props {
   data?: {
     id: number;
     name: string;
+    furniture_type?: string;
   };
   onlyFollowUp?: boolean;
-  userType?: string; // ✅ add this line
+  userType?: string;
 }
 
 const AssignTaskSiteReadinessForm: React.FC<Props> = ({
@@ -83,59 +116,513 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   userType,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const loggedInUserType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type,
+  );
+  const isApprovalTaskEnabled = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_approval_task_enabled as
+        | boolean
+        | null
+        | undefined,
+  );
+  const isSelfAssignTaskTypeMasterEnabled = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_self_assign_task_type_master_enabed !== false,
+  );
+  const isCustomUsertypeOnlyVendor = useAppSelector(
+    (state) =>
+      state.auth.user?.vendor?.is_this_vendor_is_custom_usertype_only === true,
+  );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
+  );
+  const franchiseId = useAppSelector(
+    (state) => state.auth.franchise_id ?? state.auth.user?.franchise_id,
+  );
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const loggedInUserName = useAppSelector(
+    (state) => state.auth.user?.user_name ?? "",
+  );
+  const userTypeId = useAppSelector((state) => state.auth.user?.user_type_id);
   const router = useRouter();
   const leadId = data?.id!;
   const mutation = useAssignToSiteReadiness(leadId);
+  const approvalRequestMutation = useCreateApprovalRequest(leadId);
   const queryClient = useQueryClient();
-  const isAllowedToAssignSR = canAssignSR(userType);
+  const normalizedUserType = (loggedInUserType ?? userType ?? "").toLowerCase();
+  const isAllowedToAssignSR =
+    normalizedUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.ready_to_dispatch.assign_site_readiness_task.action",
+        )
+      : canAssignSR(userType);
+  const canAssignSiteReadinessForCustomUser =
+    normalizedUserType === "custom"
+      ? customPrivilegeCodes.includes(
+          "production.ready_to_dispatch.assign_site_readiness_task.action",
+        )
+      : true;
+
+  const canShowSiteReadinessTaskType =
+    isAllowedToAssignSR && canAssignSiteReadinessForCustomUser;
+
+  const dueDateMinDate = React.useMemo(() => {
+    const minDate = new Date();
+    minDate.setHours(0, 0, 0, 0);
+
+    if (normalizedUserType === "super-admin") {
+      return formatLocalDate(minDate);
+    }
+
+    minDate.setDate(minDate.getDate() + 2);
+    return formatLocalDate(minDate);
+  }, [normalizedUserType]);
+
+  const { data: assignedSiteSupervisor } = useAssignedSiteSupervisor(
+    vendorId,
+    leadId,
+  );
 
   const {
     data: currentSitePhotosCount,
     isLoading: isLoadingCurrentSitePhotosCount,
   } = useCurrentSitePhotosCount(vendorId, leadId);
+  const {
+    data: taskConflicts,
+    isLoading: isLoadingSiteReadinessTaskConflicts,
+  } = useSiteReadinessTaskConflicts(leadId);
 
   const hasCurrentSitePhotos = currentSitePhotosCount?.hasPhotos === true;
+  const siteReadinessTaskConflicts =
+    taskConflicts?.restrictedTaskConflicts ?? [];
+  const followUpConflicts = taskConflicts?.followUpConflicts ?? [];
+  const siteReadinessConflict = siteReadinessTaskConflicts.find(
+    (task) => task.task_type === "Site Readiness",
+  );
+  const isSiteReadinessConflictLocked = !!siteReadinessConflict;
 
-  // ✅ Fetch vendor site supervisors
   const {
     data: vendorUsers,
     isLoading: loadingUsers,
     error,
   } = useVendorSiteSupervisorUsers(vendorId!);
 
-  const mappedData =
-    vendorUsers?.data?.site_supervisors?.map((user: any) => ({
-      id: user.id,
-      label: user.user_name,
-    })) ?? [];
+  const { data: followUpUsersData } = useFollowUpUsers(
+    vendorId,
+    leadId,
+    franchiseId,
+  );
+  const {
+    data: approvalRequestAssignableUsersData,
+    isLoading: loadingApprovalRequestUsers,
+    error: approvalRequestUsersError,
+  } = useApprovalRequestAssignableUsers(vendorId, leadId);
+
+  // ✅ useLeadAccessControl — replaces manual block status logic
+  const {
+    shouldDisableBlockedActions,
+    blockedTooltip,
+  } = useLeadAccessControl({
+    leadId,
+    userType: loggedInUserType ?? userType,
+  });
+  const {
+    data: customSiteReadinessUsersData,
+    isLoading: loadingCustomSiteReadinessUsers,
+    error: customSiteReadinessUsersError,
+  } = useVendorSalesExecutiveUsers(vendorId!, franchiseId ?? undefined, {
+    assigneeUserType: "custom",
+    requiredPrivilegeCode:
+      "installation.site_readiness.checklist_of_site_readiness.update_edit",
+  });
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       assign_lead_to: undefined,
-      task_type: isAllowedToAssignSR ? "Site Readiness" : "Follow Up",
+      task_type: canShowSiteReadinessTaskType ? "Site Readiness" : "Follow Up",
       due_date: "",
       remark: "N/A",
     },
   });
 
-  // ✅ Auto-select "Follow Up" if Site Readiness is disabled
-  React.useEffect(() => {
-    if (isLoadingCurrentSitePhotosCount || !isAllowedToAssignSR) return;
+  const taskType = form.watch("task_type");
+  const [approvalFiles, setApprovalFiles] = React.useState<File[]>([]);
+  const isApprovalRequestTask = taskType === "Approval Request";
+  const canShowApprovalRequestOption = canUserShowApprovalRequest({
+    isCustomUser: normalizedUserType === "custom",
+    customPrivilegeCodes,
+    isApprovalTaskEnabled,
+    stageProp: "site_readiness",
+  });
+  const canShowFollowUpOption = canUserShowFollowUp({
+    isCustomUser: normalizedUserType === "custom",
+    customPrivilegeCodes,
+    stageProp: "site_readiness",
+  });
 
-    form.setValue(
-      "task_type",
-      hasCurrentSitePhotos ? "Site Readiness" : "Follow Up"
-    );
+  const {
+    data: selfAssignTaskTypes = [],
+    isLoading: loadingSelfAssignTaskTypes,
+    error: selfAssignTaskTypesError,
+  } = useSelfAssignTaskTypes(
+    vendorId,
+    userTypeId,
+    isSelfAssignTaskTypeMasterEnabled,
+  );
+  const selfAssignTaskTypeNames = React.useMemo(
+    () =>
+      Array.from(
+        new Set(
+          selfAssignTaskTypes
+            .map((taskType) => taskType.type?.trim())
+            .filter(
+              (taskType): taskType is string =>
+                !!taskType &&
+                !["Site Readiness", "Follow Up", "Approval Request"].includes(
+                  taskType,
+                ),
+            ),
+        ),
+      ),
+    [selfAssignTaskTypes],
+  );
+  const isSelfAssignTask = selfAssignTaskTypeNames.includes(taskType);
+
+  const siteSupervisorList = (vendorUsers?.data?.site_supervisors ?? [])
+    .filter(
+      (user: any) =>
+        String(user.user_type?.user_type ?? "").toLowerCase() !== "master-admin",
+    )
+    .map((user: any) => ({
+      id: user.id,
+      label: user.user_name,
+    }));
+
+  const followUpTooltip =
+    "A Follow Up Task is already assigned to this user, which is not yet completed.";
+
+  const approvalRequestUsers = React.useMemo(() => {
+    const users = approvalRequestAssignableUsersData?.users ?? [];
+    const leadFranchiseId = approvalRequestAssignableUsersData?.leadFranchiseId;
+
+    return users.filter((user) => {
+      const normalizedAssignableUserType = String(
+        user.user_type?.user_type ?? "",
+      ).toLowerCase();
+
+      if (user.id === userId) return false;
+      if (normalizedAssignableUserType === "master-admin") return false;
+
+      if (leadFranchiseId !== undefined && leadFranchiseId !== null) {
+        if (
+          user.franchise_id !== leadFranchiseId &&
+          ["sales-executive", "admin"].includes(normalizedAssignableUserType)
+        ) {
+          return false;
+        }
+      }
+
+      return true;
+    });
   }, [
-    isAllowedToAssignSR,
-    hasCurrentSitePhotos,
-    isLoadingCurrentSitePhotosCount,
+    approvalRequestAssignableUsersData?.users,
+    approvalRequestAssignableUsersData?.leadFranchiseId,
+    userId,
+  ]);
+
+  const followUpAssignableUsers = (followUpUsersData?.data?.users ?? []).filter(
+    (u: any) =>
+      String(u.user_type?.user_type ?? "").toLowerCase() !== "master-admin",
+  );
+  const customFollowUpAssignableUsers = React.useMemo(() => {
+    const users = followUpAssignableUsers.filter((u: any) =>
+      ["custom", "super-admin"].includes(
+        String(u.user_type?.user_type ?? "").toLowerCase(),
+      ),
+    );
+
+    if (!userId || !loggedInUserName || normalizedUserType !== "custom") {
+      return users;
+    }
+
+    const hasSelf = users.some((u: any) => u.id === userId);
+    if (hasSelf) return users;
+
+    const mergedUsers = [
+      ...users,
+      {
+        id: userId,
+        user_name: loggedInUserName,
+        user_type: { user_type: "custom" },
+      },
+    ];
+    return mergedUsers.filter(
+      (user: any, index: number, array: any[]) =>
+        array.findIndex((candidate: any) => candidate.id === user.id) === index,
+    );
+  }, [followUpAssignableUsers, loggedInUserName, normalizedUserType, userId]);
+  const customSiteReadinessUsers = React.useMemo(
+    () =>
+      (customSiteReadinessUsersData?.data?.sales_executives ?? []).filter(
+        (u: any) =>
+          String(u.user_type?.user_type ?? "").toLowerCase() === "custom",
+      ),
+    [customSiteReadinessUsersData?.data?.sales_executives],
+  );
+  const shouldUseCustomSiteReadinessUsers =
+    isCustomUsertypeOnlyVendor && taskType === "Site Readiness";
+
+  const mappedData = isApprovalRequestTask
+    ? approvalRequestUsers.map((user) => ({
+        id: user.id,
+        label: user.user_name,
+      }))
+    : isSelfAssignTask
+      ? normalizedUserType === "master-admin"
+        ? []
+        : [{ id: userId ?? 0, label: loggedInUserName }]
+      : shouldUseCustomSiteReadinessUsers
+      ? customSiteReadinessUsers.map((u: any) => ({
+          id: u.id,
+          label: u.user_name,
+          disabled: false,
+          tooltip: undefined,
+        }))
+    : normalizedUserType === "custom"
+      ? customFollowUpAssignableUsers.map((u: any) => ({
+          id: u.id,
+          label: u.user_name,
+          disabled: false,
+          tooltip: undefined,
+        }))
+      : taskType === "Follow Up"
+        ? followUpAssignableUsers.map((u: any) => ({
+            id: u.id,
+            label: u.user_name,
+            disabled:
+              u.id !== userId &&
+              followUpConflicts.some((task) => task.assignee?.id === u.id),
+            tooltip:
+              u.id !== userId &&
+              followUpConflicts.some((task) => task.assignee?.id === u.id)
+                ? followUpTooltip
+                : undefined,
+          }))
+        : siteSupervisorList;
+
+  const assignedSupervisorId =
+    assignedSiteSupervisor?.supervisor?.id ??
+    assignedSiteSupervisor?.user_id ??
+    undefined;
+  const matchedSupervisorId = siteSupervisorList.find(
+    (user: { id: number; label: string }) => user.id === assignedSupervisorId,
+  )?.id;
+  const isSiteReadinessTask = taskType === "Site Readiness";
+  const shouldLockAssignee =
+    normalizedUserType !== "custom" &&
+    isSiteReadinessTask &&
+    !!matchedSupervisorId;
+  const isSiteReadinessSelectionDisabled =
+    isLoadingSiteReadinessTaskConflicts ||
+    isSiteReadinessConflictLocked ||
+    !hasCurrentSitePhotos;
+  const siteReadinessDisabledTooltip = isLoadingSiteReadinessTaskConflicts
+    ? "Checking existing tasks"
+    : isSiteReadinessConflictLocked
+      ? "Site Readiness task already created and not completed"
+      : "Please upload current site photos before moving this lead to Site Readiness.";
+
+  React.useEffect(() => {
+    if (!open || isLoadingCurrentSitePhotosCount) return;
+
+    const currentTaskType = form.getValues("task_type");
+
+    if (
+      isSelfAssignTask ||
+      currentTaskType === "Approval Request" ||
+      currentTaskType === "Follow Up"
+    ) {
+      return;
+    }
+
+    const nextTaskType =
+      canShowSiteReadinessTaskType && !isSiteReadinessSelectionDisabled
+        ? "Site Readiness"
+        : "Follow Up";
+
+    if (currentTaskType !== nextTaskType) {
+      form.setValue("task_type", nextTaskType, { shouldValidate: true });
+    }
+  }, [
+    canShowSiteReadinessTaskType,
     form,
+    isLoadingCurrentSitePhotosCount,
+    isSelfAssignTask,
+    isSiteReadinessSelectionDisabled,
+    open,
+  ]);
+
+  React.useEffect(() => {
+    if (
+      taskType === "Approval Request" &&
+      form.getValues("remark")?.trim().toLowerCase() === "n/a"
+    ) {
+      form.setValue("remark", "");
+    }
+  }, [form, taskType]);
+
+  React.useEffect(() => {
+    if (
+      isSelfAssignTask &&
+      userId &&
+      form.getValues("assign_lead_to") !== userId
+    ) {
+      form.setValue("assign_lead_to", userId, { shouldValidate: true });
+    }
+  }, [form, isSelfAssignTask, userId]);
+
+  React.useEffect(() => {
+    if (
+      normalizedUserType !== "custom" &&
+      isSiteReadinessTask &&
+      shouldLockAssignee &&
+      form.getValues("assign_lead_to") !== matchedSupervisorId
+    ) {
+      form.setValue("assign_lead_to", matchedSupervisorId);
+    }
+  }, [
+    isSiteReadinessTask,
+    shouldLockAssignee,
+    matchedSupervisorId,
+    form,
+    normalizedUserType,
+  ]);
+
+  React.useEffect(() => {
+    if (taskType !== "Follow Up") return;
+
+    const selectedUserId = form.getValues("assign_lead_to");
+    if (
+      selectedUserId &&
+      selectedUserId !== userId &&
+      followUpConflicts.some((task) => task.assignee?.id === selectedUserId)
+    ) {
+      form.resetField("assign_lead_to");
+    }
+  }, [form, taskType, followUpConflicts, userId]);
+
+  React.useEffect(() => {
+    const selectedUserId = form.getValues("assign_lead_to");
+    if (!selectedUserId) return;
+
+    const isSelectedUserStillAvailable = mappedData.some(
+      (user: { id: number }) => user.id === selectedUserId,
+    );
+
+    if (!isSelectedUserStillAvailable) {
+      form.resetField("assign_lead_to");
+    }
+  }, [form, mappedData]);
+
+  React.useEffect(() => {
+    if (
+      form.getValues("task_type") === "Approval Request" &&
+      !canShowApprovalRequestOption
+    ) {
+      form.setValue(
+        "task_type",
+        canShowSiteReadinessTaskType && !isSiteReadinessSelectionDisabled
+          ? "Site Readiness"
+          : "Follow Up",
+      );
+    }
+  }, [
+    canShowApprovalRequestOption,
+    canShowSiteReadinessTaskType,
+    form,
+    isSiteReadinessSelectionDisabled,
   ]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
+    if (values.task_type === "Approval Request") {
+      approvalRequestMutation.mutate(
+        {
+          due_date: values.due_date,
+          remark: values.remark?.trim() ?? "",
+          user_id: values.assign_lead_to!,
+          created_by: userId!,
+          files: approvalFiles,
+        },
+        {
+          onSuccess: () => {
+            toastManager.add({
+              title: "Approval request assigned successfully!",
+              type: "success",
+            });
+            queryClient.invalidateQueries({ queryKey: ["leadStats"] });
+            queryClient.invalidateQueries({
+              queryKey: ["universal-stage-leads"],
+              exact: false,
+            });
+            queryClient.invalidateQueries({ queryKey: ["vendorOverallLeads"] });
+            queryClient.invalidateQueries({ queryKey: ["vendorAllTasks"] });
+            queryClient.invalidateQueries({ queryKey: ["vendorUserTasks"] });
+            queryClient.invalidateQueries({ queryKey: ["leadLogs"] });
+            setApprovalFiles([]);
+            onOpenChange(false);
+            form.reset({
+              assign_lead_to: undefined,
+              task_type: canShowSiteReadinessTaskType
+                ? "Site Readiness"
+                : "Follow Up",
+              due_date: "",
+              remark: "N/A",
+            });
+          },
+          onError: (error: any) => {
+            const backendMessage =
+              error?.response?.data?.message ||
+              error.message ||
+              "Something went wrong";
+            toastManager.add({ title: backendMessage, type: "error" });
+          },
+        },
+      );
+      return;
+    }
+
+    if (
+      values.task_type === "Site Readiness" &&
+      isSiteReadinessConflictLocked
+    ) {
+      toastManager.add({
+        title: "Site Readiness task already created and not completed",
+        type: "error",
+      });
+      return;
+    }
+
+    if (
+      values.task_type === "Follow Up" &&
+      values.assign_lead_to !== userId &&
+      followUpConflicts.some(
+        (task) => task.assignee?.id === values.assign_lead_to,
+      )
+    ) {
+      toastManager.add({ title: followUpTooltip, type: "error" });
+      return;
+    }
+
+    if (isSelfAssignTask && values.assign_lead_to !== userId) {
+      toastManager.add({
+        title: "This task type can only be assigned to yourself.",
+        type: "error",
+      });
+      return;
+    }
+
     const payload: AssignToSiteReadinessPayload = {
       task_type: values.task_type,
       due_date: values.due_date,
@@ -146,18 +633,16 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
 
     mutation.mutate(payload, {
       onSuccess: () => {
-        toast.success("Task assigned successfully!");
-        queryClient.invalidateQueries({
-          queryKey: ["leadStats"],
+        toastManager.add({
+          title: "Task assigned successfully!",
+          type: "success",
         });
-
+        queryClient.invalidateQueries({ queryKey: ["leadStats"] });
         queryClient.invalidateQueries({
           queryKey: ["universal-stage-leads"],
           exact: false,
         });
-        queryClient.invalidateQueries({
-          queryKey: ["vendorOverallLeads"],
-        });
+        queryClient.invalidateQueries({ queryKey: ["vendorOverallLeads"] });
         onOpenChange(false);
 
         if (values.task_type === "Site Readiness") {
@@ -169,33 +654,38 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
           error?.response?.data?.message ||
           error.message ||
           "Something went wrong";
-        toast.error(backendMessage);
+        toastManager.add({ title: backendMessage, type: "error" });
       },
     });
   };
 
-  if (loadingUsers) {
+  if (
+    loadingUsers ||
+    loadingApprovalRequestUsers ||
+    loadingSelfAssignTaskTypes ||
+    loadingCustomSiteReadinessUsers
+  ) {
     return (
-      <BaseModal
-        open={open}
-        onOpenChange={onOpenChange}
-        title="Loading..."
-        size="lg"
-      >
-        <div className="p-6">Loading Site Supervisors...</div>
+      <BaseModal open={open} onOpenChange={onOpenChange} title="Loading..." size="lg">
+        <div className="p-6">Loading users...</div>
       </BaseModal>
     );
   }
 
-  if (error) {
+  if (
+    error ||
+    approvalRequestUsersError ||
+    selfAssignTaskTypesError ||
+    customSiteReadinessUsersError
+  ) {
+    const resolvedError =
+      error ||
+      approvalRequestUsersError ||
+      selfAssignTaskTypesError ||
+      customSiteReadinessUsersError;
     return (
-      <BaseModal
-        open={open}
-        onOpenChange={onOpenChange}
-        title="Error"
-        size="lg"
-      >
-        <div className="p-6">Error: {error.message}</div>
+      <BaseModal open={open} onOpenChange={onOpenChange} title="Error" size="lg">
+        <div className="p-6">Error: {resolvedError?.message}</div>
       </BaseModal>
     );
   }
@@ -205,21 +695,30 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
       open={open}
       onOpenChange={onOpenChange}
       title={
-        form.watch("task_type") === "Follow Up" || !isAllowedToAssignSR
-          ? "Assign Task for Follow Up"
-          : "Assign Task for Site Readiness"
+        form.watch("task_type") === "Approval Request"
+          ? "Assign Approval Request"
+          : isSelfAssignTask
+            ? `Assign Task for ${form.watch("task_type")}`
+            : form.watch("task_type") === "Follow Up" ||
+                !canShowSiteReadinessTaskType
+              ? "Assign Task for Follow Up"
+              : "Assign Task for Site Readiness"
       }
       description={
-        form.watch("task_type") === "Follow Up" || !isAllowedToAssignSR
-          ? "Use this form to assign a follow up task."
-          : "Use this form to assign a task to a Site Supervisor for Site Readiness."
+        form.watch("task_type") === "Approval Request"
+          ? "Use this form to assign an approval request."
+          : isSelfAssignTask
+            ? `Use this form to assign a ${form.watch("task_type").toLowerCase()} task to yourself.`
+            : form.watch("task_type") === "Follow Up" ||
+                !canShowSiteReadinessTaskType
+              ? "Use this form to assign a follow up task."
+              : "Use this form to assign a task to a Site Supervisor for Site Readiness."
       }
       size="smd"
     >
       <div className="px-6 py-6 space-y-8">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-            {/* Task Type */}
             <Controller
               control={form.control}
               name="task_type"
@@ -233,32 +732,79 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {isAllowedToAssignSR ? (
-                        <>
-                          {/* 🔹 If API says site photos missing → disable + tooltip */}
-                          {hasCurrentSitePhotos ? (
-                            <SelectItem value="Site Readiness">
-                              Site Readiness
-                            </SelectItem>
-                          ) : (
-                            <CustomeTooltip
-                              value="Please upload current site photos before moving this lead to Site Readiness."
-                              truncateValue={
-                                <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
-                                  <span>Site Readiness</span>
-                                  <span className="text-xs italic text-muted-foreground ml-1">
-                                    (locked)
-                                  </span>
-                                </div>
-                              }
-                            />
-                          )}
+                      {/* ── Site Readiness ── */}
+                      {canShowSiteReadinessTaskType && (
+                        shouldDisableBlockedActions ? (
+                          <CustomeTooltip
+                            value={blockedTooltip}
+                            truncateValue={
+                              <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                <span>Site Readiness</span>
+                                <span className="text-xs italic">(blocked)</span>
+                              </div>
+                            }
+                          />
+                        ) : isSiteReadinessSelectionDisabled ? (
+                          <CustomeTooltip
+                            value={siteReadinessDisabledTooltip}
+                            truncateValue={
+                              <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                <span>Site Readiness</span>
+                                <span className="text-xs italic text-muted-foreground ml-1">
+                                  (locked)
+                                </span>
+                              </div>
+                            }
+                          />
+                        ) : (
+                          <SelectItem value="Site Readiness">
+                            Site Readiness
+                          </SelectItem>
+                        )
+                      )}
 
-                          {/* Always allow Follow Up */}
-                          <SelectItem value="Follow Up">Follow Up</SelectItem>
-                        </>
-                      ) : (
+                      {/* ── Follow Up ── */}
+                      {canShowFollowUpOption && (
                         <SelectItem value="Follow Up">Follow Up</SelectItem>
+                      )}
+
+                      {/* ── Approval Request ── */}
+                      {canShowApprovalRequestOption && (
+                        shouldDisableBlockedActions ? (
+                          <CustomeTooltip
+                            value={blockedTooltip}
+                            truncateValue={
+                              <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                <span>Approval Request</span>
+                                <span className="text-xs italic">(blocked)</span>
+                              </div>
+                            }
+                          />
+                        ) : (
+                          <SelectItem value="Approval Request">
+                            Approval Request
+                          </SelectItem>
+                        )
+                      )}
+
+                      {/* ── Self Assign Task Types ── */}
+                      {selfAssignTaskTypeNames.map((taskTypeName) =>
+                        shouldDisableBlockedActions ? (
+                          <CustomeTooltip
+                            key={taskTypeName}
+                            value={blockedTooltip}
+                            truncateValue={
+                              <div className="opacity-50 cursor-not-allowed flex items-center justify-between w-full px-2 py-1.5 text-sm">
+                                <span>{taskTypeName}</span>
+                                <span className="text-xs italic">(blocked)</span>
+                              </div>
+                            }
+                          />
+                        ) : (
+                          <SelectItem key={taskTypeName} value={taskTypeName}>
+                            {taskTypeName}
+                          </SelectItem>
+                        ),
                       )}
                     </SelectContent>
                   </Select>
@@ -275,13 +821,16 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm">
-                      Select Site Supervisor
+                      {normalizedUserType === "custom"
+                        ? "Select User"
+                        : "Select Site Supervisor"}
                     </FormLabel>
                     <FormControl>
                       <AssignToPicker
                         data={mappedData}
                         value={field.value}
                         onChange={field.onChange}
+                        disabled={shouldLockAssignee || isSelfAssignTask}
                       />
                     </FormControl>
                     <FormMessage />
@@ -300,6 +849,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
                         value={field.value}
                         onChange={field.onChange}
                         restriction="futureOnly"
+                        minDate={dueDateMinDate}
                       />
                     </FormControl>
                     <FormMessage />
@@ -326,6 +876,21 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
                 </FormItem>
               )}
             />
+
+            {isApprovalRequestTask && (
+              <FormItem>
+                <FormLabel className="text-sm">File Upload</FormLabel>
+                <FormControl>
+                  <FileUploadField
+                    value={approvalFiles}
+                    onChange={setApprovalFiles}
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.zip,.pyo"
+                    multiple
+                    maxFiles={10}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
 
             {/* Buttons */}
             <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">

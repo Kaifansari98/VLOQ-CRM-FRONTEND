@@ -93,4 +93,5 @@ export interface AssignTo {
 
 export interface StatusType {
   type: string;
+  tag?: string;
 }

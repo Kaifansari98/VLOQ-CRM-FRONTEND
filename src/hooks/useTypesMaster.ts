@@ -1,20 +1,478 @@
 // src/hooks/useTypesMaster.ts
 import { useQuery } from "@tanstack/react-query"
 import {
+  createCompanyVendor,
+  createProductItemCode,
+  createProductSubStructure,
+  createProductStructure,
+  createProductType,
+  createInstallerUser,
+  createIssueLogType,
+  fetchInstallerUsersForMaster,
+  fetchUsersForMaster,
+  fetchPrivilegeMasters,
+  fetchCompanyVendorsForMaster,
+  fetchCarcassTypes,
+  createCarcassType,
+  fetchCarcasMaterials,
+  createCarcasMaterial,
+  fetchCarcassMaterialFinishes,
+  fetchAllCarcassMaterialFinishes,
+  createCarcassMaterialFinish,
+  uploadCarcassMaterialFinishes,
+  fetchFastProductionTimelineRules,
+  fetchShutterTypes,
+  createShutterType,
+  fetchShutterMaterials,
+  createShutterMaterial,
+  fetchShutterMaterialFinishes,
+  fetchAllShutterMaterialFinishes,
+  createShutterMaterialFinish,
+  uploadShutterMaterialFinishes,
+  createShutterSubType,
+  fetchCarcassLegs,
+  createCarcassLegs,
+  fetchSkirtingCarcassLegs,
+  fetchAllSkirtingCarcassLegs,
+  createSkirtingCarcassLegs,
+  fetchSkirtingCarcassLegsColors,
+  fetchAllSkirtingCarcassLegsColors,
+  createSkirtingCarcassLegsColor,
+  uploadSkirtingCarcassLegsColors,
+  fetchLightCarcasTypes,
+  createLightCarcasType,
+  fetchLightCarcasUnits,
+  fetchAllLightCarcasUnits,
+  createLightCarcasUnit,
+  uploadLightCarcasUnits,
+  fetchOtherAppliances,
+  createOtherAppliances,
+  uploadOtherAppliances,
+  downloadOtherAppliancesReport,
+  fetchHandleTypes,
+  createHandleType,
+  createTimelineRule,
+  updateTimelineRule,
+  createMiscellaneousTeam,
+  createMiscellaneousType,
+  createSourceType,
+  createSiteType,
+  fetchIssueLogTypes,
+  fetchMiscellaneousTeams,
+  fetchMiscellaneousTypes,
   fetchSourceTypes,
   fetchProductStructureTypes,
+  fetchProductSubStructures,
+  fetchProductItemCodes,
   fetchSiteTypes,
+  fetchSiteTypesForMaster,
   fetchProductTypes,
+  fetchB2BRequirementTypes,
+  fetchProcessBriefs,
+  fetchSmallOrderRequestTypes,
+  updateCompanyVendor,
+  updateCompanyVendorStatus,
+  updateInstallerUser,
+  updateInstallerUserStatus,
+  updateIssueLogType,
+  updateIssueLogTypeStatus,
+  updateMiscellaneousTeam,
+  updateMiscellaneousTeamStatus,
+  updateMiscellaneousType,
+  updateMiscellaneousTypeStatus,
+  updateSourceType,
+  updateSourceTypeStatus,
+  updateSiteType,
+  updateSiteTypeStatus,
+  fetchUserTypes,
+  createUser,
+  updateUser,
+  updateUserPrivileges,
+  type UpdateUserMasterPayload,
+  createProcessBriefApi,
+  updateProcessBriefApi,
+  toggleProcessBriefStatusApi,
+  fetchProcessBriefMachineMappingsApi,
+  saveProcessBriefMachineMappingsApi,
 } from "@/api/typesMasterApi"
 import { useAppSelector } from "@/redux/store" // assuming you have typed hooks
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toastManager } from "@/components/ui/toast";
 
-export const useSourceTypes = () => {
+const getSiteTypesQueryKey = (vendorId?: number) => ["siteTypes", vendorId];
+const getSiteTypesMasterQueryKey = (vendorId?: number) => ["siteTypesMaster", vendorId];
+const getSourceTypesQueryKey = (vendorId?: number) => ["sourceTypes", vendorId];
+const getMiscellaneousTypesQueryKey = (vendorId?: number) => ["miscellaneousTypes", vendorId];
+const getIssueLogTypesQueryKey = (vendorId?: number) => ["issueLogTypes", vendorId];
+const getMiscellaneousTeamsQueryKey = (vendorId?: number) => ["miscellaneousTeams", vendorId];
+const getInstallerUsersMasterQueryKey = (vendorId?: number) => ["installerUsersMaster", vendorId];
+const getCompanyVendorsMasterQueryKey = (
+  vendorId?: number,
+  isInventory?: boolean,
+) => ["companyVendorsMaster", vendorId, isInventory];
+const getUsersMasterQueryKey = (vendorId?: number) => ["usersMaster", vendorId];
+const getPrivilegeMastersQueryKey = (
+  vendorId?: number,
+  search?: string,
+  userId?: number | null,
+) => [
+  "privilegeMasters",
+  vendorId,
+  search ?? "",
+  userId ?? null,
+];
+const getCarcassTypesQueryKey = (vendorId?: number) => ["carcassTypes", vendorId];
+const getCarcasMaterialsQueryKey = (vendorId?: number) => ["carcasMaterials", vendorId];
+const getCarcassMaterialFinishesQueryKey = (carcasMaterialId?: number) => ["carcassMaterialFinishes", carcasMaterialId];
+const getShutterTypesQueryKey = (vendorId?: number) => ["shutterTypes", vendorId];
+const getShutterMaterialsQueryKey = (vendorId?: number) => ["shutterMaterials", vendorId];
+const getShutterMaterialFinishesQueryKey = (shutterMaterialId?: number) => ["shutterMaterialFinishes", shutterMaterialId];
+const getCarcassLegsQueryKey = (vendorId?: number) => ["carcassLegs", vendorId];
+const getSkirtingCarcassLegsQueryKey = (carcassLegsId?: number) => ["skirtingCarcassLegs", carcassLegsId];
+const getSkirtingCarcassLegsColorsQueryKey = (skirtingCarcassLegsId?: number) => ["skirtingCarcassLegsColors", skirtingCarcassLegsId];
+const getLightCarcasTypesQueryKey = (vendorId?: number) => ["lightCarcasTypes", vendorId];
+const getLightCarcasUnitsQueryKey = (lightCarcasTypeId?: number) => ["lightCarcasUnits", lightCarcasTypeId];
+const getOtherAppliancesQueryKey = (vendorId?: number) => ["otherAppliances", vendorId];
+const getHandleTypesQueryKey = (vendorId?: number) => ["handleTypes", vendorId];
+const getFastProductionTimelineRulesQueryKey = (vendorId?: number) => ["fastProductionTimelineRules", vendorId];
+const getSmallOrderRequestTypesQueryKey = (vendorId?: number) => ["smallOrderRequestTypes", vendorId];
+
+const useResolvedVendorId = (vendorIdOverride?: number) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return vendorIdOverride ?? vendorId;
+};
+
+export const useCompanyVendorsForMaster = (
+  vendorIdOverride?: number,
+  isInventory?: boolean,
+) => {
+  const vendorId = useResolvedVendorId(vendorIdOverride);
   return useQuery({
-    queryKey: ["sourceTypes", vendorId],
+    queryKey: getCompanyVendorsMasterQueryKey(vendorId, isInventory),
+    queryFn: () => fetchCompanyVendorsForMaster(vendorId!, isInventory),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+};
+
+export const useUsersForMaster = (params: {
+  page: number;
+  limit: number;
+  search?: string;
+  franchise_id?: number;
+}, vendorIdOverride?: number) => {
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+  return useQuery({
+    queryKey: getUsersMasterQueryKey(vendorId).concat([
+      params.page,
+      params.limit,
+      params.search ?? "",
+      params.franchise_id ?? 0,
+    ]),
+    queryFn: () => fetchUsersForMaster(vendorId!, params),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  })
+}
+
+export const usePrivilegeMasters = ({
+  enabled = true,
+  search = "",
+  userId,
+  vendorIdOverride,
+}: {
+  enabled?: boolean;
+  search?: string;
+  userId?: number | null;
+  vendorIdOverride?: number;
+} = {}) => {
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+  return useQuery({
+    queryKey: getPrivilegeMastersQueryKey(vendorId, search, userId),
+    queryFn: () => fetchPrivilegeMasters(vendorId!, search, userId),
+    enabled: !!vendorId && enabled,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useCreateCompanyVendor = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: (payload: Parameters<typeof createCompanyVendor>[1]) =>
+      createCompanyVendor(vendorId!, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["companyVendorsMaster"] });
+      queryClient.invalidateQueries({ queryKey: ["companyVendors", vendorId] });
+      toastManager.add({
+        title: "Company vendor created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to create company vendor.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useInstallerUsersForMaster = (vendorIdOverride?: number) => {
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+  return useQuery({
+    queryKey: getInstallerUsersMasterQueryKey(vendorId),
+    queryFn: () => fetchInstallerUsersForMaster(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  })
+}
+
+export const useCreateInstallerUser = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: createInstallerUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getInstallerUsersMasterQueryKey(vendorId) });
+      toastManager.add({
+        title: "Installer created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to create installer.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useMiscellaneousTeams = (vendorIdOverride?: number) => {
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+  return useQuery({
+    queryKey: getMiscellaneousTeamsQueryKey(vendorId),
+    queryFn: () => fetchMiscellaneousTeams(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  })
+}
+
+export const useCreateMiscellaneousTeam = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: createMiscellaneousTeam,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getMiscellaneousTeamsQueryKey(vendorId) });
+      toastManager.add({
+        title: "Miscellaneous team created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to create miscellaneous team.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useIssueLogTypes = (vendorIdOverride?: number) => {
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+  return useQuery({
+    queryKey: getIssueLogTypesQueryKey(vendorId),
+    queryFn: () => fetchIssueLogTypes(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  })
+}
+
+export const useCreateIssueLogType = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: createIssueLogType,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getIssueLogTypesQueryKey(vendorId) });
+      toastManager.add({
+        title: "Issue log type created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to create issue log type.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useMiscellaneousTypes = (vendorIdOverride?: number) => {
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+  return useQuery({
+    queryKey: getMiscellaneousTypesQueryKey(vendorId),
+    queryFn: () => fetchMiscellaneousTypes(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  })
+}
+
+export const useCreateMiscellaneousType = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: createMiscellaneousType,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getMiscellaneousTypesQueryKey(vendorId) });
+      toastManager.add({
+        title: "Miscellaneous type created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to create miscellaneous type.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useSourceTypes = (vendorIdOverride?: number) => {
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+  return useQuery({
+    queryKey: getSourceTypesQueryKey(vendorId),
     queryFn: () => fetchSourceTypes(vendorId!),
     enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
   })
+}
+
+export const useCreateSourceType = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: createSourceType,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getSourceTypesQueryKey(vendorId) });
+      toastManager.add({ title: "Source type created successfully.", type: "success" });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to create source type.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useCreateProductType = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: createProductType,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["productTypes", vendorId] });
+      toastManager.add({
+        title: "Product type created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to create product type.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useCreateProductStructure = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: createProductStructure,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["productStructureTypes", vendorId] });
+      toastManager.add({
+        title: "Product structure created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to create product structure.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useCreateProductSubStructure = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: createProductSubStructure,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["productSubStructures", vendorId] });
+      toastManager.add({
+        title: "Product sub structure created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          "Failed to create product sub structure.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useCreateProductItemCode = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: createProductItemCode,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["productItemCodes", vendorId] });
+      toastManager.add({
+        title: "Product item code created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error || "Failed to create product item code.",
+        type: "error",
+      });
+    },
+  });
 }
 
 export const useProductStructureTypes = () => {
@@ -26,13 +484,1232 @@ export const useProductStructureTypes = () => {
   })
 }
 
-export const useSiteTypes = () => {
+export const useProductSubStructures = () => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id)
   return useQuery({
-    queryKey: ["siteTypes", vendorId],
+    queryKey: ["productSubStructures", vendorId],
+    queryFn: () => fetchProductSubStructures(vendorId!),
+    enabled: !!vendorId,
+  })
+}
+
+export const useProductItemCodes = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id)
+  return useQuery({
+    queryKey: ["productItemCodes", vendorId],
+    queryFn: () => fetchProductItemCodes(vendorId!),
+    enabled: !!vendorId,
+  })
+}
+
+export const useCarcassTypes = (onlyFastProduction: boolean = false) => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: [...getCarcassTypesQueryKey(vendorId), onlyFastProduction ? "fast-production-only" : "all"],
+    queryFn: () => fetchCarcassTypes(vendorId!, onlyFastProduction),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useCarcasMaterials = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: getCarcasMaterialsQueryKey(vendorId),
+    queryFn: () => fetchCarcasMaterials(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useCarcassMaterialFinishes = (carcasMaterialId?: number) => {
+  return useQuery({
+    queryKey: getCarcassMaterialFinishesQueryKey(carcasMaterialId),
+    queryFn: () => fetchCarcassMaterialFinishes(carcasMaterialId!),
+    enabled: !!carcasMaterialId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useAllCarcassMaterialFinishes = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: ["allCarcassMaterialFinishes", vendorId],
+    queryFn: () => fetchAllCarcassMaterialFinishes(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useCreateCarcassType = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createCarcassType,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: getCarcassTypesQueryKey(vendorId),
+      });
+      toastManager.add({
+        title: "Carcass type created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to create carcass type.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useCreateCarcasMaterial = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createCarcasMaterial,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: getCarcasMaterialsQueryKey(vendorId),
+      });
+      toastManager.add({
+        title: "Carcass material created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error || "Failed to create carcass material.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useCreateCarcassMaterialFinish = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createCarcassMaterialFinish,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["allCarcassMaterialFinishes", vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["carcassMaterialFinishes"],
+      });
+      toastManager.add({
+        title: "Carcass material finish created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          "Failed to create carcass material finish.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUploadCarcassMaterialFinishes = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: (formData: FormData) => uploadCarcassMaterialFinishes(formData),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({
+        queryKey: getCarcassTypesQueryKey(vendorId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: getCarcasMaterialsQueryKey(vendorId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["allCarcassMaterialFinishes", vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["carcassMaterialFinishes"],
+      });
+      const summary = res.data
+        ? `Finishes added: ${res.data.finishesCreated}, Skipped: ${res.data.skippedCount}`
+        : "";
+      toastManager.add({
+        title: `Carcass masters uploaded successfully. ${summary}`,
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error || "Failed to upload carcass masters.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useCreateShutterType = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createShutterType,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: getShutterTypesQueryKey(vendorId),
+      });
+      toastManager.add({
+        title: "Shutter type created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to create shutter type.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useCreateShutterSubType = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createShutterSubType,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: getShutterTypesQueryKey(vendorId),
+      });
+      toastManager.add({
+        title: "Shutter sub type created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          "Failed to create shutter sub type.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useCreateShutterMaterial = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createShutterMaterial,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: getShutterMaterialsQueryKey(vendorId),
+      });
+      toastManager.add({
+        title: "Shutter material created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error || "Failed to create shutter material.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useCreateShutterMaterialFinish = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createShutterMaterialFinish,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["allShutterMaterialFinishes", vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["shutterMaterialFinishes"],
+      });
+      toastManager.add({
+        title: "Shutter material finish created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          "Failed to create shutter material finish.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUploadShutterMaterialFinishes = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: (formData: FormData) => uploadShutterMaterialFinishes(formData),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({
+        queryKey: getShutterTypesQueryKey(vendorId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: getShutterMaterialsQueryKey(vendorId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["allShutterMaterialFinishes", vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["shutterMaterialFinishes"],
+      });
+      const summary = res.data
+        ? `Finishes added: ${res.data.finishesCreated}, Skipped: ${res.data.skippedCount}`
+        : "";
+      toastManager.add({
+        title: `Shutter masters uploaded successfully. ${summary}`,
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error || "Failed to upload shutter masters.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useCreateCarcassLegs = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createCarcassLegs,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: getCarcassLegsQueryKey(vendorId),
+      });
+      toastManager.add({
+        title: "Carcass legs created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to create carcass legs.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useCreateSkirtingCarcassLegs = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createSkirtingCarcassLegs,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["allSkirtingCarcassLegs", vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["skirtingCarcassLegs"],
+      });
+      toastManager.add({
+        title: "Skirting created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to create skirting.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useCreateSkirtingCarcassLegsColor = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createSkirtingCarcassLegsColor,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["allSkirtingCarcassLegsColors", vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["skirtingCarcassLegsColors"],
+      });
+      toastManager.add({
+        title: "Skirting color created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error || "Failed to create skirting color.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUploadSkirtingCarcassLegsColors = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: (formData: FormData) =>
+      uploadSkirtingCarcassLegsColors(formData),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({
+        queryKey: getCarcassLegsQueryKey(vendorId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["allSkirtingCarcassLegs", vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["skirtingCarcassLegs"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["allSkirtingCarcassLegsColors", vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["skirtingCarcassLegsColors"],
+      });
+      const summary = res.data
+        ? `Colors added: ${res.data.finishesCreated}, Skipped: ${res.data.skippedCount}`
+        : "";
+      toastManager.add({
+        title: `Hardware masters uploaded successfully. ${summary}`,
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error || "Failed to upload hardware masters.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useShutterTypes = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: getShutterTypesQueryKey(vendorId),
+    queryFn: () => fetchShutterTypes(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useShutterMaterials = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: getShutterMaterialsQueryKey(vendorId),
+    queryFn: () => fetchShutterMaterials(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useShutterMaterialFinishes = (shutterMaterialId?: number) => {
+  return useQuery({
+    queryKey: getShutterMaterialFinishesQueryKey(shutterMaterialId),
+    queryFn: () => fetchShutterMaterialFinishes(shutterMaterialId!),
+    enabled: !!shutterMaterialId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useCarcassLegs = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: getCarcassLegsQueryKey(vendorId),
+    queryFn: () => fetchCarcassLegs(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useSkirtingCarcassLegs = (carcassLegsId?: number) => {
+  return useQuery({
+    queryKey: getSkirtingCarcassLegsQueryKey(carcassLegsId),
+    queryFn: () => fetchSkirtingCarcassLegs(carcassLegsId!),
+    enabled: !!carcassLegsId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useLightCarcasTypes = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: getLightCarcasTypesQueryKey(vendorId),
+    queryFn: () => fetchLightCarcasTypes(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useLightCarcasUnits = (lightCarcasTypeId?: number) => {
+  return useQuery({
+    queryKey: getLightCarcasUnitsQueryKey(lightCarcasTypeId),
+    queryFn: () => fetchLightCarcasUnits(lightCarcasTypeId!),
+    enabled: !!lightCarcasTypeId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useAllLightCarcasUnits = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: ["allLightCarcasUnits", vendorId],
+    queryFn: () => fetchAllLightCarcasUnits(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useCreateLightCarcasType = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createLightCarcasType,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: getLightCarcasTypesQueryKey(vendorId),
+      });
+      toastManager.add({
+        title: "Light carcas type created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          "Failed to create light carcas type.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useCreateLightCarcasUnit = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createLightCarcasUnit,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["allLightCarcasUnits", vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["lightCarcasUnits"],
+      });
+      toastManager.add({
+        title: "Light carcas unit created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          "Failed to create light carcas unit.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUploadLightCarcasUnits = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: (formData: FormData) => uploadLightCarcasUnits(formData),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({
+        queryKey: getLightCarcasTypesQueryKey(vendorId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["allLightCarcasUnits", vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["lightCarcasUnits"],
+      });
+      const summary = res.data
+        ? `Units added: ${res.data.unitsCreated}, Skipped: ${res.data.skippedCount}`
+        : "";
+      toastManager.add({
+        title: `Light masters uploaded successfully. ${summary}`,
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error || "Failed to upload light masters.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useOtherAppliances = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: getOtherAppliancesQueryKey(vendorId),
+    queryFn: () => fetchOtherAppliances(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useCreateOtherAppliances = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createOtherAppliances,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: getOtherAppliancesQueryKey(vendorId),
+      });
+      toastManager.add({
+        title: "Entry created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to create entry.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUploadOtherAppliances = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: (formData: FormData) => uploadOtherAppliances(formData),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({
+        queryKey: getOtherAppliancesQueryKey(vendorId),
+      });
+      const summary = res.data
+        ? `Created: ${res.data.createdCount}, Updated: ${res.data.updatedCount}, Skipped: ${res.data.skippedCount}`
+        : "";
+      toastManager.add({
+        title: `Other appliances uploaded successfully. ${summary}`,
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error || "Failed to upload other appliances.",
+        type: "error",
+      });
+    },
+  });
+};
+
+export const useDownloadOtherAppliancesReport = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: () => {
+      if (!vendorId) throw new Error("Vendor ID is missing");
+      return downloadOtherAppliancesReport(vendorId);
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.message || "Failed to download other appliances report.",
+        type: "error",
+      });
+    },
+  });
+};
+
+export const useSkirtingCarcassLegsColors = (skirtingCarcassLegsId?: number) => {
+  return useQuery({
+    queryKey: getSkirtingCarcassLegsColorsQueryKey(skirtingCarcassLegsId),
+    queryFn: () => fetchSkirtingCarcassLegsColors(skirtingCarcassLegsId!),
+    enabled: !!skirtingCarcassLegsId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useAllShutterMaterialFinishes = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: ["allShutterMaterialFinishes", vendorId],
+    queryFn: () => fetchAllShutterMaterialFinishes(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useAllSkirtingCarcassLegs = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: ["allSkirtingCarcassLegs", vendorId],
+    queryFn: () => fetchAllSkirtingCarcassLegs(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useAllSkirtingCarcassLegsColors = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: ["allSkirtingCarcassLegsColors", vendorId],
+    queryFn: () => fetchAllSkirtingCarcassLegsColors(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useHandleTypes = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: getHandleTypesQueryKey(vendorId),
+    queryFn: () => fetchHandleTypes(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useCreateHandleType = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createHandleType,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: getHandleTypesQueryKey(vendorId),
+      });
+      toastManager.add({
+        title: "Handle type created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to create handle type.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useFastProductionTimelineRules = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  return useQuery({
+    queryKey: getFastProductionTimelineRulesQueryKey(vendorId),
+    queryFn: () => fetchFastProductionTimelineRules(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useCreateTimelineRule = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: createTimelineRule,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: getFastProductionTimelineRulesQueryKey(vendorId),
+      });
+      toastManager.add({
+        title: "Timeline rule created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to create timeline rule.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUpdateTimelineRule = () => {
+  const queryClient = useQueryClient();
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+
+  return useMutation({
+    mutationFn: updateTimelineRule,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: getFastProductionTimelineRulesQueryKey(vendorId),
+      });
+      toastManager.add({
+        title: "Timeline rule updated successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to update timeline rule.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useSiteTypes = (vendorIdOverride?: number) => {
+  const vendorId = useResolvedVendorId(vendorIdOverride)
+  return useQuery({
+    queryKey: getSiteTypesQueryKey(vendorId),
     queryFn: () => fetchSiteTypes(vendorId!),
     enabled: !!vendorId,
   })
+}
+
+export const useCreateSiteType = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: createSiteType,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getSiteTypesQueryKey(vendorId) });
+      queryClient.invalidateQueries({ queryKey: getSiteTypesMasterQueryKey(vendorId) });
+      toastManager.add({ title: "Site type created successfully.", type: "success" });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to create site type.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useSiteTypesForMaster = (vendorIdOverride?: number) => {
+  const vendorId = useResolvedVendorId(vendorIdOverride)
+  return useQuery({
+    queryKey: getSiteTypesMasterQueryKey(vendorId),
+    queryFn: () => fetchSiteTypesForMaster(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  })
+}
+
+export const useUpdateSiteType = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: ({ id, type }: { id: number; type: string }) =>
+      updateSiteType(id, { type }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getSiteTypesQueryKey(vendorId) });
+      queryClient.invalidateQueries({ queryKey: getSiteTypesMasterQueryKey(vendorId) });
+      toastManager.add({ title: "Site type updated successfully.", type: "success" });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.status === 404
+            ? "Edit API is not live on the backend yet. Restart/deploy the backend."
+            : error?.response?.data?.error || "Failed to update site type.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUpdateSiteTypeStatus = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: ({ id, status }: { id: number; status: "active" | "inactive" }) =>
+      updateSiteTypeStatus(id, { status }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: getSiteTypesQueryKey(vendorId) });
+      queryClient.invalidateQueries({ queryKey: getSiteTypesMasterQueryKey(vendorId) });
+      toastManager.add({
+        title: `Site type marked ${variables.status}.`,
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to update site type status.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUpdateSourceType = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: ({ id, type }: { id: number; type: string }) =>
+      updateSourceType(id, { type }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getSourceTypesQueryKey(vendorId) });
+      toastManager.add({ title: "Source type updated successfully.", type: "success" });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.status === 404
+            ? "Edit API is not live on the backend yet. Restart/deploy the backend."
+            : error?.response?.data?.error || "Failed to update source type.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUpdateSourceTypeStatus = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: ({ id, status }: { id: number; status: "active" | "inactive" }) =>
+      updateSourceTypeStatus(id, { status }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: getSourceTypesQueryKey(vendorId) });
+      toastManager.add({
+        title: `Source type marked ${variables.status}.`,
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to update source type status.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUpdateMiscellaneousType = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: ({ id, name }: { id: number; name: string }) =>
+      updateMiscellaneousType(id, { name }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getMiscellaneousTypesQueryKey(vendorId) });
+      toastManager.add({
+        title: "Miscellaneous type updated successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.status === 404
+            ? "Edit API is not live on the backend yet. Restart/deploy the backend."
+            : error?.response?.data?.error || "Failed to update miscellaneous type.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUpdateMiscellaneousTypeStatus = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: ({ id, status }: { id: number; status: "active" | "inactive" }) =>
+      updateMiscellaneousTypeStatus(id, { status }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: getMiscellaneousTypesQueryKey(vendorId) });
+      toastManager.add({
+        title: `Miscellaneous type marked ${variables.status}.`,
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error || "Failed to update miscellaneous type status.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUpdateIssueLogType = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: ({ id, name }: { id: number; name: string }) =>
+      updateIssueLogType(id, { name }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getIssueLogTypesQueryKey(vendorId) });
+      toastManager.add({
+        title: "Issue log type updated successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.status === 404
+            ? "Edit API is not live on the backend yet. Restart/deploy the backend."
+            : error?.response?.data?.error || "Failed to update issue log type.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUpdateIssueLogTypeStatus = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: ({ id, status }: { id: number; status: "active" | "inactive" }) =>
+      updateIssueLogTypeStatus(id, { status }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: getIssueLogTypesQueryKey(vendorId) });
+      toastManager.add({
+        title: `Issue log type marked ${variables.status}.`,
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error || "Failed to update issue log type status.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUpdateMiscellaneousTeam = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: ({ id, name }: { id: number; name: string }) =>
+      updateMiscellaneousTeam(id, { name }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getMiscellaneousTeamsQueryKey(vendorId) });
+      toastManager.add({
+        title: "Miscellaneous team updated successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.status === 404
+            ? "Edit API is not live on the backend yet. Restart/deploy the backend."
+            : error?.response?.data?.error || "Failed to update miscellaneous team.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUpdateMiscellaneousTeamStatus = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: ({ id, status }: { id: number; status: "active" | "inactive" }) =>
+      updateMiscellaneousTeamStatus(id, { status }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: getMiscellaneousTeamsQueryKey(vendorId) });
+      toastManager.add({
+        title: `Miscellaneous team marked ${variables.status}.`,
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error || "Failed to update miscellaneous team status.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUpdateInstallerUser = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      installer_name,
+      contact_number,
+    }: {
+      id: number;
+      installer_name: string;
+      contact_number?: string;
+    }) => updateInstallerUser(id, { installer_name, contact_number }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getInstallerUsersMasterQueryKey(vendorId) });
+      toastManager.add({
+        title: "Installer updated successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.status === 404
+            ? "Edit API is not live on the backend yet. Restart/deploy the backend."
+            : error?.response?.data?.error || "Failed to update installer.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUpdateInstallerUserStatus = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: ({ id, status }: { id: number; status: "active" | "inactive" }) =>
+      updateInstallerUserStatus(id, { status }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: getInstallerUsersMasterQueryKey(vendorId) });
+      toastManager.add({
+        title: `Installer marked ${variables.status}.`,
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.error || "Failed to update installer status.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUpdateCompanyVendor = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: ({
+      companyVendorId,
+      payload,
+    }: {
+      companyVendorId: number;
+      payload: Parameters<typeof updateCompanyVendor>[2];
+    }) => updateCompanyVendor(vendorId!, companyVendorId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["companyVendorsMaster"] });
+      queryClient.invalidateQueries({ queryKey: ["companyVendors", vendorId] });
+      toastManager.add({
+        title: "Company vendor updated successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to update company vendor.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUpdateCompanyVendorStatus = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: ({
+      companyVendorId,
+      payload,
+    }: {
+      companyVendorId: number;
+      payload: Parameters<typeof updateCompanyVendorStatus>[2];
+    }) => updateCompanyVendorStatus(vendorId!, companyVendorId, payload),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["companyVendorsMaster"] });
+      queryClient.invalidateQueries({ queryKey: ["companyVendors", vendorId] });
+      toastManager.add({
+        title: `Company vendor marked ${variables.payload.is_deleted ? "inactive" : "active"}.`,
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.message || "Failed to update company vendor status.",
+        type: "error",
+      });
+    },
+  });
 }
 
 export const useProductTypes = () => {
@@ -43,3 +1720,226 @@ export const useProductTypes = () => {
     enabled: !!vendorId,
   })
 }
+
+export const useB2BRequirementTypes = (vendorIdOverride?: number) => {
+  const authVendorId = useAppSelector((state) => state.auth.user?.vendor_id)
+  const vendorId = vendorIdOverride ?? authVendorId
+  return useQuery({
+    queryKey: ["b2bRequirementTypes", vendorId],
+    queryFn: () => fetchB2BRequirementTypes(vendorId!),
+    enabled: !!vendorId,
+  })
+}
+
+export const useProcessBriefs = () => {
+  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id)
+  return useQuery({
+    queryKey: ["processBriefs", vendorId],
+    queryFn: () => fetchProcessBriefs(vendorId!),
+    enabled: !!vendorId,
+  })
+}
+
+export const useSmallOrderRequestTypes = (vendorIdOverride?: number) => {
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+  return useQuery({
+    queryKey: getSmallOrderRequestTypesQueryKey(vendorId),
+    queryFn: () => fetchSmallOrderRequestTypes(vendorId!),
+    enabled: !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useUserTypes = () => {
+  return useQuery({
+    queryKey: ["userTypes"],
+    queryFn: fetchUserTypes,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export const useCreateUser = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: createUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getUsersMasterQueryKey(vendorId) });
+      toastManager.add({
+        title: "User created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to create user.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUpdateUser = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: ({ userId, payload }: { userId: number; payload: UpdateUserMasterPayload }) =>
+      updateUser(userId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getUsersMasterQueryKey(vendorId) });
+      toastManager.add({
+        title: "User updated successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to update user.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useUpdateUserPrivileges = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: ({
+      userId,
+      payload,
+    }: {
+      userId: number;
+      payload: { vendor_id: number; privilege_ids: number[] };
+    }) => updateUserPrivileges(userId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["privilegeMasters", vendorId],
+      });
+      toastManager.add({
+        title: "User privileges updated successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.message ||
+          "Failed to update user privileges.",
+        type: "error",
+      });
+    },
+  });
+}
+
+export const useCreateProcessBrief = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: createProcessBriefApi,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["processBriefs", vendorId] });
+      toastManager.add({
+        title: "Process brief created successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to create process brief.",
+        type: "error",
+      });
+    },
+  });
+};
+
+export const useUpdateProcessBrief = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: ({ id, name }: { id: number; name: string }) =>
+      updateProcessBriefApi(id, { name }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["processBriefs", vendorId] });
+      toastManager.add({
+        title: "Process brief updated successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to update process brief.",
+        type: "error",
+      });
+    },
+  });
+};
+
+export const useToggleProcessBriefStatus = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: ({ id, is_active }: { id: number; is_active: boolean }) =>
+      toggleProcessBriefStatusApi(id, { is_active }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["processBriefs", vendorId] });
+      toastManager.add({
+        title: "Process brief status updated successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to update process brief status.",
+        type: "error",
+      });
+    },
+  });
+};
+
+export const useProcessBriefMachineMappings = (processBriefId: number, vendorIdOverride?: number) => {
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+  return useQuery({
+    queryKey: ["processBriefMachineMappings", processBriefId, vendorId],
+    queryFn: () => fetchProcessBriefMachineMappingsApi(processBriefId, vendorId!),
+    enabled: !!processBriefId && !!vendorId,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+};
+
+export const useSaveProcessBriefMachineMappings = (vendorIdOverride?: number) => {
+  const queryClient = useQueryClient();
+  const vendorId = useResolvedVendorId(vendorIdOverride);
+
+  return useMutation({
+    mutationFn: saveProcessBriefMachineMappingsApi,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["processBriefMachineMappings", variables.process_brief_id, vendorId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["processBriefs", vendorId],
+      });
+      toastManager.add({
+        title: "Process brief machine mappings saved successfully.",
+        type: "success",
+      });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.message || "Failed to save machine mappings.",
+        type: "error",
+      });
+    },
+  });
+};
+

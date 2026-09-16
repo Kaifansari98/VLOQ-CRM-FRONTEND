@@ -3,13 +3,14 @@
 import { useAppSelector } from "@/redux/store";
 import { useOrderLoginByLead } from "@/api/production/order-login";
 import OrderLoginCard from "./OrderLoginCard";
-import { useClientRequiredCompletionDate } from "@/api/tech-check";
-import { motion } from "framer-motion";
 import ComingSoon from "@/components/generics/ComingSoon";
+import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
+import { useLeadProductStructureInstances } from "@/hooks/useLeadsQueries";
 
 interface PreProductionDetailsProps {
   leadId?: number;
   accountId?: number;
+  instanceId?: number | null;
 }
 
 export interface CompanyVendor {
@@ -29,6 +30,7 @@ export interface OrderLoginItem {
   completion_date: string; // ISO string
 
   companyVendor?: CompanyVendor;
+  company_vendor_id?: number | null;
 
   created_at?: string;
   updated_at?: string;
@@ -36,13 +38,41 @@ export interface OrderLoginItem {
 
 export default function PreProductionDetails({
   leadId,
+  instanceId,
 }: PreProductionDetailsProps) {
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
-  const { data, isLoading, isError } = useOrderLoginByLead(vendorId, leadId);
-  console.log("Under production Data: ", data);
+  const { data: instancesResponse } = useLeadProductStructureInstances(
+    leadId,
+    vendorId,
+  );
 
-  const { data: ClientRequiredCompletionDate } =
-    useClientRequiredCompletionDate(vendorId, leadId);
+  const structureInstances: any[] = Array.isArray(instancesResponse?.data)
+    ? instancesResponse.data
+    : (instancesResponse?.data?.data ?? []);
+  const resolvedCurrentInstance =
+    instanceId != null
+      ? structureInstances.find(
+          (instance: any) => Number(instance.id) === Number(instanceId),
+        )
+      : structureInstances.length === 1
+        ? structureInstances[0]
+        : null;
+  const effectiveInstanceId = resolvedCurrentInstance?.id ?? instanceId;
+  const isOrderLoginFilled =
+    resolvedCurrentInstance?.is_order_login_filled === true;
+  console.log("[PreProductionDetails] order login gate", {
+    leadId,
+    instanceId,
+    effectiveInstanceId,
+    resolvedCurrentInstance,
+    is_order_login_filled: resolvedCurrentInstance?.is_order_login_filled,
+    isOrderLoginFilled,
+  });
+  const { data, isLoading, isError } = useOrderLoginByLead(
+    vendorId,
+    leadId,
+    effectiveInstanceId ?? undefined
+  );
 
   if (isLoading) {
     return (
@@ -60,70 +90,27 @@ export default function PreProductionDetails({
     );
   }
 
+  if (!isOrderLoginFilled) {
+    return (
+      <ComingSoon
+        heading="Order Login Is Still Pending"
+        description="The backend user has not marked Order Login as filled for this instance yet."
+      />
+    );
+  }
+
   if (!data || data.length === 0) {
     return (
       <ComingSoon
-        heading="Order Login Not Available"
-        description="This lead does not have any order login entries yet. Please initiate the order login process to continue."
+        heading="Order Login Is Still Pending"
+        description="Order Login has not been filled for this instance yet. The backend user must finish and mark Order Login as filled before these cards become available."
       />
     );
   }
 
   return (
     <div className="space-y-4 bg-[#fff] dark:bg-[#0a0a0a]">
-      {/* -------- Client Required Completion Section (Exact Same UI) -------- */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="
-    flex items-center gap-3 
-    bg-muted/50 
-    dark:bg-neutral-900/50
-    border border-border 
-    rounded-xl 
-    px-4 py-3 
-    backdrop-blur-sm
-  "
-      >
-        {/* Animated green dot */}
-        <motion.div
-          className="
-      w-3 h-3 rounded-full 
-      bg-green-500 
-      shadow-[0_0_8px_rgba(34,197,94,0.6)]
-    "
-          animate={{
-            scale: [1, 1.25, 1],
-            opacity: [0.75, 1, 0.75],
-          }}
-          transition={{
-            repeat: Infinity,
-            duration: 1.6,
-            ease: "easeInOut",
-          }}
-        />
-
-        {/* Label + Date */}
-        <div className="flex flex-col">
-          <p className="text-xs font-medium text-muted-foreground tracking-wide">
-            Client Required Delivery Date
-          </p>
-
-          <span className="text-sm font-semibold text-foreground">
-            {ClientRequiredCompletionDate?.client_required_order_login_complition_date
-              ? new Date(
-                  ClientRequiredCompletionDate.client_required_order_login_complition_date,
-                ).toLocaleDateString("en-GB", {
-                  weekday: "long",
-                  day: "2-digit",
-                  month: "long",
-                  year: "numeric",
-                })
-              : "Not specified"}
-          </span>
-        </div>
-      </motion.div>
+      <ClientRequiredDeliveryDateBanner leadId={leadId || 0} />
 
       {data.length === 0 ? (
         <p className="text-sm text-muted-foreground">
@@ -139,6 +126,7 @@ export default function PreProductionDetails({
               desc={item.item_desc}
               companyVendorName={item.companyVendor?.company_name}
               companyVendorContact={item.companyVendor?.contact_no}
+              currentCompanyVendorId={item.company_vendor_id}
               leadId={leadId || 0}
               vendorId={vendorId || 0}
               factory_user_vendor_selection_remark={

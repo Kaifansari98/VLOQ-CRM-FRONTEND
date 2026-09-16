@@ -4,7 +4,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import * as React from "react";
 
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { MapPin } from "lucide-react";
+import { MapPin, Zap } from "lucide-react";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 
 import RemarkTooltip from "@/components/origin-tooltip";
@@ -17,61 +17,335 @@ import {
   tableSingleValueMultiSelectFilter,
   tableTextSearchFilter,
 } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import CustomeStatusBadge from "@/components/origin-status-badge";
+import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface UniversalColumnOptions {
   showStageColumn?: boolean;
+  showProductionStatusColumn?: boolean;
+  showPriorityColumn?: boolean;
+  showServicingColumn?: boolean;
+  showDesignerColumn?: boolean;
+  showSiteSupervisorColumn?: boolean;
+  hideFurnitureTypeColumn?: boolean;
+  renameFurnitureStructureToItemGroup?: boolean;
+  isB2b?: boolean;
+}
+
+function toTitleCase(value: string) {
+  return value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
+export function parseLeadCode(leadCode: string | null | undefined): {
+  prefix: string;
+  num: number;
+  sub: number;
+} {
+  if (!leadCode) return { prefix: "", num: 0, sub: 0 };
+  const str = String(leadCode).trim();
+  const match = str.match(/^(.*?)(?:[-_\s/])?(\d+)(?:[.\-_](\d+))?$/);
+  if (match) {
+    return {
+      prefix: (match[1] || "").toUpperCase(),
+      num: parseInt(match[2], 10) || 0,
+      sub: match[3] ? parseInt(match[3], 10) : 0,
+    };
+  }
+  const numMatch = str.match(/(\d+)/);
+  return {
+    prefix: str.replace(/\d+/g, "").toUpperCase(),
+    num: numMatch ? parseInt(numMatch[1], 10) : 0,
+    sub: 0,
+  };
+}
+
+export function compareLeadCodesNumeric(
+  codeA: string | null | undefined,
+  codeB: string | null | undefined,
+  direction: "asc" | "desc" = "asc",
+): number {
+  const a = parseLeadCode(codeA);
+  const b = parseLeadCode(codeB);
+
+  if (a.prefix === b.prefix) {
+    if (a.num !== b.num) {
+      return direction === "desc" ? b.num - a.num : a.num - b.num;
+    }
+    if (a.sub !== b.sub) {
+      return a.sub - b.sub;
+    }
+    return 0;
+  }
+
+  if (a.num !== b.num) {
+    return direction === "desc" ? b.num - a.num : a.num - b.num;
+  }
+  const prefixCmp = a.prefix.localeCompare(b.prefix);
+  if (prefixCmp !== 0) {
+    return direction === "desc" ? -prefixCmp : prefixCmp;
+  }
+  return a.sub - b.sub;
 }
 
 export function getUniversalTableColumns(
   options: UniversalColumnOptions = {},
 ): ColumnDef<LeadColumn>[] {
-  const { showStageColumn = false } = options;
+  const {
+    showStageColumn = false,
+    showProductionStatusColumn = false,
+    showPriorityColumn = false,
+    showServicingColumn = false,
+    showDesignerColumn = false,
+    showSiteSupervisorColumn = false,
+    hideFurnitureTypeColumn = false,
+    renameFurnitureStructureToItemGroup = false,
+    isB2b = false,
+  } =
+    options;
   const columns: ColumnDef<LeadColumn>[] = [
     // 1) Lead Code
     {
       accessorKey: "lead_code",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Lead Code" />
+      header: ({ column, table }) => (
+        <DataTableColumnHeader column={column} table={table} title="Lead Code" />
       ),
-      cell: ({ row }) => (
-        <div className=" font-medium">{row.getValue("lead_code")}</div>
-      ),
+      cell: ({ row }) => {
+        const isFastProduction = row.original.isFastProduction === true;
+
+      return (
+        <div className="flex items-center gap-2 font-medium">
+          {isFastProduction && (
+            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-orange-300/90 bg-gradient-to-br from-orange-200 via-orange-300 to-orange-500 text-orange-950 shadow-[0_0_0_3px_rgba(251,146,60,0.18),0_10px_24px_-16px_rgba(234,88,12,0.55)] transition-transform duration-300 hover:scale-110 dark:border-orange-400/60 dark:bg-gradient-to-br dark:from-orange-400 dark:via-orange-500 dark:to-red-500 dark:text-white dark:shadow-[0_0_0_3px_rgba(249,115,22,0.18),0_14px_28px_-18px_rgba(249,115,22,0.7)]">
+              <Zap className="h-4 w-4 fill-current animate-pulse motion-reduce:animate-none" />
+            </span>
+          )}
+          <div className="flex flex-col">
+            <span>{row.getValue("lead_code")}</span>
+            {isFastProduction && (
+              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-orange-700 dark:text-orange-300">
+                Fast Production
+              </span>
+            )}
+          </div>
+        </div>
+      );
+      },
       meta: {
         label: "Lead Code",
       },
       enableSorting: true,
       enableHiding: true,
-      enableColumnFilter: true,
-    },
-
-    // 2) Name
-    {
-      accessorKey: "name",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Name" />
-      ),
-      enableSorting: true,
-      enableHiding: true,
-      enableColumnFilter: true,
-      cell: ({ row }) => {
-        const name = row.getValue("name") as string;
-        const maxLength = 25;
-
-        if (name.length <= maxLength) return <span>{name}</span>;
-
-        return (
-          <CustomeTooltip
-            value={name}
-            truncateValue={name.slice(0, maxLength) + "..."}
-          />
-        );
-      },
-
-      meta: {
-        label: "Name",
+      enableColumnFilter: false,
+      sortingFn: (rowA, rowB, columnId) => {
+        const codeA = (rowA.getValue(columnId) as string) ?? "";
+        const codeB = (rowB.getValue(columnId) as string) ?? "";
+        return compareLeadCodesNumeric(codeA, codeB, "asc");
       },
     },
+
+    // 2) Name / Client Name & Project Name (for B2B)
+    ...(isB2b
+      ? ([
+          {
+            accessorKey: "clientName",
+            header: ({ column }) => (
+              <DataTableColumnHeader column={column} title="Client Name" />
+            ),
+            enableSorting: true,
+            enableHiding: true,
+            enableColumnFilter: true,
+            cell: ({ row }) => {
+              const clientName = toTitleCase(
+                (row.getValue("clientName") as string) || (row.original.name as string) || ""
+              );
+              const maxLength = 25;
+
+              if (clientName.length <= maxLength) return <span>{clientName}</span>;
+
+              return (
+                <CustomeTooltip
+                  value={clientName}
+                  truncateValue={clientName.slice(0, maxLength) + "..."}
+                />
+              );
+            },
+            meta: {
+              label: "Client Name",
+            },
+          },
+          {
+            accessorKey: "projectName",
+            header: ({ column }) => (
+              <DataTableColumnHeader column={column} title="Project Name" />
+            ),
+            enableSorting: true,
+            enableHiding: true,
+            enableColumnFilter: true,
+            cell: ({ row }) => {
+              const projectName = toTitleCase(
+                (row.getValue("projectName") as string) || ""
+              );
+              const maxLength = 25;
+
+              if (!projectName) return <span className="text-muted-foreground">—</span>;
+              if (projectName.length <= maxLength) return <span>{projectName}</span>;
+
+              return (
+                <CustomeTooltip
+                  value={projectName}
+                  truncateValue={projectName.slice(0, maxLength) + "..."}
+                />
+              );
+            },
+            meta: {
+              label: "Project Name",
+            },
+          },
+        ] satisfies ColumnDef<LeadColumn>[])
+      : ([
+          {
+            accessorKey: "name",
+            header: ({ column }) => (
+              <DataTableColumnHeader column={column} title="Name" />
+            ),
+            enableSorting: true,
+            enableHiding: true,
+            enableColumnFilter: true,
+            cell: ({ row }) => {
+              const name = toTitleCase((row.getValue("name") as string) ?? "");
+              const maxLength = 25;
+
+              if (name.length <= maxLength) return <span>{name}</span>;
+
+              return (
+                <CustomeTooltip
+                  value={name}
+                  truncateValue={name.slice(0, maxLength) + "..."}
+                />
+              );
+            },
+            meta: {
+              label: "Name",
+            },
+          },
+        ] satisfies ColumnDef<LeadColumn>[])),
+
+    ...(showServicingColumn
+      ? ([
+          {
+            accessorKey: "servicing",
+            header: ({ column }) => (
+              <DataTableColumnHeader column={column} title="Servicing" />
+            ),
+            cell: ({ row }) => {
+              const value = row.getValue("servicing") as string | undefined;
+              return (
+                <span className="text-sm text-foreground">
+                  {value && value.trim() ? value : "—"}
+                </span>
+              );
+            },
+            meta: {
+              label: "Servicing",
+            },
+            enableSorting: false,
+            enableHiding: true,
+            enableColumnFilter: true,
+          },
+        ] satisfies ColumnDef<LeadColumn>[])
+      : []),
+
+    ...(showPriorityColumn
+      ? ([
+          {
+            accessorKey: "city",
+            filterFn: tableTextSearchFilter<LeadColumn>(),
+            header: ({ column }) => (
+              <DataTableColumnHeader column={column} title="City" />
+            ),
+            meta: {
+              label: "City",
+            },
+            enableSorting: false,
+            enableHiding: true,
+            enableColumnFilter: true,
+            cell: ({ row }) => {
+              const value = (row.getValue("city") as string) || (row.original as any)?.city || "";
+              return (
+                <span className="text-xs font-medium text-foreground whitespace-nowrap">
+                  {value && value.trim() ? value : "—"}
+                </span>
+              );
+            },
+          },
+          {
+            accessorKey: "priority",
+            filterFn: tableSingleValueMultiSelectFilter,
+            header: ({ column }) => (
+              <DataTableColumnHeader column={column} title="Priority" />
+            ),
+            meta: {
+              label: "Priority",
+            },
+            enableSorting: false,
+            enableHiding: true,
+            enableColumnFilter: true,
+            cell: ({ row }) => {
+              const value = (row.getValue("priority") as string) || "";
+              if (!value) return "—";
+
+              const config: Record<string, { dot: string; pill: string }> = {
+                High: {
+                  dot: "bg-red-500",
+                  pill: "bg-red-500/10 text-red-600 border-red-200",
+                },
+                Medium: {
+                  dot: "bg-orange-500",
+                  pill: "bg-orange-500/10 text-orange-600 border-orange-200",
+                },
+                Low: {
+                  dot: "bg-yellow-500",
+                  pill: "bg-yellow-500/10 text-yellow-600 border-yellow-200",
+                },
+              };
+
+              const style = config[value] ?? {
+                dot: "bg-zinc-400",
+                pill: "bg-zinc-100 text-zinc-600 border-zinc-200",
+              };
+
+              return (
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium",
+                    style.pill,
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "h-1.5 w-1.5 rounded-full shrink-0",
+                      style.dot,
+                    )}
+                  />
+                  {value}
+                </span>
+              );
+            },
+          },
+        ] satisfies ColumnDef<LeadColumn>[])
+      : []),
 
     // Stage
     ...(showStageColumn
@@ -85,7 +359,7 @@ export function getUniversalTableColumns(
             ),
 
             cell: ({ row }) => {
-              const status = row.getValue("status") as string;
+              const status = row.original.isDraft ? "Draft" : (row.getValue("status") as string);
               return <CustomeStatusBadge title={status} />;
             },
             enableSorting: false,
@@ -109,21 +383,268 @@ export function getUniversalTableColumns(
       enableColumnFilter: true,
     },
 
-    // 4) Product Types
+    // 4) Product Types / Requirement Types
 
-    {
+    ...(!hideFurnitureTypeColumn
+      ? [{
       accessorKey: "furnitureType",
       filterFn: tableMultiValueFilter,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Furniture Type" />
+      header: ({ column, table }) => (
+        <DataTableColumnHeader
+          column={column}
+          table={table}
+          title={isB2b ? "Requirement Type" : "Furniture Type"}
+        />
       ),
       meta: {
-        label: "Furniture Type",
+        label: isB2b ? "Requirement Type" : "Furniture Type",
       },
       enableSorting: false,
       enableHiding: true,
       enableColumnFilter: true,
+      cell: ({ row }) => {
+        const raw = (row.getValue("furnitureType") as string) || "";
+        if (!raw.trim()) return "—";
+
+        const items = raw
+          .split(",")
+          .map((i) => i.trim())
+          .filter(Boolean);
+
+        if (!items.length) return "—";
+
+        const visible = items.slice(0, 2);
+        const remaining = items.slice(2);
+
+        return (
+          <div className="flex items-center gap-1 max-w-[220px] whitespace-nowrap">
+            <span className="truncate text-xs font-medium">{visible.join(", ")}</span>
+            {remaining.length > 0 && (
+              <TooltipProvider delayDuration={100}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="secondary" className="text-xs px-1.5 py-0 cursor-pointer shrink-0">
+                      +{remaining.length}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="bottom"
+                    align="start"
+                    className="max-w-[280px] p-2.5 space-y-1.5 z-50 bg-zinc-900 text-white border border-zinc-700 shadow-xl"
+                  >
+                    <p className="text-[11px] font-bold text-amber-400 uppercase tracking-wider border-b border-zinc-800 pb-1">
+                      {isB2b ? "Requirement Types" : "Furniture Types"}
+                    </p>
+                    {items.map((item, idx) => (
+                      <p key={idx} className="text-xs text-zinc-100 font-medium">
+                        • {item}
+                      </p>
+                    ))}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
+        );
+      },
+    }] satisfies ColumnDef<LeadColumn>[]
+      : []),
+
+    // 4.1) Furniture Structures / Process Brief
+    {
+      accessorKey: "furnitueStructures",
+      filterFn: tableMultiValueFilter,
+
+      header: ({ column, table }) => (
+        <DataTableColumnHeader
+          column={column}
+          table={table}
+          title={
+            isB2b
+              ? "Process Brief"
+              : renameFurnitureStructureToItemGroup
+                ? "Item Group"
+                : "Furniture Structures"
+          }
+        />
+      ),
+
+      meta: {
+        label: isB2b
+          ? "Process Brief"
+          : renameFurnitureStructureToItemGroup
+            ? "Item Group"
+            : "Furniture Structures",
+      },
+
+      enableSorting: false,
+      enableHiding: true,
+      enableColumnFilter: true,
+
+      cell: ({ row }) => {
+        const structures: string[] = row.original.furnitueStructures ?? [];
+        const instanceTitle = row.original.instanceTitle;
+        const instanceDescription = row.original.instanceDescription;
+        const hasInstanceInfo = instanceTitle || instanceDescription;
+
+        if (!structures.length) return "—";
+
+        const parseItem = (itemStr: string) => {
+          const parts = itemStr.split(" - ");
+          if (parts.length >= 2) {
+            return {
+              reqType: parts[0].trim(),
+              briefName: parts.slice(1).join(" - ").trim(),
+              fullLabel: itemStr,
+            };
+          }
+          return {
+            reqType: "",
+            briefName: itemStr,
+            fullLabel: itemStr,
+          };
+        };
+
+        // Group all structures by requirement type for complete hover tooltip context
+        const defaultGroupKey = isB2b
+          ? "Process Briefs"
+          : renameFurnitureStructureToItemGroup
+            ? "Item Groups"
+            : "Furniture Structures";
+        const groupedMap: Record<string, string[]> = {};
+        structures.forEach((itemStr) => {
+          const parsed = parseItem(itemStr);
+          const key = parsed.reqType || defaultGroupKey;
+          if (!groupedMap[key]) groupedMap[key] = [];
+          if (!groupedMap[key].includes(parsed.briefName)) {
+            groupedMap[key].push(parsed.briefName);
+          }
+        });
+
+        const visible = structures.slice(0, 2);
+        const remaining = structures.slice(2);
+
+        return (
+          <div className="flex items-center gap-1 whitespace-nowrap">
+            {visible.map((itemStr: string, index: number) => {
+              const parsed = parseItem(itemStr);
+              const displayName = parsed.briefName;
+
+              return (
+                <TooltipProvider key={index} delayDuration={100}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge
+                        variant="secondary"
+                        className="text-xs px-2 cursor-default inline-flex items-center capitalize max-w-[170px] truncate"
+                      >
+                        <span className="truncate">
+                          {instanceTitle ?? displayName}
+                        </span>
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent
+                      side="bottom"
+                      align="start"
+                      className="max-w-[280px] p-2 space-y-1 z-50 bg-zinc-900 text-white border border-zinc-700 shadow-xl"
+                    >
+                      {parsed.reqType ? (
+                        <p className="text-xs font-semibold text-zinc-100">
+                          <span className="text-amber-400">{parsed.reqType}</span> - {parsed.briefName}
+                        </p>
+                      ) : (
+                        <p className="text-xs font-semibold text-zinc-100">{displayName}</p>
+                      )}
+                      {instanceTitle && (
+                        <p className="text-xs opacity-75 text-zinc-300">{instanceTitle}</p>
+                      )}
+                      {instanceDescription && (
+                        <p className="text-xs opacity-75 text-zinc-300">{instanceDescription}</p>
+                      )}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              );
+            })}
+
+            {remaining.length > 0 && (
+              <TooltipProvider delayDuration={100}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="secondary" className="text-xs px-2 cursor-pointer">
+                      +{remaining.length}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="bottom"
+                    align="start"
+                    className="max-w-[320px] p-2.5 space-y-2.5 z-50 max-h-[300px] overflow-y-auto bg-zinc-900 text-white border border-zinc-700 shadow-xl"
+                  >
+                    {Object.entries(groupedMap).map(([reqGroup, briefs], gIdx) => (
+                      <div key={gIdx} className="space-y-1">
+                        <p className="text-xs font-bold text-amber-400 border-b border-zinc-700 pb-1 flex items-center justify-between">
+                          <span>{reqGroup}</span>
+                          <span className="text-[10px] text-zinc-400 font-normal">
+                            ({briefs.length} {isB2b ? "Brief" : "Structure"}{briefs.length === 1 ? "" : "s"})
+                          </span>
+                        </p>
+                        {briefs.map((bName, bIdx) => (
+                          <p key={bIdx} className="text-xs pl-1.5 text-zinc-100 font-medium capitalize">
+                            • {bName}
+                          </p>
+                        ))}
+                      </div>
+                    ))}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
+        );
+      },
     },
+    // 4.2) Production Status (Type 10 only)
+    ...(showProductionStatusColumn
+      ? ([
+          {
+            accessorKey: "productionStatus",
+            header: ({ column }) => (
+              <DataTableColumnHeader
+                column={column}
+                title="Production Status"
+              />
+            ),
+            cell: ({ row }) => {
+              const status = (row.getValue("productionStatus") as string) || "";
+              if (!status) return "—";
+
+              const dotColor =
+                status === "Completed"
+                  ? "bg-green-500"
+                  : status === "Post Production"
+                    ? "bg-violet-500"
+                  : status === "Under Production"
+                    ? "bg-orange-500"
+                    : status === "Pre Prod Done"
+                      ? "bg-yellow-400"
+                      : "bg-blue-500"; // Pending
+
+              return (
+                <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 px-2.5 py-1 text-xs font-medium">
+                  <span className={cn("h-2 w-2 rounded-full", dotColor)} />
+                  {status}
+                </span>
+              );
+            },
+            meta: {
+              label: "Production Status",
+            },
+            enableSorting: false,
+            enableHiding: true,
+            enableColumnFilter: false,
+          },
+        ] satisfies ColumnDef<LeadColumn>[])
+      : []),
 
     // 5) Address / Map Link
     {
@@ -188,6 +709,9 @@ export function getUniversalTableColumns(
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Sales Executive" />
       ),
+      cell: ({ row }) => (
+        <span>{(row.getValue("sales_executive") as string) || "—"}</span>
+      ),
       meta: {
         label: "Sales Executive",
       },
@@ -196,6 +720,51 @@ export function getUniversalTableColumns(
       enableHiding: true,
       enableColumnFilter: true,
     },
+
+    ...(showSiteSupervisorColumn
+      ? ([
+          {
+            accessorKey: "siteSupervisor",
+            header: ({ column }) => (
+              <DataTableColumnHeader column={column} title="Site Supervisor" />
+            ),
+            meta: {
+              label: "Site Supervisor",
+            },
+            filterFn: tableSingleValueMultiSelectFilter,
+            enableSorting: false,
+            enableHiding: true,
+            enableColumnFilter: true,
+            cell: ({ row }) => {
+              const siteSupervisor =
+                (row.getValue("siteSupervisor") as string) || "";
+              return siteSupervisor.trim() ? siteSupervisor : "—";
+            },
+          },
+        ] satisfies ColumnDef<LeadColumn>[])
+      : []),
+
+    ...(showDesignerColumn
+      ? ([
+          {
+            accessorKey: "designer",
+            header: ({ column }) => (
+              <DataTableColumnHeader column={column} title="Designer" />
+            ),
+            meta: {
+              label: "Designer",
+            },
+            filterFn: tableSingleValueMultiSelectFilter,
+            enableSorting: false,
+            enableHiding: true,
+            enableColumnFilter: true,
+            cell: ({ row }) => {
+              const designer = (row.getValue("designer") as string) || "";
+              return designer.trim() ? designer : "—";
+            },
+          },
+        ] satisfies ColumnDef<LeadColumn>[])
+      : []),
 
     // 8) Site Address
     {
@@ -346,21 +915,7 @@ export function getUniversalTableColumns(
       },
     },
 
-    // 14) Product Structures
-    {
-      accessorKey: "furnitueStructures",
-      filterFn: tableMultiValueFilter,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Furniture Structures" />
-      ),
-      meta: {
-        label: "Furniture Structures",
-      },
-      enableSorting: false,
-      enableHiding: true,
-      enableColumnFilter: true,
-    },
-    // 15) Designer Remark
+    // 14) Designer Remark
     {
       accessorKey: "designerRemark",
       header: ({ column }) => (

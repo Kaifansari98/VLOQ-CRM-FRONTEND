@@ -7,11 +7,16 @@ export interface BookingPayload {
   account_id: number;
   vendor_id: number;
   created_by: number;
-  client_id: number;
+  product_type_id?: number;
+  client_id?: number;
   bookingAmount: number;
+  basic_amount?: number;
+  gst_percentage?: number;
+  gst_amount?: number;
+  total_amount?: number;
   bookingAmountPaymentDetailsText: string;
   finalBookingAmount: number;
-  siteSupervisorId: number;
+  siteSupervisorId?: number;
   final_documents: File[];
   booking_payment_file: File[];
   mrpValue: number;
@@ -23,15 +28,34 @@ export const moveToBookingStage = async (payload: BookingPayload) => {
   formData.append("account_id", payload.account_id.toString());
   formData.append("vendor_id", payload.vendor_id.toString());
   formData.append("created_by", payload.created_by.toString());
-  formData.append("client_id", payload.client_id.toString());
+  if (typeof payload.product_type_id !== "undefined") {
+    formData.append("product_type_id", payload.product_type_id.toString());
+  }
+  if (payload.client_id !== undefined && payload.client_id !== null) {
+    formData.append("client_id", payload.client_id.toString());
+  }
   formData.append("bookingAmount", payload.bookingAmount.toString());
+  if (payload.basic_amount !== undefined) {
+    formData.append("basic_amount", payload.basic_amount.toString());
+  }
+  if (payload.gst_percentage !== undefined) {
+    formData.append("gst_percentage", payload.gst_percentage.toString());
+  }
+  if (payload.gst_amount !== undefined) {
+    formData.append("gst_amount", payload.gst_amount.toString());
+  }
+  if (payload.total_amount !== undefined) {
+    formData.append("total_amount", payload.total_amount.toString());
+  }
   formData.append("mrpValue", payload.mrpValue.toString());
   formData.append(
     "bookingAmountPaymentDetailsText",
     payload.bookingAmountPaymentDetailsText.toString()
   );
   formData.append("finalBookingAmount", payload.finalBookingAmount.toString());
-  formData.append("siteSupervisorId", payload.siteSupervisorId.toString());
+  if (payload.siteSupervisorId !== undefined && payload.siteSupervisorId !== null) {
+    formData.append("siteSupervisorId", payload.siteSupervisorId.toString());
+  }
   payload.booking_payment_file.forEach((file) => {
     formData.append("booking_payment_file", file);
   });
@@ -55,6 +79,13 @@ export const moveToBookingStage = async (payload: BookingPayload) => {
 export const getAllSiteSuperVisors = async (vendorId: number) => {
   const { data } = await apiClient.get(
     `/leads/site-supervisor/vendor/${vendorId}`
+  );
+  return data;
+};
+
+export const getAllHeadSiteSupervisors = async (vendorId: number) => {
+  const { data } = await apiClient.get(
+    `/leads/head-site-supervisor/vendor/${vendorId}`
   );
   return data;
 };
@@ -86,7 +117,7 @@ export interface EditBookingPayload {
   account_id: number;
   vendor_id: number;
   created_by: number;
-  client_id: number;
+  client_id?: number;
   bookingAmount?: number;
   finalBookingAmount?: number;
   siteSupervisorId?: number;
@@ -135,10 +166,63 @@ export const updateTotalProjectAmount = async (
 export const updateBookingAmount = async (
   vendorId: number,
   leadId: number,
-  payload: { booking_amount: number; updated_by: number }
+  payload: {
+    booking_amount: number;
+    updated_by: number;
+    product_type_id?: number;
+  }
 ) => {
   const { data } = await apiClient.put(
     `/leads/bookingStage/update-booking-amount/vendor/${vendorId}/lead/${leadId}`,
+    payload
+  );
+  return data;
+};
+
+export const updateBasicAmount = async (
+  vendorId: number,
+  leadId: number,
+  payload: {
+    basic_amount: number;
+    updated_by: number;
+    product_type_id: number;
+  }
+) => {
+  const { data } = await apiClient.put(
+    `/leads/bookingStage/update-basic-amount/vendor/${vendorId}/lead/${leadId}`,
+    payload
+  );
+  return data;
+};
+
+export const updateGstPercentage = async (
+  vendorId: number,
+  leadId: number,
+  payload: {
+    gst_percentage: number;
+    updated_by: number;
+    product_type_id: number;
+  }
+) => {
+  const { data } = await apiClient.put(
+    `/leads/bookingStage/update-gst-percentage/vendor/${vendorId}/lead/${leadId}`,
+    payload
+  );
+  return data;
+};
+
+export const updatePaymentLogAmount = async (
+  vendorId: number,
+  leadId: number,
+  paymentId: number,
+  payload: {
+    amount: number;
+    updated_by: number;
+    product_type_id: number;
+  }
+) => {
+  const { data } = await apiClient.put(
+    `/leads/bookingStage/update-payment-amount/vendor/${vendorId}/lead/${leadId}/payment/${paymentId}`,
     payload
   );
   return data;
@@ -176,6 +260,11 @@ export const UploadBookingDoc = async (payload: UploadBookintPayload) => {
 export interface PaymentLog {
   id: number;
   amount: number;
+  total_amount?: number | null;
+  status_id?: number | null;
+  status_type?: string | null;
+  product_type_id?: number | null;
+  is_booking_received_amt?: boolean;
   payment_text: string;
   payment_date: string;
   entry_date: string;
@@ -197,8 +286,22 @@ export interface PaymentLogsResponse {
   project_finance: PaymentOverview;
 }
 
-export const getPaymentLogs = async (leadId: number, vendorId: number): Promise<PaymentLogsResponse> => {
-  const response = await apiClient.get(`/leads/bookingStage/payment-records/leadId/${leadId}/payments?vendorId=${vendorId}`);
+export const getPaymentLogs = async (
+  leadId: number,
+  vendorId: number,
+  productTypeId?: number | null
+): Promise<PaymentLogsResponse> => {
+  const response = await apiClient.get(
+    `/leads/bookingStage/payment-records/leadId/${leadId}/payments`,
+    {
+      params: {
+        vendorId,
+        ...(productTypeId !== undefined && productTypeId !== null
+          ? { product_type_id: productTypeId }
+          : {}),
+      },
+    }
+  );
   return response.data;
 };
 
@@ -212,7 +315,8 @@ export interface AddPaymentPayload {
   lead_id: number;
   account_id: number;
   vendor_id: number;
-  client_id: number; // fixed as 1 for now
+  product_type_id?: number;
+  client_id?: number;
   created_by: number;
   amount: number;
   payment_text: string;
@@ -261,6 +365,29 @@ export interface UniversalTablePayload {
   designer_remark?: string;
 }
 
+/* ==========================================================
+   Assign Task for Booking Stage (Head Site Supervisor)
+   @route POST /leads/bookingStage/leadId/:leadId/tasks/assign-booking
+   ========================================================== */
+export interface AssignTaskBookingPayload {
+  task_type: string;
+  due_date: string;
+  remark?: string;
+  user_id: number;
+  created_by: number;
+}
+
+export const assignTaskBooking = async (
+  leadId: number,
+  payload: AssignTaskBookingPayload
+) => {
+  const { data } = await apiClient.post(
+    `/leads/bookingStage/leadId/${leadId}/tasks/assign-booking`,
+    payload
+  );
+  return data;
+};
+
 export const getUnderInstallationLeadsWithMiscellaneous = async (
   vendorId: number,
   payload: UniversalTablePayload
@@ -271,4 +398,56 @@ export const getUnderInstallationLeadsWithMiscellaneous = async (
   );
 
   return data;
+};
+
+export interface LeadBillingAddress {
+  id?: number;
+  lead_id?: number;
+  vendor_id?: number;
+  address_type?: "BILL_TO" | "SHIP_TO";
+  name?: string | null;
+  address?: string | null;
+  map_link?: string | null;
+  gst_number?: string | null;
+  state_name?: string | null;
+  place_of_supply?: string | null;
+}
+
+export interface LeadBillingInformationResponse {
+  billingAddress: LeadBillingAddress | null;
+  shippingAddress: LeadBillingAddress | null;
+  configuredProductTypeIds?: number[];
+}
+
+export interface UpsertLeadBillingInformationPayload {
+  product_type_id?: number | null;
+  billingAddress: LeadBillingAddress | null;
+  shippingAddress: LeadBillingAddress | null;
+}
+
+export const getLeadBillingInformation = async (
+  vendorId: number,
+  leadId: number,
+  productTypeId?: number | null,
+): Promise<LeadBillingInformationResponse> => {
+  const params = productTypeId ? { product_type_id: productTypeId } : undefined;
+  const { data } = await apiClient.get(
+    `/leads/bookingStage/billing-information/vendor/${vendorId}/lead/${leadId}`,
+    { params },
+  );
+
+  return data.data;
+};
+
+export const upsertLeadBillingInformation = async (
+  vendorId: number,
+  leadId: number,
+  payload: UpsertLeadBillingInformationPayload,
+) => {
+  const { data } = await apiClient.put(
+    `/leads/bookingStage/billing-information/vendor/${vendorId}/lead/${leadId}`,
+    payload,
+  );
+
+  return data.data;
 };

@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { EllipsisVertical, CircleCheck, CircleX, XCircle, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import {
   useRevertActivityStatus,
   useUpdateActivityStatus,
@@ -51,6 +51,13 @@ export default function PendingLeadDetails() {
 
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const userType = useAppSelector(
+    (state) => state.auth.user?.user_type.user_type as string | undefined,
+  );
+  const normalizedUserType = userType?.trim().toLowerCase();
+  const isAuditor = normalizedUserType === "auditor";
+  const shouldDirectlyMarkLost =
+    normalizedUserType === "admin" || normalizedUserType === "super-admin";
 
   const tab = searchParams.get("tab");
 
@@ -177,12 +184,13 @@ export default function PendingLeadDetails() {
               </TooltipContent>
             </Tooltip>
           )}
-          <NotificationBell />
+          {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
 
           {/* 🔹 Dynamic Actions Menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          {!isAuditor && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
               <Button
                 size="icon"
                 variant="ghost"
@@ -260,6 +268,7 @@ export default function PendingLeadDetails() {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+          )}
         </div>
       </header>
 
@@ -276,9 +285,14 @@ export default function PendingLeadDetails() {
         open={openApproveModal}
         onOpenChange={setOpenApproveModal}
         statusType="lost"
-        onSubmitRemark={(remark) => {
+        vendorId={vendorId}
+        franchiseId={leadResponse?.data?.lead?.franchise_id ?? null}
+        leadId={leadIdNum}
+        existingRemark={latestActivityStatus?.activity_status_remark || ""}
+        existingRemarkLabel="Sales executive remark"
+        onSubmitRemark={(remark, dueDate, selection) => {
           if (!vendorId || !userId) {
-            toast.error("Missing vendor/user info");
+            toastManager.add({ title: "Missing vendor/user info", type: "error" });
             return;
           }
 
@@ -293,11 +307,12 @@ export default function PendingLeadDetails() {
                 status: "lost",
                 remark,
                 createdBy: userId,
+                ...(selection ?? {}),
               },
             },
             {
               onSuccess: () => {
-                toast.success("Lead Approved!");
+                toastManager.add({ title: "Lead Approved!", type: "success" });
                 setOpenApproveModal(false);
 
                 // ✅ Invalidate both queries
@@ -310,7 +325,7 @@ export default function PendingLeadDetails() {
                 router.push("/dashboard/leads/leadstable");
               },
               onError: (err) => {
-                toast.error(err || "Failed to approve lead!");
+                toastManager.add({ title: err || "Failed to approve lead!", type: "error" });
               },
             }
           );
@@ -321,10 +336,13 @@ export default function PendingLeadDetails() {
       <ActivityStatusModal
         open={openMarkLost}
         onOpenChange={setOpenMarkLost}
-        statusType="lostApproval"
-        onSubmitRemark={(remark) => {
+        statusType="lost"
+        vendorId={vendorId}
+        franchiseId={leadResponse?.data?.lead?.franchise_id ?? null}
+        leadId={leadIdNum}
+        onSubmitRemark={(remark, dueDate, selection) => {
           if (!vendorId || !userId) {
-            toast.error("Missing vendor/user info");
+            toastManager.add({ title: "Missing vendor/user info", type: "error" });
             return;
           }
 
@@ -335,25 +353,34 @@ export default function PendingLeadDetails() {
                 vendorId,
                 accountId: Number(accountId),
                 userId,
-                status: "lostApproval",
+                status: "lost",
                 remark,
                 createdBy: userId,
+                ...(selection ?? {}),
               },
             },
             {
-              onSuccess: () => {
-                toast.success("Lead marked as Lost Approval!");
+              onSuccess: (res: any) => {
+                const finalStatus = res?.data?.activity_status;
+                toastManager.add({
+                  title:
+                    finalStatus === "lostApproval"
+                      ? "Lead sent for Lost Approval!"
+                      : "Lead marked as Lost!",
+                  type: "success",
+                });
                 setOpenMarkLost(false);
 
                 // ✅ Refresh related data
                 queryClient.invalidateQueries({ queryKey: ["onHoldLeads"] });
                 queryClient.invalidateQueries({ queryKey: ["lostLeads"] });
+                queryClient.invalidateQueries({ queryKey: ["lostApprovalLeads"] });
 
                 // ✅ Redirect back to Pending Leads On Hold tab
                 router.push("/dashboard/leads/leadstable");
               },
               onError: (err) => {
-                toast.error(err || "Failed to mark as Lost!");
+                toastManager.add({ title: err || "Failed to mark as Lost!", type: "error" });
               },
             }
           );
@@ -367,7 +394,7 @@ export default function PendingLeadDetails() {
         onOpenChange={setOpenRemark}
         onSubmitRemark={(remark) => {
           if (!vendorId || !userId || !remarkLeadId) {
-            toast.error("Missing vendor/user/lead info");
+            toastManager.add({ title: "Missing vendor/user/lead info", type: "error" });
             return;
           }
 
@@ -395,7 +422,7 @@ export default function PendingLeadDetails() {
                 router.push("/dashboard/leads/leadstable");
               },
               onError: (err) => {
-                toast.error(err?.message || "Failed to mark as active!");
+                toastManager.add({ title: err?.message || "Failed to mark as active!", type: "error" });
               },
             }
           );

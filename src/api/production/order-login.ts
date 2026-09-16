@@ -1,6 +1,6 @@
 import { apiClient } from "@/lib/apiClient";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { toast } from "react-toastify";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toastManager } from "@/components/ui/toast";
 
 // ✅ --- Fetch Order-Login Leads (paginated) ---
 export const getOrderLoginLeads = async (
@@ -53,6 +53,7 @@ export const useCompanyVendors = (vendorId: number | undefined) => {
 export interface uploadFileBreakupPropa {
   lead_id: number | string;
   account_id: number | string;
+  instance_id?: number | string | null;
   item_type: string;
   item_desc: string;
   company_vendor_id: number | string;
@@ -75,24 +76,41 @@ export const useUploadFileBreakup = (vendorId: number | undefined) =>
   });
 
 // ✅ --- Fetch order login details by lead ---
-export const getOrderLoginByLead = async (vendorId: number, leadId: number) => {
-  const { data } = await apiClient.get(
-    `/leads/production/order-login/vendorId/${vendorId}/get-order-login-details`,
-    { params: { lead_id: leadId } },
-  );
+export const getOrderLoginByLead = async (
+  vendorId: number,
+  leadId: number,
+  instanceId?: number | null,
+) => {
+  try {
+    const { data } = await apiClient.get(
+      `/leads/production/order-login/vendorId/${vendorId}/get-order-login-details`,
+      {
+        params: {
+          lead_id: leadId,
+          ...(typeof instanceId !== "undefined"
+            ? { instance_id: instanceId }
+            : {}),
+        },
+      },
+    );
 
-  return data?.data ?? [];
+    return data?.data ?? [];
+  } catch (error: any) {
+    if (error?.response?.status === 404) return [];
+    throw error;
+  }
 };
 
 export const useOrderLoginByLead = (
   vendorId: number | undefined,
   leadId: number | undefined,
+  instanceId?: number | null,
 ) =>
   useQuery({
-    queryKey: ["orderLoginByLead", vendorId, leadId],
+    queryKey: ["orderLoginByLead", vendorId, leadId, instanceId ?? "all"],
     queryFn: async () => {
       if (!vendorId || !leadId) return [];
-      return getOrderLoginByLead(vendorId, leadId);
+      return getOrderLoginByLead(vendorId, leadId, instanceId);
     },
     enabled: Boolean(vendorId && leadId),
     staleTime: 60 * 1000, // 1 minute cache freshness
@@ -104,23 +122,30 @@ export const updateOrderLogin = async (
   vendorId: number,
   orderLoginId: number,
   payload: any,
+  instanceId?: number | null,
 ) => {
-  // replace empty string with N/A for item_desc
   if (!payload.item_desc || payload.item_desc.trim() === "") {
     payload.item_desc = "N/A";
   }
 
   const { data } = await apiClient.put(
     `/leads/production/order-login/vendorId/${vendorId}/order-login-id/${orderLoginId}/update`,
-    payload,
+    {
+      ...payload,
+      instance_id: instanceId ?? null, // ✅ IMPORTANT
+    },
   );
+
   return data;
 };
 
-export const useUpdateOrderLogin = (vendorId: number | undefined) =>
+export const useUpdateOrderLogin = (
+  vendorId: number | undefined,
+  instanceId?: number | null,
+) =>
   useMutation({
     mutationFn: (vars: { orderLoginId: number; payload: any }) =>
-      updateOrderLogin(vendorId!, vars.orderLoginId, vars.payload),
+      updateOrderLogin(vendorId!, vars.orderLoginId, vars.payload, instanceId),
   });
 
 // ✅ --- Delete order login detail ---
@@ -157,11 +182,12 @@ export const getApprovedTechCheckDocuments = async (
 export const useApprovedTechCheckDocuments = (
   vendorId: number | undefined,
   leadId: number | undefined,
+  enabled: boolean = true,
 ) =>
   useQuery({
     queryKey: ["approvedTechCheckDocuments", vendorId, leadId],
     queryFn: () => getApprovedTechCheckDocuments(vendorId!, leadId!),
-    enabled: !!vendorId && !!leadId,
+    enabled: enabled && !!vendorId && !!leadId,
   });
 
 // ✅ --- Upload Production Files ---
@@ -169,7 +195,11 @@ export const uploadProductionFiles = async (
   vendorId: number,
   leadId: number,
   formData: FormData,
+  instanceId?: number | null,
 ) => {
+  if (instanceId != null) {
+    formData.append("instance_id", String(instanceId));
+  }
   const { data } = await apiClient.post(
     `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/upload-production-files`,
     formData,
@@ -184,30 +214,77 @@ export const uploadProductionFiles = async (
 export const useUploadProductionFiles = (
   vendorId: number | undefined,
   leadId: number | undefined,
+  instanceId?: number | null,
 ) =>
   useMutation({
     mutationFn: (formData: FormData) =>
-      uploadProductionFiles(vendorId!, leadId!, formData),
+      uploadProductionFiles(vendorId!, leadId!, formData, instanceId),
   });
 
 // ✅ --- Fetch Production Files ---
-export const getProductionFiles = async (vendorId: number, leadId: number) => {
-  const { data } = await apiClient.get(
-    `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/production-files`,
-  );
-  return data?.data;
+export const getProductionFiles = async (
+  vendorId: number,
+  leadId: number,
+  instanceId?: number | null,
+) => {
+  try {
+    const { data } = await apiClient.get(
+      `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/production-files`,
+      {
+        params: instanceId != null ? { instance_id: instanceId } : undefined,
+      },
+    );
+    return data?.data ?? [];
+  } catch (error: any) {
+    if (error?.response?.status === 404) return [];
+    throw error;
+  }
 };
 
 // ✅ --- React Query Hook: Production Files ---
 export const useProductionFiles = (
   vendorId: number | undefined,
   leadId: number | undefined,
+  instanceId?: number | null,
 ) =>
   useQuery({
-    queryKey: ["productionFiles", vendorId, leadId],
-    queryFn: () => getProductionFiles(vendorId!, leadId!),
+    queryKey: ["productionFiles", vendorId, leadId, instanceId ?? "all"],
+    queryFn: () => getProductionFiles(vendorId!, leadId!, instanceId),
     enabled: !!vendorId && !!leadId,
   });
+
+export const updateSoValueReceivedStatus = async (
+  vendorId: number,
+  leadId: number,
+  payload: {
+    is_so_value_received: boolean;
+    updated_by: number;
+  },
+) => {
+  const { data } = await apiClient.put(
+    `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/so-value-received`,
+    payload,
+  );
+  return data?.data;
+};
+
+export const useUpdateSoValueReceivedStatus = (
+  vendorId: number | undefined,
+  leadId: number | undefined,
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: { is_so_value_received: boolean; updated_by: number }) =>
+      updateSoValueReceivedStatus(vendorId!, leadId!, payload),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["lead", leadId, vendorId] }),
+        queryClient.invalidateQueries({ queryKey: ["orderLoginByLead", vendorId, leadId] }),
+      ]);
+    },
+  });
+};
 
 // ✅ --- Upload Order Login PO Files ---
 export const uploadOrderLoginPoFiles = async (
@@ -230,12 +307,23 @@ export const useUploadOrderLoginPoFiles = (
   vendorId: number | undefined,
   leadId: number | undefined,
   orderLoginId: number | undefined,
-) =>
-  useMutation({
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
     mutationFn: (formData: FormData) =>
       uploadOrderLoginPoFiles(vendorId!, leadId!, orderLoginId!, formData),
-  });
 
+    onSuccess: () => {
+      /**
+       * 🔁 Refresh GET API Automatically
+       */
+      queryClient.invalidateQueries({
+        queryKey: ["orderLoginPoFiles", vendorId, leadId, orderLoginId],
+      });
+    },
+  });
+};
 // ✅ --- Fetch Order Login PO Files ---
 export const getOrderLoginPoFiles = async (
   vendorId: number,
@@ -245,6 +333,7 @@ export const getOrderLoginPoFiles = async (
   const { data } = await apiClient.get(
     `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/order-login-id/${orderLoginId}/po-files`,
   );
+
   return data?.data || [];
 };
 
@@ -258,6 +347,36 @@ export const useOrderLoginPoFiles = (
     queryFn: () => getOrderLoginPoFiles(vendorId!, leadId!, orderLoginId!),
     enabled: !!vendorId && !!leadId && !!orderLoginId,
   });
+
+export const deleteOrderLoginPoFile = async (
+  vendorId: number,
+  documentId: number,
+  userId: number,
+) => {
+  const { data } = await apiClient.delete(
+    `/leads/production/order-login/vendorId/${vendorId}/po-files-delete`,
+    {
+      data: { deleted_by: userId, documentId: documentId },
+    },
+  );
+
+  return data;
+};
+
+export const useDeleteOrderLoginPoFile = (vendorId: number, userId: number) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (documentId: number) =>
+      deleteOrderLoginPoFile(vendorId, documentId, userId),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["orderLoginPoFiles", vendorId], // ✅ invalidate all queries for this vendor
+      });
+    },
+  });
+};
 
 // ✅ --- Move Lead to Production Stage ---
 export const moveLeadToProductionStage = async (
@@ -289,9 +408,16 @@ export const useMoveLeadToProductionStage = (
 export const getLeadProductionReadiness = async (
   vendorId: number,
   leadId: number,
+  instanceId?: number | null,
 ) => {
   const { data } = await apiClient.get(
     `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/move-to-production-readiness-check`,
+    {
+      params:
+        typeof instanceId !== "undefined"
+          ? { instance_id: instanceId }
+          : undefined,
+    },
   );
   return data?.data;
 };
@@ -299,10 +425,16 @@ export const getLeadProductionReadiness = async (
 export const useLeadProductionReadiness = (
   vendorId: number | undefined,
   leadId: number | undefined,
+  instanceId?: number | null,
 ) =>
   useQuery({
-    queryKey: ["leadProductionReadiness", vendorId, leadId],
-    queryFn: () => getLeadProductionReadiness(vendorId!, leadId!),
+    queryKey: [
+      "leadProductionReadiness",
+      vendorId,
+      leadId,
+      instanceId ?? "all",
+    ],
+    queryFn: () => getLeadProductionReadiness(vendorId!, leadId!, instanceId),
     enabled: !!vendorId && !!leadId,
   });
 
@@ -324,6 +456,7 @@ export const useUploadMultipleFileBreakupsByLead = (
   vendorId: number | undefined,
   leadId: number | undefined,
   accountId: number | undefined,
+  instanceId?: number | null,
 ) =>
   useMutation({
     mutationFn: (breakups: any[]) =>
@@ -331,7 +464,11 @@ export const useUploadMultipleFileBreakupsByLead = (
         vendorId!,
         leadId!,
         accountId!,
-        breakups,
+        breakups.map((item) => ({
+          ...item,
+          instance_id:
+            typeof instanceId !== "undefined" ? instanceId : item.instance_id,
+        })),
       ),
   });
 
@@ -367,6 +504,7 @@ export const useRequestToProduction = () => {
       assign_to_user_id,
       created_by,
       client_required_order_login_complition_date, // ✅ ADD THIS
+      instanceId,
     }: {
       vendorId: number;
       leadId: number;
@@ -374,6 +512,7 @@ export const useRequestToProduction = () => {
       assign_to_user_id: number;
       created_by: number;
       client_required_order_login_complition_date: string; // ✅ ADD THIS
+      instanceId?: number | null;
     }) => {
       const { data } = await apiClient.put(
         `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/move-to-production-stage`,
@@ -382,15 +521,27 @@ export const useRequestToProduction = () => {
           user_id: created_by,
           assign_to_user_id,
           client_required_order_login_complition_date, // ✅ ADD THIS
+          ...(typeof instanceId !== "undefined"
+            ? { instance_id: instanceId }
+            : {}),
         },
       );
       return data;
     },
     onSuccess: () => {
-      toast.success("Lead successfully moved to Production Stage!");
+      toastManager.add({ title: "Lead successfully moved to Production Stage!", type: "success" });
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.message || "Failed to move lead.");
+      const errorMessage =
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to move lead.";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
     },
   });
 };
@@ -408,3 +559,167 @@ export const useFactoryUsers = (vendorId: number) => {
     enabled: !!vendorId,
   });
 };
+
+export interface MarkOrderLoginFilledPayload {
+  updated_by: number;
+}
+
+export interface MarkOrderLoginFilledResponse {
+  success: boolean;
+  message: string;
+  data: {
+    id: number;
+    is_order_login_filled: boolean;
+    updated_by: number;
+    updated_at: string;
+  };
+}
+
+export const markOrderLoginFilled = async (
+  vendorId: number,
+  leadId: number,
+  instanceId: number,
+  payload: MarkOrderLoginFilledPayload,
+): Promise<MarkOrderLoginFilledResponse> => {
+  const { data } = await apiClient.patch(
+    `/leads/production/order-login/${vendorId}/${leadId}/${instanceId}/mark-filled`,
+    payload,
+  );
+
+  return data;
+};
+
+// ✅ --- Get Production Files Remark ---
+export const getProductionFilesRemark = async (
+  vendorId: number,
+  leadId: number,
+) => {
+  const { data } = await apiClient.get(
+    `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/prod-files-remark`,
+  );
+  return (data?.data?.remark as string) ?? "N/A";
+};
+
+export const useProductionFilesRemark = (
+  vendorId: number | undefined,
+  leadId: number | undefined,
+) =>
+  useQuery({
+    queryKey: ["productionFilesRemark", vendorId, leadId],
+    queryFn: () => getProductionFilesRemark(vendorId!, leadId!),
+    enabled: !!vendorId && !!leadId,
+  });
+
+// ✅ --- Upsert Production Files Remark ---
+export const upsertProductionFilesRemark = async (
+  vendorId: number,
+  leadId: number,
+  remark: string,
+  updated_by: number,
+) => {
+  const { data } = await apiClient.put(
+    `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/prod-files-remark`,
+    { remark, updated_by },
+  );
+  return data;
+};
+
+export const useUpsertProductionFilesRemark = (
+  vendorId: number | undefined,
+  leadId: number | undefined,
+) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { remark: string; updated_by: number }) =>
+      upsertProductionFilesRemark(vendorId!, leadId!, vars.remark, vars.updated_by),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["productionFilesRemark", vendorId, leadId],
+      });
+    },
+  });
+};
+
+export const useMarkOrderLoginFilled = (
+  vendorId: number,
+  leadId: number,
+  instanceId: number,
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: MarkOrderLoginFilledPayload) =>
+      markOrderLoginFilled(vendorId, leadId, instanceId, payload),
+
+    onSuccess: () => {
+      // ✅ Show success feedback
+      toastManager.add({ title: "Order login details saved successfully.", type: "success" });
+
+      // 🔁 Refetch relevant data
+      queryClient.invalidateQueries({
+        queryKey: ["lead", leadId],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["vendorOverallLeads"],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["universalLeads"],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["lead-product-structure-instances"],
+        exact: false,
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["vendorUserTasks"],
+        exact: false,
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["vendorAllTasks"],
+        exact: false,
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["sidebarMyTaskCount"],
+        exact: false,
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["leadStats"],
+        exact: false,
+      });
+    },
+
+    onError: (error: any) => {
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to update order login.";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
+    },
+  });
+};
+
+export interface RequiredProductionMaterial {
+  id: number; article_code: string; type: string; category: string;
+  qty: string | number; unit: string; name: string;
+  product: import("@/components/production/order-login-stage/production-file-preview").InventoryProduct;
+}
+export const useRequiredProductionMaterials = (vendorId?: number, leadId?: number, instanceId?: number | null, enabled = true) =>
+  useQuery({
+    queryKey: ["requiredProductionMaterials", vendorId, leadId, instanceId ?? "all"],
+    enabled: enabled && !!vendorId && !!leadId,
+    queryFn: async (): Promise<RequiredProductionMaterial[]> => {
+      const { data } = await apiClient.get(`/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/required-materials`, { params: { instance_id: instanceId || undefined } });
+      return data.data;
+    },
+  });

@@ -12,7 +12,7 @@ import { useAppSelector } from "@/redux/store";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
-import { toast } from "react-toastify";
+import { toastManager } from "@/components/ui/toast";
 import {
   Form,
   FormControl,
@@ -128,11 +128,11 @@ const SelectionsTab: React.FC = () => {
           },
           {
             onSuccess: () => {
-              toast.success(`${type} updated`);
+              toastManager.add({ title: `${type} updated`, type: "success" });
               resolve();
             },
             onError: (e: any) => {
-              toast.error(`Failed to update ${type}: ${e?.message || ""}`);
+              toastManager.add({ title: `Failed to update ${type}: ${e?.message || ""}`, type: "error" });
               reject(e);
             },
           }
@@ -151,11 +151,11 @@ const SelectionsTab: React.FC = () => {
         },
         {
           onSuccess: () => {
-            toast.success(`${type} created`);
+            toastManager.add({ title: `${type} created`, type: "success" });
             resolve();
           },
           onError: (e: any) => {
-            toast.error(`Failed to create ${type}: ${e?.message || ""}`);
+            toastManager.add({ title: `Failed to create ${type}: ${e?.message || ""}`, type: "error" });
             reject(e);
           },
         }
@@ -176,7 +176,7 @@ const SelectionsTab: React.FC = () => {
       promises.push(upsertSelection("Handles", values.handles));
 
     if (promises.length === 0) {
-      toast.info("No changes detected");
+      toastManager.add({ title: "No changes detected", type: "info" });
       return;
     }
 
@@ -187,7 +187,7 @@ const SelectionsTab: React.FC = () => {
         queryKey: ["designingStageCounts", vendorId, leadId],
       });
     } catch {
-      toast.error("Some selections failed to update");
+      toastManager.add({ title: "Some selections failed to update", type: "error" });
     }
   };
 

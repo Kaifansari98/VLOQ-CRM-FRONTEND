@@ -18,11 +18,13 @@ import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import GlobalLeadSearchModal from "@/components/dashboard/GlobalLeadSearchModal";
 import { Kbd } from "@/components/ui/kbd";
+import { sanitize } from "@/components/utils/sanitizeCapitalize";
 
 export default function Page() {
   const userType = useAppSelector(
     (state) => state.auth.user?.user_type?.user_type
   );
+  const userTypeLabel = sanitize(userType ?? "");
 
   const [openSearchModal, setOpenSearchModal] = useState(false);
   const [isMac, setIsMac] = useState(true); // <-- FIX
@@ -63,7 +65,7 @@ export default function Page() {
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
-                <BreadcrumbPage>{userType}</BreadcrumbPage>
+                <BreadcrumbPage>{userTypeLabel || "Dashboard"}</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
@@ -97,17 +99,7 @@ export default function Page() {
       </header>
 
       {/* Wrap everything inside the conditional dashboard renderer */}
-      <DashboardWrapper>
-        {/* DEFAULT existing dashboard content */}
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-            <div className="bg-muted/50 aspect-video rounded-xl" />
-            <div className="bg-muted/50 aspect-video rounded-xl" />
-            <div className="bg-muted/50 aspect-video rounded-xl" />
-          </div>
-          <div className="bg-muted/50 min-h-[100vh] flex-1 rounded-xl md:min-h-min" />
-        </div>
-      </DashboardWrapper>
+      <DashboardWrapper />
 
       <GlobalLeadSearchModal
         open={openSearchModal}

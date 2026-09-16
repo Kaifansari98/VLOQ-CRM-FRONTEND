@@ -1,13 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import {
-  Plus,
-  AlertCircle,
-  Calendar,
-  User,
-  Eye,
-} from "lucide-react";
+import { Plus, AlertCircle, Calendar, User, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import { Label } from "@/components/ui/label";
@@ -42,6 +36,9 @@ import RemarkTooltip from "@/components/origin-tooltip";
 import { canViewAndWorkUnderInstallationStage } from "@/components/utils/privileges";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import BaseModal from "@/components/utils/baseModal";
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import CustomeTooltip from "@/components/custom-tooltip";
+
 
 interface InstallationIssueLogProps {
   vendorId: number;
@@ -57,6 +54,7 @@ export default function InstallationIssueLog({
   const userId = useAppSelector((s) => s.auth.user?.id) || 0;
 
   const userType = useAppSelector((s) => s.auth.user?.user_type.user_type);
+  const customPrivilegeCodes = useAppSelector((s) => s.customPrivileges.codes);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [issueTypeOptions, setIssueTypeOptions] = useState<Option[]>([]);
   const [teamOptions, setTeamOptions] = useState<Option[]>([]);
@@ -80,18 +78,28 @@ export default function InstallationIssueLog({
 
   const { data: issueLogs, isLoading } = useGetInstallationIssueLogs(
     vendorId,
-    leadId
+    leadId,
   );
   const { data: issueTypes } = useGetIssueTypes(vendorId);
   const createMutation = useCreateInstallationIssueLog();
+const {
+  shouldDisableBlockedActions,
+  blockedTooltip,
+} = useLeadAccessControl({
+  leadId,
+  userType,
+});
 
+const blockedReason = shouldDisableBlockedActions
+  ? blockedTooltip
+  : "";
   React.useEffect(() => {
     if (issueTypes) {
       setIssueTypeOptions(
         issueTypes.map((type: any) => ({
           value: type.id.toString(),
           label: type.name,
-        }))
+        })),
       );
     }
   }, [issueTypes]);
@@ -104,7 +112,7 @@ export default function InstallationIssueLog({
           teams.map((team: any) => ({
             value: team.id.toString(),
             label: team.name,
-          }))
+          })),
         );
       } catch (error) {
         console.error("Error fetching teams:", error);
@@ -160,7 +168,19 @@ export default function InstallationIssueLog({
     });
   };
 
-  const canWork = canViewAndWorkUnderInstallationStage(userType, leadStatus);
+  const canWork =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.under_installation.issue_log.enable_disable_action",
+        )
+      : canViewAndWorkUnderInstallationStage(userType, leadStatus);
+
+  const canAddIssueLog =
+    userType === "custom"
+      ? customPrivilegeCodes.includes(
+          "installation.under_installation.issue_log.enable_disable_action",
+        )
+      : true;
 
   const getImpactBadge = (impact: string) => {
     const lowerImpact = impact.toLowerCase();
@@ -186,20 +206,37 @@ export default function InstallationIssueLog({
 
   return (
     <div className="space-y-6 bg-[#fff] dark:bg-[#0a0a0a]">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight">Issue Log</h2>
-          <p className="text-sm text-muted-foreground">
-            Track and manage installation issues
-          </p>
-        </div>
+ <div className="flex items-center justify-between">
+  <div>
+    <h2 className="text-lg font-semibold tracking-tight">
+      Issue Log
+    </h2>
+    <p className="text-sm text-muted-foreground">
+      Track and manage installation issues
+    </p>
+  </div>
 
-        {canWork && (
-          <Button className="gap-2" onClick={() => setIsModalOpen(true)}>
-            <Plus className="h-4 w-4" /> Add Issue Log
+  {canWork && canAddIssueLog && (
+    <div>
+      <CustomeTooltip
+        value={blockedReason}
+        truncateValue={
+          <Button
+            className="gap-2"
+            disabled={shouldDisableBlockedActions}
+            onClick={() => {
+              if (shouldDisableBlockedActions) return;
+              setIsModalOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4" />
+            Add Issue Log
           </Button>
-        )}
-      </div>
+        }
+      />
+    </div>
+  )}
+</div>
 
       <BaseModal
         open={isModalOpen}
@@ -467,57 +504,80 @@ export default function InstallationIssueLog({
       >
         <div className="px-6 py-4 space-y-5">
           {/* Issue Types Section - Enhanced */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Reported By Card */}
-            <div className="space-y-1.5 h-full">
-              <p className="text-[13px] font-medium ">Reported By</p>
-              <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <User className="w-4 h-4 text-muted-foreground" />
-                    <span className="font-medium">
-                      {viewModal.data?.createdBy?.user_name}
-                    </span>
+            <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
+              <div className="space-y-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <User className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground mb-0.5">
+                        Reported By
+                      </p>
+                      <p className="text-sm font-medium truncate">
+                        {viewModal.data?.createdBy?.user_name || "N/A"}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Calendar className="w-3.5 h-3.5" />
-                    <span>
-                      {viewModal.data && formatDate(viewModal.data.created_at)}
-                    </span>
+                </div>
+
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Calendar className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground mb-0.5">
+                        Reported Date
+                      </p>
+                      <p className="text-sm font-medium">
+                        {viewModal.data &&
+                          formatDate(viewModal.data.created_at)}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-            {/* Issue Types Card */}
+
+            {/* Impact Details Card */}
             {viewModal.data?.issueTypes &&
               viewModal.data.issueTypes.length > 0 && (
-                <div className="space-y-1.5 h-full">
-                  <p className="text-[13px] font-medium ">Issue Types</p>
-                  <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
-                    <div className="flex flex-wrap gap-2">
-                      {viewModal.data.issueTypes.map((it: any) => (
-                        <Badge
-                          key={it.id}
-                          variant="destructive"
-                          className="px-3 py-1 text-xs font-medium"
-                        >
-                          {it.type.name}
-                        </Badge>
-                      ))}
+                <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-muted-foreground mb-0.5">
+                          Impact Type
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {viewModal.data.issueTypes.map(
+                            (it: any, index: number) => (
+                              <span key={index} className="text-sm font-medium">
+                                {it.type.name}
+                                {index < viewModal.data.issueTypes.length - 1 &&
+                                  ","}
+                              </span>
+                            ),
+                          )}
+                        </div>
+                      </div>
                     </div>
+
+                    {viewModal.data?.issue_impact && (
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs text-muted-foreground mb-0.5">
+                            Impact Level
+                          </p>
+                          <p className="text-sm font-medium">
+                            {viewModal.data.issue_impact}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
-
-            {/* Impact Level Card */}
-            {viewModal.data?.issue_impact && (
-              <div className="space-y-1.5 h-full">
-                <p className="text-[13px] font-medium ">Impact Level</p>
-                <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
-                  {getImpactBadge(viewModal.data.issue_impact)}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Issue Description */}

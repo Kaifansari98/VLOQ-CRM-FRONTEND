@@ -27,6 +27,10 @@ import { cn } from "@/lib/utils";
 import { useLeadStatus } from "@/hooks/designing-stage/designing-leads-hooks";
 import { canViewAndWorkSiteRedinessStage } from "@/components/utils/privileges";
 import CustomeTooltip from "@/components/custom-tooltip";
+import { useQueryClient } from "@tanstack/react-query";
+
+import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
+import { useLeadById } from "@/hooks/useLeadsQueries";
 
 interface SiteReadinessDetailsProps {
   leadId: number;
@@ -57,9 +61,12 @@ export default function SiteReadinessDetails({
 }: SiteReadinessDetailsProps) {
   const vendor_id = useAppSelector((state) => state.auth.user?.vendor_id);
   const user_id = useAppSelector((state) => state.auth.user?.id);
-
+  const queryClient = useQueryClient();
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type?.user_type
+    (state) => state.auth.user?.user_type?.user_type,
+  );
+  const customPrivilegeCodes = useAppSelector(
+    (state) => state.customPrivileges.codes,
   );
 
   const [checklistData, setChecklistData] = useState<ChecklistItem[]>(
@@ -68,7 +75,7 @@ export default function SiteReadinessDetails({
       label: item.label,
       value: null,
       remark: "",
-    }))
+    })),
   );
 
   const { data: leadData } = useLeadStatus(leadId, vendor_id);
@@ -82,6 +89,23 @@ export default function SiteReadinessDetails({
   const createMutation = useCreateSiteReadiness();
   const updateMutation = useUpdateSiteReadiness();
 
+  const { data: leadResponse } = useLeadById(
+    leadId,
+    vendor_id,
+    user_id,
+  );
+
+  const lead = leadResponse?.data?.lead;
+
+  const {
+    blockedTooltip,
+    shouldDisableBlockedActions,
+  } = useLeadAccessControl({
+    leadId,
+    userType,
+    lead,
+  });
+
   useEffect(() => {
     const fetchRecords = async () => {
       if (!vendor_id || !leadId) return;
@@ -91,21 +115,21 @@ export default function SiteReadinessDetails({
         const response = await getSiteReadinessRecords(
           vendor_id,
           leadId,
-          accountId
+          accountId,
         );
 
         if (response?.records && response.records.length > 0) {
           const updatedChecklist = checklistData.map((item) => {
             const existing = response.records.find(
-              (r: any) => r.type === item.type
+              (r: any) => r.type === item.type,
             );
             return existing
               ? {
-                  ...item,
-                  id: existing.id,
-                  value: existing.value,
-                  remark: existing.remark || "",
-                }
+                ...item,
+                id: existing.id,
+                value: existing.value,
+                remark: existing.remark || "",
+              }
               : item;
           });
           setChecklistData(updatedChecklist);
@@ -126,27 +150,27 @@ export default function SiteReadinessDetails({
     const response = await getSiteReadinessRecords(
       vendor_id,
       leadId,
-      accountId
+      accountId,
     );
     if (response?.records) {
       const updated = CHECKLIST_ITEMS.map((item) => {
         const existing = response.records.find(
-          (r: any) => r.type === item.type
+          (r: any) => r.type === item.type,
         );
         return existing
           ? {
-              type: item.type,
-              label: item.label,
-              id: existing.id,
-              value: existing.value,
-              remark: existing.remark || "",
-            }
+            type: item.type,
+            label: item.label,
+            id: existing.id,
+            value: existing.value,
+            remark: existing.remark || "",
+          }
           : {
-              type: item.type,
-              label: item.label,
-              value: null,
-              remark: "",
-            };
+            type: item.type,
+            label: item.label,
+            value: null,
+            remark: "",
+          };
       });
       setChecklistData(updated);
     }
@@ -155,10 +179,10 @@ export default function SiteReadinessDetails({
   const handleChecklistChange = (
     index: number,
     field: "value" | "remark",
-    value: any
+    value: any,
   ) => {
     setChecklistData((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
+      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
     );
   };
 
@@ -176,7 +200,7 @@ export default function SiteReadinessDetails({
       // ✅ Only send items that have at least one field filled
       const filledItems = checklistData.filter(
         (item) =>
-          item.value !== null || (item.remark && item.remark.trim() !== "")
+          item.value !== null || (item.remark && item.remark.trim() !== ""),
       );
 
       const toCreate = filledItems.filter((item) => !item.id);
@@ -216,6 +240,11 @@ export default function SiteReadinessDetails({
         });
       }
 
+      queryClient.invalidateQueries({
+        // ← ADD THIS
+        queryKey: ["checkSiteReadinessCompletion", vendor_id, leadId],
+      });
+
       await refetchRecords();
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -226,7 +255,7 @@ export default function SiteReadinessDetails({
     }
   };
   const completedCount = checklistData.filter(
-    (item) => item.value !== null
+    (item) => item.value !== null,
   ).length;
 
   const totalCount = checklistData.length;
@@ -242,6 +271,15 @@ export default function SiteReadinessDetails({
   }
 
   const canViewAndWork = canViewAndWorkSiteRedinessStage(userType, leadStatus);
+  const canEditChecklist =
+    !shouldDisableBlockedActions &&
+    (
+      userType === "custom"
+        ? customPrivilegeCodes.includes(
+          "installation.site_readiness.checklist_of_site_readiness.update_edit",
+        )
+        : canViewAndWork
+    );
 
   return (
     <div className="space-y-4 w-full mx-auto">
@@ -291,7 +329,7 @@ export default function SiteReadinessDetails({
                   variant={completionPercentage === 100 ? "default" : "outline"}
                   className={cn(
                     "text-xs px-2 py-0.5",
-                    completionPercentage === 100 && "bg-primary"
+                    completionPercentage === 100 && "bg-primary",
                   )}
                 >
                   {completionPercentage}%
@@ -301,13 +339,12 @@ export default function SiteReadinessDetails({
               <CustomeTooltip
                 truncateValue={
                   <div
-                    className={`${
-                      !canViewAndWork ? "opacity-70 pointer-events-none" : ""
-                    }`}
+                    className={`${!canEditChecklist ? "opacity-70 pointer-events-none" : ""
+                      }`}
                   >
                     <Button
                       onClick={handleSubmit}
-                      disabled={loading || !canViewAndWork}
+                      disabled={loading || !canEditChecklist}
                       size="sm"
                     >
                       {loading ? (
@@ -325,11 +362,15 @@ export default function SiteReadinessDetails({
                   </div>
                 }
                 value={
-                  !canViewAndWork && userType === "site-supervisor"
-                    ? "This lead stage has progressed. Site Supervisors cannot modify this section."
-                    : !canViewAndWork
-                    ? "You do not have access to save changes."
-                    : undefined
+                  shouldDisableBlockedActions
+                    ? blockedTooltip
+                    : !canEditChecklist && userType === "site-supervisor"
+                      ? "This lead stage has progressed. Site Supervisors cannot modify this section."
+                      : !canEditChecklist && userType === "custom"
+                        ? "You do not have permission to update the Site Readiness checklist."
+                        : !canEditChecklist
+                          ? "You do not have access to save changes."
+                          : undefined
                 }
               />
             </div>
@@ -343,7 +384,7 @@ export default function SiteReadinessDetails({
               className={cn(
                 "relative p-4 rounded-lg border-2 transition-all duration-200",
                 item.value === true && "",
-                item.value === false && ""
+                item.value === false && "",
               )}
             >
               {/* Checklist Header */}
@@ -355,8 +396,8 @@ export default function SiteReadinessDetails({
                       item.value === true
                         ? "bg-green-500 text-white ring-2 ring-green-500/20"
                         : item.value === false
-                        ? "bg-red-500 text-white ring-2 ring-red-500/20"
-                        : "bg-muted text-foreground ring-2 ring-border"
+                          ? "bg-red-500 text-white ring-2 ring-red-500/20"
+                          : "bg-muted text-foreground ring-2 ring-border",
                     )}
                   >
                     {item.value === true ? (
@@ -380,39 +421,82 @@ export default function SiteReadinessDetails({
 
                 {/* Compact Yes/No Toggle */}
                 <div className="flex gap-1.5">
-                  <button
-                    type="button"
-                    disabled={!canViewAndWork}
-                    onClick={() => handleChecklistChange(index, "value", true)}
-                    className={cn(
-                      "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 text-xs font-medium transition-all duration-150",
-                      "focus:outline-none focus:ring-1 focus:ring-green-500 focus:ring-offset-1",
-                      item.value === true
-                        ? "bg-green-500 border-green-500 text-white shadow-sm"
-                        : "bg-background border-border text-muted-foreground hover:border-green-400 hover:text-green-600",
-                      !canViewAndWork && "opacity-60 cursor-not-allowed" // 🔥 added here
-                    )}
-                  >
-                    <Check className="h-3.5 w-3.5" />
-                    <span>Yes</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={!canViewAndWork}
-                    onClick={() => handleChecklistChange(index, "value", false)}
-                    className={cn(
-                      "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 text-xs font-medium transition-all duration-150",
-                      "focus:outline-none focus:ring-1 focus:ring-red-500 focus:ring-offset-1",
-                      item.value === false
-                        ? "bg-red-500 border-red-500 text-white shadow-sm"
-                        : "bg-background border-border text-muted-foreground hover:border-red-400 hover:text-red-600",
-                      !canViewAndWork && "opacity-60 cursor-not-allowed" // 🔥 added here
-                    )}
-                  >
-                    <X className="h-3.5 w-3.5" />
-                    <span>No</span>
-                  </button>
+                  <CustomeTooltip
+                    value={
+                      shouldDisableBlockedActions
+                        ? blockedTooltip
+                        : undefined
+                    }
+                    truncateValue={
+                      <span>
+                        <button
+                          type="button"
+                          disabled={
+                            !canEditChecklist ||
+                            shouldDisableBlockedActions
+                          }
+                          onClick={() =>
+                            handleChecklistChange(
+                              index,
+                              "value",
+                              true,
+                            )
+                          }
+                          className={cn(
+                            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 text-xs font-medium transition-all duration-150",
+                            "focus:outline-none focus:ring-1 focus:ring-green-500 focus:ring-offset-1",
+                            item.value === true
+                              ? "bg-green-500 border-green-500 text-white shadow-sm"
+                              : "bg-background border-border text-muted-foreground hover:border-green-400 hover:text-green-600",
+                            (!canEditChecklist ||
+                              shouldDisableBlockedActions) &&
+                            "opacity-60 cursor-not-allowed",
+                          )}
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                          <span>Yes</span>
+                        </button>
+                      </span>
+                    }
+                  />
+                  <CustomeTooltip
+                    value={
+                      shouldDisableBlockedActions
+                        ? blockedTooltip
+                        : undefined
+                    }
+                    truncateValue={
+                      <span>
+                        <button
+                          type="button"
+                          disabled={
+                            !canEditChecklist ||
+                            shouldDisableBlockedActions
+                          }
+                          onClick={() =>
+                            handleChecklistChange(
+                              index,
+                              "value",
+                              false,
+                            )
+                          }
+                          className={cn(
+                            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 text-xs font-medium transition-all duration-150",
+                            "focus:outline-none focus:ring-1 focus:ring-red-500 focus:ring-offset-1",
+                            item.value === false
+                              ? "bg-red-500 border-red-500 text-white shadow-sm"
+                              : "bg-background border-border text-muted-foreground hover:border-red-400 hover:text-red-600",
+                            (!canEditChecklist ||
+                              shouldDisableBlockedActions) &&
+                            "opacity-60 cursor-not-allowed",
+                          )}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                          <span>No</span>
+                        </button>
+                      </span>
+                    }
+                  />
                 </div>
               </div>
 
@@ -427,17 +511,39 @@ export default function SiteReadinessDetails({
                     (Optional)
                   </span>
                 </Label>
-                <Textarea
-                  id={`remark-${item.type}`}
-                  value={item.remark}
-                  onChange={(e) =>
-                    handleChecklistChange(index, "remark", e.target.value)
-                  }
-                  placeholder="Add any relevant notes or observations..."
-                  disabled={!canViewAndWork}
-                  className="resize-none text-xs h-16 py-2"
-                  rows={2}
-                />
+                {shouldDisableBlockedActions ? (
+                  <CustomeTooltip
+                    value={blockedTooltip}
+                    truncateValue={
+                      <div className="w-full">
+                        <Textarea
+                          id={`remark-${item.type}`}
+                          value={item.remark}
+                          disabled
+                          placeholder="Add any relevant notes or observations..."
+                          className="resize-none text-xs h-16 py-2 cursor-not-allowed"
+                          rows={2}
+                        />
+                      </div>
+                    }
+                  />
+                ) : (
+                  <Textarea
+                    id={`remark-${item.type}`}
+                    value={item.remark}
+                    onChange={(e) =>
+                      handleChecklistChange(
+                        index,
+                        "remark",
+                        e.target.value,
+                      )
+                    }
+                    placeholder="Add any relevant notes or observations..."
+                    disabled={!canEditChecklist}
+                    className="resize-none text-xs h-16 py-2"
+                    rows={2}
+                  />
+                )}
               </div>
 
               {/* Status Indicator Dot */}
@@ -446,7 +552,7 @@ export default function SiteReadinessDetails({
                   "absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-background transition-all",
                   item.value === true && "bg-green-500",
                   item.value === false && "bg-red-500",
-                  item.value === null && "bg-gray-300"
+                  item.value === null && "bg-gray-300",
                 )}
               />
             </div>
