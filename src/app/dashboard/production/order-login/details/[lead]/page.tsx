@@ -436,7 +436,7 @@ export default function OrderLoginLeadDetails() {
         <div className="flex w-full flex-wrap items-center justify-end gap-2 md:w-auto">
           <div className="flex items-center justify-end gap-2">
             {/* ✅ Show only if user has permission */}
-            {canMoveToProductionStage &&
+            {!isMaterialIssueView && canMoveToProductionStage &&
               (() => {
                 if (shouldDisableBlockedActions) {
                   return (
@@ -503,7 +503,7 @@ export default function OrderLoginLeadDetails() {
           {!isAuditor && <NotificationBell />}
           <AnimatedThemeToggler />
 
-          {!isAuditor && (
+          {!isMaterialIssueView && !isAuditor && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button

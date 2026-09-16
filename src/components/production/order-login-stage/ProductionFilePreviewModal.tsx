@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2, Package, Upload } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,8 @@ interface Props {
 
 export default function ProductionFilePreviewModal({ savedMaterials = [], materialsLoading = false, materialsError = false, embedded = false, open, onOpenChange, files, onFilesChange, vendorId,
   uploading, canUpload, onUpload, onDownloadTemplate }: Props) {
+  const searchParams = useSearchParams();
+  const isMaterialIssueView = searchParams.get("source") === "material-issue";
   const [confirmReplace, setConfirmReplace] = useState(false);
   const [preview, setPreview] = useState<ProductionPreview | null>(null);
   const [phase, setPhase] = useState<"reading" | "matching" | "done">("reading");
@@ -113,7 +116,7 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
           {materialsLoading && <p role="status">Loading saved materials…</p>}
           {materialsError && <p role="alert" className="text-destructive">Could not load saved materials. Reload this page to retry.</p>}
           {!!savedMaterials.length && <div className="space-y-3">
-            <ProductionMaterialsTable rows={savedRows} />
+            <ProductionMaterialsTable rows={savedRows} enableRowSelection={isMaterialIssueView} isMaterialIssueView={isMaterialIssueView} />
           </div>}
           <div className="rounded-xl border p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -147,7 +150,7 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
                 {value === "products" ? `Products (${rows.length})` : `Validation log (${preview?.logs.length ?? 0})`}</button>)}
             </div>
             {tab === "products" ? <div role="tabpanel" id="production-products-panel" aria-labelledby="production-products-tab" className="space-y-3">
-              <ProductionMaterialsTable rows={rows} checked={checked} busy={busy} />
+              <ProductionMaterialsTable rows={rows} checked={checked} busy={busy} isMaterialIssueView={isMaterialIssueView} />
             </div> : <div role="tabpanel" id="production-logs-panel" aria-labelledby="production-logs-tab" className="max-h-80 space-y-2 overflow-y-auto">
               {!preview?.logs.length && <p className="p-6 text-center text-sm text-muted-foreground">Validation results will appear here.</p>}
               {preview?.logs.map((log, index) => <div key={index} className={cn("flex gap-3 rounded-lg border p-3", log.level === "error" ? "border-destructive/25 bg-destructive/5" : log.level === "warning" ? "border-amber-500/25 bg-amber-500/5" : "bg-muted/20")}>

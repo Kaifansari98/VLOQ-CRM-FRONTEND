@@ -11,6 +11,7 @@ export type PreviewLog = { level: "error" | "warning" | "success"; source: strin
 export type InventoryProduct = {
   id: number; vendor_id: number; article_code: string | null; product_name: string;
   current_stock: string | number | null; active: string;
+  min_stock_qty?: string | number | null;
   unit_of_measure?: string | null;
   stockUnit?: { unit_name: string } | null;
   primaryUnit?: { unit_name: string; short_name?: string | null } | null;

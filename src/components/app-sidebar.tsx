@@ -370,9 +370,7 @@ const data = {
       icon: Forklift,
       items: [
         { title: "Projects", url: "/dashboard/inventory/material-issue/projects" },
-        { title: "Freeze Items", url: "/dashboard/inventory/material-issue/freeze-items" },
-        { title: "Issued Items", url: "/dashboard/inventory/material-issue/issued-items" },
-        { title: "Dispatch", url: "/dashboard/inventory/material-issue/dispatch" },
+        { title: "Issued Projects", url: "/dashboard/inventory/material-issue/issued-items" },
       ],
     },
   ],

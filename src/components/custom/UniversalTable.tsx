@@ -1321,7 +1321,7 @@ export function UniversalTable({
           ? lead.productStructureInstances
           : [];
 
-        if (handlesLargeScaleProjects && !isType9) {
+        if (handlesLargeScaleProjects && (!isType9 || materialIssueReadyOnly)) {
           const structureTypes = Array.from(
             new Set(
               instances
@@ -1484,6 +1484,8 @@ export function UniversalTable({
     }));
   }, [
     activeData,
+    materialIssueReadyOnly,
+    handlesLargeScaleProjectsFromAuth,
     activeSorting,
     normalizedType,
     pendingServicesOnly,

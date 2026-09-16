@@ -119,6 +119,9 @@ function isUrlActive(
   url: string,
 ): boolean {
   const [urlPath, urlQuery] = url.split("?");
+  if (searchParams.get("source") === "material-issue") {
+    return urlPath === "/dashboard/inventory/material-issue/projects";
+  }
   if (!pathname.startsWith(urlPath)) return false;
   if (!urlQuery) {
     const tabParam = searchParams.get("tab");
