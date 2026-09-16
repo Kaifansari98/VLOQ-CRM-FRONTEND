@@ -21,6 +21,7 @@ import {
   Cpu,
   ListChecks,
   Loader2,
+  Keyboard,
   MapPin,
   Maximize2,
   Minimize2,
@@ -223,6 +224,8 @@ export default function MachineScannerPage() {
   );
 
   const [scanValue, setScanValue] = useState("");
+  const [manualScanValue, setManualScanValue] = useState("");
+  const [isManualScanOpen, setIsManualScanOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedBoxId, setSelectedBoxId] = useState<number>();
   const [isBoxSelectorOpen, setIsBoxSelectorOpen] = useState(false);
@@ -238,6 +241,7 @@ export default function MachineScannerPage() {
   const [boxFormError, setBoxFormError] = useState("");
   const [boxAction, setBoxAction] = useState<BoxAction | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const manualScanInputRef = useRef<HTMLInputElement>(null);
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
   const autoSubmitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initializedAutoPrintRef = useRef(false);
@@ -315,20 +319,23 @@ export default function MachineScannerPage() {
   }, []);
 
   const processScan = useCallback(
-    (value: string) => {
+    (value: string, focusScannerAfterSubmit = true) => {
       const scannedItem = value.trim();
 
       if (!scannedItem) {
-        return;
+        return false;
       }
 
       if (!addScan(scannedItem)) {
-        return;
+        return false;
       }
 
       clearAutoSubmitTimer();
       setScanValue("");
-      window.setTimeout(() => inputRef.current?.focus(), 0);
+      if (focusScannerAfterSubmit) {
+        window.setTimeout(() => inputRef.current?.focus(), 0);
+      }
+      return true;
     },
     [addScan, clearAutoSubmitTimer],
   );
@@ -348,6 +355,51 @@ export default function MachineScannerPage() {
         AUTO_SUBMIT_DELAY_MS,
       );
     }
+  };
+
+  const closeManualScanDialog = () => {
+    setIsManualScanOpen(false);
+    setManualScanValue("");
+    window.setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  const openManualScanDialog = () => {
+    const openDialog = () => {
+      clearAutoSubmitTimer();
+      setScanValue("");
+      setManualScanValue("");
+      setIsManualScanOpen(true);
+      window.setTimeout(() => manualScanInputRef.current?.focus(), 0);
+    };
+
+    if (document.fullscreenElement) {
+      void document
+        .exitFullscreen()
+        .catch(() => undefined)
+        .finally(openDialog);
+      return;
+    }
+
+    openDialog();
+  };
+
+  const handleManualScanSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!manualScanValue.trim()) {
+      manualScanInputRef.current?.focus();
+      return;
+    }
+
+    if (!processScan(manualScanValue, false)) {
+      toastManager.add({
+        title: "Scanner is not ready. Check the packaging setup and try again.",
+        type: "error",
+      });
+      return;
+    }
+
+    closeManualScanDialog();
   };
 
   const openCreateBoxDialog = () => {
@@ -831,7 +883,8 @@ export default function MachineScannerPage() {
       !isQueueHydrated ||
       isBoxSelectorOpen ||
       isLocationSelectorOpen ||
-      isCreateBoxOpen
+      isCreateBoxOpen ||
+      isManualScanOpen
     ) {
       return;
     }
@@ -863,6 +916,7 @@ export default function MachineScannerPage() {
   }, [
     isBoxSelectorOpen,
     isCreateBoxOpen,
+    isManualScanOpen,
     isLocationSelectorOpen,
     isQueueHydrated,
     scannerReady,
@@ -1568,6 +1622,18 @@ export default function MachineScannerPage() {
                       <ScanLine className="size-4" />
                       Submit
                     </Button>
+                    {isPackagingMachine && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-11 gap-2 px-5"
+                        onClick={openManualScanDialog}
+                        disabled={!isQueueHydrated || !scannerReady}
+                      >
+                        <Keyboard className="size-4" />
+                        Manual scan
+                      </Button>
+                    )}
                   </form>
 
                   <p className="mt-3 text-xs text-muted-foreground">
@@ -1788,6 +1854,82 @@ export default function MachineScannerPage() {
           )}
         </div>
       </main>
+
+      <Dialog
+        open={isManualScanOpen}
+        onOpenChange={(open) => {
+          if (open) {
+            setIsManualScanOpen(true);
+          } else {
+            closeManualScanDialog();
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <form onSubmit={handleManualScanSubmit} className="space-y-5">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Keyboard className="size-5 text-primary" />
+                Enter code manually
+              </DialogTitle>
+              <DialogDescription>
+                Type the QR or barcode value exactly as printed. It will use the
+                same validation and scan queue as the scanner.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-2">
+              <Label htmlFor="manual-scan-code">QR / Barcode value</Label>
+              <Input
+                ref={manualScanInputRef}
+                id="manual-scan-code"
+                value={manualScanValue}
+                onChange={(event) => setManualScanValue(event.target.value)}
+                placeholder="Enter item code"
+                className="h-11 font-mono"
+                autoComplete="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                autoFocus
+              />
+              <p className="text-xs text-muted-foreground">
+                Press Enter or select Submit code to add it to the queue.
+              </p>
+            </div>
+
+            {(selectedBox || selectedLocationName) && (
+              <div className="rounded-lg border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                {selectedBox && <p>Box: {selectedBox.box_name}</p>}
+                {selectedLocationName && (
+                  <p>Location: {selectedLocationName}</p>
+                )}
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={closeManualScanDialog}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="gap-2"
+                disabled={
+                  !manualScanValue.trim() ||
+                  !isQueueHydrated ||
+                  !scannerReady
+                }
+              >
+                <ScanLine className="size-4" />
+                Submit code
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={isCreateBoxOpen}
