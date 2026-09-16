@@ -1003,13 +1003,17 @@ export default function InstallationMiscellaneous({
   // Step 1: Production (ERD, Solution, Mark as Ready) -> Always visible to all users
   const canViewStep1Production = true;
 
+  const isSelfDeliveryReturnOrder = (viewModalData as any)?.return_order_delivery_method === "SELF_DELIVERY";
+
   // Step 2: Handover (Required Delivery Date, Task & Resolution) ->
-  // Non-factory users (Supervisors, Admins, Miscellaneous, etc.) always see it.
+  // Hidden for Return Order Self Delivery items.
+  // Non-factory users (Supervisors, Admins, Miscellaneous, etc.) always see it for regular items.
   // Factory user sees it once Required Delivery Date is set or when resolved.
   const canViewStep2Handover =
-    !isFactoryUser ||
-    Boolean(viewModalData?.required_delivery_date) ||
-    Boolean(viewModalData?.is_resolved);
+    !isSelfDeliveryReturnOrder &&
+    (!isFactoryUser ||
+      Boolean(viewModalData?.required_delivery_date) ||
+      Boolean(viewModalData?.is_resolved));
 
   // Overall workflow view permission -> Always true when approved
   const canViewApprovedWorkflow = true;
@@ -2161,174 +2165,327 @@ export default function InstallationMiscellaneous({
                               </div>
                               <div className="flex items-center gap-2">
                                 <Calendar className="w-4 h-4 text-primary" />
-                                <h5 className="text-sm font-semibold text-foreground">Expected Ready Date (ERD)</h5>
+                                <h5 className="text-sm font-semibold text-foreground">
+                                  {(viewModalData as any)?.return_order_delivery_method === "SELF_DELIVERY"
+                                    ? "Return Order Self Delivery Confirmation"
+                                    : "Expected Ready Date (ERD)"}
+                                </h5>
                               </div>
                             </div>
 
                             <div className="space-y-3">
-                              {/* ERD Date Picker */}
-                              <CustomeTooltip
-                                value={shouldDisableBlockedActions ? blockedTooltip : ""}
-                                truncateValue={
-                                  <span className="block">
-                                    <CustomeDatePicker
-                                      key={viewModalData?.id}
-                                      value={selectedERD}
-                                      restriction="futureOnly"
-                                      disabledReason={
-                                        shouldDisableBlockedActions
-                                          ? blockedTooltip
-                                          : viewModalData?.is_resolved
-                                            ? "Resolved. ERD cannot be updated."
-                                            : !canDoERDDate
-                                              ? isFactoryUser
-                                                ? "This lead has moved ahead."
-                                                : "Only factory user can do this."
-                                              : isTaskReady
-                                                ? "Marked as ready. ERD cannot be updated."
-                                                : undefined
-                                      }
-                                      onChange={(newDate) => {
-                                        if (!effectiveCanUpdateERD || !newDate) return;
-                                        setSelectedERD(newDate);
-                                      }}
-                                    />
-                                  </span>
-                                }
-                              />
+                              {(viewModalData as any)?.return_order_delivery_method === "SELF_DELIVERY" ? (() => {
+                                const proofDocs = viewModalData?.documents?.filter((d) => d.doc_type_tag === "Type 42" || d.doc_type_tag === "Type 41") || [];
+                                const isAlreadyConfirmed = isTaskReady || viewModalData?.is_resolved || proofDocs.length > 0;
 
-                              {/* Solution Text Input */}
-                              <div className="space-y-1.5">
-                                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                                  <Wrench className="w-3.5 h-3.5 text-primary" />
-                                  Solution <span className="text-destructive">*</span>
-                                </label>
-                                <Input
-                                  placeholder="Enter solution or action plan..."
-                                  value={erdSolution}
-                                  onChange={(e) => setErdSolution(e.target.value)}
-                                  disabled={
-                                    shouldDisableBlockedActions ||
-                                    viewModalData?.is_resolved ||
-                                    !effectiveCanUpdateERD ||
-                                    isTaskReady
-                                  }
-                                  className={`h-8 text-xs bg-background ${selectedERD && !erdSolution.trim()
-                                    ? "border-destructive focus-visible:ring-destructive"
-                                    : ""
-                                    }`}
-                                />
-                                {selectedERD && !erdSolution.trim() && (
-                                  <p className="text-[11px] text-destructive font-medium">
-                                    Solution is required
-                                  </p>
-                                )}
-                              </div>
+                                return (
+                                  <div className="space-y-3">
+                                    {isAlreadyConfirmed ? (
+                                      <div className="rounded-lg border border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/70 dark:bg-emerald-950/30 p-3 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                                              <CheckCircle2 className="w-3.5 h-3.5" />
+                                            </div>
+                                            <div>
+                                              <div className="text-xs font-semibold text-emerald-900 dark:text-emerald-200">
+                                                Return Order Confirmed & Proof Uploaded
+                                              </div>
+                                              <div className="text-[11px] text-emerald-700 dark:text-emerald-300/90 flex flex-wrap items-center gap-1">
+                                                {viewModalData?.task?.closed_at && (
+                                                  <span>on <strong className="font-medium">{formatDateTime(viewModalData.task.closed_at)}</strong></span>
+                                                )}
+                                                {viewModalData?.task?.closed_user?.user_name && (
+                                                  <span>by <strong className="font-medium">{viewModalData.task.closed_user.user_name}</strong></span>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </div>
+                                          <Badge variant="outline" className="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 font-medium">
+                                            Confirmed
+                                          </Badge>
+                                        </div>
 
-                              {/* Unified Save Button for ERD Date & Solution */}
-                              {!isTaskReady &&
-                                !viewModalData?.is_resolved &&
-                                effectiveCanUpdateERD &&
-                                selectedERD &&
-                                (selectedERD !== (viewModalData?.expected_ready_date || undefined) ||
-                                  erdSolution.trim() !== (viewModalData?.solution?.trim() || "") ||
-                                  !viewModalData?.expected_ready_date) && (
-                                  <Button
-                                    size="sm"
-                                    className="h-8 text-xs w-full gap-1.5 font-medium shadow-sm"
-                                    disabled={updateERDMutation.isPending || !erdSolution.trim()}
-                                    onClick={() => {
-                                      if (!viewModalData || !selectedERD) return;
-                                      if (!erdSolution.trim()) {
-                                        toastManager.add({
-                                          title: "Solution is required",
-                                          type: "error",
-                                        });
-                                        return;
-                                      }
-                                      updateERDMutation.mutate(
-                                        {
-                                          vendorId,
-                                          miscId: viewModalData.id,
-                                          expected_ready_date: selectedERD,
-                                          solution: erdSolution.trim(),
-                                          updated_by: userId!,
-                                        },
-                                        {
-                                          onSuccess: () => {
-                                            queryClient.invalidateQueries({
-                                              queryKey: ["miscellaneousEntries", vendorId, leadId],
-                                            });
-                                            queryClient.invalidateQueries({
-                                              queryKey: ["vendorUserTasks"],
-                                            });
-                                            queryClient.invalidateQueries({
-                                              queryKey: ["vendorAllTasks"],
-                                            });
-                                          },
-                                        }
-                                      );
-                                    }}
-                                  >
-                                    <CheckCircle2 className="w-3.5 h-3.5" />
-                                    {updateERDMutation.isPending
-                                      ? "Saving..."
-                                      : viewModalData?.expected_ready_date
-                                        ? "Update ERD & Solution"
-                                        : "Save ERD & Solution"}
-                                  </Button>
-                                )}
-
-                              {/* Mark as Ready Action (when not yet ready) */}
-                              {!isTaskReady &&
-                                viewModalData?.expected_ready_date &&
-                                canMarkAsReady &&
-                                isApproved &&
-                                !viewModalData?.is_resolved && (
-                                  <div className="pt-1 border-t border-border/50">
-                                    <CustomeTooltip
-                                      value={
-                                        shouldDisableBlockedActions
-                                          ? blockedTooltip
-                                          : isMarkReadyRestrictedByERD
-                                            ? `Cannot mark as ready before Expected Ready Date (${formatDate(viewModalData.expected_ready_date)})`
-                                            : ""
-                                      }
-                                      truncateValue={
+                                        {proofDocs.length > 0 && (() => {
+                                          const { images, videos, nonImages } = separateImageAndDocs(proofDocs);
+                                          return (
+                                            <div className="space-y-2 pt-1 border-t border-emerald-200/60 dark:border-emerald-800/50">
+                                              <span className="text-[11px] font-medium text-emerald-800 dark:text-emerald-300">
+                                                Uploaded Return Order Proof ({proofDocs.length}):
+                                              </span>
+                                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                {images.map((doc) => (
+                                                  <ImageComponent
+                                                    key={doc.document_id}
+                                                    doc={{ id: doc.document_id, doc_og_name: doc.original_name, signedUrl: doc.signed_url, created_at: doc.uploaded_at }}
+                                                    canDelete={effectiveCanWork && !viewModalData?.is_resolved}
+                                                    onDelete={(id) => setConfirmDelete(Number(id))}
+                                                  />
+                                                ))}
+                                                {nonImages.map((doc) => (
+                                                  <DocumentCard
+                                                    key={doc.document_id}
+                                                    doc={{ id: doc.document_id, originalName: doc.original_name, signedUrl: doc.signed_url, created_at: doc.uploaded_at }}
+                                                    canDelete={effectiveCanWork && !viewModalData?.is_resolved}
+                                                    onDelete={(id) => setConfirmDelete(Number(id))}
+                                                  />
+                                                ))}
+                                                {videos.map((doc) => (
+                                                  <VideoCard
+                                                    key={doc.document_id}
+                                                    doc={{ id: doc.document_id, originalName: doc.original_name, signedUrl: doc.signed_url, created_at: doc.uploaded_at }}
+                                                    canDelete={effectiveCanWork && !viewModalData?.is_resolved}
+                                                    onDelete={(id) => setConfirmDelete(Number(id))}
+                                                  />
+                                                ))}
+                                              </div>
+                                            </div>
+                                          );
+                                        })()}
+                                      </div>
+                                    ) : (isFactoryUser || isAdminOrSuper) ? (
+                                      <div className="space-y-3">
+                                        <div className="space-y-1.5">
+                                          <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center justify-between">
+                                            <span className="flex items-center gap-1.5">
+                                              <Upload className="w-3.5 h-3.5 text-primary" />
+                                              Return Order Proof Document <span className="text-destructive">*</span>
+                                            </span>
+                                          </label>
+                                          <FileUploadField
+                                            value={readyFiles}
+                                            onChange={setReadyFiles}
+                                            multiple
+                                            disabled={markReadyMutation.isPending || shouldDisableBlockedActions}
+                                          />
+                                        </div>
                                         <Button
                                           variant="default"
                                           size="sm"
                                           disabled={
                                             markReadyMutation.isPending ||
                                             shouldDisableBlockedActions ||
-                                            isMarkReadyRestrictedByERD
+                                            readyFiles.length === 0
                                           }
                                           onClick={() => {
                                             if (shouldDisableBlockedActions) return;
-                                            if (isMarkReadyRestrictedByERD) {
+                                            if (readyFiles.length === 0) {
                                               toastManager.add({
-                                                title: `Cannot mark as ready before Expected Ready Date (${formatDate(viewModalData.expected_ready_date)})`,
+                                                title: "Please upload at least one proof document",
                                                 type: "error",
                                               });
                                               return;
                                             }
-                                            setShowReadyConfirm(true);
+                                            markReadyMutation.mutate(
+                                              {
+                                                vendorId,
+                                                leadId,
+                                                miscId: viewModalData.id,
+                                                ready_by: userId!,
+                                                files: readyFiles,
+                                              },
+                                              {
+                                                onSuccess: () => {
+                                                  queryClient.invalidateQueries({
+                                                    queryKey: ["miscellaneousEntries", vendorId, leadId],
+                                                  });
+                                                  queryClient.invalidateQueries({
+                                                    queryKey: ["vendorUserTasks"],
+                                                  });
+                                                  queryClient.invalidateQueries({
+                                                    queryKey: ["vendorAllTasks"],
+                                                  });
+                                                  setReadyFiles([]);
+                                                },
+                                              },
+                                            );
                                           }}
-                                          className="w-full gap-2 text-xs font-medium h-8 shadow-sm"
+                                          className="w-full gap-2 text-xs font-medium h-8 shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white"
                                         >
                                           <CheckCircle2 className="w-3.5 h-3.5" />
-                                          {markReadyMutation.isPending ? "Marking as Ready..." : "Mark as Ready"}
+                                          {markReadyMutation.isPending ? "Uploading & Confirming..." : "Confirm & Mark as Ready"}
                                         </Button>
+                                      </div>
+                                    ) : (
+                                      <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/30 p-3 space-y-1">
+                                        <div className="flex items-center gap-2 text-xs font-semibold text-amber-900 dark:text-amber-200">
+                                          <Clock className="w-3.5 h-3.5 text-amber-600" />
+                                          Pending Factory Confirmation
+                                        </div>
+                                        <p className="text-[11px] text-amber-700 dark:text-amber-300/90">
+                                          Waiting for factory team to upload Return Order proof document and confirm self delivery.
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })() : (
+                                <>
+                                  {/* ERD Date Picker */}
+                                  <CustomeTooltip
+                                    value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                                    truncateValue={
+                                      <span className="block">
+                                        <CustomeDatePicker
+                                          key={viewModalData?.id}
+                                          value={selectedERD}
+                                          restriction="futureOnly"
+                                          disabledReason={
+                                            shouldDisableBlockedActions
+                                              ? blockedTooltip
+                                              : viewModalData?.is_resolved
+                                                ? "Resolved. ERD cannot be updated."
+                                                : !canDoERDDate
+                                                  ? isFactoryUser
+                                                    ? "This lead has moved ahead."
+                                                    : "Only factory user can do this."
+                                                  : isTaskReady
+                                                    ? "Marked as ready. ERD cannot be updated."
+                                                    : undefined
+                                          }
+                                          onChange={(newDate) => {
+                                            if (!effectiveCanUpdateERD || !newDate) return;
+                                            setSelectedERD(newDate);
+                                          }}
+                                        />
+                                      </span>
+                                    }
+                                  />
+
+                                  {/* Solution Text Input */}
+                                  <div className="space-y-1.5">
+                                    <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                      <Wrench className="w-3.5 h-3.5 text-primary" />
+                                      Solution <span className="text-destructive">*</span>
+                                    </label>
+                                    <Input
+                                      placeholder="Enter solution or action plan..."
+                                      value={erdSolution}
+                                      onChange={(e) => setErdSolution(e.target.value)}
+                                      disabled={
+                                        shouldDisableBlockedActions ||
+                                        viewModalData?.is_resolved ||
+                                        !effectiveCanUpdateERD ||
+                                        isTaskReady
                                       }
+                                      className={`h-8 text-xs bg-background ${selectedERD && !erdSolution.trim()
+                                        ? "border-destructive focus-visible:ring-destructive"
+                                        : ""
+                                        }`}
                                     />
-                                    {isMarkReadyRestrictedByERD && (
-                                      <p className="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1.5 mt-1.5 px-0.5 font-medium">
-                                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                                        Mark as Ready is restricted until {formatDate(viewModalData.expected_ready_date)} for factory users.
+                                    {selectedERD && !erdSolution.trim() && (
+                                      <p className="text-[11px] text-destructive font-medium">
+                                        Solution is required
                                       </p>
                                     )}
                                   </div>
-                                )}
+
+                                  {/* Unified Save Button for ERD Date & Solution */}
+                                  {!isTaskReady &&
+                                    !viewModalData?.is_resolved &&
+                                    effectiveCanUpdateERD &&
+                                    selectedERD &&
+                                    (selectedERD !== (viewModalData?.expected_ready_date || undefined) ||
+                                      erdSolution.trim() !== (viewModalData?.solution?.trim() || "") ||
+                                      !viewModalData?.expected_ready_date) && (
+                                      <Button
+                                        size="sm"
+                                        className="h-8 text-xs w-full gap-1.5 font-medium shadow-sm"
+                                        disabled={updateERDMutation.isPending || !erdSolution.trim()}
+                                        onClick={() => {
+                                          if (!viewModalData || !selectedERD) return;
+                                          if (!erdSolution.trim()) {
+                                            toastManager.add({
+                                              title: "Solution is required",
+                                              type: "error",
+                                            });
+                                            return;
+                                          }
+                                          updateERDMutation.mutate(
+                                            {
+                                              vendorId,
+                                              miscId: viewModalData.id,
+                                              expected_ready_date: selectedERD,
+                                              solution: erdSolution.trim(),
+                                              updated_by: userId!,
+                                            },
+                                            {
+                                              onSuccess: () => {
+                                                queryClient.invalidateQueries({
+                                                  queryKey: ["miscellaneousEntries", vendorId, leadId],
+                                                });
+                                                queryClient.invalidateQueries({
+                                                  queryKey: ["vendorUserTasks"],
+                                                });
+                                                queryClient.invalidateQueries({
+                                                  queryKey: ["vendorAllTasks"],
+                                                });
+                                              },
+                                            }
+                                          );
+                                        }}
+                                      >
+                                        <CheckCircle2 className="w-3.5 h-3.5" />
+                                        {updateERDMutation.isPending
+                                          ? "Saving..."
+                                          : viewModalData?.expected_ready_date
+                                            ? "Update ERD & Solution"
+                                            : "Save ERD & Solution"}
+                                      </Button>
+                                    )}
+
+                                  {/* Mark as Ready Action (when not yet ready) */}
+                                  {!isTaskReady &&
+                                    viewModalData?.expected_ready_date &&
+                                    canMarkAsReady &&
+                                    isApproved &&
+                                    !viewModalData?.is_resolved && (
+                                      <div className="pt-1 border-t border-border/50">
+                                        <CustomeTooltip
+                                          value={
+                                            shouldDisableBlockedActions
+                                              ? blockedTooltip
+                                              : isMarkReadyRestrictedByERD
+                                                ? `Cannot mark as ready before Expected Ready Date (${formatDate(viewModalData.expected_ready_date)})`
+                                                : ""
+                                          }
+                                          truncateValue={
+                                            <Button
+                                              variant="default"
+                                              size="sm"
+                                              disabled={
+                                                markReadyMutation.isPending ||
+                                                shouldDisableBlockedActions ||
+                                                isMarkReadyRestrictedByERD
+                                              }
+                                              onClick={() => {
+                                                if (shouldDisableBlockedActions) return;
+                                                if (isMarkReadyRestrictedByERD) {
+                                                  toastManager.add({
+                                                    title: `Cannot mark as ready before Expected Ready Date (${formatDate(viewModalData.expected_ready_date)})`,
+                                                    type: "error",
+                                                  });
+                                                  return;
+                                                }
+                                                setShowReadyConfirm(true);
+                                              }}
+                                              className="w-full gap-2 text-xs font-medium h-8 shadow-sm"
+                                            >
+                                              <CheckCircle2 className="w-3.5 h-3.5" />
+                                              {markReadyMutation.isPending ? "Marking as Ready..." : "Mark as Ready"}
+                                            </Button>
+                                          }
+                                        />
+                                        {isMarkReadyRestrictedByERD && (
+                                          <p className="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1.5 mt-1.5 px-0.5 font-medium">
+                                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                            Mark as Ready is restricted until {formatDate(viewModalData.expected_ready_date)} for factory users.
+                                          </p>
+                                        )}
+                                      </div>
+                                    )}
+                                </>
+                              )}
 
                               {/* Clean Completion Banner (when task is marked as ready) */}
                               {isTaskReady && (() => {
@@ -2516,7 +2673,10 @@ export default function InstallationMiscellaneous({
 
                       {/* ── Document Sections (Production Ready & Completion Documents Stacked with 2 docs per row) ── */}
                       {(() => {
-                        const readyDocs = viewModalData?.documents?.filter((d) => d.doc_type_tag === "Type 41") || [];
+                        const isSelfDeliveryReturnOrder = (viewModalData as any)?.return_order_delivery_method === "SELF_DELIVERY";
+                        const readyDocs = isSelfDeliveryReturnOrder
+                          ? []
+                          : viewModalData?.documents?.filter((d) => d.doc_type_tag === "Type 41") || [];
                         const completionDocs = viewModalData?.documents?.filter((d) => d.doc_type_tag === "Type 37") || [];
 
                         if (readyDocs.length === 0 && completionDocs.length === 0) return null;
