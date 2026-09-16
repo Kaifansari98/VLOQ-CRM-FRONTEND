@@ -48,11 +48,13 @@ import TextAreaInput from "@/components/origin-text-area";
 import CurrencyInput from "@/components/custom/CurrencyInput";
 import {
   useCreateMiscellaneousEntry,
+  useCreateMiscellaneousReturnOrder,
   useUpdateMiscellaneousEntry,
   useMiscellaneousEntries,
   useMiscTypes,
   useMiscTeams,
   CreateMiscellaneousPayload,
+  CreateMiscellaneousReturnOrderPayload,
   UpdateMiscellaneousPayload,
   useUpdateMiscERD,
   useMarkMiscellaneousTaskReady,
@@ -107,31 +109,11 @@ import {
 import CustomeTooltip from "@/components/custom-tooltip";
 
 const miscFormSchema = z.object({
-  misc_type_id: z
-    .number()
-    .int()
-    .positive()
-    .optional()
-    .refine((val): val is number => typeof val === "number" && val > 0, {
-      message: "Please select an issue type",
-    }),
-  selected_instance_id: z
-    .number()
-    .int()
-    .positive()
-    .optional()
-    .refine((val): val is number => typeof val === "number" && val > 0, {
-      message: "Please select an instance",
-    }),
-  problem_description: z
-    .string()
-    .min(5, "Problem description must be at least 5 characters"),
-  reorder_material_details: z
-    .string()
-    .min(3, "Reorder material details must be at least 3 characters"),
-  supervisor_remark: z
-    .string()
-    .min(3, "Supervisor remark must be at least 3 characters"),
+  misc_type_id: z.number().int().positive().optional(),
+  selected_instance_id: z.number().int().positive().optional(),
+  problem_description: z.string().optional(),
+  reorder_material_details: z.string().optional(),
+  supervisor_remark: z.string().optional(),
   selectedTeams: z
     .array(
       z.object({
@@ -141,13 +123,33 @@ const miscFormSchema = z.object({
         fixed: z.boolean().optional(),
       }),
     )
-    .min(1, "Please select at least one team"),
-  files: z
-    .array(z.instanceof(File))
-    .min(1, "Please upload at least one document"),
+    .optional(),
+  files: z.array(z.instanceof(File)).optional(),
   quantity: z.number().positive().optional(),
   cost: z.number().positive().optional(),
   expected_ready_date: z.string().optional(),
+  return_order_date: z.string().optional(),
+  return_order_delivery_method: z.string().optional(),
+  return_order_selected_instances: z
+    .array(
+      z.object({
+        value: z.string(),
+        label: z.string(),
+        disable: z.boolean().optional(),
+        fixed: z.boolean().optional(),
+      }),
+    )
+    .optional(),
+  return_order_selected_materials: z
+    .array(
+      z.object({
+        value: z.string(),
+        label: z.string(),
+        disable: z.boolean().optional(),
+        fixed: z.boolean().optional(),
+      }),
+    )
+    .optional(),
 });
 
 type MiscFormValues = z.infer<typeof miscFormSchema>;
@@ -208,9 +210,9 @@ export default function InstallationMiscellaneous({
     (s) =>
       (typeof s.auth.user?.user_type === "object"
         ? (s.auth.user?.user_type as any)?.user_type ||
-          (s.auth.user?.user_type as any)?.user_type_name ||
-          (s.auth.user?.user_type as any)?.name ||
-          (s.auth.user?.user_type as any)?.type
+        (s.auth.user?.user_type as any)?.user_type_name ||
+        (s.auth.user?.user_type as any)?.name ||
+        (s.auth.user?.user_type as any)?.type
         : s.auth.user?.user_type) ||
       s.auth.user?.user_role ||
       (s.auth.user as any)?.role ||
@@ -242,6 +244,10 @@ export default function InstallationMiscellaneous({
       quantity: undefined,
       cost: undefined,
       expected_ready_date: undefined,
+      return_order_date: undefined,
+      return_order_delivery_method: "SELF_DELIVERY",
+      return_order_selected_instances: [],
+      return_order_selected_materials: [],
     },
   });
 
@@ -275,12 +281,25 @@ export default function InstallationMiscellaneous({
       quantity: undefined,
       cost: undefined,
       expected_ready_date: undefined,
+      return_order_date: undefined,
+      return_order_delivery_method: "SELF_DELIVERY",
+      return_order_selected_instances: [],
+      return_order_selected_materials: [],
     });
     setFiles([]);
     setFormErrors({});
     setEditingEntry(null);
   };
   const watchedInstanceId = form.watch("selected_instance_id");
+
+  const selectedMiscType = useMemo(() => {
+    return miscTypes.find((t) => t.id === formData.misc_type_id);
+  }, [miscTypes, formData.misc_type_id]);
+
+  const isReturnOrder = useMemo(() => {
+    const name = selectedMiscType?.name?.trim().toLowerCase().replace(/[\s_-]+/g, " ");
+    return name === "return order";
+  }, [selectedMiscType]);
 
   const resolveMisc = useResolveMiscellaneousEntry();
   const [viewModal, setViewModal] = useState<{ open: boolean; id: number | null }>({
@@ -289,6 +308,7 @@ export default function InstallationMiscellaneous({
   });
 
   const createMutation = useCreateMiscellaneousEntry();
+  const createReturnOrderMutation = useCreateMiscellaneousReturnOrder();
   const updateMutation = useUpdateMiscellaneousEntry();
   const { data: entries, refetch } = useMiscellaneousEntries(vendorId, leadId);
   const updateERDMutation = useUpdateMiscERD();
@@ -550,6 +570,33 @@ export default function InstallationMiscellaneous({
     );
   }, [orderLoginSummary, watchedInstanceId]);
 
+  const returnOrderSelectedInstanceIds = useMemo(() => {
+    return (formData.return_order_selected_instances || [])
+      .map((opt) => Number(opt.value))
+      .filter((n) => !isNaN(n) && n > 0);
+  }, [formData.return_order_selected_instances]);
+
+  const returnOrderMaterialOptions: Option[] = useMemo(() => {
+    if (!returnOrderSelectedInstanceIds.length) return [];
+    const matched = orderLoginSummary.filter((item: any) =>
+      returnOrderSelectedInstanceIds.includes(Number(item?.instance_id)),
+    );
+    return matched.map((item: any) => {
+      const instTitle = item?.instance_id
+        ? instanceTitleById.get(Number(item.instance_id))
+        : "";
+      const rawName = item.item_desc || item.item_type || "Untitled Item";
+      const label =
+        returnOrderSelectedInstanceIds.length > 1 && instTitle
+          ? `${instTitle} - ${rawName}`
+          : rawName;
+      return {
+        value: String(item.id),
+        label: label,
+      };
+    });
+  }, [returnOrderSelectedInstanceIds, orderLoginSummary, instanceTitleById]);
+
   useEffect(() => {
     if (skipMaterialResetRef.current) {
       skipMaterialResetRef.current = false;
@@ -672,24 +719,44 @@ export default function InstallationMiscellaneous({
     if (!formData.misc_type_id) {
       errors.misc_type_id = "Please select an issue type";
     }
-    if (!formData.selectedTeams || formData.selectedTeams.length === 0) {
-      errors.selectedTeams = "Please select at least one responsible team";
+
+    if (isReturnOrder) {
+      if (!formData.return_order_selected_instances || formData.return_order_selected_instances.length === 0) {
+        errors.return_order_selected_instances = "Please select at least one instance";
+      }
+      if (!formData.return_order_selected_materials || formData.return_order_selected_materials.length === 0) {
+        errors.return_order_selected_materials = "Please select at least one material type";
+      }
+      if (!formData.supervisor_remark || !formData.supervisor_remark.trim()) {
+        errors.supervisor_remark = "Return order material details are required";
+      }
+      if (!editingEntry && files.length === 0) {
+        errors.files = "Please upload at least one return order supporting proof";
+      }
+      if (!formData.return_order_delivery_method) {
+        errors.return_order_delivery_method = "Please select delivery method";
+      }
+    } else {
+      if (!formData.selectedTeams || formData.selectedTeams.length === 0) {
+        errors.selectedTeams = "Please select at least one responsible team";
+      }
+      if (!formData.problem_description || !formData.problem_description.trim()) {
+        errors.problem_description = "Problem description is required";
+      }
+      if (!formData.selected_instance_id) {
+        errors.selected_instance_id = "Please select an instance";
+      }
+      if (!formData.reorder_material_details || !formData.reorder_material_details.trim()) {
+        errors.reorder_material_details = "Please select a material type";
+      }
+      if (!formData.supervisor_remark || !formData.supervisor_remark.trim()) {
+        errors.supervisor_remark = "Material details are required";
+      }
+      if (!editingEntry && files.length === 0) {
+        errors.files = "Please upload at least one document";
+      }
     }
-    if (!formData.problem_description || !formData.problem_description.trim()) {
-      errors.problem_description = "Problem description is required";
-    }
-    if (!formData.selected_instance_id) {
-      errors.selected_instance_id = "Please select an instance";
-    }
-    if (!formData.reorder_material_details || !formData.reorder_material_details.trim()) {
-      errors.reorder_material_details = "Please select a material type";
-    }
-    if (!formData.supervisor_remark || !formData.supervisor_remark.trim()) {
-      errors.supervisor_remark = "Material details are required";
-    }
-    if (!editingEntry && files.length === 0) {
-      errors.files = "Please upload at least one document";
-    }
+
     setFormErrors(errors);
     return errors;
   };
@@ -704,7 +771,7 @@ export default function InstallationMiscellaneous({
       if (el) {
         const isHidden = el.getBoundingClientRect().height === 0;
         const targetScrollEl = isHidden ? (el.parentElement || el) : el;
-        
+
         const scrollContainer = targetScrollEl.closest("[data-radix-scroll-area-viewport]") || targetScrollEl.closest(".space-y-4");
         if (scrollContainer instanceof HTMLElement) {
           const containerRect = scrollContainer.getBoundingClientRect();
@@ -740,14 +807,14 @@ export default function InstallationMiscellaneous({
         leadId,
         miscId: editingEntry.id,
         misc_type_id: formData.misc_type_id!,
-        problem_description: formData.problem_description.trim() || undefined,
-        reorder_material_details: formattedReorderMaterial.trim() || undefined,
+        problem_description: formData.problem_description?.trim() || undefined,
+        reorder_material_details: formattedReorderMaterial?.trim() || undefined,
         quantity: values.quantity,
         cost: values.cost,
-        supervisor_remark: values.supervisor_remark.trim() || undefined,
+        supervisor_remark: values.supervisor_remark?.trim() || undefined,
         expected_ready_date: values.expected_ready_date,
         teams:
-          values.selectedTeams.length > 0
+          values.selectedTeams && values.selectedTeams.length > 0
             ? values.selectedTeams.map((t) => Number(t.value))
             : undefined,
         updated_by: userId!,
@@ -775,20 +842,71 @@ export default function InstallationMiscellaneous({
       return;
     }
 
+    // ── RETURN ORDER (NEW LOGIC) ──
+    if (isReturnOrder) {
+      const selectedMaterialIds = (formData.return_order_selected_materials || [])
+        .map((m) => Number(m.value))
+        .filter((n) => !isNaN(n) && n > 0);
+
+      const formattedMaterialLabels = (formData.return_order_selected_materials || [])
+        .map((m) => m.label)
+        .join(", ");
+
+      const firstInstanceId = returnOrderSelectedInstanceIds[0] || undefined;
+
+      const returnOrderPayload: CreateMiscellaneousReturnOrderPayload = {
+        vendorId,
+        leadId,
+        account_id: accountId,
+        misc_type_id: formData.misc_type_id,
+        instance_id: firstInstanceId,
+        selected_instance_id: firstInstanceId,
+        orderlogindetails_ids: selectedMaterialIds.length > 0 ? selectedMaterialIds : undefined,
+        reorder_material_details: formattedMaterialLabels.trim() || "Return Order Material",
+        problem_description: "Return Order",
+        supervisor_remark: values.supervisor_remark?.trim() || undefined,
+        return_order_date: values.return_order_date || null,
+        return_order_delivery_method: values.return_order_delivery_method || "SELF_DELIVERY",
+        created_by: userId!,
+        files: files,
+      };
+
+      createReturnOrderMutation.mutate(returnOrderPayload, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ["miscellaneousEntries"] });
+          setIsAddModalOpen(false);
+          resetForm();
+          refetch();
+        },
+        onError: (error: any) => {
+          const errorMessage =
+            error?.response?.data?.error ||
+            error?.response?.data?.message ||
+            error?.message ||
+            "Failed to create return order.";
+          toastManager.add({ title: errorMessage, type: "error" });
+        },
+      });
+      setFiles([]);
+      setFormErrors({});
+      return;
+    }
+
+    // ── STANDARD MISCELLANEOUS (PURANA LOGIC - 100% UNCHANGED) ──
     const payload: CreateMiscellaneousPayload = {
       vendorId,
       leadId,
       account_id: accountId,
       misc_type_id: formData.misc_type_id!,
-      problem_description: formData.problem_description.trim() || undefined,
-      reorder_material_details: formattedReorderMaterial.trim() || undefined,
+      problem_description: formData.problem_description?.trim() || undefined,
+      reorder_material_details: formattedReorderMaterial?.trim() || undefined,
       quantity: values.quantity,
       cost: values.cost,
-      supervisor_remark: values.supervisor_remark.trim() || undefined,
+      supervisor_remark: values.supervisor_remark?.trim() || undefined,
       expected_ready_date: values.expected_ready_date,
       is_resolved: false,
       teams:
-        values.selectedTeams.length > 0
+        values.selectedTeams && values.selectedTeams.length > 0
           ? values.selectedTeams.map((t) => Number(t.value))
           : undefined,
       created_by: userId!,
@@ -966,483 +1084,647 @@ export default function InstallationMiscellaneous({
         <>
           {/* ── Header ──────────────────────────────────────────────────────────── */}
           <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
-        <div>
-          <h3 className="text-lg font-semibold">Miscellaneous Issues</h3>
-          <p className="text-sm text-muted-foreground">
-            Track and manage installation issues, material reorders, and other
-            miscellaneous items
-          </p>
-        </div>
+            <div>
+              <h3 className="text-lg font-semibold">Miscellaneous Issues</h3>
+              <p className="text-sm text-muted-foreground">
+                Track and manage installation issues, material reorders, and other
+                miscellaneous items
+              </p>
+            </div>
 
-        <div className="w-full sm:w-auto flex justify-end">
-          {canWork && canAddMiscellaneous && !hideAddButton && (
-            // ✅ Add Miscellaneous button — blocked tooltip
-            <CustomeTooltip
-              value={shouldDisableBlockedActions ? blockedTooltip : ""}
-              truncateValue={
-                <span className="inline-block">
-                  <Button
-                    disabled={shouldDisableBlockedActions}
-                    onClick={() => {
-                      if (shouldDisableBlockedActions) return;
-                      setIsAddModalOpen(true);
-                    }}
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Miscellaneous
-                  </Button>
-                </span>
-              }
-            />
-          )}
-        </div>
-      </div>
-
-      {/* ── Table ───────────────────────────────────────────────────────────── */}
-      <div className="rounded-xl border bg-card overflow-hidden">
-        <Table>
-          <TableHeader className="bg-muted/40">
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="w-50 text-sm font-medium text-foreground/80">Miscellaneous Type</TableHead>
-              <TableHead className="w-50 text-sm font-medium text-foreground/80">ERD Date</TableHead>
-              <TableHead className="w-50 text-sm font-medium text-foreground/80">Responsible Teams</TableHead>
-              <TableHead className="w-25 text-center text-sm font-medium text-foreground/80">Documents</TableHead>
-              <TableHead className="w-35 text-center text-sm font-medium text-foreground/80">Status</TableHead>
-              <TableHead className="w-50 text-sm font-medium text-foreground/80">Problem Description</TableHead>
-              <TableHead className="w-25 text-sm font-medium text-foreground/80">Quantity</TableHead>
-              <TableHead className="w-30 text-sm font-medium text-foreground/80">Cost</TableHead>
-              {canSeeActionsColumn && (
-                <TableHead className="w-20 text-center text-sm font-medium text-foreground/80">Actions</TableHead>
+            <div className="w-full sm:w-auto flex justify-end">
+              {canWork && canAddMiscellaneous && !hideAddButton && (
+                // ✅ Add Miscellaneous button — blocked tooltip
+                <CustomeTooltip
+                  value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                  truncateValue={
+                    <span className="inline-block">
+                      <Button
+                        disabled={shouldDisableBlockedActions}
+                        onClick={() => {
+                          if (shouldDisableBlockedActions) return;
+                          setIsAddModalOpen(true);
+                        }}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Miscellaneous
+                      </Button>
+                    </span>
+                  }
+                />
               )}
-            </TableRow>
-          </TableHeader>
+            </div>
+          </div>
 
-          <TableBody>
-            {!entries || entries.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={canSeeActionsColumn ? 9 : 8} className="py-10 text-center">
-                  <div className="flex flex-col items-center">
-                    <div className="p-3 bg-muted/40 rounded-full shadow-inner mb-2">
-                      <Wrench className="w-7 h-7 opacity-50" />
-                    </div>
-                    <p className="font-medium text-sm">No issues reported yet</p>
-                    <p className="text-xs text-muted-foreground">
-                      Add your first miscellaneous issue or material reorder
-                    </p>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : (
-              entries.map((entry) => (
-                <TableRow
-                  key={entry.id}
-                  className="cursor-pointer hover:bg-muted/30 transition-all border-b last:border-0"
-                  onClick={() => setViewModal({ open: true, id: entry.id })}
-                >
-                  <TableCell className="py-3">
-                    <div className="flex items-center gap-2">
-                      <div className={`p-1.5 rounded-md ${entry.is_resolved ? "bg-green-100 dark:bg-green-900" : "bg-orange-100 dark:bg-orange-900"}`}>
-                        {entry.is_resolved ? (
-                          <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-300" />
-                        ) : (
-                          <AlertCircle className="w-4 h-4 text-orange-600 dark:text-orange-300" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-sm">{entry.type.name}</p>
-                        <p className="text-xs text-muted-foreground">{formatDate(entry.created_at)}</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="py-3">
-                    {entry.expected_ready_date ? (
-                      <div>
-                        <span className="text-sm font-medium">{formatDate(entry.expected_ready_date)}</span>
-                        {entry.solution && (
-                          <p className="text-[11px] text-muted-foreground truncate max-w-[150px]" title={entry.solution}>
-                            {entry.solution}
-                          </p>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="py-3">
-                    {entry.teams.length ? (
-                      <div className="flex flex-wrap gap-1">
-                        {entry.teams.slice(0, 2).map((team) => (
-                          <Badge key={team.team_id} variant="secondary" className="text-xs px-2">
-                            {team.team_name}
-                          </Badge>
-                        ))}
-                        {entry.teams.length > 2 && (
-                          <Badge variant="secondary" className="text-xs px-2">+{entry.teams.length - 2}</Badge>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="py-3 text-center">
-                    <Badge variant="outline" className="text-xs px-2">
-                      <FileText className="w-3 h-3 mr-1" />
-                      {entry.documents.length}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="py-3 text-center">
-                    {(() => {
-                      const hasDispatchDocs = entry.delivery_task?.status === "completed";
-                      let label: string;
-                      let className: string;
-                      if (entry.misc_approved === false) { label = "REJECTED"; className = "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"; }
-                      else if (entry.is_resolved) { label = "RESOLVED"; className = "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"; }
-                      else if (hasDispatchDocs) { label = "DISPATCHED"; className = "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"; }
-                      else if (entry.required_delivery_date) { label = "DISPATCH SCHEDULED"; className = "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300"; }
-                      else if (entry.misc_approved === true && entry.expected_ready_date && entry.task?.status === "completed") { label = "RTD"; className = "bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300"; }
-                      else if (entry.misc_approved === true && entry.expected_ready_date) { label = "UNDER PROCESS"; className = "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300"; }
-                      else if (entry.misc_approved === true) { label = "MISCL APPROVED"; className = "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300"; }
-                      else { label = "AWAITING APPROVAL"; className = "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"; }
-                      return (
-                        <Badge variant="outline" className={`text-xs px-2 border-0 font-medium ${className}`}>{label}</Badge>
-                      );
-                    })()}
-                  </TableCell>
-                  <TableCell className="py-3">
-                    <RemarkTooltip
-                      remark={entry.problem_description ? entry.problem_description.length > 40 ? entry.problem_description.slice(0, 40) + "..." : entry.problem_description : "-"}
-                      remarkFull={entry.problem_description || "-"}
-                    />
-                  </TableCell>
-                  <TableCell className="py-3">
-                    {entry.quantity ? <span className="text-sm font-medium">{entry.quantity}</span> : <span className="text-sm text-muted-foreground">-</span>}
-                  </TableCell>
-                  <TableCell className="py-3">
-                    {entry.cost ? <span className="text-sm font-medium">₹{entry.cost.toLocaleString()}</span> : <span className="text-sm text-muted-foreground">-</span>}
-                  </TableCell>
+          {/* ── Table ───────────────────────────────────────────────────────────── */}
+          <div className="rounded-xl border bg-card overflow-hidden">
+            <Table>
+              <TableHeader className="bg-muted/40">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="w-50 text-sm font-medium text-foreground/80">Miscellaneous Type</TableHead>
+                  <TableHead className="w-50 text-sm font-medium text-foreground/80">ERD Date</TableHead>
+                  <TableHead className="w-50 text-sm font-medium text-foreground/80">Responsible Teams</TableHead>
+                  <TableHead className="w-25 text-center text-sm font-medium text-foreground/80">Documents</TableHead>
+                  <TableHead className="w-35 text-center text-sm font-medium text-foreground/80">Status</TableHead>
+                  <TableHead className="w-50 text-sm font-medium text-foreground/80">Problem Description</TableHead>
+                  <TableHead className="w-25 text-sm font-medium text-foreground/80">Quantity</TableHead>
+                  <TableHead className="w-30 text-sm font-medium text-foreground/80">Cost</TableHead>
                   {canSeeActionsColumn && (
-                    <TableCell className="py-3 text-center" onClick={(e) => e.stopPropagation()}>
-                      {canEditEntry(entry) ? (
-                        <CustomeTooltip
-                          value={shouldDisableBlockedActions ? blockedTooltip : "Edit miscellaneous"}
-                          truncateValue={
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
-                              disabled={shouldDisableBlockedActions}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenEditModal(entry);
-                              }}
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </Button>
-                          }
-                        />
-                      ) : (
-                        <span className="text-sm text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
+                    <TableHead className="w-20 text-center text-sm font-medium text-foreground/80">Actions</TableHead>
                   )}
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              </TableHeader>
 
-      {/* ── Add / Edit Modal ─────────────────────────────────────────────────── */}
-      <BaseModal
-        open={isAddModalOpen}
-        onOpenChange={(open) => { setIsAddModalOpen(open); if (!open) resetForm(); }}
-        title={editingEntry ? "Edit Miscellaneous Issue" : "Add Miscellaneous Issue"}
-        description="Log a miscellaneous issue with required details, supporting proofs, and material information."
-        size="lg"
-      >
-        <Form {...form}>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleCreateEntry();
-            }}
-            className="space-y-4 py-4 px-6"
+              <TableBody>
+                {!entries || entries.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={canSeeActionsColumn ? 9 : 8} className="py-10 text-center">
+                      <div className="flex flex-col items-center">
+                        <div className="p-3 bg-muted/40 rounded-full shadow-inner mb-2">
+                          <Wrench className="w-7 h-7 opacity-50" />
+                        </div>
+                        <p className="font-medium text-sm">No issues reported yet</p>
+                        <p className="text-xs text-muted-foreground">
+                          Add your first miscellaneous issue or material reorder
+                        </p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  entries.map((entry) => (
+                    <TableRow
+                      key={entry.id}
+                      className="cursor-pointer hover:bg-muted/30 transition-all border-b last:border-0"
+                      onClick={() => setViewModal({ open: true, id: entry.id })}
+                    >
+                      <TableCell className="py-3">
+                        <div className="flex items-center gap-2">
+                          <div className={`p-1.5 rounded-md ${entry.is_resolved ? "bg-green-100 dark:bg-green-900" : "bg-orange-100 dark:bg-orange-900"}`}>
+                            {entry.is_resolved ? (
+                              <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-300" />
+                            ) : (
+                              <AlertCircle className="w-4 h-4 text-orange-600 dark:text-orange-300" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-sm">{entry.type.name}</p>
+                            <p className="text-xs text-muted-foreground">{formatDate(entry.created_at)}</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-3">
+                        {entry.expected_ready_date ? (
+                          <div>
+                            <span className="text-sm font-medium">{formatDate(entry.expected_ready_date)}</span>
+                            {entry.solution && (
+                              <p className="text-[11px] text-muted-foreground truncate max-w-[150px]" title={entry.solution}>
+                                {entry.solution}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="py-3">
+                        {entry.teams.length ? (
+                          <div className="flex flex-wrap gap-1">
+                            {entry.teams.slice(0, 2).map((team) => (
+                              <Badge key={team.team_id} variant="secondary" className="text-xs px-2">
+                                {team.team_name}
+                              </Badge>
+                            ))}
+                            {entry.teams.length > 2 && (
+                              <Badge variant="secondary" className="text-xs px-2">+{entry.teams.length - 2}</Badge>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="py-3 text-center">
+                        <Badge variant="outline" className="text-xs px-2">
+                          <FileText className="w-3 h-3 mr-1" />
+                          {entry.documents.length}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="py-3 text-center">
+                        {(() => {
+                          const hasDispatchDocs = entry.delivery_task?.status === "completed";
+                          let label: string;
+                          let className: string;
+                          if (entry.misc_approved === false) { label = "REJECTED"; className = "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"; }
+                          else if (entry.is_resolved) { label = "RESOLVED"; className = "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"; }
+                          else if (hasDispatchDocs) { label = "DISPATCHED"; className = "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"; }
+                          else if (entry.required_delivery_date) { label = "DISPATCH SCHEDULED"; className = "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300"; }
+                          else if (entry.misc_approved === true && entry.expected_ready_date && entry.task?.status === "completed") { label = "RTD"; className = "bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300"; }
+                          else if (entry.misc_approved === true && entry.expected_ready_date) { label = "UNDER PROCESS"; className = "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300"; }
+                          else if (entry.misc_approved === true) { label = "MISCL APPROVED"; className = "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300"; }
+                          else { label = "AWAITING APPROVAL"; className = "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"; }
+                          return (
+                            <Badge variant="outline" className={`text-xs px-2 border-0 font-medium ${className}`}>{label}</Badge>
+                          );
+                        })()}
+                      </TableCell>
+                      <TableCell className="py-3">
+                        <RemarkTooltip
+                          remark={entry.problem_description ? entry.problem_description.length > 40 ? entry.problem_description.slice(0, 40) + "..." : entry.problem_description : "-"}
+                          remarkFull={entry.problem_description || "-"}
+                        />
+                      </TableCell>
+                      <TableCell className="py-3">
+                        {entry.quantity ? <span className="text-sm font-medium">{entry.quantity}</span> : <span className="text-sm text-muted-foreground">-</span>}
+                      </TableCell>
+                      <TableCell className="py-3">
+                        {entry.cost ? <span className="text-sm font-medium">₹{entry.cost.toLocaleString()}</span> : <span className="text-sm text-muted-foreground">-</span>}
+                      </TableCell>
+                      {canSeeActionsColumn && (
+                        <TableCell className="py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          {canEditEntry(entry) ? (
+                            <CustomeTooltip
+                              value={shouldDisableBlockedActions ? blockedTooltip : "Edit miscellaneous"}
+                              truncateValue={
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
+                                  disabled={shouldDisableBlockedActions}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenEditModal(entry);
+                                  }}
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </Button>
+                              }
+                            />
+                          ) : (
+                            <span className="text-sm text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* ── Add / Edit Modal ─────────────────────────────────────────────────── */}
+          <BaseModal
+            open={isAddModalOpen}
+            onOpenChange={(open) => { setIsAddModalOpen(open); if (!open) resetForm(); }}
+            title={editingEntry ? "Edit Miscellaneous Issue" : "Add Miscellaneous Issue"}
+            description="Log a miscellaneous issue with required details, supporting proofs, and material information."
+            size="lg"
           >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Miscellaneous Type */}
-            <div className={cn("flex flex-col gap-2", formErrors.misc_type_id && "text-destructive [&_button]:border-destructive")} data-name="misc_type_id">
-              <label className="text-sm font-medium">
-                Miscellaneous Type *
-              </label>
-              <AssignToPicker
-                data={typeSelectData}
-                value={formData.misc_type_id}
-                onChange={(id) => {
-                  setFormData((prev) => ({
-                    ...prev,
-                    misc_type_id: id || undefined,
-                  }));
-                  setFormErrors((prev) => ({ ...prev, misc_type_id: "" }));
+            <Form {...form}>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleCreateEntry();
                 }}
-                placeholder="Select issue type"
-                emptyLabel="Select issue type"
-                disabled={loadingTypes}
-              />
-              {formErrors.misc_type_id && (
-                <p className="text-xs font-medium text-destructive mt-1">
-                  {formErrors.misc_type_id}
-                </p>
-              )}
-            </div>
+                className="space-y-4 py-4 px-6"
+              >
+                <div className={cn("grid grid-cols-1 gap-4", !isReturnOrder && "md:grid-cols-2")}>
+                  {/* Miscellaneous Type */}
+                  <div className={cn("flex flex-col gap-2", formErrors.misc_type_id && "text-destructive [&_button]:border-destructive")} data-name="misc_type_id">
+                    <label className="text-sm font-medium">
+                      Miscellaneous Type *
+                    </label>
+                    <AssignToPicker
+                      data={typeSelectData}
+                      value={formData.misc_type_id}
+                      onChange={(id) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          misc_type_id: id || undefined,
+                        }));
+                        setFormErrors((prev) => ({
+                          ...prev,
+                          misc_type_id: "",
+                          selectedTeams: "",
+                          problem_description: "",
+                          return_order_delivery_method: "",
+                        }));
+                      }}
+                      placeholder="Select issue type"
+                      emptyLabel="Select issue type"
+                      disabled={loadingTypes}
+                    />
+                    {formErrors.misc_type_id && (
+                      <p className="text-xs font-medium text-destructive mt-1">
+                        {formErrors.misc_type_id}
+                      </p>
+                    )}
+                  </div>
 
-            {/* Team Responsible */}
-            <div className={cn("flex flex-col gap-2", formErrors.selectedTeams && "text-destructive")} data-name="selectedTeams">
-              <label className="text-sm font-medium">Team Responsible *</label>
-              <MultipleSelector
-                value={formData.selectedTeams}
-                onChange={(options) => {
-                  setFormData((prev) => ({
-                    ...prev,
-                    selectedTeams: options,
-                  }));
-                  setFormErrors((prev) => ({ ...prev, selectedTeams: "" }));
-                }}
-                defaultOptions={teamOptions}
-                placeholder="Select teams..."
-                emptyIndicator={
-                  <p className="text-center text-sm text-muted-foreground">
-                    No teams found
-                  </p>
-                }
-                disabled={loadingTeams}
-                className={cn(formErrors.selectedTeams && "border-destructive focus-within:border-destructive focus-within:ring-destructive/20")}
-              />
-              {formErrors.selectedTeams && (
-                <p className="text-xs font-medium text-destructive mt-1">
-                  {formErrors.selectedTeams}
-                </p>
-              )}
-            </div>
-          </div>
+                  {/* Team Responsible - HIDE WHEN RETURN ORDER */}
+                  {!isReturnOrder && (
+                    <div className={cn("flex flex-col gap-2", formErrors.selectedTeams && "text-destructive")} data-name="selectedTeams">
+                      <label className="text-sm font-medium">Team Responsible *</label>
+                      <MultipleSelector
+                        value={formData.selectedTeams}
+                        onChange={(options) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            selectedTeams: options,
+                          }));
+                          setFormErrors((prev) => ({ ...prev, selectedTeams: "" }));
+                        }}
+                        defaultOptions={teamOptions}
+                        placeholder="Select teams..."
+                        emptyIndicator={
+                          <p className="text-center text-sm text-muted-foreground">
+                            No teams found
+                          </p>
+                        }
+                        disabled={loadingTeams}
+                        className={cn(formErrors.selectedTeams && "border-destructive focus-within:border-destructive focus-within:ring-destructive/20")}
+                      />
+                      {formErrors.selectedTeams && (
+                        <p className="text-xs font-medium text-destructive mt-1">
+                          {formErrors.selectedTeams}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
 
-          {/* Problem Description */}
-          <div className={cn("flex flex-col gap-2", formErrors.problem_description && "text-destructive")} data-name="problem_description">
-            <label className="text-sm font-medium">Problem Description *</label>
-            <TextAreaInput
-              value={formData.problem_description}
-              onChange={(value) => {
-                setFormData((prev) => ({
-                  ...prev,
-                  problem_description: value,
-                }));
-                if (value.trim()) {
-                  setFormErrors((prev) => ({ ...prev, problem_description: "" }));
-                }
-              }}
-              placeholder="Describe the issue in detail..."
-              maxLength={1000}
-              className={cn(formErrors.problem_description && "border-destructive focus-visible:ring-destructive")}
-            />
-            {formErrors.problem_description && (
-              <p className="text-xs font-medium text-destructive mt-1">
-                {formErrors.problem_description}
-              </p>
-            )}
-          </div>
+                {/* Problem Description - HIDE WHEN RETURN ORDER */}
+                {!isReturnOrder && (
+                  <div className={cn("flex flex-col gap-2", formErrors.problem_description && "text-destructive")} data-name="problem_description">
+                    <label className="text-sm font-medium">Problem Description *</label>
+                    <TextAreaInput
+                      value={formData.problem_description}
+                      onChange={(value) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          problem_description: value,
+                        }));
+                        if (value.trim()) {
+                          setFormErrors((prev) => ({ ...prev, problem_description: "" }));
+                        }
+                      }}
+                      placeholder="Describe the issue in detail..."
+                      maxLength={1000}
+                      className={cn(formErrors.problem_description && "border-destructive focus-visible:ring-destructive")}
+                    />
+                    {formErrors.problem_description && (
+                      <p className="text-xs font-medium text-destructive mt-1">
+                        {formErrors.problem_description}
+                      </p>
+                    )}
+                  </div>
+                )}
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {/* Select Instance */}
-            <div className={cn("flex flex-col gap-2", formErrors.selected_instance_id && "text-destructive [&_button]:border-destructive")} data-name="selected_instance_id">
-              <label className="text-sm font-medium">Select Instance *</label>
-              <TextSelectPicker
-                options={instanceOptions.map((opt) => opt.label)}
-                value={
-                  instanceOptions.find(
-                    (opt) =>
-                      Number(opt.value) === formData.selected_instance_id,
-                  )?.label || ""
-                }
-                onChange={(selectedText) => {
-                  const match = instanceOptions.find(
-                    (opt) => opt.label === selectedText,
-                  );
-                  setFormData((prev) => ({
-                    ...prev,
-                    selected_instance_id: match
-                      ? Number(match.value)
-                      : undefined,
-                  }));
-                  setFormErrors((prev) => ({ ...prev, selected_instance_id: "" }));
-                }}
-                placeholder={
-                  instances.length === 0
-                    ? "No instances available"
-                    : "Select instance..."
-                }
-                emptyLabel="Select instance"
-                disabled={instances.length === 0}
-              />
-              {formErrors.selected_instance_id && (
-                <p className="text-xs font-medium text-destructive mt-1">
-                  {formErrors.selected_instance_id}
-                </p>
-              )}
-            </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  {/* Select Instance */}
+                  <div
+                    className={cn(
+                      "flex flex-col gap-2",
+                      (formErrors.selected_instance_id || formErrors.return_order_selected_instances) &&
+                        "text-destructive [&_button]:border-destructive"
+                    )}
+                    data-name={isReturnOrder ? "return_order_selected_instances" : "selected_instance_id"}
+                  >
+                    <label className="text-sm font-medium">Select Instance *</label>
+                    {isReturnOrder ? (
+                      <MultipleSelector
+                        value={formData.return_order_selected_instances || []}
+                        onChange={(options) => {
+                          setFormData((prev) => {
+                            const selectedInstIds = options.map((o) => Number(o.value));
+                            const validMaterials = (prev.return_order_selected_materials || []).filter((mat) => {
+                              const matchedItem = orderLoginSummary.find(
+                                (item: any) => String(item.id) === String(mat.value)
+                              );
+                              return matchedItem && selectedInstIds.includes(Number(matchedItem.instance_id));
+                            });
+                            return {
+                              ...prev,
+                              return_order_selected_instances: options,
+                              return_order_selected_materials: validMaterials,
+                            };
+                          });
+                          setFormErrors((prev) => ({
+                            ...prev,
+                            return_order_selected_instances: "",
+                            selected_instance_id: "",
+                          }));
+                        }}
+                        defaultOptions={instanceOptions}
+                        options={instanceOptions}
+                        placeholder={
+                          instances.length === 0
+                            ? "No instances available"
+                            : "Select instances..."
+                        }
+                        emptyIndicator={
+                          <p className="text-center text-sm text-muted-foreground">
+                            No instances found
+                          </p>
+                        }
+                        disabled={instances.length === 0}
+                        className={cn(
+                          (formErrors.return_order_selected_instances || formErrors.selected_instance_id) &&
+                            "border-destructive focus-within:border-destructive focus-within:ring-destructive/20"
+                        )}
+                      />
+                    ) : (
+                      <TextSelectPicker
+                        options={instanceOptions.map((opt) => opt.label)}
+                        value={
+                          instanceOptions.find(
+                            (opt) =>
+                              Number(opt.value) === formData.selected_instance_id,
+                          )?.label || ""
+                        }
+                        onChange={(selectedText) => {
+                          const match = instanceOptions.find(
+                            (opt) => opt.label === selectedText,
+                          );
+                          setFormData((prev) => ({
+                            ...prev,
+                            selected_instance_id: match
+                              ? Number(match.value)
+                              : undefined,
+                          }));
+                          setFormErrors((prev) => ({ ...prev, selected_instance_id: "" }));
+                        }}
+                        placeholder={
+                          instances.length === 0
+                            ? "No instances available"
+                            : "Select instance..."
+                        }
+                        emptyLabel="Select instance"
+                        disabled={instances.length === 0}
+                      />
+                    )}
+                    {(formErrors.return_order_selected_instances || formErrors.selected_instance_id) && (
+                      <p className="text-xs font-medium text-destructive mt-1">
+                        {formErrors.return_order_selected_instances || formErrors.selected_instance_id}
+                      </p>
+                    )}
+                  </div>
 
-            {/* Reorder Material Type */}
-            <div className={cn("flex flex-col gap-2", formErrors.reorder_material_details && "text-destructive [&_button]:border-destructive")} data-name="reorder_material_details">
-              <label className="text-sm font-medium">
-                Reorder Material Type *
-              </label>
-              <TextSelectPicker
-                options={
-                  filteredOrderLoginSummary.map(
-                    (item: any) =>
-                      item.item_desc || item.item_type || "Untitled Item",
-                  ) || []
-                }
-                value={formData.reorder_material_details}
-                onChange={(selectedText) => {
-                  setFormData((prev) => ({
-                    ...prev,
-                    reorder_material_details: selectedText,
-                  }));
-                  if (selectedText.trim()) {
-                    setFormErrors((prev) => ({ ...prev, reorder_material_details: "" }));
-                  }
-                }}
-                placeholder={
-                  loadingSummary
-                    ? "Loading materials..."
-                    : "Select material details..."
-                }
-                emptyLabel="Select material details"
-                disabled={loadingSummary}
-              />
-              {formErrors.reorder_material_details && (
-                <p className="text-xs font-medium text-destructive mt-1">
-                  {formErrors.reorder_material_details}
-                </p>
-              )}
-            </div>
-          </div>
+                  {/* Reorder / Return Order Material Type */}
+                  <div
+                    className={cn(
+                      "flex flex-col gap-2",
+                      (formErrors.reorder_material_details || formErrors.return_order_selected_materials) &&
+                        "text-destructive [&_button]:border-destructive"
+                    )}
+                    data-name={isReturnOrder ? "return_order_selected_materials" : "reorder_material_details"}
+                  >
+                    <label className="text-sm font-medium">
+                      {isReturnOrder ? "Return Order Material Type *" : "Reorder Material Type *"}
+                    </label>
+                    {isReturnOrder ? (
+                      <MultipleSelector
+                        value={formData.return_order_selected_materials || []}
+                        onChange={(options) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            return_order_selected_materials: options,
+                          }));
+                          if (options.length > 0) {
+                            setFormErrors((prev) => ({
+                              ...prev,
+                              return_order_selected_materials: "",
+                              reorder_material_details: "",
+                            }));
+                          }
+                        }}
+                        defaultOptions={returnOrderMaterialOptions}
+                        options={returnOrderMaterialOptions}
+                        placeholder={
+                          loadingSummary
+                            ? "Loading materials..."
+                            : returnOrderSelectedInstanceIds.length === 0
+                              ? "Select instance(s) first..."
+                              : returnOrderMaterialOptions.length === 0
+                                ? "No materials for selected instance(s)"
+                                : "Select material types..."
+                        }
+                        emptyIndicator={
+                          <p className="text-center text-sm text-muted-foreground">
+                            {returnOrderSelectedInstanceIds.length === 0
+                              ? "Please select instance(s) first"
+                              : "No materials found"}
+                          </p>
+                        }
+                        disabled={loadingSummary || returnOrderSelectedInstanceIds.length === 0}
+                        className={cn(
+                          (formErrors.return_order_selected_materials || formErrors.reorder_material_details) &&
+                            "border-destructive focus-within:border-destructive focus-within:ring-destructive/20"
+                        )}
+                      />
+                    ) : (
+                      <TextSelectPicker
+                        options={
+                          filteredOrderLoginSummary.map(
+                            (item: any) =>
+                              item.item_desc || item.item_type || "Untitled Item",
+                          ) || []
+                        }
+                        value={formData.reorder_material_details}
+                        onChange={(selectedText) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            reorder_material_details: selectedText,
+                          }));
+                          if (selectedText.trim()) {
+                            setFormErrors((prev) => ({ ...prev, reorder_material_details: "" }));
+                          }
+                        }}
+                        placeholder={
+                          loadingSummary
+                            ? "Loading materials..."
+                            : "Select material details..."
+                        }
+                        emptyLabel="Select material details"
+                        disabled={loadingSummary}
+                      />
+                    )}
+                    {(formErrors.return_order_selected_materials || formErrors.reorder_material_details) && (
+                      <p className="text-xs font-medium text-destructive mt-1">
+                        {formErrors.return_order_selected_materials || formErrors.reorder_material_details}
+                      </p>
+                    )}
+                  </div>
+                </div>
 
-          {/* Reorder Material Details */}
-          <div className={cn("flex flex-col gap-2", formErrors.supervisor_remark && "text-destructive")} data-name="supervisor_remark">
-            <label className="text-sm font-medium">
-              Reorder Material Details *
-            </label>
-            <TextAreaInput
-              value={formData.supervisor_remark}
-              onChange={(value) => {
-                setFormData((prev) => ({
-                  ...prev,
-                  supervisor_remark: value,
-                }));
-                if (value.trim()) {
-                  setFormErrors((prev) => ({ ...prev, supervisor_remark: "" }));
-                }
-              }}
-              placeholder="Any remarks from supervisor..."
-              maxLength={1000}
-              className={cn(formErrors.supervisor_remark && "border-destructive focus-visible:ring-destructive")}
-            />
-            {formErrors.supervisor_remark && (
-              <p className="text-xs font-medium text-destructive mt-1">
-                {formErrors.supervisor_remark}
-              </p>
-            )}
-          </div>
+                {/* Reorder / Return Order Material Details */}
+                <div className={cn("flex flex-col gap-2", formErrors.supervisor_remark && "text-destructive")} data-name="supervisor_remark">
+                  <label className="text-sm font-medium">
+                    {isReturnOrder ? "Return Order Material Details *" : "Reorder Material Details *"}
+                  </label>
+                  <TextAreaInput
+                    value={formData.supervisor_remark}
+                    onChange={(value) => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        supervisor_remark: value,
+                      }));
+                      if (value.trim()) {
+                        setFormErrors((prev) => ({ ...prev, supervisor_remark: "" }));
+                      }
+                    }}
+                    placeholder={isReturnOrder ? "Enter return order material details..." : "Any remarks from supervisor..."}
+                    maxLength={1000}
+                    className={cn(formErrors.supervisor_remark && "border-destructive focus-visible:ring-destructive")}
+                  />
+                  {formErrors.supervisor_remark && (
+                    <p className="text-xs font-medium text-destructive mt-1">
+                      {formErrors.supervisor_remark}
+                    </p>
+                  )}
+                </div>
 
-          {/* Supporting Proofs - Only in Add Mode */}
-          {!editingEntry && (
-            <div className={cn("flex flex-col gap-2", formErrors.files && "text-destructive")} data-name="files">
-              <label className="text-sm font-medium">Supporting Proofs *</label>
-              <FileUploadField
-                value={files}
-                onChange={(nextFiles) => {
-                  setFiles(nextFiles);
-                  if (nextFiles.length > 0) {
-                    setFormErrors((prev) => ({ ...prev, files: "" }));
-                  }
-                }}
-                accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.mp4,.mov,.avi,"
-                multiple
-                invalid={Boolean(formErrors.files)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Max 10 files. Supported: Images, PDFs, Documents
-              </p>
-              {formErrors.files && (
-                <p className="text-xs font-medium text-destructive mt-1">
-                  {formErrors.files}
-                </p>
-              )}
-            </div>
-          )}
+                {/* Supporting Proofs - Only in Add Mode */}
+                {!editingEntry && (
+                  <div className={cn("flex flex-col gap-2", formErrors.files && "text-destructive")} data-name="files">
+                    <label className="text-sm font-medium">
+                      {isReturnOrder ? "Return Order Supporting Proofs *" : "Supporting Proofs *"}
+                    </label>
+                    <FileUploadField
+                      value={files}
+                      onChange={(nextFiles) => {
+                        setFiles(nextFiles);
+                        if (nextFiles.length > 0) {
+                          setFormErrors((prev) => ({ ...prev, files: "" }));
+                        }
+                      }}
+                      accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.mp4,.mov,.avi,"
+                      multiple
+                      invalid={Boolean(formErrors.files)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Max 10 files. Supported: Images, PDFs, Documents
+                    </p>
+                    {formErrors.files && (
+                      <p className="text-xs font-medium text-destructive mt-1">
+                        {formErrors.files}
+                      </p>
+                    )}
+                  </div>
+                )}
 
-          {/* Quantity + Cost */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">Quantity</label>
-              <Input
-                type="number"
-                value={formData.quantity || ""}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    quantity: e.target.value
-                      ? Number(e.target.value)
-                      : undefined,
-                  }))
-                }
-                placeholder="Enter quantity"
-                min="0"
-              />
-            </div>
+                {/* IF RETURN ORDER: Return Order Date + Delivery Type | ELSE: Quantity + Cost */}
+                {isReturnOrder ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Return Order Date */}
+                    <div className={cn("flex flex-col gap-2", formErrors.return_order_date && "text-destructive [&_button]:border-destructive")} data-name="return_order_date">
+                      <label className="text-sm font-medium">Return Order Date</label>
+                      <CustomeDatePicker
+                        value={formData.return_order_date}
+                        onChange={(val) => {
+                          setFormData((prev) => ({ ...prev, return_order_date: val }));
+                          if (val) {
+                            setFormErrors((prev) => ({ ...prev, return_order_date: "" }));
+                          }
+                        }}
+                      />
+                      {formErrors.return_order_date && (
+                        <p className="text-xs font-medium text-destructive mt-1">
+                          {formErrors.return_order_date}
+                        </p>
+                      )}
+                    </div>
 
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium">Cost (₹)</label>
-              <CurrencyInput
-                value={formData.cost}
-                onChange={(value) =>
-                  setFormData((prev) => ({ ...prev, cost: value }))
-                }
-                placeholder="Enter cost"
-              />
-            </div>
-          </div>
+                    {/* Return Order Delivery Type */}
+                    <div className={cn("flex flex-col gap-2", formErrors.return_order_delivery_method && "text-destructive [&_button]:border-destructive")} data-name="return_order_delivery_method">
+                      <label className="text-sm font-medium">Return Order Delivery Type *</label>
+                      <Select
+                        value={formData.return_order_delivery_method || "SELF_DELIVERY"}
+                        onValueChange={(val) => {
+                          setFormData((prev) => ({ ...prev, return_order_delivery_method: val }));
+                          setFormErrors((prev) => ({ ...prev, return_order_delivery_method: "" }));
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select delivery method" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="SELF_DELIVERY">Self Delivery</SelectItem>
+                          <SelectItem value="PICKUP_SCHEDULE">Pickup Schedule</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {formErrors.return_order_delivery_method && (
+                        <p className="text-xs font-medium text-destructive mt-1">
+                          {formErrors.return_order_delivery_method}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-medium">Quantity</label>
+                      <Input
+                        type="number"
+                        value={formData.quantity || ""}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            quantity: e.target.value
+                              ? Number(e.target.value)
+                              : undefined,
+                          }))
+                        }
+                        placeholder="Enter quantity"
+                        min="0"
+                      />
+                    </div>
 
-          <div className="flex justify-end gap-3 pt-4 pb-6 border-t mt-6">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setIsAddModalOpen(false);
-                resetForm();
-              }}
-              disabled={createMutation.isPending || updateMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              size="sm"
-              disabled={createMutation.isPending || updateMutation.isPending}
-            >
-              {editingEntry
-                ? updateMutation.isPending
-                  ? "Updating..."
-                  : "Update Miscellaneous"
-                : createMutation.isPending
-                ? "Creating..."
-                : "Create Miscellaneous"}
-            </Button>
-          </div>
-          </form>
-        </Form>
-      </BaseModal>
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-medium">Cost (₹)</label>
+                      <CurrencyInput
+                        value={formData.cost}
+                        onChange={(value) =>
+                          setFormData((prev) => ({ ...prev, cost: value }))
+                        }
+                        placeholder="Enter cost"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-3 pt-4 pb-6 border-t mt-6">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setIsAddModalOpen(false);
+                      resetForm();
+                    }}
+                    disabled={createMutation.isPending || updateMutation.isPending || createReturnOrderMutation.isPending}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={createMutation.isPending || updateMutation.isPending || createReturnOrderMutation.isPending}
+                  >
+                    {editingEntry
+                      ? updateMutation.isPending
+                        ? "Updating..."
+                        : "Update Miscellaneous"
+                      : isReturnOrder
+                        ? createReturnOrderMutation.isPending
+                          ? "Creating Return Order..."
+                          : "Create Return Order"
+                        : createMutation.isPending
+                          ? "Creating..."
+                          : "Create Miscellaneous"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </BaseModal>
         </>
       )}
 
@@ -1747,15 +2029,14 @@ export default function InstallationMiscellaneous({
                     </div>
                     <Badge
                       variant="outline"
-                      className={`text-xs px-3 py-1 font-medium rounded-full border-0 ${
-                        viewModalData?.is_resolved
-                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
-                          : isApproved
+                      className={`text-xs px-3 py-1 font-medium rounded-full border-0 ${viewModalData?.is_resolved
+                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                        : isApproved
                           ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300"
                           : isRejected
-                          ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300"
-                          : "bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-300"
-                      }`}
+                            ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+                            : "bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-300"
+                        }`}
                     >
                       {viewModalData?.is_resolved ? "Resolved" : isApproved ? "Approved" : isRejected ? "Rejected" : "Pending"}
                     </Badge>
@@ -1824,9 +2105,15 @@ export default function InstallationMiscellaneous({
                         <AlertCircle className="w-5 h-5" />
                       </div>
                       <div>
-                        <h5 className="text-sm font-semibold text-blue-900 dark:text-blue-200">Waiting for Admin / Miscellaneous Approval</h5>
+                        <h5 className="text-sm font-semibold text-blue-900 dark:text-blue-200">
+                          {viewModalData?.type?.name?.toLowerCase().includes("return order") || (viewModalData as any)?.return_order_delivery_method
+                            ? "Waiting for Admin / Return Order Approval"
+                            : "Waiting for Admin / Miscellaneous Approval"}
+                        </h5>
                         <p className="text-xs text-blue-700 dark:text-blue-300/80">
-                          This requirement has been logged. Once authorized by the admin/miscellaneous team, fulfillment scheduling will be enabled.
+                          {viewModalData?.type?.name?.toLowerCase().includes("return order") || (viewModalData as any)?.return_order_delivery_method
+                            ? "This return order request has been logged. Once authorized by the admin/miscellaneous team, fulfillment scheduling will be enabled."
+                            : "This requirement has been logged. Once authorized by the admin/miscellaneous team, fulfillment scheduling will be enabled."}
                         </p>
                       </div>
                     </div>
@@ -1848,481 +2135,480 @@ export default function InstallationMiscellaneous({
                   {/* ── Approved Workflow & Scheduling (2 Cards Grid) ── */}
                   {isApproved && (
                     <>
-                        <div
-                          className={cn(
-                            "grid gap-4 pt-1",
-                            canViewStep1Production && canViewStep2Handover
-                              ? "grid-cols-1 md:grid-cols-2"
-                              : "grid-cols-1 max-w-2xl"
-                          )}
-                        >
-                          {/* Step 1: ERD & Production Card */}
-                          {canViewStep1Production && (
-                            <div className="rounded-lg border bg-muted/20 p-4 space-y-3 flex flex-col justify-between">
-                              <div className="space-y-1">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Step 1 • Production</span>
-                                  {isTaskReady ? (
-                                    <Badge variant="outline" className="text-[10px] bg-emerald-100 text-emerald-800 border-0 dark:bg-emerald-950 dark:text-emerald-300 font-medium">
-                                      Ready to Dispatch
-                                    </Badge>
-                                  ) : viewModalData?.expected_ready_date ? (
-                                    <Badge variant="outline" className="text-[10px] bg-amber-100 text-amber-800 border-0 dark:bg-amber-950 dark:text-amber-300 font-medium">
-                                      In Production
-                                    </Badge>
-                                  ) : null}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Calendar className="w-4 h-4 text-primary" />
-                                  <h5 className="text-sm font-semibold text-foreground">Expected Ready Date (ERD)</h5>
-                                </div>
+                      <div
+                        className={cn(
+                          "grid gap-4 pt-1",
+                          canViewStep1Production && canViewStep2Handover
+                            ? "grid-cols-1 md:grid-cols-2"
+                            : "grid-cols-1 max-w-2xl"
+                        )}
+                      >
+                        {/* Step 1: ERD & Production Card */}
+                        {canViewStep1Production && (
+                          <div className="rounded-lg border bg-muted/20 p-4 space-y-3 flex flex-col justify-between">
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Step 1 • Production</span>
+                                {isTaskReady ? (
+                                  <Badge variant="outline" className="text-[10px] bg-emerald-100 text-emerald-800 border-0 dark:bg-emerald-950 dark:text-emerald-300 font-medium">
+                                    Ready to Dispatch
+                                  </Badge>
+                                ) : viewModalData?.expected_ready_date ? (
+                                  <Badge variant="outline" className="text-[10px] bg-amber-100 text-amber-800 border-0 dark:bg-amber-950 dark:text-amber-300 font-medium">
+                                    In Production
+                                  </Badge>
+                                ) : null}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Calendar className="w-4 h-4 text-primary" />
+                                <h5 className="text-sm font-semibold text-foreground">Expected Ready Date (ERD)</h5>
+                              </div>
+                            </div>
+
+                            <div className="space-y-3">
+                              {/* ERD Date Picker */}
+                              <CustomeTooltip
+                                value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                                truncateValue={
+                                  <span className="block">
+                                    <CustomeDatePicker
+                                      key={viewModalData?.id}
+                                      value={selectedERD}
+                                      restriction="futureOnly"
+                                      disabledReason={
+                                        shouldDisableBlockedActions
+                                          ? blockedTooltip
+                                          : viewModalData?.is_resolved
+                                            ? "Resolved. ERD cannot be updated."
+                                            : !canDoERDDate
+                                              ? isFactoryUser
+                                                ? "This lead has moved ahead."
+                                                : "Only factory user can do this."
+                                              : isTaskReady
+                                                ? "Marked as ready. ERD cannot be updated."
+                                                : undefined
+                                      }
+                                      onChange={(newDate) => {
+                                        if (!effectiveCanUpdateERD || !newDate) return;
+                                        setSelectedERD(newDate);
+                                      }}
+                                    />
+                                  </span>
+                                }
+                              />
+
+                              {/* Solution Text Input */}
+                              <div className="space-y-1.5">
+                                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                  <Wrench className="w-3.5 h-3.5 text-primary" />
+                                  Solution <span className="text-destructive">*</span>
+                                </label>
+                                <Input
+                                  placeholder="Enter solution or action plan..."
+                                  value={erdSolution}
+                                  onChange={(e) => setErdSolution(e.target.value)}
+                                  disabled={
+                                    shouldDisableBlockedActions ||
+                                    viewModalData?.is_resolved ||
+                                    !effectiveCanUpdateERD ||
+                                    isTaskReady
+                                  }
+                                  className={`h-8 text-xs bg-background ${selectedERD && !erdSolution.trim()
+                                    ? "border-destructive focus-visible:ring-destructive"
+                                    : ""
+                                    }`}
+                                />
+                                {selectedERD && !erdSolution.trim() && (
+                                  <p className="text-[11px] text-destructive font-medium">
+                                    Solution is required
+                                  </p>
+                                )}
                               </div>
 
-                              <div className="space-y-3">
-                                {/* ERD Date Picker */}
-                                <CustomeTooltip
-                                  value={shouldDisableBlockedActions ? blockedTooltip : ""}
-                                  truncateValue={
-                                    <span className="block">
-                                      <CustomeDatePicker
-                                        key={viewModalData?.id}
-                                        value={selectedERD}
-                                        restriction="futureOnly"
-                                        disabledReason={
-                                          shouldDisableBlockedActions
-                                            ? blockedTooltip
-                                            : viewModalData?.is_resolved
-                                              ? "Resolved. ERD cannot be updated."
-                                              : !canDoERDDate
-                                                ? isFactoryUser
-                                                  ? "This lead has moved ahead."
-                                                  : "Only factory user can do this."
-                                                : isTaskReady
-                                                  ? "Marked as ready. ERD cannot be updated."
-                                                  : undefined
-                                        }
-                                        onChange={(newDate) => {
-                                          if (!effectiveCanUpdateERD || !newDate) return;
-                                          setSelectedERD(newDate);
-                                        }}
-                                      />
-                                    </span>
-                                  }
-                                />
-
-                                {/* Solution Text Input */}
-                                <div className="space-y-1.5">
-                                  <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                                    <Wrench className="w-3.5 h-3.5 text-primary" />
-                                    Solution <span className="text-destructive">*</span>
-                                  </label>
-                                  <Input
-                                    placeholder="Enter solution or action plan..."
-                                    value={erdSolution}
-                                    onChange={(e) => setErdSolution(e.target.value)}
-                                    disabled={
-                                      shouldDisableBlockedActions ||
-                                      viewModalData?.is_resolved ||
-                                      !effectiveCanUpdateERD ||
-                                      isTaskReady
-                                    }
-                                    className={`h-8 text-xs bg-background ${
-                                      selectedERD && !erdSolution.trim()
-                                        ? "border-destructive focus-visible:ring-destructive"
-                                        : ""
-                                    }`}
-                                  />
-                                  {selectedERD && !erdSolution.trim() && (
-                                    <p className="text-[11px] text-destructive font-medium">
-                                      Solution is required
-                                    </p>
-                                  )}
-                                </div>
-
-                                {/* Unified Save Button for ERD Date & Solution */}
-                                {!isTaskReady &&
-                                  !viewModalData?.is_resolved &&
-                                  effectiveCanUpdateERD &&
-                                  selectedERD &&
-                                  (selectedERD !== (viewModalData?.expected_ready_date || undefined) ||
-                                    erdSolution.trim() !== (viewModalData?.solution?.trim() || "") ||
-                                    !viewModalData?.expected_ready_date) && (
-                                    <Button
-                                      size="sm"
-                                      className="h-8 text-xs w-full gap-1.5 font-medium shadow-sm"
-                                      disabled={updateERDMutation.isPending || !erdSolution.trim()}
-                                      onClick={() => {
-                                        if (!viewModalData || !selectedERD) return;
-                                        if (!erdSolution.trim()) {
-                                          toastManager.add({
-                                            title: "Solution is required",
-                                            type: "error",
-                                          });
-                                          return;
-                                        }
-                                        updateERDMutation.mutate(
-                                          {
-                                            vendorId,
-                                            miscId: viewModalData.id,
-                                            expected_ready_date: selectedERD,
-                                            solution: erdSolution.trim(),
-                                            updated_by: userId!,
+                              {/* Unified Save Button for ERD Date & Solution */}
+                              {!isTaskReady &&
+                                !viewModalData?.is_resolved &&
+                                effectiveCanUpdateERD &&
+                                selectedERD &&
+                                (selectedERD !== (viewModalData?.expected_ready_date || undefined) ||
+                                  erdSolution.trim() !== (viewModalData?.solution?.trim() || "") ||
+                                  !viewModalData?.expected_ready_date) && (
+                                  <Button
+                                    size="sm"
+                                    className="h-8 text-xs w-full gap-1.5 font-medium shadow-sm"
+                                    disabled={updateERDMutation.isPending || !erdSolution.trim()}
+                                    onClick={() => {
+                                      if (!viewModalData || !selectedERD) return;
+                                      if (!erdSolution.trim()) {
+                                        toastManager.add({
+                                          title: "Solution is required",
+                                          type: "error",
+                                        });
+                                        return;
+                                      }
+                                      updateERDMutation.mutate(
+                                        {
+                                          vendorId,
+                                          miscId: viewModalData.id,
+                                          expected_ready_date: selectedERD,
+                                          solution: erdSolution.trim(),
+                                          updated_by: userId!,
+                                        },
+                                        {
+                                          onSuccess: () => {
+                                            queryClient.invalidateQueries({
+                                              queryKey: ["miscellaneousEntries", vendorId, leadId],
+                                            });
+                                            queryClient.invalidateQueries({
+                                              queryKey: ["vendorUserTasks"],
+                                            });
+                                            queryClient.invalidateQueries({
+                                              queryKey: ["vendorAllTasks"],
+                                            });
                                           },
-                                          {
-                                            onSuccess: () => {
-                                              queryClient.invalidateQueries({
-                                                queryKey: ["miscellaneousEntries", vendorId, leadId],
-                                              });
-                                              queryClient.invalidateQueries({
-                                                queryKey: ["vendorUserTasks"],
-                                              });
-                                              queryClient.invalidateQueries({
-                                                queryKey: ["vendorAllTasks"],
-                                              });
-                                            },
+                                        }
+                                      );
+                                    }}
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    {updateERDMutation.isPending
+                                      ? "Saving..."
+                                      : viewModalData?.expected_ready_date
+                                        ? "Update ERD & Solution"
+                                        : "Save ERD & Solution"}
+                                  </Button>
+                                )}
+
+                              {/* Mark as Ready Action (when not yet ready) */}
+                              {!isTaskReady &&
+                                viewModalData?.expected_ready_date &&
+                                canMarkAsReady &&
+                                isApproved &&
+                                !viewModalData?.is_resolved && (
+                                  <div className="pt-1 border-t border-border/50">
+                                    <CustomeTooltip
+                                      value={
+                                        shouldDisableBlockedActions
+                                          ? blockedTooltip
+                                          : isMarkReadyRestrictedByERD
+                                            ? `Cannot mark as ready before Expected Ready Date (${formatDate(viewModalData.expected_ready_date)})`
+                                            : ""
+                                      }
+                                      truncateValue={
+                                        <Button
+                                          variant="default"
+                                          size="sm"
+                                          disabled={
+                                            markReadyMutation.isPending ||
+                                            shouldDisableBlockedActions ||
+                                            isMarkReadyRestrictedByERD
                                           }
-                                        );
-                                      }}
-                                    >
-                                      <CheckCircle2 className="w-3.5 h-3.5" />
-                                      {updateERDMutation.isPending
-                                        ? "Saving..."
-                                        : viewModalData?.expected_ready_date
-                                          ? "Update ERD & Solution"
-                                          : "Save ERD & Solution"}
-                                    </Button>
-                                  )}
-
-                                {/* Mark as Ready Action (when not yet ready) */}
-                                {!isTaskReady &&
-                                  viewModalData?.expected_ready_date &&
-                                  canMarkAsReady &&
-                                  isApproved &&
-                                  !viewModalData?.is_resolved && (
-                                    <div className="pt-1 border-t border-border/50">
-                                      <CustomeTooltip
-                                        value={
-                                          shouldDisableBlockedActions
-                                            ? blockedTooltip
-                                            : isMarkReadyRestrictedByERD
-                                              ? `Cannot mark as ready before Expected Ready Date (${formatDate(viewModalData.expected_ready_date)})`
-                                              : ""
-                                        }
-                                        truncateValue={
-                                          <Button
-                                            variant="default"
-                                            size="sm"
-                                            disabled={
-                                              markReadyMutation.isPending ||
-                                              shouldDisableBlockedActions ||
-                                              isMarkReadyRestrictedByERD
+                                          onClick={() => {
+                                            if (shouldDisableBlockedActions) return;
+                                            if (isMarkReadyRestrictedByERD) {
+                                              toastManager.add({
+                                                title: `Cannot mark as ready before Expected Ready Date (${formatDate(viewModalData.expected_ready_date)})`,
+                                                type: "error",
+                                              });
+                                              return;
                                             }
-                                            onClick={() => {
-                                              if (shouldDisableBlockedActions) return;
-                                              if (isMarkReadyRestrictedByERD) {
-                                                toastManager.add({
-                                                  title: `Cannot mark as ready before Expected Ready Date (${formatDate(viewModalData.expected_ready_date)})`,
-                                                  type: "error",
-                                                });
-                                                return;
-                                              }
-                                              setShowReadyConfirm(true);
-                                            }}
-                                            className="w-full gap-2 text-xs font-medium h-8 shadow-sm"
-                                          >
-                                            <CheckCircle2 className="w-3.5 h-3.5" />
-                                            {markReadyMutation.isPending ? "Marking as Ready..." : "Mark as Ready"}
-                                          </Button>
-                                        }
-                                      />
-                                      {isMarkReadyRestrictedByERD && (
-                                        <p className="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1.5 mt-1.5 px-0.5 font-medium">
-                                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                                          Mark as Ready is restricted until {formatDate(viewModalData.expected_ready_date)} for factory users.
-                                        </p>
-                                      )}
-                                    </div>
-                                  )}
+                                            setShowReadyConfirm(true);
+                                          }}
+                                          className="w-full gap-2 text-xs font-medium h-8 shadow-sm"
+                                        >
+                                          <CheckCircle2 className="w-3.5 h-3.5" />
+                                          {markReadyMutation.isPending ? "Marking as Ready..." : "Mark as Ready"}
+                                        </Button>
+                                      }
+                                    />
+                                    {isMarkReadyRestrictedByERD && (
+                                      <p className="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1.5 mt-1.5 px-0.5 font-medium">
+                                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                        Mark as Ready is restricted until {formatDate(viewModalData.expected_ready_date)} for factory users.
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
 
-                                {/* Clean Completion Banner (when task is marked as ready) */}
-                                {isTaskReady && (() => {
-                                  const readyDocs = viewModalData?.documents?.filter((d) => d.doc_type_tag === "Type 41") || [];
-                                  const readyTimestamp = viewModalData?.task?.closed_at || readyDocs[0]?.uploaded_at;
-                                  const readyBy = viewModalData?.task?.closed_user?.user_name;
+                              {/* Clean Completion Banner (when task is marked as ready) */}
+                              {isTaskReady && (() => {
+                                const readyDocs = viewModalData?.documents?.filter((d) => d.doc_type_tag === "Type 41") || [];
+                                const readyTimestamp = viewModalData?.task?.closed_at || readyDocs[0]?.uploaded_at;
+                                const readyBy = viewModalData?.task?.closed_user?.user_name;
 
-                                  return (
-                                    <div className="rounded-lg border border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/70 dark:bg-emerald-950/30 p-3 space-y-2">
-                                      <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                          <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
-                                            <CheckCircle2 className="w-3.5 h-3.5" />
+                                return (
+                                  <div className="rounded-lg border border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/70 dark:bg-emerald-950/30 p-3 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                                          <CheckCircle2 className="w-3.5 h-3.5" />
+                                        </div>
+                                        <div>
+                                          <div className="text-xs font-semibold text-emerald-900 dark:text-emerald-200">
+                                            Marked as Ready
                                           </div>
-                                          <div>
-                                            <div className="text-xs font-semibold text-emerald-900 dark:text-emerald-200">
-                                              Marked as Ready
-                                            </div>
-                                            <div className="text-[11px] text-emerald-700 dark:text-emerald-300/90 flex flex-wrap items-center gap-1">
-                                              {readyTimestamp && (
-                                                <span>on <strong className="font-medium">{formatDateTime(readyTimestamp)}</strong></span>
-                                              )}
-                                              {readyBy && (
-                                                <span>by <strong className="font-medium">{readyBy}</strong></span>
-                                              )}
-                                            </div>
+                                          <div className="text-[11px] text-emerald-700 dark:text-emerald-300/90 flex flex-wrap items-center gap-1">
+                                            {readyTimestamp && (
+                                              <span>on <strong className="font-medium">{formatDateTime(readyTimestamp)}</strong></span>
+                                            )}
+                                            {readyBy && (
+                                              <span>by <strong className="font-medium">{readyBy}</strong></span>
+                                            )}
                                           </div>
                                         </div>
-
-                                        {readyDocs.length > 0 && (
-                                          <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 font-medium">
-                                            {readyDocs.length} ready file{readyDocs.length > 1 ? "s" : ""}
-                                          </Badge>
-                                        )}
                                       </div>
 
-                                      {canMarkAsReady && !viewModalData?.is_resolved && (
-                                        <div className="flex justify-end pt-1 border-t border-emerald-200/60 dark:border-emerald-800/50">
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-6 px-2 text-[11px] text-emerald-800 hover:text-emerald-900 hover:bg-emerald-100 dark:text-emerald-200 dark:hover:bg-emerald-900/50 font-medium"
-                                            onClick={() => setShowReadyConfirm(true)}
-                                          >
-                                            <Upload className="w-3 h-3 mr-1" />
-                                            + Add files
-                                          </Button>
-                                        </div>
+                                      {readyDocs.length > 0 && (
+                                        <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 font-medium">
+                                          {readyDocs.length} ready file{readyDocs.length > 1 ? "s" : ""}
+                                        </Badge>
                                       )}
                                     </div>
-                                  );
-                                })()}
+
+                                    {canMarkAsReady && !viewModalData?.is_resolved && (
+                                      <div className="flex justify-end pt-1 border-t border-emerald-200/60 dark:border-emerald-800/50">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-6 px-2 text-[11px] text-emerald-800 hover:text-emerald-900 hover:bg-emerald-100 dark:text-emerald-200 dark:hover:bg-emerald-900/50 font-medium"
+                                          onClick={() => setShowReadyConfirm(true)}
+                                        >
+                                          <Upload className="w-3 h-3 mr-1" />
+                                          + Add files
+                                        </Button>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Step 2: Required Delivery & Resolution Card */}
+                        {canViewStep2Handover && (
+                          <div className="rounded-lg border bg-muted/20 p-4 space-y-3 flex flex-col justify-between">
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Step 2 • Handover</span>
+                                {viewModalData?.is_resolved ? (
+                                  <Badge variant="outline" className="text-[10px] bg-green-100 text-green-800 border-0 dark:bg-green-950 dark:text-green-300">
+                                    Resolved
+                                  </Badge>
+                                ) : isDeliveryTaskCompleted ? (
+                                  <Badge variant="outline" className="text-[10px] bg-cyan-100 text-cyan-800 border-0 dark:bg-cyan-950 dark:text-cyan-300">
+                                    Delivery Completed
+                                  </Badge>
+                                ) : null}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Calendar className="w-4 h-4 text-primary" />
+                                <h5 className="text-sm font-semibold text-foreground">Required Delivery Date</h5>
                               </div>
                             </div>
-                          )}
 
-                          {/* Step 2: Required Delivery & Resolution Card */}
-                          {canViewStep2Handover && (
-                            <div className="rounded-lg border bg-muted/20 p-4 space-y-3 flex flex-col justify-between">
-                              <div className="space-y-1">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Step 2 • Handover</span>
-                                  {viewModalData?.is_resolved ? (
-                                    <Badge variant="outline" className="text-[10px] bg-green-100 text-green-800 border-0 dark:bg-green-950 dark:text-green-300">
-                                      Resolved
-                                    </Badge>
-                                  ) : isDeliveryTaskCompleted ? (
-                                    <Badge variant="outline" className="text-[10px] bg-cyan-100 text-cyan-800 border-0 dark:bg-cyan-950 dark:text-cyan-300">
-                                      Delivery Completed
-                                    </Badge>
-                                  ) : null}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Calendar className="w-4 h-4 text-primary" />
-                                  <h5 className="text-sm font-semibold text-foreground">Required Delivery Date</h5>
-                                </div>
-                              </div>
-
-                              <div className="space-y-2">
-                                <CustomeTooltip
-                                  value={shouldDisableBlockedActions ? blockedTooltip : ""}
-                                  truncateValue={
-                                    <span className="block">
-                                      <CustomeDatePicker
-                                        key={`${viewModalData?.id}-delivery-${viewModalData?.delivery_task?.due_date || viewModalData?.required_delivery_date || ""}`}
-                                        value={
-                                          viewModalData?.delivery_task?.due_date
-                                            ? new Date(viewModalData.delivery_task.due_date).toISOString().slice(0, 10)
-                                            : (viewModalData?.required_delivery_date || undefined)
-                                        }
-                                        restriction="futureOnly"
-                                        disabledReason={
-                                          shouldDisableBlockedActions
-                                            ? blockedTooltip
-                                            : viewModalData?.is_resolved
-                                              ? "Resolved. Delivery date cannot be updated."
-                                              : !isReady
-                                                ? "Mark as ready to set delivery date."
-                                                : !canUpdateRequiredDelivery
-                                                  ? isFactoryUser
-                                                    ? "Delivery date is set by Site Supervisor."
-                                                    : "Only site supervisor, admin or super-admin can update."
-                                                  : undefined
-                                        }
-                                        onChange={(newDate) => {
-                                          if (!effectiveCanUpdateRequiredDelivery || !newDate) return;
-                                          setSelectedRequiredDelivery(newDate);
-                                          setShowDeliveryConfirm(true);
-                                        }}
-                                      />
-                                    </span>
-                                  }
-                                />
-
-                                <div className="flex gap-2">
-                                  {viewModalData?.required_delivery_date && !viewModalData?.is_resolved && effectiveCanManageDeliveryTask && (
-                                    <CustomeTooltip
-                                      value={shouldDisableBlockedActions ? blockedTooltip : ""}
-                                      truncateValue={
-                                        <span className="block flex-1">
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            disabled={shouldDisableBlockedActions}
-                                            onClick={() => {
-                                              if (shouldDisableBlockedActions) return;
-                                              setOpenDeliveryTaskModal(true);
-                                            }}
-                                            className="w-full text-xs"
-                                          >
-                                            Manage Delivery Task
-                                          </Button>
-                                        </span>
+                            <div className="space-y-2">
+                              <CustomeTooltip
+                                value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                                truncateValue={
+                                  <span className="block">
+                                    <CustomeDatePicker
+                                      key={`${viewModalData?.id}-delivery-${viewModalData?.delivery_task?.due_date || viewModalData?.required_delivery_date || ""}`}
+                                      value={
+                                        viewModalData?.delivery_task?.due_date
+                                          ? new Date(viewModalData.delivery_task.due_date).toISOString().slice(0, 10)
+                                          : (viewModalData?.required_delivery_date || undefined)
                                       }
-                                    />
-                                  )}
-
-                                  {viewModalData?.expected_ready_date && canDoMarkAsResolved && canResolveRole && isApproved && isReady && isDeliveryTaskCompleted && !viewModalData?.is_resolved && (
-                                    <CustomeTooltip
-                                      value={shouldDisableBlockedActions ? blockedTooltip : ""}
-                                      truncateValue={
-                                        <span className="block flex-1">
-                                          <Button
-                                            variant="default"
-                                            size="sm"
-                                            disabled={resolveMisc.isPending || shouldDisableBlockedActions}
-                                            onClick={() => {
-                                              if (shouldDisableBlockedActions) return;
-                                              resolveMisc.mutate(
-                                                { vendorId, leadId, miscId: viewModalData?.id || 0, resolved_by: userId! },
-                                                {
-                                                  onSuccess: () => {
-                                                    queryClient.invalidateQueries({ queryKey: ["miscellaneousEntries", vendorId, leadId] });
-                                                  },
-                                                },
-                                              );
-                                            }}
-                                            className="w-full gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-                                          >
-                                            <CheckCircle2 className="w-3.5 h-3.5" />
-                                            {resolveMisc.isPending ? "Resolving..." : "Mark as Resolved"}
-                                          </Button>
-                                        </span>
+                                      restriction="futureOnly"
+                                      disabledReason={
+                                        shouldDisableBlockedActions
+                                          ? blockedTooltip
+                                          : viewModalData?.is_resolved
+                                            ? "Resolved. Delivery date cannot be updated."
+                                            : !isReady
+                                              ? "Mark as ready to set delivery date."
+                                              : !canUpdateRequiredDelivery
+                                                ? isFactoryUser
+                                                  ? "Delivery date is set by Site Supervisor."
+                                                  : "Only site supervisor, admin or super-admin can update."
+                                                : undefined
                                       }
+                                      onChange={(newDate) => {
+                                        if (!effectiveCanUpdateRequiredDelivery || !newDate) return;
+                                        setSelectedRequiredDelivery(newDate);
+                                        setShowDeliveryConfirm(true);
+                                      }}
                                     />
-                                  )}
-                                </div>
+                                  </span>
+                                }
+                              />
 
-                                {(() => {
-                                  const completionDocs = viewModalData?.documents?.filter((d) => d.doc_type_tag === "Type 37") || [];
-                                  if (completionDocs.length === 0) return null;
-                                  return (
-                                    <div className="flex items-center justify-between text-xs text-emerald-800 dark:text-emerald-300 bg-emerald-50/80 dark:bg-emerald-950/40 px-2.5 py-1.5 rounded-md border border-emerald-200/60 dark:border-emerald-800/60">
-                                      <span className="flex items-center gap-1.5 font-medium">
-                                        <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                                        {completionDocs.length} completion file{completionDocs.length > 1 ? "s" : ""} attached
+                              <div className="flex gap-2">
+                                {viewModalData?.required_delivery_date && !viewModalData?.is_resolved && effectiveCanManageDeliveryTask && (
+                                  <CustomeTooltip
+                                    value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                                    truncateValue={
+                                      <span className="block flex-1">
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          disabled={shouldDisableBlockedActions}
+                                          onClick={() => {
+                                            if (shouldDisableBlockedActions) return;
+                                            setOpenDeliveryTaskModal(true);
+                                          }}
+                                          className="w-full text-xs"
+                                        >
+                                          Manage Delivery Task
+                                        </Button>
                                       </span>
-                                    </div>
-                                  );
-                                })()}
+                                    }
+                                  />
+                                )}
+
+                                {viewModalData?.expected_ready_date && canDoMarkAsResolved && canResolveRole && isApproved && isReady && isDeliveryTaskCompleted && !viewModalData?.is_resolved && (
+                                  <CustomeTooltip
+                                    value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                                    truncateValue={
+                                      <span className="block flex-1">
+                                        <Button
+                                          variant="default"
+                                          size="sm"
+                                          disabled={resolveMisc.isPending || shouldDisableBlockedActions}
+                                          onClick={() => {
+                                            if (shouldDisableBlockedActions) return;
+                                            resolveMisc.mutate(
+                                              { vendorId, leadId, miscId: viewModalData?.id || 0, resolved_by: userId! },
+                                              {
+                                                onSuccess: () => {
+                                                  queryClient.invalidateQueries({ queryKey: ["miscellaneousEntries", vendorId, leadId] });
+                                                },
+                                              },
+                                            );
+                                          }}
+                                          className="w-full gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                                        >
+                                          <CheckCircle2 className="w-3.5 h-3.5" />
+                                          {resolveMisc.isPending ? "Resolving..." : "Mark as Resolved"}
+                                        </Button>
+                                      </span>
+                                    }
+                                  />
+                                )}
                               </div>
+
+                              {(() => {
+                                const completionDocs = viewModalData?.documents?.filter((d) => d.doc_type_tag === "Type 37") || [];
+                                if (completionDocs.length === 0) return null;
+                                return (
+                                  <div className="flex items-center justify-between text-xs text-emerald-800 dark:text-emerald-300 bg-emerald-50/80 dark:bg-emerald-950/40 px-2.5 py-1.5 rounded-md border border-emerald-200/60 dark:border-emerald-800/60">
+                                    <span className="flex items-center gap-1.5 font-medium">
+                                      <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                      {completionDocs.length} completion file{completionDocs.length > 1 ? "s" : ""} attached
+                                    </span>
+                                  </div>
+                                );
+                              })()}
                             </div>
-                          )}
-                        </div>
+                          </div>
+                        )}
+                      </div>
 
-                    {/* ── Document Sections (Production Ready & Completion Documents Stacked with 2 docs per row) ── */}
-                    {(() => {
-                      const readyDocs = viewModalData?.documents?.filter((d) => d.doc_type_tag === "Type 41") || [];
-                      const completionDocs = viewModalData?.documents?.filter((d) => d.doc_type_tag === "Type 37") || [];
+                      {/* ── Document Sections (Production Ready & Completion Documents Stacked with 2 docs per row) ── */}
+                      {(() => {
+                        const readyDocs = viewModalData?.documents?.filter((d) => d.doc_type_tag === "Type 41") || [];
+                        const completionDocs = viewModalData?.documents?.filter((d) => d.doc_type_tag === "Type 37") || [];
 
-                      if (readyDocs.length === 0 && completionDocs.length === 0) return null;
+                        if (readyDocs.length === 0 && completionDocs.length === 0) return null;
 
-                      return (
-                        <div className="space-y-6 pt-2">
-                          {/* Production Ready Documents */}
-                          {readyDocs.length > 0 && (() => {
-                            const { images, videos, nonImages } = separateImageAndDocs(readyDocs);
-                            return (
-                              <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                  <h4 className="text-sm font-semibold text-foreground">Production Ready Documents</h4>
-                                  <Badge variant="outline" className="text-xs">
-                                    {readyDocs.length} total
-                                  </Badge>
+                        return (
+                          <div className="space-y-6 pt-2">
+                            {/* Production Ready Documents */}
+                            {readyDocs.length > 0 && (() => {
+                              const { images, videos, nonImages } = separateImageAndDocs(readyDocs);
+                              return (
+                                <div className="space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <h4 className="text-sm font-semibold text-foreground">Production Ready Documents</h4>
+                                    <Badge variant="outline" className="text-xs">
+                                      {readyDocs.length} total
+                                    </Badge>
+                                  </div>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    {images.map((doc) => (
+                                      <ImageComponent
+                                        key={doc.document_id}
+                                        doc={{ id: doc.document_id, doc_og_name: doc.original_name, signedUrl: doc.signed_url, created_at: doc.uploaded_at }}
+                                        canDelete={effectiveCanWork && !viewModalData?.is_resolved}
+                                        onDelete={(id) => setConfirmDelete(Number(id))}
+                                      />
+                                    ))}
+                                    {nonImages.map((doc) => (
+                                      <DocumentCard
+                                        key={doc.document_id}
+                                        doc={{ id: doc.document_id, originalName: doc.original_name, signedUrl: doc.signed_url, created_at: doc.uploaded_at }}
+                                        canDelete={effectiveCanWork && !viewModalData?.is_resolved}
+                                        onDelete={(id) => setConfirmDelete(Number(id))}
+                                      />
+                                    ))}
+                                    {videos.map((doc) => (
+                                      <VideoCard
+                                        key={doc.document_id}
+                                        doc={{ id: doc.document_id, originalName: doc.original_name, signedUrl: doc.signed_url, created_at: doc.uploaded_at }}
+                                        canDelete={effectiveCanWork && !viewModalData?.is_resolved}
+                                        onDelete={(id) => setConfirmDelete(Number(id))}
+                                      />
+                                    ))}
+                                  </div>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                  {images.map((doc) => (
-                                    <ImageComponent
-                                      key={doc.document_id}
-                                      doc={{ id: doc.document_id, doc_og_name: doc.original_name, signedUrl: doc.signed_url, created_at: doc.uploaded_at }}
-                                      canDelete={effectiveCanWork && !viewModalData?.is_resolved}
-                                      onDelete={(id) => setConfirmDelete(Number(id))}
-                                    />
-                                  ))}
-                                  {nonImages.map((doc) => (
-                                    <DocumentCard
-                                      key={doc.document_id}
-                                      doc={{ id: doc.document_id, originalName: doc.original_name, signedUrl: doc.signed_url, created_at: doc.uploaded_at }}
-                                      canDelete={effectiveCanWork && !viewModalData?.is_resolved}
-                                      onDelete={(id) => setConfirmDelete(Number(id))}
-                                    />
-                                  ))}
-                                  {videos.map((doc) => (
-                                    <VideoCard
-                                      key={doc.document_id}
-                                      doc={{ id: doc.document_id, originalName: doc.original_name, signedUrl: doc.signed_url, created_at: doc.uploaded_at }}
-                                      canDelete={effectiveCanWork && !viewModalData?.is_resolved}
-                                      onDelete={(id) => setConfirmDelete(Number(id))}
-                                    />
-                                  ))}
-                                </div>
-                              </div>
-                            );
-                          })()}
+                              );
+                            })()}
 
-                          {/* Miscellaneous Completion Documents */}
-                          {completionDocs.length > 0 && (() => {
-                            const { images, videos, nonImages } = separateImageAndDocs(completionDocs);
-                            return (
-                              <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                  <h4 className="text-sm font-semibold text-foreground">Miscellaneous Completion Documents</h4>
-                                  <Badge variant="outline" className="text-xs">
-                                    {completionDocs.length} total
-                                  </Badge>
+                            {/* Miscellaneous Completion Documents */}
+                            {completionDocs.length > 0 && (() => {
+                              const { images, videos, nonImages } = separateImageAndDocs(completionDocs);
+                              return (
+                                <div className="space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <h4 className="text-sm font-semibold text-foreground">Miscellaneous Completion Documents</h4>
+                                    <Badge variant="outline" className="text-xs">
+                                      {completionDocs.length} total
+                                    </Badge>
+                                  </div>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    {images.map((doc) => (
+                                      <ImageComponent
+                                        key={doc.document_id}
+                                        doc={{ id: doc.document_id, doc_og_name: doc.original_name, signedUrl: doc.signed_url, created_at: doc.uploaded_at }}
+                                        canDelete={effectiveCanWork && !viewModalData?.is_resolved}
+                                        onDelete={(id) => setConfirmDelete(Number(id))}
+                                      />
+                                    ))}
+                                    {nonImages.map((doc) => (
+                                      <DocumentCard
+                                        key={doc.document_id}
+                                        doc={{ id: doc.document_id, originalName: doc.original_name, signedUrl: doc.signed_url, created_at: doc.uploaded_at }}
+                                        canDelete={effectiveCanWork && !viewModalData?.is_resolved}
+                                        onDelete={(id) => setConfirmDelete(Number(id))}
+                                      />
+                                    ))}
+                                    {videos.map((doc) => (
+                                      <VideoCard
+                                        key={doc.document_id}
+                                        doc={{ id: doc.document_id, originalName: doc.original_name, signedUrl: doc.signed_url, created_at: doc.uploaded_at }}
+                                        canDelete={effectiveCanWork && !viewModalData?.is_resolved}
+                                        onDelete={(id) => setConfirmDelete(Number(id))}
+                                      />
+                                    ))}
+                                  </div>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                  {images.map((doc) => (
-                                    <ImageComponent
-                                      key={doc.document_id}
-                                      doc={{ id: doc.document_id, doc_og_name: doc.original_name, signedUrl: doc.signed_url, created_at: doc.uploaded_at }}
-                                      canDelete={effectiveCanWork && !viewModalData?.is_resolved}
-                                      onDelete={(id) => setConfirmDelete(Number(id))}
-                                    />
-                                  ))}
-                                  {nonImages.map((doc) => (
-                                    <DocumentCard
-                                      key={doc.document_id}
-                                      doc={{ id: doc.document_id, originalName: doc.original_name, signedUrl: doc.signed_url, created_at: doc.uploaded_at }}
-                                      canDelete={effectiveCanWork && !viewModalData?.is_resolved}
-                                      onDelete={(id) => setConfirmDelete(Number(id))}
-                                    />
-                                  ))}
-                                  {videos.map((doc) => (
-                                    <VideoCard
-                                      key={doc.document_id}
-                                      doc={{ id: doc.document_id, originalName: doc.original_name, signedUrl: doc.signed_url, created_at: doc.uploaded_at }}
-                                      canDelete={effectiveCanWork && !viewModalData?.is_resolved}
-                                      onDelete={(id) => setConfirmDelete(Number(id))}
-                                    />
-                                  ))}
-                                </div>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      );
-                    })()}
-                  </>
-                )}
+                              );
+                            })()}
+                          </div>
+                        );
+                      })()}
+                    </>
+                  )}
                 </div>
               </div>
             </TabsContent>
@@ -2480,9 +2766,15 @@ export default function InstallationMiscellaneous({
       <AlertDialog open={showApproveModal} onOpenChange={setShowApproveModal}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Approve Miscellaneous</AlertDialogTitle>
+            <AlertDialogTitle>
+              {viewModalData?.type?.name?.toLowerCase().includes("return order") || (viewModalData as any)?.return_order_delivery_method
+                ? "Approve Return Order"
+                : "Approve Miscellaneous"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to approve this miscellaneous request?
+              {viewModalData?.type?.name?.toLowerCase().includes("return order") || (viewModalData as any)?.return_order_delivery_method
+                ? "Are you sure you want to approve this return order request?"
+                : "Are you sure you want to approve this miscellaneous request?"}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -2532,8 +2824,16 @@ export default function InstallationMiscellaneous({
         open={showRejectModal}
         onOpenChange={(open) => { setShowRejectModal(open); if (!open) setRejectReason(""); }}
         size="md"
-        title="Reject Miscellaneous"
-        description="Please provide a reason for rejecting this miscellaneous request."
+        title={
+          viewModalData?.type?.name?.toLowerCase().includes("return order") || (viewModalData as any)?.return_order_delivery_method
+            ? "Reject Return Order"
+            : "Reject Miscellaneous"
+        }
+        description={
+          viewModalData?.type?.name?.toLowerCase().includes("return order") || (viewModalData as any)?.return_order_delivery_method
+            ? "Please provide a reason for rejecting this return order request."
+            : "Please provide a reason for rejecting this miscellaneous request."
+        }
       >
         <div className="space-y-4 py-4 px-6">
           <div className="flex flex-col gap-2">

@@ -117,6 +117,23 @@ export interface UpdateMiscellaneousPayload {
   files?: File[];
 }
 
+export interface CreateMiscellaneousReturnOrderPayload {
+  vendorId: number;
+  leadId: number;
+  account_id?: number;
+  misc_type_id?: number;
+  orderlogindetails_ids?: number[];
+  instance_id?: number;
+  selected_instance_id?: number;
+  reorder_material_details: string;
+  problem_description?: string;
+  supervisor_remark?: string;
+  return_order_date?: string | null;
+  return_order_delivery_method?: string;
+  created_by: number;
+  files: File[];
+}
+
 export interface MiscType {
   id: number;
   name: string;
@@ -708,6 +725,104 @@ export const useCreateMiscellaneousEntry = () => {
         title:
           error?.response?.data?.error ||
           "Failed to create miscellaneous entry",
+        type: "error",
+      });
+    },
+  });
+};
+
+/* ==========================================================
+   📤 POST - Create Miscellaneous Return Order
+   @route POST /leads/installation/under-installation/vendorId/:vendorId/leadId/:leadId/create-return-order
+   ========================================================== */
+export const createMiscellaneousReturnOrder = async (
+  payload: CreateMiscellaneousReturnOrderPayload,
+) => {
+  const formData = new FormData();
+
+  if (payload.account_id !== undefined) {
+    formData.append("account_id", payload.account_id.toString());
+  }
+  if (payload.misc_type_id !== undefined) {
+    formData.append("misc_type_id", payload.misc_type_id.toString());
+  }
+  if (payload.created_by !== undefined) {
+    formData.append("created_by", payload.created_by.toString());
+  }
+  if (payload.instance_id !== undefined) {
+    formData.append("instance_id", payload.instance_id.toString());
+  }
+  if (payload.selected_instance_id !== undefined) {
+    formData.append("selected_instance_id", payload.selected_instance_id.toString());
+  }
+  if (payload.orderlogindetails_ids && payload.orderlogindetails_ids.length > 0) {
+    formData.append("orderlogindetails_ids", JSON.stringify(payload.orderlogindetails_ids));
+  }
+  if (payload.reorder_material_details) {
+    formData.append("reorder_material_details", payload.reorder_material_details);
+  }
+  if (payload.problem_description) {
+    formData.append("problem_description", payload.problem_description);
+  }
+  if (payload.supervisor_remark) {
+    formData.append("supervisor_remark", payload.supervisor_remark);
+  }
+  if (payload.return_order_date) {
+    formData.append("return_order_date", payload.return_order_date);
+  }
+  if (payload.return_order_delivery_method) {
+    formData.append("return_order_delivery_method", payload.return_order_delivery_method);
+  }
+
+  // Append files
+  payload.files.forEach((file) => {
+    formData.append("files", file);
+  });
+
+  const { data } = await apiClient.post(
+    `/leads/installation/under-installation/vendorId/${payload.vendorId}/leadId/${payload.leadId}/create-return-order`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    },
+  );
+
+  return data?.data;
+};
+
+/**
+ * ✅ React Query Mutation Hook - Create Miscellaneous Return Order
+ */
+export const useCreateMiscellaneousReturnOrder = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createMiscellaneousReturnOrder,
+
+    onSuccess: (data, variables) => {
+      toastManager.add({
+        title: "Return order created successfully",
+        type: "success",
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: [
+          "miscellaneousEntries",
+          variables.vendorId,
+          variables.leadId,
+        ],
+      });
+      queryClient.invalidateQueries({ queryKey: ["miscellaneousStatusCounts"] });
+      queryClient.invalidateQueries({ queryKey: ["miscellaneousByStatus"] });
+    },
+
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          "Failed to create return order",
         type: "error",
       });
     },
