@@ -14,7 +14,7 @@ import { useAppSelector } from "@/redux/store";
 import { useLeadById } from "@/hooks/useLeadsQueries";
 
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import {
   DropdownMenu,
@@ -150,10 +150,25 @@ export default function UnderInstallationLeadDetails() {
 
   const updateStatusMutation = useUpdateActivityStatus();
 
+  const isMiscLink =
+    searchParams.get("tab") === "misc" ||
+    Boolean(searchParams.get("miscId")) ||
+    Boolean(searchParams.get("taskId"));
+
   const [activeTab, setActiveTab] = useState(
-    userType === "site-supervisor" ? "todo" : "details",
+    isMiscLink
+      ? "details"
+      : userType === "site-supervisor"
+        ? "todo"
+        : "details",
   );
   useChatTabFromUrl(setActiveTab);
+
+  useEffect(() => {
+    if (isMiscLink) {
+      setActiveTab("details");
+    }
+  }, [isMiscLink]);
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
   const { data: smallOrderRequestsResponse } = useSmallOrderRequestsByLead(
@@ -234,7 +249,7 @@ export default function UnderInstallationLeadDetails() {
       )
       : true;
   const canViewDocuments =
-    !isMiscellaneous && (
+    (
       effectiveUserType?.toLowerCase() === "custom"
         ? customPrivilegeCodes.some((code) =>
           code.startsWith("leads.open_leads.details_of_lead.documents_section."),

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useSearchParams } from "next/navigation";
 import {
   AlertCircle,
   Plus,
@@ -164,6 +165,7 @@ interface InstallationMiscellaneousProps {
   accountId: number;
   initialTaskId?: number;
   initialMiscId?: number;
+  initialSubTab?: string;
   initialItemData?: MiscellaneousEntry;
   onlyModal?: boolean;
   onModalClose?: () => void;
@@ -203,11 +205,29 @@ export default function InstallationMiscellaneous({
   accountId,
   initialTaskId,
   initialMiscId,
+  initialSubTab,
   initialItemData,
   onlyModal,
   onModalClose,
   hideAddButton,
 }: InstallationMiscellaneousProps) {
+  const searchParams = useSearchParams();
+  const queryMiscId = searchParams?.get("miscId");
+  const queryTaskId = searchParams?.get("taskId");
+  const queryMiscTab =
+    searchParams?.get("miscTab") || searchParams?.get("subTab") || undefined;
+
+  const effectiveMiscId =
+    initialMiscId ??
+    (queryMiscId && !Number.isNaN(Number(queryMiscId))
+      ? Number(queryMiscId)
+      : undefined);
+
+  const effectiveTaskId =
+    initialTaskId ??
+    (queryTaskId && !Number.isNaN(Number(queryTaskId))
+      ? Number(queryTaskId)
+      : undefined);
   const authUser = useAppSelector((s) => s.auth.user);
   const userId = authUser?.id;
   const rawUserType = useAppSelector(
@@ -306,15 +326,20 @@ export default function InstallationMiscellaneous({
   }, [selectedMiscType]);
 
   const resolveMisc = useResolveMiscellaneousEntry();
+  const [modalActiveTab, setModalActiveTab] = useState<string>(
+    effectiveMiscId || effectiveTaskId
+      ? initialSubTab || queryMiscTab || "actions-scheduling"
+      : initialSubTab || queryMiscTab || "misc-details",
+  );
   const [viewModal, setViewModal] = useState<{ open: boolean; id: number | null }>({
-    open: Boolean(initialMiscId),
-    id: initialMiscId || null,
+    open: Boolean(effectiveMiscId),
+    id: effectiveMiscId || null,
   });
 
   const createMutation = useCreateMiscellaneousEntry();
   const createReturnOrderMutation = useCreateMiscellaneousReturnOrder();
   const updateMutation = useUpdateMiscellaneousEntry();
-  const { data: entries, refetch } = useMiscellaneousEntries(vendorId, leadId);
+  const { data: entries, refetch, isLoading: loadingEntries } = useMiscellaneousEntries(vendorId, leadId);
   const updateERDMutation = useUpdateMiscERD();
   const markReadyMutation = useMarkMiscellaneousTaskReady();
   const updateApprovalMutation = useUpdateMiscApproval();
@@ -646,31 +671,33 @@ export default function InstallationMiscellaneous({
 
   useEffect(() => {
     setInitialModalHandled(false);
-  }, [initialTaskId]);
+  }, [effectiveTaskId]);
 
   useEffect(() => {
-    if (initialMiscId) {
-      setViewModal({ open: true, id: initialMiscId });
+    if (effectiveMiscId) {
+      setViewModal({ open: true, id: effectiveMiscId });
+      setModalActiveTab(initialSubTab || queryMiscTab || "actions-scheduling");
     }
-  }, [initialMiscId]);
+  }, [effectiveMiscId, initialSubTab, queryMiscTab]);
 
   useEffect(() => {
-    if (!initialTaskId || initialModalHandled || !entries?.length) return;
+    if (!effectiveTaskId || initialModalHandled || !entries?.length) return;
     const matched = entries.find(
       (item) =>
-        item.task?.id === initialTaskId ||
-        item.delivery_task?.id === initialTaskId ||
-        item.erd_task?.id === initialTaskId ||
-        item.return_handover_task?.id === initialTaskId,
+        item.task?.id === effectiveTaskId ||
+        item.delivery_task?.id === effectiveTaskId ||
+        item.erd_task?.id === effectiveTaskId ||
+        item.return_handover_task?.id === effectiveTaskId,
     );
     if (matched) {
       setViewModal({ open: true, id: matched.id });
+      setModalActiveTab(initialSubTab || queryMiscTab || "actions-scheduling");
       setInitialModalHandled(true);
-      if (matched.delivery_task?.id === initialTaskId) {
+      if (matched.delivery_task?.id === effectiveTaskId) {
         setOpenDeliveryTaskModal(true);
       }
     }
-  }, [initialTaskId, entries, initialModalHandled]);
+  }, [effectiveTaskId, entries, initialModalHandled, initialSubTab, queryMiscTab]);
 
   const handleOpenEditModal = (entryToEdit: MiscellaneousEntry) => {
     setEditingEntry(entryToEdit);
@@ -717,6 +744,13 @@ export default function InstallationMiscellaneous({
       expected_ready_date: entryToEdit.expected_ready_date
         ? entryToEdit.expected_ready_date.split("T")[0]
         : undefined,
+      return_order_date: (entryToEdit as any).return_order_date
+        ? (entryToEdit as any).return_order_date.split("T")[0]
+        : undefined,
+      return_order_delivery_method:
+        ((entryToEdit as any).return_order_delivery_method as any) || "SELF_DELIVERY",
+      return_order_selected_instances: [],
+      return_order_selected_materials: [],
     });
 
     setFiles([]);
@@ -1147,12 +1181,12 @@ export default function InstallationMiscellaneous({
             <Table>
               <TableHeader className="bg-muted/40">
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-50 text-sm font-medium text-foreground/80">Miscellaneous Type</TableHead>
-                  <TableHead className="w-50 text-sm font-medium text-foreground/80">ERD Date</TableHead>
+                  <TableHead className="w-50 text-sm font-medium text-foreground/80">Type / Method</TableHead>
+                  <TableHead className="w-50 text-sm font-medium text-foreground/80">Target / ERD Date</TableHead>
                   <TableHead className="w-50 text-sm font-medium text-foreground/80">Responsible Teams</TableHead>
                   <TableHead className="w-25 text-center text-sm font-medium text-foreground/80">Documents</TableHead>
                   <TableHead className="w-35 text-center text-sm font-medium text-foreground/80">Status</TableHead>
-                  <TableHead className="w-50 text-sm font-medium text-foreground/80">Problem Description</TableHead>
+                  <TableHead className="w-50 text-sm font-medium text-foreground/80">Problem / Material Details</TableHead>
                   <TableHead className="w-25 text-sm font-medium text-foreground/80">Quantity</TableHead>
                   <TableHead className="w-30 text-sm font-medium text-foreground/80">Cost</TableHead>
                   {canSeeActionsColumn && (
@@ -1177,155 +1211,355 @@ export default function InstallationMiscellaneous({
                     </TableCell>
                   </TableRow>
                 ) : (
-                  entries.map((entry) => (
-                    <TableRow
-                      key={entry.id}
-                      className="cursor-pointer hover:bg-muted/30 transition-all border-b last:border-0"
-                      onClick={() => setViewModal({ open: true, id: entry.id })}
-                    >
-                      <TableCell className="py-3">
-                        <div className="flex items-center gap-2">
-                          <div className={`p-1.5 rounded-md ${entry.is_resolved ? "bg-green-100 dark:bg-green-900" : "bg-orange-100 dark:bg-orange-900"}`}>
-                            {entry.is_resolved ? (
-                              <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-300" />
+                  entries.map((entry) => {
+                    const isReturnOrder = Boolean(
+                      (entry as any).return_order_delivery_method ||
+                      entry.type?.name?.toLowerCase().includes("return")
+                    );
+                    const deliveryMethod = (entry as any).return_order_delivery_method;
+                    const isPickupSchedule = deliveryMethod === "PICKUP_SCHEDULE";
+                    const isSelfDelivery = deliveryMethod === "SELF_DELIVERY";
+
+                    return (
+                      <TableRow
+                        key={entry.id}
+                        className="cursor-pointer hover:bg-muted/30 transition-all border-b last:border-0"
+                        onClick={() => setViewModal({ open: true, id: entry.id })}
+                      >
+                        <TableCell className="py-3">
+                          <div className="flex items-center gap-2.5">
+                            <div
+                              className={`p-1.5 rounded-md ${
+                                entry.is_resolved
+                                  ? "bg-green-100 text-green-700 dark:bg-green-900/60 dark:text-green-300"
+                                  : isReturnOrder
+                                    ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300"
+                                    : "bg-orange-100 text-orange-700 dark:bg-orange-900/60 dark:text-orange-300"
+                              }`}
+                            >
+                              {entry.is_resolved ? (
+                                <CheckCircle2 className="w-4 h-4" />
+                              ) : isReturnOrder ? (
+                                <PackageCheck className="w-4 h-4" />
+                              ) : (
+                                <AlertCircle className="w-4 h-4" />
+                              )}
+                            </div>
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="font-semibold text-sm leading-tight text-foreground">
+                                  {entry.type?.name || (isReturnOrder ? "Return Order" : "Miscellaneous")}
+                                </p>
+                                {isPickupSchedule && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px] px-1.5 py-0 h-4 font-medium bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/50 dark:text-purple-300 dark:border-purple-800"
+                                  >
+                                    Pickup Schedule
+                                  </Badge>
+                                )}
+                                {isSelfDelivery && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px] px-1.5 py-0 h-4 font-medium bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800"
+                                  >
+                                    Self Delivery
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground">{formatDate(entry.created_at)}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-3">
+                          {isReturnOrder ? (
+                            (entry as any).return_order_date || entry.returned_at ? (
+                              <div className="space-y-0.5">
+                                {(entry as any).return_order_date && (
+                                  <div>
+                                    <span className="text-sm font-medium text-foreground">
+                                      {formatDate((entry as any).return_order_date)}
+                                    </span>
+                                    <p className="text-[11px] text-muted-foreground">
+                                      {isPickupSchedule ? "Pickup Target" : "Delivery Target"}
+                                    </p>
+                                  </div>
+                                )}
+                                {entry.returned_at && (
+                                  <p className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                                    Handed over: {formatDate(entry.returned_at)}
+                                  </p>
+                                )}
+                              </div>
                             ) : (
-                              <AlertCircle className="w-4 h-4 text-orange-600 dark:text-orange-300" />
-                            )}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-sm">{entry.type.name}</p>
-                            <p className="text-xs text-muted-foreground">{formatDate(entry.created_at)}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-3">
-                        {entry.expected_ready_date ? (
-                          <div>
-                            <span className="text-sm font-medium">{formatDate(entry.expected_ready_date)}</span>
-                            {entry.solution && (
-                              <p className="text-[11px] text-muted-foreground truncate max-w-[150px]" title={entry.solution}>
-                                {entry.solution}
-                              </p>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="py-3">
-                        {entry.teams.length ? (
-                          <div className="flex flex-wrap gap-1">
-                            {entry.teams.slice(0, 2).map((team) => (
-                              <Badge key={team.team_id} variant="secondary" className="text-xs px-2">
-                                {team.team_name}
+                              <span className="text-sm text-muted-foreground">-</span>
+                            )
+                          ) : entry.expected_ready_date ? (
+                            <div>
+                              <span className="text-sm font-medium text-foreground">
+                                {formatDate(entry.expected_ready_date)}
+                              </span>
+                              {entry.solution && (
+                                <p
+                                  className="text-[11px] text-muted-foreground truncate max-w-[150px]"
+                                  title={entry.solution}
+                                >
+                                  {entry.solution}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="py-3">
+                          {entry.teams && entry.teams.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {entry.teams.slice(0, 2).map((team) => (
+                                <Badge key={team.team_id} variant="secondary" className="text-xs px-2">
+                                  {team.team_name}
+                                </Badge>
+                              ))}
+                              {entry.teams.length > 2 && (
+                                <Badge variant="secondary" className="text-xs px-2">
+                                  +{entry.teams.length - 2}
+                                </Badge>
+                              )}
+                            </div>
+                          ) : isReturnOrder ? (
+                            <div className="flex flex-wrap gap-1">
+                              <Badge variant="secondary" className="text-xs px-2 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                Factory Team
                               </Badge>
-                            ))}
-                            {entry.teams.length > 2 && (
-                              <Badge variant="secondary" className="text-xs px-2">+{entry.teams.length - 2}</Badge>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="py-3 text-center">
-                        <Badge variant="outline" className="text-xs px-2">
-                          <FileText className="w-3 h-3 mr-1" />
-                          {entry.documents.length}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="py-3 text-center">
-                        {(() => {
-                          const isPickupSchedule = (entry as any).return_order_delivery_method === "PICKUP_SCHEDULE";
-                          const isSelfDelivery = (entry as any).return_order_delivery_method === "SELF_DELIVERY";
+                              <Badge variant="secondary" className="text-xs px-2 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                Site Team
+                              </Badge>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="py-3 text-center">
+                          <Badge variant="outline" className="text-xs px-2">
+                            <FileText className="w-3 h-3 mr-1" />
+                            {entry.documents?.length || 0}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="py-3 text-center">
+                          {(() => {
+                            let label: string;
+                            let className: string;
+                            if (entry.misc_approved === false) {
+                              label = "REJECTED";
+                              className = "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300";
+                            } else if (entry.is_resolved) {
+                              label = "RESOLVED";
+                              className = "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300";
+                            } else if (isPickupSchedule) {
+                              const hasConfirmationDoc = entry.documents?.some(
+                                (d) =>
+                                  d.doc_type_tag === "Type 42" ||
+                                  d.document_type?.toLowerCase().includes("confirmation")
+                              );
+                              const isFactoryConfirmed =
+                                entry.return_confirm_task?.status === "completed" || hasConfirmationDoc;
+                              const isReturned = Boolean(entry.is_returned);
+                              const isPickupCompleted = entry.task?.status === "completed";
 
-                          let label: string;
-                          let className: string;
-                          if (entry.misc_approved === false) {
-                            label = "REJECTED";
-                            className = "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300";
-                          } else if (entry.is_resolved) {
-                            label = "RESOLVED";
-                            className = "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300";
-                          } else if (isPickupSchedule) {
-                            const hasConfirmationDoc = entry.documents?.some(
-                              (d) =>
-                                d.doc_type_tag === "Type 42" ||
-                                d.document_type?.toLowerCase().includes("confirmation")
+                              if (isFactoryConfirmed) {
+                                label = "CONFIRMED";
+                                className = "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300";
+                              } else if (isReturned) {
+                                label = "PENDING CONFIRMATION";
+                                className = "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300";
+                              } else if (isPickupCompleted) {
+                                label = "DISPATCHED";
+                                className = "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300";
+                              } else if (entry.misc_approved === true) {
+                                label = "PICKUP SCHEDULED";
+                                className = "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300";
+                              } else {
+                                label = "AWAITING APPROVAL";
+                                className = "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300";
+                              }
+                            } else if (isSelfDelivery) {
+                              const proofDocs = entry.documents?.filter((d) => d.doc_type_tag === "Type 42" || d.doc_type_tag === "Type 41") || [];
+                              const isConfirmed = entry.task?.status === "completed" || proofDocs.length > 0;
+                              if (isConfirmed) {
+                                label = "CONFIRMED";
+                                className = "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300";
+                              } else if (entry.misc_approved === true) {
+                                label = "PENDING CONFIRMATION";
+                                className = "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300";
+                              } else {
+                                label = "AWAITING APPROVAL";
+                                className = "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300";
+                              }
+                            } else {
+                              const hasDispatchDocs = entry.delivery_task?.status === "completed";
+                              if (hasDispatchDocs) {
+                                label = "DISPATCHED";
+                                className = "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300";
+                              } else if (entry.required_delivery_date) {
+                                label = "DISPATCH SCHEDULED";
+                                className = "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300";
+                              } else if (entry.misc_approved === true && entry.expected_ready_date && entry.task?.status === "completed") {
+                                label = "RTD";
+                                className = "bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300";
+                              } else if (entry.misc_approved === true && entry.expected_ready_date) {
+                                label = "UNDER PROCESS";
+                                className = "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300";
+                              } else if (entry.misc_approved === true) {
+                                label = "MISCL APPROVED";
+                                className = "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300";
+                              } else {
+                                label = "AWAITING APPROVAL";
+                                className = "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300";
+                              }
+                            }
+                            return (
+                              <Badge variant="outline" className={`text-xs px-2 border-0 font-medium ${className}`}>{label}</Badge>
                             );
-                            const isFactoryConfirmed =
-                              entry.return_confirm_task?.status === "completed" || hasConfirmationDoc;
-                            const isReturned = Boolean(entry.is_returned);
-                            const isPickupCompleted = entry.task?.status === "completed";
+                          })()}
+                        </TableCell>
+                        <TableCell className="py-3">
+                          {(() => {
+                            if (isReturnOrder) {
+                              const primaryMaterial = entry.reorder_material_details?.trim() || "";
+                              const secondaryDesc =
+                                entry.problem_description && entry.problem_description !== "Return Order"
+                                  ? entry.problem_description.trim()
+                                  : "";
+                              const supervisorRemark = entry.supervisor_remark?.trim() || "";
 
-                            if (isFactoryConfirmed) {
-                              label = "CONFIRMED";
-                              className = "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300";
-                            } else if (isReturned) {
-                              label = "PENDING CONFIRMATION";
-                              className = "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300";
-                            } else if (isPickupCompleted) {
-                              label = "DISPATCHED";
-                              className = "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300";
-                            } else if (entry.misc_approved === true) {
-                              label = "PICKUP SCHEDULED";
-                              className = "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300";
-                            } else {
-                              label = "AWAITING APPROVAL";
-                              className = "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300";
+                              const fullTooltipLines = [
+                                primaryMaterial ? `Materials: ${primaryMaterial}` : "",
+                                secondaryDesc ? `Description: ${secondaryDesc}` : "",
+                                supervisorRemark ? `Supervisor Remark: ${supervisorRemark}` : "",
+                              ].filter(Boolean);
+
+                              const fullTooltipText =
+                                fullTooltipLines.length > 0 ? fullTooltipLines.join("\n") : "Return Order";
+
+                              const mainText =
+                                primaryMaterial || secondaryDesc || supervisorRemark || "Return Order";
+                              const truncatedMain =
+                                mainText.length > 35 ? mainText.slice(0, 35) + "..." : mainText;
+
+                              const subText =
+                                primaryMaterial && secondaryDesc
+                                  ? secondaryDesc
+                                  : primaryMaterial && supervisorRemark
+                                    ? supervisorRemark
+                                    : "";
+                              const truncatedSub =
+                                subText.length > 28 ? subText.slice(0, 28) + "..." : subText;
+
+                              return (
+                                <div className="space-y-0.5">
+                                  <RemarkTooltip
+                                    remark={
+                                      <span className="font-semibold text-sm text-foreground text-left block hover:underline">
+                                        {truncatedMain}
+                                      </span>
+                                    }
+                                    remarkFull={fullTooltipText}
+                                    title="Return Material & Details"
+                                  />
+                                  {subText && (
+                                    <p
+                                      className="text-[11px] text-muted-foreground truncate max-w-[190px]"
+                                      title={subText}
+                                    >
+                                      {truncatedSub}
+                                    </p>
+                                  )}
+                                </div>
+                              );
                             }
-                          } else if (isSelfDelivery) {
-                            const proofDocs = entry.documents?.filter((d) => d.doc_type_tag === "Type 42" || d.doc_type_tag === "Type 41") || [];
-                            const isConfirmed = entry.task?.status === "completed" || proofDocs.length > 0;
-                            if (isConfirmed) {
-                              label = "CONFIRMED";
-                              className = "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300";
-                            } else if (entry.misc_approved === true) {
-                              label = "PENDING CONFIRMATION";
-                              className = "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300";
-                            } else {
-                              label = "AWAITING APPROVAL";
-                              className = "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300";
+
+                            const mainProblem = entry.problem_description?.trim() || "";
+                            const matDetails = entry.reorder_material_details?.trim() || "";
+                            const supervisorRemark = entry.supervisor_remark?.trim() || "";
+
+                            const fullTooltip = [
+                              mainProblem ? `Issue: ${mainProblem}` : "",
+                              matDetails ? `Material: ${matDetails}` : "",
+                              supervisorRemark ? `Remark: ${supervisorRemark}` : "",
+                            ]
+                              .filter(Boolean)
+                              .join("\n");
+
+                            if (!mainProblem && !matDetails) {
+                              return <span className="text-sm text-muted-foreground">-</span>;
                             }
-                          } else {
-                            const hasDispatchDocs = entry.delivery_task?.status === "completed";
-                            if (hasDispatchDocs) {
-                              label = "DISPATCHED";
-                              className = "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300";
-                            } else if (entry.required_delivery_date) {
-                              label = "DISPATCH SCHEDULED";
-                              className = "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300";
-                            } else if (entry.misc_approved === true && entry.expected_ready_date && entry.task?.status === "completed") {
-                              label = "RTD";
-                              className = "bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300";
-                            } else if (entry.misc_approved === true && entry.expected_ready_date) {
-                              label = "UNDER PROCESS";
-                              className = "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300";
-                            } else if (entry.misc_approved === true) {
-                              label = "MISCL APPROVED";
-                              className = "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300";
-                            } else {
-                              label = "AWAITING APPROVAL";
-                              className = "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300";
+
+                            const mainText = mainProblem || matDetails;
+                            const truncated =
+                              mainText.length > 38 ? mainText.slice(0, 38) + "..." : mainText;
+
+                            return (
+                              <div className="space-y-0.5">
+                                <RemarkTooltip
+                                  remark={
+                                    <span className="text-sm text-foreground text-left block hover:underline">
+                                      {truncated}
+                                    </span>
+                                  }
+                                  remarkFull={fullTooltip || mainText}
+                                  title="Issue Details"
+                                />
+                                {matDetails && mainProblem && (
+                                  <p
+                                    className="text-[11px] text-muted-foreground truncate max-w-[190px]"
+                                    title={matDetails}
+                                  >
+                                    Material: {matDetails}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </TableCell>
+                        <TableCell className="py-3">
+                          {entry.quantity != null && entry.quantity > 0 ? (
+                            <span className="text-sm font-medium">{entry.quantity}</span>
+                          ) : isReturnOrder ? (() => {
+                            const mappings = (entry as any).reorder_instances_material_mappings;
+                            if (Array.isArray(mappings) && mappings.length > 0) {
+                              return (
+                                <Badge variant="outline" className="text-xs px-2 font-medium bg-muted/40">
+                                  {mappings.length} {mappings.length === 1 ? "item" : "items"}
+                                </Badge>
+                              );
                             }
-                          }
-                          return (
-                            <Badge variant="outline" className={`text-xs px-2 border-0 font-medium ${className}`}>{label}</Badge>
-                          );
-                        })()}
-                      </TableCell>
-                      <TableCell className="py-3">
-                        <RemarkTooltip
-                          remark={entry.problem_description ? entry.problem_description.length > 40 ? entry.problem_description.slice(0, 40) + "..." : entry.problem_description : "-"}
-                          remarkFull={entry.problem_description || "-"}
-                        />
-                      </TableCell>
-                      <TableCell className="py-3">
-                        {entry.quantity ? <span className="text-sm font-medium">{entry.quantity}</span> : <span className="text-sm text-muted-foreground">-</span>}
-                      </TableCell>
-                      <TableCell className="py-3">
-                        {entry.cost ? <span className="text-sm font-medium">₹{entry.cost.toLocaleString()}</span> : <span className="text-sm text-muted-foreground">-</span>}
-                      </TableCell>
+                            if (entry.reorder_material_details) {
+                              const parts = entry.reorder_material_details
+                                .split(",")
+                                .map((s: string) => s.trim())
+                                .filter(Boolean);
+                              if (parts.length > 0) {
+                                return (
+                                  <Badge variant="outline" className="text-xs px-2 font-medium bg-muted/40">
+                                    {parts.length} {parts.length === 1 ? "item" : "items"}
+                                  </Badge>
+                                );
+                              }
+                            }
+                            return <span className="text-sm text-muted-foreground">-</span>;
+                          })() : (
+                            <span className="text-sm text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="py-3">
+                          {entry.cost != null && entry.cost > 0 ? (
+                            <span className="text-sm font-medium">₹{entry.cost.toLocaleString()}</span>
+                          ) : isReturnOrder ? (
+                            <span className="text-xs font-medium text-muted-foreground">N/A</span>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
                       {canSeeActionsColumn && (
                         <TableCell className="py-3 text-center" onClick={(e) => e.stopPropagation()}>
                           {canEditEntry(entry) ? (
@@ -1352,8 +1586,9 @@ export default function InstallationMiscellaneous({
                         </TableCell>
                       )}
                     </TableRow>
-                  ))
-                )}
+                  );
+                })
+              )}
               </TableBody>
             </Table>
           </div>
@@ -1843,12 +2078,23 @@ export default function InstallationMiscellaneous({
         description="Detailed information and supporting documents for this miscellaneous entry."
       >
         <div className="p-5">
-          <Tabs defaultValue="misc-details" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-4">
-              <TabsTrigger value="misc-details">Misc Details</TabsTrigger>
-              <TabsTrigger value="actions-scheduling">Actions & Scheduling</TabsTrigger>
-              <TabsTrigger value="followup">Follow Up</TabsTrigger>
-            </TabsList>
+          {!viewModalData && loadingEntries ? (
+            <div className="flex flex-col items-center justify-center py-16 space-y-3">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Loading details...</p>
+            </div>
+          ) : !viewModalData ? (
+            <div className="flex flex-col items-center justify-center py-16 space-y-3">
+              <AlertCircle className="w-8 h-8 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Miscellaneous record not found.</p>
+            </div>
+          ) : (
+            <Tabs value={modalActiveTab} onValueChange={setModalActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-3 mb-4">
+                <TabsTrigger value="misc-details">Misc Details</TabsTrigger>
+                <TabsTrigger value="actions-scheduling">Actions & Scheduling</TabsTrigger>
+                <TabsTrigger value="followup">Follow Up</TabsTrigger>
+              </TabsList>
 
             {/* ── Tab 1: Misc Details ────────────────────────────────────── */}
             <TabsContent value="misc-details">
@@ -1871,8 +2117,14 @@ export default function InstallationMiscellaneous({
                   </div>
                 )}
                 {/* Quick Stats */}
-                {(viewModalData?.quantity || viewModalData?.cost || viewModalData?.expected_ready_date || viewModalData?.created_user?.user_name || viewModalData?.created_at) && (
-                  <div className="grid grid-cols-2 gap-3">
+                {(viewModalData?.quantity ||
+                  viewModalData?.cost ||
+                  viewModalData?.expected_ready_date ||
+                  (viewModalData as any)?.return_order_date ||
+                  (viewModalData as any)?.return_order_delivery_method ||
+                  viewModalData?.created_user?.user_name ||
+                  viewModalData?.created_at) && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {viewModalData?.created_at && (
                       <Card className="border border-border bg-muted/30 dark:bg-neutral-900/50 hover:bg-muted/50 dark:hover:bg-neutral-900/70 transition-colors">
                         <CardContent className="px-4">
@@ -1888,7 +2140,62 @@ export default function InstallationMiscellaneous({
                         </CardContent>
                       </Card>
                     )}
-                    {viewModalData?.quantity && (
+
+                    {isViewReturnOrder && (viewModalData as any)?.return_order_delivery_method && (
+                      <Card className="border border-border bg-muted/30 dark:bg-neutral-900/50 hover:bg-muted/50 dark:hover:bg-neutral-900/70 transition-colors">
+                        <CardContent className="px-4">
+                          <div className="flex items-start gap-3">
+                            <div className="p-2 rounded-lg bg-background dark:bg-neutral-800 border border-border">
+                              <PackageCheck className="w-4 h-4 text-primary" />
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Delivery Method</p>
+                              <p className="text-sm font-semibold text-foreground">
+                                {isSelfDeliveryReturnOrder ? "Self Delivery" : "Pickup Schedule"}
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {isViewReturnOrder ? (
+                      (viewModalData as any)?.return_order_date ? (
+                        <Card className="border border-border bg-muted/30 dark:bg-neutral-900/50 hover:bg-muted/50 dark:hover:bg-neutral-900/70 transition-colors">
+                          <CardContent className="px-4">
+                            <div className="flex items-start gap-3">
+                              <div className="p-2 rounded-lg bg-background dark:bg-neutral-800 border border-border">
+                                <Calendar className="w-4 h-4 text-muted-foreground" />
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">
+                                  {isPickupScheduleReturnOrder ? "Pickup Target Date" : "Delivery Target Date"}
+                                </p>
+                                <p className="text-sm font-semibold text-foreground">
+                                  {formatDate((viewModalData as any).return_order_date)}
+                                </p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ) : null
+                    ) : viewModalData?.expected_ready_date ? (
+                      <Card className="border border-border bg-muted/30 dark:bg-neutral-900/50 hover:bg-muted/50 dark:hover:bg-neutral-900/70 transition-colors">
+                        <CardContent className="px-4">
+                          <div className="flex items-start gap-3">
+                            <div className="p-2 rounded-lg bg-background dark:bg-neutral-800 border border-border">
+                              <Calendar className="w-4 h-4 text-muted-foreground" />
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Expected Ready</p>
+                              <p className="text-sm font-semibold text-foreground">{formatDate(viewModalData.expected_ready_date)}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ) : null}
+
+                    {viewModalData?.quantity ? (
                       <Card className="border border-border bg-muted/30 dark:bg-neutral-900/50 hover:bg-muted/50 dark:hover:bg-neutral-900/70 transition-colors">
                         <CardContent className="px-4">
                           <div className="flex items-start gap-3">
@@ -1902,8 +2209,30 @@ export default function InstallationMiscellaneous({
                           </div>
                         </CardContent>
                       </Card>
-                    )}
-                    {viewModalData?.cost && (
+                    ) : isViewReturnOrder ? (() => {
+                      const mappings = (viewModalData as any)?.reorder_instances_material_mappings;
+                      const count = Array.isArray(mappings) && mappings.length > 0 ? mappings.length : null;
+                      if (!count) return null;
+                      return (
+                        <Card className="border border-border bg-muted/30 dark:bg-neutral-900/50 hover:bg-muted/50 dark:hover:bg-neutral-900/70 transition-colors">
+                          <CardContent className="px-4">
+                            <div className="flex items-start gap-3">
+                              <div className="p-2 rounded-lg bg-background dark:bg-neutral-800 border border-border">
+                                <Package className="w-4 h-4 text-muted-foreground" />
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">Return Items</p>
+                                <p className="text-base font-semibold text-foreground">
+                                  {count} {count === 1 ? "item" : "items"}
+                                </p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })() : null}
+
+                    {viewModalData?.cost ? (
                       <Card className="border border-border bg-muted/30 dark:bg-neutral-900/50 hover:bg-muted/50 dark:hover:bg-neutral-900/70 transition-colors">
                         <CardContent className="px-4">
                           <div className="flex items-start gap-3">
@@ -1917,17 +2246,18 @@ export default function InstallationMiscellaneous({
                           </div>
                         </CardContent>
                       </Card>
-                    )}
-                    {viewModalData?.expected_ready_date && (
+                    ) : null}
+
+                    {viewModalData?.returned_at && (
                       <Card className="border border-border bg-muted/30 dark:bg-neutral-900/50 hover:bg-muted/50 dark:hover:bg-neutral-900/70 transition-colors">
                         <CardContent className="px-4">
                           <div className="flex items-start gap-3">
                             <div className="p-2 rounded-lg bg-background dark:bg-neutral-800 border border-border">
-                              <Calendar className="w-4 h-4 text-muted-foreground" />
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                             </div>
                             <div>
-                              <p className="text-xs text-muted-foreground">Expected Ready</p>
-                              <p className="text-sm font-semibold text-foreground">{formatDate(viewModalData.expected_ready_date)}</p>
+                              <p className="text-xs text-muted-foreground">Handed Over At</p>
+                              <p className="text-sm font-semibold text-foreground">{formatDate(viewModalData.returned_at)}</p>
                             </div>
                           </div>
                         </CardContent>
@@ -1946,7 +2276,7 @@ export default function InstallationMiscellaneous({
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {viewModalData?.problem_description && (
+                  {viewModalData?.problem_description && (!isViewReturnOrder || viewModalData.problem_description !== "Return Order") && (
                     <div className="space-y-1.5">
                       <p className="text-[13px] font-medium text-muted-foreground">Problem Description</p>
                       <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
@@ -1956,7 +2286,9 @@ export default function InstallationMiscellaneous({
                   )}
                   {viewModalData?.reorder_material_details && (
                     <div className="space-y-1.5">
-                      <p className="text-[13px] font-medium text-muted-foreground">Reorder Material Details</p>
+                      <p className="text-[13px] font-medium text-muted-foreground">
+                        {isViewReturnOrder ? "Return Order Material Details" : "Reorder Material Details"}
+                      </p>
                       <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
                         <p className="text-sm text-foreground leading-relaxed">{viewModalData.reorder_material_details}</p>
                       </div>
@@ -1970,7 +2302,7 @@ export default function InstallationMiscellaneous({
                       </div>
                     </div>
                   )}
-                  {viewModalData?.teams && viewModalData.teams.length > 0 && (
+                  {viewModalData?.teams && viewModalData.teams.length > 0 ? (
                     <div className="space-y-1.5">
                       <p className="text-[13px] font-medium text-muted-foreground">Team Responsible</p>
                       <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
@@ -1983,7 +2315,21 @@ export default function InstallationMiscellaneous({
                         </div>
                       </div>
                     </div>
-                  )}
+                  ) : isViewReturnOrder ? (
+                    <div className="space-y-1.5">
+                      <p className="text-[13px] font-medium text-muted-foreground">Team Responsible</p>
+                      <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
+                        <div className="flex flex-wrap gap-2">
+                          <Badge variant="outline" className="px-3 py-1 bg-background dark:bg-neutral-800">
+                            Factory Team
+                          </Badge>
+                          <Badge variant="outline" className="px-3 py-1 bg-background dark:bg-neutral-800">
+                            Site Team
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
                   {viewModalData?.solution && (
                     <div className="space-y-1.5 md:col-span-2">
                       <p className="text-[13px] font-medium text-muted-foreground flex items-center gap-1.5">
@@ -3668,6 +4014,7 @@ export default function InstallationMiscellaneous({
               </div>
             </TabsContent>
           </Tabs>
+          )}
         </div>
       </BaseModal>
 

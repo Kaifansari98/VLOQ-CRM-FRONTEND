@@ -37,6 +37,16 @@ export default function UnderInstallationTabsWrapper({
     taskIdParam && !Number.isNaN(Number(taskIdParam))
       ? Number(taskIdParam)
       : undefined;
+  const miscIdParam = searchParams.get("miscId");
+  const miscId =
+    miscIdParam && !Number.isNaN(Number(miscIdParam))
+      ? Number(miscIdParam)
+      : undefined;
+  const miscTabParam =
+    searchParams.get("miscTab") || searchParams.get("subTab") || undefined;
+  const preferredTabId = searchParams.get("tab");
+  const isMiscRequested =
+    preferredTabId === "misc" || Boolean(miscId) || Boolean(taskId);
 
   // 🔹 Fetch installation details
   const { data: underDetails } = useUnderInstallationDetails(vendorId, leadId);
@@ -138,7 +148,7 @@ export default function UnderInstallationTabsWrapper({
       id: "misc",
       title: "Miscellaneous",
       color: "bg-zinc-900",
-      disabled: !installationStarted,
+      disabled: !installationStarted && !isMiscRequested && !isMiscUser,
       disabledReason: "Start installation to access this section",
       cardContent: (
         <InstallationMiscellaneous
@@ -146,6 +156,8 @@ export default function UnderInstallationTabsWrapper({
           leadId={leadId}
           accountId={account_id}
           initialTaskId={taskId}
+          initialMiscId={miscId}
+          initialSubTab={miscTabParam}
         />
       ),
     },
@@ -213,13 +225,14 @@ export default function UnderInstallationTabsWrapper({
     return true;
   });
 
-  const preferredTabId = searchParams.get("tab");
-  const fallbackDefaultTabId = isMiscUser ? "misc" : "underInstallation";
+  const fallbackDefaultTabId = isMiscUser || isMiscRequested ? "misc" : "underInstallation";
   const resolvedDefaultTabId =
     preferredTabId &&
     tabs.some((tab) => !tab.disabled && tab.id === preferredTabId)
       ? preferredTabId
-      : tabs.find((t) => !t.disabled)?.id || fallbackDefaultTabId;
+      : isMiscRequested && tabs.some((tab) => !tab.disabled && tab.id === "misc")
+        ? "misc"
+        : tabs.find((t) => !t.disabled)?.id || fallbackDefaultTabId;
 
   return (
     <div className="w-full h-full bg-white dark:bg-[#0a0a0a]">

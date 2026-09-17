@@ -82,6 +82,7 @@ export interface MiscellaneousEntry {
   } | null;
   return_order_date?: string | null;
   return_order_delivery_method?: string | null;
+  reorder_instances_material_mappings?: any[];
   is_returned?: boolean;
   returned_at?: string | null;
   returned_by?: number | null;
