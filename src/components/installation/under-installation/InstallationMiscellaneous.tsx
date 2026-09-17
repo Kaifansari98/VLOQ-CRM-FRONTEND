@@ -14,7 +14,6 @@ import {
   Clock,
   XCircle,
   ShieldCheck,
-  CalendarClock,
   Loader2,
   Send,
 } from "lucide-react";
@@ -57,8 +56,7 @@ import {
   useUpdateMiscApproval,
   useUpdateMiscRequiredDeliveryDate,
   useUploadMiscellaneousDocuments,
-  useMiscFollowupEligibleUsers,
-  useCreateMiscFollowupTask,
+  MiscellaneousEntry,
 } from "@/api/installation/useUnderInstallationStageLeads";
 import { useAppSelector } from "@/redux/store";
 import TextSelectPicker from "@/components/TextSelectPicker";
@@ -154,6 +152,10 @@ interface InstallationMiscellaneousProps {
   leadId: number;
   accountId: number;
   initialTaskId?: number;
+  initialMiscId?: number;
+  initialItemData?: MiscellaneousEntry;
+  onlyModal?: boolean;
+  onModalClose?: () => void;
   hideAddButton?: boolean;
 }
 
@@ -189,6 +191,10 @@ export default function InstallationMiscellaneous({
   leadId,
   accountId,
   initialTaskId,
+  initialMiscId,
+  initialItemData,
+  onlyModal,
+  onModalClose,
   hideAddButton,
 }: InstallationMiscellaneousProps) {
   const userId = useAppSelector((s) => s.auth.user?.id);
@@ -245,8 +251,8 @@ export default function InstallationMiscellaneous({
 
   const resolveMisc = useResolveMiscellaneousEntry();
   const [viewModal, setViewModal] = useState<{ open: boolean; id: number | null }>({
-    open: false,
-    id: null,
+    open: Boolean(initialMiscId),
+    id: initialMiscId || null,
   });
 
   const createMutation = useCreateMiscellaneousEntry();
@@ -258,9 +264,11 @@ export default function InstallationMiscellaneous({
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
 
-  const viewModalData = useMemo(
-    () => entries?.find((e) => e.id === viewModal.id) ?? null,
-    [entries, viewModal.id],
+  const viewModalData: MiscellaneousEntry | null = useMemo(
+    () =>
+      entries?.find((e) => e.id === viewModal.id) ??
+      (initialItemData?.id === viewModal.id ? initialItemData : null),
+    [entries, viewModal.id, initialItemData],
   );
 
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
@@ -280,7 +288,6 @@ export default function InstallationMiscellaneous({
   const [readyFiles, setReadyFiles] = useState<File[]>([]);
   const [showDeliveryConfirm, setShowDeliveryConfirm] = useState(false);
   const [showApproveModal, setShowApproveModal] = useState(false);
-  const [approveRemark, setApproveRemark] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [openDeliveryTaskModal, setOpenDeliveryTaskModal] = useState(false);
@@ -302,92 +309,7 @@ export default function InstallationMiscellaneous({
 
   const isTaskReady = viewModalData?.task?.status === "completed";
 
-  // ── Miscellaneous Followup ────────────────────────────────────────────────
-  const { data: followupEligibleUsers = [], isLoading: loadingFollowupUsers } =
-    useMiscFollowupEligibleUsers(vendorId);
-  const { mutate: createFollowupTask, isPending: isCreatingFollowup } =
-    useCreateMiscFollowupTask();
 
-  const [followupUserId, setFollowupUserId] = useState<string>("");
-  const [followupDueDate, setFollowupDueDate] = useState<string | undefined>(undefined);
-  const [followupRemark, setFollowupRemark] = useState<string>("");
-
-  useEffect(() => {
-    setFollowupUserId("");
-    setFollowupDueDate(undefined);
-    setFollowupRemark("");
-  }, [viewModalData?.id]);
-
-  const handleCreateFollowup = () => {
-    if (!viewModalData?.id || !leadId) return;
-    if (!followupUserId) {
-      toastManager.add({ title: "Please select an assigned user", type: "error" });
-      return;
-    }
-    if (!followupDueDate) {
-      toastManager.add({ title: "Please select a due date", type: "error" });
-      return;
-    }
-    if (!followupRemark.trim()) {
-      toastManager.add({ title: "Please enter a followup remark", type: "error" });
-      return;
-    }
-
-    createFollowupTask(
-      {
-        vendorId,
-        miscId: viewModalData.id,
-        leadId,
-        userId: Number(followupUserId),
-        dueDate: followupDueDate,
-        remark: followupRemark.trim(),
-      },
-      {
-        onSuccess: () => {
-          setFollowupUserId("");
-          setFollowupDueDate(undefined);
-          setFollowupRemark("");
-        },
-      },
-    );
-  };
-
-  const getFollowupRoleBadge = (roleName?: string) => {
-    const normalized = (roleName || "").toLowerCase().trim();
-    if (normalized.includes("head-site") || normalized.includes("head site")) {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-          Head Site Supervisor
-        </span>
-      );
-    }
-    if (normalized.includes("site-supervisor") || normalized.includes("site supervisor")) {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-          Site Supervisor
-        </span>
-      );
-    }
-    if (normalized.includes("factory")) {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-          Factory
-        </span>
-      );
-    }
-    if (normalized.includes("miscellaneous")) {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-teal-100 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
-          Miscellaneous
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-muted text-muted-foreground border border-border">
-        {roleName || "User"}
-      </span>
-    );
-  };
 
   const { data: orderLoginSummary = [], isLoading: loadingSummary } =
     useOrderLoginSummary(vendorId, leadId);
@@ -462,6 +384,12 @@ export default function InstallationMiscellaneous({
   useEffect(() => {
     setInitialModalHandled(false);
   }, [initialTaskId]);
+
+  useEffect(() => {
+    if (initialMiscId) {
+      setViewModal({ open: true, id: initialMiscId });
+    }
+  }, [initialMiscId]);
 
   useEffect(() => {
     if (!initialTaskId || initialModalHandled || !entries?.length) return;
@@ -720,9 +648,11 @@ export default function InstallationMiscellaneous({
   };
 
   return (
-    <div className="px-2 bg-white dark:bg-[#0a0a0a]">
-      {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
+    <div className={onlyModal ? "" : "px-2 bg-white dark:bg-[#0a0a0a]"}>
+      {!onlyModal && (
+        <>
+          {/* ── Header ──────────────────────────────────────────────────────────── */}
+          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
         <div>
           <h3 className="text-lg font-semibold">Miscellaneous Issues</h3>
           <p className="text-sm text-muted-foreground">
@@ -1151,19 +1081,26 @@ export default function InstallationMiscellaneous({
           </form>
         </Form>
       </BaseModal>
+        </>
+      )}
 
       {/* ── View Modal ──────────────────────────────────────────────────────── */}
       <BaseModal
         open={viewModal.open}
-        onOpenChange={(open) => setViewModal({ open, id: open ? viewModal.id : null })}
+        onOpenChange={(open) => {
+          setViewModal({ open, id: open ? viewModal.id : null });
+          if (!open && onModalClose) {
+            onModalClose();
+          }
+        }}
         size="lg"
-        title={viewModalData?.type.name}
+        title={viewModalData?.type?.name || "Miscellaneous"}
         icon={
-          <div className={`p-2.5 rounded-lg border transition-colors ${viewModalData?.is_resolved ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800" : "bg-red-50 dark:bg-red-950/20 border-red-200 dark:red-blue-800"}`}>
+          <div className={`p-2.5 rounded-lg border transition-colors ${viewModalData?.is_resolved ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800" : "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800"}`}>
             {viewModalData?.is_resolved ? (
               <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
             ) : (
-              <AlertCircle className="w-5 h-5 text-red-600 dark:red-blue-400" />
+              <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
             )}
           </div>
         }
@@ -1965,102 +1902,22 @@ export default function InstallationMiscellaneous({
             {/* ── Tab 3: Followup ────────────────────────────────────────── */}
             <TabsContent value="followup">
               <div className="flex-1 overflow-y-auto py-2 space-y-6 px-1">
-                {/* ── Schedule Followup Task Card ── */}
                 <div className="rounded-xl border border-border bg-card p-5 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between border-b pb-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                        <CalendarClock className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-semibold text-foreground">
-                          Schedule Followup Task
-                        </h4>
-                        <p className="text-xs text-muted-foreground">
-                          Assign follow-up to Site Supervisor, Head Site Supervisor, Factory, or Miscellaneous user.
-                        </p>
-                      </div>
+                  <div className="flex items-center gap-2.5 border-b pb-3">
+                    <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                      <Calendar className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold text-foreground">
+                        Followup Details
+                      </h4>
+                      <p className="text-xs text-muted-foreground">
+                        View follow-up notes and history for this miscellaneous request.
+                      </p>
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* User Selection */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-foreground flex items-center gap-1">
-                        Assign User <span className="text-destructive">*</span>
-                      </label>
-                      <Select
-                        value={followupUserId}
-                        onValueChange={setFollowupUserId}
-                        disabled={loadingFollowupUsers || isCreatingFollowup}
-                      >
-                        <SelectTrigger className="w-full text-xs h-9">
-                          <SelectValue placeholder={loadingFollowupUsers ? "Loading users..." : "Select user"} />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-60">
-                          {followupEligibleUsers.map((u) => (
-                            <SelectItem key={u.id} value={String(u.id)} className="text-xs py-2">
-                              <div className="flex items-center justify-between w-full gap-2">
-                                <span className="font-medium text-foreground">{u.user_name}</span>
-                                {getFollowupRoleBadge(u.user_type?.user_type)}
-                              </div>
-                            </SelectItem>
-                          ))}
-                          {followupEligibleUsers.length === 0 && !loadingFollowupUsers && (
-                            <div className="p-2 text-xs text-muted-foreground text-center">
-                              No eligible users found
-                            </div>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Due Date */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-foreground flex items-center gap-1">
-                        Due Date <span className="text-destructive">*</span>
-                      </label>
-                      <CustomeDatePicker
-                        value={followupDueDate}
-                        onChange={setFollowupDueDate}
-                        restriction="futureOnly"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Remark */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-foreground flex items-center gap-1">
-                      Followup Remark / Notes <span className="text-destructive">*</span>
-                    </label>
-                    <TextAreaInput
-                      value={followupRemark}
-                      onChange={(val) => setFollowupRemark(val)}
-                      placeholder="Enter details or instructions for this follow-up..."
-                      disabled={isCreatingFollowup}
-                    />
-                  </div>
-
-                  {/* Submit Button */}
-                  <div className="flex justify-end pt-1">
-                    <Button
-                      size="sm"
-                      onClick={handleCreateFollowup}
-                      disabled={isCreatingFollowup || !followupUserId || !followupDueDate || !followupRemark.trim()}
-                      className="gap-1.5 text-xs font-medium"
-                    >
-                      {isCreatingFollowup ? (
-                        <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          Scheduling...
-                        </>
-                      ) : (
-                        <>
-                          <Plus className="w-3.5 h-3.5" />
-                          Schedule Followup
-                        </>
-                      )}
-                    </Button>
+                  <div className="p-6 text-center text-xs text-muted-foreground">
+                    No follow-ups recorded for this entry.
                   </div>
                 </div>
               </div>
@@ -2069,56 +1926,32 @@ export default function InstallationMiscellaneous({
         </div>
       </BaseModal>
 
-      {/* ── Approve Modal ──────────────────────────────────────────────────── */}
-      <BaseModal
-        open={showApproveModal}
-        onOpenChange={(open) => {
-          setShowApproveModal(open);
-          if (!open) setApproveRemark("");
-        }}
-        size="md"
-        title="Approve Miscellaneous"
-        description="Please provide a remark for approving this miscellaneous request."
-      >
-        <div className="space-y-4 py-4 px-6">
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">Remark *</label>
-            <TextAreaInput
-              value={approveRemark}
-              onChange={(value) => setApproveRemark(value)}
-              placeholder="Enter approval remark..."
-              maxLength={1000}
-            />
-          </div>
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowApproveModal(false);
-                setApproveRemark("");
-              }}
+      {/* ── Approve Confirmation Dialog ────────────────────────────────────── */}
+      <AlertDialog open={showApproveModal} onOpenChange={setShowApproveModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Approve Miscellaneous</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to approve this miscellaneous request?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => setShowApproveModal(false)}
               disabled={updateApprovalMutation.isPending}
             >
               Cancel
-            </Button>
-            <Button
-              variant="default"
-              className="bg-green-600 hover:bg-green-700"
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-green-600 hover:bg-green-700 text-white"
+              disabled={updateApprovalMutation.isPending}
               onClick={() => {
                 if (!viewModalData) return;
-                if (!approveRemark.trim()) {
-                  toastManager.add({
-                    title: "Please enter an approval remark",
-                    type: "error",
-                  });
-                  return;
-                }
                 updateApprovalMutation.mutate(
                   {
                     vendorId,
                     miscId: viewModalData.id,
                     misc_approved: true,
-                    approval_remark: approveRemark.trim(),
                     updated_by: userId!,
                   },
                   {
@@ -2127,18 +1960,16 @@ export default function InstallationMiscellaneous({
                         queryKey: ["miscellaneousEntries", vendorId, leadId],
                       });
                       setShowApproveModal(false);
-                      setApproveRemark("");
                     },
                   },
                 );
               }}
-              disabled={updateApprovalMutation.isPending}
             >
-              {updateApprovalMutation.isPending ? "Approving..." : "Approve"}
-            </Button>
-          </div>
-        </div>
-      </BaseModal>
+              {updateApprovalMutation.isPending ? "Approving..." : "Confirm"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* ── Reject Modal ────────────────────────────────────────────────────── */}
       <BaseModal

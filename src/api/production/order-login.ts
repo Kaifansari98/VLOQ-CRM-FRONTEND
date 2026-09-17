@@ -708,3 +708,18 @@ export const useMarkOrderLoginFilled = (
     },
   });
 };
+
+export interface RequiredProductionMaterial {
+  id: number; article_code: string; type: string; category: string;
+  qty: string | number; unit: string; name: string;
+  product: import("@/components/production/order-login-stage/production-file-preview").InventoryProduct;
+}
+export const useRequiredProductionMaterials = (vendorId?: number, leadId?: number, instanceId?: number | null, enabled = true) =>
+  useQuery({
+    queryKey: ["requiredProductionMaterials", vendorId, leadId, instanceId ?? "all"],
+    enabled: enabled && !!vendorId && !!leadId,
+    queryFn: async (): Promise<RequiredProductionMaterial[]> => {
+      const { data } = await apiClient.get(`/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/required-materials`, { params: { instance_id: instanceId || undefined } });
+      return data.data;
+    },
+  });
