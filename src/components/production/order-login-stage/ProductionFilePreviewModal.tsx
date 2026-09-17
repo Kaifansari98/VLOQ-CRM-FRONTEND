@@ -7,7 +7,6 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileUploadField } from "@/components/custom/file-upload";
-import DocumentCard from "@/components/utils/documentCard";
 import { cn } from "@/lib/utils";
 import {
   applyInventoryMatches, canSaveProductionRow, matchProductionInventory, parseProductionFiles, REQUIRED_PRODUCTION_HEADERS,
@@ -37,12 +36,10 @@ interface Props {
   canUpload: boolean;
   onUpload: (rows: ProductionPreviewRow[], replace: boolean) => Promise<void>;
   onDownloadTemplate: () => void;
-  productionFiles?: any[];
-  productionFilesLoading?: boolean;
 }
 
 export default function ProductionFilePreviewModal({ savedMaterials = [], materialsLoading = false, materialsError = false, embedded = false, open, onOpenChange, files, onFilesChange, vendorId,
-  leadId, instanceId, uploading, canUpload, onUpload, onDownloadTemplate, productionFiles = [], productionFilesLoading = false }: Props) {
+  leadId, instanceId, uploading, canUpload, onUpload, onDownloadTemplate }: Props) {
   const searchParams = useSearchParams();
   const isMaterialIssueView = searchParams.get("source") === "material-issue";
   const isIssuedItemsView = isMaterialIssueView && searchParams.get("mode") === "issued";
@@ -141,32 +138,7 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
             />
           </div>}
 
-          {isIssuedItemsView ? (
-            <div className="rounded-xl border p-4">
-              <div className="mb-3">
-                <p className="text-sm font-medium">Uploaded production files</p>
-                <p className="text-xs text-muted-foreground">Files uploaded for this project's production materials.</p>
-              </div>
-              {productionFilesLoading ? (
-                <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" />Loading files…</div>
-              ) : !productionFiles.length ? (
-                <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/40 p-10 text-center">
-                  <FileSpreadsheet className="size-8 text-muted-foreground" />
-                  <p className="text-sm font-medium text-muted-foreground">No production files uploaded yet.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-4 p-1 sm:grid-cols-2 lg:grid-cols-3">
-                  {productionFiles.map((doc: any) => (
-                    <DocumentCard
-                      key={doc.id}
-                      doc={{ id: doc.id, originalName: doc.doc_og_name, signedUrl: doc.signedUrl ?? doc.signed_url, created_at: doc.created_at }}
-                      canDelete={false}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
+          {!isIssuedItemsView && (
           <>
           <div className="rounded-xl border p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
