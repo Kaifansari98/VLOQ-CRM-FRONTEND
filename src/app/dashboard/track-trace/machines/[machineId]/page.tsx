@@ -563,6 +563,7 @@ export default function MachineScannerPage() {
       box.id,
       packagingProjectId,
       vendorId,
+      selectedLocationName,
     );
     const printHtml = response.data?.print_html;
 
@@ -585,12 +586,13 @@ export default function MachineScannerPage() {
         boxId,
         packagingProjectId,
         vendorId,
+        selectedLocationName,
       );
-      const printHtml = response.data?.print_html;
+    const printHtml = response.data?.print_html;
 
-      if (!response.success || !printHtml) {
-        throw new Error(response.message || "Failed to generate box label");
-      }
+    if (!response.success || !printHtml) {
+      throw new Error(response.message || "Failed to generate box label");
+    }
 
       // The backend HTML contains its own delayed window.print(). Automatic
       // printing is more reliable when this page controls the iframe load and

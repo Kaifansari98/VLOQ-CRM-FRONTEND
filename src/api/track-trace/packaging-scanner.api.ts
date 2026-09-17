@@ -136,9 +136,13 @@ export const getPackagingBoxPrint = async (
   boxId: number,
   projectId: number,
   vendorId: number,
+  locationName?: string | null,
 ) => {
   const { data } = await apiClient.get<PackagingBoxPrintResponse>(
     `/boxes/boxes/pdf/${boxId}/${projectId}/${vendorId}/web`,
+    {
+      params: locationName ? { location: locationName } : undefined,
+    },
   );
 
   return data;
