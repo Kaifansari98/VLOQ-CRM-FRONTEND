@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileUploadField } from "@/components/custom/file-upload";
+import DocumentCard from "@/components/utils/documentCard";
 import { cn } from "@/lib/utils";
 import {
   applyInventoryMatches, canSaveProductionRow, matchProductionInventory, parseProductionFiles, REQUIRED_PRODUCTION_HEADERS,
@@ -36,12 +37,15 @@ interface Props {
   canUpload: boolean;
   onUpload: (rows: ProductionPreviewRow[], replace: boolean) => Promise<void>;
   onDownloadTemplate: () => void;
+  productionFiles?: any[];
+  productionFilesLoading?: boolean;
 }
 
 export default function ProductionFilePreviewModal({ savedMaterials = [], materialsLoading = false, materialsError = false, embedded = false, open, onOpenChange, files, onFilesChange, vendorId,
-  leadId, instanceId, uploading, canUpload, onUpload, onDownloadTemplate }: Props) {
+  leadId, instanceId, uploading, canUpload, onUpload, onDownloadTemplate, productionFiles = [], productionFilesLoading = false }: Props) {
   const searchParams = useSearchParams();
   const isMaterialIssueView = searchParams.get("source") === "material-issue";
+  const isIssuedItemsView = isMaterialIssueView && searchParams.get("mode") === "issued";
   const [confirmReplace, setConfirmReplace] = useState(false);
   const [preview, setPreview] = useState<ProductionPreview | null>(null);
   const [phase, setPhase] = useState<"reading" | "matching" | "done">("reading");
@@ -129,13 +133,41 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
           {!!savedMaterials.length && <div className="space-y-3">
             <ProductionMaterialsTable
               rows={savedRows}
-              enableRowSelection={isMaterialIssueView}
+              enableRowSelection={isMaterialIssueView && !isIssuedItemsView}
               isMaterialIssueView={isMaterialIssueView}
               onFreezeSelected={(selected) => setFreezeKeys(selected.map((row) => row.key))}
               onIssueSelected={(selected) => setIssueKeys(selected.map((row) => row.key))}
               hideSelectionBar={freezeKeys !== null || issueKeys !== null}
             />
           </div>}
+
+          {isIssuedItemsView ? (
+            <div className="rounded-xl border p-4">
+              <div className="mb-3">
+                <p className="text-sm font-medium">Uploaded production files</p>
+                <p className="text-xs text-muted-foreground">Files uploaded for this project's production materials.</p>
+              </div>
+              {productionFilesLoading ? (
+                <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" />Loading files…</div>
+              ) : !productionFiles.length ? (
+                <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/40 p-10 text-center">
+                  <FileSpreadsheet className="size-8 text-muted-foreground" />
+                  <p className="text-sm font-medium text-muted-foreground">No production files uploaded yet.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 p-1 sm:grid-cols-2 lg:grid-cols-3">
+                  {productionFiles.map((doc: any) => (
+                    <DocumentCard
+                      key={doc.id}
+                      doc={{ id: doc.id, originalName: doc.doc_og_name, signedUrl: doc.signedUrl ?? doc.signed_url, created_at: doc.created_at }}
+                      canDelete={false}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+          <>
           <div className="rounded-xl border p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div><p className="text-sm font-medium">Excel workbooks</p><p className="text-xs text-muted-foreground">.xlsx or .csv · Required headers in the first row · Additional columns allowed</p></div>
@@ -177,11 +209,13 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
               </div>)}
             </div>}
           </div>
+          </>
+          )}
         </div>
-        <div className="flex flex-col items-start justify-between gap-3 border-t bg-muted/20 px-6 py-4 sm:flex-row sm:items-center">
+        {!isIssuedItemsView && <div className="flex flex-col items-start justify-between gap-3 border-t bg-muted/20 px-6 py-4 sm:flex-row sm:items-center">
           <div className="text-sm"><p className="font-medium">{canConfirm ? `${rows.length} rows reviewed in ${files.length} file${files.length === 1 ? "" : "s"}` : "Review and validate your files to continue"}</p><p className="mt-1 text-xs text-muted-foreground">{warnings ? "Inventory warnings do not prevent file upload. " : ""}{saveableRows.length} rows can be saved; {rows.length - saveableRows.length} rows will be skipped. Stock shortages do not prevent saving materials.</p></div>
           <div className="flex shrink-0 gap-2">{!embedded && <Button variant="outline" disabled={uploading} onClick={() => onOpenChange(false)}>Back</Button>}<Button disabled={!canConfirm} onClick={submit}>{uploading ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Upload className="mr-2 size-4" />}{uploading ? "Uploading…" : "Upload files"}</Button></div>
-        </div>
+        </div>}
         <AlertDialog open={confirmReplace} onOpenChange={setConfirmReplace}>
           <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Replace saved materials?</AlertDialogTitle>
             <AlertDialogDescription>Submitting this upload will delete the previous {savedMaterials.length} material rows and replace them with {saveableRows.length} valid rows from the selected files. The previous material data will be lost.</AlertDialogDescription>

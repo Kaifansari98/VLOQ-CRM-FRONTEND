@@ -389,6 +389,8 @@ export default function ProductionFilesSection({
               canUpload={canUploadProductionFiles}
               onUpload={handleUpload}
               onDownloadTemplate={handleDownloadTemplate}
+              productionFiles={productionFiles}
+              productionFilesLoading={isLoading}
             />
           </>
         ) : (
