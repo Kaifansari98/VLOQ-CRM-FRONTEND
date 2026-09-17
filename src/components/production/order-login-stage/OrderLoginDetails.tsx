@@ -417,6 +417,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
 
   return (
     <div className="space-y-6 bg-[#fff] dark:bg-[#0a0a0a]">
+      {!isMaterialIssueView && (
       <motion.div
         variants={containerVariants}
         initial="hidden"
@@ -425,6 +426,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
       >
         <ClientRequiredDeliveryDateBanner leadId={leadId} />
       </motion.div>
+      )}
 
       {hasMultipleInstances &&
         instances.length > 0 &&

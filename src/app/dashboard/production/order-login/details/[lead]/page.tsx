@@ -15,7 +15,7 @@ import {
   useLeadSuperAdminApprovalLockIns,
 } from "@/hooks/useLeadsQueries";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -194,9 +194,12 @@ export default function OrderLoginLeadDetails() {
   const [openDelete, setOpenDelete] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(
-    userType === "backend" ? "todo" : "details",
+    isMaterialIssueView ? "details" : userType === "backend" ? "todo" : "details",
   );
   useChatTabFromUrl(setActiveTab);
+  useEffect(() => {
+    if (isMaterialIssueView) setActiveTab("details");
+  }, [isMaterialIssueView]);
   const [openMoveToProduction, setOpenMoveToProduction] = useState(false);
 
   const { data, isLoading } = useLeadById(leadIdNum, vendorId, userId);
@@ -680,6 +683,7 @@ export default function OrderLoginLeadDetails() {
         onValueChange={(val) => setActiveTab(val)}
         className="w-full p-3 md:p-6"
       >
+        {!isMaterialIssueView && (
         <ScrollArea>
           <div className="w-full h-full flex justify-between items-center">
             <div>
@@ -743,6 +747,7 @@ export default function OrderLoginLeadDetails() {
           </div>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
+        )}
 
         <TabsContent value="details">
           <LeadDetailsGrouped
