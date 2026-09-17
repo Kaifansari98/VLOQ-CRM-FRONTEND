@@ -325,6 +325,7 @@ const OrderLoginDetails: React.FC<OrderLoginDetailsProps> = ({
           readOnly={isMaterialIssueView}
           orderLoginApprovalPending={isOrderLoginLocked}
           orderLoginApprovalPendingTooltip={lockedTabsTooltip}
+          hideDeliveryDateBanner
         />
       ),
     },

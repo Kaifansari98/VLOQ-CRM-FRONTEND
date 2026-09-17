@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2, Package, RotateCw, Upload } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -59,11 +59,15 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
   // Once materials are saved, uploading again happens in its own dialog instead of inline.
   const moveUploadToModal = embedded && savedMaterials.length > 0 && !isIssuedItemsView;
 
+  // handleUpload clears the parent's file selection only on success, so a completed
+  // upload (uploading flips true -> false) that leaves no files behind is our signal
+  // the re-upload just went through. Track the previous "uploading" value directly —
+  // an effect keyed on it can't tell a fresh, empty dialog from a just-finished one.
+  const wasUploadingRef = useRef(false);
   useEffect(() => {
-    // handleUpload clears the parent's file selection only on success, so an empty list
-    // while the dialog is open is our signal that the re-upload just went through.
-    if (reuploadOpen && !uploading && files.length === 0) setReuploadOpen(false);
-  }, [uploading, files.length, reuploadOpen]);
+    if (wasUploadingRef.current && !uploading && files.length === 0) setReuploadOpen(false);
+    wasUploadingRef.current = uploading;
+  }, [uploading, files.length]);
 
   useEffect(() => {
     if (!open) return;

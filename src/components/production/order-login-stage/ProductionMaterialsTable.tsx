@@ -128,7 +128,12 @@ export default function ProductionMaterialsTable({ rows, checked = true, busy = 
                             <button
                               type="button"
                               aria-label="Filter by category"
-                              className={cn("rounded p-1 normal-case text-muted-foreground hover:bg-muted hover:text-foreground", categoryFilter && "text-primary")}
+                              className={cn(
+                                "rounded p-1 normal-case transition-colors",
+                                categoryFilter
+                                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                              )}
                             >
                               <Filter className="size-3.5" />
                             </button>

@@ -61,6 +61,7 @@ interface ProductionFilesSectionProps {
   instanceId?: number | null;
   orderLoginApprovalPending?: boolean;
   orderLoginApprovalPendingTooltip?: string;
+  hideDeliveryDateBanner?: boolean;
 }
 
 const MATERIAL_REQUIRED_TEMPLATE_HEADERS = [
@@ -104,6 +105,7 @@ export default function ProductionFilesSection({
   instanceId,
   orderLoginApprovalPending = false,
   orderLoginApprovalPendingTooltip = "Accounts approval for Order Login is still pending",
+  hideDeliveryDateBanner = false,
 }: ProductionFilesSectionProps) {
   const searchParams = useSearchParams();
 
@@ -366,7 +368,7 @@ export default function ProductionFilesSection({
 
   return (
     <div className="space-y-4">
-      {!isMaterialIssueView && <ClientRequiredDeliveryDateBanner leadId={leadId} />}
+      {!hideDeliveryDateBanner && !isMaterialIssueView && <ClientRequiredDeliveryDateBanner leadId={leadId} />}
 
       <div className="border rounded-lg bg-background shadow-sm">
         {showRequiredMaterials ? (
