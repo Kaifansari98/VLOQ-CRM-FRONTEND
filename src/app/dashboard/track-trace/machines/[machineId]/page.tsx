@@ -11,28 +11,39 @@ import {
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
+  Activity,
   AlertCircle,
+  AlertTriangle,
   ArrowLeft,
+  ArrowRight,
   Barcode,
   Box,
   Boxes,
   CheckCircle2,
   Clock3,
   Cpu,
+  FolderGit2,
+  Keyboard,
+  Layers,
   ListChecks,
   Loader2,
   MapPin,
   Maximize2,
   Minimize2,
+  Package,
   PackageCheck,
   PackageOpen,
   PackagePlus,
   Printer,
+  QrCode,
   RefreshCw,
+  Scan,
   ScanLine,
+  Sparkles,
   Trash2,
   Wifi,
   WifiOff,
+  X,
   XCircle,
 } from "lucide-react";
 import {
@@ -223,6 +234,8 @@ export default function MachineScannerPage() {
   );
 
   const [scanValue, setScanValue] = useState("");
+  const [manualScanValue, setManualScanValue] = useState("");
+  const [isManualScanOpen, setIsManualScanOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedBoxId, setSelectedBoxId] = useState<number>();
   const [isBoxSelectorOpen, setIsBoxSelectorOpen] = useState(false);
@@ -238,6 +251,7 @@ export default function MachineScannerPage() {
   const [boxFormError, setBoxFormError] = useState("");
   const [boxAction, setBoxAction] = useState<BoxAction | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const manualScanInputRef = useRef<HTMLInputElement>(null);
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
   const autoSubmitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initializedAutoPrintRef = useRef(false);
@@ -315,20 +329,23 @@ export default function MachineScannerPage() {
   }, []);
 
   const processScan = useCallback(
-    (value: string) => {
+    (value: string, focusScannerAfterSubmit = true) => {
       const scannedItem = value.trim();
 
       if (!scannedItem) {
-        return;
+        return false;
       }
 
       if (!addScan(scannedItem)) {
-        return;
+        return false;
       }
 
       clearAutoSubmitTimer();
       setScanValue("");
-      window.setTimeout(() => inputRef.current?.focus(), 0);
+      if (focusScannerAfterSubmit) {
+        window.setTimeout(() => inputRef.current?.focus(), 0);
+      }
+      return true;
     },
     [addScan, clearAutoSubmitTimer],
   );
@@ -348,6 +365,51 @@ export default function MachineScannerPage() {
         AUTO_SUBMIT_DELAY_MS,
       );
     }
+  };
+
+  const closeManualScanDialog = () => {
+    setIsManualScanOpen(false);
+    setManualScanValue("");
+    window.setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  const openManualScanDialog = () => {
+    const openDialog = () => {
+      clearAutoSubmitTimer();
+      setScanValue("");
+      setManualScanValue("");
+      setIsManualScanOpen(true);
+      window.setTimeout(() => manualScanInputRef.current?.focus(), 0);
+    };
+
+    if (document.fullscreenElement) {
+      void document
+        .exitFullscreen()
+        .catch(() => undefined)
+        .finally(openDialog);
+      return;
+    }
+
+    openDialog();
+  };
+
+  const handleManualScanSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!manualScanValue.trim()) {
+      manualScanInputRef.current?.focus();
+      return;
+    }
+
+    if (!processScan(manualScanValue, false)) {
+      toastManager.add({
+        title: "Scanner is not ready. Check the packaging setup and try again.",
+        type: "error",
+      });
+      return;
+    }
+
+    closeManualScanDialog();
   };
 
   const openCreateBoxDialog = () => {
@@ -831,7 +893,8 @@ export default function MachineScannerPage() {
       !isQueueHydrated ||
       isBoxSelectorOpen ||
       isLocationSelectorOpen ||
-      isCreateBoxOpen
+      isCreateBoxOpen ||
+      isManualScanOpen
     ) {
       return;
     }
@@ -863,6 +926,7 @@ export default function MachineScannerPage() {
   }, [
     isBoxSelectorOpen,
     isCreateBoxOpen,
+    isManualScanOpen,
     isLocationSelectorOpen,
     isQueueHydrated,
     scannerReady,
@@ -928,7 +992,22 @@ export default function MachineScannerPage() {
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden sm:block" />
               <BreadcrumbItem>
-                <BreadcrumbPage>Scanner</BreadcrumbPage>
+                <BreadcrumbPage className="flex items-center gap-2 font-bold text-foreground text-sm sm:text-base">
+                  <span>
+                    {packagingContext?.project_name ||
+                      machine?.machine_name ||
+                      "Scanner Workstation"}
+                  </span>
+                  {packagingContext?.project_name && (
+                    <span className="hidden sm:inline-flex items-center rounded-full bg-violet-500/10 px-2 py-0.5 text-[11px] font-semibold text-violet-700 dark:text-violet-300">
+                      {isGroupwisePacking
+                        ? "Groupwise"
+                        : isCustomGroupPacking
+                        ? "Custom Group"
+                        : "Packaging"}
+                    </span>
+                  )}
+                </BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
@@ -940,10 +1019,10 @@ export default function MachineScannerPage() {
         </div>
       </header>
 
-      <main className="flex-1 overflow-x-hidden p-4 sm:p-6">
+      <main className="flex-1 overflow-x-hidden p-3 sm:p-4 lg:p-5">
         <div
           ref={fullscreenContainerRef}
-          className="mx-auto w-full max-w-5xl space-y-5 bg-background fullscreen:h-screen fullscreen:max-w-none fullscreen:overflow-y-auto fullscreen:p-4 sm:fullscreen:p-6"
+          className="w-full space-y-4 bg-background fullscreen:h-screen fullscreen:overflow-y-auto fullscreen:p-6"
         >
           {machine && !isPackagingMachine && (
             <div className="flex items-center justify-between gap-3">
@@ -974,17 +1053,31 @@ export default function MachineScannerPage() {
           )}
 
           {isLoading && hasValidVendor && hasValidMachineId && (
-            <Skeleton className="h-40 w-full rounded-xl" />
+            <div className="space-y-4">
+              <Skeleton className="h-20 w-full rounded-2xl" />
+              <div className="grid gap-4 lg:grid-cols-12">
+                <Skeleton className="h-64 rounded-2xl lg:col-span-7" />
+                <Skeleton className="h-64 rounded-2xl lg:col-span-5" />
+              </div>
+            </div>
           )}
 
           {(!hasValidVendor || !hasValidMachineId || isError) && (
-            <div className="flex min-h-64 flex-col items-center justify-center rounded-xl border border-destructive/30 bg-destructive/5 px-6 text-center">
-              <AlertCircle className="mb-3 size-9 text-destructive" />
-              <h1 className="font-semibold">Unable to open machine scanner</h1>
+            <div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border border-destructive/30 bg-destructive/5 p-4 sm:p-6 text-center shadow-xs">
+              <div className="mb-3 rounded-full bg-destructive/10 p-3 text-destructive">
+                <AlertCircle className="size-8" />
+              </div>
+              <h1 className="text-lg font-bold text-foreground">Unable to open machine scanner</h1>
               <p className="mt-1 max-w-md text-sm text-muted-foreground">
                 The vendor or machine information is invalid. Return to the machines
                 page and try again.
               </p>
+              <Button asChild variant="outline" size="sm" className="mt-4">
+                <Link href="/dashboard/track-trace/machines">
+                  <ArrowLeft className="mr-2 size-4" />
+                  Return to machines
+                </Link>
+              </Button>
             </div>
           )}
 
@@ -993,9 +1086,11 @@ export default function MachineScannerPage() {
             !isLoading &&
             !isError &&
             !machine && (
-              <div className="flex min-h-64 flex-col items-center justify-center rounded-xl border border-dashed bg-muted/20 px-6 text-center">
-                <Cpu className="mb-3 size-10 text-muted-foreground" />
-                <h1 className="font-semibold">Machine not found</h1>
+              <div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed bg-muted/20 p-4 sm:p-6 text-center">
+                <div className="mb-3 rounded-full bg-muted p-3 text-muted-foreground">
+                  <Cpu className="size-8" />
+                </div>
+                <h1 className="text-lg font-bold text-foreground">Machine not found</h1>
                 <p className="mt-1 text-sm text-muted-foreground">
                   This machine is unavailable or is no longer active.
                 </p>
@@ -1004,185 +1099,332 @@ export default function MachineScannerPage() {
 
           {machine && (
             <>
+
+
+              {/* Custom Packing Group Location bar */}
               {isPackagingMachine &&
                 isCustomGroupPacking &&
-                packagingContext && (
-                  <div className="space-y-3 rounded-xl border bg-card px-4 py-3 shadow-sm">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold">
-                          {packagingContext.project_name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Custom Packing Group · Boxes are assigned automatically
-                        </p>
+                packagingContext &&
+                packagingLocations.length > 0 && (
+                  <div className="flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-2xs sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="rounded-lg bg-primary/10 p-2 text-primary">
+                        <MapPin className="size-4" />
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button asChild variant="outline" size="sm">
-                          <Link
-                            href={`/dashboard/track-trace/machines/${machine.id}/projects`}
-                          >
-                            Change project
-                          </Link>
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="gap-2"
-                          onClick={toggleFullscreen}
-                        >
-                          {isFullscreen ? (
-                            <Minimize2 className="size-4" />
-                          ) : (
-                            <Maximize2 className="size-4" />
-                          )}
-                          <span className="hidden sm:inline">
-                            {isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-                          </span>
-                        </Button>
+                      <div>
+                        <Label htmlFor="packing-location" className="font-semibold text-foreground">
+                          Location Filter
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Optionally tag scans to a specific project location.
+                        </p>
                       </div>
                     </div>
-
-                    {packagingLocations.length > 0 ? (
-                      <div className="flex flex-col gap-2 border-t pt-3 sm:flex-row sm:items-center">
-                        <div className="flex min-w-0 items-center gap-2 sm:w-56">
-                          <MapPin className="size-4 shrink-0 text-primary" />
-                          <div>
-                            <Label htmlFor="packing-location">Location</Label>
-                            <p className="text-[11px] text-muted-foreground">
-                              Select once before scanning.
-                            </p>
-                          </div>
-                        </div>
-                        <Select
-                          value={
-                            selectedLocationName === undefined
-                              ? undefined
-                              : selectedLocationName === null
-                                ? WITHOUT_LOCATION_VALUE
-                                : `location:${selectedLocationName}`
-                          }
-                          onValueChange={(value) => {
-                            clearAutoSubmitTimer();
-                            setScanValue("");
-                            setSelectedLocationName(
-                              value === WITHOUT_LOCATION_VALUE
-                                ? null
-                                : value.slice("location:".length),
-                            );
-                            window.setTimeout(
-                              () => inputRef.current?.focus(),
-                              0,
-                            );
-                          }}
-                          onOpenChange={(open) => {
-                            setIsLocationSelectorOpen(open);
-
-                            if (open && document.fullscreenElement) {
-                              void document
-                                .exitFullscreen()
-                                .catch(() => undefined);
-                            }
-                          }}
-                        >
-                          <SelectTrigger
-                            id="packing-location"
-                            className="h-10 w-full sm:max-w-md"
+                    <Select
+                      value={
+                        selectedLocationName === undefined
+                          ? undefined
+                          : selectedLocationName === null
+                            ? WITHOUT_LOCATION_VALUE
+                            : `location:${selectedLocationName}`
+                      }
+                      onValueChange={(value) => {
+                        clearAutoSubmitTimer();
+                        setScanValue("");
+                        setSelectedLocationName(
+                          value === WITHOUT_LOCATION_VALUE
+                            ? null
+                            : value.slice("location:".length),
+                        );
+                        window.setTimeout(() => inputRef.current?.focus(), 0);
+                      }}
+                      onOpenChange={(open) => {
+                        setIsLocationSelectorOpen(open);
+                        if (open && document.fullscreenElement) {
+                          void document.exitFullscreen().catch(() => undefined);
+                        }
+                      }}
+                    >
+                      <SelectTrigger
+                        id="packing-location"
+                        className="h-10 w-full rounded-xl sm:w-72"
+                      >
+                        <SelectValue placeholder="Select location or continue without" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={WITHOUT_LOCATION_VALUE}>
+                          Continue without location
+                        </SelectItem>
+                        {packagingLocations.map((location) => (
+                          <SelectItem
+                            key={location.location_name}
+                            value={`location:${location.location_name}`}
                           >
-                            <SelectValue placeholder="Select location or continue without one" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value={WITHOUT_LOCATION_VALUE}>
-                              Continue without location
-                            </SelectItem>
-                            {packagingLocations.map((location) => (
-                              <SelectItem
-                                key={location.location_name}
-                                value={`location:${location.location_name}`}
-                              >
-                                {location.location_name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 border-t pt-3 text-xs text-muted-foreground">
-                        <MapPin className="size-4" />
-                        No project locations configured. Scanning will continue
-                        without a location.
-                      </div>
-                    )}
+                            {location.location_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
 
+              {/* Offline Warning banner */}
+              {!isOnline && (
+                <div className="flex animate-in items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-900 fade-in dark:text-amber-200">
+                  <WifiOff className="mt-0.5 size-5 shrink-0 animate-pulse text-amber-600 dark:text-amber-400" />
+                  <div>
+                    <p className="text-sm font-bold">Workstation is currently offline</p>
+                    <p className="mt-0.5 text-xs opacity-90">
+                      You can keep scanning continuously. All barcodes will be safely stored in your browser's local queue and synchronized automatically once network connectivity is restored.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Main Workstation Grid: Scanner Terminal + Packaging Box Setup */}
               <div
                 className={cn(
-                  "space-y-5",
-                  showPackagingSetup &&
-                    "lg:grid lg:grid-cols-2 lg:gap-5 lg:space-y-0",
+                  "space-y-4",
+                  showPackagingSetup && "lg:grid lg:grid-cols-12 lg:gap-4 lg:space-y-0",
                 )}
               >
-                {showPackagingSetup && (
-                  <section className="overflow-hidden rounded-xl border bg-card shadow-sm lg:order-3 lg:self-start">
-                    <div className="flex flex-col gap-2 border-b px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-4">
-                      <div className="flex items-start gap-3">
-                        <div className="rounded-lg bg-violet-500/10 p-1.5 text-violet-600 dark:text-violet-400">
-                          <Boxes className="size-4" />
+                {/* Left Column: Scanner Terminal HUD */}
+                <section
+                  className={cn(
+                    "relative flex flex-col justify-between overflow-hidden rounded-2xl border bg-card p-4 sm:p-6 shadow-xs transition-all duration-300",
+                    showPackagingSetup ? "lg:col-span-7 xl:col-span-7" : "w-full",
+                    hasProcessingItem && "border-blue-500/50 ring-2 ring-blue-500/20",
+                  )}
+                >
+                  {/* Top Laser Progress Indicator */}
+                  {hasProcessingItem && (
+                    <div className="absolute inset-x-0 top-0 h-1 overflow-hidden bg-blue-500/10">
+                      <div className="h-full w-2/3 animate-pulse bg-gradient-to-r from-blue-500 via-indigo-400 to-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.8)]" />
+                    </div>
+                  )}
+
+                  <div>
+                    {/* Scanner Terminal Header */}
+                    <div className="mb-4 sm:mb-5 flex items-start justify-between gap-3 border-b pb-3.5 sm:pb-4">
+                      <div className="flex items-start gap-3 sm:gap-3.5">
+                        <div
+                          className={cn(
+                            "relative flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform",
+                            hasProcessingItem && "scale-105 animate-pulse",
+                          )}
+                        >
+                          <ScanLine className="size-4.5 sm:size-5" />
+                          {scannerReady && (
+                            <span className="absolute -top-1 -right-1 flex size-3">
+                              <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                              <span className="relative inline-flex size-3 rounded-full bg-emerald-500" />
+                            </span>
+                          )}
                         </div>
                         <div>
-                          <h2 className="text-sm font-semibold">
-                            {packagingContext?.packing_type === "GROUPWISE"
-                              ? "Groupwise packaging setup"
-                              : "Packaging setup"}
+                          <h2 className="text-base font-bold tracking-tight text-foreground sm:text-lg">
+                            Scan QR code
                           </h2>
+                          <p className="text-[11px] sm:text-xs text-muted-foreground line-clamp-1 sm:line-clamp-none">
+                            Keep the cursor in the box below and scan continuously
+                          </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button asChild variant="outline" size="sm">
-                          <Link
-                            href={`/dashboard/track-trace/machines/${machine.id}/projects`}
-                          >
-                            Change project
-                          </Link>
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="gap-2"
-                          onClick={toggleFullscreen}
-                        >
-                          {isFullscreen ? (
-                            <Minimize2 className="size-4" />
-                          ) : (
-                            <Maximize2 className="size-4" />
+
+                      {/* Status Badge: Wifi Online */}
+                      <div className="flex items-center justify-end">
+                        <span
+                          className={cn(
+                            "shrink-0 inline-flex items-center gap-1.5 rounded-full border px-2.5 sm:px-3 py-0.5 sm:py-1 text-[11px] sm:text-xs font-semibold shadow-2xs",
+                            isOnline && !isQueuePaused
+                              ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                              : !isOnline
+                              ? "border-destructive/25 bg-destructive/10 text-destructive dark:text-red-400"
+                              : "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-400",
                           )}
-                          <span className="hidden sm:inline">
-                            {isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                        >
+                          {isOnline && !isQueuePaused ? (
+                            <Wifi className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                          ) : (
+                            <WifiOff className="size-3.5 animate-pulse text-destructive" />
+                          )}
+                          <span>
+                            {!isOnline
+                              ? "Offline"
+                              : isQueuePaused
+                              ? "Reconnecting"
+                              : "Online"}
                           </span>
-                        </Button>
+                        </span>
                       </div>
                     </div>
 
+                    {/* Scanner Input Form */}
+                    <form onSubmit={handleSubmit} className="space-y-3.5">
+                      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+                        <div className="relative flex-1 min-w-0">
+                          <div className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground">
+                            <Barcode className="size-5" />
+                          </div>
+                          <input
+                            ref={inputRef}
+                            value={scanValue}
+                            onChange={(event) => handleScanChange(event.target.value)}
+                            placeholder={
+                              supportsLocationSelection && !hasLocationDecision
+                                ? "Select a location before scanning..."
+                                : requiresDestinationBox && !selectedBox
+                                ? "Select or create a destination box..."
+                                : requiresDestinationBox &&
+                                    selectedBox?.box_status === "packed"
+                                  ? "Unpack the destination box to scan..."
+                                  : "Scan QR code or type barcode..."
+                            }
+                            className={cn(
+                              "flex h-12 sm:h-13 w-full min-w-0 rounded-xl border border-input bg-muted/20 py-2 pl-11 pr-10 font-mono text-sm sm:text-base font-semibold tracking-wide shadow-2xs outline-none transition-all placeholder:text-muted-foreground/60 placeholder:font-sans placeholder:text-xs sm:placeholder:text-sm placeholder:font-normal focus-visible:border-primary focus-visible:bg-background focus-visible:ring-4 focus-visible:ring-primary/15 dark:bg-input/20",
+                              !scannerReady && "opacity-60 cursor-not-allowed bg-muted/40",
+                            )}
+                            autoComplete="off"
+                            autoCapitalize="off"
+                            spellCheck={false}
+                            aria-label="Scanned QR code value"
+                            disabled={!isQueueHydrated || !scannerReady}
+                          />
+                          {scanValue && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setScanValue("");
+                                clearAutoSubmitTimer();
+                                inputRef.current?.focus();
+                              }}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                            >
+                              <X className="size-4" />
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 sm:shrink-0">
+                          <Button
+                            type="submit"
+                            className="h-12 sm:h-13 flex-1 sm:flex-initial gap-2 px-5 sm:px-6 font-semibold shadow-xs transition-all active:scale-95"
+                            disabled={
+                              !scanValue.trim() || !isQueueHydrated || !scannerReady
+                            }
+                          >
+                            <ScanLine className="size-4" />
+                            <span>Submit</span>
+                          </Button>
+
+                          {isPackagingMachine && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="h-12 sm:h-13 gap-2 px-3.5 sm:px-4 font-medium shadow-2xs hover:bg-accent shrink-0"
+                              onClick={openManualScanDialog}
+                              disabled={!isQueueHydrated || !scannerReady}
+                            >
+                              <Keyboard className="size-4 text-muted-foreground" />
+                              <span>Manual Scan</span>
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+
+                  {/* Footer Context / Routing Notice */}
+                  <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t pt-3.5 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <span className="size-2 rounded-full bg-primary/80" />
+                      <span>
+                        {requiresDestinationBox && selectedBox ? (
+                          <>
+                            Active routing destination:{" "}
+                            <span className="font-bold text-foreground">
+                              {selectedBox.box_name}
+                            </span>
+                          </>
+                        ) : isCustomGroupPacking ? (
+                          "Boxes assigned automatically per product group"
+                        ) : requiresDestinationBox ? (
+                          <span className="font-semibold text-amber-700 dark:text-amber-400">
+                            Select a destination box to enable scanning
+                          </span>
+                        ) : (
+                          "Direct verification mode"
+                        )}
+                      </span>
+                    </div>
+                  
+                  </div>
+
+                  {pendingCount > 0 && (
+                    <div className="mt-3 flex items-center gap-2 rounded-xl border border-blue-500/20 bg-blue-500/10 px-3.5 py-2 text-xs text-blue-800 dark:text-blue-300">
+                      {isQueuePaused ? (
+                        <WifiOff className="size-4 shrink-0 animate-pulse text-amber-500" />
+                      ) : (
+                        <Loader2 className="size-4 shrink-0 animate-spin text-blue-600 dark:text-blue-400" />
+                      )}
+                      <span>
+                        {pendingCount} {pendingCount === 1 ? "item is" : "items are"} currently validating in queue. You may continue scanning without pausing.
+                      </span>
+                    </div>
+                  )}
+                </section>
+
+                {/* Right Column: Packaging Box Setup & Destination Hub */}
+                {showPackagingSetup && (
+                  <section className="overflow-hidden rounded-2xl border bg-card p-3.5 sm:p-4 shadow-xs lg:col-span-5 xl:col-span-5 lg:self-start">
+                    {/* Hub Header */}
+                    <div className="mb-3 flex items-center justify-between gap-3 border-b pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="rounded-lg bg-violet-500/10 p-1.5 text-violet-600 dark:text-violet-400">
+                          <Boxes className="size-4.5" />
+                        </div>
+                        <h2 className="text-sm sm:text-base font-bold tracking-tight text-foreground">
+                          {packagingContext?.packing_type === "GROUPWISE"
+                            ? "Groupwise Box Hub"
+                            : "Packaging Box Hub"}
+                        </h2>
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                          {packagingBoxes.length} {packagingBoxes.length === 1 ? "box" : "boxes"}
+                        </span>
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 rounded-lg text-muted-foreground hover:text-foreground"
+                        onClick={() => void refetchBoxes()}
+                        disabled={isFetchingBoxes}
+                        aria-label="Refresh boxes"
+                      >
+                        <RefreshCw
+                          className={cn("size-3.5", isFetchingBoxes && "animate-spin")}
+                        />
+                      </Button>
+                    </div>
+
                     {(isLoadingPackagingContext || isLoadingBoxes) && (
-                      <div className="p-3 sm:p-4">
-                        <Skeleton className="h-14 rounded-lg" />
+                      <div className="space-y-3 py-2">
+                        <Skeleton className="h-11 w-full rounded-xl" />
+                        <Skeleton className="h-24 w-full rounded-xl" />
                       </div>
                     )}
 
                     {(isPackagingContextError || isBoxesError) && (
-                      <div className="m-3 flex flex-col gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 sm:m-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex items-start gap-3">
+                      <div className="my-2 flex flex-col gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3.5 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-start gap-2.5">
                           <AlertCircle className="mt-0.5 size-5 shrink-0 text-destructive" />
                           <div>
-                            <p className="text-sm font-semibold">
-                              Packaging information could not be loaded
+                            <p className="text-sm font-semibold text-foreground">
+                              Packaging information unavailable
                             </p>
                             <p className="mt-0.5 text-xs text-muted-foreground">
-                              The project may be unavailable, or the connection was
-                              interrupted.
+                              Connection interrupted or project details could not load.
                             </p>
                           </div>
                         </div>
@@ -1196,589 +1438,491 @@ export default function MachineScannerPage() {
                             void refetchBoxes();
                           }}
                         >
-                          <RefreshCw className="size-4" />
-                          Try again
+                          <RefreshCw className="size-3.5" />
+                          Retry
                         </Button>
                       </div>
                     )}
 
                     {packagingContext && !isBoxesError && (
-                      <div className="p-3 sm:p-4">
-                        <div className="grid gap-3">
-                          {isGroupwisePacking && showLocationSelection && (
-                            <div className="rounded-lg border bg-background p-3">
-                              <div className="mb-2 flex items-center gap-2">
-                                <MapPin className="size-4 shrink-0 text-primary" />
-                                <div>
-                                  <Label htmlFor="groupwise-packing-location">
-                                    Location
-                                  </Label>
-                                  <p className="text-[11px] text-muted-foreground">
-                                    Select a location or continue without one.
-                                  </p>
-                                </div>
-                              </div>
-
-                              <Select
-                                value={
-                                  selectedLocationName === undefined
-                                    ? undefined
-                                    : selectedLocationName === null
-                                      ? WITHOUT_LOCATION_VALUE
-                                      : `location:${selectedLocationName}`
-                                }
-                                onValueChange={(value) => {
-                                  clearAutoSubmitTimer();
-                                  setScanValue("");
-                                  setSelectedLocationName(
-                                    value === WITHOUT_LOCATION_VALUE
-                                      ? null
-                                      : value.slice("location:".length),
-                                  );
-                                  window.setTimeout(
-                                    () => inputRef.current?.focus(),
-                                    0,
-                                  );
-                                }}
-                                onOpenChange={(open) => {
-                                  setIsLocationSelectorOpen(open);
-
-                                  if (open && document.fullscreenElement) {
-                                    void document
-                                      .exitFullscreen()
-                                      .catch(() => undefined);
-                                  }
-                                }}
-                              >
-                                <SelectTrigger
-                                  id="groupwise-packing-location"
-                                  className="h-10 w-full"
-                                >
-                                  <SelectValue placeholder="Select location or continue without one" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value={WITHOUT_LOCATION_VALUE}>
-                                    Continue without location
-                                  </SelectItem>
-                                  {packagingLocations.map((location) => (
-                                    <SelectItem
-                                      key={location.location_name}
-                                      value={`location:${location.location_name}`}
-                                    >
-                                      {location.location_name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )}
-
-                          <div className="rounded-lg border bg-background p-3">
-                            <div className="mb-2 flex items-center justify-between gap-3">
+                      <div className="space-y-2.5">
+                        {/* Groupwise Location Selector if present */}
+                        {isGroupwisePacking && showLocationSelection && (
+                          <div className="rounded-xl border bg-muted/20 p-2.5 sm:p-3">
+                            <div className="mb-1.5 flex items-center gap-2">
+                              <MapPin className="size-4 text-primary" />
                               <div>
-                                <Label htmlFor="packaging-box">
-                                  Destination box
+                                <Label
+                                  htmlFor="groupwise-packing-location"
+                                  className="text-xs font-semibold text-foreground"
+                                >
+                                  Packing Location
                                 </Label>
                                 <p className="text-[11px] text-muted-foreground">
-                                  {packagingContext.packing_type === "GROUPWISE"
-                                    ? "Each box accepts items from one product group."
-                                    : "Scans are added to the selected box."}
+                                  Optionally filter destination by location
                                 </p>
                               </div>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="size-8"
-                                onClick={() => void refetchBoxes()}
-                                disabled={isFetchingBoxes}
-                                aria-label="Refresh boxes"
-                              >
-                                <RefreshCw
-                                  className={cn(
-                                    "size-4",
-                                    isFetchingBoxes && "animate-spin",
-                                  )}
-                                />
-                              </Button>
                             </div>
 
-                            <div className="flex gap-2">
-                              <Select
-                                value={selectedBoxId?.toString()}
-                                onValueChange={(value) => {
-                                  clearAutoSubmitTimer();
-                                  setScanValue("");
-                                  setSelectedBoxId(Number(value));
-                                  window.setTimeout(
-                                    () => inputRef.current?.focus(),
-                                    0,
-                                  );
-                                }}
-                                onOpenChange={(open) => {
-                                  setIsBoxSelectorOpen(open);
-
-                                  if (open && document.fullscreenElement) {
-                                    void document
-                                      .exitFullscreen()
-                                      .catch(() => undefined);
-                                  }
-                                }}
+                            <Select
+                              value={
+                                selectedLocationName === undefined
+                                  ? undefined
+                                  : selectedLocationName === null
+                                    ? WITHOUT_LOCATION_VALUE
+                                    : `location:${selectedLocationName}`
+                              }
+                              onValueChange={(value) => {
+                                clearAutoSubmitTimer();
+                                setScanValue("");
+                                setSelectedLocationName(
+                                  value === WITHOUT_LOCATION_VALUE
+                                    ? null
+                                    : value.slice("location:".length),
+                                );
+                                window.setTimeout(
+                                  () => inputRef.current?.focus(),
+                                  0,
+                                );
+                              }}
+                              onOpenChange={(open) => {
+                                setIsLocationSelectorOpen(open);
+                                if (open && document.fullscreenElement) {
+                                  void document
+                                    .exitFullscreen()
+                                    .catch(() => undefined);
+                                }
+                              }}
+                            >
+                              <SelectTrigger
+                                id="groupwise-packing-location"
+                                className="h-10 w-full rounded-xl bg-background text-xs font-medium"
                               >
-                                <SelectTrigger
-                                  id="packaging-box"
-                                  className="h-10 min-w-0 flex-1"
-                                >
-                                  <SelectValue placeholder="Select a box" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {packagingBoxes.map((box) => (
-                                    <SelectItem
-                                      key={box.id}
-                                      value={box.id.toString()}
-                                    >
-                                      <span className="flex w-full items-center gap-2">
-                                        <Box className="size-4" />
-                                        <span>{box.box_name}</span>
-                                        <span className="ml-auto text-xs text-muted-foreground">
-                                          {box.box_status === "packed"
-                                            ? "Packed"
-                                            : `${box.items_count ?? 0} items`}
-                                        </span>
-                                      </span>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-
-                              <Button
-                                type="button"
-                                variant="outline"
-                                className="h-10 shrink-0 gap-1.5 px-3"
-                                onClick={openCreateBoxDialog}
-                                disabled={!packagingContext.project_details_id}
-                              >
-                                <PackagePlus className="size-4" />
-                                <span className="hidden sm:inline">New box</span>
-                              </Button>
-                            </div>
-
-                            {packagingBoxes.length === 0 && (
-                              <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
-                                Create the first box to start scanning.
-                              </p>
-                            )}
-                            {!packagingContext.project_details_id && (
-                              <p className="mt-2 text-xs text-destructive">
-                                A project detail is required before adding boxes.
-                              </p>
-                            )}
+                                <SelectValue placeholder="Select location or continue without one" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value={WITHOUT_LOCATION_VALUE}>
+                                  Continue without location
+                                </SelectItem>
+                                {packagingLocations.map((location) => (
+                                  <SelectItem
+                                    key={location.location_name}
+                                    value={`location:${location.location_name}`}
+                                  >
+                                    {location.location_name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
+                        )}
 
-                          {selectedBox && (
-                            <div className="rounded-lg border bg-background p-3">
-                              <div className="flex items-center justify-between gap-3">
-                                <div className="min-w-0">
-                                  <p className="truncate text-sm font-semibold">
-                                    {selectedBox.box_name}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {selectedBox.items_count ?? 0} items
-                                  </p>
-                                </div>
+                        {/* Destination Box Dropdown + New Box Row */}
+                        <div className="flex gap-2">
+                          <Select
+                            value={selectedBoxId?.toString()}
+                            onValueChange={(value) => {
+                              clearAutoSubmitTimer();
+                              setScanValue("");
+                              setSelectedBoxId(Number(value));
+                              window.setTimeout(
+                                () => inputRef.current?.focus(),
+                                0,
+                              );
+                            }}
+                            onOpenChange={(open) => {
+                              setIsBoxSelectorOpen(open);
+                              if (open && document.fullscreenElement) {
+                                void document
+                                  .exitFullscreen()
+                                  .catch(() => undefined);
+                              }
+                            }}
+                          >
+                            <SelectTrigger
+                              id="packaging-box"
+                              className="!h-11 data-[size=default]:h-11 min-w-0 flex-1 rounded-lg bg-muted/20 text-xs sm:text-sm font-medium"
+                            >
+                              <SelectValue placeholder="Choose a destination box..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {packagingBoxes.map((box) => (
+                                <SelectItem
+                                  key={box.id}
+                                  value={box.id.toString()}
+                                >
+                                  <div className="flex w-full items-center justify-between gap-3">
+                                    <span className="flex items-center gap-2 font-medium">
+                                      <Box className="size-4 text-primary/70" />
+                                      <span>{box.box_name}</span>
+                                    </span>
+                                    <span
+                                      className={cn(
+                                        "rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase",
+                                        box.box_status === "packed"
+                                          ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                                          : "bg-muted text-muted-foreground",
+                                      )}
+                                    >
+                                      {box.box_status === "packed"
+                                        ? "Packed"
+                                        : `${box.items_count ?? 0} items`}
+                                    </span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-11 shrink-0 gap-1.5 rounded-xl px-3 sm:px-3.5 text-xs sm:text-sm font-semibold shadow-2xs hover:bg-accent"
+                            onClick={openCreateBoxDialog}
+                            disabled={!packagingContext.project_details_id}
+                          >
+                            <PackagePlus className="size-4 text-primary" />
+                            <span>New Box</span>
+                          </Button>
+                        </div>
+
+                        {packagingBoxes.length === 0 && (
+                          <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                            No boxes exist for this project yet. Click New Box to start.
+                          </p>
+                        )}
+
+                        {/* Active Box Status Bar & Action Buttons */}
+                        {selectedBox ? (
+                          <div className="space-y-2.5 pt-0.5">
+                            {/* Status & Items Count Strip */}
+                            <div className="flex items-center justify-between rounded-xl bg-muted/30 px-3.5 py-2 text-xs">
+                              <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground font-medium">
+                                  Status:
+                                </span>
                                 <span
                                   className={cn(
-                                    "rounded-full border px-2.5 py-1 text-xs font-semibold capitalize",
+                                    "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-semibold capitalize",
                                     selectedBox.box_status === "packed"
                                       ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
                                       : "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-400",
                                   )}
                                 >
+                                  <span
+                                    className={cn(
+                                      "size-1.5 rounded-full",
+                                      selectedBox.box_status === "packed"
+                                        ? "bg-emerald-500"
+                                        : "bg-amber-500",
+                                    )}
+                                  />
                                   {selectedBox.box_status}
                                 </span>
                               </div>
 
-                              <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                                <Button
-                                  type="button"
-                                  size="lg"
-                                  variant={
-                                    selectedBox.box_status === "packed"
-                                      ? "outline"
-                                      : "default"
-                                  }
-                                  className="h-12 gap-2 text-sm font-semibold"
-                                  disabled={boxAction !== null}
-                                  onClick={() => void handleToggleBoxStatus()}
-                                >
-                                  {boxAction === "pack" ||
-                                  boxAction === "unpack" ? (
-                                    <Loader2 className="size-5 animate-spin" />
-                                  ) : selectedBox.box_status === "packed" ? (
-                                    <PackageOpen className="size-5" />
-                                  ) : (
-                                    <PackageCheck className="size-5" />
-                                  )}
-                                  {selectedBox.box_status === "packed"
-                                    ? "Unpack box"
-                                    : "Pack box"}
-                                </Button>
-
-                                <Button
-                                  type="button"
-                                  size="lg"
-                                  className="h-12 gap-2 text-sm font-semibold"
-                                  disabled={
-                                    boxAction !== null ||
-                                    selectedBox.box_status === "packed"
-                                  }
-                                  onClick={() => void handlePackAndPrint()}
-                                >
-                                  {boxAction === "pack-print" ? (
-                                    <Loader2 className="size-5 animate-spin" />
-                                  ) : (
-                                    <Printer className="size-5" />
-                                  )}
-                                  Pack &amp; Print
-                                </Button>
-
-                                <Button
-                                  type="button"
-                                  size="lg"
-                                  variant="outline"
-                                  className="h-12 gap-2 text-sm font-semibold"
-                                  disabled={boxAction !== null}
-                                  onClick={() => void handlePrintBox()}
-                                >
-                                  {boxAction === "print" ? (
-                                    <Loader2 className="size-5 animate-spin" />
-                                  ) : (
-                                    <Printer className="size-5" />
-                                  )}
-                                  Print
-                                </Button>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-muted-foreground font-medium">
+                                  Items packed:
+                                </span>
+                                <span className="font-mono text-sm font-bold text-foreground">
+                                  {selectedBox.items_count ?? 0}
+                                </span>
                               </div>
                             </div>
-                          )}
-                        </div>
+
+                            {/* Action Buttons: Unpack / Pack Box, Print Label, Pack & Print */}
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                              <Button
+                                type="button"
+                                variant={
+                                  selectedBox.box_status === "packed"
+                                    ? "outline"
+                                    : "default"
+                                }
+                                className="h-11 sm:h-12 gap-2 rounded-xl px-2.5 text-xs sm:text-sm font-semibold shadow-2xs transition-all active:scale-95"
+                                disabled={boxAction !== null}
+                                onClick={() => void handleToggleBoxStatus()}
+                              >
+                                {boxAction === "pack" ||
+                                boxAction === "unpack" ? (
+                                  <Loader2 className="size-4 animate-spin" />
+                                ) : selectedBox.box_status === "packed" ? (
+                                  <PackageOpen className="size-4" />
+                                ) : (
+                                  <PackageCheck className="size-4" />
+                                )}
+                                <span className="truncate">
+                                  {selectedBox.box_status === "packed"
+                                    ? "Unpack"
+                                    : "Pack Box"}
+                                </span>
+                              </Button>
+
+                              <Button
+                                type="button"
+                                className="h-11 sm:h-12 gap-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white dark:text-black font-semibold px-2.5 text-xs sm:text-sm shadow-xs transition-all active:scale-95 disabled:opacity-50"
+                                disabled={boxAction !== null}
+                                onClick={() => void handlePrintBox()}
+                              >
+                                {boxAction === "print" ? (
+                                  <Loader2 className="size-4 animate-spin" />
+                                ) : (
+                                  <Printer className="size-4" />
+                                )}
+                                <span className="truncate">Print Label</span>
+                              </Button>
+
+                              <Button
+                                type="button"
+                                className="col-span-2 sm:col-span-1 h-11 sm:h-12 gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-400 dark:to-indigo-400 px-2.5 text-xs sm:text-sm font-semibold text-white dark:text-black shadow-xs hover:from-violet-700 hover:to-indigo-700 transition-all active:scale-95 disabled:opacity-50"
+                                disabled={
+                                  boxAction !== null ||
+                                  selectedBox.box_status === "packed"
+                                }
+                                onClick={() => void handlePackAndPrint()}
+                              >
+                                {boxAction === "pack-print" ? (
+                                  <Loader2 className="size-4 animate-spin" />
+                                ) : (
+                                  <Printer className="size-4" />
+                                )}
+                                <span className="truncate">Pack & Print</span>
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="rounded-xl border border-dashed bg-muted/10 py-3.5 px-4 text-center">
+                            <p className="text-xs text-muted-foreground">
+                              Select an existing box above or click <span className="font-semibold text-foreground">New Box</span> to start packing.
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </section>
                 )}
+              </div>
 
-                {!isOnline && (
-                  <div className="flex animate-in items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-amber-800 fade-in dark:text-amber-300 lg:order-1 lg:col-span-2">
-                    <WifiOff className="mt-0.5 size-5 shrink-0 animate-pulse" />
+              {/* Scanned Items Feed Section */}
+              <section className="overflow-hidden rounded-2xl border bg-card shadow-xs">
+                <div className="flex flex-col gap-3 border-b px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-xl bg-emerald-500/10 p-2 text-emerald-600 dark:text-emerald-400">
+                      <ListChecks className="size-5" />
+                    </div>
                     <div>
-                      <p className="text-sm font-semibold">You are offline</p>
-                      <p className="mt-0.5 text-xs opacity-90">
-                        Keep scanning. Items will stay in this browser and retry when
-                        the connection returns.
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-base font-bold tracking-tight text-foreground">
+                          Scanned Items Feed
+                        </h2>
+                        <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold tabular-nums text-muted-foreground">
+                          {queuedItems.length}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Live stream of scanned barcodes processed at this workstation
                       </p>
                     </div>
                   </div>
-                )}
 
-                <section
-                  className={cn(
-                    "relative overflow-hidden rounded-xl border bg-card p-5 shadow-sm transition-colors sm:p-6 lg:order-2 lg:self-start",
-                    hasProcessingItem && "border-blue-500/50",
-                  )}
-                >
-                  {hasProcessingItem && (
-                    <div className="absolute inset-x-0 top-0 h-1 overflow-hidden bg-blue-500/10">
-                      <div className="h-full w-1/2 animate-pulse bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.8)]" />
-                    </div>
-                  )}
-
-                  <div className="mb-4 flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3">
-                      <div
-                        className={cn(
-                          "rounded-lg bg-primary/10 p-2 text-primary transition-transform",
-                          hasProcessingItem && "animate-pulse scale-105",
-                        )}
-                      >
-                        <ScanLine className="size-5" />
-                      </div>
-                      <div>
-                        <h2 className="font-semibold">Scan QR code</h2>
-                        <p className="mt-0.5 text-sm text-muted-foreground">
-                          Keep the cursor in the box below and scan continuously.
-                        </p>
-                      </div>
-                    </div>
-
-                    <span
-                      className={cn(
-                        "hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold sm:inline-flex",
-                        isOnline && !isQueuePaused
-                          ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                          : "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-400",
-                      )}
-                    >
-                      {isOnline && !isQueuePaused ? (
-                        <Wifi className="size-3.5" />
-                      ) : (
-                        <WifiOff className="size-3.5 animate-pulse" />
-                      )}
-                      {!isOnline
-                        ? "Offline"
-                        : isQueuePaused
-                          ? "Reconnecting"
-                          : "Online"}
-                    </span>
-                  </div>
-
-                  <form
-                    onSubmit={handleSubmit}
-                    className="flex flex-col gap-3 sm:flex-row"
-                  >
-                    <div className="relative flex-1">
-                      <Barcode className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
-                      <input
-                        ref={inputRef}
-                        value={scanValue}
-                        onChange={(event) => handleScanChange(event.target.value)}
-                        placeholder={
-                          supportsLocationSelection && !hasLocationDecision
-                            ? "Select a location or continue without one"
-                            : requiresDestinationBox && !selectedBox
-                            ? "Select a box before scanning"
-                            : requiresDestinationBox &&
-                                selectedBox?.box_status === "packed"
-                              ? "Unpack the selected box before scanning"
-                            : "Scan or enter QR value"
-                        }
-                        className="flex h-11 w-full min-w-0 rounded-md border border-input bg-transparent py-1 pl-10 pr-3 font-mono text-base shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
-                        autoComplete="off"
-                        autoCapitalize="off"
-                        spellCheck={false}
-                        aria-label="Scanned QR code value"
-                        disabled={!isQueueHydrated || !scannerReady}
-                      />
-                    </div>
-                    <Button
-                      type="submit"
-                      className="h-11 gap-2 px-6"
-                      disabled={
-                        !scanValue.trim() || !isQueueHydrated || !scannerReady
-                      }
-                    >
-                      <ScanLine className="size-4" />
-                      Submit
-                    </Button>
-                  </form>
-
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    Scanner input submits on Enter or automatically after a short pause.
-                    You can scan the next item while earlier scans are validating.
-                  </p>
-
-                  {pendingCount > 0 && (
-                    <div className="mt-4 flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-                      {isQueuePaused ? (
-                        <WifiOff className="size-4 shrink-0 animate-pulse text-amber-500" />
-                      ) : (
-                        <Loader2 className="size-4 shrink-0 animate-spin text-primary" />
-                      )}
-                      <span>
-                        {pendingCount} {pendingCount === 1 ? "item is" : "items are"}{" "}
-                        still in the queue. Reloading this page will show a warning.
-                      </span>
-                    </div>
-                  )}
-                </section>
-              </div>
-
-              <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
-                <div className="flex items-center justify-between border-b px-5 py-4 sm:px-6">
                   <div className="flex items-center gap-2">
-                    <ListChecks className="size-5 text-primary" />
-                    <h2 className="font-semibold">Scanned items</h2>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold tabular-nums text-muted-foreground">
-                      {queuedItems.length}
-                    </span>
                     {hasCompletedItems && (
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="h-7 gap-1.5 px-2 text-xs text-muted-foreground"
+                        className="h-8 gap-1.5 rounded-lg px-2.5 text-xs text-muted-foreground hover:text-foreground"
                         onClick={() => {
                           clearCompleted();
                           window.setTimeout(() => inputRef.current?.focus(), 0);
                         }}
                       >
                         <Trash2 className="size-3.5" />
-                        Clear completed
+                        <span>Clear Completed</span>
                       </Button>
                     )}
                   </div>
                 </div>
 
                 {queuedItems.length === 0 ? (
-                  <div className="flex min-h-40 flex-col items-center justify-center px-6 text-center">
-                    <Barcode className="mb-2 size-8 text-muted-foreground/50" />
-                    <p className="text-sm font-medium">No items scanned yet</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Your scanned QR values will appear here.
+                  <div className="flex min-h-36 flex-col items-center justify-center px-4 py-6 sm:px-6 text-center">
+                    <div className="relative mb-2.5 flex size-12 items-center justify-center rounded-2xl bg-primary/5 ring-1 ring-primary/15 shadow-inner">
+                      <div className="absolute inset-0 animate-ping rounded-2xl bg-primary/5 opacity-50" />
+                      <Scan className="size-6 text-primary/70" />
+                    </div>
+                    <h3 className="text-base font-bold text-foreground">
+                      Workstation Scanner Standing By
+                    </h3>
+                    <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+                      Scan product barcodes or QR codes to populate this workstation's live packing stream.
                     </p>
+                    <div className="mt-3.5 flex flex-wrap items-center justify-center gap-2">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-3 py-1 text-[11px] font-medium text-muted-foreground">
+                        <Sparkles className="size-3 text-primary" />
+                        Continuous scanning supported
+                      </span>
+                    </div>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
+                  <div className="overflow-x-auto overscroll-x-contain">
+                    <Table className="min-w-[720px] lg:min-w-full">
                       <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-16 pl-5 sm:pl-6">#</TableHead>
-                          <TableHead className="min-w-56">
-                            Scanned item
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead className="w-12 pl-4 sm:pl-6 text-xs font-bold uppercase tracking-wider text-muted-foreground">#</TableHead>
+                          <TableHead className="min-w-56 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                            Scanned Item
                           </TableHead>
-                          <TableHead>Scanned value</TableHead>
+                          <TableHead className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Barcode / Value</TableHead>
                           {isPackagingMachine && (
-                            <TableHead className="min-w-36">Box</TableHead>
+                            <TableHead className="min-w-36 text-xs font-bold uppercase tracking-wider text-muted-foreground">Target Box</TableHead>
                           )}
                           {showLocationSelection && (
-                            <TableHead className="min-w-40">Location</TableHead>
+                            <TableHead className="min-w-40 text-xs font-bold uppercase tracking-wider text-muted-foreground">Location</TableHead>
                           )}
-                          <TableHead className="w-32">Status</TableHead>
-                          <TableHead className="min-w-64">Message</TableHead>
-                          <TableHead className="w-28 pr-5 text-right sm:pr-6">
+                          <TableHead className="w-32 text-xs font-bold uppercase tracking-wider text-muted-foreground">Status</TableHead>
+                          <TableHead className="min-w-64 text-xs font-bold uppercase tracking-wider text-muted-foreground">Message</TableHead>
+                          <TableHead className="w-24 pr-4 text-right sm:pr-6 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                             Time
                           </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {displayedItems.map((item, index) => (
-                          <TableRow
-                            key={item.id}
-                            className={cn(
-                              "animate-in fade-in",
-                              item.status === "processing" && "bg-blue-500/5",
-                              item.status === "success" && "bg-emerald-500/5",
-                              item.status === "failure" && "bg-red-500/5",
-                              typeof item.result?.box_total_weight === "number" &&
-                                item.result.box_total_weight >=
-                                  BOX_WEIGHT_WARNING_KG &&
-                                "bg-amber-500/10",
-                            )}
-                          >
-                            <TableCell className="pl-5 font-medium tabular-nums text-muted-foreground sm:pl-6">
-                              {queuedItems.length - index}
-                            </TableCell>
-                            <TableCell>
-                              {item.result ? (
-                                <div className="min-w-0">
-                                  <p className="font-semibold text-foreground">
-                                    {item.result.item_name}
-                                  </p>
-                                  <p className="mt-0.5 text-xs text-muted-foreground">
-                                    {[
-                                      item.result.group_name,
-                                      item.result.project_name,
-                                    ]
-                                      .filter(Boolean)
-                                      .join(" · ")}
-                                  </p>
-                                </div>
-                              ) : (
-                                <span className="text-sm text-muted-foreground">
-                                  {item.status === "success"
-                                    ? "Item details unavailable"
-                                    : "—"}
-                                </span>
-                              )}
-                            </TableCell>
-                            <TableCell className="max-w-80 break-all font-mono font-medium">
-                              {item.result?.unique_code || item.value}
-                            </TableCell>
-                            {isPackagingMachine && (
-                              <TableCell className="text-sm font-medium">
-                                <p>
-                                  {item.result?.box_name ||
-                                    item.boxName ||
-                                    (item.boxId ? `Box #${item.boxId}` : "—")}
-                                </p>
-                                {isCustomGroupPacking &&
-                                  item.result?.box_position &&
-                                  item.result.boxes_per_product && (
-                                    <p className="mt-0.5 text-xs font-normal text-muted-foreground">
-                                      {item.result.packing_group_name ||
-                                        "Packing group"}
-                                      {" · "}
-                                      {item.result.box_position} of{" "}
-                                      {item.result.boxes_per_product}
-                                      {item.result.product_set_no
-                                        ? ` · Set ${item.result.product_set_no}`
-                                        : ""}
-                                    </p>
-                                  )}
-                                {item.result?.box_completed && (
-                                  <p className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-                                    <PackageCheck className="size-3.5" />
-                                    Packed · label queued for print
-                                  </p>
-                                )}
-                                {typeof item.result?.box_total_weight ===
-                                  "number" && (
-                                  <p className="mt-0.5 text-xs font-normal text-muted-foreground">
-                                    {item.result.box_total_weight.toFixed(2)} kg{" "}
-                                    total
-                                  </p>
-                                )}
-                              </TableCell>
-                            )}
-                            {showLocationSelection && (
-                              <TableCell className="text-sm">
-                                {item.result?.location_name ||
-                                  item.locationName ||
-                                  "Without location"}
-                              </TableCell>
-                            )}
-                            <TableCell>
-                              <QueueStatus item={item} />
-                            </TableCell>
-                            <TableCell
+                        {displayedItems.map((item, index) => {
+                          const codeValue = item.result?.unique_code || item.value;
+
+                          return (
+                            <TableRow
+                              key={item.id}
                               className={cn(
-                                "text-sm text-muted-foreground",
-                                item.status === "failure" &&
-                                  "font-medium text-destructive",
-                                item.status === "success" &&
-                                  "text-emerald-700 dark:text-emerald-400",
+                                "animate-in fade-in transition-colors",
+                                item.status === "processing" && "bg-blue-500/5",
+                                item.status === "success" && "bg-emerald-500/[0.03]",
+                                item.status === "failure" && "bg-red-500/5",
+                                typeof item.result?.box_total_weight === "number" &&
+                                  item.result.box_total_weight >=
+                                    BOX_WEIGHT_WARNING_KG &&
+                                  "bg-amber-500/10",
                               )}
                             >
-                              <div className="space-y-1.5">
-                                <p>{item.message}</p>
-                                {typeof item.result?.box_total_weight ===
-                                  "number" &&
-                                  item.result.box_total_weight >=
-                                    BOX_WEIGHT_WARNING_KG && (
-                                    <div
-                                      role="status"
-                                      className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400"
-                                    >
-                                      <AlertCircle className="size-3.5 shrink-0" />
-                                      Warning: box weight is{" "}
-                                      {item.result.box_total_weight.toFixed(2)} kg{" "}
-                                      ({BOX_WEIGHT_WARNING_KG} kg warning
-                                      threshold). Scanning remains enabled.
-                                    </div>
+                              <TableCell className="pl-4 font-mono text-xs font-medium tabular-nums text-muted-foreground sm:pl-6">
+                                {queuedItems.length - index}
+                              </TableCell>
+                              <TableCell>
+                                {item.result ? (
+                                  <div className="min-w-0">
+                                    <p className="font-semibold text-foreground text-sm">
+                                      {item.result.item_name}
+                                    </p>
+                                    <p className="mt-0.5 text-xs text-muted-foreground">
+                                      {[
+                                        item.result.group_name,
+                                        item.result.project_name,
+                                      ]
+                                        .filter(Boolean)
+                                        .join(" · ")}
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <span className="text-sm text-muted-foreground">
+                                    {item.status === "success"
+                                      ? "Item details verified"
+                                      : "—"}
+                                  </span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <span className="font-mono text-xs font-semibold text-foreground">
+                                  {codeValue}
+                                </span>
+                              </TableCell>
+                              {isPackagingMachine && (
+                                <TableCell className="text-sm font-medium">
+                                  <p className="font-semibold text-foreground">
+                                    {item.result?.box_name ||
+                                      item.boxName ||
+                                      (item.boxId ? `Box #${item.boxId}` : "—")}
+                                  </p>
+                                  {isCustomGroupPacking &&
+                                    item.result?.box_position &&
+                                    item.result.boxes_per_product && (
+                                      <p className="mt-0.5 text-xs font-normal text-muted-foreground">
+                                        {item.result.packing_group_name ||
+                                          "Packing group"}
+                                        {" · "}
+                                        {item.result.box_position} of{" "}
+                                        {item.result.boxes_per_product}
+                                        {item.result.product_set_no
+                                          ? ` · Set ${item.result.product_set_no}`
+                                          : ""}
+                                      </p>
+                                    )}
+                                  {item.result?.box_completed && (
+                                    <p className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                                      <PackageCheck className="size-3.5" />
+                                      Packed · label sent
+                                    </p>
                                   )}
-                              </div>
-                            </TableCell>
-                            <TableCell className="pr-5 text-right text-xs tabular-nums text-muted-foreground sm:pr-6">
-                              {new Date(
-                                item.result?.scanned_at || item.createdAt,
-                              ).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                second: "2-digit",
-                              })}
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                                  {typeof item.result?.box_total_weight ===
+                                    "number" && (
+                                    <p className="mt-0.5 text-xs font-normal text-muted-foreground">
+                                      {item.result.box_total_weight.toFixed(2)} kg
+                                    </p>
+                                  )}
+                                </TableCell>
+                              )}
+                              {showLocationSelection && (
+                                <TableCell className="text-sm">
+                                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                                    <MapPin className="size-3 text-primary/70" />
+                                    {item.result?.location_name ||
+                                      item.locationName ||
+                                      "Without location"}
+                                  </span>
+                                </TableCell>
+                              )}
+                              <TableCell>
+                                <QueueStatus item={item} />
+                              </TableCell>
+                              <TableCell
+                                className={cn(
+                                  "text-xs text-muted-foreground",
+                                  item.status === "failure" &&
+                                    "font-medium text-destructive",
+                                  item.status === "success" &&
+                                    "text-emerald-700 dark:text-emerald-400",
+                                )}
+                              >
+                                <div className="space-y-1.5">
+                                  <p>{item.message}</p>
+                                  {typeof item.result?.box_total_weight ===
+                                    "number" &&
+                                    item.result.box_total_weight >=
+                                      BOX_WEIGHT_WARNING_KG && (
+                                      <div
+                                        role="status"
+                                        className="inline-flex items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400"
+                                      >
+                                        <AlertCircle className="size-3.5 shrink-0" />
+                                        Warning: box weight is{" "}
+                                        {item.result.box_total_weight.toFixed(2)} kg{" "}
+                                        ({BOX_WEIGHT_WARNING_KG} kg limit).
+                                      </div>
+                                    )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="pr-4 text-right font-mono text-xs tabular-nums text-muted-foreground sm:pr-6">
+                                {new Date(
+                                  item.result?.scanned_at || item.createdAt,
+                                ).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  second: "2-digit",
+                                })}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
@@ -1790,6 +1934,94 @@ export default function MachineScannerPage() {
       </main>
 
       <Dialog
+        open={isManualScanOpen}
+        onOpenChange={(open) => {
+          if (open) {
+            setIsManualScanOpen(true);
+          } else {
+            closeManualScanDialog();
+          }
+        }}
+      >
+        <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-md rounded-2xl p-4 sm:p-6 shadow-xl border">
+          <form onSubmit={handleManualScanSubmit} className="space-y-5">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2.5 text-lg font-bold">
+                <div className="rounded-lg bg-primary/10 p-2 text-primary">
+                  <Keyboard className="size-5" />
+                </div>
+                Enter Code Manually
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                Type the item QR or barcode value exactly as printed. It will process through the same instant validation queue.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-2">
+              <Label htmlFor="manual-scan-code" className="text-xs font-semibold">
+                Barcode / QR Value *
+              </Label>
+              <Input
+                ref={manualScanInputRef}
+                id="manual-scan-code"
+                value={manualScanValue}
+                onChange={(event) => setManualScanValue(event.target.value)}
+                placeholder="e.g. ITEM-49204-XYZ"
+                className="h-12 font-mono text-base font-semibold rounded-xl bg-muted/20"
+                autoComplete="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                autoFocus
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Press Enter or select Submit to push into the workstation queue.
+              </p>
+            </div>
+
+            {(selectedBox || selectedLocationName) && (
+              <div className="rounded-xl border bg-muted/30 p-3 text-xs space-y-1">
+                {selectedBox && (
+                  <p className="flex items-center gap-1.5 text-foreground font-medium">
+                    <Box className="size-3.5 text-primary" />
+                    <span>Target Box: <strong>{selectedBox.box_name}</strong></span>
+                  </p>
+                )}
+                {selectedLocationName && (
+                  <p className="flex items-center gap-1.5 text-muted-foreground">
+                    <MapPin className="size-3.5 text-primary" />
+                    <span>Location: {selectedLocationName}</span>
+                  </p>
+                )}
+              </div>
+            )}
+
+            <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-xl"
+                onClick={closeManualScanDialog}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="gap-2 rounded-xl font-semibold shadow-xs"
+                disabled={
+                  !manualScanValue.trim() ||
+                  !isQueueHydrated ||
+                  !scannerReady
+                }
+              >
+                <ScanLine className="size-4" />
+                Submit Code
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
         open={isCreateBoxOpen}
         onOpenChange={(open) => {
           setIsCreateBoxOpen(open);
@@ -1799,22 +2031,25 @@ export default function MachineScannerPage() {
           }
         }}
       >
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg rounded-2xl p-4 sm:p-6 max-h-[85vh] overflow-y-auto shadow-xl border">
           <form onSubmit={handleCreateBox} className="space-y-5">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <PackagePlus className="size-5 text-primary" />
-                Add a new box
+              <DialogTitle className="flex items-center gap-2.5 text-lg font-bold">
+                <div className="rounded-lg bg-primary/10 p-2 text-primary">
+                  <PackagePlus className="size-5" />
+                </div>
+                Add Destination Box
               </DialogTitle>
-              <DialogDescription>
-                Create a box for {packagingContext?.project_name}. It will be
-                selected automatically when saved.
+              <DialogDescription className="text-xs text-muted-foreground">
+                Create a new packaging box for {packagingContext?.project_name}. It will automatically become your active target box.
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="new-box-name">Box name *</Label>
+                <Label htmlFor="new-box-name" className="text-xs font-semibold">
+                  Box Name / Identifier *
+                </Label>
                 <Input
                   id="new-box-name"
                   value={newBoxName}
@@ -1822,7 +2057,8 @@ export default function MachineScannerPage() {
                     setNewBoxName(event.target.value);
                     setBoxFormError("");
                   }}
-                  placeholder="e.g. Box 12"
+                  placeholder="e.g. Box 12 or Master Carton A"
+                  className="h-11 rounded-xl bg-muted/20"
                   autoComplete="off"
                   autoFocus
                 />
@@ -1830,7 +2066,7 @@ export default function MachineScannerPage() {
 
               {packagingContext?.box_info_fields.map((field) => (
                 <div key={field.id} className="space-y-1.5">
-                  <Label htmlFor={`box-field-${field.id}`}>
+                  <Label htmlFor={`box-field-${field.id}`} className="text-xs font-semibold">
                     {field.field_label}
                     {field.is_required ? " *" : ""}
                   </Label>
@@ -1839,17 +2075,18 @@ export default function MachineScannerPage() {
               ))}
 
               {boxFormError && (
-                <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
                   <AlertCircle className="mt-0.5 size-4 shrink-0" />
                   <span>{boxFormError}</span>
                 </div>
               )}
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
               <Button
                 type="button"
                 variant="outline"
+                className="rounded-xl"
                 onClick={() => setIsCreateBoxOpen(false)}
                 disabled={createBoxMutation.isPending}
               >
@@ -1857,7 +2094,7 @@ export default function MachineScannerPage() {
               </Button>
               <Button
                 type="submit"
-                className="gap-2"
+                className="gap-2 rounded-xl font-semibold shadow-xs"
                 disabled={createBoxMutation.isPending}
               >
                 {createBoxMutation.isPending ? (
@@ -1865,7 +2102,7 @@ export default function MachineScannerPage() {
                 ) : (
                   <PackagePlus className="size-4" />
                 )}
-                {createBoxMutation.isPending ? "Creating..." : "Create box"}
+                {createBoxMutation.isPending ? "Creating..." : "Create & Select Box"}
               </Button>
             </DialogFooter>
           </form>
