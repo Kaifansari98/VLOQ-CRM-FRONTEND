@@ -656,7 +656,10 @@ const MyTaskTable = () => {
       } else if (
         row.taskType === "Miscellaneous" ||
         row.taskType === "Miscellaneous Approval" ||
-        row.taskType === "Miscellaneous Production ERD"
+        row.taskType === "Miscellaneous Production ERD" ||
+        row.taskType === "Return Order Pickup Schedule" ||
+        row.taskType === "Return Material Handover" ||
+        row.taskType === "Return Order Confirmation"
       ) {
         const isDeliveryTask = (row.remark || "")
           .toLowerCase()

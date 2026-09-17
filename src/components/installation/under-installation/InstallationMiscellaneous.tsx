@@ -17,6 +17,7 @@ import {
   Loader2,
   Send,
   Pencil,
+  PackageCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
@@ -85,7 +86,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useResolveMiscellaneousEntry } from "@/api/installation/useUnderInstallationStageLeads";
+import {
+  useResolveMiscellaneousEntry,
+  useMarkMiscellaneousAsReturned,
+} from "@/api/installation/useUnderInstallationStageLeads";
 import { ImageComponent } from "@/components/utils/ImageCard";
 import DocumentCard from "@/components/utils/documentCard";
 import { useQueryClient } from "@tanstack/react-query";
@@ -340,11 +344,15 @@ export default function InstallationMiscellaneous({
   const [selectedRequiredDelivery, setSelectedRequiredDelivery] = useState<string | undefined>(undefined);
   const [showReadyConfirm, setShowReadyConfirm] = useState(false);
   const [readyFiles, setReadyFiles] = useState<File[]>([]);
+  const [returnHandoverFiles, setReturnHandoverFiles] = useState<File[]>([]);
+  const [returnHandoverRemark, setReturnHandoverRemark] = useState<string>("");
+  const markReturnedMutation = useMarkMiscellaneousAsReturned();
   const [showDeliveryConfirm, setShowDeliveryConfirm] = useState(false);
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [openDeliveryTaskModal, setOpenDeliveryTaskModal] = useState(false);
+  const [openPickupTaskModal, setOpenPickupTaskModal] = useState(false);
 
   const [followupDate, setFollowupDate] = useState<string | undefined>(undefined);
   const [followupSolution, setFollowupSolution] = useState<string>("");
@@ -472,6 +480,7 @@ export default function InstallationMiscellaneous({
   const canDoERDDate = canDoERDMiscellaneousDate(normalizedUserType || userType, leadStatus);
   const canDoMarkAsResolved = canMiscellaneousMarkAsResolved(normalizedUserType || userType, leadStatus);
   const canMarkAsReady = isFactoryUser || isAdminOrSuper;
+  const canDoReturnHandover = isSupervisorUser || isAdminOrSuper;
   const canAddMiscellaneous =
     userType === "custom"
       ? customPrivilegeCodes.includes(
@@ -651,7 +660,8 @@ export default function InstallationMiscellaneous({
       (item) =>
         item.task?.id === initialTaskId ||
         item.delivery_task?.id === initialTaskId ||
-        item.erd_task?.id === initialTaskId,
+        item.erd_task?.id === initialTaskId ||
+        item.return_handover_task?.id === initialTaskId,
     );
     if (matched) {
       setViewModal({ open: true, id: matched.id });
@@ -1003,14 +1013,16 @@ export default function InstallationMiscellaneous({
   // Step 1: Production (ERD, Solution, Mark as Ready) -> Always visible to all users
   const canViewStep1Production = true;
 
+  const isViewReturnOrder = Boolean((viewModalData as any)?.return_order_delivery_method);
   const isSelfDeliveryReturnOrder = (viewModalData as any)?.return_order_delivery_method === "SELF_DELIVERY";
+  const isPickupScheduleReturnOrder = (viewModalData as any)?.return_order_delivery_method === "PICKUP_SCHEDULE";
 
   // Step 2: Handover (Required Delivery Date, Task & Resolution) ->
-  // Hidden for Return Order Self Delivery items.
+  // Hidden for Return Order items (both Self Delivery and Pickup Schedule).
   // Non-factory users (Supervisors, Admins, Miscellaneous, etc.) always see it for regular items.
   // Factory user sees it once Required Delivery Date is set or when resolved.
   const canViewStep2Handover =
-    !isSelfDeliveryReturnOrder &&
+    !isViewReturnOrder &&
     (!isFactoryUser ||
       Boolean(viewModalData?.required_delivery_date) ||
       Boolean(viewModalData?.is_resolved));
@@ -1020,9 +1032,16 @@ export default function InstallationMiscellaneous({
 
   const showApprovalActions = canApproveReject && miscApproved == null;
   const canUpdateERD = canDoERDDate && !isTaskReady && isApproved;
+  const hasCompletionDocs = Boolean(
+    viewModalData?.documents?.some((d) => d.doc_type_tag === "Type 37")
+  );
   const isDeliveryTaskCompleted =
-    Boolean(viewModalData?.required_delivery_date) &&
-    viewModalData?.delivery_task?.status === "completed";
+    (Boolean(viewModalData?.required_delivery_date) &&
+      viewModalData?.delivery_task?.status === "completed") ||
+    viewModalData?.delivery_task?.status === "completed" ||
+    (viewModalData as any)?.status === "dispatched" ||
+    (viewModalData as any)?.status === "completed" ||
+    hasCompletionDocs;
   const canUpdateRequiredDelivery =
     (isSupervisorUser || isAdminOrSuper) &&
     isApproved &&
@@ -1030,8 +1049,11 @@ export default function InstallationMiscellaneous({
     !isDeliveryTaskCompleted &&
     !viewModalData?.is_resolved;
   // Factory user and Admin/Super-Admin manage delivery task; Site supervisor does NOT manage it
+  // Once delivery is completed or item is resolved, Manage Delivery Task must NOT be shown
   const canManageDeliveryTask =
-    (isFactoryUser || isAdminOrSuper) && !viewModalData?.is_resolved;
+    (isFactoryUser || isAdminOrSuper) &&
+    !viewModalData?.is_resolved &&
+    !isDeliveryTaskCompleted;
 
   // ✅ Effective action flags — blocked overrides all
   const effectiveCanWork = canWork && !shouldDisableBlockedActions;
@@ -1214,17 +1236,79 @@ export default function InstallationMiscellaneous({
                       </TableCell>
                       <TableCell className="py-3 text-center">
                         {(() => {
-                          const hasDispatchDocs = entry.delivery_task?.status === "completed";
+                          const isPickupSchedule = (entry as any).return_order_delivery_method === "PICKUP_SCHEDULE";
+                          const isSelfDelivery = (entry as any).return_order_delivery_method === "SELF_DELIVERY";
+
                           let label: string;
                           let className: string;
-                          if (entry.misc_approved === false) { label = "REJECTED"; className = "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"; }
-                          else if (entry.is_resolved) { label = "RESOLVED"; className = "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"; }
-                          else if (hasDispatchDocs) { label = "DISPATCHED"; className = "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"; }
-                          else if (entry.required_delivery_date) { label = "DISPATCH SCHEDULED"; className = "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300"; }
-                          else if (entry.misc_approved === true && entry.expected_ready_date && entry.task?.status === "completed") { label = "RTD"; className = "bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300"; }
-                          else if (entry.misc_approved === true && entry.expected_ready_date) { label = "UNDER PROCESS"; className = "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300"; }
-                          else if (entry.misc_approved === true) { label = "MISCL APPROVED"; className = "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300"; }
-                          else { label = "AWAITING APPROVAL"; className = "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"; }
+                          if (entry.misc_approved === false) {
+                            label = "REJECTED";
+                            className = "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300";
+                          } else if (entry.is_resolved) {
+                            label = "RESOLVED";
+                            className = "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300";
+                          } else if (isPickupSchedule) {
+                            const hasConfirmationDoc = entry.documents?.some(
+                              (d) =>
+                                d.doc_type_tag === "Type 42" ||
+                                d.document_type?.toLowerCase().includes("confirmation")
+                            );
+                            const isFactoryConfirmed =
+                              entry.return_confirm_task?.status === "completed" || hasConfirmationDoc;
+                            const isReturned = Boolean(entry.is_returned);
+                            const isPickupCompleted = entry.task?.status === "completed";
+
+                            if (isFactoryConfirmed) {
+                              label = "CONFIRMED";
+                              className = "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300";
+                            } else if (isReturned) {
+                              label = "PENDING CONFIRMATION";
+                              className = "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300";
+                            } else if (isPickupCompleted) {
+                              label = "DISPATCHED";
+                              className = "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300";
+                            } else if (entry.misc_approved === true) {
+                              label = "PICKUP SCHEDULED";
+                              className = "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300";
+                            } else {
+                              label = "AWAITING APPROVAL";
+                              className = "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300";
+                            }
+                          } else if (isSelfDelivery) {
+                            const proofDocs = entry.documents?.filter((d) => d.doc_type_tag === "Type 42" || d.doc_type_tag === "Type 41") || [];
+                            const isConfirmed = entry.task?.status === "completed" || proofDocs.length > 0;
+                            if (isConfirmed) {
+                              label = "CONFIRMED";
+                              className = "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300";
+                            } else if (entry.misc_approved === true) {
+                              label = "PENDING CONFIRMATION";
+                              className = "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300";
+                            } else {
+                              label = "AWAITING APPROVAL";
+                              className = "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300";
+                            }
+                          } else {
+                            const hasDispatchDocs = entry.delivery_task?.status === "completed";
+                            if (hasDispatchDocs) {
+                              label = "DISPATCHED";
+                              className = "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300";
+                            } else if (entry.required_delivery_date) {
+                              label = "DISPATCH SCHEDULED";
+                              className = "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300";
+                            } else if (entry.misc_approved === true && entry.expected_ready_date && entry.task?.status === "completed") {
+                              label = "RTD";
+                              className = "bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300";
+                            } else if (entry.misc_approved === true && entry.expected_ready_date) {
+                              label = "UNDER PROCESS";
+                              className = "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300";
+                            } else if (entry.misc_approved === true) {
+                              label = "MISCL APPROVED";
+                              className = "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300";
+                            } else {
+                              label = "AWAITING APPROVAL";
+                              className = "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300";
+                            }
+                          }
                           return (
                             <Badge variant="outline" className={`text-xs px-2 border-0 font-medium ${className}`}>{label}</Badge>
                           );
@@ -1737,6 +1821,10 @@ export default function InstallationMiscellaneous({
         open={viewModal.open}
         onOpenChange={(open) => {
           setViewModal({ open, id: open ? viewModal.id : null });
+          if (!open) {
+            setReturnHandoverFiles([]);
+            setReturnHandoverRemark("");
+          }
           if (!open && onModalClose) {
             onModalClose();
           }
@@ -2152,8 +2240,32 @@ export default function InstallationMiscellaneous({
                           <div className="rounded-lg border bg-muted/20 p-4 space-y-3 flex flex-col justify-between">
                             <div className="space-y-1">
                               <div className="flex items-center justify-between">
-                                <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Step 1 • Production</span>
-                                {isTaskReady ? (
+                                <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                                  {isViewReturnOrder ? "Return Order Fulfillment" : "Step 1 • Production"}
+                                </span>
+                                {viewModalData?.is_resolved ? (
+                                  <Badge variant="outline" className="text-[10px] bg-green-100 text-green-800 border-0 dark:bg-green-950 dark:text-green-300">
+                                    Resolved
+                                  </Badge>
+                                ) : isPickupScheduleReturnOrder ? (
+                                  viewModalData?.return_confirm_task?.status === "completed" || viewModalData?.is_resolved ? (
+                                    <Badge variant="outline" className="text-[10px] bg-emerald-100 text-emerald-800 border-0 dark:bg-emerald-950 dark:text-emerald-300 font-medium">
+                                      Confirmed
+                                    </Badge>
+                                  ) : viewModalData?.is_returned ? (
+                                    <Badge variant="outline" className="text-[10px] bg-blue-100 text-blue-800 border-0 dark:bg-blue-950 dark:text-blue-300 font-medium">
+                                      Pending Confirmation
+                                    </Badge>
+                                  ) : viewModalData?.task?.status === "completed" ? (
+                                    <Badge variant="outline" className="text-[10px] bg-purple-100 text-purple-800 border-0 dark:bg-purple-950 dark:text-purple-300 font-medium">
+                                      Pending Handover
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="text-[10px] bg-amber-100 text-amber-800 border-0 dark:bg-amber-950 dark:text-amber-300 font-medium">
+                                      Pickup Scheduled
+                                    </Badge>
+                                  )
+                                ) : isTaskReady ? (
                                   <Badge variant="outline" className="text-[10px] bg-emerald-100 text-emerald-800 border-0 dark:bg-emerald-950 dark:text-emerald-300 font-medium">
                                     Ready to Dispatch
                                   </Badge>
@@ -2166,9 +2278,11 @@ export default function InstallationMiscellaneous({
                               <div className="flex items-center gap-2">
                                 <Calendar className="w-4 h-4 text-primary" />
                                 <h5 className="text-sm font-semibold text-foreground">
-                                  {(viewModalData as any)?.return_order_delivery_method === "SELF_DELIVERY"
+                                  {isSelfDeliveryReturnOrder
                                     ? "Return Order Self Delivery Confirmation"
-                                    : "Expected Ready Date (ERD)"}
+                                    : isPickupScheduleReturnOrder
+                                      ? "Return Order Pickup Schedule"
+                                      : "Expected Ready Date (ERD)"}
                                 </h5>
                               </div>
                             </div>
@@ -2314,6 +2428,642 @@ export default function InstallationMiscellaneous({
                                         </div>
                                         <p className="text-[11px] text-amber-700 dark:text-amber-300/90">
                                           Waiting for factory team to upload Return Order proof document and confirm self delivery.
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })() : isPickupScheduleReturnOrder ? (() => {
+                                 const isTaskCompleted =
+                                   viewModalData?.task?.status === "completed" || Boolean(viewModalData?.is_resolved);
+                                 const scheduledDate =
+                                   viewModalData?.task?.due_date || (viewModalData as any)?.return_order_date;
+                                 const completionDocs =
+                                   viewModalData?.documents?.filter(
+                                     (d) => d.doc_type_tag === "Type 37" || (d.doc_type_tag === "Type 42" && !d.document_type?.toLowerCase().includes("confirmation"))
+                                   ) || [];
+                                 const returnHandoverDocs =
+                                   viewModalData?.documents?.filter(
+                                     (d) => d.doc_type_tag === "Type 43"
+                                   ) || [];
+                                  const confirmationDocs =
+                                    viewModalData?.documents?.filter(
+                                      (d) => d.doc_type_tag === "Type 42"
+                                    ) || [];
+                                  const isReturned = Boolean(viewModalData?.is_returned);
+                                  const isFactoryConfirmed =
+                                    viewModalData?.return_confirm_task?.status === "completed" || Boolean(viewModalData?.is_resolved);
+
+                                 return (
+                                   <div className="space-y-3">
+                                     {/* Pickup Schedule Date Info Card */}
+                                     <div className="rounded-lg border bg-background/60 p-3 space-y-2">
+                                       <div className="flex items-center justify-between">
+                                         <div className="flex items-center gap-2">
+                                           <Calendar className="w-4 h-4 text-primary" />
+                                           <span className="text-xs font-semibold text-foreground">
+                                             Scheduled Pickup Date:
+                                           </span>
+                                         </div>
+                                         <span className="text-xs font-bold text-primary">
+                                           {scheduledDate ? formatDate(scheduledDate) : "Not Set"}
+                                         </span>
+                                       </div>
+                                       {viewModalData?.task?.remark && (
+                                         <p className="text-[11px] text-muted-foreground border-t pt-1.5 line-clamp-2">
+                                           <span className="font-medium text-foreground">Remark:</span>{" "}
+                                           {viewModalData.task.remark.replace(/\[misc-pickup:\d+\]\s*/, "")}
+                                         </p>
+                                       )}
+                                     </div>
+
+                                     {/* Completed State */}
+                                     {isTaskCompleted ? (
+                                       <div className="space-y-3">
+                                         {/* Factory Pickup Completed Card */}
+                                         <div className="rounded-lg border border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/70 dark:bg-emerald-950/30 p-3 space-y-3">
+                                           <div className="flex items-center justify-between">
+                                             <div className="flex items-center gap-2">
+                                               <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                                                 <CheckCircle2 className="w-3.5 h-3.5" />
+                                               </div>
+                                               <div>
+                                                 <div className="text-xs font-semibold text-emerald-900 dark:text-emerald-200">
+                                                   Return Order Pickup Completed
+                                                 </div>
+                                                 <div className="text-[11px] text-emerald-700 dark:text-emerald-300/90 flex flex-wrap items-center gap-1">
+                                                   {viewModalData?.task?.closed_at && (
+                                                     <span>
+                                                       on{" "}
+                                                       <strong className="font-medium">
+                                                         {formatDateTime(viewModalData.task.closed_at)}
+                                                       </strong>
+                                                     </span>
+                                                   )}
+                                                   {viewModalData?.task?.closed_user?.user_name && (
+                                                     <span>
+                                                       by{" "}
+                                                       <strong className="font-medium">
+                                                         {viewModalData.task.closed_user.user_name}
+                                                       </strong>
+                                                     </span>
+                                                   )}
+                                                 </div>
+                                               </div>
+                                             </div>
+                                             <Badge
+                                               variant="outline"
+                                               className="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 font-medium"
+                                             >
+                                               Completed
+                                             </Badge>
+                                           </div>
+
+                                           {/* Attached Completion Files */}
+                                           {completionDocs.length > 0 && (() => {
+                                             const { images, videos, nonImages } = separateImageAndDocs(completionDocs);
+                                             return (
+                                               <div className="space-y-2 pt-1 border-t border-emerald-200/60 dark:border-emerald-800/50">
+                                                 <span className="text-[11px] font-medium text-emerald-800 dark:text-emerald-300">
+                                                   Attached Completion Proofs ({completionDocs.length}):
+                                                 </span>
+                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                   {images.map((doc) => (
+                                                     <ImageComponent
+                                                       key={doc.document_id}
+                                                       doc={{
+                                                         id: doc.document_id,
+                                                         doc_og_name: doc.original_name,
+                                                         signedUrl: doc.signed_url,
+                                                         created_at: doc.uploaded_at,
+                                                       }}
+                                                       canDelete={false}
+                                                     />
+                                                   ))}
+                                                   {nonImages.map((doc) => (
+                                                     <DocumentCard
+                                                       key={doc.document_id}
+                                                       doc={{
+                                                         id: doc.document_id,
+                                                         originalName: doc.original_name,
+                                                         signedUrl: doc.signed_url,
+                                                         created_at: doc.uploaded_at,
+                                                       }}
+                                                       canDelete={false}
+                                                     />
+                                                   ))}
+                                                   {videos.map((doc) => (
+                                                     <VideoCard
+                                                       key={doc.document_id}
+                                                       doc={{
+                                                         id: doc.document_id,
+                                                         originalName: doc.original_name,
+                                                         signedUrl: doc.signed_url,
+                                                         created_at: doc.uploaded_at,
+                                                       }}
+                                                       canDelete={false}
+                                                     />
+                                                   ))}
+                                                 </div>
+                                               </div>
+                                             );
+                                           })()}
+                                         </div>
+
+                                         {/* Site Supervisor Return Handover Section */}
+                                         {!isReturned ? (
+                                           <div className="rounded-lg border border-blue-200 dark:border-blue-800/80 bg-blue-50/60 dark:bg-blue-950/30 p-3.5 space-y-3">
+                                             <div className="flex items-center justify-between">
+                                               <div className="flex items-center gap-2">
+                                                 <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/60 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+                                                   <PackageCheck className="w-3.5 h-3.5" />
+                                                 </div>
+                                                 <div>
+                                                   <div className="text-xs font-semibold text-blue-950 dark:text-blue-200">
+                                                     Return Material Handover (Site Supervisor)
+                                                   </div>
+                                                   <div className="text-[11px] text-blue-700 dark:text-blue-300/90">
+                                                     Upload photo proof showing the returned product/material has been sent back.
+                                                   </div>
+                                                 </div>
+                                               </div>
+                                               <Badge
+                                                 variant="outline"
+                                                 className="text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 border-blue-300 dark:border-blue-700 font-medium"
+                                               >
+                                                 Action Required
+                                               </Badge>
+                                             </div>
+
+                                             {canDoReturnHandover ? (
+                                               <div className="space-y-3 pt-1 border-t border-blue-200/60 dark:border-blue-800/50">
+                                                 <div className="space-y-1.5">
+                                                   <label className="text-[11px] font-medium text-foreground flex items-center justify-between">
+                                                     <span>
+                                                       Return Handover Photo Proof <span className="text-red-500">*</span>
+                                                     </span>
+                                                     <span className="text-[10px] text-muted-foreground">
+                                                       Images or Videos
+                                                     </span>
+                                                   </label>
+                                                   <FileUploadField
+                                                     value={returnHandoverFiles}
+                                                     onChange={setReturnHandoverFiles}
+                                                     multiple
+                                                     disabled={
+                                                       markReturnedMutation.isPending || shouldDisableBlockedActions
+                                                     }
+                                                   />
+                                                 </div>
+
+                                                 <div className="space-y-1">
+                                                   <label className="text-[11px] font-medium text-foreground">
+                                                     Handover Remark (Optional)
+                                                   </label>
+                                                   <Input
+                                                     placeholder="Enter return handover remark or note..."
+                                                     value={returnHandoverRemark}
+                                                     onChange={(e) => setReturnHandoverRemark(e.target.value)}
+                                                     className="h-8 text-xs bg-background"
+                                                     disabled={
+                                                       markReturnedMutation.isPending || shouldDisableBlockedActions
+                                                     }
+                                                   />
+                                                 </div>
+
+                                                 <Button
+                                                   variant="default"
+                                                   size="sm"
+                                                   disabled={
+                                                     markReturnedMutation.isPending ||
+                                                     shouldDisableBlockedActions ||
+                                                     returnHandoverFiles.length === 0
+                                                   }
+                                                   onClick={() => {
+                                                     if (shouldDisableBlockedActions) return;
+                                                     if (returnHandoverFiles.length === 0) {
+                                                       toastManager.add({
+                                                         title: "Please upload at least one return photo proof",
+                                                         type: "error",
+                                                       });
+                                                       return;
+                                                     }
+                                                     markReturnedMutation.mutate(
+                                                       {
+                                                         vendorId,
+                                                         leadId,
+                                                         miscId: viewModalData.id,
+                                                         user_id: userId!,
+                                                         remark: returnHandoverRemark.trim() || undefined,
+                                                         files: returnHandoverFiles,
+                                                       },
+                                                       {
+                                                         onSuccess: () => {
+                                                           setReturnHandoverFiles([]);
+                                                           setReturnHandoverRemark("");
+                                                           queryClient.invalidateQueries({
+                                                             queryKey: ["miscellaneousEntries", vendorId, leadId],
+                                                           });
+                                                           queryClient.invalidateQueries({
+                                                             queryKey: ["vendorUserTasks"],
+                                                           });
+                                                           queryClient.invalidateQueries({
+                                                             queryKey: ["vendorAllTasks"],
+                                                           });
+                                                           queryClient.invalidateQueries({
+                                                             queryKey: ["leadTasks"],
+                                                           });
+                                                           queryClient.invalidateQueries({
+                                                             queryKey: ["userTasks"],
+                                                           });
+                                                         },
+                                                       },
+                                                     );
+                                                   }}
+                                                   className="w-full gap-2 text-xs font-medium h-8 shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                 >
+                                                   <CheckCircle2 className="w-3.5 h-3.5" />
+                                                   {markReturnedMutation.isPending
+                                                     ? "Uploading & Marking as Returned..."
+                                                     : "Mark as Returned"}
+                                                 </Button>
+                                               </div>
+                                             ) : (
+                                               <div className="pt-2 border-t border-blue-200/60 dark:border-blue-800/50">
+                                                 <p className="text-[11px] text-blue-800 dark:text-blue-300">
+                                                   Waiting for Site Supervisor or Super Admin to upload photo proof and mark the material as returned.
+                                                 </p>
+                                               </div>
+                                             )}
+                                           </div>
+                                         ) : (
+                                            /* Already Returned State */
+                                            <div className="space-y-3">
+                                              {/* Site Supervisor Handover Summary Card */}
+                                              <div className="rounded-lg border border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/70 dark:bg-emerald-950/30 p-3.5 space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                  <div className="flex items-center gap-2">
+                                                    <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                                                      <PackageCheck className="w-3.5 h-3.5" />
+                                                    </div>
+                                                    <div>
+                                                      <div className="text-xs font-semibold text-emerald-900 dark:text-emerald-200">
+                                                        Material Returned & Handed Over
+                                                      </div>
+                                                      <div className="text-[11px] text-emerald-700 dark:text-emerald-300/90 flex flex-wrap items-center gap-1">
+                                                        {viewModalData?.returned_at && (
+                                                          <span>
+                                                            on{" "}
+                                                            <strong className="font-medium">
+                                                              {formatDateTime(viewModalData.returned_at)}
+                                                            </strong>
+                                                          </span>
+                                                        )}
+                                                        {viewModalData?.returned_user?.user_name && (
+                                                          <span>
+                                                            by{" "}
+                                                            <strong className="font-medium">
+                                                              {viewModalData.returned_user.user_name}
+                                                            </strong>
+                                                          </span>
+                                                        )}
+                                                      </div>
+                                                    </div>
+                                                  </div>
+                                                  <Badge
+                                                    variant="outline"
+                                                    className="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 font-medium"
+                                                  >
+                                                    Returned
+                                                  </Badge>
+                                                </div>
+
+                                                {viewModalData?.return_handover_remark && (
+                                                  <p className="text-[11px] text-muted-foreground border-t border-emerald-200/60 dark:border-emerald-800/50 pt-1.5">
+                                                    <span className="font-medium text-foreground">
+                                                      Handover Remark:
+                                                    </span>{" "}
+                                                    {viewModalData.return_handover_remark}
+                                                  </p>
+                                                )}
+
+                                                {/* Attached Return Handover Proofs */}
+                                                {returnHandoverDocs.length > 0 && (() => {
+                                                  const { images, videos, nonImages } = separateImageAndDocs(returnHandoverDocs);
+                                                  return (
+                                                    <div className="space-y-2 pt-1 border-t border-emerald-200/60 dark:border-emerald-800/50">
+                                                      <span className="text-[11px] font-medium text-emerald-800 dark:text-emerald-300">
+                                                        Return Handover Proofs ({returnHandoverDocs.length}):
+                                                      </span>
+                                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                        {images.map((doc) => (
+                                                          <ImageComponent
+                                                            key={doc.document_id}
+                                                            doc={{
+                                                              id: doc.document_id,
+                                                              doc_og_name: doc.original_name,
+                                                              signedUrl: doc.signed_url,
+                                                              created_at: doc.uploaded_at,
+                                                            }}
+                                                            canDelete={false}
+                                                          />
+                                                        ))}
+                                                        {nonImages.map((doc) => (
+                                                          <DocumentCard
+                                                            key={doc.document_id}
+                                                            doc={{
+                                                              id: doc.document_id,
+                                                              originalName: doc.original_name,
+                                                              signedUrl: doc.signed_url,
+                                                              created_at: doc.uploaded_at,
+                                                            }}
+                                                            canDelete={false}
+                                                          />
+                                                        ))}
+                                                        {videos.map((doc) => (
+                                                          <VideoCard
+                                                            key={doc.document_id}
+                                                            doc={{
+                                                              id: doc.document_id,
+                                                              originalName: doc.original_name,
+                                                              signedUrl: doc.signed_url,
+                                                              created_at: doc.uploaded_at,
+                                                            }}
+                                                            canDelete={false}
+                                                          />
+                                                        ))}
+                                                      </div>
+                                                    </div>
+                                                  );
+                                                })()}
+                                              </div>
+
+                                              {/* Factory Return Order Confirmation Section */}
+                                              {isFactoryConfirmed ? (
+                                                <div className="rounded-lg border border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/70 dark:bg-emerald-950/30 p-3.5 space-y-3">
+                                                  <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                      <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                                                        <CheckCircle2 className="w-3.5 h-3.5" />
+                                                      </div>
+                                                      <div>
+                                                        <div className="text-xs font-semibold text-emerald-900 dark:text-emerald-200">
+                                                          Return Order Confirmed by Factory
+                                                        </div>
+                                                        <div className="text-[11px] text-emerald-700 dark:text-emerald-300/90 flex flex-wrap items-center gap-1">
+                                                          {viewModalData?.return_confirm_task?.closed_at && (
+                                                            <span>
+                                                              on{" "}
+                                                              <strong className="font-medium">
+                                                                {formatDateTime(viewModalData.return_confirm_task.closed_at)}
+                                                              </strong>
+                                                            </span>
+                                                          )}
+                                                          {viewModalData?.return_confirm_task?.closed_user?.user_name && (
+                                                            <span>
+                                                              by{" "}
+                                                              <strong className="font-medium">
+                                                                {viewModalData.return_confirm_task.closed_user.user_name}
+                                                              </strong>
+                                                            </span>
+                                                          )}
+                                                        </div>
+                                                      </div>
+                                                    </div>
+                                                    <Badge
+                                                      variant="outline"
+                                                      className="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 font-medium"
+                                                    >
+                                                      Confirmed
+                                                    </Badge>
+                                                  </div>
+
+                                                  {/* Attached Confirmation Proofs */}
+                                                  {confirmationDocs.length > 0 && (() => {
+                                                    const { images, videos, nonImages } = separateImageAndDocs(confirmationDocs);
+                                                    return (
+                                                      <div className="space-y-2 pt-1 border-t border-emerald-200/60 dark:border-emerald-800/50">
+                                                        <span className="text-[11px] font-medium text-emerald-800 dark:text-emerald-300">
+                                                          Confirmation Proofs ({confirmationDocs.length}):
+                                                        </span>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                          {images.map((doc) => (
+                                                            <ImageComponent
+                                                              key={doc.document_id}
+                                                              doc={{
+                                                                id: doc.document_id,
+                                                                doc_og_name: doc.original_name,
+                                                                signedUrl: doc.signed_url,
+                                                                created_at: doc.uploaded_at,
+                                                              }}
+                                                              canDelete={false}
+                                                            />
+                                                          ))}
+                                                          {nonImages.map((doc) => (
+                                                            <DocumentCard
+                                                              key={doc.document_id}
+                                                              doc={{
+                                                                id: doc.document_id,
+                                                                originalName: doc.original_name,
+                                                                signedUrl: doc.signed_url,
+                                                                created_at: doc.uploaded_at,
+                                                              }}
+                                                              canDelete={false}
+                                                            />
+                                                          ))}
+                                                          {videos.map((doc) => (
+                                                            <VideoCard
+                                                              key={doc.document_id}
+                                                              doc={{
+                                                                id: doc.document_id,
+                                                                originalName: doc.original_name,
+                                                                signedUrl: doc.signed_url,
+                                                                created_at: doc.uploaded_at,
+                                                              }}
+                                                              canDelete={false}
+                                                            />
+                                                          ))}
+                                                        </div>
+                                                      </div>
+                                                    );
+                                                  })()}
+
+                                                  {/* Mark as Resolved button for Site Supervisor / Super Admin */}
+                                                  {canDoMarkAsResolved && canResolveRole && !viewModalData?.is_resolved && (
+                                                    <div className="pt-2 border-t border-emerald-200/60 dark:border-emerald-800/50">
+                                                      <CustomeTooltip
+                                                        value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                                                        truncateValue={
+                                                          <Button
+                                                            variant="default"
+                                                            size="sm"
+                                                            disabled={resolveMisc.isPending || shouldDisableBlockedActions}
+                                                            onClick={() => {
+                                                              if (shouldDisableBlockedActions) return;
+                                                              resolveMisc.mutate(
+                                                                {
+                                                                  vendorId,
+                                                                  leadId,
+                                                                  miscId: viewModalData?.id || 0,
+                                                                  resolved_by: userId!,
+                                                                },
+                                                                {
+                                                                  onSuccess: () => {
+                                                                    queryClient.invalidateQueries({
+                                                                      queryKey: ["miscellaneousEntries", vendorId, leadId],
+                                                                    });
+                                                                    queryClient.invalidateQueries({
+                                                                      queryKey: ["vendorUserTasks"],
+                                                                    });
+                                                                    queryClient.invalidateQueries({
+                                                                      queryKey: ["vendorAllTasks"],
+                                                                    });
+                                                                    queryClient.invalidateQueries({
+                                                                      queryKey: ["leadTasks"],
+                                                                    });
+                                                                  },
+                                                                },
+                                                              );
+                                                            }}
+                                                            className="w-full gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                          >
+                                                            <CheckCircle2 className="w-3.5 h-3.5" />
+                                                            {resolveMisc.isPending ? "Resolving..." : "Mark as Resolved"}
+                                                          </Button>
+                                                        }
+                                                      />
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              ) : (isFactoryUser || isAdminOrSuper) ? (
+                                                /* Pending Factory Receipt Confirmation Action Box */
+                                                <div className="rounded-lg border border-blue-200 dark:border-blue-800/80 bg-blue-50/60 dark:bg-blue-950/30 p-3.5 space-y-3">
+                                                  <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                      <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/60 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+                                                        <PackageCheck className="w-3.5 h-3.5" />
+                                                      </div>
+                                                      <div>
+                                                        <div className="text-xs font-semibold text-blue-950 dark:text-blue-200">
+                                                          Return Order Confirmation (Factory Team)
+                                                        </div>
+                                                        <div className="text-[11px] text-blue-700 dark:text-blue-300/90">
+                                                          Material returned by supervisor. Confirm receipt at factory.
+                                                        </div>
+                                                      </div>
+                                                    </div>
+                                                    <Badge
+                                                      variant="outline"
+                                                      className="text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 border-blue-300 dark:border-blue-700 font-medium"
+                                                    >
+                                                      Action Required
+                                                    </Badge>
+                                                  </div>
+
+                                                  <div className="space-y-3 pt-1 border-t border-blue-200/60 dark:border-blue-800/50">
+                                                    <div className="space-y-1.5">
+                                                      <label className="text-[11px] font-medium text-foreground flex items-center justify-between">
+                                                        <span>Receipt Proof Document (Optional)</span>
+                                                        <span className="text-[10px] text-muted-foreground">Images or PDFs</span>
+                                                      </label>
+                                                      <FileUploadField
+                                                        value={readyFiles}
+                                                        onChange={setReadyFiles}
+                                                        multiple
+                                                        disabled={markReadyMutation.isPending || shouldDisableBlockedActions}
+                                                      />
+                                                    </div>
+
+                                                    <Button
+                                                      variant="default"
+                                                      size="sm"
+                                                      disabled={markReadyMutation.isPending || shouldDisableBlockedActions}
+                                                      onClick={() => {
+                                                        if (shouldDisableBlockedActions) return;
+                                                        markReadyMutation.mutate(
+                                                          {
+                                                            vendorId,
+                                                            leadId,
+                                                            miscId: viewModalData.id,
+                                                            ready_by: userId!,
+                                                            files: readyFiles,
+                                                          },
+                                                          {
+                                                            onSuccess: () => {
+                                                              setReadyFiles([]);
+                                                              queryClient.invalidateQueries({
+                                                                queryKey: ["miscellaneousEntries", vendorId, leadId],
+                                                              });
+                                                              queryClient.invalidateQueries({
+                                                                queryKey: ["vendorUserTasks"],
+                                                              });
+                                                              queryClient.invalidateQueries({
+                                                                queryKey: ["vendorAllTasks"],
+                                                              });
+                                                              queryClient.invalidateQueries({
+                                                                queryKey: ["leadTasks"],
+                                                              });
+                                                              queryClient.invalidateQueries({
+                                                                queryKey: ["userTasks"],
+                                                              });
+                                                            },
+                                                          },
+                                                        );
+                                                      }}
+                                                      className="w-full gap-2 text-xs font-medium h-8 shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                    >
+                                                      <CheckCircle2 className="w-3.5 h-3.5" />
+                                                      {markReadyMutation.isPending ? "Confirming Receipt..." : "Confirm Return Order Receipt"}
+                                                    </Button>
+                                                  </div>
+                                                </div>
+                                              ) : (
+                                                /* Pending Factory Receipt Confirmation Info Banner for Supervisors */
+                                                <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/70 dark:bg-blue-950/30 p-3 space-y-1">
+                                                  <div className="flex items-center gap-2 text-xs font-semibold text-blue-900 dark:text-blue-200">
+                                                    <Clock className="w-3.5 h-3.5 text-blue-600" />
+                                                    Waiting for Factory Confirmation
+                                                  </div>
+                                                  <p className="text-[11px] text-blue-700 dark:text-blue-300/90">
+                                                    Material has been handed over. Waiting for factory team to confirm receipt of the return order before this requirement can be marked as resolved.
+                                                  </p>
+                                                </div>
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+                                     ) : (isFactoryUser || isAdminOrSuper) ? (
+                                      /* Pending: Factory User / Admin actions */
+                                      <div className="space-y-3">
+                                        <CustomeTooltip
+                                          value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                                          truncateValue={
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              disabled={shouldDisableBlockedActions || !viewModalData?.task?.id}
+                                              onClick={() => {
+                                                if (shouldDisableBlockedActions) return;
+                                                setOpenPickupTaskModal(true);
+                                              }}
+                                              className="w-full gap-2 text-xs font-medium h-9 shadow-sm border-primary/40 hover:bg-primary/5 hover:text-primary"
+                                            >
+                                              <Calendar className="w-3.5 h-3.5 text-primary" />
+                                              Manage Pickup Schedule
+                                            </Button>
+                                          }
+                                        />
+                                      </div>
+                                    ) : (
+                                      /* Pending: Site Supervisor / other roles view */
+                                      <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/30 p-3 space-y-1">
+                                        <div className="flex items-center gap-2 text-xs font-semibold text-amber-900 dark:text-amber-200">
+                                          <Clock className="w-3.5 h-3.5 text-amber-600" />
+                                          Pending Factory Pickup
+                                        </div>
+                                        <p className="text-[11px] text-amber-700 dark:text-amber-300/90">
+                                          Pickup is scheduled for{" "}
+                                          <strong>{scheduledDate ? formatDate(scheduledDate) : "the scheduled date"}</strong>. Waiting for factory team to fulfill and complete the pickup.
                                         </p>
                                       </div>
                                     )}
@@ -2601,7 +3351,7 @@ export default function InstallationMiscellaneous({
                               />
 
                               <div className="flex gap-2">
-                                {viewModalData?.required_delivery_date && !viewModalData?.is_resolved && effectiveCanManageDeliveryTask && (
+                                {viewModalData?.required_delivery_date && !viewModalData?.is_resolved && !isDeliveryTaskCompleted && effectiveCanManageDeliveryTask && (
                                   <CustomeTooltip
                                     value={shouldDisableBlockedActions ? blockedTooltip : ""}
                                     truncateValue={
@@ -2673,8 +3423,7 @@ export default function InstallationMiscellaneous({
 
                       {/* ── Document Sections (Production Ready & Completion Documents Stacked with 2 docs per row) ── */}
                       {(() => {
-                        const isSelfDeliveryReturnOrder = (viewModalData as any)?.return_order_delivery_method === "SELF_DELIVERY";
-                        const readyDocs = isSelfDeliveryReturnOrder
+                        const readyDocs = isViewReturnOrder
                           ? []
                           : viewModalData?.documents?.filter((d) => d.doc_type_tag === "Type 41") || [];
                         const completionDocs = viewModalData?.documents?.filter((d) => d.doc_type_tag === "Type 37") || [];
@@ -3224,6 +3973,27 @@ export default function InstallationMiscellaneous({
               remark: viewModalData.delivery_task?.remark || undefined,
               taskStatus: viewModalData.delivery_task?.status || undefined,
               requiredDeliveryDate: viewModalData.delivery_task?.due_date || viewModalData.required_delivery_date || undefined,
+            }
+            : undefined
+        }
+      />
+
+      <MiscTaskModal
+        open={openPickupTaskModal}
+        onOpenChange={setOpenPickupTaskModal}
+        title="Manage Pickup Schedule"
+        description="Reschedule pickup date or mark as completed once pickup is done."
+        dateRestrictionLabel="Scheduled Pickup Date"
+        data={
+          viewModalData?.task?.id
+            ? {
+              leadId,
+              accountId,
+              taskId: viewModalData.task.id,
+              dueDate: viewModalData.task.due_date || (viewModalData as any).return_order_date || undefined,
+              remark: viewModalData.task.remark || undefined,
+              taskStatus: viewModalData.task.status || undefined,
+              requiredDeliveryDate: viewModalData.task.due_date || (viewModalData as any).return_order_date || undefined,
             }
             : undefined
         }

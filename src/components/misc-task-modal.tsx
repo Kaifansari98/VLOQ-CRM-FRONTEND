@@ -23,6 +23,10 @@ import { AlertCircle } from "lucide-react";
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  title?: string;
+  description?: string;
+  disableDateRestriction?: boolean;
+  dateRestrictionLabel?: string;
   data?: {
     leadId: number;
     accountId: number;
@@ -34,7 +38,15 @@ interface Props {
   };
 }
 
-const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
+const MiscTaskModal: React.FC<Props> = ({
+  open,
+  onOpenChange,
+  title,
+  description,
+  disableDateRestriction,
+  dateRestrictionLabel = "Required Delivery Date",
+  data,
+}) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
   const queryClient = useQueryClient();
@@ -115,7 +127,7 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
 
   const targetDeliveryDate = data?.requiredDeliveryDate || data?.dueDate;
   const isDateBeforeDelivery = isBeforeDeliveryDate(targetDeliveryDate);
-  const isCompleteRestrictedByDate = !isSuperAdmin && isDateBeforeDelivery;
+  const isCompleteRestrictedByDate = !disableDateRestriction && !isSuperAdmin && isDateBeforeDelivery;
 
   useEffect(() => {
     if (data?.dueDate) {
@@ -132,7 +144,7 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
     if (!data) return;
     if (isCompleteRestrictedByDate) {
       toastManager.add({
-        title: `Cannot complete task before Required Delivery Date (${formatDeliveryDate(targetDeliveryDate)})`,
+        title: `Cannot complete task before ${dateRestrictionLabel} (${formatDeliveryDate(targetDeliveryDate)})`,
         type: "error",
       });
       return;
@@ -222,8 +234,6 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
         taskId: data.taskId,
         payload: {
           updated_by: userId || 0,
-          closed_at: new Date().toISOString(),
-          closed_by: userId || 0,
           due_date: rescheduleDate,
           remark: rescheduleRemark.trim(),
         },
@@ -298,8 +308,8 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
       <BaseModal
         open={open}
         onOpenChange={onOpenChange}
-        title="Miscellaneous Task"
-        description="Update or reschedule this miscellaneous task."
+        title={title || "Miscellaneous Task"}
+        description={description || "Update or reschedule this miscellaneous task."}
         size="md"
       >
         <div className="space-y-4 p-6">
@@ -327,7 +337,7 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
                     <div className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400 font-medium mt-1">
                       <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-500" />
                       <span className="leading-snug">
-                        Cannot complete before Required Delivery Date ({formatDeliveryDate(targetDeliveryDate)}).
+                        Cannot complete before {dateRestrictionLabel} ({formatDeliveryDate(targetDeliveryDate)}).
                       </span>
                     </div>
                   )}
@@ -338,7 +348,7 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
                     align="end"
                     value={
                       isCompleteRestrictedByDate
-                        ? `Cannot mark as completed before Required Delivery Date (${formatDeliveryDate(targetDeliveryDate)})`
+                        ? `Cannot mark as completed before ${dateRestrictionLabel} (${formatDeliveryDate(targetDeliveryDate)})`
                         : ""
                     }
                     truncateValue={
@@ -348,7 +358,7 @@ const MiscTaskModal: React.FC<Props> = ({ open, onOpenChange, data }) => {
                         onClick={() => {
                           if (isCompleteRestrictedByDate) {
                             toastManager.add({
-                              title: `Cannot mark as completed before Required Delivery Date (${formatDeliveryDate(targetDeliveryDate)})`,
+                              title: `Cannot mark as completed before ${dateRestrictionLabel} (${formatDeliveryDate(targetDeliveryDate)})`,
                               type: "error",
                             });
                             return;

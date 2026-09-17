@@ -18,6 +18,7 @@ export interface MiscellaneousDocument {
   uploaded_at: string;
   doc_type_tag?: string | null;
   doc_type_name?: string | null;
+  document_type?: string | null;
 }
 
 export interface MiscellaneousTeam {
@@ -56,6 +57,7 @@ export interface MiscellaneousEntry {
     id: number;
     task_type: string;
     remark?: string | null;
+    due_date?: string | null;
     status?: string;
     closed_at?: string | null;
     closed_by?: number | null;
@@ -77,6 +79,42 @@ export interface MiscellaneousEntry {
     status?: string;
     remark?: string | null;
     due_date?: string | null;
+  } | null;
+  return_order_date?: string | null;
+  return_order_delivery_method?: string | null;
+  is_returned?: boolean;
+  returned_at?: string | null;
+  returned_by?: number | null;
+  returned_user?: {
+    id: number;
+    user_name: string;
+  } | null;
+  return_handover_remark?: string | null;
+  return_handover_task?: {
+    id: number;
+    task_type: string;
+    status?: string;
+    remark?: string | null;
+    due_date?: string | null;
+    closed_at?: string | null;
+    closed_by?: number | null;
+    closed_user?: {
+      id: number;
+      user_name: string;
+    } | null;
+  } | null;
+  return_confirm_task?: {
+    id: number;
+    task_type: string;
+    status?: string;
+    remark?: string | null;
+    due_date?: string | null;
+    closed_at?: string | null;
+    closed_by?: number | null;
+    closed_user?: {
+      id: number;
+      user_name: string;
+    } | null;
   } | null;
   teams: MiscellaneousTeam[];
   documents: MiscellaneousDocument[];
@@ -1803,6 +1841,85 @@ export const useMarkMiscellaneousTaskReady = () => {
     onError: (error: AxiosError<ApiErrorResponse>) => {
       toastManager.add({
         title: error?.response?.data?.error || "Failed to mark task as ready",
+        type: "error",
+      });
+    },
+  });
+};
+
+/* ==========================================================
+   ✔️ POST - Mark Miscellaneous As Returned (Site Supervisor Return Handover)
+   @route POST /leads/installation/under-installation/vendorId/:vendorId/miscId/:miscId/mark-returned
+   ========================================================== */
+
+export const markMiscellaneousAsReturned = async (payload: {
+  vendorId: number;
+  leadId: number;
+  miscId: number;
+  user_id: number;
+  remark?: string;
+  files: File[];
+}) => {
+  const formData = new FormData();
+  formData.append("user_id", payload.user_id.toString());
+  if (payload.remark) {
+    formData.append("remark", payload.remark);
+  }
+  if (payload.files && payload.files.length > 0) {
+    payload.files.forEach((file) => {
+      formData.append("files", file);
+    });
+  }
+
+  const { data } = await apiClient.post(
+    `/leads/installation/under-installation/vendorId/${payload.vendorId}/miscId/${payload.miscId}/mark-returned`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    },
+  );
+
+  return data?.data;
+};
+
+/**
+ * ✅ React Query Mutation Hook - Mark Miscellaneous As Returned
+ */
+export const useMarkMiscellaneousAsReturned = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: markMiscellaneousAsReturned,
+
+    onSuccess: (data, variables) => {
+      toastManager.add({
+        title: "Return Material Handover marked as returned",
+        type: "success",
+      });
+
+      // Refetch miscellaneous list
+      queryClient.invalidateQueries({
+        queryKey: [
+          "miscellaneousEntries",
+          variables.vendorId,
+          variables.leadId,
+        ],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["leadTasks"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["userTasks"],
+      });
+    },
+
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          "Failed to mark return material handover",
         type: "error",
       });
     },
