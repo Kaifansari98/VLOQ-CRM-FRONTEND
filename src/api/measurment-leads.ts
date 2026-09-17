@@ -83,8 +83,8 @@ export const CancelledUpdateTheTaskIsmAndFollowUp = async (
 
 export interface ReschedulePayload {
   updated_by: number;
-  closed_at: string;
-  closed_by: number;
+  closed_at?: string;
+  closed_by?: number;
   due_date: string;
   remark: string;
 }

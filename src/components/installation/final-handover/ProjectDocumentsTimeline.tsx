@@ -71,6 +71,11 @@ const STAGE_UI: StageUIConfig[] = [
   { id: "clientDoc", label: "Client Documentation", icon: FileCheck },
   { id: "clientApproval", label: "Client Approval", icon: CheckCircle2 },
   { id: "techCheck", label: "Tech Check", icon: ShieldCheck },
+  {
+  id: "orderLogin",
+  label: "Order Login",
+  icon: FileCheck,
+},
   { id: "production", label: "Production", icon: Package },
   { id: "siteReadiness", label: "Site Readiness", icon: MapPin },
   { id: "dispatch", label: "Dispatch Stage", icon: Truck },
@@ -622,6 +627,16 @@ export default function ProjectDocumentsTimeline({
       ui = idx === -1 ? STAGE_UI : STAGE_UI.slice(0, idx + 1);
     }
     return ui.filter((s) => {
+    const normalizedUserType = userType?.toLowerCase();
+
+    // Miscellaneous users should not see Production and Order Login documents
+    if (
+      normalizedUserType === "miscellaneous" &&
+      (s.id === "production" || s.id === "orderLogin")
+    ) {
+      return false;
+    }
+      
       if (userType?.toLowerCase() === "custom") {
         const requiredPrivilegeCode = DOCUMENT_STAGE_PRIVILEGE_CODES[s.id];
         if (requiredPrivilegeCode) {
