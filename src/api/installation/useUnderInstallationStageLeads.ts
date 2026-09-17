@@ -1785,6 +1785,69 @@ export const useResolveMiscellaneousEntry = () => {
 };
 
 /* ==========================================================
+   ✔️ DELETE - Delete Miscellaneous Entry (Super-Admin only)
+   @route DELETE /leads/installation/under-installation/vendorId/:vendorId/leadId/:leadId/misc/:miscId
+   ========================================================== */
+
+export const deleteMiscellaneousEntry = async (payload: {
+  vendorId: number;
+  leadId: number;
+  miscId: number;
+  deleted_by: number;
+}) => {
+  const { data } = await apiClient.delete(
+    `/leads/installation/under-installation/vendorId/${payload.vendorId}/leadId/${payload.leadId}/misc/${payload.miscId}`,
+    {
+      data: { deleted_by: payload.deleted_by },
+    },
+  );
+
+  return data;
+};
+
+/**
+ * ✅ React Query Mutation Hook - Delete Miscellaneous Entry
+ */
+export const useDeleteMiscellaneousEntry = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteMiscellaneousEntry,
+
+    onSuccess: (_, variables) => {
+      toastManager.add({
+        title: "Miscellaneous entry deleted successfully",
+        type: "success",
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: [
+          "miscellaneousEntries",
+          variables.vendorId,
+          variables.leadId,
+        ],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [
+          "underInstallationDetails",
+          variables.vendorId,
+          variables.leadId,
+        ],
+      });
+    },
+
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          "Failed to delete miscellaneous entry",
+        type: "error",
+      });
+    },
+  });
+};
+
+/* ==========================================================
    ✔️ PUT - Mark Miscellaneous Task Ready
    @route PUT /leads/installation/under-installation/vendorId/:vendorId/leadId/:leadId/misc/:miscId/mark-ready
    ========================================================== */
