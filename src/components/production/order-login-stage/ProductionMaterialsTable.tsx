@@ -33,9 +33,10 @@ const stockLabels = {
   unavailable: "Unavailable",
 };
 
-// Already-frozen quantity is deducted from stock the moment it's frozen, so only the
-// still-outstanding requirement should be weighed against what's left in stock.
-const neededQty = (row: ProductionPreviewRow) => Math.max(0, Math.round((row.qty - (row.issuedQty ?? 0)) * 1e8) / 1e8);
+// Whichever of frozen/issued is further along already deducted stock (freezing deducts
+// immediately; issuing deducts only the portion beyond what was frozen), so only what's
+// left past that should be weighed against what's still available.
+const neededQty = (row: ProductionPreviewRow) => Math.max(0, Math.round((row.qty - Math.max(row.frozenQty ?? 0, row.issuedQty ?? 0)) * 1e8) / 1e8);
 
 export function getMaterialStockState(row: ProductionPreviewRow): keyof typeof stockColors {
   if (row.status !== "ready" || row.available === undefined) return "unavailable";
@@ -149,7 +150,8 @@ export default function ProductionMaterialsTable({ rows, checked = true, busy = 
                     <td className="px-4 py-3"><p>{row.type || "—"}</p><p className="mt-1 text-xs text-muted-foreground">{row.category || "—"}</p></td>
                     <td className="px-4 py-3 font-medium tabular-nums">
                       {quantity(row.qty)} <span className="text-xs font-normal text-muted-foreground">{row.unit}</span>
-                      {!!row.issuedQty && <p className="mt-1 text-xs font-normal text-blue-600 dark:text-blue-400">{quantity(row.issuedQty)} {row.unit} frozen</p>}
+                      {!!row.frozenQty && <p className="mt-1 text-xs font-normal text-blue-600 dark:text-blue-400">{quantity(row.frozenQty)} {row.unit} frozen</p>}
+                      {!!row.issuedQty && <p className="mt-1 text-xs font-normal text-green-600 dark:text-green-400">{quantity(row.issuedQty)} {row.unit} issued</p>}
                     </td>
                     <td className="px-4 py-3 tabular-nums">{quantity(row.product?.current_stock)}<p className="text-xs text-muted-foreground">{row.stockUnit}</p></td>
                     <td className={cn("px-4 py-3 tabular-nums", insufficient && "font-medium text-amber-700 dark:text-amber-400")}>

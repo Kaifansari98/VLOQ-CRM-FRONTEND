@@ -20,7 +20,10 @@ export type ProductionPreviewRow = {
   key: string; source: string; type: string; category: string; qty: number; unit: string;
   name: string; articleCode: string; errors: string[]; product?: InventoryProduct;
   status: "invalid" | "unmatched" | "ambiguous" | "inactive" | "unknown" | "shortage" | "ready";
-  available?: number; shortage?: number; stockUnit?: string; issuedQty?: number;
+  available?: number; shortage?: number; stockUnit?: string;
+  // frozenQty: reserved via Freeze (already deducted from stock at freeze time).
+  // issuedQty: handed off via Issue — the final, consumed state.
+  frozenQty?: number; issuedQty?: number;
 };
 export type ProductionPreview = { rows: ProductionPreviewRow[]; logs: PreviewLog[]; fileCount: number };
 const normalize = (value: string) => value.trim().toLowerCase().replace(/\s+/g, " ");
@@ -155,9 +158,11 @@ export function applyInventoryMatches(preview: ProductionPreview, matches: Map<s
         message = "Inventory quantity is unavailable for this product.";
       } else {
         const available = remaining.get(product.id) ?? Math.max(0, stock);
-        // Frozen/issued quantity has already been deducted from stock, so only the
-        // still-outstanding requirement needs to be covered by what's left.
-        const need = Math.max(0, Math.round((row.qty - (row.issuedQty ?? 0)) * 1e8) / 1e8);
+        // Whichever of frozen/issued is further along already deducted stock (freezing
+        // deducts immediately; issuing deducts only the portion beyond what was frozen),
+        // so only what's left past that needs to be covered by what's still available.
+        const processed = Math.max(row.frozenQty ?? 0, row.issuedQty ?? 0);
+        const need = Math.max(0, Math.round((row.qty - processed) * 1e8) / 1e8);
         row.available = available;
         row.shortage = Math.max(0, Math.round((need - available) * 1e8) / 1e8);
         remaining.set(product.id, Math.max(0, Math.round((available - need) * 1e8) / 1e8));

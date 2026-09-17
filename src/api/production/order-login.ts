@@ -711,7 +711,8 @@ export const useMarkOrderLoginFilled = (
 
 export interface RequiredProductionMaterial {
   id: number; article_code: string; type: string; category: string;
-  qty: string | number; unit: string; name: string; issued_item_qty: string | number;
+  qty: string | number; unit: string; name: string;
+  frozen_item_qty: string | number; issued_item_qty: string | number;
   product: import("@/components/production/order-login-stage/production-file-preview").InventoryProduct;
 }
 export const useRequiredProductionMaterials = (vendorId?: number, leadId?: number, instanceId?: number | null, enabled = true) =>
@@ -742,6 +743,30 @@ export const useFreezeProductionMaterials = (vendorId?: number, leadId?: number,
     onError: (error: any) => {
       toastManager.add({
         title: error?.response?.data?.message || error?.message || "Failed to freeze selected materials.",
+        type: "error",
+      });
+    },
+  });
+};
+
+export const useIssueProductionMaterials = (vendorId?: number, leadId?: number, instanceId?: number | null) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (items: { id: number; qty: number }[]): Promise<RequiredProductionMaterial[]> => {
+      const { data } = await apiClient.post(
+        `/leads/production/order-login/vendorId/${vendorId}/leadId/${leadId}/issue-materials`,
+        { items },
+      );
+      return data.data;
+    },
+    onSuccess: () => {
+      toastManager.add({ title: "Selected materials issued successfully.", type: "success" });
+      queryClient.invalidateQueries({ queryKey: ["requiredProductionMaterials", vendorId, leadId, instanceId ?? "all"] });
+    },
+    onError: (error: any) => {
+      toastManager.add({
+        title: error?.response?.data?.message || error?.message || "Failed to issue selected materials.",
         type: "error",
       });
     },

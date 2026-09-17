@@ -13,11 +13,12 @@ import {
   type InventoryProduct, type ProductionPreview, type ProductionPreviewRow,
 } from "./production-file-preview";
 
-import { useFreezeProductionMaterials, type RequiredProductionMaterial } from "@/api/production/order-login";
+import { useFreezeProductionMaterials, useIssueProductionMaterials, type RequiredProductionMaterial } from "@/api/production/order-login";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 import ProductionMaterialsTable from "./ProductionMaterialsTable";
 import FreezeMaterialsModal from "./FreezeMaterialsModal";
+import IssueMaterialsModal from "./IssueMaterialsModal";
 
 interface Props {
   savedMaterials?: RequiredProductionMaterial[];
@@ -50,7 +51,9 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
   // Tie the result to the exact selection and vendor; an old preview can never approve new files.
   const [checkedSelection, setCheckedSelection] = useState<{ files: File[]; vendorId: number } | null>(null);
   const [freezeKeys, setFreezeKeys] = useState<string[] | null>(null);
+  const [issueKeys, setIssueKeys] = useState<string[] | null>(null);
   const freezeMutation = useFreezeProductionMaterials(vendorId, leadId, instanceId);
+  const issueMutation = useIssueProductionMaterials(vendorId, leadId, instanceId);
 
   useEffect(() => {
     if (!open) return;
@@ -90,11 +93,13 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
       matches.set(material.article_code, [material.product]);
       return { key: String(material.id), source: "", type: material.type, category: material.category,
         qty: Number(material.qty), unit: material.unit, name: material.name, articleCode: material.article_code,
-        issuedQty: Number(material.issued_item_qty) || 0, errors: [], status: "unmatched" };
+        frozenQty: Number(material.frozen_item_qty) || 0, issuedQty: Number(material.issued_item_qty) || 0,
+        errors: [], status: "unmatched" };
     }) };
     return applyInventoryMatches(savedPreview, matches).rows;
   }, [savedMaterials]);
   const freezeRows = useMemo(() => savedRows.filter((row) => freezeKeys?.includes(row.key)), [savedRows, freezeKeys]);
+  const issueRows = useMemo(() => savedRows.filter((row) => issueKeys?.includes(row.key)), [savedRows, issueKeys]);
   const rows = preview?.rows ?? [];
   const errors = preview?.logs.filter((log) => log.level === "error").length ?? 0;
   const warnings = preview?.logs.filter((log) => log.level === "warning").length ?? 0;
@@ -127,7 +132,8 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
               enableRowSelection={isMaterialIssueView}
               isMaterialIssueView={isMaterialIssueView}
               onFreezeSelected={(selected) => setFreezeKeys(selected.map((row) => row.key))}
-              hideSelectionBar={freezeKeys !== null}
+              onIssueSelected={(selected) => setIssueKeys(selected.map((row) => row.key))}
+              hideSelectionBar={freezeKeys !== null || issueKeys !== null}
             />
           </div>}
           <div className="rounded-xl border p-4">
@@ -187,6 +193,13 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
           rows={freezeRows}
           submitting={freezeMutation.isPending}
           onConfirm={async (items) => { await freezeMutation.mutateAsync(items); }}
+        />
+        <IssueMaterialsModal
+          open={issueKeys !== null}
+          onOpenChange={(next) => { if (!next) setIssueKeys(null); }}
+          rows={issueRows}
+          submitting={issueMutation.isPending}
+          onConfirm={async (items) => { await issueMutation.mutateAsync(items); }}
         />
     </>
   );
