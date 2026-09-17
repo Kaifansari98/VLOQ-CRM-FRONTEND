@@ -2,10 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { AlertTriangle, ChevronLeft, ChevronRight, PackageSearch, Search, Snowflake, Truck, X } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, Filter, PackageSearch, Search, Snowflake, Truck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { type ProductionPreviewRow } from "./production-file-preview";
 
@@ -60,7 +61,9 @@ export default function ProductionMaterialsTable({ rows, checked = true, busy = 
   const clearSelection = () => setSelectedRowKeys(new Set());
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const categories = useMemo(() => Array.from(new Set(rows.map((row) => row.category).filter(Boolean))).sort(), [rows]);
   const stockCounts = useMemo(() => {
     const counts = { ready: 0, low: 0, unavailable: 0 };
     if (isMaterialIssueView && checked) {
@@ -76,8 +79,9 @@ export default function ProductionMaterialsTable({ rows, checked = true, busy = 
   const filtered = useMemo(() => rows.filter((row) => {
     const query = search.trim().toLowerCase();
     return (filter === "all" || (filter === "attention" ? row.status !== "ready" : row.status === "ready")) &&
+      (!categoryFilter || row.category === categoryFilter) &&
       (!query || [row.articleCode, row.name, row.product?.product_name, row.category, row.type, row.source].some((value) => value?.toLowerCase().includes(query)));
-  }), [rows, search, filter]);
+  }), [rows, search, filter, categoryFilter]);
   const pageCount = Math.max(1, Math.ceil(filtered.length / 25));
   const currentPage = Math.min(page, pageCount);
   const visibleRows = filtered.slice((currentPage - 1) * 25, currentPage * 25);
@@ -106,8 +110,8 @@ export default function ProductionMaterialsTable({ rows, checked = true, busy = 
               <div className="overflow-hidden rounded-xl border shadow-sm">
                 <div className="overflow-x-auto">
                 <table className="w-full min-w-[1000px] text-left text-sm">
-                  <thead className="sticky top-0 z-10 bg-muted/60 text-xs text-muted-foreground backdrop-blur-sm"><tr className="divide-x border-b">
-                    {enableRowSelection && <th className="w-12 px-4 py-3">
+                  <thead className="sticky top-0 z-10 bg-muted/60 text-xs text-muted-foreground backdrop-blur-sm"><tr className="border-b">
+                    {enableRowSelection && <th className="w-12 border-r px-4 py-3">
                       <Checkbox
                         aria-label="Select all material rows"
                         checked={allSelected ? true : selectedCount > 0 ? "indeterminate" : false}
@@ -115,7 +119,31 @@ export default function ProductionMaterialsTable({ rows, checked = true, busy = 
                         onCheckedChange={(value) => setSelectedRowKeys(value === true ? new Set(rows.map((row) => row.key)) : new Set())}
                       />
                     </th>}
-                    {["Product / Article code", "Type / Category", "Required", "Inventory stock", "Updated Stock"].map((label) => <th key={label} className="px-4 py-3 font-semibold uppercase tracking-wide">{label}</th>)}</tr></thead>
+                    <th className="border-r px-4 py-3 font-semibold uppercase tracking-wide">Product / Article code</th>
+                    <th className="border-r px-4 py-3 font-semibold uppercase tracking-wide">
+                      <div className="flex items-center justify-between gap-1.5">
+                        <span>Type / Category</span>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              aria-label="Filter by category"
+                              className={cn("rounded p-1 normal-case text-muted-foreground hover:bg-muted hover:text-foreground", categoryFilter && "text-primary")}
+                            >
+                              <Filter className="size-3.5" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            <DropdownMenuRadioGroup value={categoryFilter ?? "__all__"} onValueChange={(value) => { setCategoryFilter(value === "__all__" ? null : value); setPage(1); }}>
+                              <DropdownMenuRadioItem value="__all__">All categories</DropdownMenuRadioItem>
+                              {!!categories.length && <DropdownMenuSeparator />}
+                              {categories.map((category) => <DropdownMenuRadioItem key={category} value={category}>{category}</DropdownMenuRadioItem>)}
+                            </DropdownMenuRadioGroup>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </th>
+                    {["Required", "Inventory stock", "Updated Stock"].map((label) => <th key={label} className="border-r px-4 py-3 font-semibold uppercase tracking-wide last:border-r-0">{label}</th>)}</tr></thead>
                   <tbody className="divide-y">{visibleRows.map((row) => {
                     const need = neededQty(row);
                     const updatedStock = row.available !== undefined
@@ -123,8 +151,8 @@ export default function ProductionMaterialsTable({ rows, checked = true, busy = 
                       : undefined;
                     const insufficient = row.available !== undefined && need > row.available;
                     const stockState = isMaterialIssueView && checked ? getMaterialStockState(row) : undefined;
-                    return <tr key={row.key} data-state={enableRowSelection && selectedRowKeys.has(row.key) ? "selected" : undefined} className="align-top divide-x transition-colors hover:bg-muted/30 data-[state=selected]:bg-primary/5">
-                    {enableRowSelection && <td className="px-4 py-3">
+                    return <tr key={row.key} data-state={enableRowSelection && selectedRowKeys.has(row.key) ? "selected" : undefined} className="align-top transition-colors hover:bg-muted/30 data-[state=selected]:bg-primary/5">
+                    {enableRowSelection && <td className="border-r px-4 py-3">
                       <Checkbox
                         aria-label={`Select ${row.name || "product"} (${row.articleCode || "no article code"})`}
                         checked={selectedRowKeys.has(row.key)}
@@ -137,7 +165,7 @@ export default function ProductionMaterialsTable({ rows, checked = true, busy = 
                         })}
                       />
                     </td>}
-                    <td className="max-w-72 px-4 py-3">
+                    <td className="max-w-72 border-r px-4 py-3">
                       {stockState && <span className={cn("mb-1.5 inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium", stockChipColors[stockState])}>
                         <span className={cn("size-1.5 rounded-full", stockDotColors[stockState])} />{stockLabels[stockState]}
                       </span>}
@@ -147,13 +175,13 @@ export default function ProductionMaterialsTable({ rows, checked = true, busy = 
                       <p className="mt-1 break-words text-[11px] text-muted-foreground">{row.source}</p>
                       {row.errors.length > 0 && <p className="mt-1 flex items-start gap-1 max-w-48 text-xs text-destructive"><AlertTriangle className="mt-0.5 size-3 shrink-0" />{row.errors.join("; ")}</p>}
                     </td>
-                    <td className="px-4 py-3"><p>{row.type || "—"}</p><p className="mt-1 text-xs text-muted-foreground">{row.category || "—"}</p></td>
-                    <td className="px-4 py-3 font-medium tabular-nums">
+                    <td className="border-r px-4 py-3"><p>{row.type || "—"}</p><p className="mt-1 text-xs text-muted-foreground">{row.category || "—"}</p></td>
+                    <td className="border-r px-4 py-3 font-medium tabular-nums">
                       {quantity(row.qty)} <span className="text-xs font-normal text-muted-foreground">{row.unit}</span>
                       {!!row.frozenQty && <p className="mt-1 text-xs font-normal text-blue-600 dark:text-blue-400">{quantity(row.frozenQty)} {row.unit} frozen</p>}
                       {!!row.issuedQty && <p className="mt-1 text-xs font-normal text-green-600 dark:text-green-400">{quantity(row.issuedQty)} {row.unit} issued</p>}
                     </td>
-                    <td className="px-4 py-3 tabular-nums">{quantity(row.product?.current_stock)}<p className="text-xs text-muted-foreground">{row.stockUnit}</p></td>
+                    <td className="border-r px-4 py-3 tabular-nums">{quantity(row.product?.current_stock)}<p className="text-xs text-muted-foreground">{row.stockUnit}</p></td>
                     <td className={cn("px-4 py-3 tabular-nums", insufficient && "font-medium text-amber-700 dark:text-amber-400")}>
                       <span className="inline-flex items-center gap-1">{insufficient && <AlertTriangle className="size-3.5 shrink-0" />}{quantity(updatedStock)}</span>
                       <p className="text-xs text-muted-foreground">{updatedStock !== undefined ? row.unit : ""}</p>
