@@ -19,6 +19,7 @@ import {
   Send,
   Pencil,
   PackageCheck,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
@@ -66,6 +67,7 @@ import {
   MiscellaneousEntry,
   useMiscFollowups,
   useCreateMiscFollowup,
+  useDeleteMiscellaneousEntry,
 } from "@/api/installation/useUnderInstallationStageLeads";
 import { useAppSelector } from "@/redux/store";
 import TextSelectPicker from "@/components/TextSelectPicker";
@@ -339,6 +341,8 @@ export default function InstallationMiscellaneous({
   const createMutation = useCreateMiscellaneousEntry();
   const createReturnOrderMutation = useCreateMiscellaneousReturnOrder();
   const updateMutation = useUpdateMiscellaneousEntry();
+  const deleteMutation = useDeleteMiscellaneousEntry();
+  const [entryToDelete, setEntryToDelete] = useState<MiscellaneousEntry | null>(null);
   const { data: entries, refetch, isLoading: loadingEntries } = useMiscellaneousEntries(vendorId, leadId);
   const updateERDMutation = useUpdateMiscERD();
   const markReadyMutation = useMarkMiscellaneousTaskReady();
@@ -1562,27 +1566,51 @@ export default function InstallationMiscellaneous({
                         </TableCell>
                       {canSeeActionsColumn && (
                         <TableCell className="py-3 text-center" onClick={(e) => e.stopPropagation()}>
-                          {canEditEntry(entry) ? (
-                            <CustomeTooltip
-                              value={shouldDisableBlockedActions ? blockedTooltip : "Edit miscellaneous"}
-                              truncateValue={
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
-                                  disabled={shouldDisableBlockedActions}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleOpenEditModal(entry);
-                                  }}
-                                >
-                                  <Pencil className="w-4 h-4" />
-                                </Button>
-                              }
-                            />
-                          ) : (
-                            <span className="text-sm text-muted-foreground">-</span>
-                          )}
+                          <div className="flex items-center justify-center gap-1">
+                            {canEditEntry(entry) && (
+                              <CustomeTooltip
+                                value={shouldDisableBlockedActions ? blockedTooltip : "Edit miscellaneous"}
+                                truncateValue={
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
+                                    disabled={shouldDisableBlockedActions}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenEditModal(entry);
+                                    }}
+                                  >
+                                    <Pencil className="w-4 h-4" />
+                                  </Button>
+                                }
+                              />
+                            )}
+
+                            {isSuperAdmin && (
+                              <CustomeTooltip
+                                value={shouldDisableBlockedActions ? blockedTooltip : "Delete miscellaneous"}
+                                truncateValue={
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40"
+                                    disabled={shouldDisableBlockedActions || deleteMutation.isPending}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEntryToDelete(entry);
+                                    }}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                }
+                              />
+                            )}
+
+                            {!canEditEntry(entry) && !isSuperAdmin && (
+                              <span className="text-sm text-muted-foreground">-</span>
+                            )}
+                          </div>
                         </TableCell>
                       )}
                     </TableRow>
@@ -2099,21 +2127,37 @@ export default function InstallationMiscellaneous({
             {/* ── Tab 1: Misc Details ────────────────────────────────────── */}
             <TabsContent value="misc-details">
               <div className="flex-1 overflow-y-auto py-2 space-y-6 px-1">
-                {viewModalData && canEditEntry(viewModalData) && (
-                  <div className="flex justify-end">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={shouldDisableBlockedActions}
-                      onClick={() => {
-                        const item = viewModalData;
-                        setViewModal({ open: false, id: null });
-                        handleOpenEditModal(item);
-                      }}
-                    >
-                      <Pencil className="w-3.5 h-3.5 mr-1.5" />
-                      Edit Miscellaneous
-                    </Button>
+                {viewModalData && (canEditEntry(viewModalData) || isSuperAdmin) && (
+                  <div className="flex justify-end items-center gap-2">
+                    {canEditEntry(viewModalData) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={shouldDisableBlockedActions}
+                        onClick={() => {
+                          const item = viewModalData;
+                          setViewModal({ open: false, id: null });
+                          handleOpenEditModal(item);
+                        }}
+                      >
+                        <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                        Edit Miscellaneous
+                      </Button>
+                    )}
+                    {isSuperAdmin && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 dark:border-red-900/50 dark:hover:bg-red-950/30"
+                        disabled={shouldDisableBlockedActions || deleteMutation.isPending}
+                        onClick={() => {
+                          setEntryToDelete(viewModalData);
+                        }}
+                      >
+                        <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                        Delete Miscellaneous
+                      </Button>
+                    )}
                   </div>
                 )}
                 {/* Quick Stats */}
@@ -4017,6 +4061,70 @@ export default function InstallationMiscellaneous({
           )}
         </div>
       </BaseModal>
+
+      {/* ── Delete Confirmation Dialog ───────────────────────────────────────── */}
+      <AlertDialog
+        open={Boolean(entryToDelete)}
+        onOpenChange={(open) => {
+          if (!open) setEntryToDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg font-semibold text-red-600 dark:text-red-400 flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-red-600 dark:text-red-400" />
+              Delete Miscellaneous Entry?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-muted-foreground">
+              Are you sure you want to delete this miscellaneous entry (
+              <span className="font-semibold text-foreground">
+                {entryToDelete?.type?.name || "Miscellaneous"}
+              </span>
+              )? This will permanently remove the entry, its associated documents, team assignments, followups, and close linked tasks. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white font-medium"
+              disabled={deleteMutation.isPending || !entryToDelete}
+              onClick={(e) => {
+                e.preventDefault();
+                if (!entryToDelete) return;
+                deleteMutation.mutate(
+                  {
+                    vendorId,
+                    leadId,
+                    miscId: entryToDelete.id,
+                    deleted_by: userId!,
+                  },
+                  {
+                    onSuccess: () => {
+                      if (viewModal.id === entryToDelete.id) {
+                        setViewModal({ open: false, id: null });
+                      }
+                      setEntryToDelete(null);
+                    },
+                  },
+                );
+              }}
+            >
+              {deleteMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* ── Approve Confirmation Dialog ────────────────────────────────────── */}
       <AlertDialog open={showApproveModal} onOpenChange={setShowApproveModal}>
