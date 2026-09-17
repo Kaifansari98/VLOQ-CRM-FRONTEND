@@ -11,6 +11,7 @@ export type PreviewLog = { level: "error" | "warning" | "success"; source: strin
 export type InventoryProduct = {
   id: number; vendor_id: number; article_code: string | null; product_name: string;
   current_stock: string | number | null; active: string;
+  min_stock_qty?: string | number | null;
   unit_of_measure?: string | null;
   stockUnit?: { unit_name: string } | null;
   primaryUnit?: { unit_name: string; short_name?: string | null } | null;
@@ -20,6 +21,9 @@ export type ProductionPreviewRow = {
   name: string; articleCode: string; errors: string[]; product?: InventoryProduct;
   status: "invalid" | "unmatched" | "ambiguous" | "inactive" | "unknown" | "shortage" | "ready";
   available?: number; shortage?: number; stockUnit?: string;
+  // frozenQty: reserved via Freeze (already deducted from stock at freeze time).
+  // issuedQty: handed off via Issue — the final, consumed state.
+  frozenQty?: number; issuedQty?: number;
 };
 export type ProductionPreview = { rows: ProductionPreviewRow[]; logs: PreviewLog[]; fileCount: number };
 const normalize = (value: string) => value.trim().toLowerCase().replace(/\s+/g, " ");
@@ -35,13 +39,18 @@ function cellText(cell: Cell): string {
 export async function parseProductionFiles(files: File[]): Promise<ProductionPreview> {
   const preview: ProductionPreview = { rows: [], logs: [], fileCount: files.length };
   for (const [fileIndex, file] of files.entries()) {
-    if (!file.name.toLowerCase().endsWith(".xlsx")) {
-      preview.logs.push({ level: "error", source: file.name, message: "Only .xlsx Excel files are accepted. Save your file as an Excel workbook and try again." });
+    if (!/\.(xlsx|csv)$/i.test(file.name)) {
+      preview.logs.push({ level: "error", source: file.name, message: "Only .xlsx and .csv files are accepted." });
       continue;
     }
     try {
       const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(await file.arrayBuffer());
+      if (file.name.toLowerCase().endsWith(".csv")) {
+        const sheet = workbook.addWorksheet("CSV");
+        parseProductionCsv(await file.text()).forEach((row) => sheet.addRow(row));
+      } else {
+        await workbook.xlsx.load(await file.arrayBuffer());
+      }
       const sheets = workbook.worksheets.filter((sheet) => sheet.actualRowCount > 0);
       if (!sheets.length) throw new Error("The workbook is empty.");
       for (const sheet of sheets) {
@@ -76,6 +85,7 @@ export async function parseProductionFiles(files: File[]): Promise<ProductionPre
           const errors = REQUIRED_PRODUCTION_HEADERS.filter((_, i) => !values[i]).map((header) => `${header} is required`);
           const qty = Number(quantity);
           if (quantity && (!Number.isFinite(qty) || qty <= 0)) errors.push("Qty. must be a number greater than zero");
+          if (Number.isFinite(qty) && (qty > 9999999999.99 || Math.abs(qty * 100 - Math.round(qty * 100)) > 0.0001)) errors.push("Qty. must fit 10 digits and at most 2 decimal places");
           const rowSource = `${source} · row ${rowNumber}`;
           preview.rows.push({ key: `${fileIndex}:${sheet.id}:${rowNumber}`, source: rowSource, type, category,
             qty, unit, name, articleCode, errors, status: errors.length ? "invalid" : "unmatched" });
@@ -148,9 +158,14 @@ export function applyInventoryMatches(preview: ProductionPreview, matches: Map<s
         message = "Inventory quantity is unavailable for this product.";
       } else {
         const available = remaining.get(product.id) ?? Math.max(0, stock);
+        // Whichever of frozen/issued is further along already deducted stock (freezing
+        // deducts immediately; issuing deducts only the portion beyond what was frozen),
+        // so only what's left past that needs to be covered by what's still available.
+        const processed = Math.max(row.frozenQty ?? 0, row.issuedQty ?? 0);
+        const need = Math.max(0, Math.round((row.qty - processed) * 1e8) / 1e8);
         row.available = available;
-        row.shortage = Math.max(0, Math.round((row.qty - available) * 1e8) / 1e8);
-        remaining.set(product.id, Math.max(0, Math.round((available - row.qty) * 1e8) / 1e8));
+        row.shortage = Math.max(0, Math.round((need - available) * 1e8) / 1e8);
+        remaining.set(product.id, Math.max(0, Math.round((available - need) * 1e8) / 1e8));
         row.status = row.shortage > 0 ? "shortage" : "ready";
         if (row.shortage) message = `Short by ${row.shortage} ${row.unit}. Available stock accounts for earlier rows in this selection.`;
       }
@@ -160,3 +175,29 @@ export function applyInventoryMatches(preview: ProductionPreview, matches: Map<s
   });
   return { ...preview, rows, logs };
 }
+
+// RFC-style CSV fields, including escaped quotes, commas and embedded newlines.
+export function parseProductionCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [], field = "", quoted = false;
+  text = text.replace(/^\uFEFF/, "");
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (char === '"') {
+      if (quoted && text[i + 1] === '"') { field += '"'; i++; }
+      else if (quoted || !field) quoted = !quoted;
+      else throw new Error("Unexpected quote in CSV field");
+    } else if (char === "," && !quoted) { row.push(field); field = ""; }
+    else if ((char === "\n" || char === "\r") && !quoted) {
+      row.push(field); rows.push(row); row = []; field = "";
+      if (char === "\r" && text[i + 1] === "\n") i++;
+    } else field += char;
+  }
+  if (quoted) throw new Error("Unclosed quote in CSV file");
+  if (field || row.length) { row.push(field); rows.push(row); }
+  return rows;
+}
+
+export const canSaveProductionRow = (row: ProductionPreviewRow) =>
+  !row.errors.length && !!row.product && row.product.active === "Yes" &&
+  ["ready", "shortage", "unknown"].includes(row.status);

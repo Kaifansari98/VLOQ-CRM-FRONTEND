@@ -65,6 +65,7 @@ export interface UniversalTableProps {
   strictStatusTag?: boolean;
   ignoreFranchiseScope?: boolean;
   materialIssueReadyOnly?: boolean;
+  materialIssueCompletedOnly?: boolean;
 }
 
 // -------------------------------------------------------
@@ -468,6 +469,7 @@ export function UniversalTable({
   strictStatusTag = false,
   ignoreFranchiseScope = false,
   materialIssueReadyOnly = false,
+  materialIssueCompletedOnly = false,
 }: UniversalTableProps) {
   // -------------------- GLOBAL STATE --------------------
 
@@ -529,6 +531,7 @@ export function UniversalTable({
     normalizedUserType === "super-admin" ||
     normalizedUserType === "auditor" ||
     normalizedUserType === "sales-executive" ||
+    normalizedUserType === "site-supervisor" ||
     normalizedUserType === "head-site-supervisor";
   const normalizedType = String(type || "")
     .trim()
@@ -803,6 +806,7 @@ export function UniversalTable({
       tag: type,
       strict_status_tag: strictStatusTag || undefined,
       material_issue_ready_only: materialIssueReadyOnly || undefined,
+      material_issue_completed_only: materialIssueCompletedOnly || undefined,
 
       page: overallPagination.pageIndex + 1,
       limit: overallPagination.pageSize,
@@ -855,6 +859,7 @@ export function UniversalTable({
     type,
     strictStatusTag,
     materialIssueReadyOnly,
+    materialIssueCompletedOnly,
     franchiseId,
     overallPagination,
     overallSorting,
@@ -1320,7 +1325,7 @@ export function UniversalTable({
           ? lead.productStructureInstances
           : [];
 
-        if (handlesLargeScaleProjects && !isType9) {
+        if (handlesLargeScaleProjects && (!isType9 || materialIssueReadyOnly || materialIssueCompletedOnly)) {
           const structureTypes = Array.from(
             new Set(
               instances
@@ -1483,6 +1488,9 @@ export function UniversalTable({
     }));
   }, [
     activeData,
+    materialIssueReadyOnly,
+    materialIssueCompletedOnly,
+    handlesLargeScaleProjectsFromAuth,
     activeSorting,
     normalizedType,
     pendingServicesOnly,

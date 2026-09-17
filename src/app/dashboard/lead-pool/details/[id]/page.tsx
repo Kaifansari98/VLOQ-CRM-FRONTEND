@@ -99,6 +99,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { generateOnlineLeadHistoryReport } from "@/lib/reports/onlineLeadHistoryReport";
+import { useFranchisesByVendorId } from "@/api/franchise";
 import {
   Table,
   TableBody,
@@ -221,7 +222,23 @@ export default function OnlineLeadDetailsPage() {
   const isSuperAdmin = userType === "super-admin";
   const [lead, setLead] = useState<OnlineLead | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
-  const userFranchiseId = user?.franchise_id;
+  const userFranchiseId = useAppSelector((state) => state.auth.franchise_id ?? state.auth.user?.franchise_id);
+
+  const reduxModuledForB2b = useAppSelector(
+    (s) => s.auth.moduled_for_b2b ?? s.auth.user?.moduled_for_b2b ?? false,
+  );
+  const { data: franchises = [] } = useFranchisesByVendorId(vendorId, !!vendorId);
+  const isB2b = useMemo(() => {
+    const activeFranchise = franchises.find((f) => f.id === userFranchiseId);
+    return activeFranchise?.moduled_for_b2b ?? reduxModuledForB2b;
+  }, [franchises, userFranchiseId, reduxModuledForB2b]);
+
+  useEffect(() => {
+    if (isB2b) {
+      router.replace("/dashboard/leads/leadstable");
+    }
+  }, [isB2b, router]);
+
   const isPendingApproval = lead?.approval_status === "PENDING";
   const isAuthorizedToApprove = useMemo(() => {
     if (!lead) return false;

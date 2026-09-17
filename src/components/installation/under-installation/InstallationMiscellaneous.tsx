@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   AlertCircle,
@@ -14,9 +14,9 @@ import {
   Clock,
   XCircle,
   ShieldCheck,
-  CalendarClock,
   Loader2,
   Send,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
@@ -48,17 +48,20 @@ import TextAreaInput from "@/components/origin-text-area";
 import CurrencyInput from "@/components/custom/CurrencyInput";
 import {
   useCreateMiscellaneousEntry,
+  useUpdateMiscellaneousEntry,
   useMiscellaneousEntries,
   useMiscTypes,
   useMiscTeams,
   CreateMiscellaneousPayload,
+  UpdateMiscellaneousPayload,
   useUpdateMiscERD,
   useMarkMiscellaneousTaskReady,
   useUpdateMiscApproval,
   useUpdateMiscRequiredDeliveryDate,
   useUploadMiscellaneousDocuments,
-  useMiscFollowupEligibleUsers,
-  useCreateMiscFollowupTask,
+  MiscellaneousEntry,
+  useMiscFollowups,
+  useCreateMiscFollowup,
 } from "@/api/installation/useUnderInstallationStageLeads";
 import { useAppSelector } from "@/redux/store";
 import TextSelectPicker from "@/components/TextSelectPicker";
@@ -154,6 +157,10 @@ interface InstallationMiscellaneousProps {
   leadId: number;
   accountId: number;
   initialTaskId?: number;
+  initialMiscId?: number;
+  initialItemData?: MiscellaneousEntry;
+  onlyModal?: boolean;
+  onModalClose?: () => void;
   hideAddButton?: boolean;
 }
 
@@ -189,10 +196,28 @@ export default function InstallationMiscellaneous({
   leadId,
   accountId,
   initialTaskId,
+  initialMiscId,
+  initialItemData,
+  onlyModal,
+  onModalClose,
   hideAddButton,
 }: InstallationMiscellaneousProps) {
-  const userId = useAppSelector((s) => s.auth.user?.id);
-  const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const authUser = useAppSelector((s) => s.auth.user);
+  const userId = authUser?.id;
+  const rawUserType = useAppSelector(
+    (s) =>
+      (typeof s.auth.user?.user_type === "object"
+        ? (s.auth.user?.user_type as any)?.user_type ||
+          (s.auth.user?.user_type as any)?.user_type_name ||
+          (s.auth.user?.user_type as any)?.name ||
+          (s.auth.user?.user_type as any)?.type
+        : s.auth.user?.user_type) ||
+      s.auth.user?.user_role ||
+      (s.auth.user as any)?.role ||
+      "",
+  );
+  const userType = typeof rawUserType === "string" ? rawUserType : "";
+  const userRole = typeof authUser?.user_role === "string" ? authUser.user_role : "";
   const customPrivilegeCodes = useAppSelector((s) => s.customPrivileges.codes);
 
   const { data: miscTypes = [], isLoading: loadingTypes } = useMiscTypes(vendorId);
@@ -200,6 +225,8 @@ export default function InstallationMiscellaneous({
   const queryClient = useQueryClient();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<MiscellaneousEntry | null>(null);
+  const skipMaterialResetRef = useRef(false);
 
   const form = useForm<MiscFormValues>({
     resolver: zodResolver(miscFormSchema),
@@ -237,19 +264,32 @@ export default function InstallationMiscellaneous({
     });
   };
   const resetForm = () => {
-    form.reset();
+    form.reset({
+      misc_type_id: undefined,
+      selected_instance_id: undefined,
+      problem_description: "",
+      reorder_material_details: "",
+      supervisor_remark: "",
+      selectedTeams: [],
+      files: [],
+      quantity: undefined,
+      cost: undefined,
+      expected_ready_date: undefined,
+    });
     setFiles([]);
     setFormErrors({});
+    setEditingEntry(null);
   };
   const watchedInstanceId = form.watch("selected_instance_id");
 
   const resolveMisc = useResolveMiscellaneousEntry();
   const [viewModal, setViewModal] = useState<{ open: boolean; id: number | null }>({
-    open: false,
-    id: null,
+    open: Boolean(initialMiscId),
+    id: initialMiscId || null,
   });
 
   const createMutation = useCreateMiscellaneousEntry();
+  const updateMutation = useUpdateMiscellaneousEntry();
   const { data: entries, refetch } = useMiscellaneousEntries(vendorId, leadId);
   const updateERDMutation = useUpdateMiscERD();
   const markReadyMutation = useMarkMiscellaneousTaskReady();
@@ -258,9 +298,11 @@ export default function InstallationMiscellaneous({
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const leadStatus = leadData?.status;
 
-  const viewModalData = useMemo(
-    () => entries?.find((e) => e.id === viewModal.id) ?? null,
-    [entries, viewModal.id],
+  const viewModalData: MiscellaneousEntry | null = useMemo(
+    () =>
+      entries?.find((e) => e.id === viewModal.id) ??
+      (initialItemData?.id === viewModal.id ? initialItemData : null),
+    [entries, viewModal.id, initialItemData],
   );
 
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
@@ -280,15 +322,132 @@ export default function InstallationMiscellaneous({
   const [readyFiles, setReadyFiles] = useState<File[]>([]);
   const [showDeliveryConfirm, setShowDeliveryConfirm] = useState(false);
   const [showApproveModal, setShowApproveModal] = useState(false);
-  const [approveRemark, setApproveRemark] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [openDeliveryTaskModal, setOpenDeliveryTaskModal] = useState(false);
 
-  const normalizedUserType = userType?.toLowerCase().trim().replace(/_/g, "-").replace(/\s+/g, "-");
-  const isFactoryUser = normalizedUserType === "factory";
-  const isSupervisorUser = normalizedUserType === "site-supervisor" || normalizedUserType === "head-site-supervisor";
-  const isAdminOrSuper = normalizedUserType === "admin" || normalizedUserType === "super-admin";
+  const [followupDate, setFollowupDate] = useState<string | undefined>(undefined);
+  const [followupSolution, setFollowupSolution] = useState<string>("");
+
+  const { data: followups = [], isLoading: loadingFollowups } = useMiscFollowups(
+    vendorId,
+    viewModalData?.id,
+  );
+  const createFollowupMutation = useCreateMiscFollowup();
+
+  const handleAddFollowup = () => {
+    if (!viewModalData?.id) return;
+    if (!followupDate) {
+      toastManager.add({
+        title: "Please select a date",
+        type: "error",
+      });
+      return;
+    }
+    if (!followupSolution.trim()) {
+      toastManager.add({
+        title: "Please enter solution / discussion details",
+        type: "error",
+      });
+      return;
+    }
+
+    createFollowupMutation.mutate(
+      {
+        vendorId,
+        miscId: viewModalData.id,
+        leadId,
+        followupDate,
+        solution: followupSolution.trim(),
+        createdBy: userId,
+      },
+      {
+        onSuccess: () => {
+          setFollowupSolution("");
+          setFollowupDate(undefined);
+        },
+      },
+    );
+  };
+
+  const getFollowupRoleBadge = (roleName?: string) => {
+    const norm = (roleName || "").toLowerCase().trim().replace(/_/g, "-").replace(/\s+/g, "-");
+    if (norm === "super-admin" || norm === "admin") {
+      return (
+        <Badge className="bg-indigo-500/15 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 font-medium text-[11px]">
+          Super Admin
+        </Badge>
+      );
+    }
+    if (norm === "site-supervisor" || norm === "head-site-supervisor") {
+      return (
+        <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 font-medium text-[11px]">
+          Site Supervisor
+        </Badge>
+      );
+    }
+    if (norm === "factory") {
+      return (
+        <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800 font-medium text-[11px]">
+          Factory
+        </Badge>
+      );
+    }
+    if (norm === "miscellaneous") {
+      return (
+        <Badge className="bg-purple-500/15 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800 font-medium text-[11px]">
+          Miscellaneous
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="secondary" className="font-medium text-[11px]">
+        {roleName || "User"}
+      </Badge>
+    );
+  };
+
+  const getFollowupInitials = (name?: string) => {
+    if (!name) return "U";
+    const parts = name.trim().split(" ");
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+  };
+
+  const normalizedUserType = (
+    typeof userType === "string" ? userType : ""
+  )
+    .toLowerCase()
+    .trim()
+    .replace(/_/g, "-")
+    .replace(/\s+/g, "-");
+  const normalizedRole = userRole.toLowerCase().trim().replace(/_/g, "-").replace(/\s+/g, "-");
+
+  const isFactoryUser =
+    normalizedUserType === "factory" ||
+    normalizedUserType === "factory-user" ||
+    normalizedUserType.includes("factory") ||
+    normalizedRole === "factory" ||
+    normalizedRole.includes("factory");
+  const isSupervisorUser =
+    normalizedUserType === "site-supervisor" ||
+    normalizedUserType === "head-site-supervisor" ||
+    normalizedUserType.includes("supervisor") ||
+    normalizedRole.includes("supervisor");
+  const isAdminOrSuper =
+    normalizedUserType === "admin" ||
+    normalizedUserType === "super-admin" ||
+    normalizedUserType.includes("admin") ||
+    normalizedRole.includes("admin");
+  const isSuperAdmin =
+    normalizedUserType === "super-admin" ||
+    normalizedRole === "super-admin";
+  const isMiscellaneousUser =
+    normalizedUserType === "miscellaneous" ||
+    normalizedUserType.includes("miscellaneous") ||
+    normalizedRole.includes("miscellaneous");
 
   const canDoERDDate = canDoERDMiscellaneousDate(normalizedUserType || userType, leadStatus);
   const canDoMarkAsResolved = canMiscellaneousMarkAsResolved(normalizedUserType || userType, leadStatus);
@@ -300,94 +459,60 @@ export default function InstallationMiscellaneous({
       )
       : true;
 
-  const isTaskReady = viewModalData?.task?.status === "completed";
+  const canEditEntry = (entryItem?: MiscellaneousEntry | null) => {
+    if (!entryItem) return false;
+    if (shouldDisableBlockedActions) return false;
 
-  // ── Miscellaneous Followup ────────────────────────────────────────────────
-  const { data: followupEligibleUsers = [], isLoading: loadingFollowupUsers } =
-    useMiscFollowupEligibleUsers(vendorId);
-  const { mutate: createFollowupTask, isPending: isCreatingFollowup } =
-    useCreateMiscFollowupTask();
-
-  const [followupUserId, setFollowupUserId] = useState<string>("");
-  const [followupDueDate, setFollowupDueDate] = useState<string | undefined>(undefined);
-  const [followupRemark, setFollowupRemark] = useState<string>("");
-
-  useEffect(() => {
-    setFollowupUserId("");
-    setFollowupDueDate(undefined);
-    setFollowupRemark("");
-  }, [viewModalData?.id]);
-
-  const handleCreateFollowup = () => {
-    if (!viewModalData?.id || !leadId) return;
-    if (!followupUserId) {
-      toastManager.add({ title: "Please select an assigned user", type: "error" });
-      return;
-    }
-    if (!followupDueDate) {
-      toastManager.add({ title: "Please select a due date", type: "error" });
-      return;
-    }
-    if (!followupRemark.trim()) {
-      toastManager.add({ title: "Please enter a followup remark", type: "error" });
-      return;
+    // Only miscellaneous user and super-admin are allowed to edit
+    if (!isMiscellaneousUser && !isSuperAdmin) {
+      return false;
     }
 
-    createFollowupTask(
-      {
-        vendorId,
-        miscId: viewModalData.id,
-        leadId,
-        userId: Number(followupUserId),
-        dueDate: followupDueDate,
-        remark: followupRemark.trim(),
-      },
-      {
-        onSuccess: () => {
-          setFollowupUserId("");
-          setFollowupDueDate(undefined);
-          setFollowupRemark("");
-        },
-      },
-    );
+    // After approval, only super-admin can edit
+    if (entryItem.misc_approved === true) {
+      return isSuperAdmin;
+    }
+
+    // Before approval, both miscellaneous user and super-admin can edit
+    return true;
   };
 
-  const getFollowupRoleBadge = (roleName?: string) => {
-    const normalized = (roleName || "").toLowerCase().trim();
-    if (normalized.includes("head-site") || normalized.includes("head site")) {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-          Head Site Supervisor
-        </span>
-      );
+  const canSeeActionsColumn = isMiscellaneousUser || isSuperAdmin;
+
+  const isTaskReady = Boolean(viewModalData?.expected_ready_date) && viewModalData?.task?.status === "completed";
+
+  const isBeforeExpectedReadyDate = (erdDateValue?: string | Date | null) => {
+    if (!erdDateValue) return false;
+    let erdDateStr = "";
+    if (typeof erdDateValue === "string") {
+      const match = erdDateValue.match(/^(\d{4}-\d{2}-\d{2})/);
+      if (match) {
+        erdDateStr = match[1];
+      } else {
+        const d = new Date(erdDateValue);
+        if (isNaN(d.getTime())) return false;
+        erdDateStr = d.toISOString().slice(0, 10);
+      }
+    } else if (erdDateValue instanceof Date) {
+      if (isNaN(erdDateValue.getTime())) return false;
+      erdDateStr = erdDateValue.toISOString().slice(0, 10);
     }
-    if (normalized.includes("site-supervisor") || normalized.includes("site supervisor")) {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-          Site Supervisor
-        </span>
-      );
-    }
-    if (normalized.includes("factory")) {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-          Factory
-        </span>
-      );
-    }
-    if (normalized.includes("miscellaneous")) {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-teal-100 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
-          Miscellaneous
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-muted text-muted-foreground border border-border">
-        {roleName || "User"}
-      </span>
-    );
+
+    if (!erdDateStr) return false;
+
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    const todayDateStr = `${year}-${month}-${day}`;
+
+    return todayDateStr < erdDateStr;
   };
+
+  const isDateBeforeERD = isBeforeExpectedReadyDate(viewModalData?.expected_ready_date);
+  const isMarkReadyRestrictedByERD = !isSuperAdmin && isDateBeforeERD;
+
+
 
   const { data: orderLoginSummary = [], isLoading: loadingSummary } =
     useOrderLoginSummary(vendorId, leadId);
@@ -426,6 +551,10 @@ export default function InstallationMiscellaneous({
   }, [orderLoginSummary, watchedInstanceId]);
 
   useEffect(() => {
+    if (skipMaterialResetRef.current) {
+      skipMaterialResetRef.current = false;
+      return;
+    }
     form.setValue("reorder_material_details", "", { shouldValidate: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [watchedInstanceId]);
@@ -464,13 +593,79 @@ export default function InstallationMiscellaneous({
   }, [initialTaskId]);
 
   useEffect(() => {
+    if (initialMiscId) {
+      setViewModal({ open: true, id: initialMiscId });
+    }
+  }, [initialMiscId]);
+
+  useEffect(() => {
     if (!initialTaskId || initialModalHandled || !entries?.length) return;
-    const matched = entries.find((item) => item.task?.id === initialTaskId);
+    const matched = entries.find(
+      (item) =>
+        item.task?.id === initialTaskId ||
+        item.delivery_task?.id === initialTaskId ||
+        item.erd_task?.id === initialTaskId,
+    );
     if (matched) {
       setViewModal({ open: true, id: matched.id });
       setInitialModalHandled(true);
+      if (matched.delivery_task?.id === initialTaskId) {
+        setOpenDeliveryTaskModal(true);
+      }
     }
   }, [initialTaskId, entries, initialModalHandled]);
+
+  const handleOpenEditModal = (entryToEdit: MiscellaneousEntry) => {
+    setEditingEntry(entryToEdit);
+    skipMaterialResetRef.current = true;
+
+    // Find instance and material type name
+    let matchedInstanceId: number | undefined = undefined;
+    let materialType = entryToEdit.reorder_material_details || "";
+
+    for (const inst of instances) {
+      const title = inst?.title || `Instance ${inst?.quantity_index ?? inst?.id}`;
+      if (title && entryToEdit.reorder_material_details?.startsWith(`${title} - `)) {
+        matchedInstanceId = inst.id;
+        materialType = entryToEdit.reorder_material_details.slice(`${title} - `.length);
+        break;
+      }
+    }
+
+    if (!matchedInstanceId && instances.length > 0) {
+      const found = instances.find((inst: any) => {
+        const title = inst?.title || `Instance ${inst?.quantity_index ?? inst?.id}`;
+        return entryToEdit.reorder_material_details?.includes(title);
+      });
+      if (found) {
+        matchedInstanceId = found.id;
+      }
+    }
+
+    const selectedTeams: Option[] = (entryToEdit.teams || []).map((t) => ({
+      value: String(t.team_id),
+      label: t.team_name,
+    }));
+
+    form.reset({
+      misc_type_id: entryToEdit.type?.id,
+      selected_instance_id: matchedInstanceId,
+      problem_description: entryToEdit.problem_description || "",
+      reorder_material_details: materialType,
+      supervisor_remark: entryToEdit.supervisor_remark || "",
+      selectedTeams,
+      files: [],
+      quantity: entryToEdit.quantity ?? undefined,
+      cost: entryToEdit.cost ?? undefined,
+      expected_ready_date: entryToEdit.expected_ready_date
+        ? entryToEdit.expected_ready_date.split("T")[0]
+        : undefined,
+    });
+
+    setFiles([]);
+    setFormErrors({});
+    setIsAddModalOpen(true);
+  };
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
@@ -492,7 +687,7 @@ export default function InstallationMiscellaneous({
     if (!formData.supervisor_remark || !formData.supervisor_remark.trim()) {
       errors.supervisor_remark = "Material details are required";
     }
-    if (files.length === 0) {
+    if (!editingEntry && files.length === 0) {
       errors.files = "Please upload at least one document";
     }
     setFormErrors(errors);
@@ -539,6 +734,47 @@ export default function InstallationMiscellaneous({
         ? `${selectedInstanceTitle} - ${values.reorder_material_details}`
         : values.reorder_material_details;
 
+    if (editingEntry) {
+      const payload: UpdateMiscellaneousPayload = {
+        vendorId,
+        leadId,
+        miscId: editingEntry.id,
+        misc_type_id: formData.misc_type_id!,
+        problem_description: formData.problem_description.trim() || undefined,
+        reorder_material_details: formattedReorderMaterial.trim() || undefined,
+        quantity: values.quantity,
+        cost: values.cost,
+        supervisor_remark: values.supervisor_remark.trim() || undefined,
+        expected_ready_date: values.expected_ready_date,
+        teams:
+          values.selectedTeams.length > 0
+            ? values.selectedTeams.map((t) => Number(t.value))
+            : undefined,
+        updated_by: userId!,
+        files: files.length > 0 ? files : undefined,
+      };
+
+      updateMutation.mutate(payload, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ["miscellaneousEntries"] });
+          setIsAddModalOpen(false);
+          resetForm();
+          refetch();
+        },
+        onError: (error: any) => {
+          const errorMessage =
+            error?.response?.data?.error ||
+            error?.response?.data?.message ||
+            error?.message ||
+            "Failed to update miscellaneous entry.";
+          toastManager.add({ title: errorMessage, type: "error" });
+        },
+      });
+      setFiles([]);
+      setFormErrors({});
+      return;
+    }
+
     const payload: CreateMiscellaneousPayload = {
       vendorId,
       leadId,
@@ -579,8 +815,11 @@ export default function InstallationMiscellaneous({
     setFormErrors({});
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+  const formatDate = (dateString?: string | null) => {
+    if (!dateString) return "";
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return "";
+    return d.toLocaleDateString("en-US", {
       day: "numeric",
       month: "short",
       year: "numeric",
@@ -637,8 +876,8 @@ export default function InstallationMiscellaneous({
   const miscApproved = viewModalData?.misc_approved;
   const isRejected = miscApproved === false;
   const isApproved = miscApproved === true;
-  const isReady = viewModalData?.task?.status === "completed";
-  const canResolveRole = ["super-admin", "site-supervisor", "head-site-supervisor", "admin", "miscellaneous"].includes(normalizedUserType || userType || "");
+  const isReady = isTaskReady;
+  const canResolveRole = isSuperAdmin || isSupervisorUser;
   const canApproveReject =
     isAdminOrSuper ||
     normalizedUserType === "miscellaneous";
@@ -659,7 +898,9 @@ export default function InstallationMiscellaneous({
 
   const showApprovalActions = canApproveReject && miscApproved == null;
   const canUpdateERD = canDoERDDate && !isTaskReady && isApproved;
-  const isDeliveryTaskCompleted = viewModalData?.delivery_task?.status === "completed";
+  const isDeliveryTaskCompleted =
+    Boolean(viewModalData?.required_delivery_date) &&
+    viewModalData?.delivery_task?.status === "completed";
   const canUpdateRequiredDelivery =
     (isSupervisorUser || isAdminOrSuper) &&
     isApproved &&
@@ -668,7 +909,7 @@ export default function InstallationMiscellaneous({
     !viewModalData?.is_resolved;
   // Factory user and Admin/Super-Admin manage delivery task; Site supervisor does NOT manage it
   const canManageDeliveryTask =
-    (isFactoryUser || isAdminOrSuper) && !isDeliveryTaskCompleted;
+    (isFactoryUser || isAdminOrSuper) && !viewModalData?.is_resolved;
 
   // ✅ Effective action flags — blocked overrides all
   const effectiveCanWork = canWork && !shouldDisableBlockedActions;
@@ -720,9 +961,11 @@ export default function InstallationMiscellaneous({
   };
 
   return (
-    <div className="px-2 bg-white dark:bg-[#0a0a0a]">
-      {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
+    <div className={onlyModal ? "" : "px-2 bg-white dark:bg-[#0a0a0a]"}>
+      {!onlyModal && (
+        <>
+          {/* ── Header ──────────────────────────────────────────────────────────── */}
+          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
         <div>
           <h3 className="text-lg font-semibold">Miscellaneous Issues</h3>
           <p className="text-sm text-muted-foreground">
@@ -768,13 +1011,16 @@ export default function InstallationMiscellaneous({
               <TableHead className="w-50 text-sm font-medium text-foreground/80">Problem Description</TableHead>
               <TableHead className="w-25 text-sm font-medium text-foreground/80">Quantity</TableHead>
               <TableHead className="w-30 text-sm font-medium text-foreground/80">Cost</TableHead>
+              {canSeeActionsColumn && (
+                <TableHead className="w-20 text-center text-sm font-medium text-foreground/80">Actions</TableHead>
+              )}
             </TableRow>
           </TableHeader>
 
           <TableBody>
             {!entries || entries.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="py-10 text-center">
+                <TableCell colSpan={canSeeActionsColumn ? 9 : 8} className="py-10 text-center">
                   <div className="flex flex-col items-center">
                     <div className="p-3 bg-muted/40 rounded-full shadow-inner mb-2">
                       <Wrench className="w-7 h-7 opacity-50" />
@@ -853,7 +1099,7 @@ export default function InstallationMiscellaneous({
                       else if (entry.is_resolved) { label = "RESOLVED"; className = "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"; }
                       else if (hasDispatchDocs) { label = "DISPATCHED"; className = "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"; }
                       else if (entry.required_delivery_date) { label = "DISPATCH SCHEDULED"; className = "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300"; }
-                      else if (entry.task?.status === "completed") { label = "RTD"; className = "bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300"; }
+                      else if (entry.misc_approved === true && entry.expected_ready_date && entry.task?.status === "completed") { label = "RTD"; className = "bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300"; }
                       else if (entry.misc_approved === true && entry.expected_ready_date) { label = "UNDER PROCESS"; className = "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300"; }
                       else if (entry.misc_approved === true) { label = "MISCL APPROVED"; className = "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300"; }
                       else { label = "AWAITING APPROVAL"; className = "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"; }
@@ -874,6 +1120,31 @@ export default function InstallationMiscellaneous({
                   <TableCell className="py-3">
                     {entry.cost ? <span className="text-sm font-medium">₹{entry.cost.toLocaleString()}</span> : <span className="text-sm text-muted-foreground">-</span>}
                   </TableCell>
+                  {canSeeActionsColumn && (
+                    <TableCell className="py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                      {canEditEntry(entry) ? (
+                        <CustomeTooltip
+                          value={shouldDisableBlockedActions ? blockedTooltip : "Edit miscellaneous"}
+                          truncateValue={
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
+                              disabled={shouldDisableBlockedActions}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenEditModal(entry);
+                              }}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                          }
+                        />
+                      ) : (
+                        <span className="text-sm text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                  )}
                 </TableRow>
               ))
             )}
@@ -881,11 +1152,11 @@ export default function InstallationMiscellaneous({
         </Table>
       </div>
 
-      {/* ── Add Modal ───────────────────────────────────────────────────────── */}
+      {/* ── Add / Edit Modal ─────────────────────────────────────────────────── */}
       <BaseModal
         open={isAddModalOpen}
         onOpenChange={(open) => { setIsAddModalOpen(open); if (!open) resetForm(); }}
-        title="Add Miscellaneous Issue"
+        title={editingEntry ? "Edit Miscellaneous Issue" : "Add Miscellaneous Issue"}
         description="Log a miscellaneous issue with required details, supporting proofs, and material information."
         size="lg"
       >
@@ -1083,30 +1354,32 @@ export default function InstallationMiscellaneous({
             )}
           </div>
 
-          {/* Supporting Proofs */}
-          <div className={cn("flex flex-col gap-2", formErrors.files && "text-destructive")} data-name="files">
-            <label className="text-sm font-medium">Supporting Proofs *</label>
-            <FileUploadField
-              value={files}
-              onChange={(nextFiles) => {
-                setFiles(nextFiles);
-                if (nextFiles.length > 0) {
-                  setFormErrors((prev) => ({ ...prev, files: "" }));
-                }
-              }}
-              accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.mp4,.mov,.avi,"
-              multiple
-              invalid={Boolean(formErrors.files)}
-            />
-            <p className="text-xs text-muted-foreground">
-              Max 10 files. Supported: Images, PDFs, Documents
-            </p>
-            {formErrors.files && (
-              <p className="text-xs font-medium text-destructive mt-1">
-                {formErrors.files}
+          {/* Supporting Proofs - Only in Add Mode */}
+          {!editingEntry && (
+            <div className={cn("flex flex-col gap-2", formErrors.files && "text-destructive")} data-name="files">
+              <label className="text-sm font-medium">Supporting Proofs *</label>
+              <FileUploadField
+                value={files}
+                onChange={(nextFiles) => {
+                  setFiles(nextFiles);
+                  if (nextFiles.length > 0) {
+                    setFormErrors((prev) => ({ ...prev, files: "" }));
+                  }
+                }}
+                accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx,.mp4,.mov,.avi,"
+                multiple
+                invalid={Boolean(formErrors.files)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Max 10 files. Supported: Images, PDFs, Documents
               </p>
-            )}
-          </div>
+              {formErrors.files && (
+                <p className="text-xs font-medium text-destructive mt-1">
+                  {formErrors.files}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Quantity + Cost */}
           <div className="grid grid-cols-2 gap-4">
@@ -1141,29 +1414,55 @@ export default function InstallationMiscellaneous({
           </div>
 
           <div className="flex justify-end gap-3 pt-4 pb-6 border-t mt-6">
-            <Button type="button" size="sm" variant="outline" onClick={() => { setIsAddModalOpen(false); resetForm(); }} disabled={createMutation.isPending}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setIsAddModalOpen(false);
+                resetForm();
+              }}
+              disabled={createMutation.isPending || updateMutation.isPending}
+            >
               Cancel
             </Button>
-            <Button type="submit" size="sm" disabled={createMutation.isPending}>
-              {createMutation.isPending ? "Creating..." : "Create Miscellaneous"}
+            <Button
+              type="submit"
+              size="sm"
+              disabled={createMutation.isPending || updateMutation.isPending}
+            >
+              {editingEntry
+                ? updateMutation.isPending
+                  ? "Updating..."
+                  : "Update Miscellaneous"
+                : createMutation.isPending
+                ? "Creating..."
+                : "Create Miscellaneous"}
             </Button>
           </div>
           </form>
         </Form>
       </BaseModal>
+        </>
+      )}
 
       {/* ── View Modal ──────────────────────────────────────────────────────── */}
       <BaseModal
         open={viewModal.open}
-        onOpenChange={(open) => setViewModal({ open, id: open ? viewModal.id : null })}
+        onOpenChange={(open) => {
+          setViewModal({ open, id: open ? viewModal.id : null });
+          if (!open && onModalClose) {
+            onModalClose();
+          }
+        }}
         size="lg"
-        title={viewModalData?.type.name}
+        title={viewModalData?.type?.name || "Miscellaneous"}
         icon={
-          <div className={`p-2.5 rounded-lg border transition-colors ${viewModalData?.is_resolved ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800" : "bg-red-50 dark:bg-red-950/20 border-red-200 dark:red-blue-800"}`}>
+          <div className={`p-2.5 rounded-lg border transition-colors ${viewModalData?.is_resolved ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800" : "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800"}`}>
             {viewModalData?.is_resolved ? (
               <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
             ) : (
-              <AlertCircle className="w-5 h-5 text-red-600 dark:red-blue-400" />
+              <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
             )}
           </div>
         }
@@ -1174,12 +1473,29 @@ export default function InstallationMiscellaneous({
             <TabsList className="grid w-full grid-cols-3 mb-4">
               <TabsTrigger value="misc-details">Misc Details</TabsTrigger>
               <TabsTrigger value="actions-scheduling">Actions & Scheduling</TabsTrigger>
-              <TabsTrigger value="followup">Followup</TabsTrigger>
+              <TabsTrigger value="followup">Follow Up</TabsTrigger>
             </TabsList>
 
             {/* ── Tab 1: Misc Details ────────────────────────────────────── */}
             <TabsContent value="misc-details">
               <div className="flex-1 overflow-y-auto py-2 space-y-6 px-1">
+                {viewModalData && canEditEntry(viewModalData) && (
+                  <div className="flex justify-end">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={shouldDisableBlockedActions}
+                      onClick={() => {
+                        const item = viewModalData;
+                        setViewModal({ open: false, id: null });
+                        handleOpenEditModal(item);
+                      }}
+                    >
+                      <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                      Edit Miscellaneous
+                    </Button>
+                  </div>
+                )}
                 {/* Quick Stats */}
                 {(viewModalData?.quantity || viewModalData?.cost || viewModalData?.expected_ready_date || viewModalData?.created_user?.user_name || viewModalData?.created_at) && (
                   <div className="grid grid-cols-2 gap-3">
@@ -1598,10 +1914,10 @@ export default function InstallationMiscellaneous({
                                 <div className="space-y-1.5">
                                   <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                                     <Wrench className="w-3.5 h-3.5 text-primary" />
-                                    Solution (Optional)
+                                    Solution <span className="text-destructive">*</span>
                                   </label>
                                   <Input
-                                    placeholder="Enter solution or action plan (optional)..."
+                                    placeholder="Enter solution or action plan..."
                                     value={erdSolution}
                                     onChange={(e) => setErdSolution(e.target.value)}
                                     disabled={
@@ -1610,8 +1926,17 @@ export default function InstallationMiscellaneous({
                                       !effectiveCanUpdateERD ||
                                       isTaskReady
                                     }
-                                    className="h-8 text-xs bg-background"
+                                    className={`h-8 text-xs bg-background ${
+                                      selectedERD && !erdSolution.trim()
+                                        ? "border-destructive focus-visible:ring-destructive"
+                                        : ""
+                                    }`}
                                   />
+                                  {selectedERD && !erdSolution.trim() && (
+                                    <p className="text-[11px] text-destructive font-medium">
+                                      Solution is required
+                                    </p>
+                                  )}
                                 </div>
 
                                 {/* Unified Save Button for ERD Date & Solution */}
@@ -1625,21 +1950,34 @@ export default function InstallationMiscellaneous({
                                     <Button
                                       size="sm"
                                       className="h-8 text-xs w-full gap-1.5 font-medium shadow-sm"
-                                      disabled={updateERDMutation.isPending}
+                                      disabled={updateERDMutation.isPending || !erdSolution.trim()}
                                       onClick={() => {
                                         if (!viewModalData || !selectedERD) return;
+                                        if (!erdSolution.trim()) {
+                                          toastManager.add({
+                                            title: "Solution is required",
+                                            type: "error",
+                                          });
+                                          return;
+                                        }
                                         updateERDMutation.mutate(
                                           {
                                             vendorId,
                                             miscId: viewModalData.id,
                                             expected_ready_date: selectedERD,
-                                            solution: erdSolution.trim() || undefined,
+                                            solution: erdSolution.trim(),
                                             updated_by: userId!,
                                           },
                                           {
                                             onSuccess: () => {
                                               queryClient.invalidateQueries({
                                                 queryKey: ["miscellaneousEntries", vendorId, leadId],
+                                              });
+                                              queryClient.invalidateQueries({
+                                                queryKey: ["vendorUserTasks"],
+                                              });
+                                              queryClient.invalidateQueries({
+                                                queryKey: ["vendorAllTasks"],
                                               });
                                             },
                                           }
@@ -1663,14 +2001,31 @@ export default function InstallationMiscellaneous({
                                   !viewModalData?.is_resolved && (
                                     <div className="pt-1 border-t border-border/50">
                                       <CustomeTooltip
-                                        value={shouldDisableBlockedActions ? blockedTooltip : ""}
+                                        value={
+                                          shouldDisableBlockedActions
+                                            ? blockedTooltip
+                                            : isMarkReadyRestrictedByERD
+                                              ? `Cannot mark as ready before Expected Ready Date (${formatDate(viewModalData.expected_ready_date)})`
+                                              : ""
+                                        }
                                         truncateValue={
                                           <Button
                                             variant="default"
                                             size="sm"
-                                            disabled={markReadyMutation.isPending || shouldDisableBlockedActions}
+                                            disabled={
+                                              markReadyMutation.isPending ||
+                                              shouldDisableBlockedActions ||
+                                              isMarkReadyRestrictedByERD
+                                            }
                                             onClick={() => {
                                               if (shouldDisableBlockedActions) return;
+                                              if (isMarkReadyRestrictedByERD) {
+                                                toastManager.add({
+                                                  title: `Cannot mark as ready before Expected Ready Date (${formatDate(viewModalData.expected_ready_date)})`,
+                                                  type: "error",
+                                                });
+                                                return;
+                                              }
                                               setShowReadyConfirm(true);
                                             }}
                                             className="w-full gap-2 text-xs font-medium h-8 shadow-sm"
@@ -1680,6 +2035,12 @@ export default function InstallationMiscellaneous({
                                           </Button>
                                         }
                                       />
+                                      {isMarkReadyRestrictedByERD && (
+                                        <p className="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1.5 mt-1.5 px-0.5 font-medium">
+                                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                          Mark as Ready is restricted until {formatDate(viewModalData.expected_ready_date)} for factory users.
+                                        </p>
+                                      )}
                                     </div>
                                   )}
 
@@ -1766,8 +2127,12 @@ export default function InstallationMiscellaneous({
                                   truncateValue={
                                     <span className="block">
                                       <CustomeDatePicker
-                                        key={`${viewModalData?.id}-delivery`}
-                                        value={viewModalData?.required_delivery_date || undefined}
+                                        key={`${viewModalData?.id}-delivery-${viewModalData?.delivery_task?.due_date || viewModalData?.required_delivery_date || ""}`}
+                                        value={
+                                          viewModalData?.delivery_task?.due_date
+                                            ? new Date(viewModalData.delivery_task.due_date).toISOString().slice(0, 10)
+                                            : (viewModalData?.required_delivery_date || undefined)
+                                        }
                                         restriction="futureOnly"
                                         disabledReason={
                                           shouldDisableBlockedActions
@@ -1793,7 +2158,7 @@ export default function InstallationMiscellaneous({
                                 />
 
                                 <div className="flex gap-2">
-                                  {viewModalData?.required_delivery_date && viewModalData?.delivery_task?.id && !isDeliveryTaskCompleted && effectiveCanManageDeliveryTask && (
+                                  {viewModalData?.required_delivery_date && !viewModalData?.is_resolved && effectiveCanManageDeliveryTask && (
                                     <CustomeTooltip
                                       value={shouldDisableBlockedActions ? blockedTooltip : ""}
                                       truncateValue={
@@ -1962,106 +2327,148 @@ export default function InstallationMiscellaneous({
               </div>
             </TabsContent>
 
-            {/* ── Tab 3: Followup ────────────────────────────────────────── */}
+            {/* ── Tab 3: Follow Up ────────────────────────────────────────── */}
             <TabsContent value="followup">
-              <div className="flex-1 overflow-y-auto py-2 space-y-6 px-1">
-                {/* ── Schedule Followup Task Card ── */}
+              <div className="flex-1 overflow-y-auto py-2 space-y-5 px-1">
+                {/* 1. Add Follow Up Form */}
                 <div className="rounded-xl border border-border bg-card p-5 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between border-b pb-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                        <CalendarClock className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-semibold text-foreground">
-                          Schedule Followup Task
-                        </h4>
-                        <p className="text-xs text-muted-foreground">
-                          Assign follow-up to Site Supervisor, Head Site Supervisor, Factory, or Miscellaneous user.
-                        </p>
-                      </div>
+                  <div className="flex items-center gap-2.5 border-b pb-3">
+                    <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                      <Calendar className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold text-foreground">
+                        Log Follow Up & Solution
+                      </h4>
+                      <p className="text-xs text-muted-foreground">
+                        Record calls, discussions, and solutions agreed between supervisor, factory, client, or admin.
+                      </p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* User Selection */}
-                    <div className="space-y-1.5">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-1.5 md:col-span-1">
                       <label className="text-xs font-semibold text-foreground flex items-center gap-1">
-                        Assign User <span className="text-destructive">*</span>
-                      </label>
-                      <Select
-                        value={followupUserId}
-                        onValueChange={setFollowupUserId}
-                        disabled={loadingFollowupUsers || isCreatingFollowup}
-                      >
-                        <SelectTrigger className="w-full text-xs h-9">
-                          <SelectValue placeholder={loadingFollowupUsers ? "Loading users..." : "Select user"} />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-60">
-                          {followupEligibleUsers.map((u) => (
-                            <SelectItem key={u.id} value={String(u.id)} className="text-xs py-2">
-                              <div className="flex items-center justify-between w-full gap-2">
-                                <span className="font-medium text-foreground">{u.user_name}</span>
-                                {getFollowupRoleBadge(u.user_type?.user_type)}
-                              </div>
-                            </SelectItem>
-                          ))}
-                          {followupEligibleUsers.length === 0 && !loadingFollowupUsers && (
-                            <div className="p-2 text-xs text-muted-foreground text-center">
-                              No eligible users found
-                            </div>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Due Date */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-foreground flex items-center gap-1">
-                        Due Date <span className="text-destructive">*</span>
+                        <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                        Follow Up Date <span className="text-destructive">*</span>
                       </label>
                       <CustomeDatePicker
-                        value={followupDueDate}
-                        onChange={setFollowupDueDate}
-                        restriction="futureOnly"
+                        value={followupDate}
+                        onChange={setFollowupDate}
+                      />
+                    </div>
+
+                    <div className="space-y-1.5 md:col-span-2">
+                      <label className="text-xs font-semibold text-foreground flex items-center gap-1">
+                        <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                        Solution / Discussion Details <span className="text-destructive">*</span>
+                      </label>
+                      <TextAreaInput
+                        value={followupSolution}
+                        onChange={setFollowupSolution}
+                        placeholder="Enter phone call discussion, who was contacted (e.g. factory, client, supervisor), decisions made, and solution..."
+                        maxLength={2000}
                       />
                     </div>
                   </div>
 
-                  {/* Remark */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-foreground flex items-center gap-1">
-                      Followup Remark / Notes <span className="text-destructive">*</span>
-                    </label>
-                    <TextAreaInput
-                      value={followupRemark}
-                      onChange={(val) => setFollowupRemark(val)}
-                      placeholder="Enter details or instructions for this follow-up..."
-                      disabled={isCreatingFollowup}
-                    />
-                  </div>
-
-                  {/* Submit Button */}
                   <div className="flex justify-end pt-1">
                     <Button
-                      size="sm"
-                      onClick={handleCreateFollowup}
-                      disabled={isCreatingFollowup || !followupUserId || !followupDueDate || !followupRemark.trim()}
-                      className="gap-1.5 text-xs font-medium"
+                      onClick={handleAddFollowup}
+                      disabled={
+                        createFollowupMutation.isPending ||
+                        !followupSolution.trim() ||
+                        !followupDate
+                      }
+                      className="gap-2"
                     >
-                      {isCreatingFollowup ? (
-                        <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          Scheduling...
-                        </>
+                      {createFollowupMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
-                        <>
-                          <Plus className="w-3.5 h-3.5" />
-                          Schedule Followup
-                        </>
+                        <Send className="w-4 h-4" />
                       )}
+                      {createFollowupMutation.isPending
+                        ? "Saving..."
+                        : "Add Follow Up"}
                     </Button>
                   </div>
+                </div>
+
+                {/* 2. Follow Up History */}
+                <div className="rounded-xl border border-border bg-card p-5 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between border-b pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-lg bg-muted text-foreground">
+                        <Clock className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-semibold text-foreground">
+                          Follow Up History
+                        </h4>
+                        <p className="text-xs text-muted-foreground">
+                          Chronological timeline of discussions and updates for this miscellaneous request.
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-xs font-semibold">
+                      {followups.length} {followups.length === 1 ? "Record" : "Records"}
+                    </Badge>
+                  </div>
+
+                  {loadingFollowups ? (
+                    <div className="py-8 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                      <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                      Loading follow up history...
+                    </div>
+                  ) : followups.length === 0 ? (
+                    <div className="py-10 text-center flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                      <div className="p-3 rounded-full bg-muted/60 mb-1">
+                        <Clock className="w-6 h-6 text-muted-foreground/60" />
+                      </div>
+                      <p className="text-sm font-medium text-foreground">
+                        No follow ups recorded for this entry.
+                      </p>
+                      <p className="text-xs text-muted-foreground max-w-sm">
+                        Use the form above to log call details, solutions, and updates with factory, site supervisors, and admins.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 pt-1">
+                      {followups.map((item) => (
+                        <div
+                          key={item.id}
+                          className="rounded-xl border border-border/70 bg-background/50 hover:bg-muted/10 p-4 transition-all duration-150 space-y-2.5 shadow-sm"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2.5">
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20">
+                                {getFollowupInitials(item.createdBy?.user_name)}
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-xs font-semibold text-foreground">
+                                  {item.createdBy?.user_name || "Unknown"}
+                                </span>
+                                <div className="mt-0.5">
+                                  {getFollowupRoleBadge(item.createdBy?.user_type?.user_type)}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 flex-wrap text-xs">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 text-primary font-medium">
+                                <Calendar className="w-3.5 h-3.5" />
+                                <span>Follow Up: <strong>{formatDate(item.followup_date)}</strong></span>
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="rounded-lg bg-muted/40 p-3 text-xs md:text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed border border-border/40">
+                            {item.solution}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </TabsContent>
@@ -2069,56 +2476,32 @@ export default function InstallationMiscellaneous({
         </div>
       </BaseModal>
 
-      {/* ── Approve Modal ──────────────────────────────────────────────────── */}
-      <BaseModal
-        open={showApproveModal}
-        onOpenChange={(open) => {
-          setShowApproveModal(open);
-          if (!open) setApproveRemark("");
-        }}
-        size="md"
-        title="Approve Miscellaneous"
-        description="Please provide a remark for approving this miscellaneous request."
-      >
-        <div className="space-y-4 py-4 px-6">
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">Remark *</label>
-            <TextAreaInput
-              value={approveRemark}
-              onChange={(value) => setApproveRemark(value)}
-              placeholder="Enter approval remark..."
-              maxLength={1000}
-            />
-          </div>
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowApproveModal(false);
-                setApproveRemark("");
-              }}
+      {/* ── Approve Confirmation Dialog ────────────────────────────────────── */}
+      <AlertDialog open={showApproveModal} onOpenChange={setShowApproveModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Approve Miscellaneous</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to approve this miscellaneous request?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => setShowApproveModal(false)}
               disabled={updateApprovalMutation.isPending}
             >
               Cancel
-            </Button>
-            <Button
-              variant="default"
-              className="bg-green-600 hover:bg-green-700"
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-green-600 hover:bg-green-700 text-white"
+              disabled={updateApprovalMutation.isPending}
               onClick={() => {
                 if (!viewModalData) return;
-                if (!approveRemark.trim()) {
-                  toastManager.add({
-                    title: "Please enter an approval remark",
-                    type: "error",
-                  });
-                  return;
-                }
                 updateApprovalMutation.mutate(
                   {
                     vendorId,
                     miscId: viewModalData.id,
                     misc_approved: true,
-                    approval_remark: approveRemark.trim(),
                     updated_by: userId!,
                   },
                   {
@@ -2126,19 +2509,23 @@ export default function InstallationMiscellaneous({
                       queryClient.invalidateQueries({
                         queryKey: ["miscellaneousEntries", vendorId, leadId],
                       });
+                      queryClient.invalidateQueries({
+                        queryKey: ["vendorUserTasks"],
+                      });
+                      queryClient.invalidateQueries({
+                        queryKey: ["vendorAllTasks"],
+                      });
                       setShowApproveModal(false);
-                      setApproveRemark("");
                     },
                   },
                 );
               }}
-              disabled={updateApprovalMutation.isPending}
             >
-              {updateApprovalMutation.isPending ? "Approving..." : "Approve"}
-            </Button>
-          </div>
-        </div>
-      </BaseModal>
+              {updateApprovalMutation.isPending ? "Approving..." : "Confirm"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* ── Reject Modal ────────────────────────────────────────────────────── */}
       <BaseModal
@@ -2167,7 +2554,15 @@ export default function InstallationMiscellaneous({
                   { vendorId, miscId: viewModalData.id, misc_approved: false, exp_of_rejection: rejectReason.trim(), updated_by: userId! },
                   {
                     onSuccess: () => {
-                      queryClient.invalidateQueries({ queryKey: ["miscellaneousEntries", vendorId, leadId] });
+                      queryClient.invalidateQueries({
+                        queryKey: ["miscellaneousEntries", vendorId, leadId],
+                      });
+                      queryClient.invalidateQueries({
+                        queryKey: ["vendorUserTasks"],
+                      });
+                      queryClient.invalidateQueries({
+                        queryKey: ["vendorAllTasks"],
+                      });
                       setShowRejectModal(false);
                       setRejectReason("");
                     },
@@ -2196,7 +2591,20 @@ export default function InstallationMiscellaneous({
                 if (!viewModalData || !selectedRequiredDelivery) return;
                 updateRequiredDeliveryMutation.mutate(
                   { vendorId, miscId: viewModalData.id, required_delivery_date: selectedRequiredDelivery, updated_by: userId! },
-                  { onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["miscellaneousEntries", vendorId, leadId] }); setShowDeliveryConfirm(false); } },
+                  {
+                    onSuccess: () => {
+                      queryClient.invalidateQueries({
+                        queryKey: ["miscellaneousEntries", vendorId, leadId],
+                      });
+                      queryClient.invalidateQueries({
+                        queryKey: ["vendorUserTasks"],
+                      });
+                      queryClient.invalidateQueries({
+                        queryKey: ["vendorAllTasks"],
+                      });
+                      setShowDeliveryConfirm(false);
+                    },
+                  },
                 );
               }}
             >
@@ -2272,9 +2680,20 @@ export default function InstallationMiscellaneous({
             </Button>
             <Button
               variant="default"
-              disabled={markReadyMutation.isPending || (isTaskReady && readyFiles.length === 0)}
+              disabled={
+                markReadyMutation.isPending ||
+                (isTaskReady && readyFiles.length === 0) ||
+                (!isTaskReady && isMarkReadyRestrictedByERD)
+              }
               onClick={() => {
                 if (!viewModalData) return;
+                if (!isTaskReady && isMarkReadyRestrictedByERD) {
+                  toastManager.add({
+                    title: `Cannot mark as ready before Expected Ready Date (${formatDate(viewModalData.expected_ready_date)})`,
+                    type: "error",
+                  });
+                  return;
+                }
                 markReadyMutation.mutate(
                   {
                     vendorId,
@@ -2287,6 +2706,12 @@ export default function InstallationMiscellaneous({
                     onSuccess: () => {
                       queryClient.invalidateQueries({
                         queryKey: ["miscellaneousEntries", vendorId, leadId],
+                      });
+                      queryClient.invalidateQueries({
+                        queryKey: ["vendorUserTasks"],
+                      });
+                      queryClient.invalidateQueries({
+                        queryKey: ["vendorAllTasks"],
                       });
                       setShowReadyConfirm(false);
                       setReadyFiles([]);
@@ -2330,14 +2755,15 @@ export default function InstallationMiscellaneous({
         open={openDeliveryTaskModal}
         onOpenChange={setOpenDeliveryTaskModal}
         data={
-          viewModalData?.delivery_task?.id
+          (viewModalData?.delivery_task?.id || viewModalData?.task?.id)
             ? {
               leadId,
               accountId,
-              taskId: viewModalData.delivery_task.id,
-              dueDate: viewModalData.delivery_task.due_date || undefined,
-              remark: viewModalData.delivery_task.remark || undefined,
-              taskStatus: viewModalData.delivery_task.status || undefined,
+              taskId: (viewModalData.delivery_task?.id ?? viewModalData.task?.id)!,
+              dueDate: viewModalData.delivery_task?.due_date || viewModalData.required_delivery_date || undefined,
+              remark: viewModalData.delivery_task?.remark || undefined,
+              taskStatus: viewModalData.delivery_task?.status || undefined,
+              requiredDeliveryDate: viewModalData.delivery_task?.due_date || viewModalData.required_delivery_date || undefined,
             }
             : undefined
         }
