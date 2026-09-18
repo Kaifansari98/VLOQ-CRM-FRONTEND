@@ -1663,7 +1663,7 @@ export default function MachineScannerPage() {
 
                               <Button
                                 type="button"
-                                className="h-11 sm:h-12 gap-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white dark:text-black font-semibold px-2.5 text-xs sm:text-sm shadow-xs transition-all active:scale-95 disabled:opacity-50"
+                                className="h-11 sm:h-12 gap-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-black dark:text-white font-semibold px-2.5 text-xs sm:text-sm shadow-xs transition-all active:scale-95 disabled:opacity-50"
                                 disabled={boxAction !== null}
                                 onClick={() => void handlePrintBox()}
                               >
@@ -1677,7 +1677,7 @@ export default function MachineScannerPage() {
 
                               <Button
                                 type="button"
-                                className="col-span-2 sm:col-span-1 h-11 sm:h-12 gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-400 dark:to-indigo-400 px-2.5 text-xs sm:text-sm font-semibold text-white dark:text-black shadow-xs hover:from-violet-700 hover:to-indigo-700 transition-all active:scale-95 disabled:opacity-50"
+                                className="col-span-2 sm:col-span-1 h-11 sm:h-12 gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-600 dark:to-indigo-600 px-2.5 text-xs sm:text-sm font-semibold text-black dark:text-white shadow-xs hover:from-violet-700 hover:to-indigo-700 dark:hover:from-violet-500 dark:hover:to-indigo-500 transition-all active:scale-95 disabled:opacity-50"
                                 disabled={
                                   boxAction !== null ||
                                   selectedBox.box_status === "packed"
