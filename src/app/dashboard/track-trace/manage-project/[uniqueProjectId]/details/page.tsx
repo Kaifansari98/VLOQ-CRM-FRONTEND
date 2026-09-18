@@ -18,6 +18,8 @@ import {
   downloadDispatchDocument,
   TrackTraceBoxStatus,
   updateTrackTraceBoxStatus,
+  revertBoxFactoryOut,
+  FactoryOutRevertLogItem,
 } from "@/api/track-trace/track-trace-cutlist.api";
 import {
   Breadcrumb,
@@ -67,6 +69,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAppSelector } from "@/redux/store";
 import { cn } from "@/lib/utils";
@@ -104,6 +119,8 @@ import {
   Trash2,
   TrendingUp,
   UserCheck,
+  RotateCcw,
+  AlertTriangle,
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -1351,6 +1368,9 @@ function BoxItemsDialog({
     name: string;
   } | null>(null);
   const [deletingItemId, setDeletingItemId] = useState<number | null>(null);
+  const [revertModalOpen, setRevertModalOpen] = useState(false);
+  const [revertDescription, setRevertDescription] = useState("");
+  const [reverting, setReverting] = useState(false);
 
   const loadBoxItems = useCallback(async () => {
     setLoading(true);
@@ -1369,6 +1389,8 @@ function BoxItemsDialog({
   useEffect(() => {
     if (!open) return;
     setData(null);
+    setRevertDescription("");
+    setRevertModalOpen(false);
     void loadBoxItems();
   }, [loadBoxItems, open]);
 
@@ -1385,9 +1407,67 @@ function BoxItemsDialog({
 
   const boxStatus = String(data?.box.box_status || "").toLowerCase();
   const isPacked = boxStatus === "packed";
+  const isFactoryOut = Boolean(data?.box.factory_out_at);
+  const isSiteIn = Boolean(data?.box.site_in_at || data?.box.site_in_by);
+  const isPackedValid = Boolean(data?.box.packed_at && data?.box.packed_by);
+
+  const canRevertFactoryOut = isFactoryOut && !isSiteIn && isPackedValid;
+
+  let revertDisabledReason = "";
+  if (!isFactoryOut) {
+    revertDisabledReason = "Box has not been marked as Factory Out.";
+  } else if (isSiteIn) {
+    revertDisabledReason = "Cannot revert: Box is already at the site.";
+  } else if (!isPackedValid) {
+    revertDisabledReason = "Cannot revert: Box packing details (date/operator) are incomplete.";
+  }
+
+  const handleRevertFactoryOut = async () => {
+    if (!revertDescription.trim() || reverting) return;
+
+    try {
+      setReverting(true);
+      await revertBoxFactoryOut({
+        boxId,
+        projectId: projectMasterId,
+        vendorId,
+        userId,
+        description: revertDescription.trim(),
+      });
+
+      toastManager.add({
+        title: "Factory Out reverted successfully",
+        type: "success",
+      });
+
+      setRevertModalOpen(false);
+      setRevertDescription("");
+      await refreshBoxViews();
+    } catch (error: any) {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          "Failed to revert factory out",
+        type: "error",
+      });
+    } finally {
+      setReverting(false);
+    }
+  };
 
   const handleStatusUpdate = async () => {
     if (!pendingStatus || updatingStatus) return;
+
+    if (pendingStatus === "unpacked" && isSiteIn) {
+      toastManager.add({
+        title:
+          "Cannot unpack box: Box is already at the site (Site In has been recorded)",
+        type: "error",
+      });
+      setPendingStatus(null);
+      return;
+    }
 
     try {
       setUpdatingStatus(true);
@@ -1507,25 +1587,121 @@ function BoxItemsDialog({
               >
                 {boxStatus}
               </Badge>
-              <Button
-                type="button"
-                size="sm"
-                variant={isPacked ? "outline" : "default"}
-                className="gap-1.5"
-                disabled={updatingStatus}
-                onClick={() =>
-                  setPendingStatus(isPacked ? "unpacked" : "packed")
-                }
-              >
-                {updatingStatus ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : isPacked ? (
-                  <PackageOpen className="size-4" />
-                ) : (
-                  <PackageCheck className="size-4" />
-                )}
-                {isPacked ? "Unpack box" : "Pack box"}
-              </Button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 font-medium shadow-xs"
+                    disabled={updatingStatus || reverting}
+                  >
+                    {updatingStatus || reverting ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <SlidersHorizontal className="size-3.5" />
+                    )}
+                    Actions
+                    <ChevronDown className="size-3.5 text-muted-foreground" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 p-1.5">
+                  {isPacked ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="w-full">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              if (!isSiteIn) {
+                                setPendingStatus("unpacked");
+                              }
+                            }}
+                            disabled={isSiteIn || updatingStatus || reverting}
+                            className={cn(
+                              "gap-2.5 py-2 w-full",
+                              isSiteIn
+                                ? "!pointer-events-auto opacity-60 cursor-not-allowed"
+                                : "cursor-pointer",
+                            )}
+                          >
+                            <PackageOpen className="size-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-medium text-xs">Unpack box</span>
+                              <span className="text-[10px] text-muted-foreground">
+                                Allow box items to be edited
+                              </span>
+                            </div>
+                          </DropdownMenuItem>
+                        </div>
+                      </TooltipTrigger>
+                      {isSiteIn && (
+                        <TooltipContent
+                          side="left"
+                          align="center"
+                          className="z-[100] max-w-xs text-xs font-normal"
+                        >
+                          Cannot unpack: Box is already at the site (Site In has been recorded).
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  ) : (
+                    <DropdownMenuItem
+                      onClick={() => setPendingStatus("packed")}
+                      disabled={updatingStatus || reverting}
+                      className="gap-2.5 cursor-pointer py-2"
+                    >
+                      <PackageCheck className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-medium text-xs">Pack box</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          Seal box for movement
+                        </span>
+                      </div>
+                    </DropdownMenuItem>
+                  )}
+
+                  <DropdownMenuSeparator className="my-1" />
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="w-full">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            if (canRevertFactoryOut) {
+                              setRevertModalOpen(true);
+                            }
+                          }}
+                          disabled={!canRevertFactoryOut || updatingStatus || reverting}
+                          className={cn(
+                            "gap-2.5 py-2 w-full",
+                            canRevertFactoryOut
+                              ? "text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
+                              : "!pointer-events-auto opacity-60 cursor-not-allowed"
+                          )}
+                        >
+                          <RotateCcw className="size-4 shrink-0" />
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-medium text-xs">Revert Factory Out</span>
+                            <span className="text-[10px] text-muted-foreground">
+                              Clear factory out status
+                            </span>
+                          </div>
+                        </DropdownMenuItem>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent
+                      side="left"
+                      align="center"
+                      className="z-[100] max-w-xs text-xs font-normal"
+                    >
+                      {canRevertFactoryOut
+                        ? "Revert factory out and restore box to packed state"
+                        : revertDisabledReason}
+                    </TooltipContent>
+                  </Tooltip>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           )}
         </DialogHeader>
@@ -1758,7 +1934,9 @@ function BoxItemsDialog({
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              disabled={updatingStatus}
+              disabled={
+                updatingStatus || (pendingStatus === "unpacked" && isSiteIn)
+              }
               onClick={(event) => {
                 event.preventDefault();
                 void handleStatusUpdate();
@@ -1806,6 +1984,110 @@ function BoxItemsDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ── Revert Factory Out Dialog ── */}
+      <Dialog
+        open={revertModalOpen}
+        onOpenChange={(val) => !reverting && setRevertModalOpen(val)}
+      >
+        <DialogContent className="sm:max-w-lg p-0 overflow-hidden rounded-2xl border shadow-xl">
+          <DialogHeader className="border-b bg-destructive/5 px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive border border-destructive/20">
+                <RotateCcw className="size-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold text-foreground">
+                  Revert Factory Out for Box {boxName}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  Clear Factory Out status and archive past scan details in
+                  audit log.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="p-6 space-y-4">
+            {/* Box Info Summary Card */}
+            <div className="rounded-xl border bg-muted/30 p-3.5 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-medium">Box</span>
+                <span className="font-bold text-foreground">Box {boxName}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-medium">
+                  Previous Factory Out At
+                </span>
+                <span className="font-semibold text-foreground tabular-nums">
+                  {data?.box.factory_out_at
+                    ? fmtDateTime(data.box.factory_out_at)
+                    : "N/A"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-medium">
+                  Previous Factory Out By
+                </span>
+                <span className="font-semibold text-foreground">
+                  {data?.box.factoryOutByUser?.user_name ||
+                    (data?.box.factory_out_by
+                      ? `User #${data.box.factory_out_by}`
+                      : "N/A")}
+                </span>
+              </div>
+            </div>
+
+            {/* Mandatory Description */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-foreground flex items-center gap-1">
+                Detailed Description <span className="text-destructive">*</span>
+              </label>
+              <Textarea
+                value={revertDescription}
+                onChange={(e) => setRevertDescription(e.target.value)}
+                placeholder="Explain why this box factory out is being reverted..."
+                className="text-xs min-h-[90px] rounded-lg resize-none"
+                disabled={reverting}
+              />
+            </div>
+
+            <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3 text-[11px] text-amber-800 dark:text-amber-300 flex items-start gap-2">
+              <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+              <span>
+                Reverting will clear <strong>Factory Out</strong> on this box.
+                Its previous factory out timestamp and user will be preserved
+                in the audit records.
+              </span>
+            </div>
+          </div>
+
+          <DialogFooter className="border-t bg-muted/20 px-6 py-3 flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={reverting}
+              onClick={() => setRevertModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              disabled={
+                !revertDescription.trim() || reverting
+              }
+              onClick={handleRevertFactoryOut}
+              className="gap-1.5"
+            >
+              {reverting && <Loader2 className="size-3.5 animate-spin" />}
+              Confirm Revert
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
