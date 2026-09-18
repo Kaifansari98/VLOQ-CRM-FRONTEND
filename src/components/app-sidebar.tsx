@@ -327,6 +327,7 @@ const data = {
       items: [
         { title: "Dashboard", url: "/dashboard/track-trace" },
         { title: "Real Time", url: "/dashboard/track-trace/dashboard" },
+        { title: "Workstations", url: "/dashboard/track-trace/machines" },
         {
           title: "Projects",
           url: "/dashboard/track-trace/manage-project",

@@ -348,6 +348,7 @@ export type CreateTrackTraceProjectRequest = {
   client_address?: string;
   client_contact_no?: string;
   packing_type?: PackingType;
+  is_multi_location?: boolean;
   box_info_fields?: ProjectBoxInfoField[];
   no_of_boxes?: number;
 remove_box_ids?: number[];
@@ -383,6 +384,9 @@ export enum PackingType {
 
   GROUPWISE =
   "GROUPWISE",
+
+  CUSTOM_GROUP =
+  "CUSTOM_GROUP",
 }
 
 export type BoxInfoFieldType =
@@ -400,6 +404,24 @@ export type ProjectBoxInfoField = {
   active?: boolean;
 };
 
+export type ProjectLocationRow = {
+  location_name: string;
+  quantities: Record<string, number>;
+};
+
+export type ProjectLocationsData = {
+  project_id: number;
+  unique_project_id: string;
+  project_name: string;
+  group_names: string[];
+  group_quantity_limits: Record<string, number>;
+  locations: ProjectLocationRow[];
+};
+
+export type SaveProjectLocationsRequest = {
+  vendorId: number;
+  locations: ProjectLocationRow[];
+};
 // --- CUTLIST MACHINE RULES TYPES ---
 export type RuleStatus = "ACTIVE" | "INACTIVE";
 export type RuleConditionType = "COLUMN" | "CATEGORY";
@@ -408,6 +430,10 @@ export type RuleOperator =
   | "NOT_EQUALS"
   | "CONTAINS"
   | "NOT_CONTAINS"
+  | "STARTS_WITH"
+  | "ENDS_WITH"
+  | "IS_BLANK"
+  | "IS_NOT_BLANK"
   | "LESS_THAN"
   | "LESS_THAN_OR_EQUAL"
   | "GREATER_THAN"

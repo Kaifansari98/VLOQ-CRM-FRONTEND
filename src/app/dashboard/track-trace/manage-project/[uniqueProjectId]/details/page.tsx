@@ -3,6 +3,7 @@
 import { toastManager } from "@/components/ui/toast";
 import {
   getBoxItems,
+  deleteTrackTraceBoxItem,
   getProjectDetail,
   getProjectCutListPaginated,
   ProjectDetailData,
@@ -14,7 +15,9 @@ import {
   ProjectCutListSortBy,
   ProjectCutListSortOrder,
   downloadBoxPdf,
-  downloadProjectFullReport,
+  downloadDispatchDocument,
+  TrackTraceBoxStatus,
+  updateTrackTraceBoxStatus,
 } from "@/api/track-trace/track-trace-cutlist.api";
 import {
   Breadcrumb,
@@ -47,11 +50,24 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useAppSelector } from "@/redux/store";
 import { cn } from "@/lib/utils";
 import {
@@ -84,11 +100,13 @@ import {
   Phone,
   Calendar,
   PackageCheck,
+  PackageOpen,
+  Trash2,
   TrendingUp,
   UserCheck,
 } from "lucide-react";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 
@@ -240,6 +258,12 @@ function getBoxStatus(box: ProjectDetailData["boxes"][0]) {
 }
 
 function getBoxSequenceNumber(box: ProjectDetailData["boxes"][0]) {
+  const storedSequence = Number(box.sequence_no);
+
+  if (Number.isFinite(storedSequence) && storedSequence > 0) {
+    return storedSequence;
+  }
+
   const rawName = String((box as any).box_name || "");
   const directNumber = Number(rawName);
 
@@ -253,17 +277,47 @@ function getBoxSequenceNumber(box: ProjectDetailData["boxes"][0]) {
   return Number.isFinite(parsedNumber) ? parsedNumber : Number.MAX_SAFE_INTEGER;
 }
 
+function getBoxPositionLabel(box: ProjectDetailData["boxes"][0]) {
+  const position = Number(box.box_position);
+  const total = Number(box.boxes_per_product);
+
+  if (
+    !Number.isInteger(position) ||
+    !Number.isInteger(total) ||
+    position <= 0 ||
+    total <= 0 ||
+    position > total
+  ) {
+    return null;
+  }
+
+  return `${position} of ${total}`;
+}
+
+function getBoxDisplayNumber(box: ProjectDetailData["boxes"][0]) {
+  const sequenceNumber = Number(box.sequence_no);
+
+  if (Number.isInteger(sequenceNumber) && sequenceNumber > 0) {
+    return String(sequenceNumber);
+  }
+
+  const numberFromName = String(box.box_name || "").match(/\d+/)?.[0];
+  return numberFromName || String(box.box_name || box.id);
+}
+
 function BoxCard({
   box,
   onClick,
   onDownload,
   downloading,
+  packingType,
   viewMode = "grid",
 }: {
   box: ProjectDetailData["boxes"][0];
   onClick: () => void;
   onDownload: () => void;
   downloading?: boolean;
+  packingType: ProjectDetailData["project"]["packing_type"];
   viewMode?: BoxViewMode;
 }) {
   const isPacked = getBoxStatus(box) === "packed";
@@ -272,11 +326,28 @@ function BoxCard({
   const hasItems = itemCount > 0;
   const factoryOut = !!box.factory_out_at;
   const siteIn = !!box.site_in_at;
+  const boxPositionLabel = getBoxPositionLabel(box);
+  const boxDisplayNumber = getBoxDisplayNumber(box);
+  const shouldShowGroup =
+    packingType === "GROUPWISE" || packingType === "CUSTOM_GROUP";
+  const groupName =
+    String(box.group_name || box.product_group_name || "").trim() || null;
+  const locationName = box.location_name?.trim() || null;
+  const hasBoxContext = Boolean(
+    (shouldShowGroup && groupName) || locationName,
+  );
 
   const visibleBoxInfoValues =
     box.box_info_values?.filter(
       (item) => item.field_value && String(item.field_value).trim(),
     ) || [];
+  const compactDetails = [
+    shouldShowGroup && groupName ? `Group: ${groupName}` : null,
+    locationName ? `Location: ${locationName}` : null,
+    ...visibleBoxInfoValues
+      .slice(0, 3)
+      .map((item) => `${item.field_label}: ${item.field_value}`),
+  ].filter((item): item is string => Boolean(item));
 
   if (viewMode === "compact") {
     return (
@@ -292,7 +363,7 @@ function BoxCard({
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <p className="truncate text-sm font-bold text-foreground">
-                Box {box.box_name}
+                Box {boxDisplayNumber}
               </p>
 
               <Badge
@@ -306,14 +377,20 @@ function BoxCard({
               >
                 {box.box_status}
               </Badge>
+
+              {boxPositionLabel && (
+                <Badge
+                  variant="secondary"
+                  className="shrink-0 text-[10px] font-bold tabular-nums"
+                >
+                  {boxPositionLabel}
+                </Badge>
+              )}
             </div>
 
-            {visibleBoxInfoValues.length > 0 ? (
+            {compactDetails.length > 0 ? (
               <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                {visibleBoxInfoValues
-                  .slice(0, 3)
-                  .map((item) => `${item.field_label}: ${item.field_value}`)
-                  .join(" · ")}
+                {compactDetails.join(" · ")}
               </p>
             ) : (
               <p className="mt-0.5 text-xs text-muted-foreground">
@@ -405,7 +482,7 @@ function BoxCard({
 
           <div className="min-w-0">
             <p className="truncate text-base font-bold text-foreground">
-              Box {box.box_name}
+              Box {boxDisplayNumber}
             </p>
 
             <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -420,6 +497,15 @@ function BoxCard({
               >
                 {box.box_status}
               </Badge>
+
+              {boxPositionLabel && (
+                <Badge
+                  variant="secondary"
+                  className="text-[10px] font-bold tabular-nums"
+                >
+                  {boxPositionLabel}
+                </Badge>
+              )}
 
               <span className="text-xs font-semibold text-foreground">
                 {itemCount} item{itemCount === 1 ? "" : "s"}
@@ -453,6 +539,34 @@ function BoxCard({
           )}
         </button>
       </div>
+
+      {hasBoxContext && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          {shouldShowGroup && groupName && (
+            <div className="inline-flex max-w-full items-center gap-1.5 rounded-lg border bg-muted/40 px-2 py-1">
+              <Layers size={12} className="shrink-0 text-muted-foreground" />
+              <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                Group
+              </span>
+              <span className="max-w-48 truncate text-[11px] font-semibold text-foreground">
+                {groupName}
+              </span>
+            </div>
+          )}
+
+          {locationName && (
+            <div className="inline-flex max-w-full items-center gap-1.5 rounded-lg border bg-muted/40 px-2 py-1">
+              <MapPin size={12} className="shrink-0 text-muted-foreground" />
+              <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                Location
+              </span>
+              <span className="max-w-48 truncate text-[11px] font-semibold text-foreground">
+                {locationName}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {visibleBoxInfoValues.length > 0 && (
         <div className="mb-4 flex flex-wrap gap-2">
@@ -577,21 +691,23 @@ function BoxesSection({
   boxes,
   boxesPagination,
   filterOptions: serverFilterOptions,
+  packingType,
   downloadingBoxId,
-  downloadingAll,
+  downloadingDispatch,
   onSelectBox,
   onPrintBox,
-  onDownloadAll,
+  onDownloadDispatch,
   onFilterChange,
 }: {
   boxes: ProjectDetailData["boxes"];
   boxesPagination?: ProjectDetailData["boxes_pagination"];
   filterOptions?: ProjectDetailData["filterOptions"];
+  packingType: ProjectDetailData["project"]["packing_type"];
   downloadingBoxId: number | null;
-  downloadingAll: boolean;
+  downloadingDispatch: boolean;
   onSelectBox: (box: ProjectDetailData["boxes"][0]) => void;
   onPrintBox: (box: ProjectDetailData["boxes"][0]) => void;
-  onDownloadAll: () => void;
+  onDownloadDispatch: () => void;
   onFilterChange?: (params: {
     search?: string;
     group?: string;
@@ -780,7 +896,8 @@ function BoxesSection({
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-bold text-foreground">
-                  Boxes ({filteredBoxes.length}/{boxes.length})
+                  Boxes ({filteredBoxes.length}/
+                  {boxesPagination?.total ?? boxes.length})
                 </h2>
                 <Badge variant="outline" className="text-[11px] font-semibold">
                   {formatWeight(stats.totalWeight)}
@@ -837,20 +954,21 @@ function BoxesSection({
               </div>
             )}
 
+            {/* The former Download All button is replaced by the dispatch PDF. */}
             <Button
               type="button"
               size="sm"
               variant="outline"
-              disabled={downloadingAll}
-              onClick={onDownloadAll}
+              disabled={downloadingDispatch}
+              onClick={onDownloadDispatch}
               className="h-8 text-xs gap-1.5 rounded-lg"
             >
-              {downloadingAll ? (
+              {downloadingDispatch ? (
                 <Loader2 size={13} className="animate-spin" />
               ) : (
                 <Download size={13} />
               )}
-              Download All
+              Download Dispatch Document
             </Button>
           </div>
         </div>
@@ -872,7 +990,10 @@ function BoxesSection({
 
                   <Input
                     value={search}
-                    onChange={(event) => setSearch(event.target.value)}
+                    onChange={(event) => {
+                      setSearch(event.target.value);
+                      setPage(1);
+                    }}
                     placeholder="Search box no, status, weight..."
                     className="h-9 w-full pl-9 pr-9 text-sm rounded-lg"
                   />
@@ -880,7 +1001,10 @@ function BoxesSection({
                   {search && (
                     <button
                       type="button"
-                      onClick={() => setSearch("")}
+                      onClick={() => {
+                        setSearch("");
+                        setPage(1);
+                      }}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground z-10"
                     >
                       <X size={14} />
@@ -895,7 +1019,13 @@ function BoxesSection({
                   Product / Group
                 </label>
 
-                <Select value={productGroup} onValueChange={setProductGroup}>
+                <Select
+                  value={productGroup}
+                  onValueChange={(value) => {
+                    setProductGroup(value);
+                    setPage(1);
+                  }}
+                >
                   <SelectTrigger className="h-9 w-full rounded-lg text-sm bg-background">
                     <SelectValue placeholder="All Groups" />
                   </SelectTrigger>
@@ -916,7 +1046,13 @@ function BoxesSection({
                   Category
                 </label>
 
-                <Select value={category} onValueChange={setCategory}>
+                <Select
+                  value={category}
+                  onValueChange={(value) => {
+                    setCategory(value);
+                    setPage(1);
+                  }}
+                >
                   <SelectTrigger className="h-9 w-full rounded-lg text-sm bg-background">
                     <SelectValue placeholder="All Categories" />
                   </SelectTrigger>
@@ -937,7 +1073,13 @@ function BoxesSection({
                   Machine
                 </label>
 
-                <Select value={selectedMachineId} onValueChange={setSelectedMachineId}>
+                <Select
+                  value={selectedMachineId}
+                  onValueChange={(value) => {
+                    setSelectedMachineId(value);
+                    setPage(1);
+                  }}
+                >
                   <SelectTrigger className="h-9 w-full rounded-lg text-sm bg-background">
                     <SelectValue placeholder="All Machines" />
                   </SelectTrigger>
@@ -1001,7 +1143,10 @@ function BoxesSection({
                   <button
                     key={filter.value}
                     type="button"
-                    onClick={() => setBoxFilter(filter.value)}
+                    onClick={() => {
+                      setBoxFilter(filter.value);
+                      setPage(1);
+                    }}
                     className={cn(
                       "inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
                       active
@@ -1055,6 +1200,7 @@ function BoxesSection({
                 <BoxCard
                   key={box.id}
                   box={box}
+                  packingType={packingType}
                   viewMode={viewMode}
                   downloading={downloadingBoxId === box.id}
                   onClick={() => onSelectBox(box)}
@@ -1177,29 +1323,137 @@ function BoxItemsDialog({
   onClose,
   vendorId,
   projectId,
+  projectMasterId,
   boxId,
   boxName,
+  userId,
+  onBoxUpdated,
 }: {
   open: boolean;
   onClose: () => void;
   vendorId: number;
   projectId: string;
+  projectMasterId: number;
   boxId: number;
   boxName: string;
+  userId: number;
+  onBoxUpdated: () => void | Promise<void>;
 }) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<Awaited<
     ReturnType<typeof getBoxItems>
   > | null>(null);
+  const [pendingStatus, setPendingStatus] =
+    useState<TrackTraceBoxStatus | null>(null);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
+  const [deletingItemId, setDeletingItemId] = useState<number | null>(null);
+
+  const loadBoxItems = useCallback(async () => {
+    setLoading(true);
+
+    try {
+      const result = await getBoxItems(vendorId, projectId, boxId);
+      setData(result);
+    } catch (error) {
+      console.error(error);
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [boxId, projectId, vendorId]);
 
   useEffect(() => {
     if (!open) return;
-    setLoading(true);
-    getBoxItems(vendorId, projectId, boxId)
-      .then(setData)
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [open, boxId]);
+    setData(null);
+    void loadBoxItems();
+  }, [loadBoxItems, open]);
+
+  const refreshBoxViews = useCallback(async () => {
+    const [, projectRefresh] = await Promise.allSettled([
+      loadBoxItems(),
+      Promise.resolve().then(() => onBoxUpdated()),
+    ]);
+
+    if (projectRefresh.status === "rejected") {
+      console.error("Failed to refresh project boxes:", projectRefresh.reason);
+    }
+  }, [loadBoxItems, onBoxUpdated]);
+
+  const boxStatus = String(data?.box.box_status || "").toLowerCase();
+  const isPacked = boxStatus === "packed";
+
+  const handleStatusUpdate = async () => {
+    if (!pendingStatus || updatingStatus) return;
+
+    try {
+      setUpdatingStatus(true);
+      await updateTrackTraceBoxStatus(boxId, pendingStatus, userId);
+      await refreshBoxViews();
+      toastManager.add({
+        title: `Box marked as ${pendingStatus}`,
+        type: "success",
+      });
+      setPendingStatus(null);
+    } catch (error: any) {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          "Failed to update box status",
+        type: "error",
+      });
+      void refreshBoxViews();
+      setPendingStatus(null);
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handleDeleteItem = async () => {
+    if (!itemToDelete || deletingItemId) return;
+
+    if (isPacked) {
+      toastManager.add({
+        title: "Unpack the box before deleting an item",
+        type: "warning",
+      });
+      setItemToDelete(null);
+      return;
+    }
+
+    try {
+      setDeletingItemId(itemToDelete.id);
+      await deleteTrackTraceBoxItem({
+        mappingId: itemToDelete.id,
+        vendorId,
+        projectId: projectMasterId,
+        boxId,
+        userId,
+      });
+      await refreshBoxViews();
+      toastManager.add({
+        title: "Item removed from box successfully",
+        type: "success",
+      });
+      setItemToDelete(null);
+    } catch (error: any) {
+      toastManager.add({
+        title:
+          error?.response?.data?.message ||
+          error?.response?.data?.error ||
+          "Failed to remove item from box",
+        type: "error",
+      });
+      void refreshBoxViews();
+      setItemToDelete(null);
+    } finally {
+      setDeletingItemId(null);
+    }
+  };
 
   const { totalQty, totalWeight } = useMemo(() => {
     if (!data?.items) return { totalQty: 0, totalWeight: 0 };
@@ -1219,9 +1473,10 @@ function BoxItemsDialog({
   }, [data]);
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+    <>
+      <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="sm:max-w-6xl md:max-w-7xl lg:max-w-[90vw] xl:max-w-[1300px] w-full max-h-[88vh] flex flex-col p-0 overflow-hidden rounded-2xl border">
-        <DialogHeader className="px-6 py-4 border-b bg-muted/30 flex flex-row items-center justify-between">
+        <DialogHeader className="flex flex-row items-center justify-between gap-4 border-b bg-muted/30 px-6 py-4 pr-14">
           <DialogTitle className="flex items-center gap-3 text-lg font-bold">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/80 font-bold">
               <Box size={18} />
@@ -1239,6 +1494,40 @@ function BoxItemsDialog({
               )}
             </div>
           </DialogTitle>
+          {data && (
+            <div className="flex shrink-0 items-center gap-2">
+              <Badge
+                variant="outline"
+                className={cn(
+                  "hidden capitalize sm:inline-flex",
+                  isPacked
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                    : "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+                )}
+              >
+                {boxStatus}
+              </Badge>
+              <Button
+                type="button"
+                size="sm"
+                variant={isPacked ? "outline" : "default"}
+                className="gap-1.5"
+                disabled={updatingStatus}
+                onClick={() =>
+                  setPendingStatus(isPacked ? "unpacked" : "packed")
+                }
+              >
+                {updatingStatus ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : isPacked ? (
+                  <PackageOpen className="size-4" />
+                ) : (
+                  <PackageCheck className="size-4" />
+                )}
+                {isPacked ? "Unpack box" : "Pack box"}
+              </Button>
+            </div>
+          )}
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto p-0 bg-background">
@@ -1297,6 +1586,9 @@ function BoxItemsDialog({
                     </TableHead>
                     <TableHead className="text-xs font-bold uppercase text-foreground whitespace-nowrap px-4">
                       Site By
+                    </TableHead>
+                    <TableHead className="text-right text-xs font-bold uppercase text-foreground whitespace-nowrap px-4">
+                      Actions
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1378,6 +1670,33 @@ function BoxItemsDialog({
                             "—"
                           )}
                         </TableCell>
+                        <TableCell className="px-4 text-right">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            disabled={isPacked || deletingItemId === item.id}
+                            title={
+                              isPacked
+                                ? "Unpack the box before deleting items"
+                                : "Remove item from box"
+                            }
+                            onClick={() =>
+                              setItemToDelete({
+                                id: item.id,
+                                name: item.cut_list.item_name,
+                              })
+                            }
+                          >
+                            {deletingItemId === item.id ? (
+                              <Loader2 className="size-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="size-4" />
+                            )}
+                            <span className="sr-only">Remove item</span>
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     );
                   })}
@@ -1398,7 +1717,7 @@ function BoxItemsDialog({
                       {formatWeight(totalWeight)}
                     </TableCell>
                     <TableCell
-                      colSpan={6}
+                      colSpan={7}
                       className="py-3.5 px-4 text-xs text-muted-foreground text-right pr-6"
                     >
                       Total Weight:{" "}
@@ -1413,7 +1732,81 @@ function BoxItemsDialog({
           )}
         </div>
       </DialogContent>
-    </Dialog>
+      </Dialog>
+
+      <AlertDialog
+        open={pendingStatus !== null}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen && !updatingStatus) setPendingStatus(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingStatus === "packed"
+                ? "Pack this box?"
+                : "Unpack this box?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingStatus === "packed"
+                ? "The box will be marked as packed. Items cannot be removed until the box is unpacked again."
+                : "The box will be marked as unpacked, allowing its contents to be changed or removed."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updatingStatus}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={updatingStatus}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleStatusUpdate();
+              }}
+            >
+              {updatingStatus && <Loader2 className="size-4 animate-spin" />}
+              {pendingStatus === "packed" ? "Pack box" : "Unpack box"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={itemToDelete !== null}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen && deletingItemId === null) setItemToDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove item from box?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {itemToDelete
+                ? `Remove “${itemToDelete.name}” from ${boxName}? This action is only allowed while the box is unpacked.`
+                : "This action is only allowed while the box is unpacked."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingItemId !== null}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20"
+              disabled={deletingItemId !== null}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleDeleteItem();
+              }}
+            >
+              {deletingItemId !== null && (
+                <Loader2 className="size-4 animate-spin" />
+              )}
+              Remove item
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
@@ -2511,28 +2904,50 @@ function CutListSection({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ProjectDetailPage() {
-  const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
+  const currentUser = useAppSelector((state) => state.auth.user);
+  const vendorId = currentUser?.vendor_id;
   const { uniqueProjectId } = useParams<{ uniqueProjectId: string }>();
 
   const [data, setData] = useState<ProjectDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const activeBoxFiltersRef = useRef<
+    NonNullable<Parameters<typeof getProjectDetail>[2]>
+  >({});
 
   const [selectedBox, setSelectedBox] = useState<{
     id: number;
     name: string;
   } | null>(null);
   const [downloadingBoxId, setDownloadingBoxId] = useState<number | null>(null);
-  const [downloadingAll, setDownloadingAll] = useState(false);
+  const [downloadingDispatch, setDownloadingDispatch] = useState(false);
+  const [dispatchLocationDialogOpen, setDispatchLocationDialogOpen] =
+    useState(false);
+  const [selectedDispatchLocations, setSelectedDispatchLocations] = useState<
+    string[]
+  >([]);
+
+  const refreshProjectDetail = useCallback(async () => {
+    if (!vendorId || !uniqueProjectId) return;
+
+    const result = await getProjectDetail(
+      Number(vendorId),
+      String(uniqueProjectId),
+      activeBoxFiltersRef.current,
+    );
+    setData(result);
+  }, [uniqueProjectId, vendorId]);
 
   useEffect(() => {
     if (!vendorId || !uniqueProjectId) return;
+
+    activeBoxFiltersRef.current = {};
     setLoading(true);
-    getProjectDetail(Number(vendorId), String(uniqueProjectId))
-      .then(setData)
+    setError(false);
+    refreshProjectDetail()
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [vendorId, uniqueProjectId]);
+  }, [refreshProjectDetail, uniqueProjectId, vendorId]);
 
   const handleBoxesFilterChange = useCallback(
     (params: {
@@ -2541,13 +2956,14 @@ export default function ProjectDetailPage() {
       category?: string;
       machine_id?: string;
       box_status?: string;
+      page?: number;
+      limit?: number;
     }) => {
       if (!vendorId || !uniqueProjectId) return;
-      getProjectDetail(Number(vendorId), String(uniqueProjectId), params)
-        .then(setData)
-        .catch(console.error);
+      activeBoxFiltersRef.current = params;
+      void refreshProjectDetail().catch(console.error);
     },
-    [vendorId, uniqueProjectId],
+    [refreshProjectDetail, uniqueProjectId, vendorId],
   );
 
   const receivedStats = data
@@ -2629,54 +3045,74 @@ export default function ProjectDetailPage() {
     }
   };
 
-  const handleDownloadAllBoxes = async () => {
+  const handleDownloadDispatchDocument = async (locations: string[] = []) => {
     if (!vendorId || !uniqueProjectId) return;
 
     try {
-      setDownloadingAll(true);
+      setDownloadingDispatch(true);
 
-      const response = await downloadProjectFullReport(
+      const response = await downloadDispatchDocument(
         String(uniqueProjectId),
         Number(vendorId),
+        locations,
       );
-
-      if (!response?.status && !response?.success && response?.status !== 1) {
-        throw new Error(response?.message || "Failed to generate full report");
-      }
-
-      const pdfUrl =
-        response?.data?.download_url ||
-        response?.data?.pdf_url ||
-        response?.download_url ||
-        response?.pdf_url;
-
-      if (!pdfUrl) {
-        throw new Error("Report URL not found in response");
-      }
-
+      const pdfUrl = URL.createObjectURL(response.blob);
       const link = document.createElement("a");
       link.href = pdfUrl;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.download = `${data?.project?.project_name || "project"}-full-report.pdf`;
+      link.download = response.fileName;
 
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 1000);
 
       toastManager.add({
-        title: "Full report downloaded successfully",
+        title: "Dispatch document downloaded successfully",
         type: "success",
       });
+      setDispatchLocationDialogOpen(false);
     } catch (error: any) {
-      console.error("Download all boxes error:", error);
+      console.error("Download dispatch document error:", error);
+
+      let message = error?.message || "Failed to download dispatch document";
+      const responseData = error?.response?.data;
+
+      if (responseData instanceof Blob) {
+        try {
+          const payload = JSON.parse(await responseData.text());
+          message = payload?.message || message;
+        } catch {
+          // Keep the original transport error when the response is not JSON.
+        }
+      }
+
       toastManager.add({
-        title: error?.message || "Failed to download full report",
+        title: message,
         type: "error",
       });
     } finally {
-      setDownloadingAll(false);
+      setDownloadingDispatch(false);
     }
+  };
+
+  const handleDispatchDocumentClick = () => {
+    const locations = data?.filterOptions?.locations ?? [];
+
+    if (locations.length === 0) {
+      void handleDownloadDispatchDocument();
+      return;
+    }
+
+    setSelectedDispatchLocations(locations);
+    setDispatchLocationDialogOpen(true);
+  };
+
+  const toggleDispatchLocation = (location: string, checked: boolean) => {
+    setSelectedDispatchLocations((current) =>
+      checked
+        ? Array.from(new Set([...current, location]))
+        : current.filter((item) => item !== location),
+    );
   };
 
   return (
@@ -3170,16 +3606,17 @@ export default function ProjectDetailPage() {
                 boxes={data.boxes}
                 boxesPagination={data.boxes_pagination}
                 filterOptions={data.filterOptions}
+                packingType={data.project.packing_type}
                 downloadingBoxId={downloadingBoxId}
-                downloadingAll={downloadingAll}
+                downloadingDispatch={downloadingDispatch}
                 onSelectBox={(box) =>
                   setSelectedBox({
                     id: box.id,
-                    name: box.box_name,
+                    name: getBoxDisplayNumber(box),
                   })
                 }
                 onPrintBox={handleDownloadBoxPdf}
-                onDownloadAll={handleDownloadAllBoxes}
+                onDownloadDispatch={handleDispatchDocumentClick}
                 onFilterChange={handleBoxesFilterChange}
               />
             )}
@@ -3712,15 +4149,123 @@ export default function ProjectDetailPage() {
         )}
       </div>
 
+      <Dialog
+        open={dispatchLocationDialogOpen}
+        onOpenChange={(open) => {
+          if (!downloadingDispatch) setDispatchLocationDialogOpen(open);
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Select dispatch locations</DialogTitle>
+            <DialogDescription>
+              Select one or more locations. The PDF will start every location
+              on a separate page and continue onto additional pages when needed.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex items-center justify-between gap-3 border-y py-3">
+            <p className="text-sm font-medium">
+              {selectedDispatchLocations.length} of{" "}
+              {data?.filterOptions?.locations?.length ?? 0} selected
+            </p>
+            <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={downloadingDispatch}
+                onClick={() =>
+                  setSelectedDispatchLocations(
+                    data?.filterOptions?.locations ?? [],
+                  )
+                }
+              >
+                Select all
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={downloadingDispatch}
+                onClick={() => setSelectedDispatchLocations([])}
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+
+          <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+            {(data?.filterOptions?.locations ?? []).map((location) => {
+              const checked = selectedDispatchLocations.includes(location);
+
+              return (
+                <label
+                  key={location}
+                  className={cn(
+                    "flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-3 transition-colors",
+                    checked
+                      ? "border-primary/50 bg-primary/5"
+                      : "hover:bg-muted/50",
+                  )}
+                >
+                  <Checkbox
+                    checked={checked}
+                    disabled={downloadingDispatch}
+                    onCheckedChange={(value) =>
+                      toggleDispatchLocation(location, value === true)
+                    }
+                  />
+                  <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                    {location}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={downloadingDispatch}
+              onClick={() => setDispatchLocationDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={
+                downloadingDispatch || selectedDispatchLocations.length === 0
+              }
+              onClick={() =>
+                void handleDownloadDispatchDocument(selectedDispatchLocations)
+              }
+            >
+              {downloadingDispatch ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              Download PDF
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* ── Box items dialog ── */}
-      {selectedBox && (
+      {selectedBox && data && currentUser && (
         <BoxItemsDialog
           open={!!selectedBox}
           onClose={() => setSelectedBox(null)}
           vendorId={Number(vendorId)}
           projectId={String(uniqueProjectId)}
+          projectMasterId={data.project.id}
           boxId={selectedBox.id}
           boxName={selectedBox.name}
+          userId={currentUser.id}
+          onBoxUpdated={refreshProjectDetail}
         />
       )}
     </>
