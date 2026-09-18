@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useSearchParams } from "next/navigation";
 import {
@@ -602,11 +602,27 @@ export default function InstallationMiscellaneous({
     const map = new Map<number, string>();
     instances.forEach((instance: any) => {
       if (instance?.id) {
-        map.set(instance.id, instance?.title || `Instance ${instance.id}`);
+        map.set(
+          instance.id,
+          instance?.title || `Instance ${instance?.quantity_index ?? instance?.id}`,
+        );
       }
     });
     return map;
   }, [instances]);
+
+  const getInstanceTitle = useCallback(
+    (instId: number): string => {
+      const selectedOpt = formData.return_order_selected_instances?.find(
+        (opt) => Number(opt.value) === instId,
+      );
+      if (selectedOpt?.label) return selectedOpt.label;
+      const fromMap = instanceTitleById.get(instId);
+      if (fromMap) return fromMap;
+      return `Instance ${instId}`;
+    },
+    [formData.return_order_selected_instances, instanceTitleById],
+  );
 
   const instanceOptions = useMemo<{ value: string; label: string }[]>(() => {
     return instances.map((instance: any) => ({
@@ -630,24 +646,46 @@ export default function InstallationMiscellaneous({
 
   const returnOrderMaterialOptions: Option[] = useMemo(() => {
     if (!returnOrderSelectedInstanceIds.length) return [];
-    const matched = orderLoginSummary.filter((item: any) =>
-      returnOrderSelectedInstanceIds.includes(Number(item?.instance_id)),
-    );
-    return matched.map((item: any) => {
-      const instTitle = item?.instance_id
-        ? instanceTitleById.get(Number(item.instance_id))
-        : "";
-      const rawName = item.item_desc || item.item_type || "Untitled Item";
-      const label =
-        returnOrderSelectedInstanceIds.length > 1 && instTitle
-          ? `${instTitle} - ${rawName}`
-          : rawName;
-      return {
-        value: String(item.id),
-        label: label,
-      };
+
+    const defaultMaterialTypes = ["Carcass", "Shutter", "Stock Hardware"];
+    const options: Option[] = [];
+    const isMultiple = returnOrderSelectedInstanceIds.length > 1;
+
+    returnOrderSelectedInstanceIds.forEach((instId) => {
+      const instTitle = getInstanceTitle(instId);
+      const itemsForInstance = orderLoginSummary.filter(
+        (item: any) => Number(item?.instance_id) === instId,
+      );
+
+      if (itemsForInstance.length > 0) {
+        itemsForInstance.forEach((item: any) => {
+          const rawName = item.item_desc || item.item_type || "Untitled Item";
+          const label = isMultiple && instTitle ? `${instTitle} - ${rawName}` : rawName;
+          options.push({
+            value: String(item.id),
+            label: label,
+            rawName: rawName,
+            instance: instTitle || "Materials",
+            instanceId: String(instId),
+          });
+        });
+      } else {
+        // Fallback: If no orderLoginSummary items exist for this instance, provide standard 3 options
+        defaultMaterialTypes.forEach((type) => {
+          const label = isMultiple && instTitle ? `${instTitle} - ${type}` : type;
+          options.push({
+            value: `inst_${instId}_${type.toLowerCase().replace(/\s+/g, "_")}`,
+            label: label,
+            rawName: type,
+            instance: instTitle || "Materials",
+            instanceId: String(instId),
+          });
+        });
+      }
     });
-  }, [returnOrderSelectedInstanceIds, orderLoginSummary, instanceTitleById]);
+
+    return options;
+  }, [returnOrderSelectedInstanceIds, orderLoginSummary, getInstanceTitle]);
 
   useEffect(() => {
     if (skipMaterialResetRef.current) {
@@ -1787,12 +1825,41 @@ export default function InstallationMiscellaneous({
                         onChange={(options) => {
                           setFormData((prev) => {
                             const selectedInstIds = options.map((o) => Number(o.value));
-                            const validMaterials = (prev.return_order_selected_materials || []).filter((mat) => {
-                              const matchedItem = orderLoginSummary.find(
-                                (item: any) => String(item.id) === String(mat.value)
-                              );
-                              return matchedItem && selectedInstIds.includes(Number(matchedItem.instance_id));
-                            });
+                            const isMultiple = selectedInstIds.length > 1;
+                            const validMaterials = (prev.return_order_selected_materials || [])
+                              .filter((mat: any) => {
+                                if (mat.instanceId) {
+                                  return selectedInstIds.includes(Number(mat.instanceId));
+                                }
+                                const matchedItem = orderLoginSummary.find(
+                                  (item: any) => String(item.id) === String(mat.value),
+                                );
+                                return matchedItem && selectedInstIds.includes(Number(matchedItem.instance_id));
+                              })
+                              .map((mat: any) => {
+                                const instId = mat.instanceId
+                                  ? Number(mat.instanceId)
+                                  : Number(
+                                      orderLoginSummary.find(
+                                        (item: any) => String(item.id) === String(mat.value),
+                                      )?.instance_id,
+                                    );
+                                const instTitle = instId ? getInstanceTitle(instId) : "";
+                                const rawName =
+                                  mat.rawName ||
+                                  (mat.label.includes(" - ")
+                                    ? mat.label.split(" - ").slice(1).join(" - ")
+                                    : mat.label);
+                                const updatedLabel =
+                                  isMultiple && instTitle ? `${instTitle} - ${rawName}` : rawName;
+                                return {
+                                  ...mat,
+                                  label: updatedLabel,
+                                  rawName: rawName,
+                                  instance: instTitle || "Materials",
+                                  instanceId: String(instId),
+                                };
+                              });
                             return {
                               ...prev,
                               return_order_selected_instances: options,
@@ -1874,6 +1941,7 @@ export default function InstallationMiscellaneous({
                     </label>
                     {isReturnOrder ? (
                       <MultipleSelector
+                        groupBy={returnOrderSelectedInstanceIds.length > 1 ? "instance" : undefined}
                         value={formData.return_order_selected_materials || []}
                         onChange={(options) => {
                           setFormData((prev) => ({
