@@ -370,9 +370,9 @@ function BoxCard({
     return (
       <div
         onClick={onClick}
-        className="cursor-pointer group grid w-full grid-cols-1 gap-3 rounded-xl border bg-card p-3 text-left transition-all hover:border-primary/40 hover:bg-accent/40 md:grid-cols-[minmax(130px,1fr)_130px_130px_170px_44px]"
+        className="group flex w-full min-w-0 flex-wrap items-center gap-3 rounded-xl border bg-card p-3 text-left transition-all hover:border-primary/40 hover:bg-accent/40"
       >
-        <div className="flex min-w-0 items-center gap-3">
+        <div className="flex min-w-[180px] flex-1 items-center gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/80 text-foreground border border-border/80 font-bold">
             <Box size={16} />
           </div>
@@ -417,19 +417,19 @@ function BoxCard({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 md:justify-center">
+        <div className="flex shrink-0 items-center gap-2 md:justify-center">
           <span className="text-xs font-semibold text-foreground">
             {itemCount} item{itemCount === 1 ? "" : "s"}
           </span>
         </div>
 
-        <div className="flex items-center gap-2 md:justify-center">
+        <div className="flex shrink-0 items-center gap-2 md:justify-center">
           <span className="text-xs font-semibold text-foreground tabular-nums">
             {formatWeight(boxWeight)}
           </span>
         </div>
 
-        <div className="flex items-center gap-2 text-xs md:justify-end">
+        <div className="flex min-w-[140px] flex-1 flex-wrap items-center gap-1.5 text-xs md:justify-end">
           <span
             className={cn(
               "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
@@ -455,7 +455,7 @@ function BoxCard({
           </span>
         </div>
 
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex shrink-0 items-center justify-end gap-2">
           <button
             type="button"
             disabled={downloading}
@@ -899,7 +899,7 @@ function BoxesSection({
   };
 
   return (
-    <div className="rounded-2xl border bg-card overflow-hidden">
+    <div className="min-w-0 overflow-hidden rounded-2xl border bg-card">
       <div className="border-b bg-muted/30 p-4">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div
