@@ -1408,6 +1408,8 @@ function BoxItemsDialog({
   const boxStatus = String(data?.box.box_status || "").toLowerCase();
   const isPacked = boxStatus === "packed";
   const isFactoryOut = Boolean(data?.box.factory_out_at);
+  const isFactoryOutForUnpack =
+    data?.box.factory_out_at != null && data?.box.factory_out_by != null;
   const isSiteIn = Boolean(data?.box.site_in_at || data?.box.site_in_by);
   const isPackedValid = Boolean(data?.box.packed_at && data?.box.packed_by);
 
@@ -1459,10 +1461,12 @@ function BoxItemsDialog({
   const handleStatusUpdate = async () => {
     if (!pendingStatus || updatingStatus) return;
 
-    if (pendingStatus === "unpacked" && isSiteIn) {
+    if (pendingStatus === "unpacked" && (isSiteIn || isFactoryOutForUnpack)) {
       toastManager.add({
         title:
-          "Cannot unpack box: Box is already at the site (Site In has been recorded)",
+          isSiteIn
+            ? "Cannot unpack box: Box is already at the site (Site In has been recorded)"
+            : "Cannot unpack box: Box has already been marked as Factory Out",
         type: "error",
       });
       setPendingStatus(null);
@@ -1613,14 +1617,19 @@ function BoxItemsDialog({
                         <div className="w-full">
                           <DropdownMenuItem
                             onClick={() => {
-                              if (!isSiteIn) {
+                              if (!isSiteIn && !isFactoryOutForUnpack) {
                                 setPendingStatus("unpacked");
                               }
                             }}
-                            disabled={isSiteIn || updatingStatus || reverting}
+                            disabled={
+                              isSiteIn ||
+                              isFactoryOutForUnpack ||
+                              updatingStatus ||
+                              reverting
+                            }
                             className={cn(
                               "gap-2.5 py-2 w-full",
-                              isSiteIn
+                              isSiteIn || isFactoryOutForUnpack
                                 ? "!pointer-events-auto opacity-60 cursor-not-allowed"
                                 : "cursor-pointer",
                             )}
@@ -1635,13 +1644,15 @@ function BoxItemsDialog({
                           </DropdownMenuItem>
                         </div>
                       </TooltipTrigger>
-                      {isSiteIn && (
+                      {(isSiteIn || isFactoryOutForUnpack) && (
                         <TooltipContent
                           side="left"
                           align="center"
                           className="z-[100] max-w-xs text-xs font-normal"
                         >
-                          Cannot unpack: Box is already at the site (Site In has been recorded).
+                          {isSiteIn
+                            ? "Cannot unpack: Box is already at the site (Site In has been recorded)."
+                            : "Cannot unpack: Box has already been marked as Factory Out."}
                         </TooltipContent>
                       )}
                     </Tooltip>
@@ -1927,7 +1938,9 @@ function BoxItemsDialog({
             </AlertDialogCancel>
             <AlertDialogAction
               disabled={
-                updatingStatus || (pendingStatus === "unpacked" && isSiteIn)
+                updatingStatus ||
+                (pendingStatus === "unpacked" &&
+                  (isSiteIn || isFactoryOutForUnpack))
               }
               onClick={(event) => {
                 event.preventDefault();
