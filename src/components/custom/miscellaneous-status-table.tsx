@@ -1,18 +1,20 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+  PaginationState,
+  SortingState,
+  VisibilityState,
+  getCoreRowModel,
+  getPaginationRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
+
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import ClearInput from "@/components/origin-input";
+import { DataTable } from "@/components/data-table/data-table";
+import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
 import {
   Dialog,
   DialogContent,
@@ -21,59 +23,49 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
-import BaseModal from "@/components/utils/baseModal";
-import {
-  AlertCircle,
-  CheckCircle2,
-  FileText,
-  Search,
-  RefreshCw,
   Clock,
   CheckCheck,
   Cog,
   PackageCheck,
   CalendarClock,
   Truck,
+  CheckCircle2,
   XCircle,
-  ExternalLink,
-  Eye,
-  Building,
-  User,
-  Phone,
-  MapPin,
-  Calendar,
-  Layers,
-  Wrench,
-  Download,
+  AlertCircle,
+  FileText,
   FileIcon,
-  ChevronLeft,
-  ChevronRight,
-  ShieldAlert,
-  Package,
-  IndianRupee,
-  ShieldCheck,
+  Download,
+  RefreshCw,
+  Trash2,
+  Loader2,
 } from "lucide-react";
-import CustomeTooltip from "@/components/custom-tooltip";
 import { useAppSelector } from "@/redux/store";
 import {
   useMiscellaneousByStatus,
   MiscellaneousItem,
 } from "@/api/miscellaneousModuleApi";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useDeleteMiscellaneousEntry } from "@/api/installation/useUnderInstallationStageLeads";
 import InstallationMiscellaneous from "@/components/installation/under-installation/InstallationMiscellaneous";
+import {
+  getMiscellaneousStatusColumns,
+  formatDate,
+} from "./miscellaneous-status-columns";
+import { cn } from "@/lib/utils";
+
+// -------------------------------------------------------
+// 🟣 STAGE CONFIG
+// -------------------------------------------------------
 
 export const STAGE_CONFIG: Record<
   string,
@@ -140,130 +132,30 @@ export const STAGE_CONFIG: Record<
   },
 };
 
-const formatDate = (dateStr: string | null | undefined) => {
-  if (!dateStr) return "-";
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return "-";
-    return d.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  } catch {
-    return "-";
-  }
-};
+// -------------------------------------------------------
+// 🟣 PROPS
+// -------------------------------------------------------
 
-const separateImageAndDocs = (docs: any[]) => {
-  const imageExtensions = ["jpg", "jpeg", "png", "webp"];
-  const videoExtensions = ["mp4", "mov", "webm", "avi"];
-  const images = docs.filter((d) => {
-    const ext = (d.doc_og_name || d.original_name)?.split(".").pop()?.toLowerCase();
-    return imageExtensions.includes(ext || "");
-  });
-  const videos = docs.filter((d) => {
-    const ext = (d.doc_og_name || d.original_name)?.split(".").pop()?.toLowerCase();
-    return videoExtensions.includes(ext || "");
-  });
-  const nonImages = docs.filter((d) => {
-    const ext = (d.doc_og_name || d.original_name)?.split(".").pop()?.toLowerCase();
-    return !imageExtensions.includes(ext || "") && !videoExtensions.includes(ext || "");
-  });
-  return { images, videos, nonImages };
-};
-
-const renderStatusBadge = (entry: MiscellaneousItem) => {
-  let label = entry.status_label;
-  if (!label) {
-    if (entry.is_resolved) {
-      label = "RESOLVED";
-    } else if (entry.misc_approved === false) {
-      label = "REJECTED";
-    } else if (entry.misc_approved !== true) {
-      label = "AWAITING APPROVAL";
-    } else if (entry.delivery_task?.status === "completed") {
-      label = "DISPATCHED";
-    } else if (entry.required_delivery_date) {
-      label = "DISPATCH SCHEDULED";
-    } else if (entry.expected_ready_date && entry.task?.status === "completed") {
-      label = "RTD";
-    } else if (entry.expected_ready_date) {
-      label = "UNDER PROCESS";
-    } else {
-      label = "MISCL APPROVED";
-    }
-  }
-
-  let className =
-    "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/50 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800";
-
-  if (label === "REJECTED") {
-    className =
-      "bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300 border-rose-200 dark:border-rose-800";
-  } else if (label === "RESOLVED") {
-    className =
-      "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800";
-  } else if (label === "DISPATCHED") {
-    className =
-      "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 border-blue-200 dark:border-blue-800";
-  } else if (label === "DISPATCH SCHEDULED") {
-    className =
-      "bg-indigo-100 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800";
-  } else if (label === "RTD" || label === "READY TO DISPATCH") {
-    className =
-      "bg-cyan-100 text-cyan-800 dark:bg-cyan-950/50 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800";
-  } else if (label === "UNDER PROCESS") {
-    className =
-      "bg-orange-100 text-orange-800 dark:bg-orange-950/50 dark:text-orange-300 border-orange-200 dark:border-orange-800";
-  } else if (label === "MISCL APPROVED") {
-    className =
-      "bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300 border-purple-200 dark:border-purple-800";
-  }
-
-  return (
-    <Badge
-      variant="outline"
-      className={`text-xs px-2.5 py-0.5 font-semibold whitespace-nowrap border ${className}`}
-    >
-      {label}
-    </Badge>
-  );
-};
-
-interface MiscellaneousStatusTableProps {
+export interface MiscellaneousStatusTableProps {
   status: string;
+  title?: string;
+  description?: string;
 }
+
+// -------------------------------------------------------
+// 🟩 COMPONENT
+// -------------------------------------------------------
 
 export function MiscellaneousStatusTable({
   status,
+  title,
+  description,
 }: MiscellaneousStatusTableProps) {
   const router = useRouter();
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  // Selected item for modals
-  const [selectedItemForDocs, setSelectedItemForDocs] =
-    useState<MiscellaneousItem | null>(null);
-  const [selectedItemForDetail, setSelectedItemForDetail] =
-    useState<MiscellaneousItem | null>(null);
-
-  // Debounce search input
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(search.trim());
-      setPage(1);
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  // Scoping Auth state
+  // -------------------- GLOBAL STATE --------------------
   const user = useAppSelector((state) => state.auth.user);
-  const selectedFranchiseId = useAppSelector(
-    (state) => state.auth.franchise_id,
-  );
+  const selectedFranchiseId = useAppSelector((state) => state.auth.franchise_id);
   const userType = user?.user_type?.user_type
     ?.toLowerCase()
     .trim()
@@ -273,6 +165,27 @@ export function MiscellaneousStatusTable({
   const franchiseId = selectedFranchiseId ?? user?.franchise_id ?? undefined;
   const userId = user?.id;
 
+  const isSuperAdmin = useMemo(() => {
+    const role = (user?.user_role || "").toLowerCase().trim();
+    const rawType =
+      typeof user?.user_type === "object"
+        ? (user.user_type as any)?.user_type ||
+          (user.user_type as any)?.user_type_name ||
+          (user.user_type as any)?.name ||
+          ""
+        : String(user?.user_type || "");
+    const type = rawType.toLowerCase().trim();
+
+    return (
+      role.includes("super-admin") ||
+      role.includes("superadmin") ||
+      role.includes("super_admin") ||
+      type.includes("super-admin") ||
+      type.includes("superadmin") ||
+      type.includes("super_admin")
+    );
+  }, [user]);
+
   const skipFranchiseFilter =
     userType === "factory" ||
     userType === "miscellaneous" ||
@@ -281,533 +194,234 @@ export function MiscellaneousStatusTable({
     userType === "head-site-supervisor" ||
     userType === "auditor";
 
-  const payload = React.useMemo(
+  // -------------------- LOCAL STATE --------------------
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
+    quantity: false,
+    cost: false,
+  });
+
+  const [selectedItemForDocs, setSelectedItemForDocs] =
+    useState<MiscellaneousItem | null>(null);
+  const [selectedItemForDetail, setSelectedItemForDetail] =
+    useState<MiscellaneousItem | null>(null);
+  const [selectedItemForEdit, setSelectedItemForEdit] =
+    useState<MiscellaneousItem | null>(null);
+  const [itemToDelete, setItemToDelete] =
+    useState<MiscellaneousItem | null>(null);
+
+  const deleteMutation = useDeleteMiscellaneousEntry();
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // -------------------- QUERY PAYLOAD --------------------
+  const payload = useMemo(
     () => ({
       status,
       franchise_id: skipFranchiseFilter ? undefined : franchiseId,
       user_type: userType,
       user_id: userId,
-      page,
-      limit,
+      page: pagination.pageIndex + 1,
+      limit: pagination.pageSize,
       global_search: debouncedSearch || undefined,
     }),
-    [status, skipFranchiseFilter, franchiseId, userType, userId, page, limit, debouncedSearch],
+    [
+      status,
+      skipFranchiseFilter,
+      franchiseId,
+      userType,
+      userId,
+      pagination.pageIndex,
+      pagination.pageSize,
+      debouncedSearch,
+    ],
   );
 
-  const { data, isLoading, isFetching, refetch } = useMiscellaneousByStatus(
+  const { data, isFetching, refetch } = useMiscellaneousByStatus(
     vendorId,
     payload,
   );
 
-  const entries: MiscellaneousItem[] =
-    data?.miscellaneous || data?.data || [];
-  const totalRecords = data?.pagination?.totalRecords ?? data?.count ?? 0;
-  const totalPages = data?.pagination?.totalPages || Math.ceil(totalRecords / limit) || 1;
+  const entries: MiscellaneousItem[] = data?.miscellaneous || data?.data || [];
+  const totalPages = data?.pagination?.totalPages || 1;
 
+  // -------------------- CONFIG --------------------
   const config = STAGE_CONFIG[status] || {
-    title: status
-      .split("-")
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(" "),
-    description: "Manage and track miscellaneous issues in this stage.",
+    title:
+      title ||
+      status
+        .split("-")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" "),
+    description:
+      description || "Manage and track miscellaneous issues in this stage.",
     icon: AlertCircle,
     color: "text-primary",
   };
 
-  const StageIcon = config.icon;
+  const headerTitle = title || config.title;
+  const headerDescription = description || config.description;
 
-  const handleNavigateToDetails = (leadId: number, accountId: number) => {
+  // -------------------- NAVIGATION HANDLERS --------------------
+  const handleOpenLead = (leadId: number, accountId: number) => {
     router.push(
-      `/dashboard/installation/under-installation/details/${leadId}?accountId=${accountId}`,
+      `/dashboard/installation/under-installation/details/${leadId}?accountId=${accountId}&tab=misc`,
     );
   };
 
+  const handleOpenDetail = (item: MiscellaneousItem) => {
+    setSelectedItemForDetail(item);
+  };
+
+  const handleOpenDocs = (item: MiscellaneousItem) => {
+    setSelectedItemForDocs(item);
+  };
+
+  const handleOpenEdit = (item: MiscellaneousItem) => {
+    setSelectedItemForEdit(item);
+  };
+
+  const handleDeleteItem = (item: MiscellaneousItem) => {
+    setItemToDelete(item);
+  };
+
+  // -------------------- COLUMNS & TABLE --------------------
+  const columns = useMemo(
+    () =>
+      getMiscellaneousStatusColumns({
+        onOpenLead: handleOpenLead,
+        onOpenDetail: handleOpenDetail,
+        onOpenEdit: handleOpenEdit,
+        onOpenDocs: handleOpenDocs,
+        onDelete: handleDeleteItem,
+        isSuperAdmin,
+        statusSlug: status,
+      }),
+    [status, isSuperAdmin],
+  );
+
+  const table = useReactTable({
+    data: entries,
+    columns,
+    pageCount: totalPages,
+    state: {
+      pagination,
+      sorting,
+      columnVisibility,
+    },
+    onPaginationChange: setPagination,
+    onSortingChange: setSorting,
+    onColumnVisibilityChange: setColumnVisibility,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    manualPagination: true,
+    getRowId: (row) => String(row.id),
+  });
+
+  // -------------------- RENDER --------------------
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      {/* ── Header Title & Actions ── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className={`p-2 rounded-xl bg-muted/60 border ${config.color}`}>
-              <StageIcon className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                  {config.title}
-                </h1>
-                <Badge
-                  variant="secondary"
-                  className="rounded-full px-2.5 py-0.5 text-xs font-semibold"
-                >
-                  {totalRecords} {totalRecords === 1 ? "Issue" : "Issues"}
-                </Badge>
-              </div>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {config.description}
-              </p>
-            </div>
+    <div className="py-2">
+      {/* 📱 MOBILE & DESKTOP HEADER (Consistent with Overall Leads) */}
+      <div className="px-4 space-y-3">
+        {/* Title & Description */}
+        <div className="flex flex-col gap-2 md:flex-row items-start justify-between">
+          <div>
+            <h1 className="text-lg font-semibold">{headerTitle}</h1>
+            <p className="text-sm text-muted-foreground hidden md:block">
+              {headerDescription}
+            </p>
           </div>
         </div>
 
-        {/* Filters and Controls */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="relative min-w-[240px] md:min-w-[280px]">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search by lead, customer, problem..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-9 text-sm"
-            />
-          </div>
-
-          <Select
-            value={String(limit)}
-            onValueChange={(val) => {
-              setLimit(Number(val));
-              setPage(1);
-            }}
-          >
-            <SelectTrigger className="h-9 w-[110px] text-xs">
-              <SelectValue placeholder="Page limit" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="10">10 / page</SelectItem>
-              <SelectItem value="20">20 / page</SelectItem>
-              <SelectItem value="50">50 / page</SelectItem>
-              <SelectItem value="100">100 / page</SelectItem>
-            </SelectContent>
-          </Select>
-
+        {/* 📱 MOBILE CONTROLS */}
+        <div className="flex md:hidden gap-2 flex-wrap items-center justify-between">
           <Button
             variant="outline"
             size="sm"
             onClick={() => refetch()}
             disabled={isFetching}
-            className="h-9 px-3 gap-1.5"
+            className="h-8 px-2.5 gap-1.5 text-xs"
           >
             <RefreshCw
-              className={`w-3.5 h-3.5 ${isFetching ? "animate-spin text-primary" : ""}`}
-            />
-            <span className="hidden sm:inline">Refresh</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* ── Table Container ── */}
-      <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader className="bg-muted/50 border-b">
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="w-[180px] font-semibold text-xs uppercase tracking-wider text-muted-foreground">
-                  Miscellaneous Type
-                </TableHead>
-                <TableHead className="min-w-[200px] font-semibold text-xs uppercase tracking-wider text-muted-foreground">
-                  Lead / Project
-                </TableHead>
-                <TableHead className="w-[160px] font-semibold text-xs uppercase tracking-wider text-muted-foreground">
-                  {status === "dispatch-scheduled" || status === "dispatched"
-                    ? "Delivery Date"
-                    : "ERD Date"}
-                </TableHead>
-                <TableHead className="min-w-[170px] font-semibold text-xs uppercase tracking-wider text-muted-foreground">
-                  Responsible Teams
-                </TableHead>
-                <TableHead className="w-[100px] text-center font-semibold text-xs uppercase tracking-wider text-muted-foreground">
-                  Documents
-                </TableHead>
-                <TableHead className="w-[150px] text-center font-semibold text-xs uppercase tracking-wider text-muted-foreground">
-                  Status
-                </TableHead>
-                <TableHead className="min-w-[200px] font-semibold text-xs uppercase tracking-wider text-muted-foreground">
-                  Problem Description
-                </TableHead>
-                <TableHead className="w-[90px] text-right font-semibold text-xs uppercase tracking-wider text-muted-foreground">
-                  Quantity
-                </TableHead>
-                <TableHead className="w-[110px] text-right font-semibold text-xs uppercase tracking-wider text-muted-foreground">
-                  Cost
-                </TableHead>
-                <TableHead className="w-[100px] text-center font-semibold text-xs uppercase tracking-wider text-muted-foreground">
-                  Actions
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-
-            <TableBody>
-              {isLoading ? (
-                Array.from({ length: 5 }).map((_, idx) => (
-                  <TableRow key={idx}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Skeleton className="w-8 h-8 rounded-lg" />
-                        <div className="space-y-1">
-                          <Skeleton className="w-24 h-4" />
-                          <Skeleton className="w-16 h-3" />
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <Skeleton className="w-32 h-4" />
-                        <Skeleton className="w-24 h-3" />
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="w-20 h-4" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="w-28 h-5 rounded-full" />
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Skeleton className="w-12 h-6 rounded-full mx-auto" />
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Skeleton className="w-24 h-6 rounded-full mx-auto" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="w-40 h-4" />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Skeleton className="w-8 h-4 ml-auto" />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Skeleton className="w-12 h-4 ml-auto" />
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Skeleton className="w-16 h-8 rounded-md mx-auto" />
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : entries.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={10} className="py-14 text-center">
-                    <div className="flex flex-col items-center justify-center max-w-md mx-auto space-y-3">
-                      <div className="p-3 bg-muted/60 rounded-full border">
-                        <Wrench className="w-8 h-8 text-muted-foreground/60" />
-                      </div>
-                      <div className="space-y-1">
-                        <p className="font-semibold text-base text-foreground">
-                          No issues found in {config.title}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {debouncedSearch
-                            ? `No results match your search query "${debouncedSearch}". Try clearing filters.`
-                            : `There are currently no miscellaneous items in this stage.`}
-                        </p>
-                      </div>
-                      {debouncedSearch && (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => setSearch("")}
-                          className="mt-2"
-                        >
-                          Clear Search Filter
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                entries.map((entry) => (
-                  <TableRow
-                    key={entry.id}
-                    className="hover:bg-muted/40 cursor-pointer transition-colors border-b last:border-0"
-                    onClick={() => setSelectedItemForDetail(entry)}
-                  >
-                    {/* 1. Miscellaneous Type */}
-                    <TableCell className="py-3.5">
-                      <div className="flex items-center gap-2.5">
-                        <div
-                          className={`p-2 rounded-lg shrink-0 ${
-                            entry.is_resolved
-                              ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400"
-                              : entry.misc_approved === false
-                              ? "bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400"
-                              : "bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400"
-                          }`}
-                        >
-                          {entry.is_resolved ? (
-                            <CheckCircle2 className="w-4 h-4" />
-                          ) : entry.misc_approved === false ? (
-                            <XCircle className="w-4 h-4" />
-                          ) : (
-                            <AlertCircle className="w-4 h-4" />
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-semibold text-sm text-foreground truncate">
-                            {entry.type?.name || "Miscellaneous"}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {formatDate(entry.created_at)}
-                          </p>
-                        </div>
-                      </div>
-                    </TableCell>
-
-                    {/* 2. Lead / Project */}
-                    <TableCell className="py-3.5">
-                      <div className="min-w-0 space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="text-xs font-semibold text-primary hover:underline cursor-pointer flex items-center gap-1 truncate"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleNavigateToDetails(
-                                entry.lead_id,
-                                entry.account_id,
-                              );
-                            }}
-                            title="Open Lead Details"
-                          >
-                            {entry.lead?.lead_code || `Lead #${entry.lead_id}`}
-                            <ExternalLink className="w-3 h-3 shrink-0 opacity-70" />
-                          </span>
-                          {entry.lead?.franchise?.franchise_name && (
-                            <Badge
-                              variant="outline"
-                              className="text-[10px] px-1.5 py-0 h-4 border-muted-foreground/30 font-normal shrink-0"
-                            >
-                              {entry.lead.franchise.franchise_name}
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-xs font-medium text-foreground truncate">
-                          {entry.lead?.firstname || ""}{" "}
-                          {entry.lead?.lastname || ""}
-                          {entry.lead?.contact_no && (
-                            <span className="text-muted-foreground ml-1.5 font-normal">
-                              ({entry.lead.contact_no})
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                    </TableCell>
-
-                    {/* 3. Date (ERD / Delivery Date) */}
-                    <TableCell className="py-3.5">
-                      {status === "dispatch-scheduled" || status === "dispatched" ? (
-                        entry.required_delivery_date ? (
-                          <div>
-                            <p className="text-sm font-medium text-foreground">
-                              {formatDate(entry.required_delivery_date)}
-                            </p>
-                            {entry.expected_ready_date && (
-                              <p className="text-[11px] text-muted-foreground">
-                                ERD: {formatDate(entry.expected_ready_date)}
-                              </p>
-                            )}
-                          </div>
-                        ) : entry.expected_ready_date ? (
-                          <div>
-                            <p className="text-sm font-medium text-foreground">
-                              {formatDate(entry.expected_ready_date)}
-                            </p>
-                            <p className="text-[11px] text-muted-foreground">ERD</p>
-                          </div>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">-</span>
-                        )
-                      ) : entry.expected_ready_date ? (
-                        <div>
-                          <p className="text-sm font-medium text-foreground">
-                            {formatDate(entry.expected_ready_date)}
-                          </p>
-                          {entry.solution && (
-                            <CustomeTooltip
-                              value={entry.solution}
-                              truncateValue={
-                                <p className="text-[11px] text-muted-foreground truncate max-w-[140px] cursor-help">
-                                  {entry.solution}
-                                </p>
-                              }
-                            />
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-
-                    {/* 4. Responsible Teams */}
-                    <TableCell className="py-3.5">
-                      {entry.teams && entry.teams.length > 0 ? (
-                        <div className="flex flex-wrap gap-1 items-center">
-                          {entry.teams.slice(0, 2).map((team) => (
-                            <Badge
-                              key={team.team_id}
-                              variant="secondary"
-                              className="text-[11px] px-2 py-0.5 font-normal"
-                            >
-                              {team.team_name}
-                            </Badge>
-                          ))}
-                          {entry.teams.length > 2 && (
-                            <CustomeTooltip
-                              value={entry.teams
-                                .map((t) => t.team_name)
-                                .join(", ")}
-                              truncateValue={
-                                <Badge
-                                  variant="outline"
-                                  className="text-[11px] px-1.5 py-0.5 cursor-pointer font-medium"
-                                >
-                                  +{entry.teams.length - 2}
-                                </Badge>
-                              }
-                            />
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-
-                    {/* 5. Documents */}
-                    <TableCell className="py-3.5 text-center">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 gap-1 rounded-full hover:bg-primary/10 hover:text-primary transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedItemForDocs(entry);
-                        }}
-                      >
-                        <FileText className="w-3.5 h-3.5" />
-                        <span className="text-xs font-semibold">
-                          {entry.documents?.length ?? 0}
-                        </span>
-                      </Button>
-                    </TableCell>
-
-                    {/* 6. Status */}
-                    <TableCell className="py-3.5 text-center">
-                      {renderStatusBadge(entry)}
-                    </TableCell>
-
-                    {/* 7. Problem Description */}
-                    <TableCell className="py-3.5 max-w-[220px]">
-                      {entry.problem_description ? (
-                        <CustomeTooltip
-                          value={entry.problem_description}
-                          truncateValue={
-                            <p className="text-xs text-foreground/90 truncate cursor-help">
-                              {entry.problem_description}
-                            </p>
-                          }
-                        />
-                      ) : (
-                        <span className="text-xs text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-
-                    {/* 8. Quantity */}
-                    <TableCell className="py-3.5 text-right font-medium text-sm">
-                      {entry.quantity !== null && entry.quantity !== undefined
-                        ? entry.quantity
-                        : "-"}
-                    </TableCell>
-
-                    {/* 9. Cost */}
-                    <TableCell className="py-3.5 text-right font-medium text-sm">
-                      {entry.cost !== null && entry.cost !== undefined
-                        ? `₹${Number(entry.cost).toLocaleString("en-IN")}`
-                        : "-"}
-                    </TableCell>
-
-                    {/* 10. Actions */}
-                    <TableCell className="py-3.5 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-primary"
-                          title="View Details"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedItemForDetail(entry);
-                          }}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-primary"
-                          title="Go to Project Stage"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleNavigateToDetails(
-                              entry.lead_id,
-                              entry.account_id,
-                            );
-                          }}
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+              className={cn(
+                "w-3.5 h-3.5",
+                isFetching && "animate-spin text-primary",
               )}
-            </TableBody>
-          </Table>
+            />
+            Refresh
+          </Button>
+
+          <DataTableViewOptions table={table} />
         </div>
 
-        {/* ── Pagination Bar ── */}
-        {totalRecords > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t bg-muted/20 text-xs text-muted-foreground">
-            <div>
-              Showing{" "}
-              <span className="font-semibold text-foreground">
-                {Math.min((page - 1) * limit + 1, totalRecords)}
-              </span>{" "}
-              to{" "}
-              <span className="font-semibold text-foreground">
-                {Math.min(page * limit, totalRecords)}
-              </span>{" "}
-              of{" "}
-              <span className="font-semibold text-foreground">
-                {totalRecords}
-              </span>{" "}
-              records
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 px-2.5 gap-1"
-                disabled={page <= 1 || isLoading}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-                Previous
-              </Button>
-
-              <span className="px-2.5 font-medium text-foreground">
-                Page {page} of {totalPages}
-              </span>
-
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 px-2.5 gap-1"
-                disabled={page >= totalPages || isLoading}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-                <ChevronRight className="w-3.5 h-3.5" />
-              </Button>
-            </div>
-          </div>
-        )}
+        {/* 📱 MOBILE SEARCH BAR (Full Width) */}
+        <div className="md:hidden w-full">
+          <ClearInput
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+            }}
+            placeholder="Search by lead, customer, problem..."
+            className="h-8 w-full"
+          />
+        </div>
       </div>
+
+      {/* 🖥️ CORE DATA TABLE (Standard Furnix DataTable) */}
+      <DataTable
+        table={table}
+        onRowClick={(row) => setSelectedItemForDetail(row)}
+        className="pt-3 px-4"
+        showPagination={true}
+      >
+        {/* 🖥️ DESKTOP FILTERS (Horizontal Layout matching Overall Leads) */}
+        <div className="hidden md:flex justify-between items-end">
+          <div className="flex gap-3 items-center">
+            <ClearInput
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+              }}
+              placeholder="Search by lead, customer, problem..."
+              className="h-8 w-64"
+            />
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              disabled={isFetching}
+              className="h-8 px-2.5 gap-1.5 text-xs"
+            >
+              <RefreshCw
+                className={cn(
+                  "w-3.5 h-3.5",
+                  isFetching && "animate-spin text-primary",
+                )}
+              />
+              Refresh
+            </Button>
+          </div>
+
+          <div className="flex gap-2">
+            <DataTableViewOptions table={table} />
+          </div>
+        </div>
+      </DataTable>
 
       {/* ── Documents Modal ── */}
       <Dialog
@@ -917,17 +531,102 @@ export function MiscellaneousStatusTable({
         </DialogContent>
       </Dialog>
 
-      {/* ── Exact Reused Installation Miscellaneous Modal ── */}
+      {/* ── Delete Confirmation Dialog ── */}
+      <AlertDialog
+        open={Boolean(itemToDelete)}
+        onOpenChange={(open) => {
+          if (!open) setItemToDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg font-semibold text-red-600 dark:text-red-400 flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-red-600 dark:text-red-400" />
+              Delete Miscellaneous Entry?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-muted-foreground">
+              Are you sure you want to delete this miscellaneous entry (
+              <span className="font-semibold text-foreground">
+                {itemToDelete?.type?.name || "Miscellaneous"}
+              </span>
+              )? This will permanently remove the entry, its associated documents, team assignments, followups, and close linked tasks. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white font-medium"
+              disabled={deleteMutation.isPending || !itemToDelete}
+              onClick={(e) => {
+                e.preventDefault();
+                if (!itemToDelete) return;
+                deleteMutation.mutate(
+                  {
+                    vendorId: itemToDelete.vendor_id,
+                    leadId: itemToDelete.lead_id,
+                    miscId: itemToDelete.id,
+                    deleted_by: userId!,
+                  },
+                  {
+                    onSuccess: () => {
+                      setItemToDelete(null);
+                      refetch();
+                    },
+                  },
+                );
+              }}
+            >
+              {deleteMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── Exact Full-Featured Miscellaneous Action & Detail Modal ── */}
       {selectedItemForDetail && (
         <InstallationMiscellaneous
           vendorId={selectedItemForDetail.vendor_id}
           leadId={selectedItemForDetail.lead_id}
           accountId={selectedItemForDetail.account_id}
           initialMiscId={selectedItemForDetail.id}
+          initialItemData={selectedItemForDetail as any}
           onlyModal={true}
-          onModalClose={() => setSelectedItemForDetail(null)}
+          onModalClose={() => {
+            setSelectedItemForDetail(null);
+            refetch();
+          }}
+        />
+      )}
+
+      {/* ── Direct Edit Modal ── */}
+      {selectedItemForEdit && (
+        <InstallationMiscellaneous
+          vendorId={selectedItemForEdit.vendor_id}
+          leadId={selectedItemForEdit.lead_id}
+          accountId={selectedItemForEdit.account_id}
+          initialMiscId={selectedItemForEdit.id}
+          initialItemData={selectedItemForEdit as any}
+          initialOpenEdit={true}
+          onlyModal={true}
+          onModalClose={() => {
+            setSelectedItemForEdit(null);
+            refetch();
+          }}
         />
       )}
     </div>
   );
 }
+
+export default MiscellaneousStatusTable;

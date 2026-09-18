@@ -169,6 +169,7 @@ interface InstallationMiscellaneousProps {
   initialMiscId?: number;
   initialSubTab?: string;
   initialItemData?: MiscellaneousEntry;
+  initialOpenEdit?: boolean;
   onlyModal?: boolean;
   onModalClose?: () => void;
   hideAddButton?: boolean;
@@ -209,6 +210,7 @@ export default function InstallationMiscellaneous({
   initialMiscId,
   initialSubTab,
   initialItemData,
+  initialOpenEdit,
   onlyModal,
   onModalClose,
   hideAddButton,
@@ -271,7 +273,7 @@ export default function InstallationMiscellaneous({
       cost: undefined,
       expected_ready_date: undefined,
       return_order_date: undefined,
-      return_order_delivery_method: "SELF_DELIVERY",
+      return_order_delivery_method: undefined,
       return_order_selected_instances: [],
       return_order_selected_materials: [],
     },
@@ -308,7 +310,7 @@ export default function InstallationMiscellaneous({
       cost: undefined,
       expected_ready_date: undefined,
       return_order_date: undefined,
-      return_order_delivery_method: "SELF_DELIVERY",
+      return_order_delivery_method: undefined,
       return_order_selected_instances: [],
       return_order_selected_materials: [],
     });
@@ -500,7 +502,14 @@ export default function InstallationMiscellaneous({
     normalizedRole.includes("admin");
   const isSuperAdmin =
     normalizedUserType === "super-admin" ||
-    normalizedRole === "super-admin";
+    normalizedUserType === "superadmin" ||
+    normalizedUserType.includes("super-admin") ||
+    normalizedUserType.includes("superadmin") ||
+    normalizedRole === "super-admin" ||
+    normalizedRole === "superadmin" ||
+    normalizedRole.includes("super-admin") ||
+    normalizedRole.includes("superadmin") ||
+    Boolean(authUser?.is_ho_user);
   const isMiscellaneousUser =
     normalizedUserType === "miscellaneous" ||
     normalizedUserType.includes("miscellaneous") ||
@@ -519,19 +528,24 @@ export default function InstallationMiscellaneous({
 
   const canEditEntry = (entryItem?: MiscellaneousEntry | null) => {
     if (!entryItem) return false;
-    if (shouldDisableBlockedActions) return false;
+    if (shouldDisableBlockedActions && !isSuperAdmin) return false;
 
-    // Only miscellaneous user and super-admin are allowed to edit
-    if (!isMiscellaneousUser && !isSuperAdmin) {
+    // Super Admin can ALWAYS edit
+    if (isSuperAdmin) {
+      return true;
+    }
+
+    // Miscellaneous user is allowed to edit before approval
+    if (!isMiscellaneousUser) {
       return false;
     }
 
     // After approval, only super-admin can edit
     if (entryItem.misc_approved === true) {
-      return isSuperAdmin;
+      return false;
     }
 
-    // Before approval, both miscellaneous user and super-admin can edit
+    // Before approval, miscellaneous user can edit
     return true;
   };
 
@@ -673,16 +687,27 @@ export default function InstallationMiscellaneous({
     );
   };
 
+  const isTransitioningToEditRef = useRef(false);
+
   useEffect(() => {
     setInitialModalHandled(false);
   }, [effectiveTaskId]);
 
   useEffect(() => {
+    if (initialOpenEdit && (initialItemData || effectiveMiscId)) {
+      const itemToEdit =
+        initialItemData || entries?.find((e) => e.id === effectiveMiscId);
+      if (itemToEdit) {
+        handleOpenEditModal(itemToEdit);
+      }
+      return;
+    }
+
     if (effectiveMiscId) {
       setViewModal({ open: true, id: effectiveMiscId });
       setModalActiveTab(initialSubTab || queryMiscTab || "actions-scheduling");
     }
-  }, [effectiveMiscId, initialSubTab, queryMiscTab]);
+  }, [effectiveMiscId, initialSubTab, queryMiscTab, initialOpenEdit, initialItemData, entries]);
 
   useEffect(() => {
     if (!effectiveTaskId || initialModalHandled || !entries?.length) return;
@@ -752,7 +777,7 @@ export default function InstallationMiscellaneous({
         ? (entryToEdit as any).return_order_date.split("T")[0]
         : undefined,
       return_order_delivery_method:
-        ((entryToEdit as any).return_order_delivery_method as any) || "SELF_DELIVERY",
+        ((entryToEdit as any).return_order_delivery_method as any) || undefined,
       return_order_selected_instances: [],
       return_order_selected_materials: [],
     });
@@ -914,7 +939,7 @@ export default function InstallationMiscellaneous({
         problem_description: "Return Order",
         supervisor_remark: values.supervisor_remark?.trim() || undefined,
         return_order_date: values.return_order_date || null,
-        return_order_delivery_method: values.return_order_delivery_method || "SELF_DELIVERY",
+        return_order_delivery_method: values.return_order_delivery_method as any,
         created_by: userId!,
         files: files,
       };
@@ -1054,6 +1079,21 @@ export default function InstallationMiscellaneous({
   const isViewReturnOrder = Boolean((viewModalData as any)?.return_order_delivery_method);
   const isSelfDeliveryReturnOrder = (viewModalData as any)?.return_order_delivery_method === "SELF_DELIVERY";
   const isPickupScheduleReturnOrder = (viewModalData as any)?.return_order_delivery_method === "PICKUP_SCHEDULE";
+
+  const isReturnOrderConfirmed = useMemo(() => {
+    if (!isViewReturnOrder) return false;
+    if (viewModalData?.return_confirm_task?.status === "completed") return true;
+    if (viewModalData?.is_resolved) return true;
+    const docs = viewModalData?.documents || [];
+    return docs.some(
+      (d) =>
+        d.doc_type_tag === "Type 42" ||
+        d.doc_type_tag === "Type 41" ||
+        d.document_type?.toLowerCase().includes("confirmation"),
+    );
+  }, [isViewReturnOrder, viewModalData]);
+
+  const isModalItemResolvedOrConfirmed = Boolean(viewModalData?.is_resolved || isReturnOrderConfirmed);
 
   // Step 2: Handover (Required Delivery Date, Task & Resolution) ->
   // Hidden for Return Order items (both Self Delivery and Pickup Schedule).
@@ -1330,15 +1370,6 @@ export default function InstallationMiscellaneous({
                                 </Badge>
                               )}
                             </div>
-                          ) : isReturnOrder ? (
-                            <div className="flex flex-wrap gap-1">
-                              <Badge variant="secondary" className="text-xs px-2 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                                Factory Team
-                              </Badge>
-                              <Badge variant="secondary" className="text-xs px-2 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                                Site Team
-                              </Badge>
-                            </div>
                           ) : (
                             <span className="text-sm text-muted-foreground">-</span>
                           )}
@@ -1356,9 +1387,6 @@ export default function InstallationMiscellaneous({
                             if (entry.misc_approved === false) {
                               label = "REJECTED";
                               className = "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300";
-                            } else if (entry.is_resolved) {
-                              label = "RESOLVED";
-                              className = "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300";
                             } else if (isPickupSchedule) {
                               const hasConfirmationDoc = entry.documents?.some(
                                 (d) =>
@@ -1370,7 +1398,7 @@ export default function InstallationMiscellaneous({
                               const isReturned = Boolean(entry.is_returned);
                               const isPickupCompleted = entry.task?.status === "completed";
 
-                              if (isFactoryConfirmed) {
+                              if (isFactoryConfirmed || entry.is_resolved) {
                                 label = "CONFIRMED";
                                 className = "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300";
                               } else if (isReturned) {
@@ -1389,7 +1417,7 @@ export default function InstallationMiscellaneous({
                             } else if (isSelfDelivery) {
                               const proofDocs = entry.documents?.filter((d) => d.doc_type_tag === "Type 42" || d.doc_type_tag === "Type 41") || [];
                               const isConfirmed = entry.task?.status === "completed" || proofDocs.length > 0;
-                              if (isConfirmed) {
+                              if (isConfirmed || entry.is_resolved) {
                                 label = "CONFIRMED";
                                 className = "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300";
                               } else if (entry.misc_approved === true) {
@@ -1399,6 +1427,9 @@ export default function InstallationMiscellaneous({
                                 label = "AWAITING APPROVAL";
                                 className = "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300";
                               }
+                            } else if (entry.is_resolved) {
+                              label = "RESOLVED";
+                              className = "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300";
                             } else {
                               const hasDispatchDocs = entry.delivery_task?.status === "completed";
                               if (hasDispatchDocs) {
@@ -1620,15 +1651,25 @@ export default function InstallationMiscellaneous({
               </TableBody>
             </Table>
           </div>
+        </>
+      )}
 
-          {/* ── Add / Edit Modal ─────────────────────────────────────────────────── */}
-          <BaseModal
-            open={isAddModalOpen}
-            onOpenChange={(open) => { setIsAddModalOpen(open); if (!open) resetForm(); }}
-            title={editingEntry ? "Edit Miscellaneous Issue" : "Add Miscellaneous Issue"}
-            description="Log a miscellaneous issue with required details, supporting proofs, and material information."
-            size="lg"
-          >
+      {/* ── Add / Edit Modal ─────────────────────────────────────────────────── */}
+      <BaseModal
+        open={isAddModalOpen}
+        onOpenChange={(open) => {
+          setIsAddModalOpen(open);
+          if (!open) {
+            resetForm();
+            if (onlyModal && !viewModal.open && onModalClose) {
+              onModalClose();
+            }
+          }
+        }}
+        title={editingEntry ? "Edit Miscellaneous Issue" : "Add Miscellaneous Issue"}
+        description="Log a miscellaneous issue with required details, supporting proofs, and material information."
+        size="lg"
+      >
             <Form {...form}>
               <form
                 onSubmit={(e) => {
@@ -1965,30 +2006,12 @@ export default function InstallationMiscellaneous({
                 {/* IF RETURN ORDER: Return Order Date + Delivery Type | ELSE: Quantity + Cost */}
                 {isReturnOrder ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Return Order Date */}
-                    <div className={cn("flex flex-col gap-2", formErrors.return_order_date && "text-destructive [&_button]:border-destructive")} data-name="return_order_date">
-                      <label className="text-sm font-medium">Return Order Date</label>
-                      <CustomeDatePicker
-                        value={formData.return_order_date}
-                        onChange={(val) => {
-                          setFormData((prev) => ({ ...prev, return_order_date: val }));
-                          if (val) {
-                            setFormErrors((prev) => ({ ...prev, return_order_date: "" }));
-                          }
-                        }}
-                      />
-                      {formErrors.return_order_date && (
-                        <p className="text-xs font-medium text-destructive mt-1">
-                          {formErrors.return_order_date}
-                        </p>
-                      )}
-                    </div>
 
-                    {/* Return Order Delivery Type */}
+                             {/* Return Order Delivery Type */}
                     <div className={cn("flex flex-col gap-2", formErrors.return_order_delivery_method && "text-destructive [&_button]:border-destructive")} data-name="return_order_delivery_method">
                       <label className="text-sm font-medium">Return Order Delivery Type *</label>
                       <Select
-                        value={formData.return_order_delivery_method || "SELF_DELIVERY"}
+                        value={formData.return_order_delivery_method || ""}
                         onValueChange={(val) => {
                           setFormData((prev) => ({ ...prev, return_order_delivery_method: val }));
                           setFormErrors((prev) => ({ ...prev, return_order_delivery_method: "" }));
@@ -2005,6 +2028,24 @@ export default function InstallationMiscellaneous({
                       {formErrors.return_order_delivery_method && (
                         <p className="text-xs font-medium text-destructive mt-1">
                           {formErrors.return_order_delivery_method}
+                        </p>
+                      )}
+                    </div>
+                    {/* Return Order Date */}
+                    <div className={cn("flex flex-col gap-2", formErrors.return_order_date && "text-destructive [&_button]:border-destructive")} data-name="return_order_date">
+                      <label className="text-sm font-medium">Return Order Date</label>
+                      <CustomeDatePicker
+                        value={formData.return_order_date}
+                        onChange={(val) => {
+                          setFormData((prev) => ({ ...prev, return_order_date: val }));
+                          if (val) {
+                            setFormErrors((prev) => ({ ...prev, return_order_date: "" }));
+                          }
+                        }}
+                      />
+                      {formErrors.return_order_date && (
+                        <p className="text-xs font-medium text-destructive mt-1">
+                          {formErrors.return_order_date}
                         </p>
                       )}
                     </div>
@@ -2076,8 +2117,6 @@ export default function InstallationMiscellaneous({
               </form>
             </Form>
           </BaseModal>
-        </>
-      )}
 
       {/* ── View Modal ──────────────────────────────────────────────────────── */}
       <BaseModal
@@ -2088,15 +2127,20 @@ export default function InstallationMiscellaneous({
             setReturnHandoverFiles([]);
             setReturnHandoverRemark("");
           }
-          if (!open && onModalClose) {
+          if (!open && onModalClose && !isTransitioningToEditRef.current && !isAddModalOpen) {
             onModalClose();
           }
+          isTransitioningToEditRef.current = false;
         }}
         size="lg"
         title={viewModalData?.type?.name || "Miscellaneous"}
         icon={
-          <div className={`p-2.5 rounded-lg border transition-colors ${viewModalData?.is_resolved ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800" : "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800"}`}>
-            {viewModalData?.is_resolved ? (
+          <div className={`p-2.5 rounded-lg border transition-colors ${
+            isModalItemResolvedOrConfirmed
+              ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800"
+              : "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800"
+          }`}>
+            {isModalItemResolvedOrConfirmed ? (
               <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
             ) : (
               <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
@@ -2129,13 +2173,14 @@ export default function InstallationMiscellaneous({
               <div className="flex-1 overflow-y-auto py-2 space-y-6 px-1">
                 {viewModalData && (canEditEntry(viewModalData) || isSuperAdmin) && (
                   <div className="flex justify-end items-center gap-2">
-                    {canEditEntry(viewModalData) && (
+                    {(canEditEntry(viewModalData) || isSuperAdmin) && (
                       <Button
                         size="sm"
                         variant="outline"
-                        disabled={shouldDisableBlockedActions}
+                        disabled={shouldDisableBlockedActions && !isSuperAdmin}
                         onClick={() => {
                           const item = viewModalData;
+                          isTransitioningToEditRef.current = true;
                           setViewModal({ open: false, id: null });
                           handleOpenEditModal(item);
                         }}
@@ -2359,20 +2404,6 @@ export default function InstallationMiscellaneous({
                         </div>
                       </div>
                     </div>
-                  ) : isViewReturnOrder ? (
-                    <div className="space-y-1.5">
-                      <p className="text-[13px] font-medium text-muted-foreground">Team Responsible</p>
-                      <div className="border border-border rounded-lg bg-muted/30 dark:bg-neutral-900/40 p-4">
-                        <div className="flex flex-wrap gap-2">
-                          <Badge variant="outline" className="px-3 py-1 bg-background dark:bg-neutral-800">
-                            Factory Team
-                          </Badge>
-                          <Badge variant="outline" className="px-3 py-1 bg-background dark:bg-neutral-800">
-                            Site Team
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
                   ) : null}
                   {viewModalData?.solution && (
                     <div className="space-y-1.5 md:col-span-2">
@@ -2511,16 +2542,27 @@ export default function InstallationMiscellaneous({
                     </div>
                     <Badge
                       variant="outline"
-                      className={`text-xs px-3 py-1 font-medium rounded-full border-0 ${viewModalData?.is_resolved
-                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
-                        : isApproved
-                          ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300"
-                          : isRejected
-                            ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300"
-                            : "bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-300"
+                      className={`text-xs px-3 py-1 font-medium rounded-full border-0 ${
+                        isReturnOrderConfirmed
+                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                          : viewModalData?.is_resolved
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                            : isApproved
+                              ? "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300"
+                              : isRejected
+                                ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+                                : "bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-300"
                         }`}
                     >
-                      {viewModalData?.is_resolved ? "Resolved" : isApproved ? "Approved" : isRejected ? "Rejected" : "Pending"}
+                      {isReturnOrderConfirmed
+                        ? "Confirmed"
+                        : viewModalData?.is_resolved
+                          ? "Resolved"
+                          : isApproved
+                            ? "Approved"
+                            : isRejected
+                              ? "Rejected"
+                              : "Pending"}
                     </Badge>
                   </div>
 
@@ -2633,28 +2675,30 @@ export default function InstallationMiscellaneous({
                                 <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                                   {isViewReturnOrder ? "Return Order Fulfillment" : "Step 1 • Production"}
                                 </span>
-                                {viewModalData?.is_resolved ? (
-                                  <Badge variant="outline" className="text-[10px] bg-green-100 text-green-800 border-0 dark:bg-green-950 dark:text-green-300">
-                                    Resolved
-                                  </Badge>
-                                ) : isPickupScheduleReturnOrder ? (
-                                  viewModalData?.return_confirm_task?.status === "completed" || viewModalData?.is_resolved ? (
+                                {isViewReturnOrder ? (
+                                  viewModalData?.return_confirm_task?.status === "completed" || viewModalData?.is_resolved || (isSelfDeliveryReturnOrder && (isTaskReady || viewModalData?.documents?.some((d) => d.doc_type_tag === "Type 42" || d.doc_type_tag === "Type 41"))) ? (
                                     <Badge variant="outline" className="text-[10px] bg-emerald-100 text-emerald-800 border-0 dark:bg-emerald-950 dark:text-emerald-300 font-medium">
                                       Confirmed
                                     </Badge>
-                                  ) : viewModalData?.is_returned ? (
-                                    <Badge variant="outline" className="text-[10px] bg-blue-100 text-blue-800 border-0 dark:bg-blue-950 dark:text-blue-300 font-medium">
-                                      Pending Confirmation
-                                    </Badge>
-                                  ) : viewModalData?.task?.status === "completed" ? (
-                                    <Badge variant="outline" className="text-[10px] bg-purple-100 text-purple-800 border-0 dark:bg-purple-950 dark:text-purple-300 font-medium">
-                                      Pending Handover
-                                    </Badge>
-                                  ) : (
-                                    <Badge variant="outline" className="text-[10px] bg-amber-100 text-amber-800 border-0 dark:bg-amber-950 dark:text-amber-300 font-medium">
-                                      Pickup Scheduled
-                                    </Badge>
-                                  )
+                                  ) : isPickupScheduleReturnOrder ? (
+                                    viewModalData?.is_returned ? (
+                                      <Badge variant="outline" className="text-[10px] bg-blue-100 text-blue-800 border-0 dark:bg-blue-950 dark:text-blue-300 font-medium">
+                                        Pending Confirmation
+                                      </Badge>
+                                    ) : viewModalData?.task?.status === "completed" ? (
+                                      <Badge variant="outline" className="text-[10px] bg-purple-100 text-purple-800 border-0 dark:bg-purple-950 dark:text-purple-300 font-medium">
+                                        Pending Handover
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="outline" className="text-[10px] bg-amber-100 text-amber-800 border-0 dark:bg-amber-950 dark:text-amber-300 font-medium">
+                                        Pickup Scheduled
+                                      </Badge>
+                                    )
+                                  ) : null
+                                ) : viewModalData?.is_resolved ? (
+                                  <Badge variant="outline" className="text-[10px] bg-green-100 text-green-800 border-0 dark:bg-green-950 dark:text-green-300">
+                                    Resolved
+                                  </Badge>
                                 ) : isTaskReady ? (
                                   <Badge variant="outline" className="text-[10px] bg-emerald-100 text-emerald-800 border-0 dark:bg-emerald-950 dark:text-emerald-300 font-medium">
                                     Ready to Dispatch
@@ -3277,53 +3321,6 @@ export default function InstallationMiscellaneous({
                                                       </div>
                                                     );
                                                   })()}
-
-                                                  {/* Mark as Resolved button for Site Supervisor / Super Admin */}
-                                                  {canDoMarkAsResolved && canResolveRole && !viewModalData?.is_resolved && (
-                                                    <div className="pt-2 border-t border-emerald-200/60 dark:border-emerald-800/50">
-                                                      <CustomeTooltip
-                                                        value={shouldDisableBlockedActions ? blockedTooltip : ""}
-                                                        truncateValue={
-                                                          <Button
-                                                            variant="default"
-                                                            size="sm"
-                                                            disabled={resolveMisc.isPending || shouldDisableBlockedActions}
-                                                            onClick={() => {
-                                                              if (shouldDisableBlockedActions) return;
-                                                              resolveMisc.mutate(
-                                                                {
-                                                                  vendorId,
-                                                                  leadId,
-                                                                  miscId: viewModalData?.id || 0,
-                                                                  resolved_by: userId!,
-                                                                },
-                                                                {
-                                                                  onSuccess: () => {
-                                                                    queryClient.invalidateQueries({
-                                                                      queryKey: ["miscellaneousEntries", vendorId, leadId],
-                                                                    });
-                                                                    queryClient.invalidateQueries({
-                                                                      queryKey: ["vendorUserTasks"],
-                                                                    });
-                                                                    queryClient.invalidateQueries({
-                                                                      queryKey: ["vendorAllTasks"],
-                                                                    });
-                                                                    queryClient.invalidateQueries({
-                                                                      queryKey: ["leadTasks"],
-                                                                    });
-                                                                  },
-                                                                },
-                                                              );
-                                                            }}
-                                                            className="w-full gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-                                                          >
-                                                            <CheckCircle2 className="w-3.5 h-3.5" />
-                                                            {resolveMisc.isPending ? "Resolving..." : "Mark as Resolved"}
-                                                          </Button>
-                                                        }
-                                                      />
-                                                    </div>
-                                                  )}
                                                 </div>
                                               ) : (isFactoryUser || isAdminOrSuper) ? (
                                                 /* Pending Factory Receipt Confirmation Action Box */
@@ -3415,7 +3412,7 @@ export default function InstallationMiscellaneous({
                                                     Waiting for Factory Confirmation
                                                   </div>
                                                   <p className="text-[11px] text-blue-700 dark:text-blue-300/90">
-                                                    Material has been handed over. Waiting for factory team to confirm receipt of the return order before this requirement can be marked as resolved.
+                                                    Material has been handed over. Waiting for factory team to confirm receipt of the return order.
                                                   </p>
                                                 </div>
                                               )}
@@ -4437,8 +4434,12 @@ export default function InstallationMiscellaneous({
         open={openPickupTaskModal}
         onOpenChange={setOpenPickupTaskModal}
         title="Manage Pickup Schedule"
-        description="Reschedule pickup date or mark as completed once pickup is done."
+        description="Reschedule pickup date or confirm pickup schedule."
         dateRestrictionLabel="Scheduled Pickup Date"
+        actionType="confirm"
+        confirmButtonText="Confirm"
+        disableDateRestriction={true}
+        isReturnOrder={true}
         data={
           viewModalData?.task?.id
             ? {
@@ -4461,7 +4462,7 @@ export default function InstallationMiscellaneous({
         title={pendingDeleteAfterUpload !== null ? "Upload Before Delete" : "Upload Documents"}
         description={
           pendingDeleteAfterUpload !== null
-            ? "Pehle ek naya document upload karo. Upload hone ke baad purana document automatically delete ho jaayega."
+            ? "Please upload a new document first. Once uploaded, the previous document will be deleted automatically."
             : "Add new documents to this miscellaneous entry"
         }
         size="md"
