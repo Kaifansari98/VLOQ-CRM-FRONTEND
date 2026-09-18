@@ -1690,15 +1690,7 @@ function BoxItemsDialog({
                         </DropdownMenuItem>
                       </div>
                     </TooltipTrigger>
-                    <TooltipContent
-                      side="left"
-                      align="center"
-                      className="z-[100] max-w-xs text-xs font-normal"
-                    >
-                      {canRevertFactoryOut
-                        ? "Revert factory out and restore box to packed state"
-                        : revertDisabledReason}
-                    </TooltipContent>
+                    
                   </Tooltip>
                 </DropdownMenuContent>
               </DropdownMenu>
