@@ -628,12 +628,14 @@ const MultipleSelector = ({
                   {!selectFirstItem && (
                     <CommandItem value="-" className="hidden" />
                   )}
-                  {Object.entries(selectables).map(([key, dropdowns]) => (
-                    <CommandGroup
-                      key={key}
-                      heading={key}
-                      className="h-full overflow-auto"
-                    >
+                  {Object.entries(selectables).map(([key, dropdowns]) => {
+                    if (dropdowns.length === 0) return null;
+                    return (
+                      <CommandGroup
+                        key={key}
+                        heading={key}
+                        className="h-full overflow-auto"
+                      >
                       <>
                         {dropdowns.map((option) => {
                           const isSelected = selected.some(
@@ -706,8 +708,9 @@ const MultipleSelector = ({
                           );
                         })}
                       </>
-                    </CommandGroup>
-                  ))}
+                      </CommandGroup>
+                    );
+                  })}
                 </>
               )}
             </CommandList>

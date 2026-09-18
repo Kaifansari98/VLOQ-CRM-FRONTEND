@@ -18,6 +18,7 @@ export interface MiscellaneousDocument {
   uploaded_at: string;
   doc_type_tag?: string | null;
   doc_type_name?: string | null;
+  document_type?: string | null;
 }
 
 export interface MiscellaneousTeam {
@@ -56,6 +57,7 @@ export interface MiscellaneousEntry {
     id: number;
     task_type: string;
     remark?: string | null;
+    due_date?: string | null;
     status?: string;
     closed_at?: string | null;
     closed_by?: number | null;
@@ -77,6 +79,43 @@ export interface MiscellaneousEntry {
     status?: string;
     remark?: string | null;
     due_date?: string | null;
+  } | null;
+  return_order_date?: string | null;
+  return_order_delivery_method?: string | null;
+  reorder_instances_material_mappings?: any[];
+  is_returned?: boolean;
+  returned_at?: string | null;
+  returned_by?: number | null;
+  returned_user?: {
+    id: number;
+    user_name: string;
+  } | null;
+  return_handover_remark?: string | null;
+  return_handover_task?: {
+    id: number;
+    task_type: string;
+    status?: string;
+    remark?: string | null;
+    due_date?: string | null;
+    closed_at?: string | null;
+    closed_by?: number | null;
+    closed_user?: {
+      id: number;
+      user_name: string;
+    } | null;
+  } | null;
+  return_confirm_task?: {
+    id: number;
+    task_type: string;
+    status?: string;
+    remark?: string | null;
+    due_date?: string | null;
+    closed_at?: string | null;
+    closed_by?: number | null;
+    closed_user?: {
+      id: number;
+      user_name: string;
+    } | null;
   } | null;
   teams: MiscellaneousTeam[];
   documents: MiscellaneousDocument[];
@@ -115,6 +154,23 @@ export interface UpdateMiscellaneousPayload {
   teams?: number[];
   updated_by: number;
   files?: File[];
+}
+
+export interface CreateMiscellaneousReturnOrderPayload {
+  vendorId: number;
+  leadId: number;
+  account_id?: number;
+  misc_type_id?: number;
+  orderlogindetails_ids?: number[];
+  instance_id?: number;
+  selected_instance_id?: number;
+  reorder_material_details: string;
+  problem_description?: string;
+  supervisor_remark?: string;
+  return_order_date?: string | null;
+  return_order_delivery_method?: string;
+  created_by: number;
+  files: File[];
 }
 
 export interface MiscType {
@@ -708,6 +764,104 @@ export const useCreateMiscellaneousEntry = () => {
         title:
           error?.response?.data?.error ||
           "Failed to create miscellaneous entry",
+        type: "error",
+      });
+    },
+  });
+};
+
+/* ==========================================================
+   📤 POST - Create Miscellaneous Return Order
+   @route POST /leads/installation/under-installation/vendorId/:vendorId/leadId/:leadId/create-return-order
+   ========================================================== */
+export const createMiscellaneousReturnOrder = async (
+  payload: CreateMiscellaneousReturnOrderPayload,
+) => {
+  const formData = new FormData();
+
+  if (payload.account_id !== undefined) {
+    formData.append("account_id", payload.account_id.toString());
+  }
+  if (payload.misc_type_id !== undefined) {
+    formData.append("misc_type_id", payload.misc_type_id.toString());
+  }
+  if (payload.created_by !== undefined) {
+    formData.append("created_by", payload.created_by.toString());
+  }
+  if (payload.instance_id !== undefined) {
+    formData.append("instance_id", payload.instance_id.toString());
+  }
+  if (payload.selected_instance_id !== undefined) {
+    formData.append("selected_instance_id", payload.selected_instance_id.toString());
+  }
+  if (payload.orderlogindetails_ids && payload.orderlogindetails_ids.length > 0) {
+    formData.append("orderlogindetails_ids", JSON.stringify(payload.orderlogindetails_ids));
+  }
+  if (payload.reorder_material_details) {
+    formData.append("reorder_material_details", payload.reorder_material_details);
+  }
+  if (payload.problem_description) {
+    formData.append("problem_description", payload.problem_description);
+  }
+  if (payload.supervisor_remark) {
+    formData.append("supervisor_remark", payload.supervisor_remark);
+  }
+  if (payload.return_order_date) {
+    formData.append("return_order_date", payload.return_order_date);
+  }
+  if (payload.return_order_delivery_method) {
+    formData.append("return_order_delivery_method", payload.return_order_delivery_method);
+  }
+
+  // Append files
+  payload.files.forEach((file) => {
+    formData.append("files", file);
+  });
+
+  const { data } = await apiClient.post(
+    `/leads/installation/under-installation/vendorId/${payload.vendorId}/leadId/${payload.leadId}/create-return-order`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    },
+  );
+
+  return data?.data;
+};
+
+/**
+ * ✅ React Query Mutation Hook - Create Miscellaneous Return Order
+ */
+export const useCreateMiscellaneousReturnOrder = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createMiscellaneousReturnOrder,
+
+    onSuccess: (data, variables) => {
+      toastManager.add({
+        title: "Return order created successfully",
+        type: "success",
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: [
+          "miscellaneousEntries",
+          variables.vendorId,
+          variables.leadId,
+        ],
+      });
+      queryClient.invalidateQueries({ queryKey: ["miscellaneousStatusCounts"] });
+      queryClient.invalidateQueries({ queryKey: ["miscellaneousByStatus"] });
+    },
+
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          "Failed to create return order",
         type: "error",
       });
     },
@@ -1631,6 +1785,75 @@ export const useResolveMiscellaneousEntry = () => {
 };
 
 /* ==========================================================
+   ✔️ DELETE - Delete Miscellaneous Entry (Super-Admin only)
+   @route DELETE /leads/installation/under-installation/vendorId/:vendorId/leadId/:leadId/misc/:miscId
+   ========================================================== */
+
+export const deleteMiscellaneousEntry = async (payload: {
+  vendorId: number;
+  leadId: number;
+  miscId: number;
+  deleted_by: number;
+}) => {
+  const { data } = await apiClient.delete(
+    `/leads/installation/under-installation/vendorId/${payload.vendorId}/leadId/${payload.leadId}/misc/${payload.miscId}`,
+    {
+      data: { deleted_by: payload.deleted_by },
+    },
+  );
+
+  return data;
+};
+
+/**
+ * ✅ React Query Mutation Hook - Delete Miscellaneous Entry
+ */
+export const useDeleteMiscellaneousEntry = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteMiscellaneousEntry,
+
+    onSuccess: (_, variables) => {
+      toastManager.add({
+        title: "Miscellaneous entry deleted successfully",
+        type: "success",
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: [
+          "miscellaneousEntries",
+          variables.vendorId,
+          variables.leadId,
+        ],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [
+          "underInstallationDetails",
+          variables.vendorId,
+          variables.leadId,
+        ],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["miscellaneousByStatus"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["miscellaneousStatusCounts"],
+      });
+    },
+
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          "Failed to delete miscellaneous entry",
+        type: "error",
+      });
+    },
+  });
+};
+
+/* ==========================================================
    ✔️ PUT - Mark Miscellaneous Task Ready
    @route PUT /leads/installation/under-installation/vendorId/:vendorId/leadId/:leadId/misc/:miscId/mark-ready
    ========================================================== */
@@ -1688,6 +1911,85 @@ export const useMarkMiscellaneousTaskReady = () => {
     onError: (error: AxiosError<ApiErrorResponse>) => {
       toastManager.add({
         title: error?.response?.data?.error || "Failed to mark task as ready",
+        type: "error",
+      });
+    },
+  });
+};
+
+/* ==========================================================
+   ✔️ POST - Mark Miscellaneous As Returned (Site Supervisor Return Handover)
+   @route POST /leads/installation/under-installation/vendorId/:vendorId/miscId/:miscId/mark-returned
+   ========================================================== */
+
+export const markMiscellaneousAsReturned = async (payload: {
+  vendorId: number;
+  leadId: number;
+  miscId: number;
+  user_id: number;
+  remark?: string;
+  files: File[];
+}) => {
+  const formData = new FormData();
+  formData.append("user_id", payload.user_id.toString());
+  if (payload.remark) {
+    formData.append("remark", payload.remark);
+  }
+  if (payload.files && payload.files.length > 0) {
+    payload.files.forEach((file) => {
+      formData.append("files", file);
+    });
+  }
+
+  const { data } = await apiClient.post(
+    `/leads/installation/under-installation/vendorId/${payload.vendorId}/miscId/${payload.miscId}/mark-returned`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    },
+  );
+
+  return data?.data;
+};
+
+/**
+ * ✅ React Query Mutation Hook - Mark Miscellaneous As Returned
+ */
+export const useMarkMiscellaneousAsReturned = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: markMiscellaneousAsReturned,
+
+    onSuccess: (data, variables) => {
+      toastManager.add({
+        title: "Return Material Handover marked as returned",
+        type: "success",
+      });
+
+      // Refetch miscellaneous list
+      queryClient.invalidateQueries({
+        queryKey: [
+          "miscellaneousEntries",
+          variables.vendorId,
+          variables.leadId,
+        ],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["leadTasks"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["userTasks"],
+      });
+    },
+
+    onError: (error: AxiosError<ApiErrorResponse>) => {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          "Failed to mark return material handover",
         type: "error",
       });
     },

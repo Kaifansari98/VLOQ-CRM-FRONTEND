@@ -247,12 +247,36 @@ function WorkstationRulesContent() {
                   let valDisplay = "";
                   if (cond.condition_type === "CATEGORY") {
                     const rawVal = cond.value;
-                    const catObj = projectCategories.find(
-                      (c) =>
-                        String(c.id) === String(rawVal) ||
-                        c.category_name.toLowerCase() === String(rawVal ?? "").toLowerCase()
-                    );
-                    valDisplay = catObj ? catObj.category_name : String(rawVal ?? "");
+                    const isAll =
+                      rawVal === "ALL" ||
+                      rawVal === "*" ||
+                      (Array.isArray(rawVal) &&
+                        rawVal.some((v: any) => String(v).toUpperCase() === "ALL"));
+
+                    if (isAll) {
+                      valDisplay = "All Categories";
+                    } else {
+                      const valArr: string[] = Array.isArray(rawVal)
+                        ? rawVal.map(String)
+                        : typeof rawVal === "string" && rawVal
+                        ? rawVal.includes(",")
+                          ? rawVal.split(",").map((s) => s.trim())
+                          : [rawVal]
+                        : typeof rawVal === "number"
+                        ? [String(rawVal)]
+                        : [];
+
+                      if (valArr.length > 0) {
+                        valDisplay = valArr
+                          .map((id) => {
+                            const cat = projectCategories.find((c) => String(c.id) === id);
+                            return cat ? cat.category_name : id;
+                          })
+                          .join(", ");
+                      } else {
+                        valDisplay = String(rawVal ?? "");
+                      }
+                    }
                   } else {
                     valDisplay = Array.isArray(cond.value)
                       ? cond.value.join(", ")
@@ -261,15 +285,41 @@ function WorkstationRulesContent() {
 
                   const isLastCond = cIdx === group.conditions.length - 1;
 
+                  const field = ruleFields.find((f) => f.field_key === cond.field_key);
+                  const isBool = field?.data_type === "BOOLEAN";
+                  const isUnaryOperator = cond.operator === "IS_BLANK" || cond.operator === "IS_NOT_BLANK";
+                  const isFalse =
+                    cond.value === false || cond.value === "false" || cond.value === 0;
+
                   return (
                     <React.Fragment key={cIdx}>
                       <span className="font-semibold text-primary">{fieldLabel}</span>
-                      <span className="text-[11px] text-muted-foreground font-mono px-0.5">
-                        {cond.operator.replace(/_/g, " ").toLowerCase()}
-                      </span>
-                      <span className="font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded text-[11px] border border-emerald-500/20">
-                        "{valDisplay}"
-                      </span>
+                      {isBool ? (
+                        <span className="font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded text-[11px] border border-emerald-500/20">
+                          {isFalse ? "is false" : "is true"}
+                        </span>
+                      ) : isUnaryOperator ? (
+                        <span className="font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded text-[11px] border border-emerald-500/20">
+                          {cond.operator === "IS_BLANK" ? "is blank" : "is not blank"}
+                        </span>
+                      ) : (
+                        <>
+                          <span className="text-[11px] text-muted-foreground font-mono px-0.5">
+                            {cond.operator === "NOT_CONTAINS"
+                              ? "does not contain"
+                              : cond.operator === "STARTS_WITH"
+                              ? "starts with"
+                              : cond.operator === "ENDS_WITH"
+                              ? "ends with"
+                              : cond.operator
+                              ? cond.operator.replace(/_/g, " ").toLowerCase()
+                              : ""}
+                          </span>
+                          <span className="font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded text-[11px] border border-emerald-500/20">
+                            "{valDisplay}"
+                          </span>
+                        </>
+                      )}
                       {!isLastCond && (
                         <Badge
                           variant="outline"

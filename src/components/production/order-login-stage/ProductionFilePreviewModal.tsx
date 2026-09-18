@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2, Package, Upload } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2, Package, RotateCw, Upload } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileUploadField } from "@/components/custom/file-upload";
-import DocumentCard from "@/components/utils/documentCard";
 import { cn } from "@/lib/utils";
 import {
   applyInventoryMatches, canSaveProductionRow, matchProductionInventory, parseProductionFiles, REQUIRED_PRODUCTION_HEADERS,
@@ -37,12 +36,10 @@ interface Props {
   canUpload: boolean;
   onUpload: (rows: ProductionPreviewRow[], replace: boolean) => Promise<void>;
   onDownloadTemplate: () => void;
-  productionFiles?: any[];
-  productionFilesLoading?: boolean;
 }
 
 export default function ProductionFilePreviewModal({ savedMaterials = [], materialsLoading = false, materialsError = false, embedded = false, open, onOpenChange, files, onFilesChange, vendorId,
-  leadId, instanceId, uploading, canUpload, onUpload, onDownloadTemplate, productionFiles = [], productionFilesLoading = false }: Props) {
+  leadId, instanceId, uploading, canUpload, onUpload, onDownloadTemplate }: Props) {
   const searchParams = useSearchParams();
   const isMaterialIssueView = searchParams.get("source") === "material-issue";
   const isIssuedItemsView = isMaterialIssueView && searchParams.get("mode") === "issued";
@@ -56,8 +53,21 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
   const [checkedSelection, setCheckedSelection] = useState<{ files: File[]; vendorId: number } | null>(null);
   const [freezeKeys, setFreezeKeys] = useState<string[] | null>(null);
   const [issueKeys, setIssueKeys] = useState<string[] | null>(null);
+  const [reuploadOpen, setReuploadOpen] = useState(false);
   const freezeMutation = useFreezeProductionMaterials(vendorId, leadId, instanceId);
   const issueMutation = useIssueProductionMaterials(vendorId, leadId, instanceId);
+  // Once materials are saved, uploading again happens in its own dialog instead of inline.
+  const moveUploadToModal = embedded && savedMaterials.length > 0 && !isIssuedItemsView;
+
+  // handleUpload clears the parent's file selection only on success, so a completed
+  // upload (uploading flips true -> false) that leaves no files behind is our signal
+  // the re-upload just went through. Track the previous "uploading" value directly —
+  // an effect keyed on it can't tell a fresh, empty dialog from a just-finished one.
+  const wasUploadingRef = useRef(false);
+  useEffect(() => {
+    if (wasUploadingRef.current && !uploading && files.length === 0) setReuploadOpen(false);
+    wasUploadingRef.current = uploading;
+  }, [uploading, files.length]);
 
   useEffect(() => {
     if (!open) return;
@@ -114,16 +124,72 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
   const canConfirm = checked && !busy && !uploading && canUpload && !materialsLoading && !materialsError && !lookupError && saveableRows.length > 0;
   const submit = () => { if (!canConfirm) return; if (savedMaterials.length) setConfirmReplace(true); else void onUpload(saveableRows, false); };
 
+  const uploadBody = (
+    <>
+      <div className="rounded-xl border p-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div><p className="text-sm font-medium">Excel workbooks</p><p className="text-xs text-muted-foreground">.xlsx or .csv · Required headers in the first row · Additional columns allowed</p></div>
+          <Button variant="outline" size="sm" onClick={onDownloadTemplate}>Download template</Button>
+        </div>
+        <FileUploadField value={files} onChange={onFilesChange} accept=".xlsx,.csv" multiple disabled={uploading || !canUpload} />
+        <div className="mt-3 flex flex-wrap gap-1.5">{REQUIRED_PRODUCTION_HEADERS.map((header) => <Badge key={header} variant="secondary">{header}</Badge>)}</div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {[
+          { label: "Rows in Excel", value: rows.length, hint: `${files.length} workbook${files.length === 1 ? "" : "s"}`, icon: FileSpreadsheet },
+          { label: "Matched products", value: checked ? matchedProducts : "—", hint: "Unique inventory products", icon: Package },
+          { label: "Rows covered by stock", value: checked ? rows.filter((row) => row.status === "ready").length : "—", hint: "Required quantity available", icon: CheckCircle2 },
+          { label: "Needs attention", value: errors + warnings, hint: `${errors} errors · ${warnings} warnings`, icon: AlertTriangle },
+        ].map(({ label, value, hint, icon: Icon }) => <div key={label} className="rounded-xl border bg-muted/15 p-4">
+          <div className="flex items-center justify-between gap-2 text-xs font-medium text-muted-foreground">{label}<Icon className="size-4" /></div>
+          <p className="mt-2 text-2xl font-semibold tabular-nums">{value}</p><p className="mt-1 text-xs text-muted-foreground">{hint}</p>
+        </div>)}
+      </div>
+
+      {busy && <div role="status" className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm"><Loader2 className="size-5 animate-spin text-primary" />
+        {phase === "reading" ? "Reading workbooks and checking required columns…" : "Matching article codes with your vendor’s inventory…"}</div>}
+      {lookupError && <div role="alert" className="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm"><p>{lookupError}</p><Button size="sm" variant="outline" onClick={() => setRetry((value) => value + 1)}>Retry</Button></div>}
+      {!!errors && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm"><p className="font-medium">Some rows or sheets could not be read</p><p className="mt-1 text-muted-foreground">{errors} validation issue{errors === 1 ? "" : "s"} found. Valid matched rows can still be saved. Review the log for skipped rows or sheets.</p></div>}
+
+      <div className="space-y-4">
+        <div className="flex gap-1 border-b" role="tablist" aria-label="Preview details">
+          {(["products", "logs"] as const).map((value) => <button key={value} type="button" role="tab" id={`production-${value}-tab`} aria-controls={`production-${value}-panel`} aria-selected={tab === value} onClick={() => setTab(value)} className={cn("border-b-2 px-4 py-2.5 text-sm font-medium", tab === value ? "border-primary text-primary" : "border-transparent text-muted-foreground")}>
+            {value === "products" ? `Products (${rows.length})` : `Validation log (${preview?.logs.length ?? 0})`}</button>)}
+        </div>
+        {tab === "products" ? <div role="tabpanel" id="production-products-panel" aria-labelledby="production-products-tab" className="space-y-3">
+          <ProductionMaterialsTable rows={rows} checked={checked} busy={busy} isMaterialIssueView={isMaterialIssueView} />
+        </div> : <div role="tabpanel" id="production-logs-panel" aria-labelledby="production-logs-tab" className="max-h-80 space-y-2 overflow-y-auto">
+          {!preview?.logs.length && <p className="p-6 text-center text-sm text-muted-foreground">Validation results will appear here.</p>}
+          {preview?.logs.map((log, index) => <div key={index} className={cn("flex gap-3 rounded-lg border p-3", log.level === "error" ? "border-destructive/25 bg-destructive/5" : log.level === "warning" ? "border-amber-500/25 bg-amber-500/5" : "bg-muted/20")}>
+            {log.level === "success" ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" /> : <AlertTriangle className={cn("mt-0.5 size-4 shrink-0", log.level === "error" ? "text-destructive" : "text-amber-600")} />}
+            <div className="min-w-0"><p className="break-words text-xs font-medium text-muted-foreground">{log.level.toUpperCase()} · {log.source}</p><p className="mt-1 text-sm">{log.message}</p></div>
+          </div>)}
+        </div>}
+      </div>
+    </>
+  );
+
+  const uploadFooter = (
+    <div className="flex flex-col items-start justify-between gap-3 border-t bg-muted/20 px-6 py-4 sm:flex-row sm:items-center">
+      <div className="text-sm"><p className="font-medium">{canConfirm ? `${rows.length} rows reviewed in ${files.length} file${files.length === 1 ? "" : "s"}` : "Review and validate your files to continue"}</p><p className="mt-1 text-xs text-muted-foreground">{warnings ? "Inventory warnings do not prevent file upload. " : ""}{saveableRows.length} rows can be saved; {rows.length - saveableRows.length} rows will be skipped. Stock shortages do not prevent saving materials.</p></div>
+      <div className="flex shrink-0 gap-2">{!embedded && <Button variant="outline" disabled={uploading} onClick={() => onOpenChange(false)}>Back</Button>}<Button disabled={!canConfirm} onClick={submit}>{uploading ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Upload className="mr-2 size-4" />}{uploading ? "Uploading…" : "Upload files"}</Button></div>
+    </div>
+  );
+
   const content = (
     <>
         <div className="border-b bg-muted/30 px-6 py-5 pr-12 text-left">
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl border bg-background p-2.5 text-primary"><FileSpreadsheet className="size-6" /></div>
-            <div>{embedded ? (
-              <><h2 className="text-lg font-semibold">Required Production Materials</h2><p className="mt-1 text-sm text-muted-foreground">Check your Excel rows and inventory before uploading production files.</p></>
-            ) : (
-              <><DialogTitle className="text-lg">Required Production Materials</DialogTitle><DialogDescription className="mt-1">Check your Excel rows and inventory before uploading production files.</DialogDescription></>
-            )}</div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl border bg-background p-2.5 text-primary"><FileSpreadsheet className="size-6" /></div>
+              <div>{embedded ? (
+                <><h2 className="text-lg font-semibold">Required Production Materials</h2><p className="mt-1 text-sm text-muted-foreground">Check your Excel rows and inventory before uploading production files.</p></>
+              ) : (
+                <><DialogTitle className="text-lg">Required Production Materials</DialogTitle><DialogDescription className="mt-1">Check your Excel rows and inventory before uploading production files.</DialogDescription></>
+              )}</div>
+            </div>
+            {moveUploadToModal && <Button variant="outline" size="sm" className="shrink-0 gap-1.5" onClick={() => setReuploadOpen(true)}><RotateCw className="size-3.5" />Re Upload MRP</Button>}
           </div>
         </div>
 
@@ -141,81 +207,9 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
             />
           </div>}
 
-          {isIssuedItemsView ? (
-            <div className="rounded-xl border p-4">
-              <div className="mb-3">
-                <p className="text-sm font-medium">Uploaded production files</p>
-                <p className="text-xs text-muted-foreground">Files uploaded for this project's production materials.</p>
-              </div>
-              {productionFilesLoading ? (
-                <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" />Loading files…</div>
-              ) : !productionFiles.length ? (
-                <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/40 p-10 text-center">
-                  <FileSpreadsheet className="size-8 text-muted-foreground" />
-                  <p className="text-sm font-medium text-muted-foreground">No production files uploaded yet.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-4 p-1 sm:grid-cols-2 lg:grid-cols-3">
-                  {productionFiles.map((doc: any) => (
-                    <DocumentCard
-                      key={doc.id}
-                      doc={{ id: doc.id, originalName: doc.doc_og_name, signedUrl: doc.signedUrl ?? doc.signed_url, created_at: doc.created_at }}
-                      canDelete={false}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-          <>
-          <div className="rounded-xl border p-4">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <div><p className="text-sm font-medium">Excel workbooks</p><p className="text-xs text-muted-foreground">.xlsx or .csv · Required headers in the first row · Additional columns allowed</p></div>
-              <Button variant="outline" size="sm" onClick={onDownloadTemplate}>Download template</Button>
-            </div>
-            <FileUploadField value={files} onChange={onFilesChange} accept=".xlsx,.csv" multiple disabled={uploading || !canUpload} />
-            <div className="mt-3 flex flex-wrap gap-1.5">{REQUIRED_PRODUCTION_HEADERS.map((header) => <Badge key={header} variant="secondary">{header}</Badge>)}</div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {[
-              { label: "Rows in Excel", value: rows.length, hint: `${files.length} workbook${files.length === 1 ? "" : "s"}`, icon: FileSpreadsheet },
-              { label: "Matched products", value: checked ? matchedProducts : "—", hint: "Unique inventory products", icon: Package },
-              { label: "Rows covered by stock", value: checked ? rows.filter((row) => row.status === "ready").length : "—", hint: "Required quantity available", icon: CheckCircle2 },
-              { label: "Needs attention", value: errors + warnings, hint: `${errors} errors · ${warnings} warnings`, icon: AlertTriangle },
-            ].map(({ label, value, hint, icon: Icon }) => <div key={label} className="rounded-xl border bg-muted/15 p-4">
-              <div className="flex items-center justify-between gap-2 text-xs font-medium text-muted-foreground">{label}<Icon className="size-4" /></div>
-              <p className="mt-2 text-2xl font-semibold tabular-nums">{value}</p><p className="mt-1 text-xs text-muted-foreground">{hint}</p>
-            </div>)}
-          </div>
-
-          {busy && <div role="status" className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm"><Loader2 className="size-5 animate-spin text-primary" />
-            {phase === "reading" ? "Reading workbooks and checking required columns…" : "Matching article codes with your vendor’s inventory…"}</div>}
-          {lookupError && <div role="alert" className="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm"><p>{lookupError}</p><Button size="sm" variant="outline" onClick={() => setRetry((value) => value + 1)}>Retry</Button></div>}
-          {!!errors && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm"><p className="font-medium">Some rows or sheets could not be read</p><p className="mt-1 text-muted-foreground">{errors} validation issue{errors === 1 ? "" : "s"} found. Valid matched rows can still be saved. Review the log for skipped rows or sheets.</p></div>}
-
-          <div className="space-y-4">
-            <div className="flex gap-1 border-b" role="tablist" aria-label="Preview details">
-              {(["products", "logs"] as const).map((value) => <button key={value} type="button" role="tab" id={`production-${value}-tab`} aria-controls={`production-${value}-panel`} aria-selected={tab === value} onClick={() => setTab(value)} className={cn("border-b-2 px-4 py-2.5 text-sm font-medium", tab === value ? "border-primary text-primary" : "border-transparent text-muted-foreground")}>
-                {value === "products" ? `Products (${rows.length})` : `Validation log (${preview?.logs.length ?? 0})`}</button>)}
-            </div>
-            {tab === "products" ? <div role="tabpanel" id="production-products-panel" aria-labelledby="production-products-tab" className="space-y-3">
-              <ProductionMaterialsTable rows={rows} checked={checked} busy={busy} isMaterialIssueView={isMaterialIssueView} />
-            </div> : <div role="tabpanel" id="production-logs-panel" aria-labelledby="production-logs-tab" className="max-h-80 space-y-2 overflow-y-auto">
-              {!preview?.logs.length && <p className="p-6 text-center text-sm text-muted-foreground">Validation results will appear here.</p>}
-              {preview?.logs.map((log, index) => <div key={index} className={cn("flex gap-3 rounded-lg border p-3", log.level === "error" ? "border-destructive/25 bg-destructive/5" : log.level === "warning" ? "border-amber-500/25 bg-amber-500/5" : "bg-muted/20")}>
-                {log.level === "success" ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" /> : <AlertTriangle className={cn("mt-0.5 size-4 shrink-0", log.level === "error" ? "text-destructive" : "text-amber-600")} />}
-                <div className="min-w-0"><p className="break-words text-xs font-medium text-muted-foreground">{log.level.toUpperCase()} · {log.source}</p><p className="mt-1 text-sm">{log.message}</p></div>
-              </div>)}
-            </div>}
-          </div>
-          </>
-          )}
+          {!isIssuedItemsView && !moveUploadToModal && uploadBody}
         </div>
-        {!isIssuedItemsView && <div className="flex flex-col items-start justify-between gap-3 border-t bg-muted/20 px-6 py-4 sm:flex-row sm:items-center">
-          <div className="text-sm"><p className="font-medium">{canConfirm ? `${rows.length} rows reviewed in ${files.length} file${files.length === 1 ? "" : "s"}` : "Review and validate your files to continue"}</p><p className="mt-1 text-xs text-muted-foreground">{warnings ? "Inventory warnings do not prevent file upload. " : ""}{saveableRows.length} rows can be saved; {rows.length - saveableRows.length} rows will be skipped. Stock shortages do not prevent saving materials.</p></div>
-          <div className="flex shrink-0 gap-2">{!embedded && <Button variant="outline" disabled={uploading} onClick={() => onOpenChange(false)}>Back</Button>}<Button disabled={!canConfirm} onClick={submit}>{uploading ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Upload className="mr-2 size-4" />}{uploading ? "Uploading…" : "Upload files"}</Button></div>
-        </div>}
+        {!isIssuedItemsView && !moveUploadToModal && uploadFooter}
         <AlertDialog open={confirmReplace} onOpenChange={setConfirmReplace}>
           <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Replace saved materials?</AlertDialogTitle>
             <AlertDialogDescription>Submitting this upload will delete the previous {savedMaterials.length} material rows and replace them with {saveableRows.length} valid rows from the selected files. The previous material data will be lost.</AlertDialogDescription>
@@ -235,6 +229,23 @@ export default function ProductionFilePreviewModal({ savedMaterials = [], materi
           submitting={issueMutation.isPending}
           onConfirm={async (items) => { await issueMutation.mutateAsync(items); }}
         />
+        {moveUploadToModal && (
+          <Dialog open={reuploadOpen} onOpenChange={(next) => { if (!uploading) setReuploadOpen(next); }}>
+            <DialogContent className="flex max-h-[92vh] w-[96vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-6xl" showCloseButton={!uploading} onPointerDownOutside={(event) => { if (uploading) event.preventDefault(); }}>
+              <div className="border-b bg-muted/30 px-6 py-5 pr-12 text-left">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl border bg-background p-2.5 text-primary"><RotateCw className="size-6" /></div>
+                  <div>
+                    <DialogTitle className="text-lg">Re-upload required production materials</DialogTitle>
+                    <DialogDescription className="mt-1">Upload a new workbook to review it, then optionally replace the currently saved material list.</DialogDescription>
+                  </div>
+                </div>
+              </div>
+              <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 sm:p-6">{uploadBody}</div>
+              {uploadFooter}
+            </DialogContent>
+          </Dialog>
+        )}
     </>
   );
 

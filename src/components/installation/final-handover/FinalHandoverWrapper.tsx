@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import SmoothTab from "@/components/kokonutui/smooth-tab";
 import { ClipboardCheck, FileText, AlertCircle } from "lucide-react";
 import FinalHandover from "./FinalHandoverDetails";
@@ -18,6 +19,25 @@ export default function FinalHandoverWrapper({
   accountId: number;
   instanceId?: number | null;
 }) {
+  const searchParams = useSearchParams();
+  const taskIdParam = searchParams.get("taskId");
+  const taskId =
+    taskIdParam && !Number.isNaN(Number(taskIdParam))
+      ? Number(taskIdParam)
+      : undefined;
+  const miscIdParam = searchParams.get("miscId");
+  const miscId =
+    miscIdParam && !Number.isNaN(Number(miscIdParam))
+      ? Number(miscIdParam)
+      : undefined;
+  const miscTabParam =
+    searchParams.get("miscTab") || searchParams.get("subTab") || undefined;
+  const preferredTabId = searchParams.get("tab");
+  const isMiscRequested =
+    preferredTabId === "misc" ||
+    preferredTabId === "miscellaneousWork" ||
+    Boolean(miscId) ||
+    Boolean(taskId);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
   const customPrivilegeCodes = useAppSelector(
@@ -112,6 +132,9 @@ export default function FinalHandoverWrapper({
             vendorId={vendorId}
             leadId={leadId}
             accountId={accountId}
+            initialTaskId={taskId}
+            initialMiscId={miscId}
+            initialSubTab={miscTabParam}
             hideAddButton={true}
           />
         </div>
@@ -121,14 +144,17 @@ export default function FinalHandoverWrapper({
     if (tab.id === "pendingWork") return canViewPendingWorkTab;
     if (tab.id === "smallOrderRequest")
       return hasFinalHandoverSmallOrderRequests;
-    if (tab.id === "miscellaneousWork") return hasPendingMisc;
+    if (tab.id === "miscellaneousWork") return hasPendingMisc || isMiscRequested;
     return true;
   });
 
+  const resolvedDefaultTabId = isMiscRequested ? "miscellaneousWork" : "finalHandover";
+
   return (
     <SmoothTab
+      key={resolvedDefaultTabId}
       items={TAB_ITEMS}
-      defaultTabId="finalHandover"
+      defaultTabId={resolvedDefaultTabId}
       className="w-fit"
     />
   );
