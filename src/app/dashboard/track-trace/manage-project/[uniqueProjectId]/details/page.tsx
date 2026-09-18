@@ -1701,7 +1701,17 @@ function BoxItemsDialog({
                         </DropdownMenuItem>
                       </div>
                     </TooltipTrigger>
-                    
+                    {!canRevertFactoryOut && (
+                      <TooltipContent
+                        side="left"
+                        align="center"
+                        className="z-[100] max-w-xs text-xs font-normal"
+                      >
+                        {isFactoryOut && isSiteIn
+                          ? "Cannot revert Factory Out: Box is already at the site (Site In has been recorded)."
+                          : revertDisabledReason}
+                      </TooltipContent>
+                    )}
                   </Tooltip>
                 </DropdownMenuContent>
               </DropdownMenu>
