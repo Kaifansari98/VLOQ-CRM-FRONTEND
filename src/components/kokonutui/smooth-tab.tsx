@@ -264,6 +264,7 @@ interface SmoothTabProps {
   contentHeightClass?: string;
   pinTabsToBottom?: boolean;
   headerRight?: React.ReactNode;
+  hideTabHeader?: boolean;
 }
 
 const slideVariants = {
@@ -304,6 +305,7 @@ export default function SmoothTab({
   contentHeightClass,
   pinTabsToBottom = true,
   headerRight,
+  hideTabHeader = false,
 }: SmoothTabProps) {
   const [selected, setSelected] = React.useState<string>(defaultTabId);
   const [direction, setDirection] = React.useState(0);
@@ -390,7 +392,7 @@ export default function SmoothTab({
 
   return (
     <div className="flex flex-col h-full gap-3">
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+      {!hideTabHeader && <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
         <div
           ref={containerRef}
           role="tablist"
@@ -493,7 +495,7 @@ export default function SmoothTab({
         </div>
 
         {headerRight ? <div className="xl:shrink-0">{headerRight}</div> : null}
-      </div>
+      </div>}
 
       {/* Card Content Area */}
       <div className="mb-4 relative">

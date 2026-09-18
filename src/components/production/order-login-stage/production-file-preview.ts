@@ -11,6 +11,7 @@ export type PreviewLog = { level: "error" | "warning" | "success"; source: strin
 export type InventoryProduct = {
   id: number; vendor_id: number; article_code: string | null; product_name: string;
   current_stock: string | number | null; active: string;
+  min_stock_qty?: string | number | null;
   unit_of_measure?: string | null;
   stockUnit?: { unit_name: string } | null;
   primaryUnit?: { unit_name: string; short_name?: string | null } | null;
@@ -20,6 +21,9 @@ export type ProductionPreviewRow = {
   name: string; articleCode: string; errors: string[]; product?: InventoryProduct;
   status: "invalid" | "unmatched" | "ambiguous" | "inactive" | "unknown" | "shortage" | "ready";
   available?: number; shortage?: number; stockUnit?: string;
+  // frozenQty: reserved via Freeze (already deducted from stock at freeze time).
+  // issuedQty: handed off via Issue — the final, consumed state.
+  frozenQty?: number; issuedQty?: number;
 };
 export type ProductionPreview = { rows: ProductionPreviewRow[]; logs: PreviewLog[]; fileCount: number };
 const normalize = (value: string) => value.trim().toLowerCase().replace(/\s+/g, " ");
@@ -154,9 +158,14 @@ export function applyInventoryMatches(preview: ProductionPreview, matches: Map<s
         message = "Inventory quantity is unavailable for this product.";
       } else {
         const available = remaining.get(product.id) ?? Math.max(0, stock);
+        // Whichever of frozen/issued is further along already deducted stock (freezing
+        // deducts immediately; issuing deducts only the portion beyond what was frozen),
+        // so only what's left past that needs to be covered by what's still available.
+        const processed = Math.max(row.frozenQty ?? 0, row.issuedQty ?? 0);
+        const need = Math.max(0, Math.round((row.qty - processed) * 1e8) / 1e8);
         row.available = available;
-        row.shortage = Math.max(0, Math.round((row.qty - available) * 1e8) / 1e8);
-        remaining.set(product.id, Math.max(0, Math.round((available - row.qty) * 1e8) / 1e8));
+        row.shortage = Math.max(0, Math.round((need - available) * 1e8) / 1e8);
+        remaining.set(product.id, Math.max(0, Math.round((available - need) * 1e8) / 1e8));
         row.status = row.shortage > 0 ? "shortage" : "ready";
         if (row.shortage) message = `Short by ${row.shortage} ${row.unit}. Available stock accounts for earlier rows in this selection.`;
       }

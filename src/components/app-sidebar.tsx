@@ -327,6 +327,7 @@ const data = {
       items: [
         { title: "Dashboard", url: "/dashboard/track-trace" },
         { title: "Real Time", url: "/dashboard/track-trace/dashboard" },
+        { title: "Workstations", url: "/dashboard/track-trace/machines" },
         {
           title: "Projects",
           url: "/dashboard/track-trace/manage-project",
@@ -370,9 +371,7 @@ const data = {
       icon: Forklift,
       items: [
         { title: "Projects", url: "/dashboard/inventory/material-issue/projects" },
-        { title: "Freeze Items", url: "/dashboard/inventory/material-issue/freeze-items" },
-        { title: "Issued Items", url: "/dashboard/inventory/material-issue/issued-items" },
-        { title: "Dispatch", url: "/dashboard/inventory/material-issue/dispatch" },
+        { title: "Issued Projects", url: "/dashboard/inventory/material-issue/issued-items" },
       ],
     },
   ],
@@ -540,6 +539,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     data: materialIssueProjectsData,
     isLoading: isMaterialIssueProjectsLoading,
   } = useVendorLeadsByTagPost(vendorId ?? 0, materialIssueProjectsPayload);
+  const materialIssueIssuedItemsPayload = React.useMemo(
+    () => ({
+      tag: "Type 9",
+      strict_status_tag: true,
+      material_issue_completed_only: true,
+      page: 1,
+      limit: 1,
+    }),
+    [],
+  );
+  const {
+    data: materialIssueIssuedItemsData,
+    isLoading: isMaterialIssueIssuedItemsLoading,
+  } = useVendorLeadsByTagPost(vendorId ?? 0, materialIssueIssuedItemsPayload);
 
   const { data: miscCountData, isLoading: isMiscLeadLoading } =
     usePendingMiscellaneousCount(
@@ -587,6 +600,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const miscLeadsCount = miscCountData?.pending_miscellaneous_leads ?? 0;
   const materialIssueProjectsCount = materialIssueProjectsData?.count ?? 0;
+  const materialIssueIssuedItemsCount = materialIssueIssuedItemsData?.count ?? 0;
 
   const { unreadCount: unreadBroadcastCount, isLoading: isBroadcastLoading } =
     useUnreadBroadcastCount(userId, vendorId ?? undefined, isSuperAdmin);
@@ -986,6 +1000,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   customCount: materialIssueProjectsCount,
                   customCountLoading: isMaterialIssueProjectsLoading,
                 }
+                : item.title === "Issued Projects"
+                ? {
+                  ...item,
+                  customCount: materialIssueIssuedItemsCount,
+                  customCountLoading: isMaterialIssueIssuedItemsLoading,
+                }
                 : item,
             ),
           }
@@ -1046,6 +1066,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     isInventoryEnabled,
     materialIssueProjectsCount,
     isMaterialIssueProjectsLoading,
+    materialIssueIssuedItemsCount,
+    isMaterialIssueIssuedItemsLoading,
     isTrackTraceEnabled,
     isOnlineLeadFeatureEnabled,
     isScanPackEnabled,

@@ -344,6 +344,7 @@ export interface VendorLeadsByTagPostPayload {
   franchises?: number[];
   strict_status_tag?: boolean;
   material_issue_ready_only?: boolean;
+  material_issue_completed_only?: boolean;
 }
 
 export const postVendorLeadsByTag = async (

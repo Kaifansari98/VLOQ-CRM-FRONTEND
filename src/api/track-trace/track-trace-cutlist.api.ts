@@ -143,6 +143,7 @@ export interface ProjectDetailData {
     project_name: string;
     project_status: string;
     track_trace_status: string;
+    packing_type: "DEFAULT" | "GROUPWISE" | "CUSTOM_GROUP";
     lead_id: number | null;
     lead: {
       id: number;
@@ -217,6 +218,15 @@ export interface ProjectDetailData {
     box_status: string;
     items_count: number;
     total_weight: number;
+    sequence_no: number | null;
+    product_group_name: string | null;
+    packing_group_name: string | null;
+    product_set_no: number | null;
+    box_position: number | null;
+    boxes_per_product: number | null;
+    is_auto_created: boolean;
+    group_name: string | null;
+    location_name: string | null;
 
     factory_out_at: string | null;
     factory_out_by: string | null;
@@ -238,6 +248,7 @@ export interface ProjectDetailData {
     groups: string[];
     categories: string[];
     machines: { id: number; name: string }[];
+    locations: string[];
   };
   boxes_pagination?: {
     total: number;
@@ -576,6 +587,51 @@ export const getBoxItems = async (
   };
 };
 
+export type TrackTraceBoxStatus = "packed" | "unpacked";
+
+export const updateTrackTraceBoxStatus = async (
+  boxId: number,
+  status: TrackTraceBoxStatus,
+  userId: number,
+) => {
+  const { data } = await apiClient.put(
+    `/boxes/status/${status}/${boxId}`,
+    {
+      user_id: userId,
+    },
+  );
+
+  return data;
+};
+
+export const deleteTrackTraceBoxItem = async ({
+  mappingId,
+  vendorId,
+  projectId,
+  boxId,
+  userId,
+}: {
+  mappingId: number;
+  vendorId: number;
+  projectId: number;
+  boxId: number;
+  userId: number;
+}) => {
+  const { data } = await apiClient.delete(
+    `/scan-items/scan-and-pack/delete/${mappingId}`,
+    {
+      data: {
+        vendor_id: vendorId,
+        project_id: projectId,
+        box_id: boxId,
+        deleted_by: userId,
+      },
+    },
+  );
+
+  return data;
+};
+
 export const downloadBoxPdf = async (
   boxId: number,
   projectId: string | number,
@@ -597,4 +653,34 @@ export const downloadProjectFullReport = async (
   );
 
   return data;
+};
+
+export const downloadDispatchDocument = async (
+  projectId: string,
+  vendorId: number,
+  locations: string[] = [],
+) => {
+  const response = await apiClient.post<Blob>(
+    `/track-trace-project/onboard/project/${projectId}/dispatch-document`,
+    { vendorId, locations },
+    { responseType: "blob" },
+  );
+  const contentDisposition = response.headers["content-disposition"] as
+    | string
+    | undefined;
+  const encodedFileName = contentDisposition?.match(
+    /filename\*=UTF-8''([^;]+)/i,
+  )?.[1];
+  const regularFileName = contentDisposition?.match(
+    /filename="?([^";]+)"?/i,
+  )?.[1];
+
+  return {
+    blob: response.data,
+    fileName:
+      (encodedFileName
+        ? decodeURIComponent(encodedFileName)
+        : regularFileName) ||
+      "Dispatch_Document.pdf",
+  };
 };

@@ -441,7 +441,7 @@ function FranchiseChart({
   isLoading,
   onBarDoubleClick,
 }: FranchiseChartProps) {
-  const chartData = data;
+  const chartData = useMemo(() => data.map((entry) => ({ ...entry })), [data]);
   const totalLeads = useMemo(() => chartData.reduce((acc, entry) => acc + (entry.leads || 0), 0), [chartData]);
   const [isOpen, setIsOpen] = useState(false);
   

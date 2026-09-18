@@ -61,6 +61,7 @@ interface ProductionFilesSectionProps {
   instanceId?: number | null;
   orderLoginApprovalPending?: boolean;
   orderLoginApprovalPendingTooltip?: string;
+  hideDeliveryDateBanner?: boolean;
 }
 
 const MATERIAL_REQUIRED_TEMPLATE_HEADERS = [
@@ -104,12 +105,14 @@ export default function ProductionFilesSection({
   instanceId,
   orderLoginApprovalPending = false,
   orderLoginApprovalPendingTooltip = "Accounts approval for Order Login is still pending",
+  hideDeliveryDateBanner = false,
 }: ProductionFilesSectionProps) {
   const searchParams = useSearchParams();
 
   const instanceFromUrl = searchParams.get("instance_id");
   const resolvedInstanceId =
     instanceId ?? (instanceFromUrl ? Number(instanceFromUrl) : undefined);
+  const isMaterialIssueView = searchParams.get("source") === "material-issue";
 
   const vendorId = useAppSelector((s) => s.auth.user?.vendor_id);
   const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
@@ -365,7 +368,7 @@ export default function ProductionFilesSection({
 
   return (
     <div className="space-y-4">
-      <ClientRequiredDeliveryDateBanner leadId={leadId} />
+      {!hideDeliveryDateBanner && !isMaterialIssueView && <ClientRequiredDeliveryDateBanner leadId={leadId} />}
 
       <div className="border rounded-lg bg-background shadow-sm">
         {showRequiredMaterials ? (
@@ -373,6 +376,8 @@ export default function ProductionFilesSection({
             {shouldDisableActions && <p role="status" className="border-b px-6 py-3 text-sm text-muted-foreground">{effectiveBlockedTooltip}</p>}
             <ProductionFilePreviewModal
               key={`${leadId}-${resolvedInstanceId ?? "all"}`}
+              leadId={leadId}
+              instanceId={resolvedInstanceId}
               savedMaterials={savedMaterials}
               materialsLoading={materialsLoading}
               materialsError={materialsError}

@@ -37,6 +37,8 @@ import {
 } from "@/hooks/track-trace-hooks/useCutListRulesHooks";
 import { useProjectCategories } from "@/hooks/track-trace/useProjectCategories";
 import { toastManager } from "@/components/ui/toast";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus,
   X,
@@ -53,20 +55,59 @@ import {
   Copy,
   Check,
   Cpu,
+  ChevronsUpDown,
+  Search,
 } from "lucide-react";
 import type {
   RuleConditionType,
   RuleOperator,
+  RuleFieldDataType,
   LogicalOperator,
   CreateRulePayload,
 } from "@/types/track-trace";
 
+const OPERATORS_BY_DATA_TYPE: Record<
+  RuleFieldDataType,
+  { value: RuleOperator; label: string }[]
+> = {
+  NUMBER: [
+    { value: "EQUALS", label: "Equals" },
+    { value: "NOT_EQUALS", label: "Not Equals" },
+    { value: "GREATER_THAN", label: "Greater Than" },
+    { value: "GREATER_THAN_OR_EQUAL", label: "Greater Than Or Equal" },
+    { value: "LESS_THAN", label: "Less Than" },
+    { value: "LESS_THAN_OR_EQUAL", label: "Less Than Or Equal" },
+    { value: "BETWEEN", label: "Between" },
+  ],
+  STRING: [
+    { value: "EQUALS", label: "Equals" },
+    { value: "NOT_EQUALS", label: "Not Equals" },
+    { value: "CONTAINS", label: "Contains" },
+    { value: "NOT_CONTAINS", label: "Does Not Contain" },
+    { value: "STARTS_WITH", label: "Starts With" },
+    { value: "ENDS_WITH", label: "Ends With" },
+    { value: "IS_BLANK", label: "Is Blank" },
+    { value: "IS_NOT_BLANK", label: "Is Not Blank" },
+    { value: "IN", label: "In (Comma separated)" },
+    { value: "NOT_IN", label: "Not In" },
+  ],
+  BOOLEAN: [
+    { value: "EQUALS", label: "Is True" },
+  ],
+  ARRAY: [
+    { value: "IN", label: "In (Comma separated)" },
+    { value: "NOT_IN", label: "Not In" },
+    { value: "CONTAINS", label: "Contains" },
+    { value: "NOT_CONTAINS", label: "Does Not Contain" },
+  ],
+};
+
 interface ConditionFormState {
   id?: number;
-  condition_type: RuleConditionType | "";
+  condition_type: RuleConditionType | "ALL_CATEGORY" | "";
   field_key: string;
   operator: RuleOperator | "";
-  value: string;
+  value: any;
   logical_operator: LogicalOperator;
 }
 
@@ -118,6 +159,231 @@ function SmoothPillToggle({
         </button>
       </div>
     </div>
+  );
+}
+
+interface CategoryMultiSelectProps {
+  categories: { id: number; category_name: string }[];
+  value: any;
+  onChange: (val: any) => void;
+  isLoading?: boolean;
+}
+
+function CategoryMultiSelect({
+  categories = [],
+  value,
+  onChange,
+  isLoading = false,
+}: CategoryMultiSelectProps) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const selectedIdStrs = useMemo(() => {
+    if (Array.isArray(value)) {
+      return value.map((v) => String(v));
+    }
+    if (typeof value === "string" && value) {
+      if (value.includes(",")) return value.split(",").map((s) => s.trim());
+      return [value];
+    }
+    if (typeof value === "number") {
+      return [String(value)];
+    }
+    return [];
+  }, [value]);
+
+  const handleToggleCategory = (catId: number) => {
+    const idStr = String(catId);
+    let nextSelected: number[] = [];
+    const currentIds = selectedIdStrs.map(Number);
+    if (selectedIdStrs.includes(idStr)) {
+      nextSelected = currentIds.filter((id) => String(id) !== idStr);
+    } else {
+      nextSelected = [...currentIds, catId];
+    }
+    onChange(nextSelected);
+  };
+
+  const handleSelectAll = () => {
+    onChange(categories.map((c) => c.id));
+  };
+
+  const handleClearAll = () => {
+    onChange([]);
+  };
+
+  const filteredCategories = useMemo(() => {
+    if (!search.trim()) return categories;
+    return categories.filter((c) =>
+      c.category_name.toLowerCase().includes(search.trim().toLowerCase())
+    );
+  }, [categories, search]);
+
+  const triggerLabel = useMemo(() => {
+    if (isLoading) return <span className="text-muted-foreground text-xs">Loading categories...</span>;
+    if (selectedIdStrs.length === 0) {
+      return <span className="text-muted-foreground text-xs">Select categories...</span>;
+    }
+
+    const selectedCats = selectedIdStrs
+      .map((id) => categories.find((c) => String(c.id) === id))
+      .filter(Boolean) as { id: number; category_name: string }[];
+
+    if (selectedCats.length === 0) {
+      return <span className="text-muted-foreground text-xs">Select categories...</span>;
+    }
+
+    const maxVisible = 4;
+
+    if (selectedCats.length <= maxVisible) {
+      return (
+        <div className="flex items-center gap-1.5 flex-wrap py-0.5">
+          {selectedCats.map((cat) => (
+            <Badge
+              key={cat.id}
+              variant="secondary"
+              className="text-[11px] font-medium px-2 py-0.5 bg-secondary text-secondary-foreground shrink-0 max-w-[130px] truncate"
+            >
+              {cat.category_name}
+            </Badge>
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex items-center gap-1.5 flex-wrap py-0.5">
+        {selectedCats.slice(0, maxVisible).map((cat) => (
+          <Badge
+            key={cat.id}
+            variant="secondary"
+            className="text-[11px] font-medium px-2 py-0.5 bg-secondary text-secondary-foreground shrink-0 max-w-[120px] truncate"
+          >
+            {cat.category_name}
+          </Badge>
+        ))}
+        <Badge
+          variant="outline"
+          className="text-[10px] font-bold text-primary bg-primary/10 border-primary/20 px-1.5 py-0.5 shrink-0"
+        >
+          +{selectedCats.length - maxVisible} more
+        </Badge>
+      </div>
+    );
+  }, [isLoading, selectedIdStrs, categories]);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <div className="relative flex items-center w-full">
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="min-h-9 h-auto py-1 w-full justify-between text-xs font-normal border-input px-3 hover:bg-muted/50 transition-colors"
+          >
+            <div className="text-left flex-1 mr-6 overflow-hidden">{triggerLabel}</div>
+            <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 opacity-50 absolute right-2.5 top-1/2 -translate-y-1/2" />
+          </Button>
+        </PopoverTrigger>
+        {selectedIdStrs.length > 0 && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleClearAll();
+            }}
+            className="absolute right-7 p-0.5 text-muted-foreground hover:text-foreground rounded transition-colors"
+            title="Clear category selection"
+          >
+            <X size={12} />
+          </button>
+        )}
+      </div>
+
+      <PopoverContent className="w-72 p-0 shadow-md border border-border" align="start">
+        <div className="p-2 border-b border-border/60 space-y-1.5">
+          <div className="relative flex items-center">
+            <Search className="absolute left-2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Search categories..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-7 pl-7 pr-6 text-xs border-none bg-muted/40 focus-visible:ring-0 focus-visible:ring-offset-0"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-1.5 text-muted-foreground hover:text-foreground"
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+          <div className="flex items-center px-1 text-[11px]">
+            <button
+              type="button"
+              onClick={handleSelectAll}
+              className="text-primary hover:underline font-medium"
+            >
+              Select All
+            </button>
+          </div>
+        </div>
+
+        <div className="max-h-56 overflow-y-auto p-1 text-xs space-y-0.5">
+          {isLoading ? (
+            <div className="p-3 text-center text-xs text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin inline mr-1.5" /> Loading categories...
+            </div>
+          ) : filteredCategories.length === 0 ? (
+            <div className="p-3 text-center text-xs text-muted-foreground">
+              No categories found
+            </div>
+          ) : (
+            filteredCategories.map((cat) => {
+              const isSelected = selectedIdStrs.includes(String(cat.id));
+              return (
+                <div
+                  key={cat.id}
+                  onClick={() => handleToggleCategory(cat.id)}
+                  className={`flex items-center gap-2.5 px-2 py-1.5 rounded-md cursor-pointer select-none transition-colors ${
+                    isSelected
+                      ? "bg-accent text-accent-foreground font-medium"
+                      : "hover:bg-muted/60 text-foreground/85"
+                  }`}
+                >
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={() => handleToggleCategory(cat.id)}
+                    className="h-3.5 w-3.5"
+                  />
+                  <span className="truncate">{cat.category_name}</span>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-2 border-t border-border/50 flex items-center justify-between bg-muted/20 text-[11px] text-muted-foreground">
+          <span>
+            {selectedIdStrs.length} of {categories.length} selected
+          </span>
+          {selectedIdStrs.length > 0 && (
+            <button
+              type="button"
+              onClick={handleClearAll}
+              className="text-xs text-destructive hover:underline font-medium"
+            >
+              Clear All
+            </button>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -201,9 +467,9 @@ function RuleEditorContent() {
   // Pre-fill form when editing or when machine has an existing rule
   useEffect(() => {
     if (ruleToPreFill) {
-      setRuleName(ruleToPreFill.rule_name || (ruleToPreFill as any).ruleName || "");
-      setRuleCode(ruleToPreFill.rule_code || (ruleToPreFill as any).ruleCode || "");
-      setPriority(ruleToPreFill.priority ?? 10);
+      setRuleName(ruleToPreFill.rule_name || (ruleToPreFill as any).ruleName || currentMachine?.machine_name || "");
+      setRuleCode(ruleToPreFill.rule_code || (ruleToPreFill as any).ruleCode || currentMachine?.machine_name || "");
+      setPriority(1);
       setStatus(ruleToPreFill.status || "ACTIVE");
 
       const rawActions =
@@ -245,11 +511,14 @@ function RuleEditorContent() {
               const rawType = c.condition_type || c.conditionType || "";
               const typeStr = String(rawType).toUpperCase();
               const rawField = c.field_key || c.fieldKey || "";
-              const rawOp = c.operator || c.ruleOperator || "EQUALS";
+              const rawOp =
+                c.operator ||
+                c.ruleOperator ||
+                (typeStr === "CATEGORY" ? "IN" : "EQUALS");
               const rawLogOp = c.logical_operator || c.logicalOperator || "AND";
               const rawVal = c.value;
 
-              let resolvedType: RuleConditionType = "COLUMN";
+              let resolvedType: ConditionFormState["condition_type"] = "COLUMN";
               if (typeStr === "CATEGORY") {
                 resolvedType = "CATEGORY";
               } else if (typeStr === "COLUMN") {
@@ -260,22 +529,46 @@ function RuleEditorContent() {
                 resolvedType = "COLUMN";
               }
 
-              let formattedVal = "";
-              if (Array.isArray(rawVal)) {
-                formattedVal = rawVal.join(",");
-              } else if (typeof rawVal === "object" && rawVal !== null) {
-                formattedVal = String(
-                  rawVal.id ||
-                    rawVal.category_id ||
-                    rawVal.categoryId ||
-                    rawVal.category_name ||
-                    rawVal.categoryName ||
-                    rawVal.value ||
-                    ""
-                );
+              let formattedVal: any = "";
+              if (resolvedType === "CATEGORY") {
+                if (
+                  rawVal === "ALL" ||
+                  rawVal === "*" ||
+                  (Array.isArray(rawVal) &&
+                    rawVal.some((v: any) => String(v).toUpperCase() === "ALL"))
+                ) {
+                  resolvedType = "ALL_CATEGORY";
+                  formattedVal = "ALL";
+                } else if (Array.isArray(rawVal)) {
+                  formattedVal = rawVal.map((v: any) =>
+                    typeof v === "object" && v !== null
+                      ? v.id || v.category_id || v.categoryId || v.value
+                      : v
+                  );
+                } else if (typeof rawVal === "string" && rawVal.includes(",")) {
+                  formattedVal = rawVal.split(",").map((s: string) => s.trim());
+                } else if (typeof rawVal === "object" && rawVal !== null) {
+                  formattedVal = [
+                    rawVal.id || rawVal.category_id || rawVal.categoryId || rawVal.value,
+                  ];
+                } else if (rawVal !== null && rawVal !== undefined && rawVal !== "") {
+                  formattedVal = [rawVal];
+                } else {
+                  formattedVal = [];
+                }
               } else {
-                formattedVal =
-                  rawVal !== null && rawVal !== undefined ? String(rawVal) : "";
+                const field = ruleFields.find((f) => f.field_key === rawField);
+                if (field?.data_type === "BOOLEAN") {
+                  formattedVal =
+                    rawVal === false || rawVal === "false" || rawVal === 0 ? false : true;
+                } else if (Array.isArray(rawVal)) {
+                  formattedVal = rawVal.join(",");
+                } else if (typeof rawVal === "object" && rawVal !== null) {
+                  formattedVal = String(rawVal.value || "");
+                } else {
+                  formattedVal =
+                    rawVal !== null && rawVal !== undefined ? String(rawVal) : "";
+                }
               }
 
               return {
@@ -292,18 +585,18 @@ function RuleEditorContent() {
 
         setConditionGroups(mappedGroups);
       }
+    } else if (currentMachine) {
+      setRuleName(currentMachine.machine_name);
+      setRuleCode(currentMachine.machine_name);
+      setPriority(1);
     }
-  }, [ruleToPreFill]);
+  }, [ruleToPreFill, currentMachine]);
 
   // Auto-generate Rule Code from Rule Name if empty or auto-updating
   const handleNameChange = (val: string) => {
     setRuleName(val);
-    if (!isEdit && !ruleCode) {
-      const generatedCode = val
-        .toUpperCase()
-        .replace(/[^A-Z0-9]+/g, "_")
-        .replace(/^_+|_+$/g, "");
-      setRuleCode(generatedCode);
+    if (!isEdit && (!ruleCode || ruleCode === ruleName)) {
+      setRuleCode(val);
     }
   };
 
@@ -373,8 +666,8 @@ function RuleEditorContent() {
   const updateCondition = (
     gIdx: number,
     cIdx: number,
-    field: keyof ConditionFormState,
-    value: any
+    fieldOrUpdates: keyof ConditionFormState | "condition_type" | Partial<ConditionFormState>,
+    value?: any
   ) => {
     setConditionGroups((prev) =>
       prev.map((group, idx) => {
@@ -383,20 +676,95 @@ function RuleEditorContent() {
           ...group,
           conditions: group.conditions.map((cond, condIdx) => {
             if (condIdx !== cIdx) return cond;
-            if (field === "condition_type" && value !== cond.condition_type) {
-              return {
-                ...cond,
-                condition_type: value,
-                field_key: "",
-                operator: value === "CATEGORY" ? "EQUALS" : "",
-                value: "",
-              };
+            if (typeof fieldOrUpdates === "object" && fieldOrUpdates !== null) {
+              return { ...cond, ...fieldOrUpdates };
             }
-            return { ...cond, [field]: value };
+            if (fieldOrUpdates === "condition_type") {
+              if (value === "ALL_CATEGORY") {
+                return {
+                  ...cond,
+                  condition_type: "ALL_CATEGORY",
+                  field_key: "",
+                  operator: "IN" as RuleOperator,
+                  value: "ALL",
+                };
+              }
+              if (value === "CATEGORY") {
+                return {
+                  ...cond,
+                  condition_type: "CATEGORY",
+                  field_key: "",
+                  operator: "IN" as RuleOperator,
+                  value:
+                    Array.isArray(cond.value) && !cond.value.includes("ALL")
+                      ? cond.value
+                      : [],
+                };
+              }
+              if (value === "COLUMN") {
+                return {
+                  ...cond,
+                  condition_type: "COLUMN",
+                  field_key: "",
+                  operator: "" as RuleOperator,
+                  value: "",
+                };
+              }
+            }
+            if (fieldOrUpdates === "operator") {
+              if (value === "BETWEEN") {
+                let rangeVal = ["", ""];
+                if (Array.isArray(cond.value)) {
+                  rangeVal = [cond.value[0] ?? "", cond.value[1] ?? ""];
+                } else if (typeof cond.value === "string" && cond.value.includes(",")) {
+                  const parts = cond.value.split(",");
+                  rangeVal = [parts[0]?.trim() ?? "", parts[1]?.trim() ?? ""];
+                } else if (cond.value !== "" && cond.value !== undefined && cond.value !== null) {
+                  rangeVal = [String(cond.value), ""];
+                }
+                return { ...cond, operator: value, value: rangeVal };
+              } else if (cond.operator === "BETWEEN" && Array.isArray(cond.value)) {
+                return { ...cond, operator: value, value: cond.value[0] ?? "" };
+              }
+            }
+            return { ...cond, [fieldOrUpdates]: value };
           }),
         };
       })
     );
+  };
+
+  const handleColumnChange = (gIdx: number, cIdx: number, fieldKey: string) => {
+    const field = ruleFields.find((f) => f.field_key === fieldKey);
+    const dataType = field?.data_type || "STRING";
+
+    if (dataType === "BOOLEAN") {
+      updateCondition(gIdx, cIdx, {
+        field_key: fieldKey,
+        operator: "EQUALS",
+        value: true,
+      });
+      return;
+    }
+
+    const validOps = OPERATORS_BY_DATA_TYPE[dataType] || OPERATORS_BY_DATA_TYPE.STRING;
+    const currentOp = conditionGroups[gIdx]?.conditions[cIdx]?.operator;
+    const isCurrentOpValid = validOps.some((o) => o.value === currentOp);
+    const nextOp = isCurrentOpValid ? currentOp : validOps[0].value;
+
+    const currentVal = conditionGroups[gIdx]?.conditions[cIdx]?.value;
+    let nextVal = typeof currentVal === "boolean" ? "" : currentVal;
+    if (nextOp === "BETWEEN" && !Array.isArray(nextVal)) {
+      nextVal = nextVal !== "" && nextVal !== undefined && nextVal !== null ? [String(nextVal), ""] : ["", ""];
+    } else if (nextOp !== "BETWEEN" && Array.isArray(nextVal)) {
+      nextVal = nextVal[0] ?? "";
+    }
+
+    updateCondition(gIdx, cIdx, {
+      field_key: fieldKey,
+      operator: nextOp,
+      value: nextVal,
+    });
   };
 
   const updateGroupOperator = (gIdx: number, operator: LogicalOperator) => {
@@ -420,22 +788,61 @@ function RuleEditorContent() {
         ? { machine_id: Number(replacementMachineId) }
         : null;
 
+    const finalRuleName = (ruleName.trim() || currentMachine?.machine_name || "Untitled Rule").trim();
+    const finalRuleCode = (ruleCode.trim() || currentMachine?.machine_name || "UNTITLED_RULE").trim();
+
     return {
-      rule_name: ruleName || "Untitled Rule",
-      rule_code: ruleCode || "UNTITLED_RULE",
-      priority: Number(priority),
+      rule_name: finalRuleName,
+      rule_code: finalRuleCode,
+      priority: 1,
       status: status,
       condition_groups: conditionGroups.map((g, gIdx) => ({
         sequence_no: gIdx + 1,
         logical_operator: gIdx < conditionGroups.length - 1 ? g.logical_operator : null,
-        conditions: g.conditions.map((c, cIdx) => ({
-          sequence_no: cIdx + 1,
-          condition_type: c.condition_type,
-          field_key: c.condition_type === "COLUMN" ? c.field_key : null,
-          operator: c.operator,
-          value: c.value,
-          logical_operator: cIdx < g.conditions.length - 1 ? c.logical_operator : null,
-        })),
+        conditions: g.conditions.map((c, cIdx) => {
+          const field = ruleFields.find((f) => f.field_key === c.field_key);
+          const isBool = field?.data_type === "BOOLEAN";
+
+          let finalVal = c.value;
+          if (c.condition_type === "ALL_CATEGORY") {
+            finalVal = "ALL";
+          } else if (c.condition_type === "CATEGORY") {
+            finalVal = Array.isArray(c.value) ? c.value.map(Number) : c.value;
+          } else if (isBool) {
+            finalVal = c.value === false || c.value === "false" || c.value === 0 ? false : true;
+          } else if (c.operator === "IS_BLANK" || c.operator === "IS_NOT_BLANK") {
+            finalVal = "";
+          } else if (field?.data_type === "NUMBER") {
+            if (c.operator === "BETWEEN") {
+              if (Array.isArray(c.value)) {
+                finalVal = c.value
+                  .filter((v: any) => v !== "" && v !== null && v !== undefined)
+                  .map((v: any) => (isNaN(Number(v)) ? v : Number(v)));
+              } else if (typeof c.value === "string" && c.value.includes(",")) {
+                finalVal = c.value.split(",").map((s: string) => Number(s.trim()));
+              } else {
+                finalVal = c.value;
+              }
+            } else {
+              finalVal = isNaN(Number(c.value)) ? c.value : Number(c.value);
+            }
+          }
+
+          return {
+            sequence_no: cIdx + 1,
+            condition_type:
+              c.condition_type === "ALL_CATEGORY" ? "CATEGORY" : c.condition_type,
+            field_key: c.condition_type === "COLUMN" ? c.field_key : null,
+            operator:
+              c.condition_type === "ALL_CATEGORY"
+                ? "IN"
+                : isBool
+                ? "EQUALS"
+                : c.operator || (c.condition_type === "CATEGORY" ? "IN" : ""),
+            value: finalVal,
+            logical_operator: cIdx < g.conditions.length - 1 ? c.logical_operator : null,
+          };
+        }),
       })),
       actions: [
         {
@@ -449,12 +856,14 @@ function RuleEditorContent() {
   }, [
     ruleName,
     ruleCode,
+    currentMachine,
     priority,
     status,
     conditionGroups,
     selectedActionId,
     selectedAction,
     replacementMachineId,
+    ruleFields,
   ]);
 
   // Live Human-Readable Preview Construction
@@ -463,29 +872,97 @@ function RuleEditorContent() {
       .map((group, gIdx) => {
         const condsText = group.conditions
           .map((cond, cIdx) => {
-            const fieldLabel =
-              cond.condition_type === "CATEGORY"
-                ? "Category"
-                : ruleFields.find((f) => f.field_key === cond.field_key)?.field_name ||
-                  (cond.field_key ? cond.field_key : "[Select field]");
+            let valDisplay = "";
+            let fieldLabel = "";
+            let opText = "";
 
-            const opText = cond.operator
-              ? cond.operator.replace(/_/g, " ").toLowerCase()
-              : "[Select operator]";
-            const valDisplay =
-              cond.condition_type === "CATEGORY"
-                ? projectCategories.find(
-                    (cat) =>
-                      String(cat.id) === String(cond.value) ||
-                      cat.category_name.toLowerCase() === String(cond.value ?? "").toLowerCase()
-                  )?.category_name || (cond.value ? cond.value : "[Select Category]")
-                : cond.value !== ""
-                ? cond.value
-                : "[Enter value]";
-            const valStr = `"${valDisplay}"`;
+            if (cond.condition_type === "ALL_CATEGORY") {
+              fieldLabel = "Category";
+              opText = "in";
+              valDisplay = "All Categories";
+            } else if (cond.condition_type === "CATEGORY") {
+              fieldLabel = "Category";
+              opText = cond.operator
+                ? cond.operator.replace(/_/g, " ").toLowerCase()
+                : "in";
+
+              const isAll =
+                cond.value === "ALL" ||
+                cond.value === "*" ||
+                (Array.isArray(cond.value) &&
+                  cond.value.some((v: any) => String(v).toUpperCase() === "ALL"));
+
+              if (isAll) {
+                valDisplay = "All Categories";
+              } else {
+                const valArr: string[] = Array.isArray(cond.value)
+                  ? cond.value.map(String)
+                  : typeof cond.value === "string" && cond.value
+                  ? cond.value.includes(",")
+                    ? cond.value.split(",").map((s) => s.trim())
+                    : [cond.value]
+                  : typeof cond.value === "number"
+                  ? [String(cond.value)]
+                  : [];
+
+                if (valArr.length > 0) {
+                  valDisplay = valArr
+                    .map((id) => {
+                      const cat = projectCategories.find((c) => String(c.id) === id);
+                      return cat ? cat.category_name : id;
+                    })
+                    .join(", ");
+                } else {
+                  valDisplay = "[Select Category]";
+                }
+              }
+            } else {
+              const field = ruleFields.find((f) => f.field_key === cond.field_key);
+              fieldLabel =
+                field?.field_name || (cond.field_key ? cond.field_key : "[Select field]");
+
+              if (field?.data_type === "BOOLEAN") {
+                const isFalse = cond.value === false || cond.value === "false" || cond.value === 0;
+                opText = isFalse ? "is false" : "is true";
+                valDisplay = "";
+              } else if (cond.operator === "IS_BLANK" || cond.operator === "IS_NOT_BLANK") {
+                opText = cond.operator === "IS_BLANK" ? "is blank" : "is not blank";
+                valDisplay = "";
+              } else if (cond.operator === "BETWEEN") {
+                opText = "is between";
+                const min = Array.isArray(cond.value) ? cond.value[0] : "";
+                const max = Array.isArray(cond.value) ? cond.value[1] : "";
+                if (min !== "" && max !== "" && min !== undefined && max !== undefined) {
+                  valDisplay = `${min} and ${max}`;
+                } else if (min !== "" && min !== undefined) {
+                  valDisplay = `${min} and [Max]`;
+                } else if (max !== "" && max !== undefined) {
+                  valDisplay = `[Min] and ${max}`;
+                } else {
+                  valDisplay = "[Enter range]";
+                }
+              } else {
+                opText = cond.operator
+                  ? cond.operator === "NOT_CONTAINS"
+                    ? "does not contain"
+                    : cond.operator === "STARTS_WITH"
+                    ? "starts with"
+                    : cond.operator === "ENDS_WITH"
+                    ? "ends with"
+                    : cond.operator.replace(/_/g, " ").toLowerCase()
+                  : "[Select operator]";
+                valDisplay = cond.value !== "" ? String(cond.value) : "[Enter value]";
+              }
+            }
+
+            const valStr = valDisplay
+              ? cond.operator === "BETWEEN"
+                ? ` ${valDisplay}`
+                : ` "${valDisplay}"`
+              : "";
             const innerJoin =
               cIdx < group.conditions.length - 1 ? ` ${cond.logical_operator} ` : "";
-            return `${fieldLabel} ${opText} ${valStr}${innerJoin}`;
+            return `${fieldLabel} ${opText}${valStr}${innerJoin}`;
           })
           .join("");
 
@@ -500,11 +977,15 @@ function RuleEditorContent() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!ruleName.trim()) {
+    const finalRuleName = (ruleName.trim() || currentMachine?.machine_name || "Rule").trim();
+    const finalRuleCode = (ruleCode.trim() || currentMachine?.machine_name || "RULE").trim();
+    const finalPriority = 1;
+
+    if (!finalRuleName) {
       toastManager.add({ title: "Rule Name is required", type: "error" });
       return;
     }
-    if (!ruleCode.trim()) {
+    if (!finalRuleCode) {
       toastManager.add({ title: "Rule Code is required", type: "error" });
       return;
     }
@@ -524,50 +1005,129 @@ function RuleEditorContent() {
           });
           return;
         }
-        if (cond.condition_type === "COLUMN" && !cond.field_key) {
-          toastManager.add({
-            title: `Please select Column for condition #${c + 1} in Group #${g + 1}`,
-            type: "error",
-          });
-          return;
+        if (cond.condition_type === "COLUMN") {
+          if (!cond.field_key) {
+            toastManager.add({
+              title: `Please select Column for condition #${c + 1} in Group #${g + 1}`,
+              type: "error",
+            });
+            return;
+          }
+          const field = ruleFields.find((f) => f.field_key === cond.field_key);
+          const isNoValueOperator =
+            field?.data_type === "BOOLEAN" ||
+            cond.operator === "IS_BLANK" ||
+            cond.operator === "IS_NOT_BLANK";
+
+          if (!isNoValueOperator) {
+            if (!cond.operator) {
+              toastManager.add({
+                title: `Please select Operator for condition #${c + 1} in Group #${g + 1}`,
+                type: "error",
+              });
+              return;
+            }
+            if (cond.operator === "BETWEEN") {
+              const minVal = Array.isArray(cond.value) ? cond.value[0] : "";
+              const maxVal = Array.isArray(cond.value) ? cond.value[1] : "";
+              if (
+                minVal === "" || minVal === undefined || minVal === null ||
+                maxVal === "" || maxVal === undefined || maxVal === null
+              ) {
+                toastManager.add({
+                  title: `Please enter both Min and Max values for condition #${c + 1} in Group #${g + 1}`,
+                  type: "error",
+                });
+                return;
+              }
+              if (field?.data_type === "NUMBER" && Number(minVal) > Number(maxVal)) {
+                toastManager.add({
+                  title: `Min value cannot be greater than Max value in condition #${c + 1} in Group #${g + 1}`,
+                  type: "error",
+                });
+                return;
+              }
+            } else if (cond.value === "" || cond.value === undefined || cond.value === null) {
+              toastManager.add({
+                title: `Please enter Value for condition #${c + 1} in Group #${g + 1}`,
+                type: "error",
+              });
+              return;
+            }
+          }
         }
-        if (cond.condition_type === "COLUMN" && !cond.operator) {
-          toastManager.add({
-            title: `Please select Operator for condition #${c + 1} in Group #${g + 1}`,
-            type: "error",
-          });
-          return;
+        if (cond.condition_type === "CATEGORY") {
+          const hasItems = Array.isArray(cond.value) && cond.value.length > 0;
+          const hasStr = typeof cond.value === "string" && cond.value.trim() !== "";
+          const hasNum = typeof cond.value === "number";
+
+          if (!hasItems && !hasStr && !hasNum) {
+            toastManager.add({
+              title: `Please select at least one Category for condition #${c + 1} in Group #${g + 1}`,
+              type: "error",
+            });
+            return;
+          }
         }
       }
     }
 
     const payload: CreateRulePayload = {
       vendor_id: vendorId ?? 0,
-      rule_name: ruleName.trim(),
-      rule_code: ruleCode.trim(),
-      priority: Number(priority),
+      rule_name: finalRuleName,
+      rule_code: finalRuleCode,
+      priority: finalPriority,
       status: status,
       created_by: userId,
       conditionGroups: conditionGroups.map((g, gIdx) => ({
         sequence_no: gIdx + 1,
         logical_operator: gIdx < conditionGroups.length - 1 ? g.logical_operator : null,
-        conditions: g.conditions.map((c, cIdx) => ({
-          sequence_no: cIdx + 1,
-          condition_type: (c.condition_type || "COLUMN") as RuleConditionType,
-          field_key: c.condition_type === "COLUMN" ? c.field_key : null,
-          operator: (c.operator || "EQUALS") as RuleOperator,
-          value:
-            c.operator === "LESS_THAN" ||
-            c.operator === "LESS_THAN_OR_EQUAL" ||
-            c.operator === "GREATER_THAN" ||
-            c.operator === "GREATER_THAN_OR_EQUAL" ||
-            c.operator === "EQUALS"
-              ? isNaN(Number(c.value))
-                ? c.value
-                : Number(c.value)
-              : c.value,
-          logical_operator: cIdx < g.conditions.length - 1 ? c.logical_operator : null,
-        })),
+        conditions: g.conditions.map((c, cIdx) => {
+          const field = ruleFields.find((f) => f.field_key === c.field_key);
+          const isBool = field?.data_type === "BOOLEAN";
+
+          let finalVal = c.value;
+          if (c.condition_type === "ALL_CATEGORY") {
+            finalVal = "ALL";
+          } else if (c.condition_type === "CATEGORY") {
+            finalVal = Array.isArray(c.value)
+              ? c.value.map((v: any) => (isNaN(Number(v)) ? v : Number(v)))
+              : isNaN(Number(c.value))
+              ? c.value
+              : Number(c.value);
+          } else if (isBool) {
+            finalVal = c.value === false || c.value === "false" || c.value === 0 ? false : true;
+          } else if (c.operator === "IS_BLANK" || c.operator === "IS_NOT_BLANK") {
+            finalVal = "";
+          } else if (field?.data_type === "NUMBER") {
+            if (c.operator === "BETWEEN") {
+              if (Array.isArray(c.value)) {
+                finalVal = c.value.map(Number);
+              } else if (typeof c.value === "string" && c.value.includes(",")) {
+                finalVal = c.value.split(",").map((s: string) => Number(s.trim()));
+              } else {
+                finalVal = [Number(c.value), Number(c.value)];
+              }
+            } else {
+              finalVal = isNaN(Number(c.value)) ? c.value : Number(c.value);
+            }
+          }
+
+          return {
+            sequence_no: cIdx + 1,
+            condition_type: (c.condition_type === "ALL_CATEGORY"
+              ? "CATEGORY"
+              : c.condition_type || "COLUMN") as RuleConditionType,
+            field_key: c.condition_type === "COLUMN" ? c.field_key : null,
+            operator: (c.condition_type === "ALL_CATEGORY"
+              ? "IN"
+              : isBool
+              ? "EQUALS"
+              : c.operator || (c.condition_type === "CATEGORY" ? "IN" : "EQUALS")) as RuleOperator,
+            value: finalVal,
+            logical_operator: cIdx < g.conditions.length - 1 ? c.logical_operator : null,
+          };
+        }),
       })),
       actions: [
         {
@@ -725,78 +1285,36 @@ function RuleEditorContent() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* LEFT COLUMN: Rule Details + Conditions + Actions (2 cols) */}
               <div className="lg:col-span-2 space-y-6">
-                {/* 1. Rule Details Card */}
-                <div className="border border-border/80 rounded-xl p-5 bg-card space-y-5 shadow-2xs hover:shadow-xs transition-shadow">
-                  <div className="flex items-center gap-3 pb-3 border-b border-border/60">
-                    <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
-                      <SlidersHorizontal size={18} />
-                    </div>
+                {/* 1. Rule Status Card */}
+                <div className="border border-border/80 rounded-xl p-4 bg-card shadow-2xs hover:shadow-xs transition-shadow flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`h-2.5 w-2.5 rounded-full ${
+                        status === "ACTIVE" ? "bg-emerald-500 animate-pulse" : "bg-slate-400"
+                      }`}
+                    />
                     <div>
-                      <h2 className="text-sm font-bold tracking-tight text-foreground">Rule Details</h2>
-                      <p className="text-xs text-muted-foreground">
-                        Basic identification and execution priority parameters.
+                      <label className="text-xs font-semibold text-foreground flex items-center gap-2">
+                        Rule Status:{" "}
+                        <span
+                          className={
+                            status === "ACTIVE"
+                              ? "text-emerald-600 dark:text-emerald-400 font-bold"
+                              : "text-muted-foreground font-bold"
+                          }
+                        >
+                          {status}
+                        </span>
+                      </label>
+                      <p className="text-[11px] text-muted-foreground">
+                        Inactive rules are ignored during Cutlist rule engine processing.
                       </p>
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-medium text-foreground/80 block mb-1.5">
-                        Rule Name <span className="text-destructive">*</span>
-                      </label>
-                      <Input
-                        placeholder="e.g. Back Panel CNC Exclusion"
-                        value={ruleName}
-                        onChange={(e) => handleNameChange(e.target.value)}
-                        className="h-9 text-xs focus-visible:ring-primary/30"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-medium text-foreground/80 block mb-1.5">
-                        Rule Code <span className="text-destructive">*</span>
-                      </label>
-                      <Input
-                        placeholder="e.g. BACK_PANEL_EXCLUDE_CNC"
-                        value={ruleCode}
-                        onChange={(e) => setRuleCode(e.target.value)}
-                        className="h-9 text-xs font-mono focus-visible:ring-primary/30"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-medium text-foreground/80 block mb-1.5">
-                        Priority <span className="text-xs text-muted-foreground font-normal">(Lower = Higher evaluation priority)</span>
-                      </label>
-                      <Input
-                        type="number"
-                        placeholder="e.g. 1"
-                        value={priority}
-                        onChange={(e) => setPriority(e.target.value === "" ? "" : Number(e.target.value))}
-                        className="h-9 text-xs focus-visible:ring-primary/30"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-3 border-t border-border/60 bg-muted/20 p-3 rounded-lg">
-                    <div className="flex items-center gap-2.5">
-                      <span className={`h-2.5 w-2.5 rounded-full ${status === "ACTIVE" ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
-                      <div>
-                        <label className="text-xs font-semibold text-foreground block">
-                          Rule Status: <span className={status === "ACTIVE" ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}>{status}</span>
-                        </label>
-                        <p className="text-[11px] text-muted-foreground">
-                          Inactive rules are ignored during Cutlist rule engine processing.
-                        </p>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={status === "ACTIVE"}
-                      onCheckedChange={(val: boolean) => setStatus(val ? "ACTIVE" : "INACTIVE")}
-                    />
-                  </div>
+                  <Switch
+                    checked={status === "ACTIVE"}
+                    onCheckedChange={(val: boolean) => setStatus(val ? "ACTIVE" : "INACTIVE")}
+                  />
                 </div>
 
                 {/* 2. When Section (Conditions Builder) */}
@@ -860,164 +1378,410 @@ function RuleEditorContent() {
                                 )}
                               </div>
 
-                              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                                {/* Condition Type */}
-                                <div>
-                                  <label className="text-[11px] font-medium text-muted-foreground block mb-1">
-                                    Condition Type
-                                  </label>
-                                  <Select
-                                    key={`type-select-${gIdx}-${cIdx}-${cond.condition_type}`}
-                                    value={cond.condition_type}
-                                    onValueChange={(val: RuleConditionType) => {
-                                      updateCondition(gIdx, cIdx, "condition_type", val);
-                                    }}
-                                  >
-                                    <SelectTrigger className="h-9 text-xs">
-                                      <SelectValue placeholder="Select Type" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="COLUMN">Column</SelectItem>
-                                      <SelectItem value="CATEGORY">Category</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-start">
+                                {(() => {
+                                    const conditionTypeValue = cond.condition_type;
+                                    const selectedFieldForType = ruleFields.find((f) => f.field_key === cond.field_key);
+                                    const isUnaryColumn =
+                                      conditionTypeValue === "COLUMN" &&
+                                      (selectedFieldForType?.data_type === "BOOLEAN" ||
+                                        cond.operator === "IS_BLANK" ||
+                                        cond.operator === "IS_NOT_BLANK");
 
-                                {/* Column / Category Select */}
-                                <div>
-                                  <label className="text-[11px] font-medium text-muted-foreground block mb-1">
-                                    {cond.condition_type === "CATEGORY"
-                                      ? "Category"
-                                      : "Column"}
-                                  </label>
-                                  {cond.condition_type === "COLUMN" ? (
-                                    <Select
-                                      key={`col-select-${gIdx}-${cIdx}-${cond.field_key}-${ruleFields.length}-${fieldsLoading}`}
-                                      value={cond.field_key}
-                                      onValueChange={(val) =>
-                                        updateCondition(gIdx, cIdx, "field_key", val)
-                                      }
-                                    >
-                                      <SelectTrigger className="h-9 text-xs">
-                                        <SelectValue placeholder="Select field" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {ruleFields.map((f) => (
-                                          <SelectItem key={f.field_key} value={f.field_key}>
-                                            {f.field_name} · {f.data_type.toLowerCase()}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  ) : (
-                                    <Select
-                                      key={`cat-select-${gIdx}-${cIdx}-${cond.value}-${projectCategories.length}-${categoriesLoading}`}
-                                      value={
-                                        projectCategories.find(
-                                          (c) =>
-                                            String(c.id) === String(cond.value) ||
-                                            c.category_name === cond.value
-                                        )
-                                          ? String(
-                                              projectCategories.find(
-                                                (c) =>
-                                                  String(c.id) === String(cond.value) ||
-                                                  c.category_name === cond.value
-                                              )!.id
-                                            )
-                                          : String(cond.value ?? "")
-                                      }
-                                      onValueChange={(val) =>
-                                        updateCondition(gIdx, cIdx, "value", val)
-                                      }
-                                    >
-                                      <SelectTrigger className="h-9 text-xs">
-                                        <SelectValue placeholder="Select Category" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {categoriesLoading ? (
-                                          <div className="p-2 text-xs text-muted-foreground">
-                                            Loading categories...
-                                          </div>
-                                        ) : projectCategories.length === 0 ? (
-                                          <div className="p-2 text-xs text-muted-foreground">
-                                            No categories found
-                                          </div>
-                                        ) : (
-                                          projectCategories.map((cat) => (
-                                            <SelectItem key={cat.id} value={String(cat.id)}>
-                                              {cat.category_name}
-                                            </SelectItem>
-                                          ))
+                                    const conditionTypeSpan =
+                                      conditionTypeValue === "ALL_CATEGORY" || conditionTypeValue === "CATEGORY" || isUnaryColumn
+                                        ? "sm:col-span-3 min-w-0"
+                                        : "sm:col-span-2 min-w-0";
+
+                                    return (
+                                      <>
+                                        {/* Condition Type */}
+                                        <div className={conditionTypeSpan}>
+                                          <label className="text-[11px] font-medium text-muted-foreground block mb-1">
+                                            Condition Type
+                                          </label>
+                                          <Select
+                                            key={`type-select-${gIdx}-${cIdx}-${conditionTypeValue}`}
+                                            value={conditionTypeValue}
+                                            onValueChange={(val) => {
+                                              updateCondition(gIdx, cIdx, "condition_type", val);
+                                            }}
+                                          >
+                                            <SelectTrigger className="w-full min-w-0 h-9 text-xs justify-between overflow-hidden [&_[data-slot=select-value]]:truncate [&_[data-slot=select-value]]:block">
+                                              <SelectValue placeholder="Select Type" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="COLUMN">Column</SelectItem>
+                                              <SelectItem value="CATEGORY">Category</SelectItem>
+                                              <SelectItem value="ALL_CATEGORY">All Category</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+
+                                        {/* MODE 1: ALL CATEGORY */}
+                                        {conditionTypeValue === "ALL_CATEGORY" && (
+                                          <>
+                                            <div className="sm:col-span-2 min-w-0">
+                                              <label className="text-[11px] font-medium text-muted-foreground block mb-1">
+                                                Operator
+                                              </label>
+                                              <div className="h-9 px-3 flex items-center border border-border/70 rounded-md bg-muted/40 text-xs font-medium text-foreground">
+                                                In
+                                              </div>
+                                            </div>
+
+                                            <div className="sm:col-span-7 min-w-0">
+                                              <label className="text-[11px] font-medium text-muted-foreground block mb-1">
+                                                Target Scope
+                                              </label>
+                                              <div className="h-9 px-3 flex items-center justify-between border border-primary/25 rounded-md bg-primary/5 text-xs text-primary font-medium shadow-2xs">
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                  <Sparkles size={14} className="text-primary shrink-0" />
+                                                  <span className="font-semibold">All Categories</span>
+                                                  <span className="text-[11px] text-muted-foreground font-normal truncate hidden md:inline">
+                                                    (Auto-includes future categories)
+                                                  </span>
+                                                </div>
+                                                <Badge
+                                                  variant="secondary"
+                                                  className="bg-primary/15 text-primary text-[10px] font-bold border-primary/20 py-0.5 shrink-0 ml-2"
+                                                >
+                                                  {projectCategories.length} Current
+                                                </Badge>
+                                              </div>
+                                            </div>
+                                          </>
                                         )}
-                                      </SelectContent>
-                                    </Select>
-                                  )}
-                                </div>
 
-                                {/* Operator Select */}
-                                <div>
-                                  <label className="text-[11px] font-medium text-muted-foreground block mb-1">
-                                    Operator
-                                  </label>
-                                  <Select
-                                    key={`op-select-${gIdx}-${cIdx}-${cond.operator}-${cond.condition_type}`}
-                                    value={cond.operator}
-                                    onValueChange={(val: RuleOperator) =>
-                                      updateCondition(gIdx, cIdx, "operator", val)
-                                    }
-                                    disabled={cond.condition_type === "CATEGORY"}
-                                  >
-                                    <SelectTrigger className="h-9 text-xs">
-                                      <SelectValue placeholder="Select Operator" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="CONTAINS">Contains</SelectItem>
-                                      <SelectItem value="NOT_CONTAINS">Not Contains</SelectItem>
-                                      <SelectItem value="EQUALS">Equals</SelectItem>
-                                      <SelectItem value="NOT_EQUALS">Not Equals</SelectItem>
-                                      <SelectItem value="LESS_THAN">Less Than</SelectItem>
-                                      <SelectItem value="LESS_THAN_OR_EQUAL">
-                                        Less Than Or Equal
-                                      </SelectItem>
-                                      <SelectItem value="GREATER_THAN">Greater Than</SelectItem>
-                                      <SelectItem value="GREATER_THAN_OR_EQUAL">
-                                        Greater Than Or Equal
-                                      </SelectItem>
-                                      <SelectItem value="IN">In (Comma separated)</SelectItem>
-                                      <SelectItem value="NOT_IN">Not In</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
+                                        {/* MODE 2: SPECIFIC CATEGORY MULTI-SELECT */}
+                                        {conditionTypeValue === "CATEGORY" && (
+                                          <>
+                                            <div className="sm:col-span-2 min-w-0">
+                                              <label className="text-[11px] font-medium text-muted-foreground block mb-1">
+                                                Operator
+                                              </label>
+                                              <Select
+                                                key={`op-select-${gIdx}-${cIdx}-${cond.operator}`}
+                                                value={cond.operator || "IN"}
+                                                onValueChange={(val: RuleOperator) =>
+                                                  updateCondition(gIdx, cIdx, "operator", val)
+                                                }
+                                              >
+                                                <SelectTrigger className="w-full min-w-0 h-9 text-xs justify-between overflow-hidden [&_[data-slot=select-value]]:truncate [&_[data-slot=select-value]]:block">
+                                                  <SelectValue placeholder="Select Operator" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                  <SelectItem value="IN">In</SelectItem>
+                                                  <SelectItem value="NOT_IN">Not In</SelectItem>
+                                                </SelectContent>
+                                              </Select>
+                                            </div>
 
-                                {/* Value Input */}
-                                <div>
-                                  <label className="text-[11px] font-medium text-muted-foreground block mb-1">
-                                    Value
-                                  </label>
-                                  {cond.condition_type === "CATEGORY" ? (
-                                    <Input
-                                      className="h-9 text-xs bg-muted/50 text-muted-foreground cursor-not-allowed"
-                                      disabled
-                                      value={
-                                        projectCategories.find(
-                                          (c) =>
-                                            String(c.id) === String(cond.value) ||
-                                            c.category_name === cond.value
-                                        )?.category_name || (cond.value ? String(cond.value) : "Select category on left")
-                                      }
-                                    />
-                                  ) : (
-                                    <Input
-                                      className="h-9 text-xs"
-                                      placeholder="Enter value"
-                                      value={cond.value}
-                                      onChange={(e) =>
-                                        updateCondition(gIdx, cIdx, "value", e.target.value)
-                                      }
-                                    />
-                                  )}
-                                </div>
+                                            <div className="sm:col-span-7 min-w-0">
+                                              <label className="text-[11px] font-medium text-muted-foreground block mb-1">
+                                                Categories
+                                              </label>
+                                              <CategoryMultiSelect
+                                                key={`cat-multiselect-${gIdx}-${cIdx}-${projectCategories.length}-${categoriesLoading}`}
+                                                categories={projectCategories}
+                                                value={cond.value}
+                                                onChange={(val) =>
+                                                  updateCondition(gIdx, cIdx, "value", val)
+                                                }
+                                                isLoading={categoriesLoading}
+                                              />
+                                            </div>
+                                          </>
+                                        )}
+
+                                        {/* MODE 3: COLUMN CONDITION */}
+                                        {conditionTypeValue === "COLUMN" && (() => {
+                                          const selectedField = ruleFields.find(
+                                            (f) => f.field_key === cond.field_key
+                                          );
+                                          const fieldDataType = selectedField?.data_type;
+
+                                          // Case 1: No Column Selected Yet
+                                          if (!cond.field_key) {
+                                            return (
+                                              <>
+                                                <div className="sm:col-span-4 min-w-0">
+                                                  <label className="text-[11px] font-medium text-muted-foreground block mb-1">
+                                                    Column
+                                                  </label>
+                                                  <Select
+                                                    key={`col-select-${gIdx}-${cIdx}-${cond.field_key}-${ruleFields.length}-${fieldsLoading}`}
+                                                    value={cond.field_key}
+                                                    onValueChange={(val) =>
+                                                      handleColumnChange(gIdx, cIdx, val)
+                                                    }
+                                                  >
+                                                    <SelectTrigger className="w-full min-w-0 h-9 text-xs justify-between overflow-hidden [&_[data-slot=select-value]]:truncate [&_[data-slot=select-value]]:block">
+                                                      <SelectValue placeholder="Select field" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                      {ruleFields.map((f) => (
+                                                        <SelectItem key={f.field_key} value={f.field_key}>
+                                                          {f.field_name} · {f.data_type.toLowerCase()}
+                                                        </SelectItem>
+                                                      ))}
+                                                    </SelectContent>
+                                                  </Select>
+                                                </div>
+                                                <div className="sm:col-span-3 min-w-0">
+                                                  <label className="text-[11px] font-medium text-muted-foreground block mb-1">
+                                                    Operator
+                                                  </label>
+                                                  <div className="h-9 px-3 flex items-center border border-dashed rounded-md text-xs text-muted-foreground">
+                                                    Select column first
+                                                  </div>
+                                                </div>
+                                                <div className="sm:col-span-3 min-w-0">
+                                                  <label className="text-[11px] font-medium text-muted-foreground block mb-1">
+                                                    Value
+                                                  </label>
+                                                  <div className="h-9 px-3 flex items-center border border-dashed rounded-md text-xs text-muted-foreground">
+                                                    -
+                                                  </div>
+                                                </div>
+                                              </>
+                                            );
+                                          }
+
+                                          // Case 2: BOOLEAN Column (Matches Image 3)
+                                          if (fieldDataType === "BOOLEAN") {
+                                            const boolVal =
+                                              cond.value === false || cond.value === "false" || cond.value === 0
+                                                ? "IS_FALSE"
+                                                : "IS_TRUE";
+
+                                            return (
+                                              <>
+                                                <div className="sm:col-span-5 min-w-0">
+                                                  <label className="text-[11px] font-medium text-muted-foreground block mb-1">
+                                                    Column
+                                                  </label>
+                                                  <Select
+                                                    key={`col-select-${gIdx}-${cIdx}-${cond.field_key}-${ruleFields.length}-${fieldsLoading}`}
+                                                    value={cond.field_key}
+                                                    onValueChange={(val) =>
+                                                      handleColumnChange(gIdx, cIdx, val)
+                                                    }
+                                                  >
+                                                    <SelectTrigger
+                                                      title={selectedField ? `${selectedField.field_name} · ${selectedField.data_type.toLowerCase()}` : undefined}
+                                                      className="w-full min-w-0 h-9 text-xs justify-between overflow-hidden [&_[data-slot=select-value]]:truncate [&_[data-slot=select-value]]:block"
+                                                    >
+                                                      <SelectValue placeholder="Select field" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                      {ruleFields.map((f) => (
+                                                        <SelectItem key={f.field_key} value={f.field_key}>
+                                                          {f.field_name} · {f.data_type.toLowerCase()}
+                                                        </SelectItem>
+                                                      ))}
+                                                    </SelectContent>
+                                                  </Select>
+                                                </div>
+
+                                                <div className="sm:col-span-4 min-w-0">
+                                                  <label className="text-[11px] font-medium text-muted-foreground block mb-1">
+                                                    Operator
+                                                  </label>
+                                                  <Select
+                                                    key={`bool-op-select-${gIdx}-${cIdx}-${boolVal}`}
+                                                    value={boolVal}
+                                                    onValueChange={(val) => {
+                                                      updateCondition(gIdx, cIdx, {
+                                                        operator: "EQUALS",
+                                                        value: val === "IS_TRUE",
+                                                      });
+                                                    }}
+                                                  >
+                                                    <SelectTrigger className="w-full min-w-0 h-9 text-xs justify-between overflow-hidden [&_[data-slot=select-value]]:truncate [&_[data-slot=select-value]]:block">
+                                                      <SelectValue placeholder="Select Operator" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                      <SelectItem value="IS_TRUE">Is True</SelectItem>
+                                                      <SelectItem value="IS_FALSE">Is False</SelectItem>
+                                                    </SelectContent>
+                                                  </Select>
+                                                </div>
+                                              </>
+                                            );
+                                          }
+
+                                          // Case 3: NUMBER, STRING, or ARRAY Column (Matches Images 1 & 2)
+                                          const availableOperators =
+                                            OPERATORS_BY_DATA_TYPE[fieldDataType || "STRING"] ||
+                                            OPERATORS_BY_DATA_TYPE.STRING;
+
+                                          const isUnaryOp = cond.operator === "IS_BLANK" || cond.operator === "IS_NOT_BLANK";
+                                          const isBetweenOp = cond.operator === "BETWEEN";
+
+                                          const colSpanClass = isUnaryOp
+                                            ? "sm:col-span-5 min-w-0"
+                                            : isBetweenOp
+                                            ? "sm:col-span-3 min-w-0"
+                                            : "sm:col-span-4 min-w-0";
+
+                                          const opSpanClass = isUnaryOp
+                                            ? "sm:col-span-4 min-w-0"
+                                            : "sm:col-span-3 min-w-0";
+
+                                          const valSpanClass = isBetweenOp
+                                            ? "sm:col-span-4 min-w-0"
+                                            : "sm:col-span-3 min-w-0";
+
+                                          const rangeMin = Array.isArray(cond.value)
+                                            ? (cond.value[0] ?? "")
+                                            : typeof cond.value === "string" && cond.value.includes(",")
+                                            ? (cond.value.split(",")[0]?.trim() ?? "")
+                                            : (cond.value ?? "");
+
+                                          const rangeMax = Array.isArray(cond.value)
+                                            ? (cond.value[1] ?? "")
+                                            : typeof cond.value === "string" && cond.value.includes(",")
+                                            ? (cond.value.split(",")[1]?.trim() ?? "")
+                                            : "";
+
+                                          return (
+                                            <>
+                                              <div className={colSpanClass}>
+                                                <label className="text-[11px] font-medium text-muted-foreground block mb-1">
+                                                  Column
+                                                </label>
+                                                <Select
+                                                  key={`col-select-${gIdx}-${cIdx}-${cond.field_key}-${ruleFields.length}-${fieldsLoading}`}
+                                                  value={cond.field_key}
+                                                  onValueChange={(val) =>
+                                                    handleColumnChange(gIdx, cIdx, val)
+                                                  }
+                                                >
+                                                  <SelectTrigger
+                                                    title={selectedField ? `${selectedField.field_name} · ${selectedField.data_type.toLowerCase()}` : undefined}
+                                                    className="w-full min-w-0 h-9 text-xs justify-between overflow-hidden [&_[data-slot=select-value]]:truncate [&_[data-slot=select-value]]:block"
+                                                  >
+                                                    <SelectValue placeholder="Select field" />
+                                                  </SelectTrigger>
+                                                  <SelectContent>
+                                                    {ruleFields.map((f) => (
+                                                      <SelectItem key={f.field_key} value={f.field_key}>
+                                                        {f.field_name} · {f.data_type.toLowerCase()}
+                                                      </SelectItem>
+                                                    ))}
+                                                  </SelectContent>
+                                                </Select>
+                                              </div>
+
+                                              <div className={opSpanClass}>
+                                                <label className="text-[11px] font-medium text-muted-foreground block mb-1">
+                                                  Operator
+                                                </label>
+                                                <Select
+                                                  key={`op-select-${gIdx}-${cIdx}-${cond.operator}-${fieldDataType}`}
+                                                  value={cond.operator}
+                                                  onValueChange={(val: RuleOperator) =>
+                                                    updateCondition(gIdx, cIdx, "operator", val)
+                                                  }
+                                                >
+                                                  <SelectTrigger className="w-full min-w-0 h-9 text-xs justify-between overflow-hidden [&_[data-slot=select-value]]:truncate [&_[data-slot=select-value]]:block">
+                                                    <SelectValue placeholder="Select Operator" />
+                                                  </SelectTrigger>
+                                                  <SelectContent>
+                                                    {availableOperators.map((op) => (
+                                                      <SelectItem key={op.value} value={op.value}>
+                                                        {op.label}
+                                                      </SelectItem>
+                                                    ))}
+                                                  </SelectContent>
+                                                </Select>
+                                              </div>
+
+                                              {!isUnaryOp && (
+                                                <div className={valSpanClass}>
+                                                  <label className="text-[11px] font-medium text-muted-foreground block mb-1">
+                                                    {isBetweenOp ? "Range (Min — Max)" : "Value"}
+                                                  </label>
+                                                  {isBetweenOp ? (
+                                                    <div className="flex items-center gap-1.5 w-full min-w-0">
+                                                      <Input
+                                                        type={fieldDataType === "NUMBER" ? "number" : "text"}
+                                                        className="w-full min-w-0 h-9 text-xs"
+                                                        placeholder="Min"
+                                                        value={rangeMin}
+                                                        onChange={(e) =>
+                                                          updateCondition(gIdx, cIdx, "value", [e.target.value, rangeMax])
+                                                        }
+                                                      />
+                                                      <span className="text-xs text-muted-foreground font-medium shrink-0 px-0.5">
+                                                        to
+                                                      </span>
+                                                      <Input
+                                                        type={fieldDataType === "NUMBER" ? "number" : "text"}
+                                                        className="w-full min-w-0 h-9 text-xs"
+                                                        placeholder="Max"
+                                                        value={rangeMax}
+                                                        onChange={(e) =>
+                                                          updateCondition(gIdx, cIdx, "value", [rangeMin, e.target.value])
+                                                        }
+                                                      />
+                                                    </div>
+                                                  ) : (
+                                                    <Input
+                                                      type={fieldDataType === "NUMBER" ? "number" : "text"}
+                                                      className="w-full min-w-0 h-9 text-xs"
+                                                      placeholder={
+                                                        fieldDataType === "NUMBER"
+                                                          ? "Enter number"
+                                                          : fieldDataType === "ARRAY"
+                                                          ? "Enter comma separated"
+                                                          : "Enter value"
+                                                      }
+                                                      value={cond.value ?? ""}
+                                                      onChange={(e) =>
+                                                        updateCondition(gIdx, cIdx, "value", e.target.value)
+                                                      }
+                                                    />
+                                                  )}
+                                                </div>
+                                              )}
+                                            </>
+                                          );
+                                        })()}
+
+                                        {/* UNSET CONDITION TYPE */}
+                                        {!conditionTypeValue && (
+                                          <>
+                                            <div className="sm:col-span-3 min-w-0">
+                                              <label className="text-[11px] font-medium text-muted-foreground block mb-1">
+                                                Field
+                                              </label>
+                                              <div className="h-9 px-3 flex items-center border border-dashed rounded-md text-xs text-muted-foreground">
+                                                Select condition type
+                                              </div>
+                                            </div>
+                                            <div className="sm:col-span-3 min-w-0">
+                                              <label className="text-[11px] font-medium text-muted-foreground block mb-1">
+                                                Operator
+                                              </label>
+                                              <div className="h-9 px-3 flex items-center border border-dashed rounded-md text-xs text-muted-foreground">
+                                                -
+                                              </div>
+                                            </div>
+                                            <div className="sm:col-span-3 min-w-0">
+                                              <label className="text-[11px] font-medium text-muted-foreground block mb-1">
+                                                Value
+                                              </label>
+                                              <div className="h-9 px-3 flex items-center border border-dashed rounded-md text-xs text-muted-foreground">
+                                                -
+                                              </div>
+                                            </div>
+                                          </>
+                                        )}
+                                      </>
+                                    );
+                                  })()}
                               </div>
                             </div>
 
@@ -1162,7 +1926,7 @@ function RuleEditorContent() {
                         RULE NAME
                       </span>
                       <p className="font-semibold text-sm mt-0.5 text-foreground">
-                        {ruleName || "Untitled Rule"}
+                        {currentMachine?.machine_name || ruleName || "Untitled Rule"}
                       </p>
                     </div>
 
