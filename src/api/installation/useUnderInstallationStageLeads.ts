@@ -1834,6 +1834,12 @@ export const useDeleteMiscellaneousEntry = () => {
           variables.leadId,
         ],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["miscellaneousByStatus"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["miscellaneousStatusCounts"],
+      });
     },
 
     onError: (error: AxiosError<ApiErrorResponse>) => {

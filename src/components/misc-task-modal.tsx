@@ -27,6 +27,9 @@ interface Props {
   description?: string;
   disableDateRestriction?: boolean;
   dateRestrictionLabel?: string;
+  actionType?: "complete" | "confirm";
+  confirmButtonText?: string;
+  isReturnOrder?: boolean;
   data?: {
     leadId: number;
     accountId: number;
@@ -45,6 +48,9 @@ const MiscTaskModal: React.FC<Props> = ({
   description,
   disableDateRestriction,
   dateRestrictionLabel = "Required Delivery Date",
+  actionType,
+  confirmButtonText,
+  isReturnOrder,
   data,
 }) => {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
@@ -85,6 +91,17 @@ const MiscTaskModal: React.FC<Props> = ({
       ? rawUserType.toLowerCase().trim().replace(/_/g, "-").replace(/\s+/g, "-")
       : "";
   const isSuperAdmin = normalizedUserType === "super-admin";
+
+  const isPickupScheduleTask =
+    actionType === "confirm" ||
+    isReturnOrder === true ||
+    Boolean(title?.toLowerCase().includes("pickup")) ||
+    Boolean(description?.toLowerCase().includes("pickup")) ||
+    Boolean(dateRestrictionLabel?.toLowerCase().includes("pickup")) ||
+    Boolean(data?.remark?.toLowerCase().includes("pickup"));
+
+  const isConfirm = actionType ? actionType === "confirm" : isPickupScheduleTask;
+  const primaryButtonLabel = confirmButtonText || (isConfirm ? "Confirm" : "Complete");
 
   const isBeforeDeliveryDate = (dateValue?: string | Date | null) => {
     if (!dateValue) return false;
@@ -127,7 +144,11 @@ const MiscTaskModal: React.FC<Props> = ({
 
   const targetDeliveryDate = data?.requiredDeliveryDate || data?.dueDate;
   const isDateBeforeDelivery = isBeforeDeliveryDate(targetDeliveryDate);
-  const isCompleteRestrictedByDate = !disableDateRestriction && !isSuperAdmin && isDateBeforeDelivery;
+  const isCompleteRestrictedByDate =
+    !disableDateRestriction &&
+    !isConfirm &&
+    !isSuperAdmin &&
+    isDateBeforeDelivery;
 
   useEffect(() => {
     if (data?.dueDate) {
@@ -144,77 +165,90 @@ const MiscTaskModal: React.FC<Props> = ({
     if (!data) return;
     if (isCompleteRestrictedByDate) {
       toastManager.add({
-        title: `Cannot complete task before ${dateRestrictionLabel} (${formatDeliveryDate(targetDeliveryDate)})`,
+        title: `Cannot ${isConfirm ? "confirm" : "complete"} task before ${dateRestrictionLabel} (${formatDeliveryDate(targetDeliveryDate)})`,
         type: "error",
       });
       return;
     }
-    if (completionFiles.length === 0) {
-      toastManager.add({ title: "Please upload completion documents", type: "error" });
-      return;
-    }
 
-    const formData = new FormData();
-    completionFiles.forEach((file) => formData.append("files", file));
-    formData.append("created_by", String(userId || 0));
-
-    uploadCompletionDocsMutation.mutate(
-      {
-        vendorId: vendorId || 0,
-        taskId: data.taskId,
-        formData,
-      },
-      {
-        onSuccess: () => {
-          completedUpdateMutation.mutate(
-            {
-              leadId: data.leadId,
-              taskId: data.taskId,
-              payload: {
-                status: "completed",
-                updated_by: userId || 0,
-                closed_at: new Date().toISOString(),
-                closed_by: userId || 0,
-              },
-            },
-            {
-              onSuccess: () => {
-                toastManager.add({ title: "Task marked as completed!", type: "success" });
-                setCompletionFiles([]);
-                setOpenCompletedModal(false);
-                onOpenChange(false);
-                if (vendorId) {
-                  queryClient.invalidateQueries({
-                    queryKey: ["vendorUserTasks"],
-                  });
-                  queryClient.invalidateQueries({
-                    queryKey: ["vendorAllTasks"],
-                  });
-                  queryClient.invalidateQueries({
-                    queryKey: ["miscellaneousEntries"],
-                  });
-                  queryClient.invalidateQueries({
-                    queryKey: ["miscellaneousEntries"],
-                  });
-                }
-              },
-              onError: (err: any) => {
-                const errorMessage =
-                  err?.response?.data?.error ||
-                  err?.response?.data?.message ||
-                  err?.message ||
-                  "Failed to update task";
-
-                toastManager.add({
-                  title: errorMessage,
-                  type: "error",
-                });
-              },
-            },
-          );
+    const executeTaskCompletion = () => {
+      completedUpdateMutation.mutate(
+        {
+          leadId: data.leadId,
+          taskId: data.taskId,
+          payload: {
+            status: "completed",
+            updated_by: userId || 0,
+            closed_at: new Date().toISOString(),
+            closed_by: userId || 0,
+          },
         },
-      },
-    );
+        {
+          onSuccess: () => {
+            toastManager.add({
+              title: isConfirm ? "Pickup schedule confirmed!" : "Task marked as completed!",
+              type: "success",
+            });
+            setCompletionFiles([]);
+            setOpenCompletedModal(false);
+            onOpenChange(false);
+            if (vendorId) {
+              queryClient.invalidateQueries({
+                queryKey: ["vendorUserTasks"],
+              });
+              queryClient.invalidateQueries({
+                queryKey: ["vendorAllTasks"],
+              });
+              queryClient.invalidateQueries({
+                queryKey: ["miscellaneousEntries"],
+              });
+              queryClient.invalidateQueries({
+                queryKey: ["miscellaneousByStatus"],
+              });
+              queryClient.invalidateQueries({
+                queryKey: ["leadTasks"],
+              });
+              queryClient.invalidateQueries({
+                queryKey: ["userTasks"],
+              });
+            }
+          },
+          onError: (err: any) => {
+            const errorMessage =
+              err?.response?.data?.error ||
+              err?.response?.data?.message ||
+              err?.message ||
+              "Failed to update task";
+
+            toastManager.add({
+              title: errorMessage,
+              type: "error",
+            });
+          },
+        },
+      );
+    };
+
+    if (completionFiles.length > 0) {
+      const formData = new FormData();
+      completionFiles.forEach((file) => formData.append("files", file));
+      formData.append("created_by", String(userId || 0));
+
+      uploadCompletionDocsMutation.mutate(
+        {
+          vendorId: vendorId || 0,
+          taskId: data.taskId,
+          formData,
+        },
+        {
+          onSuccess: () => {
+            executeTaskCompletion();
+          },
+        },
+      );
+    } else {
+      executeTaskCompletion();
+    }
   };
 
   const handleReschedule = () => {
@@ -329,15 +363,19 @@ const MiscTaskModal: React.FC<Props> = ({
             <>
               <div className="flex items-center justify-between rounded-xl border p-3 gap-3">
                 <div className="flex flex-col gap-1 min-w-0 flex-1">
-                  <span className="text-base font-semibold">Mark as Completed</span>
+                  <span className="text-base font-semibold">
+                    {isConfirm ? "Confirm Pickup Schedule" : "Mark as Completed"}
+                  </span>
                   <p className="text-sm text-muted-foreground">
-                    If this task is completed, you can mark it as done.
+                    {isConfirm
+                      ? "If pickup will be done on the scheduled date, you can confirm it."
+                      : "If this task is completed, you can mark it as done."}
                   </p>
                   {isCompleteRestrictedByDate && (
                     <div className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400 font-medium mt-1">
                       <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-500" />
                       <span className="leading-snug">
-                        Cannot complete before {dateRestrictionLabel} ({formatDeliveryDate(targetDeliveryDate)}).
+                        Cannot {isConfirm ? "confirm" : "complete"} before {dateRestrictionLabel} ({formatDeliveryDate(targetDeliveryDate)}).
                       </span>
                     </div>
                   )}
@@ -348,7 +386,7 @@ const MiscTaskModal: React.FC<Props> = ({
                     align="end"
                     value={
                       isCompleteRestrictedByDate
-                        ? `Cannot mark as completed before ${dateRestrictionLabel} (${formatDeliveryDate(targetDeliveryDate)})`
+                        ? `Cannot ${isConfirm ? "confirm" : "mark as completed"} before ${dateRestrictionLabel} (${formatDeliveryDate(targetDeliveryDate)})`
                         : ""
                     }
                     truncateValue={
@@ -358,7 +396,7 @@ const MiscTaskModal: React.FC<Props> = ({
                         onClick={() => {
                           if (isCompleteRestrictedByDate) {
                             toastManager.add({
-                              title: `Cannot mark as completed before ${dateRestrictionLabel} (${formatDeliveryDate(targetDeliveryDate)})`,
+                              title: `Cannot ${isConfirm ? "confirm" : "mark as completed"} before ${dateRestrictionLabel} (${formatDeliveryDate(targetDeliveryDate)})`,
                               type: "error",
                             });
                             return;
@@ -366,7 +404,7 @@ const MiscTaskModal: React.FC<Props> = ({
                           setOpenCompletedModal(true);
                         }}
                       >
-                        Complete
+                        {primaryButtonLabel}
                       </Button>
                     }
                   />
@@ -394,14 +432,19 @@ const MiscTaskModal: React.FC<Props> = ({
       <BaseModal
         open={openCompletedModal}
         onOpenChange={setOpenCompletedModal}
-        title="Complete Task"
-        description="Upload completion documents to mark this task as completed."
+        title={isConfirm ? "Confirm Pickup Schedule" : "Complete Task"}
+        description={
+          isConfirm
+            ? "Upload completion documents (optional) to confirm this pickup schedule."
+            : "Upload completion documents (optional) to mark this task as completed."
+        }
         size="md"
       >
         <div className="p-6 space-y-4">
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">
-              Upload Documents <span className="text-destructive">*</span>
+            <label className="text-sm font-medium flex items-center gap-1.5">
+              Upload Documents
+              <span className="text-xs text-muted-foreground font-normal">(Optional)</span>
             </label>
             <FileUploadField
               value={completionFiles}
@@ -441,7 +484,9 @@ const MiscTaskModal: React.FC<Props> = ({
               {uploadCompletionDocsMutation.isPending ||
               completedUpdateMutation.isPending
                 ? "Processing..."
-                : "Upload & Complete"}
+                : completionFiles.length > 0
+                  ? (isConfirm ? "Upload & Confirm" : "Upload & Complete")
+                  : primaryButtonLabel}
             </Button>
           </div>
         </div>
