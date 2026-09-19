@@ -544,6 +544,54 @@ export const getProjectCutListPaginated = async (
   return data.data as ProjectCutListResponse;
 };
 
+export interface FactoryOutRevertLogItem {
+  id: number;
+  box_id: number;
+  project_id: number;
+  vendor_id: number;
+  factory_out_at: string;
+  factory_out_by: number | null;
+  reverted_by: number;
+  reverted_at: string;
+  description: string;
+  created_at: string;
+  revertedByUser?: {
+    id: number;
+    user_name: string;
+  } | null;
+  factoryOutByUser?: {
+    id: number;
+    user_name: string;
+  } | null;
+}
+
+export interface BoxUnpackLogItem {
+  id: number;
+  box_id: number;
+  project_id: number;
+  vendor_id: number;
+  packed_at: string | null;
+  packed_by: number | null;
+  box_created_by: number | null;
+  box_created_at: string | null;
+  unpacked_by: number;
+  unpacked_at: string;
+  reason: string;
+  created_at: string;
+  unpackedByUser?: {
+    id: number;
+    user_name: string;
+  } | null;
+  packedByUser?: {
+    id: number;
+    user_name: string;
+  } | null;
+  boxCreatedByUser?: {
+    id: number;
+    user_name: string;
+  } | null;
+}
+
 export const getBoxItems = async (
   vendorId: number,
   projectId: string,
@@ -558,8 +606,18 @@ export const getBoxItems = async (
       box_name: string;
       box_status: string;
       factory_out_at: string | null;
+      factory_out_by: number | null;
       site_in_at: string | null;
+      site_in_by: number | null;
+      packed_at: string | null;
+      packed_by: number | null;
       total_weight?: number;
+      factoryOutByUser?: { id: number; user_name: string } | null;
+      siteInByUser?: { id: number; user_name: string } | null;
+      packedByUser?: { id: number; user_name: string } | null;
+      created_by?: number;
+      created_date?: string | null;
+      createdByUser?: { id: number; user_name: string } | null;
     };
     items: {
       id: number;
@@ -584,6 +642,8 @@ export const getBoxItems = async (
         weight?: number;
       };
     }[];
+    revert_logs?: FactoryOutRevertLogItem[];
+    unpack_logs?: BoxUnpackLogItem[];
   };
 };
 
@@ -593,15 +653,59 @@ export const updateTrackTraceBoxStatus = async (
   boxId: number,
   status: TrackTraceBoxStatus,
   userId: number,
+  reason?: string,
 ) => {
   const { data } = await apiClient.put(
     `/boxes/status/${status}/${boxId}`,
     {
       user_id: userId,
+      reason,
     },
   );
 
   return data;
+};
+
+export const revertBoxFactoryOut = async ({
+  boxId,
+  projectId,
+  vendorId,
+  userId,
+  description,
+}: {
+  boxId: number;
+  projectId: number;
+  vendorId: number;
+  userId: number;
+  description: string;
+}) => {
+  const { data } = await apiClient.patch(
+    `/track-trace/boxes/${boxId}/revert-factory-out`,
+    {
+      project_id: projectId,
+      vendor_id: vendorId,
+      user_id: userId,
+      description,
+    },
+  );
+  return data;
+};
+
+export const getBoxFactoryOutRevertLogs = async (
+  boxId: number,
+  projectId: number,
+  vendorId: number,
+) => {
+  const { data } = await apiClient.get(
+    `/track-trace/boxes/${boxId}/revert-logs`,
+    {
+      params: {
+        project_id: projectId,
+        vendor_id: vendorId,
+      },
+    },
+  );
+  return data.data as FactoryOutRevertLogItem[];
 };
 
 export const deleteTrackTraceBoxItem = async ({
@@ -610,12 +714,14 @@ export const deleteTrackTraceBoxItem = async ({
   projectId,
   boxId,
   userId,
+  reason,
 }: {
   mappingId: number;
   vendorId: number;
   projectId: number;
   boxId: number;
   userId: number;
+  reason: string;
 }) => {
   const { data } = await apiClient.delete(
     `/scan-items/scan-and-pack/delete/${mappingId}`,
@@ -625,6 +731,7 @@ export const deleteTrackTraceBoxItem = async ({
         project_id: projectId,
         box_id: boxId,
         deleted_by: userId,
+        reason,
       },
     },
   );

@@ -17,6 +17,7 @@ export interface VendorListItem {
   is_crm_enabled: boolean | null;
   is_inventory_enabled: boolean | null;
   is_tracktrace_enabled: boolean | null;
+  cutlist_configuration?: string | null;
   is_scanpack_enabled: boolean | null;
   is_available_unique_code: boolean | null;
   push_lead_to_cadbid: boolean | null;

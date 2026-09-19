@@ -17,6 +17,7 @@ import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { Plus, Loader2 } from "lucide-react";
 import { useAppSelector } from "@/redux/store";
+import { useVendorById } from "@/api/vendors";
 import { useMachinesByVendor } from "@/hooks/track-trace-hooks/useTrackTraceMasterHooks";
 import type { MachineData } from "@/types/track-trace";
 import TrackTraceWorkstationTable from "@/components/custom/track-trace-workstation-table";
@@ -30,6 +31,9 @@ export default function MachineMasterPage() {
     (authUser as { id?: number; user_id?: number } | undefined)?.id ??
       (authUser as { id?: number; user_id?: number } | undefined)?.user_id
   );
+
+  const { data: vendorResponse } = useVendorById(vendorId ? Number(vendorId) : undefined);
+  const cutlistConfiguration = vendorResponse?.data?.cutlist_configuration || "default";
 
   const { data: machines, isLoading, error, isFetching } = useMachinesByVendor(vendorId!);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
@@ -138,6 +142,7 @@ export default function MachineMasterPage() {
               data={machines ?? []}
               onEditClick={handleEdit}
               onAssignUsersClick={handleAssignUsers}
+              cutlistConfiguration={cutlistConfiguration}
             />
           </div>
         )}

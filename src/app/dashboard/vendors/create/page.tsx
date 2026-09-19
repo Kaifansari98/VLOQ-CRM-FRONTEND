@@ -30,7 +30,7 @@ import { useOnboardVendor, useUpdateVendor, useStates, useVendorById } from "@/a
 import { toastManager } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { z } from "zod";
-import { Building2, ShieldCheck, Image as ImageIcon, MapPin, Save, User } from "lucide-react";
+import { Building2, ShieldCheck, Image as ImageIcon, MapPin, Save, User, SlidersHorizontal } from "lucide-react";
 
 const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
 const websiteRegex = /^(https?:\/\/)?([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/.*)?$/;
@@ -66,6 +66,7 @@ const createVendorSchema = z.object({
   is_crm_enabled: z.boolean(),
   is_inventory_enabled: z.boolean(),
   is_tracktrace_enabled: z.boolean(),
+  cutlist_configuration: z.string().optional().default("default"),
   is_scanpack_enabled: z.boolean(),
   is_available_unique_code: z.boolean(),
   status: z.enum(["active", "inactive"]),
@@ -125,6 +126,7 @@ function OnboardVendorFormContent() {
     is_crm_enabled: true,
     is_inventory_enabled: false,
     is_tracktrace_enabled: false,
+    cutlist_configuration: "default",
     is_scanpack_enabled: false,
     is_available_unique_code: false,
     status: "active",
@@ -161,6 +163,7 @@ function OnboardVendorFormContent() {
         is_crm_enabled: v.is_crm_enabled !== false,
         is_inventory_enabled: v.is_inventory_enabled === true,
         is_tracktrace_enabled: v.is_tracktrace_enabled === true,
+        cutlist_configuration: v.cutlist_configuration || "default",
         is_scanpack_enabled: v.is_scanpack_enabled === true,
         is_available_unique_code: v.is_available_unique_code === true,
         status: (v.status || "active").toLowerCase() as "active" | "inactive",
@@ -285,6 +288,7 @@ function OnboardVendorFormContent() {
         formData.append("is_crm_enabled", String(validatedForm.data.is_crm_enabled));
         formData.append("is_inventory_enabled", String(validatedForm.data.is_inventory_enabled));
         formData.append("is_tracktrace_enabled", String(validatedForm.data.is_tracktrace_enabled));
+        formData.append("cutlist_configuration", validatedForm.data.cutlist_configuration || "default");
         formData.append("is_scanpack_enabled", String(validatedForm.data.is_scanpack_enabled));
         formData.append("is_available_unique_code", String(validatedForm.data.is_available_unique_code));
         formData.append("gst_no", validatedForm.data.gst_no || "");
@@ -329,6 +333,7 @@ function OnboardVendorFormContent() {
         formData.append("is_crm_enabled", String(validatedForm.data.is_crm_enabled));
         formData.append("is_inventory_enabled", String(validatedForm.data.is_inventory_enabled));
         formData.append("is_tracktrace_enabled", String(validatedForm.data.is_tracktrace_enabled));
+        formData.append("cutlist_configuration", validatedForm.data.cutlist_configuration || "default");
         formData.append("is_scanpack_enabled", String(validatedForm.data.is_scanpack_enabled));
         formData.append("is_available_unique_code", String(validatedForm.data.is_available_unique_code));
         formData.append("gst_no", validatedForm.data.gst_no || "");
@@ -700,7 +705,7 @@ function OnboardVendorFormContent() {
               </div>
             </div>
             <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
                 <div className="grid gap-2 border p-4 rounded-xl bg-background">
                   <Label className="font-semibold text-xs text-foreground">Handles Large Scale Projects</Label>
                   <div className="flex items-center gap-6 pt-1">
@@ -803,6 +808,31 @@ function OnboardVendorFormContent() {
                       </label>
                     ))}
                   </div>
+
+                  {form.is_tracktrace_enabled && (
+                    <div className="pt-2 border-t mt-1 flex items-center justify-between gap-2">
+                      <Label htmlFor="cutlist_configuration" className="font-medium text-xs text-muted-foreground shrink-0">
+                        Cutlist Configuration
+                      </Label>
+                      <Select
+                        value={form.cutlist_configuration || "default"}
+                        onValueChange={(value) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            cutlist_configuration: value,
+                          }))
+                        }
+                      >
+                        <SelectTrigger id="cutlist_configuration" className="h-8 text-xs w-[130px] bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="default" className="text-xs">Default</SelectItem>
+                          <SelectItem value="rule manage" className="text-xs">Rule Manage</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid gap-2 border p-4 rounded-xl bg-background">

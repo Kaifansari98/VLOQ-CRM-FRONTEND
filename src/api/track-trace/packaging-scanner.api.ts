@@ -121,11 +121,13 @@ export const updatePackagingBoxStatus = async (
   boxId: number,
   status: PackagingBoxStatus,
   userId: number,
+  reason?: string,
 ) => {
   const { data } = await apiClient.put<PackagingBox>(
     `/boxes/status/${status}/${boxId}`,
     {
       user_id: userId,
+      reason,
     },
   );
 
@@ -136,9 +138,13 @@ export const getPackagingBoxPrint = async (
   boxId: number,
   projectId: number,
   vendorId: number,
+  locationName?: string | null,
 ) => {
   const { data } = await apiClient.get<PackagingBoxPrintResponse>(
     `/boxes/boxes/pdf/${boxId}/${projectId}/${vendorId}/web`,
+    {
+      params: locationName ? { location: locationName } : undefined,
+    },
   );
 
   return data;
