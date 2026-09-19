@@ -726,9 +726,7 @@ export default function OnlineLeadDetailsPage() {
                 const isBoldHeader = (line.startsWith("**") && line.endsWith("**")) || line.endsWith("?");
                 if (isBoldHeader) {
                   let cleanHeader = line.replace(/^\*\*|\*\*$/g, "").trim();
-                  if (cleanHeader.startsWith("•")) {
-                    cleanHeader = cleanHeader.replace(/^•\s*/, "").trim();
-                  }
+                  cleanHeader = cleanHeader.replace(/^(?:•|ΓÇó)\s*/, "").trim();
                   return (
                     <p key={lIdx} className="font-bold text-foreground text-[14px] flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-foreground inline-block shrink-0" />
