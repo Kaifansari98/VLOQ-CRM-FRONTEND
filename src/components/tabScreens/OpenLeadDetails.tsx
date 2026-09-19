@@ -462,9 +462,7 @@ export default function OpenLeadDetails({ leadId }: OpenLeadDetailsProps) {
                 const isBoldHeader = (line.startsWith("**") && line.endsWith("**")) || line.endsWith("?");
                 if (isBoldHeader) {
                   let cleanHeader = line.replace(/^\*\*|\*\*$/g, "").trim();
-                  if (cleanHeader.startsWith("•")) {
-                    cleanHeader = cleanHeader.replace(/^•\s*/, "").trim();
-                  }
+                  cleanHeader = cleanHeader.replace(/^(?:•|ΓÇó)\s*/, "").trim();
                   return (
                     <p key={lIdx} className="font-bold text-heading dark:text-neutral-200 text-[14px] flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-heading dark:bg-neutral-200 inline-block shrink-0" />
