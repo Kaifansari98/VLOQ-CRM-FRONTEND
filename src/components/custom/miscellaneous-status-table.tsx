@@ -156,35 +156,52 @@ export function MiscellaneousStatusTable({
   // -------------------- GLOBAL STATE --------------------
   const user = useAppSelector((state) => state.auth.user);
   const selectedFranchiseId = useAppSelector((state) => state.auth.franchise_id);
-  const userType = user?.user_type?.user_type
-    ?.toLowerCase()
-    .trim()
-    .replace(/_/g, "-")
-    .replace(/\s+/g, "-");
+  const rawUserType =
+    typeof user?.user_type === "object"
+      ? (user.user_type as any)?.user_type ||
+        (user.user_type as any)?.user_type_name ||
+        (user.user_type as any)?.name ||
+        ""
+      : String(user?.user_type || "");
+  const normalizedUserType = (rawUserType || "").toLowerCase().trim().replace(/_/g, "-").replace(/\s+/g, "-");
+  const normalizedRole = (user?.user_role || "").toLowerCase().trim().replace(/_/g, "-").replace(/\s+/g, "-");
+
+  const userType = normalizedUserType;
   const vendorId = user?.vendor_id ?? 0;
   const franchiseId = selectedFranchiseId ?? user?.franchise_id ?? undefined;
   const userId = user?.id;
 
-  const isSuperAdmin = useMemo(() => {
-    const role = (user?.user_role || "").toLowerCase().trim();
-    const rawType =
-      typeof user?.user_type === "object"
-        ? (user.user_type as any)?.user_type ||
-          (user.user_type as any)?.user_type_name ||
-          (user.user_type as any)?.name ||
-          ""
-        : String(user?.user_type || "");
-    const type = rawType.toLowerCase().trim();
+  const isFactoryUser =
+    normalizedUserType === "factory" ||
+    normalizedUserType.includes("factory") ||
+    normalizedRole === "factory" ||
+    normalizedRole.includes("factory");
 
+  const isMiscellaneousUser =
+    normalizedUserType === "miscellaneous" ||
+    normalizedUserType.includes("miscellaneous") ||
+    normalizedRole === "miscellaneous" ||
+    normalizedRole.includes("miscellaneous");
+
+  const isSupervisorUser =
+    normalizedUserType === "site-supervisor" ||
+    normalizedUserType === "head-site-supervisor" ||
+    normalizedUserType.includes("supervisor") ||
+    normalizedRole.includes("supervisor");
+
+  const isSuperAdmin = useMemo(() => {
+    if (isFactoryUser) return false;
     return (
-      role.includes("super-admin") ||
-      role.includes("superadmin") ||
-      role.includes("super_admin") ||
-      type.includes("super-admin") ||
-      type.includes("superadmin") ||
-      type.includes("super_admin")
+      normalizedRole.includes("super-admin") ||
+      normalizedRole.includes("superadmin") ||
+      normalizedRole.includes("super_admin") ||
+      normalizedRole.includes("auditor") ||
+      normalizedUserType.includes("super-admin") ||
+      normalizedUserType.includes("superadmin") ||
+      normalizedUserType.includes("super_admin") ||
+      normalizedUserType.includes("auditor")
     );
-  }, [user]);
+  }, [normalizedRole, normalizedUserType, isFactoryUser]);
 
   const skipFranchiseFilter =
     userType === "factory" ||
@@ -305,13 +322,22 @@ export function MiscellaneousStatusTable({
       getMiscellaneousStatusColumns({
         onOpenLead: handleOpenLead,
         onOpenDetail: handleOpenDetail,
-        onOpenEdit: handleOpenEdit,
+        onOpenEdit: isFactoryUser ? undefined : handleOpenEdit,
         onOpenDocs: handleOpenDocs,
-        onDelete: handleDeleteItem,
+        onDelete: isSuperAdmin ? handleDeleteItem : undefined,
         isSuperAdmin,
+        isFactoryUser,
+        isMiscellaneousUser,
+        isSupervisorUser,
         statusSlug: status,
       }),
-    [status, isSuperAdmin],
+    [
+      status,
+      isSuperAdmin,
+      isFactoryUser,
+      isMiscellaneousUser,
+      isSupervisorUser,
+    ],
   );
 
   const table = useReactTable({

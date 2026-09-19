@@ -33,6 +33,16 @@ export const renderStatusBadge = (entry: MiscellaneousItem) => {
       label = "REJECTED";
     } else if (entry.misc_approved !== true) {
       label = "AWAITING APPROVAL";
+    } else if (entry.return_order_delivery_method === "SELF_DELIVERY") {
+      label = "UNDER PROCESS";
+    } else if (entry.return_order_delivery_method === "PICKUP_SCHEDULE") {
+      if (entry.is_returned) {
+        label = "DISPATCHED";
+      } else if (entry.task?.status === "completed") {
+        label = "DISPATCH SCHEDULED";
+      } else {
+        label = "UNDER PROCESS";
+      }
     } else if (entry.delivery_task?.status === "completed") {
       label = "DISPATCHED";
     } else if (entry.required_delivery_date) {
@@ -52,7 +62,7 @@ export const renderStatusBadge = (entry: MiscellaneousItem) => {
   if (label === "REJECTED") {
     className =
       "bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300 border-rose-200 dark:border-rose-800";
-  } else if (label === "RESOLVED") {
+  } else if (label === "RESOLVED" || label === "CONFIRMED") {
     className =
       "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800";
   } else if (label === "DISPATCHED") {
@@ -89,13 +99,35 @@ export interface MiscellaneousColumnActions {
   onOpenDocs: (item: MiscellaneousItem) => void;
   onDelete?: (item: MiscellaneousItem) => void;
   isSuperAdmin?: boolean;
+  isFactoryUser?: boolean;
+  isMiscellaneousUser?: boolean;
+  isSupervisorUser?: boolean;
   statusSlug: string;
 }
 
 export function getMiscellaneousStatusColumns(
   actions: MiscellaneousColumnActions
 ): ColumnDef<MiscellaneousItem>[] {
-  const { onOpenLead, onOpenDetail, onOpenEdit, onOpenDocs, onDelete, isSuperAdmin, statusSlug } = actions;
+  const {
+    onOpenLead,
+    onOpenDetail,
+    onOpenEdit,
+    onOpenDocs,
+    onDelete,
+    isSuperAdmin,
+    isFactoryUser,
+    isMiscellaneousUser,
+    isSupervisorUser,
+    statusSlug,
+  } = actions;
+
+  // Factory users NEVER edit, even in awaiting-approval stage. Super Admin can always edit.
+  // Miscellaneous and Site-Supervisor users can edit ONLY in awaiting-approval stage.
+  const canUserEdit =
+    !isFactoryUser &&
+    (Boolean(isSuperAdmin) ||
+      (Boolean(isMiscellaneousUser || isSupervisorUser) && statusSlug === "awaiting-approval"));
+
   const isDeliveryView =
     statusSlug === "dispatch-scheduled" || statusSlug === "dispatched";
 
@@ -198,21 +230,34 @@ export function getMiscellaneousStatusColumns(
       enableHiding: true,
     },
 
-    // 4) Date (ERD / Delivery Date)
+    // 4) Date (ERD / Delivery Date / Return Date)
     {
       id: "date",
       accessorFn: (row) =>
-        isDeliveryView
+        row.return_order_date ||
+        (isDeliveryView
           ? row.required_delivery_date || row.expected_ready_date || ""
-          : row.expected_ready_date || "",
+          : row.expected_ready_date || ""),
       header: ({ column }) => (
         <DataTableColumnHeader
           column={column}
-          title={isDeliveryView ? "Delivery Date" : "ERD"}
+          title={isDeliveryView ? "Delivery / Return Date" : "ERD / Return Date"}
         />
       ),
       cell: ({ row }) => {
         const item = row.original;
+        const returnOrderDate = item.return_order_date;
+        if (returnOrderDate) {
+          return (
+            <div className="flex flex-col gap-0.5">
+              <span className="text-xs font-medium text-foreground">
+                {formatDate(returnOrderDate)}
+              </span>
+              <span className="text-[10px] text-muted-foreground">Return Date</span>
+            </div>
+          );
+        }
+
         if (isDeliveryView) {
           return item.required_delivery_date ? (
             <div className="flex flex-col gap-0.5">
@@ -450,7 +495,7 @@ export function getMiscellaneousStatusColumns(
                 </Button>
               }
             />
-            {onOpenEdit && (isSuperAdmin || item.misc_approved !== true) && (
+            {onOpenEdit && canUserEdit && (
               <CustomeTooltip
                 value="Edit miscellaneous"
                 truncateValue={
@@ -484,7 +529,7 @@ export function getMiscellaneousStatusColumns(
                 </Button>
               }
             />
-            {isSuperAdmin && onDelete && (
+            {!isFactoryUser && isSuperAdmin && onDelete && (
               <CustomeTooltip
                 value="Delete miscellaneous"
                 truncateValue={
