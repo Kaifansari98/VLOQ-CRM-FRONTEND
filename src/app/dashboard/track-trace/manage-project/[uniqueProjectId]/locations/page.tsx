@@ -46,6 +46,7 @@ import {
 type EditableLocationRow = {
   rowKey: string;
   location_name: string;
+  contact_no: string;
   quantities: Record<string, number | "">;
 };
 
@@ -111,6 +112,7 @@ export default function ProjectLocationsPage() {
       data.locations.map((location) => ({
         rowKey: createRowKey(),
         location_name: location.location_name,
+        contact_no: location.contact_no ?? "",
         quantities: Object.fromEntries(
           data.group_names.map((groupName) => [
             groupName,
@@ -129,6 +131,7 @@ export default function ProjectLocationsPage() {
       {
         rowKey: createRowKey(),
         location_name: "",
+        contact_no: "",
         quantities: Object.fromEntries(
           data.group_names.map((groupName) => [groupName, 0])
         ),
@@ -140,6 +143,14 @@ export default function ProjectLocationsPage() {
     setRows((currentRows) =>
       currentRows.map((row) =>
         row.rowKey === rowKey ? { ...row, location_name: value } : row
+      )
+    );
+  };
+
+  const updateContactNo = (rowKey: string, value: string) => {
+    setRows((currentRows) =>
+      currentRows.map((row) =>
+        row.rowKey === rowKey ? { ...row, contact_no: value } : row
       )
     );
   };
@@ -181,6 +192,7 @@ export default function ProjectLocationsPage() {
     for (let index = 0; index < rows.length; index += 1) {
       const row = rows[index];
       const locationName = row.location_name.trim();
+      const contactNo = row.contact_no.trim();
       const normalizedLocation = locationName.toLocaleLowerCase();
 
       if (!locationName) {
@@ -194,6 +206,14 @@ export default function ProjectLocationsPage() {
       if (locationName.length > 200) {
         toastManager.add({
           title: `Location Name must not exceed 200 characters in row ${index + 1}`,
+          type: "error",
+        });
+        return null;
+      }
+
+      if (contactNo.length > 50) {
+        toastManager.add({
+          title: `Contact No must not exceed 50 characters in row ${index + 1}`,
           type: "error",
         });
         return null;
@@ -241,6 +261,7 @@ export default function ProjectLocationsPage() {
 
     return rows.map((row) => ({
       location_name: row.location_name.trim(),
+      contact_no: row.contact_no.trim() || undefined,
       quantities: Object.fromEntries(
         data.group_names.map((groupName) => [
           groupName,
@@ -504,6 +525,9 @@ export default function ProjectLocationsPage() {
                     <TableHead className="sticky left-16 z-10 min-w-[220px] bg-muted/95">
                       Location Name
                     </TableHead>
+                    <TableHead className="min-w-[180px] bg-muted/95">
+                      Contact No
+                    </TableHead>
                     {data.group_names.map((groupName) => (
                       <TableHead
                         key={groupName}
@@ -522,7 +546,7 @@ export default function ProjectLocationsPage() {
                   {rows.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={data.group_names.length + 3}
+                        colSpan={data.group_names.length + 4}
                         className="h-28 text-center text-muted-foreground"
                       >
                         No locations added. Select Add Location to begin.
@@ -544,6 +568,19 @@ export default function ProjectLocationsPage() {
                               updateLocationName(row.rowKey, event.target.value)
                             }
                             className="min-w-[200px]"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            value={row.contact_no}
+                            placeholder="e.g., 9876543210"
+                            maxLength={50}
+                            disabled={isSaving || isImporting}
+                            onChange={(event) =>
+                              updateContactNo(row.rowKey, event.target.value)
+                            }
+                            className="min-w-[160px]"
+                            aria-label={`Contact number for ${row.location_name || "location"}`}
                           />
                         </TableCell>
                         {data.group_names.map((groupName) => (
@@ -591,6 +628,9 @@ export default function ProjectLocationsPage() {
                     </TableCell>
                     <TableCell className="sticky left-16 z-10 bg-muted font-semibold">
                       Product Totals
+                    </TableCell>
+                    <TableCell className="bg-muted text-center">
+                      —
                     </TableCell>
                     {data.group_names.map((groupName) => {
                       const enteredQuantity = enteredQuantities[groupName] ?? 0;
