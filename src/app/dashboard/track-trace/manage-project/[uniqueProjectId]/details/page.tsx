@@ -1368,9 +1368,13 @@ function BoxItemsDialog({
     name: string;
   } | null>(null);
   const [deletingItemId, setDeletingItemId] = useState<number | null>(null);
+  const [deleteReason, setDeleteReason] = useState("");
   const [revertModalOpen, setRevertModalOpen] = useState(false);
   const [revertDescription, setRevertDescription] = useState("");
   const [reverting, setReverting] = useState(false);
+  const [unpackModalOpen, setUnpackModalOpen] = useState(false);
+  const [unpackReason, setUnpackReason] = useState("");
+  const [unpacking, setUnpacking] = useState(false);
 
   const loadBoxItems = useCallback(async () => {
     setLoading(true);
@@ -1391,6 +1395,9 @@ function BoxItemsDialog({
     setData(null);
     setRevertDescription("");
     setRevertModalOpen(false);
+    setUnpackModalOpen(false);
+    setUnpackReason("");
+    setDeleteReason("");
     void loadBoxItems();
   }, [loadBoxItems, open]);
 
@@ -1461,18 +1468,6 @@ function BoxItemsDialog({
   const handleStatusUpdate = async () => {
     if (!pendingStatus || updatingStatus) return;
 
-    if (pendingStatus === "unpacked" && (isSiteIn || isFactoryOutForUnpack)) {
-      toastManager.add({
-        title:
-          isSiteIn
-            ? "Cannot unpack box: Box is already at the site (Site In has been recorded)"
-            : "Cannot unpack box: Box has already been marked as Factory Out",
-        type: "error",
-      });
-      setPendingStatus(null);
-      return;
-    }
-
     try {
       setUpdatingStatus(true);
       await updateTrackTraceBoxStatus(boxId, pendingStatus, userId);
@@ -1497,8 +1492,54 @@ function BoxItemsDialog({
     }
   };
 
+  const handleUnpackBox = async () => {
+    if (!unpackReason.trim() || unpacking) return;
+
+    if (isSiteIn || isFactoryOutForUnpack) {
+      toastManager.add({
+        title:
+          isSiteIn
+            ? "Cannot unpack box: Box is already at the site (Site In has been recorded)"
+            : "Cannot unpack box: Box has already been marked as Factory Out",
+        type: "error",
+      });
+      setUnpackModalOpen(false);
+      return;
+    }
+
+    try {
+      setUnpacking(true);
+      await updateTrackTraceBoxStatus(boxId, "unpacked", userId, unpackReason.trim());
+      toastManager.add({
+        title: "Box marked as unpacked",
+        type: "success",
+      });
+      setUnpackModalOpen(false);
+      setUnpackReason("");
+      await refreshBoxViews();
+    } catch (error: any) {
+      toastManager.add({
+        title:
+          error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          "Failed to unpack box",
+        type: "error",
+      });
+    } finally {
+      setUnpacking(false);
+    }
+  };
+
   const handleDeleteItem = async () => {
     if (!itemToDelete || deletingItemId) return;
+
+    if (!deleteReason.trim()) {
+      toastManager.add({
+        title: "Reason is required to remove item from box",
+        type: "warning",
+      });
+      return;
+    }
 
     if (isPacked) {
       toastManager.add({
@@ -1517,6 +1558,7 @@ function BoxItemsDialog({
         projectId: projectMasterId,
         boxId,
         userId,
+        reason: deleteReason.trim(),
       });
       await refreshBoxViews();
       toastManager.add({
@@ -1524,6 +1566,7 @@ function BoxItemsDialog({
         type: "success",
       });
       setItemToDelete(null);
+      setDeleteReason("");
     } catch (error: any) {
       toastManager.add({
         title:
@@ -1534,6 +1577,7 @@ function BoxItemsDialog({
       });
       void refreshBoxViews();
       setItemToDelete(null);
+      setDeleteReason("");
     } finally {
       setDeletingItemId(null);
     }
@@ -1618,14 +1662,15 @@ function BoxItemsDialog({
                           <DropdownMenuItem
                             onClick={() => {
                               if (!isSiteIn && !isFactoryOutForUnpack) {
-                                setPendingStatus("unpacked");
+                                setUnpackModalOpen(true);
                               }
                             }}
                             disabled={
                               isSiteIn ||
                               isFactoryOutForUnpack ||
                               updatingStatus ||
-                              reverting
+                              reverting ||
+                              unpacking
                             }
                             className={cn(
                               "gap-2.5 py-2 w-full",
@@ -1924,22 +1969,16 @@ function BoxItemsDialog({
       </Dialog>
 
       <AlertDialog
-        open={pendingStatus !== null}
+        open={pendingStatus === "packed"}
         onOpenChange={(nextOpen) => {
           if (!nextOpen && !updatingStatus) setPendingStatus(null);
         }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {pendingStatus === "packed"
-                ? "Pack this box?"
-                : "Unpack this box?"}
-            </AlertDialogTitle>
+            <AlertDialogTitle>Pack this box?</AlertDialogTitle>
             <AlertDialogDescription>
-              {pendingStatus === "packed"
-                ? "The box will be marked as packed. Items cannot be removed until the box is unpacked again."
-                : "The box will be marked as unpacked, allowing its contents to be changed or removed."}
+              The box will be marked as packed. Items cannot be removed until the box is unpacked again.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1947,58 +1986,233 @@ function BoxItemsDialog({
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              disabled={
-                updatingStatus ||
-                (pendingStatus === "unpacked" &&
-                  (isSiteIn || isFactoryOutForUnpack))
-              }
+              disabled={updatingStatus}
               onClick={(event) => {
                 event.preventDefault();
                 void handleStatusUpdate();
               }}
             >
               {updatingStatus && <Loader2 className="size-4 animate-spin" />}
-              {pendingStatus === "packed" ? "Pack box" : "Unpack box"}
+              Pack box
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog
-        open={itemToDelete !== null}
-        onOpenChange={(nextOpen) => {
-          if (!nextOpen && deletingItemId === null) setItemToDelete(null);
-        }}
+      {/* ── Unpack Box Dialog ── */}
+      <Dialog
+        open={unpackModalOpen}
+        onOpenChange={(val) => !unpacking && setUnpackModalOpen(val)}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remove item from box?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {itemToDelete
-                ? `Remove “${itemToDelete.name}” from ${boxName}? This action is only allowed while the box is unpacked.`
-                : "This action is only allowed while the box is unpacked."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deletingItemId !== null}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20"
-              disabled={deletingItemId !== null}
-              onClick={(event) => {
-                event.preventDefault();
-                void handleDeleteItem();
+        <DialogContent className="sm:max-w-lg p-0 overflow-hidden rounded-2xl border shadow-xl">
+          <DialogHeader className="border-b bg-amber-500/5 px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                <PackageOpen className="size-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold text-foreground">
+                  Unpack Box {boxName}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  Unpack this box to modify or remove its contents. Previous packing details will be archived in the audit log.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="p-6 space-y-4">
+            {/* Box Info Summary Card */}
+            <div className="rounded-xl border bg-muted/30 p-3.5 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-medium">Box</span>
+                <span className="font-bold text-foreground">Box {boxName}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-medium">
+                  Previous Packed At
+                </span>
+                <span className="font-semibold text-foreground tabular-nums">
+                  {data?.box.packed_at
+                    ? fmtDateTime(data.box.packed_at)
+                    : "N/A"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-medium">
+                  Previous Packed By
+                </span>
+                <span className="font-semibold text-foreground">
+                  {data?.box.packedByUser?.user_name ||
+                    (data?.box.packed_by
+                      ? `User #${data.box.packed_by}`
+                      : "N/A")}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-medium">
+                  Created At
+                </span>
+                <span className="font-semibold text-foreground tabular-nums">
+                  {(data?.box as any)?.created_date
+                    ? fmtDateTime((data?.box as any).created_date)
+                    : "N/A"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-medium">
+                  Created By
+                </span>
+                <span className="font-semibold text-foreground">
+                  {data?.box.createdByUser?.user_name ||
+                    (data?.box.created_by
+                      ? `User #${data.box.created_by}`
+                      : "N/A")}
+                </span>
+              </div>
+            </div>
+
+            {/* Mandatory Reason */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-foreground flex items-center gap-1">
+                Reason for Unpacking <span className="text-destructive">*</span>
+              </label>
+              <Textarea
+                value={unpackReason}
+                onChange={(e) => setUnpackReason(e.target.value)}
+                placeholder="Explain why this box is being unpacked (e.g., replace damaged piece, repack items)..."
+                className="text-xs min-h-[90px] rounded-lg resize-none"
+                disabled={unpacking}
+              />
+            </div>
+
+            <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3 text-[11px] text-amber-800 dark:text-amber-300 flex items-start gap-2">
+              <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+              <span>
+                Unpacking will mark the box as <strong>Unpacked</strong> and reset packing timestamps.
+                The previous packing operator, timestamps, and this reason will be preserved in the audit log.
+              </span>
+            </div>
+          </div>
+
+          <DialogFooter className="border-t bg-muted/20 px-6 py-3 flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={unpacking}
+              onClick={() => {
+                setUnpackModalOpen(false);
+                setUnpackReason("");
               }}
             >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={!unpackReason.trim() || unpacking}
+              onClick={handleUnpackBox}
+              className="gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              {unpacking && <Loader2 className="size-3.5 animate-spin" />}
+              Confirm Unpack
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Remove Item Dialog ── */}
+      <Dialog
+        open={itemToDelete !== null}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen && deletingItemId === null) {
+            setItemToDelete(null);
+            setDeleteReason("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg p-0 overflow-hidden rounded-2xl border shadow-xl">
+          <DialogHeader className="border-b bg-destructive/5 px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive border border-destructive/20">
+                <Trash2 className="size-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold text-foreground">
+                  Remove Item from Box {boxName}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  Item removal is only allowed while the box is unpacked.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="p-6 space-y-4">
+            {/* Item Info Summary Card */}
+            <div className="rounded-xl border bg-muted/30 p-3.5 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-medium">Item Name</span>
+                <span className="font-bold text-foreground">{itemToDelete?.name}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-medium">Destination Box</span>
+                <span className="font-semibold text-foreground">Box {boxName}</span>
+              </div>
+            </div>
+
+            {/* Mandatory Reason */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-foreground flex items-center gap-1">
+                Reason for Removal <span className="text-destructive">*</span>
+              </label>
+              <Textarea
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.target.value)}
+                placeholder="Explain why this item is being removed from the box..."
+                className="text-xs min-h-[90px] rounded-lg resize-none"
+                disabled={deletingItemId !== null}
+              />
+            </div>
+
+            <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-[11px] text-destructive flex items-start gap-2">
+              <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+              <span>
+                This will remove the item from the box. The deletion, timestamp, user, and reason will be recorded in the box item delete audit log.
+              </span>
+            </div>
+          </div>
+
+          <DialogFooter className="border-t bg-muted/20 px-6 py-3 flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={deletingItemId !== null}
+              onClick={() => {
+                setItemToDelete(null);
+                setDeleteReason("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              disabled={!deleteReason.trim() || deletingItemId !== null}
+              onClick={handleDeleteItem}
+              className="gap-1.5"
+            >
               {deletingItemId !== null && (
-                <Loader2 className="size-4 animate-spin" />
+                <Loader2 className="size-3.5 animate-spin" />
               )}
-              Remove item
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              Remove Item
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Revert Factory Out Dialog ── */}
       <Dialog

@@ -121,11 +121,13 @@ export const updatePackagingBoxStatus = async (
   boxId: number,
   status: PackagingBoxStatus,
   userId: number,
+  reason?: string,
 ) => {
   const { data } = await apiClient.put<PackagingBox>(
     `/boxes/status/${status}/${boxId}`,
     {
       user_id: userId,
+      reason,
     },
   );
 

@@ -565,6 +565,33 @@ export interface FactoryOutRevertLogItem {
   } | null;
 }
 
+export interface BoxUnpackLogItem {
+  id: number;
+  box_id: number;
+  project_id: number;
+  vendor_id: number;
+  packed_at: string | null;
+  packed_by: number | null;
+  box_created_by: number | null;
+  box_created_at: string | null;
+  unpacked_by: number;
+  unpacked_at: string;
+  reason: string;
+  created_at: string;
+  unpackedByUser?: {
+    id: number;
+    user_name: string;
+  } | null;
+  packedByUser?: {
+    id: number;
+    user_name: string;
+  } | null;
+  boxCreatedByUser?: {
+    id: number;
+    user_name: string;
+  } | null;
+}
+
 export const getBoxItems = async (
   vendorId: number,
   projectId: string,
@@ -588,6 +615,9 @@ export const getBoxItems = async (
       factoryOutByUser?: { id: number; user_name: string } | null;
       siteInByUser?: { id: number; user_name: string } | null;
       packedByUser?: { id: number; user_name: string } | null;
+      created_by?: number;
+      created_date?: string | null;
+      createdByUser?: { id: number; user_name: string } | null;
     };
     items: {
       id: number;
@@ -613,6 +643,7 @@ export const getBoxItems = async (
       };
     }[];
     revert_logs?: FactoryOutRevertLogItem[];
+    unpack_logs?: BoxUnpackLogItem[];
   };
 };
 
@@ -622,11 +653,13 @@ export const updateTrackTraceBoxStatus = async (
   boxId: number,
   status: TrackTraceBoxStatus,
   userId: number,
+  reason?: string,
 ) => {
   const { data } = await apiClient.put(
     `/boxes/status/${status}/${boxId}`,
     {
       user_id: userId,
+      reason,
     },
   );
 
@@ -681,12 +714,14 @@ export const deleteTrackTraceBoxItem = async ({
   projectId,
   boxId,
   userId,
+  reason,
 }: {
   mappingId: number;
   vendorId: number;
   projectId: number;
   boxId: number;
   userId: number;
+  reason: string;
 }) => {
   const { data } = await apiClient.delete(
     `/scan-items/scan-and-pack/delete/${mappingId}`,
@@ -696,6 +731,7 @@ export const deleteTrackTraceBoxItem = async ({
         project_id: projectId,
         box_id: boxId,
         deleted_by: userId,
+        reason,
       },
     },
   );
