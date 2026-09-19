@@ -2991,7 +2991,7 @@ export default function InstallationMiscellaneous({
                                                </div>
                                                <div>
                                                  <div className="text-xs font-semibold text-emerald-900 dark:text-emerald-200">
-                                                   Return Order Pickup Completed
+                                                   Pickup Schedule Confirmed
                                                  </div>
                                                  <div className="text-[11px] text-emerald-700 dark:text-emerald-300/90 flex flex-wrap items-center gap-1">
                                                    {viewModalData?.task?.closed_at && (
@@ -3017,7 +3017,7 @@ export default function InstallationMiscellaneous({
                                                variant="outline"
                                                className="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 font-medium"
                                              >
-                                               Completed
+                                               Confirmed
                                              </Badge>
                                            </div>
 
@@ -4502,7 +4502,7 @@ export default function InstallationMiscellaneous({
         open={openPickupTaskModal}
         onOpenChange={setOpenPickupTaskModal}
         title="Manage Pickup Schedule"
-        description="Reschedule pickup date or confirm pickup schedule."
+        description="Confirm the scheduled pickup date or reschedule if needed."
         dateRestrictionLabel="Scheduled Pickup Date"
         actionType="confirm"
         confirmButtonText="Confirm"
