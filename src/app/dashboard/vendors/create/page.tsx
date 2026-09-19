@@ -361,10 +361,11 @@ function OnboardVendorFormContent() {
         type: "success",
       });
       router.push("/dashboard/vendors");
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
       toastManager.add({
         title:
-          error?.response?.data?.message ||
+          err?.response?.data?.message ||
           (editingVendorId ? "Failed to update vendor" : "Failed to onboard vendor"),
         type: "error",
       });
@@ -904,6 +905,11 @@ function OnboardVendorFormContent() {
                     accept="image/*"
                     multiple={false}
                     maxFiles={1}
+                    previewUrl={
+                      vendorDetailResponse?.data?.logoUrl ||
+                      vendorDetailResponse?.data?.logo
+                    }
+                    showPreview
                   />
                 </div>
                 <div className="grid gap-2">
@@ -914,6 +920,11 @@ function OnboardVendorFormContent() {
                     accept="image/*"
                     multiple={false}
                     maxFiles={1}
+                    previewUrl={
+                      vendorDetailResponse?.data?.iconUrl ||
+                      vendorDetailResponse?.data?.icon
+                    }
+                    showPreview
                   />
                 </div>
                 <div className="grid gap-2">
@@ -924,6 +935,11 @@ function OnboardVendorFormContent() {
                     accept="image/*"
                     multiple={false}
                     maxFiles={1}
+                    previewUrl={
+                      vendorDetailResponse?.data?.loginImageUrl ||
+                      vendorDetailResponse?.data?.login_image
+                    }
+                    showPreview
                   />
                 </div>
               </div>

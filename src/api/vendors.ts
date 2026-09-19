@@ -26,6 +26,9 @@ export interface VendorListItem {
   logoUrl?: string;
   iconUrl?: string;
   loginImageUrl?: string;
+  logo?: string | null;
+  icon?: string | null;
+  login_image?: string | null;
   gst_no?: string | null;
   toll_free_no?: string | null;
   website_link?: string | null;
