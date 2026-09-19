@@ -368,7 +368,7 @@ const MiscTaskModal: React.FC<Props> = ({
                   </span>
                   <p className="text-sm text-muted-foreground">
                     {isConfirm
-                      ? "If pickup will be done on the scheduled date, you can confirm it."
+                      ? `Confirm pickup on the scheduled date ${targetDeliveryDate ? `(${formatDeliveryDate(targetDeliveryDate)})` : ""} requested by the site supervisor.`
                       : "If this task is completed, you can mark it as done."}
                   </p>
                   {isCompleteRestrictedByDate && (
@@ -392,7 +392,7 @@ const MiscTaskModal: React.FC<Props> = ({
                     truncateValue={
                       <Button
                         className="w-28"
-                        disabled={isCompleteRestrictedByDate}
+                        disabled={isCompleteRestrictedByDate || completedUpdateMutation.isPending}
                         onClick={() => {
                           if (isCompleteRestrictedByDate) {
                             toastManager.add({
@@ -401,10 +401,16 @@ const MiscTaskModal: React.FC<Props> = ({
                             });
                             return;
                           }
-                          setOpenCompletedModal(true);
+                          if (isConfirm) {
+                            handleMarkCompleted();
+                          } else {
+                            setOpenCompletedModal(true);
+                          }
                         }}
                       >
-                        {primaryButtonLabel}
+                        {completedUpdateMutation.isPending && isConfirm
+                          ? "Confirming..."
+                          : primaryButtonLabel}
                       </Button>
                     }
                   />
@@ -413,9 +419,13 @@ const MiscTaskModal: React.FC<Props> = ({
 
               <div className="flex items-center justify-between rounded-xl border p-3 gap-3">
                 <div className="flex flex-col gap-1 min-w-0 flex-1">
-                  <span className="text-base font-semibold">Reschedule</span>
+                  <span className="text-base font-semibold">
+                    {isConfirm ? "Reschedule Pickup Date" : "Reschedule"}
+                  </span>
                   <p className="text-sm text-muted-foreground">
-                    If the schedule has changed, you can reschedule it.
+                    {isConfirm
+                      ? "If pickup cannot be done on the scheduled date, select a new date."
+                      : "If the schedule has changed, you can reschedule it."}
                   </p>
                 </div>
                 <div className="shrink-0">
