@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   AlertCircle,
   Plus,
@@ -215,11 +215,49 @@ export default function InstallationMiscellaneous({
   onModalClose,
   hideAddButton,
 }: InstallationMiscellaneousProps) {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const queryMiscId = searchParams?.get("miscId");
   const queryTaskId = searchParams?.get("taskId");
   const queryMiscTab =
     searchParams?.get("miscTab") || searchParams?.get("subTab") || undefined;
+
+  const removeMiscQueryParams = useCallback(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const currentUrl = new URL(window.location.href);
+      let changed = false;
+
+      if (currentUrl.searchParams.has("miscId")) {
+        currentUrl.searchParams.delete("miscId");
+        changed = true;
+      }
+      if (currentUrl.searchParams.has("miscTab")) {
+        currentUrl.searchParams.delete("miscTab");
+        changed = true;
+      }
+      if (currentUrl.searchParams.has("subTab")) {
+        currentUrl.searchParams.delete("subTab");
+        changed = true;
+      }
+      if (currentUrl.searchParams.has("taskId")) {
+        currentUrl.searchParams.delete("taskId");
+        changed = true;
+      }
+
+      if (changed) {
+        window.history.replaceState(null, "", currentUrl.toString());
+        if (router && pathname) {
+          const query = currentUrl.searchParams.toString();
+          const nextPath = query ? `${pathname}?${query}` : pathname;
+          router.replace(nextPath, { scroll: false });
+        }
+      }
+    } catch (e) {
+      console.error("Error removing misc query params:", e);
+    }
+  }, [pathname, router]);
 
   const effectiveMiscId =
     initialMiscId ??
@@ -756,22 +794,27 @@ export default function InstallationMiscellaneous({
   };
 
   const isTransitioningToEditRef = useRef(false);
+  const initialMiscHandledRef = useRef(false);
 
   useEffect(() => {
     setInitialModalHandled(false);
   }, [effectiveTaskId]);
 
   useEffect(() => {
+    if (initialMiscHandledRef.current) return;
+
     if (initialOpenEdit && (initialItemData || effectiveMiscId)) {
       const itemToEdit =
         initialItemData || entries?.find((e) => e.id === effectiveMiscId);
       if (itemToEdit && canEditEntry(itemToEdit)) {
+        initialMiscHandledRef.current = true;
         handleOpenEditModal(itemToEdit);
       }
       return;
     }
 
     if (effectiveMiscId) {
+      initialMiscHandledRef.current = true;
       setViewModal({ open: true, id: effectiveMiscId });
       setModalActiveTab(initialSubTab || queryMiscTab || "actions-scheduling");
     }
@@ -1738,6 +1781,7 @@ export default function InstallationMiscellaneous({
           setIsAddModalOpen(open);
           if (!open) {
             resetForm();
+            removeMiscQueryParams();
             if (onlyModal && !viewModal.open && onModalClose) {
               onModalClose();
             }
@@ -2234,6 +2278,10 @@ export default function InstallationMiscellaneous({
           if (!open) {
             setReturnHandoverFiles([]);
             setReturnHandoverRemark("");
+            setOpenDeliveryTaskModal(false);
+            setOpenPickupTaskModal(false);
+            setInitialModalHandled(true);
+            removeMiscQueryParams();
           }
           if (!open && onModalClose && !isTransitioningToEditRef.current && !isAddModalOpen) {
             onModalClose();
