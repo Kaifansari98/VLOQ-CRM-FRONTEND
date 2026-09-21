@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   AlertCircle,
   Plus,
@@ -215,11 +215,49 @@ export default function InstallationMiscellaneous({
   onModalClose,
   hideAddButton,
 }: InstallationMiscellaneousProps) {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const queryMiscId = searchParams?.get("miscId");
   const queryTaskId = searchParams?.get("taskId");
   const queryMiscTab =
     searchParams?.get("miscTab") || searchParams?.get("subTab") || undefined;
+
+  const removeMiscQueryParams = useCallback(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const currentUrl = new URL(window.location.href);
+      let changed = false;
+
+      if (currentUrl.searchParams.has("miscId")) {
+        currentUrl.searchParams.delete("miscId");
+        changed = true;
+      }
+      if (currentUrl.searchParams.has("miscTab")) {
+        currentUrl.searchParams.delete("miscTab");
+        changed = true;
+      }
+      if (currentUrl.searchParams.has("subTab")) {
+        currentUrl.searchParams.delete("subTab");
+        changed = true;
+      }
+      if (currentUrl.searchParams.has("taskId")) {
+        currentUrl.searchParams.delete("taskId");
+        changed = true;
+      }
+
+      if (changed) {
+        window.history.replaceState(null, "", currentUrl.toString());
+        if (router && pathname) {
+          const query = currentUrl.searchParams.toString();
+          const nextPath = query ? `${pathname}?${query}` : pathname;
+          router.replace(nextPath, { scroll: false });
+        }
+      }
+    } catch (e) {
+      console.error("Error removing misc query params:", e);
+    }
+  }, [pathname, router]);
 
   const effectiveMiscId =
     initialMiscId ??
@@ -496,20 +534,19 @@ export default function InstallationMiscellaneous({
     normalizedUserType.includes("supervisor") ||
     normalizedRole.includes("supervisor");
   const isAdminOrSuper =
-    normalizedUserType === "admin" ||
-    normalizedUserType === "super-admin" ||
-    normalizedUserType.includes("admin") ||
-    normalizedRole.includes("admin");
+    !isFactoryUser &&
+    (normalizedUserType === "admin" ||
+      normalizedUserType === "super-admin" ||
+      normalizedUserType.includes("admin") ||
+      normalizedRole.includes("admin"));
   const isSuperAdmin =
-    normalizedUserType === "super-admin" ||
-    normalizedUserType === "superadmin" ||
-    normalizedUserType.includes("super-admin") ||
-    normalizedUserType.includes("superadmin") ||
-    normalizedRole === "super-admin" ||
-    normalizedRole === "superadmin" ||
-    normalizedRole.includes("super-admin") ||
-    normalizedRole.includes("superadmin") ||
-    Boolean(authUser?.is_ho_user);
+    !isFactoryUser &&
+    (normalizedUserType === "super-admin" ||
+      normalizedUserType === "superadmin" ||
+      normalizedUserType === "auditor" ||
+      normalizedRole === "super-admin" ||
+      normalizedRole === "superadmin" ||
+      normalizedRole === "auditor");
   const isMiscellaneousUser =
     normalizedUserType === "miscellaneous" ||
     normalizedUserType.includes("miscellaneous") ||
@@ -526,8 +563,36 @@ export default function InstallationMiscellaneous({
       )
       : true;
 
+  const isAwaitingApprovalStage = (entryItem?: MiscellaneousEntry | null) => {
+    if (!entryItem) return false;
+    if (
+      entryItem.misc_approved === true ||
+      entryItem.misc_approved === false ||
+      Boolean(entryItem.is_resolved) ||
+      Boolean(entryItem.is_returned) ||
+      Boolean(entryItem.expected_ready_date) ||
+      Boolean(entryItem.required_delivery_date) ||
+      Boolean(entryItem.task?.status === "completed") ||
+      Boolean(entryItem.delivery_task?.status === "completed") ||
+      Boolean(entryItem.return_confirm_task?.status === "completed")
+    ) {
+      return false;
+    }
+    const hasDownstreamDocs = entryItem.documents?.some(
+      (d) =>
+        d.doc_type_tag === "Type 41" ||
+        d.doc_type_tag === "Type 42" ||
+        d.doc_type_tag === "Type 43",
+    );
+    if (hasDownstreamDocs) {
+      return false;
+    }
+    return true;
+  };
+
   const canEditEntry = (entryItem?: MiscellaneousEntry | null) => {
     if (!entryItem) return false;
+    if (isFactoryUser) return false;
     if (shouldDisableBlockedActions && !isSuperAdmin) return false;
 
     // Super Admin can ALWAYS edit
@@ -535,21 +600,24 @@ export default function InstallationMiscellaneous({
       return true;
     }
 
-    // Miscellaneous user is allowed to edit before approval
-    if (!isMiscellaneousUser) {
-      return false;
+    // Miscellaneous and Site-Supervisor users can edit ONLY in awaiting approval stage
+    if (isMiscellaneousUser || isSupervisorUser) {
+      return isAwaitingApprovalStage(entryItem);
     }
 
-    // After approval, only super-admin can edit
-    if (entryItem.misc_approved === true) {
-      return false;
-    }
-
-    // Before approval, miscellaneous user can edit
-    return true;
+    return false;
   };
 
-  const canSeeActionsColumn = isMiscellaneousUser || isSuperAdmin;
+  const canDeleteEntry = (entryItem?: MiscellaneousEntry | null) => {
+    if (!entryItem) return false;
+    if (isFactoryUser) return false;
+    if (shouldDisableBlockedActions && !isSuperAdmin) return false;
+
+    // Delete is strictly for Super Admin only
+    return isSuperAdmin;
+  };
+
+  const canSeeActionsColumn = !isFactoryUser && (isMiscellaneousUser || isSupervisorUser || isSuperAdmin);
 
   const isTaskReady = Boolean(viewModalData?.expected_ready_date) && viewModalData?.task?.status === "completed";
 
@@ -726,22 +794,27 @@ export default function InstallationMiscellaneous({
   };
 
   const isTransitioningToEditRef = useRef(false);
+  const initialMiscHandledRef = useRef(false);
 
   useEffect(() => {
     setInitialModalHandled(false);
   }, [effectiveTaskId]);
 
   useEffect(() => {
+    if (initialMiscHandledRef.current) return;
+
     if (initialOpenEdit && (initialItemData || effectiveMiscId)) {
       const itemToEdit =
         initialItemData || entries?.find((e) => e.id === effectiveMiscId);
-      if (itemToEdit) {
+      if (itemToEdit && canEditEntry(itemToEdit)) {
+        initialMiscHandledRef.current = true;
         handleOpenEditModal(itemToEdit);
       }
       return;
     }
 
     if (effectiveMiscId) {
+      initialMiscHandledRef.current = true;
       setViewModal({ open: true, id: effectiveMiscId });
       setModalActiveTab(initialSubTab || queryMiscTab || "actions-scheduling");
     }
@@ -846,6 +919,15 @@ export default function InstallationMiscellaneous({
       }
       if (!formData.return_order_delivery_method) {
         errors.return_order_delivery_method = "Please select delivery method";
+      }
+      if (formData.return_order_date) {
+        const selectedDate = new Date(formData.return_order_date);
+        selectedDate.setHours(0, 0, 0, 0);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (selectedDate < today) {
+          errors.return_order_date = "Return order date cannot be a previous date";
+        }
       }
     } else {
       if (!formData.selectedTeams || formData.selectedTeams.length === 0) {
@@ -1437,17 +1519,17 @@ export default function InstallationMiscellaneous({
                               const isPickupCompleted = entry.task?.status === "completed";
 
                               if (isFactoryConfirmed || entry.is_resolved) {
-                                label = "CONFIRMED";
+                                label = "RESOLVED";
                                 className = "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300";
                               } else if (isReturned) {
-                                label = "PENDING CONFIRMATION";
-                                className = "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300";
-                              } else if (isPickupCompleted) {
                                 label = "DISPATCHED";
                                 className = "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300";
-                              } else if (entry.misc_approved === true) {
-                                label = "PICKUP SCHEDULED";
+                              } else if (isPickupCompleted) {
+                                label = "DISPATCH SCHEDULED";
                                 className = "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300";
+                              } else if (entry.misc_approved === true) {
+                                label = "UNDER PROCESS";
+                                className = "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300";
                               } else {
                                 label = "AWAITING APPROVAL";
                                 className = "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300";
@@ -1456,11 +1538,11 @@ export default function InstallationMiscellaneous({
                               const proofDocs = entry.documents?.filter((d) => d.doc_type_tag === "Type 42" || d.doc_type_tag === "Type 41") || [];
                               const isConfirmed = entry.task?.status === "completed" || proofDocs.length > 0;
                               if (isConfirmed || entry.is_resolved) {
-                                label = "CONFIRMED";
+                                label = "RESOLVED";
                                 className = "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300";
                               } else if (entry.misc_approved === true) {
-                                label = "PENDING CONFIRMATION";
-                                className = "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300";
+                                label = "UNDER PROCESS";
+                                className = "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300";
                               } else {
                                 label = "AWAITING APPROVAL";
                                 className = "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300";
@@ -1656,7 +1738,7 @@ export default function InstallationMiscellaneous({
                               />
                             )}
 
-                            {isSuperAdmin && (
+                            {canDeleteEntry(entry) && (
                               <CustomeTooltip
                                 value={shouldDisableBlockedActions ? blockedTooltip : "Delete miscellaneous"}
                                 truncateValue={
@@ -1676,7 +1758,7 @@ export default function InstallationMiscellaneous({
                               />
                             )}
 
-                            {!canEditEntry(entry) && !isSuperAdmin && (
+                            {!canEditEntry(entry) && !canDeleteEntry(entry) && (
                               <span className="text-sm text-muted-foreground">-</span>
                             )}
                           </div>
@@ -1699,6 +1781,7 @@ export default function InstallationMiscellaneous({
           setIsAddModalOpen(open);
           if (!open) {
             resetForm();
+            removeMiscQueryParams();
             if (onlyModal && !viewModal.open && onModalClose) {
               onModalClose();
             }
@@ -2104,6 +2187,7 @@ export default function InstallationMiscellaneous({
                       <label className="text-sm font-medium">Return Order Date</label>
                       <CustomeDatePicker
                         value={formData.return_order_date}
+                        restriction="futureOnly"
                         onChange={(val) => {
                           setFormData((prev) => ({ ...prev, return_order_date: val }));
                           if (val) {
@@ -2194,6 +2278,10 @@ export default function InstallationMiscellaneous({
           if (!open) {
             setReturnHandoverFiles([]);
             setReturnHandoverRemark("");
+            setOpenDeliveryTaskModal(false);
+            setOpenPickupTaskModal(false);
+            setInitialModalHandled(true);
+            removeMiscQueryParams();
           }
           if (!open && onModalClose && !isTransitioningToEditRef.current && !isAddModalOpen) {
             onModalClose();
@@ -2239,9 +2327,9 @@ export default function InstallationMiscellaneous({
             {/* ── Tab 1: Misc Details ────────────────────────────────────── */}
             <TabsContent value="misc-details">
               <div className="flex-1 overflow-y-auto py-2 space-y-6 px-1">
-                {viewModalData && (canEditEntry(viewModalData) || isSuperAdmin) && (
+                {viewModalData && (canEditEntry(viewModalData) || canDeleteEntry(viewModalData)) && (
                   <div className="flex justify-end items-center gap-2">
-                    {(canEditEntry(viewModalData) || isSuperAdmin) && (
+                    {canEditEntry(viewModalData) && (
                       <Button
                         size="sm"
                         variant="outline"
@@ -2257,7 +2345,7 @@ export default function InstallationMiscellaneous({
                         Edit Miscellaneous
                       </Button>
                     )}
-                    {isSuperAdmin && (
+                    {canDeleteEntry(viewModalData) && (
                       <Button
                         size="sm"
                         variant="outline"
@@ -2940,10 +3028,6 @@ export default function InstallationMiscellaneous({
                                    viewModalData?.task?.status === "completed" || Boolean(viewModalData?.is_resolved);
                                  const scheduledDate =
                                    viewModalData?.task?.due_date || (viewModalData as any)?.return_order_date;
-                                 const completionDocs =
-                                   viewModalData?.documents?.filter(
-                                     (d) => d.doc_type_tag === "Type 37" || (d.doc_type_tag === "Type 42" && !d.document_type?.toLowerCase().includes("confirmation"))
-                                   ) || [];
                                  const returnHandoverDocs =
                                    viewModalData?.documents?.filter(
                                      (d) => d.doc_type_tag === "Type 43"
@@ -3020,56 +3104,6 @@ export default function InstallationMiscellaneous({
                                                Confirmed
                                              </Badge>
                                            </div>
-
-                                           {/* Attached Completion Files */}
-                                           {completionDocs.length > 0 && (() => {
-                                             const { images, videos, nonImages } = separateImageAndDocs(completionDocs);
-                                             return (
-                                               <div className="space-y-2 pt-1 border-t border-emerald-200/60 dark:border-emerald-800/50">
-                                                 <span className="text-[11px] font-medium text-emerald-800 dark:text-emerald-300">
-                                                   Attached Completion Proofs ({completionDocs.length}):
-                                                 </span>
-                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                                   {images.map((doc) => (
-                                                     <ImageComponent
-                                                       key={doc.document_id}
-                                                       doc={{
-                                                         id: doc.document_id,
-                                                         doc_og_name: doc.original_name,
-                                                         signedUrl: doc.signed_url,
-                                                         created_at: doc.uploaded_at,
-                                                       }}
-                                                       canDelete={false}
-                                                     />
-                                                   ))}
-                                                   {nonImages.map((doc) => (
-                                                     <DocumentCard
-                                                       key={doc.document_id}
-                                                       doc={{
-                                                         id: doc.document_id,
-                                                         originalName: doc.original_name,
-                                                         signedUrl: doc.signed_url,
-                                                         created_at: doc.uploaded_at,
-                                                       }}
-                                                       canDelete={false}
-                                                     />
-                                                   ))}
-                                                   {videos.map((doc) => (
-                                                     <VideoCard
-                                                       key={doc.document_id}
-                                                       doc={{
-                                                         id: doc.document_id,
-                                                         originalName: doc.original_name,
-                                                         signedUrl: doc.signed_url,
-                                                         created_at: doc.uploaded_at,
-                                                       }}
-                                                       canDelete={false}
-                                                     />
-                                                   ))}
-                                                 </div>
-                                               </div>
-                                             );
-                                           })()}
                                          </div>
 
                                          {/* Site Supervisor Return Handover Section */}

@@ -154,6 +154,10 @@ export interface UpdateMiscellaneousPayload {
   teams?: number[];
   updated_by: number;
   files?: File[];
+  return_order_date?: string | null;
+  return_order_delivery_method?: string;
+  orderlogindetails_ids?: number[];
+  instance_id?: number;
 }
 
 export interface CreateMiscellaneousReturnOrderPayload {
@@ -899,6 +903,19 @@ export const updateMiscellaneousEntry = async (
   }
   if (payload.solution !== undefined) {
     formData.append("solution", payload.solution);
+  }
+
+  if (payload.return_order_date !== undefined) {
+    formData.append("return_order_date", payload.return_order_date || "");
+  }
+  if (payload.return_order_delivery_method !== undefined) {
+    formData.append("return_order_delivery_method", payload.return_order_delivery_method || "");
+  }
+  if (payload.orderlogindetails_ids && payload.orderlogindetails_ids.length > 0) {
+    formData.append("orderlogindetails_ids", JSON.stringify(payload.orderlogindetails_ids));
+  }
+  if (payload.instance_id !== undefined && payload.instance_id !== null) {
+    formData.append("instance_id", payload.instance_id.toString());
   }
 
   if (payload.teams && payload.teams.length > 0) {
