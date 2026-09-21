@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { getCutlistHeaderMappings } from "@/api/cutlist-headers";
 import { useRouter } from "next/navigation";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -235,7 +236,8 @@ const normalizePackingType = (value: unknown): PackingType => {
 };
 
 const validateCustomPackingGroupWorkbook = async (
-  file: File
+  file: File,
+  vendorId: number,
 ): Promise<string | null> => {
   try {
     const ExcelJS = await import("exceljs");
@@ -249,10 +251,14 @@ const validateCustomPackingGroupWorkbook = async (
       return "Excel sheet not found";
     }
 
+    const { mappings, fields } = await getCutlistHeaderMappings(vendorId);
+    const customPackingGroupField = fields.find((field) => field.field_key === "custom_packing_group");
     let customPackingGroupColumn = 0;
 
     worksheet.getRow(1).eachCell({ includeEmpty: true }, (cell, column) => {
-      if (normalizeExcelHeader(cell.text) === "custom packing group") {
+      const header = normalizeExcelHeader(cell.text);
+      const mapping = mappings.find((entry) => normalizeExcelHeader(entry.source_header) === header);
+      if (mapping ? mapping.rule_field_id === customPackingGroupField?.id : header === "custom packing group") {
         customPackingGroupColumn = column;
       }
     });
@@ -602,7 +608,9 @@ export default function TrackTraceProjectForm({
     }
 
     setIsValidatingExcel(true);
-    const errorMessage = await validateCustomPackingGroupWorkbook(file);
+    const errorMessage = vendorId
+      ? await validateCustomPackingGroupWorkbook(file, vendorId)
+      : "Vendor is required to validate the Excel file.";
 
     if (validationId !== excelValidationId.current) {
       return false;

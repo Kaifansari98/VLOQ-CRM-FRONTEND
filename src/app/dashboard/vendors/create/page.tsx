@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { CutlistHeaderMappingCard } from "@/components/vendors/CutlistHeaderMappingCard";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Breadcrumb,
@@ -975,6 +976,14 @@ function OnboardVendorFormContent() {
               </div>
             </div>
           </div>
+
+          {editingVendorId ? (
+            <CutlistHeaderMappingCard key={editingVendorId} vendorId={editingVendorId} />
+          ) : (
+            <div className="rounded-xl border bg-muted/20 p-5 text-sm text-muted-foreground">
+              Save the vendor first to configure custom cutlist Excel headers.
+            </div>
+          )}
 
           {/* Bottom Footer Submit Action Buttons */}
           <div className="border-t pt-6 flex items-center justify-end gap-3">
