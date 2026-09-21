@@ -393,10 +393,12 @@ export default function UserMastersTable({
           franchise_id: item.franchise_id ?? null,
           user_type_id:
             userTypesData?.data?.find(
-              (ut) => ut.user_type === item.user_type?.user_type,
+              (ut) =>
+                ut.user_type?.trim().toLowerCase() ===
+                item.user_type?.user_type?.trim().toLowerCase(),
             )?.id ?? null,
         })),
-    [data, pagination.pageIndex, pagination.pageSize],
+    [data, userTypesData, pagination.pageIndex, pagination.pageSize],
   );
 
   const totalPages = data?.pagination?.totalPages ?? 1;
@@ -532,13 +534,22 @@ export default function UserMastersTable({
     form.user_type_id;
 
   const handleRowDoubleClick = (row: UserMasterRow) => {
+    const fallbackUserTypeId =
+      row.user_type_id ??
+      userTypesData?.data?.find(
+        (ut) =>
+          ut.user_type?.trim().toLowerCase() ===
+          row.user_type?.trim().toLowerCase(),
+      )?.id ??
+      null;
+
     const prefilled = {
       user_name: row.user_name,
       user_contact: row.user_contact,
       user_email: row.user_email,
       password: "",
       franchise_id: row.franchise_id ? String(row.franchise_id) : "",
-      user_type_id: row.user_type_id ? String(row.user_type_id) : "",
+      user_type_id: fallbackUserTypeId ? String(fallbackUserTypeId) : "",
       status: (row.status === "active" || row.status === "inactive"
         ? row.status
         : "active") as "active" | "inactive",
