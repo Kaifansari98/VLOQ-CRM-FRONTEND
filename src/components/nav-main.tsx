@@ -72,7 +72,7 @@ export interface NavSubItem {
 export interface NavItem {
   title: string;
   url: string;
-  icon?: LucideIcon;
+  icon?: LucideIcon | React.ComponentType<{ className?: string }>;
   customCount?: number;
   customCountLoading?: boolean;
   className?: string;
@@ -155,13 +155,15 @@ export function NavMain({
   trackTraceItems,
   inventoryItems,
   mastersItems,
-  inventoryMasterItems
+  inventoryMasterItems,
+  integrationItems,
 }: {
   items: NavItem[];
   trackTraceItems?: NavItem[];
   inventoryItems?: NavItem[];
   mastersItems?: NavItem[];
   inventoryMasterItems?: NavItem[];
+  integrationItems?: NavItem[];
 }) {
   const vendorId = useAppSelector((state) => state.auth.user?.vendor_id);
   const userId = useAppSelector((state) => state.auth.user?.id);
@@ -704,6 +706,16 @@ export function NavMain({
           <SidebarGroupLabel>Masters Management</SidebarGroupLabel>
           <SidebarMenu>
             {enhancedMastersItems.map((item) => renderItem(item))}
+          </SidebarMenu>
+        </SidebarGroup>
+      )}
+
+      {/* ── Integration Group ── */}
+      {integrationItems && integrationItems.length > 0 && (
+        <SidebarGroup>
+          <SidebarGroupLabel>Integration</SidebarGroupLabel>
+          <SidebarMenu>
+            {integrationItems.map((item) => renderItem(item))}
           </SidebarMenu>
         </SidebarGroup>
       )}

@@ -24,6 +24,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 
+import { MetaIcon } from "@/components/icons/meta-icon";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import { TeamSwitcher } from "@/components/team-switcher";
@@ -433,6 +434,13 @@ const data = {
       ],
     },
   ],
+  integrationNav: [
+    {
+      title: "Meta",
+      url: "/dashboard/integration/meta",
+      icon: MetaIcon,
+    },
+  ],
   masterAdminNav: [
     {
       title: "Dashboard",
@@ -613,16 +621,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     }
     : data.user;
 
-  const { navItems, trackTraceItems, inventoryItems, mastersItems, inventoryMasterItems } = React.useMemo(() => {
+  const { navItems, trackTraceItems, inventoryItems, mastersItems, inventoryMasterItems, integrationItems } = React.useMemo(() => {
     // master-admin only sees Dashboard + Vendors — no CRM pipeline nav
     if (isMasterAdmin) {
       return {
-  navItems: data.masterAdminNav,
-  trackTraceItems: [],
-  inventoryItems: [],
-  inventoryMasterItems: [],
-  mastersItems: [],
-};
+        navItems: data.masterAdminNav,
+        trackTraceItems: [],
+        inventoryItems: [],
+        inventoryMasterItems: [],
+        mastersItems: [],
+        integrationItems: [],
+      };
     }
 
       const environment = (
@@ -1030,6 +1039,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             : section.items,
       }))
       : [];
+
+    const finalIntegrationItems =
+      isSuperAdmin && isCrmEnabled && isOnlineLeadFeatureEnabled
+        ? data.integrationNav
+        : [];
     let resolvedNavItems = (
       isOnlineLeadFeatureEnabled
         ? finalNavItems
@@ -1050,7 +1064,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       trackTraceItems: finalTrackTraceItems,
       inventoryItems: finalInventoryItems,
       mastersItems: finalMastersItems,
-      inventoryMasterItems: finalInventoryMasterItems
+      inventoryMasterItems: finalInventoryMasterItems,
+      integrationItems: finalIntegrationItems,
     };
   }, [
     mounted,
@@ -1155,7 +1170,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           inventoryItems={inventoryItems}
           mastersItems={mastersItems}
           inventoryMasterItems={inventoryMasterItems}
-
+          integrationItems={integrationItems}
         />
       </SidebarContent>
 
