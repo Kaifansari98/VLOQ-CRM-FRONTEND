@@ -43,6 +43,7 @@ import {
   Trash2,
   Wifi,
   WifiOff,
+  Wrench,
   X,
   XCircle,
 } from "lucide-react";
@@ -106,6 +107,7 @@ import {
   PackagingBoxStatus,
   updatePackagingBoxStatus,
 } from "@/api/track-trace/packaging-scanner.api";
+import { HardwarePackingModal } from "@/components/track-trace/HardwarePackingModal";
 
 const AUTO_SUBMIT_DELAY_MS = 300;
 const BOX_WEIGHT_WARNING_KG = 25;
@@ -214,6 +216,11 @@ export default function MachineScannerPage() {
   const showPackagingSetup = Boolean(
     isPackagingMachine && !isCustomGroupPacking,
   );
+  const isDefaultOrGroupwisePacking = Boolean(
+    isPackagingMachine &&
+      (packagingContext?.packing_type === "DEFAULT" ||
+        packagingContext?.packing_type === "GROUPWISE"),
+  );
   const packagingLocations = packagingContext?.locations ?? [];
   const showLocationSelection = Boolean(
     supportsLocationSelection && packagingLocations.length > 0,
@@ -245,6 +252,7 @@ export default function MachineScannerPage() {
     string | null | undefined
   >();
   const [isCreateBoxOpen, setIsCreateBoxOpen] = useState(false);
+  const [isHardwareModalOpen, setIsHardwareModalOpen] = useState(false);
   const [newBoxName, setNewBoxName] = useState("");
   const [boxInfoValues, setBoxInfoValues] = useState<Record<number, string>>(
     {},
@@ -1619,6 +1627,37 @@ export default function MachineScannerPage() {
                             <PackagePlus className="size-4 text-primary" />
                             <span>New Box</span>
                           </Button>
+
+                          {isDefaultOrGroupwisePacking && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className={cn(
+                                "h-11 shrink-0 gap-1.5 rounded-xl px-3 sm:px-3.5 text-xs sm:text-sm font-semibold shadow-2xs hover:bg-accent border-primary/30 text-primary",
+                                !selectedBox && "opacity-75",
+                              )}
+                              onClick={() => {
+                                if (!selectedBox) {
+                                  toastManager.add({
+                                    title: "Box required",
+                                    description:
+                                      "Please create or select a destination box first to pack hardware.",
+                                    type: "warning",
+                                  });
+                                  return;
+                                }
+                                setIsHardwareModalOpen(true);
+                              }}
+                              title={
+                                selectedBox
+                                  ? "Pack hardware items into box"
+                                  : "Select or create a box first"
+                              }
+                            >
+                              <Wrench className="size-4 text-primary" />
+                              <span className="hidden sm:inline">Hardware</span>
+                            </Button>
+                          )}
                         </div>
 
                         {packagingBoxes.length === 0 && (
@@ -1725,12 +1764,35 @@ export default function MachineScannerPage() {
                                 <span className="truncate">Pack & Print</span>
                               </Button>
                             </div>
+
+                            {/* Hardware Packing Action Button for Active Box */}
+                            {isDefaultOrGroupwisePacking && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full h-11 gap-2 rounded-xl border-primary/40 bg-primary/5 hover:bg-primary/10 text-primary font-semibold text-xs sm:text-sm shadow-2xs transition-all active:scale-98"
+                                onClick={() => setIsHardwareModalOpen(true)}
+                                disabled={selectedBox.box_status === "packed"}
+                              >
+                                <Wrench className="size-4" />
+                                <span>
+                                  {selectedBox.box_status === "packed"
+                                    ? "Hardware Packing (Box Packed)"
+                                    : "Add Hardware to Box"}
+                                </span>
+                              </Button>
+                            )}
                           </div>
                         ) : (
-                          <div className="rounded-xl border border-dashed bg-muted/10 py-3.5 px-4 text-center">
+                          <div className="rounded-xl border border-dashed bg-muted/10 py-3.5 px-4 text-center space-y-2">
                             <p className="text-xs text-muted-foreground">
                               Select an existing box above or click <span className="font-semibold text-foreground">New Box</span> to start packing.
                             </p>
+                            {isDefaultOrGroupwisePacking && (
+                              <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+                                Destination box must be selected before packing hardware items.
+                              </p>
+                            )}
                           </div>
                         )}
                       </div>
@@ -2214,6 +2276,20 @@ export default function MachineScannerPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {isDefaultOrGroupwisePacking && (
+        <HardwarePackingModal
+          isOpen={isHardwareModalOpen}
+          onClose={() => setIsHardwareModalOpen(false)}
+          vendorId={vendorId}
+          projectId={packagingProjectId}
+          selectedBox={selectedBox}
+          userId={userId}
+          packingType={packagingContext?.packing_type}
+          projectName={packagingContext?.project_name}
+          onItemPacked={() => void refetchBoxes()}
+        />
+      )}
     </>
   );
 }
