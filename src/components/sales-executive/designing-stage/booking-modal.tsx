@@ -29,7 +29,7 @@ import {
   useHeadSiteSupervisors,
   useBookingLeadById,
 } from "@/hooks/booking-stage/use-booking";
-import { BookingPayload, assignTaskBooking } from "@/api/booking";
+import { BookingPayload } from "@/api/booking";
 import { LeadProductStructureInstance } from "@/api/leads";
 import { createLeadChatRoom } from "@/api/lead-chats";
 import { toastManager } from "@/components/ui/toast";
@@ -45,6 +45,7 @@ import BaseModal from "@/components/utils/baseModal";
 import {
   useHeadSiteSupervisorFranchiseMapping,
   useFranchisesByVendorId,
+  useSiteSupervisorFranchiseMapping,
 } from "@/api/franchise";
 import {
   useDesignsDoc,
@@ -99,6 +100,8 @@ const bookingSchema = z
     payment_text: z.string().default(""),
 
     assign_to: z.string().optional(),
+
+    real_site_supervisor: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     const hasPaymentText = !!data.payment_text.trim();
@@ -173,6 +176,7 @@ const defaultBookingValues: BookingFormValues = {
   payment_details_document: [],
   payment_text: "",
   assign_to: "",
+  real_site_supervisor: "",
   mrp_value: 0,
   basic_amount: 0,
   gst_percentage: 0,
@@ -296,7 +300,8 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
   );
   const { data: quotationData } = useQuotationDoc(vendorId, leadId);
   const { data: designData } = useDesignsDoc(vendorId ?? 0, leadId ?? 0);
-  useBookingLeadById(vendorId, leadId);
+  const { data: bookingLeadData } = useBookingLeadById(vendorId, leadId);
+  const leadFranchiseId = bookingLeadData?.franchiseId ?? undefined;
   const structureInstances: LeadProductStructureInstance[] = React.useMemo(
     () =>
       Array.isArray(structureInstancesData?.data)
@@ -370,6 +375,17 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
     () => franchises.find((f) => f.is_head_office)?.id,
     [franchises]
   );
+  const { data: siteSupervisorMappingRaw, isLoading: isLoadingSiteSupervisors } =
+    useSiteSupervisorFranchiseMapping(
+      vendorId,
+      leadFranchiseId,
+      !!vendorId && !!leadFranchiseId
+    );
+  const siteSupervisorOptions = React.useMemo(
+    () => (Array.isArray(siteSupervisorMappingRaw) ? siteSupervisorMappingRaw : []),
+    [siteSupervisorMappingRaw]
+  );
+  const hasMultipleSiteSupervisors = siteSupervisorOptions.length > 1;
   const isMultiGroupBooking = productTypeTabs.length > 1;
   const { mutateAsync, isPending } = useMoveToBookingStage();
   const form = useForm<BookingFormValues>({
@@ -382,9 +398,10 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
   });
 
   const buildDefaultBookingValues = React.useCallback(
-    (assignTo = ""): BookingFormValues => ({
+    (assignTo = "", realSiteSupervisor = ""): BookingFormValues => ({
       ...defaultBookingValues,
       assign_to: assignTo,
+      real_site_supervisor: realSiteSupervisor,
     }),
     [],
   );
@@ -399,6 +416,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       payment_details_document: form.getValues("payment_details_document") || [],
       payment_text: form.getValues("payment_text") || "",
       assign_to: form.getValues("assign_to") || "",
+      real_site_supervisor: form.getValues("real_site_supervisor") || "",
       mrp_value: form.getValues("mrp_value") ?? 0,
     }),
     [form],
@@ -426,6 +444,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       payment_details_document: watchedValues?.payment_details_document || [],
       payment_text: watchedValues?.payment_text || "",
       assign_to: watchedValues?.assign_to || "",
+      real_site_supervisor: watchedValues?.real_site_supervisor || "",
       mrp_value: watchedValues?.mrp_value ?? 0,
       basic_amount: watchedValues?.basic_amount ?? 0,
       gst_percentage: watchedValues?.gst_percentage ?? 0,
@@ -487,6 +506,14 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
         return false;
       }
 
+      if (
+        vendorCustomUserTypeMode !== true &&
+        hasMultipleSiteSupervisors &&
+        (!values.real_site_supervisor || values.real_site_supervisor.trim() === "")
+      ) {
+        return false;
+      }
+
       const hasFileError =
         values.payment_details_document?.some((file: any) => file?.error) ||
         values.final_documents?.some((file: any) => file?.error);
@@ -497,7 +524,12 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
 
       return true;
     },
-    [getAmountsFromValues, handlesLargeScaleProjects, vendorCustomUserTypeMode],
+    [
+      getAmountsFromValues,
+      handlesLargeScaleProjects,
+      hasMultipleSiteSupervisors,
+      vendorCustomUserTypeMode,
+    ],
   );
 
   const applyBookingValidationErrors = React.useCallback(
@@ -572,6 +604,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
           next[numericKey] = {
             ...next[numericKey],
             assign_to: values.assign_to,
+            real_site_supervisor: values.real_site_supervisor,
           };
         }
 
@@ -681,7 +714,10 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
     for (const tab of productTypeTabs) {
       const values =
         bookingDrafts[tab.productTypeId] ||
-        buildDefaultBookingValues(form.getValues("assign_to") || "");
+        buildDefaultBookingValues(
+          form.getValues("assign_to") || "",
+          form.getValues("real_site_supervisor") || "",
+        );
 
       completion.set(tab.productTypeId, validateBookingValues(values));
     }
@@ -766,11 +802,13 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
 
     setBookingDrafts((prev) => {
       const assignTo = form.getValues("assign_to") || "";
+      const realSiteSupervisor = form.getValues("real_site_supervisor") || "";
       const next: BookingDraftMap = {};
 
       for (const tab of productTypeTabs) {
         next[tab.productTypeId] =
-          prev[tab.productTypeId] || buildDefaultBookingValues(assignTo);
+          prev[tab.productTypeId] ||
+          buildDefaultBookingValues(assignTo, realSiteSupervisor);
       }
 
       return next;
@@ -853,8 +891,10 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
     if (!open || !activeProductTypeId || productTypeTabs.length === 0) return;
 
     const assignTo = form.getValues("assign_to") || "";
+    const realSiteSupervisor = form.getValues("real_site_supervisor") || "";
     const nextDraft =
-      bookingDrafts[activeProductTypeId] || buildDefaultBookingValues(assignTo);
+      bookingDrafts[activeProductTypeId] ||
+      buildDefaultBookingValues(assignTo, realSiteSupervisor);
 
     form.reset(nextDraft);
   }, [
@@ -994,12 +1034,22 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
         payload.siteSupervisorId = Number(values.assign_to);
       }
 
+      if (
+        vendorCustomUserTypeMode !== true &&
+        hasMultipleSiteSupervisors &&
+        values.real_site_supervisor &&
+        values.real_site_supervisor.trim() !== ""
+      ) {
+        payload.realSiteSupervisorId = Number(values.real_site_supervisor);
+      }
+
       await mutateAsync(payload);
     },
     [
       accountId,
       getAmountsFromValues,
       handlesLargeScaleProjects,
+      hasMultipleSiteSupervisors,
       leadId,
       mutateAsync,
       userId,
@@ -1018,6 +1068,32 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       } else {
         form.setError("assign_to", { type: "manual", message: "Site supervisor is required." });
       }
+      return;
+    }
+
+    if (
+      vendorCustomUserTypeMode !== true &&
+      !isLoadingSiteSupervisors &&
+      leadFranchiseId &&
+      siteSupervisorOptions.length === 0
+    ) {
+      toastManager.add({
+        title:
+          "No site supervisor is mapped to this lead's franchise. Please map a site supervisor before creating a booking.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (
+      vendorCustomUserTypeMode !== true &&
+      hasMultipleSiteSupervisors &&
+      (!values.real_site_supervisor || values.real_site_supervisor.trim() === "")
+    ) {
+      form.setError("real_site_supervisor", {
+        type: "manual",
+        message: "Site supervisor is required.",
+      });
       return;
     }
 
@@ -1122,16 +1198,6 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
 
       createLeadChatRoom(leadId!, userId!).catch(() => {});
 
-      if (values.assign_to) {
-        const today = new Date().toISOString().split("T")[0];
-        assignTaskBooking(leadId!, {
-          task_type: "Assign a Site Supervisor",
-          due_date: today,
-          user_id: Number(values.assign_to),
-          created_by: userId!,
-        }).catch(() => {});
-      }
-
       queryClient.invalidateQueries({
         queryKey: ["leadStats", vendorId, userId],
       });
@@ -1162,9 +1228,11 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
   };
 
   const handleReset = () => {
+    const assignTo = form.getValues("assign_to") || "";
+    const realSiteSupervisor = form.getValues("real_site_supervisor") || "";
+
     if (isMultiGroupBooking && activeProductTypeId) {
-      const assignTo = form.getValues("assign_to") || "";
-      const nextValues = buildDefaultBookingValues(assignTo);
+      const nextValues = buildDefaultBookingValues(assignTo, realSiteSupervisor);
       form.reset(nextValues);
       persistDraft(activeProductTypeId, nextValues);
       void persistDraftsToStorage({
@@ -1174,7 +1242,7 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
       return;
     }
 
-    form.reset(buildDefaultBookingValues(form.getValues("assign_to") || ""));
+    form.reset(buildDefaultBookingValues(assignTo, realSiteSupervisor));
   };
 
   const handleTabChange = (nextProductTypeId: number) => {
@@ -1554,6 +1622,30 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                   )}
                 />
               )}
+
+              {vendorCustomUserTypeMode !== true && hasMultipleSiteSupervisors && (
+                <FormField
+                  control={form.control}
+                  name="real_site_supervisor"
+                  render={({ field }) => (
+                    <FormItem data-name="real_site_supervisor">
+                      <FormLabel className="text-sm">Assign Site Supervisor *</FormLabel>
+                      <AssignToPicker
+                        data={siteSupervisorOptions.map((u: any) => ({
+                          id: u.id,
+                          label: u.user_name,
+                        }))}
+                        value={field.value ? Number(field.value) : undefined}
+                        onChange={(val) => field.onChange(val ? String(val) : "")}
+                        placeholder="Search site supervisor..."
+                        emptyLabel="Select an option"
+                        className="h-9"
+                      />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
 
             {ismPaymentInfo?.amount && (
@@ -1754,20 +1846,6 @@ const BookingModal: React.FC<LeadViewModalProps> = ({
                   });
 
                   createLeadChatRoom(leadId!, userId!).catch(() => {});
-
-                  const activeDraft =
-                    activeProductTypeTab
-                      ? confirmationSummary.drafts[activeProductTypeTab.productTypeId]
-                      : null;
-                  if (activeDraft?.assign_to) {
-                    const today = new Date().toISOString().split("T")[0];
-                    assignTaskBooking(leadId!, {
-                      task_type: "Assign a Site Supervisor",
-                      due_date: today,
-                      user_id: Number(activeDraft.assign_to),
-                      created_by: userId!,
-                    }).catch(() => {});
-                  }
 
                   queryClient.invalidateQueries({
                     queryKey: ["leadStats", vendorId, userId],

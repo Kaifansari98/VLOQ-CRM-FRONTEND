@@ -1774,6 +1774,7 @@ export const useCreateUser = (vendorIdOverride?: number) => {
       });
     },
     onError: (error: any) => {
+      if (error?.response?.data?.code === "SUPERVISOR_CONFIRMATION_REQUIRED") return;
       toastManager.add({
         title: error?.response?.data?.message || "Failed to create user.",
         type: "error",
@@ -1797,6 +1798,7 @@ export const useUpdateUser = (vendorIdOverride?: number) => {
       });
     },
     onError: (error: any) => {
+      if (error?.response?.data?.code === "SUPERVISOR_CONFIRMATION_REQUIRED") return;
       toastManager.add({
         title: error?.response?.data?.message || "Failed to update user.",
         type: "error",

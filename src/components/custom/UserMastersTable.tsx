@@ -50,6 +50,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PhoneInput } from "@/components/ui/phone-input";
+import MultipleSelector from "@/components/ui/multiselect";
 import AssignToPicker from "@/components/assign-to-picker";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -60,6 +61,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
+import type { CreateUserMasterPayload, UpdateUserMasterPayload } from "@/api/typesMasterApi";
 import { PrivilegeMasterEntry } from "@/api/typesMasterApi";
 
 type UserMasterRow = {
@@ -72,6 +75,7 @@ type UserMasterRow = {
   franchise_name: string;
   status: string;
   franchise_id: number | null;
+  franchise_ids: number[];
   user_type_id: number | null;
 };
 
@@ -290,7 +294,7 @@ const defaultForm = {
   user_contact: "",
   user_email: "",
   password: "",
-  franchise_id: "",
+  franchise_ids: [] as number[],
   user_type_id: "",
   status: "active" as "active" | "inactive",
 };
@@ -311,6 +315,10 @@ export default function UserMastersTable({
   });
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = React.useState("");
+  const [supervisorConfirmation, setSupervisorConfirmation] = React.useState<{
+    franchises: { id: number; franchise_name: string }[];
+    confirm: () => void;
+  } | null>(null);
   const [openCreateModal, setOpenCreateModal] = React.useState(false);
   const [modalMode, setModalMode] = React.useState<"create" | "edit">("create");
   const [editingUserId, setEditingUserId] = React.useState<number | null>(null);
@@ -388,7 +396,8 @@ export default function UserMastersTable({
           user_contact: item.user_contact,
           user_email: item.user_email,
           user_type: item.user_type?.user_type ?? "—",
-          franchise_name: item.franchise?.franchise_name ?? "—",
+          franchise_name: item.franchises?.map((fr) => fr.franchise_name).join(", ") || item.franchise?.franchise_name || "—",
+          franchise_ids: item.franchise_ids ?? (item.franchise_id ? [item.franchise_id] : []),
           status: item.status,
           franchise_id: item.franchise_id ?? null,
           user_type_id:
@@ -503,6 +512,7 @@ export default function UserMastersTable({
   };
 
   const resetForm = () => {
+    setSupervisorConfirmation(null);
     setForm(defaultForm);
     setOriginalForm(defaultForm);
     setShowPassword(false);
@@ -530,7 +540,7 @@ export default function UserMastersTable({
     form.user_contact.trim() &&
     form.user_email.trim() &&
     isPasswordValid &&
-    form.franchise_id &&
+    form.franchise_ids.length > 0 &&
     form.user_type_id;
 
   const handleRowDoubleClick = (row: UserMasterRow) => {
@@ -548,7 +558,7 @@ export default function UserMastersTable({
       user_contact: row.user_contact,
       user_email: row.user_email,
       password: "",
-      franchise_id: row.franchise_id ? String(row.franchise_id) : "",
+      franchise_ids: [...row.franchise_ids],
       user_type_id: fallbackUserTypeId ? String(fallbackUserTypeId) : "",
       status: (row.status === "active" || row.status === "inactive"
         ? row.status
@@ -562,8 +572,35 @@ export default function UserMastersTable({
     setOpenCreateModal(true);
   };
 
+  const handleSubmitError = (error: unknown, confirm: () => void) => {
+    const response = (error as { response?: { data?: {
+      code?: string; franchises?: { id: number; franchise_name: string }[];
+    } } }).response?.data;
+    if (response?.code === "SUPERVISOR_CONFIRMATION_REQUIRED" && response.franchises?.length) {
+      setSupervisorConfirmation({ franchises: response.franchises, confirm });
+    } else {
+      setSupervisorConfirmation(null);
+    }
+  };
+
+  const submitCreate = (payload: CreateUserMasterPayload) => {
+    createUserMutation.mutate(payload, {
+      onSuccess: () => { resetForm(); setOpenCreateModal(false); },
+      onError: (error) => handleSubmitError(error, () =>
+        submitCreate({ ...payload, confirm_additional_supervisor: true })),
+    });
+  };
+
+  const submitUpdate = (userId: number, payload: UpdateUserMasterPayload) => {
+    updateUserMutation.mutate({ userId, payload }, {
+      onSuccess: () => { resetForm(); setOpenCreateModal(false); },
+      onError: (error) => handleSubmitError(error, () =>
+        submitUpdate(userId, { ...payload, confirm_additional_supervisor: true })),
+    });
+  };
+
   const handleSave = () => {
-    if (!editingUserId || !vendorId) return;
+    if (!editingUserId || !vendorId || !isFormValid) return;
 
     // Normalize phone to national number for comparison
     const extractNational = (val: string) => {
@@ -583,8 +620,8 @@ export default function UserMastersTable({
     if (form.user_email.trim() !== originalForm.user_email.trim())
       payload.user_email = form.user_email.trim();
 
-    if (form.franchise_id !== originalForm.franchise_id)
-      payload.franchise_id = Number(form.franchise_id);
+    if (JSON.stringify(form.franchise_ids) !== JSON.stringify(originalForm.franchise_ids))
+      payload.franchise_ids = form.franchise_ids;
 
     if (form.user_type_id !== originalForm.user_type_id)
       payload.user_type_id = Number(form.user_type_id);
@@ -600,15 +637,7 @@ export default function UserMastersTable({
       return;
     }
 
-    updateUserMutation.mutate(
-      { userId: editingUserId, payload },
-      {
-        onSuccess: () => {
-          resetForm();
-          setOpenCreateModal(false);
-        },
-      },
-    );
+    submitUpdate(editingUserId, payload);
   };
 
   const handleCreate = () => {
@@ -618,10 +647,11 @@ export default function UserMastersTable({
     const contactNumber =
       parsed?.nationalNumber || form.user_contact.replace(/\D/g, "");
 
-    createUserMutation.mutate(
+    submitCreate(
       {
         vendor_id: vendorId,
-        franchise_id: Number(form.franchise_id),
+        franchise_id: form.franchise_ids[0],
+        franchise_ids: form.franchise_ids,
         user_name: form.user_name.trim(),
         user_contact: contactNumber,
         user_email: form.user_email.trim(),
@@ -629,18 +659,46 @@ export default function UserMastersTable({
         password: form.password,
         user_type_id: Number(form.user_type_id),
         status: form.status,
-      },
-      {
-        onSuccess: () => {
-          resetForm();
-          setOpenCreateModal(false);
-        },
-      },
+      }
     );
   };
 
   return (
     <>
+      <AlertDialog
+        open={supervisorConfirmation !== null}
+        onOpenChange={(open) => {
+          if (!open && !createUserMutation.isPending && !updateUserMutation.isPending)
+            setSupervisorConfirmation(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Add another site supervisor?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {supervisorConfirmation?.franchises.map((fr) => fr.franchise_name).join(", ")}
+              {supervisorConfirmation?.franchises.length === 1
+                ? " already has a site supervisor."
+                : " already have site supervisors."}
+              {" Are you sure you want to assign this user as an additional site supervisor?"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={createUserMutation.isPending || updateUserMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={createUserMutation.isPending || updateUserMutation.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                supervisorConfirmation?.confirm();
+              }}
+            >
+              {createUserMutation.isPending || updateUserMutation.isPending ? "Saving..." : "Confirm and save"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <Card className="rounded-2xl p-0 border-0">
         <CardContent className="space-y-4 p-0">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -817,22 +875,29 @@ export default function UserMastersTable({
               )}
 
               <div className="space-y-2">
-                <Label>Franchise</Label>
-                <AssignToPicker
-                  data={franchisesData.map((fr) => ({
-                    id: fr.id,
+                <Label htmlFor="user-franchise-search">Franchise</Label>
+                <MultipleSelector
+                  inputProps={{
+                    id: "user-franchise-search",
+                    name: "franchise-search",
+                    autoComplete: "off",
+                    autoCapitalize: "none",
+                    spellCheck: false,
+                  }}
+                  options={franchisesData.map((fr) => ({
+                    value: String(fr.id),
                     label: fr.franchise_name,
                   }))}
-                  value={
-                    form.franchise_id ? Number(form.franchise_id) : undefined
+                  value={form.franchise_ids.map((id) => ({
+                    value: String(id),
+                    label: franchisesData.find((fr) => fr.id === id)?.franchise_name ?? String(id),
+                  }))}
+                  onChange={(selected) =>
+                    setForm((f) => ({ ...f, franchise_ids: selected.map((option) => Number(option.value)) }))
                   }
-                  onChange={(selectedId) =>
-                    setForm((f) => ({
-                      ...f,
-                      franchise_id: selectedId ? String(selectedId) : "",
-                    }))
-                  }
-                  placeholder="Select franchise..."
+                  placeholder="Select franchises..."
+                  hidePlaceholderWhenSelected
+                  showSelectedOptionsInDropdown
                 />
               </div>
 
@@ -849,6 +914,8 @@ export default function UserMastersTable({
                 <div className="relative">
                   <Input
                     id="user-password"
+                    name="new-password"
+                    autoComplete="new-password"
                     type={showPassword ? "text" : "password"}
                     value={form.password}
                     onChange={(e) =>
