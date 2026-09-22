@@ -295,6 +295,8 @@ export default function InstallationMiscellaneous({
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<MiscellaneousEntry | null>(null);
   const skipMaterialResetRef = useRef(false);
+  // Stores material IDs to restore after returnOrderMaterialOptions is computed
+  const pendingReturnMaterialIdsRef = useRef<string[]>([]);
 
   const form = useForm<MiscFormValues>({
     resolver: zodResolver(miscFormSchema),
@@ -764,6 +766,20 @@ export default function InstallationMiscellaneous({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [watchedInstanceId]);
 
+  // ── Auto-restore return order materials after options are computed ──────────
+  useEffect(() => {
+    const pendingIds = pendingReturnMaterialIdsRef.current;
+    if (!pendingIds.length || !returnOrderMaterialOptions.length) return;
+    const matched = returnOrderMaterialOptions.filter((opt) =>
+      pendingIds.includes(String(opt.value))
+    );
+    if (matched.length > 0) {
+      form.setValue("return_order_selected_materials", matched, { shouldDirty: false });
+      pendingReturnMaterialIdsRef.current = [];
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [returnOrderMaterialOptions]);
+
   const [initialModalHandled, setInitialModalHandled] = useState(false);
   const { mutate: deleteDocument, isPending: deleting } = useDeleteDocument(leadId);
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
@@ -871,6 +887,80 @@ export default function InstallationMiscellaneous({
       label: t.team_name,
     }));
 
+    // ── Restore Return Order instance & material selections ─────────────────
+    // API response shape per Prisma schema:
+    // mapping: { id, orderlogindetails_id, orderLoginDetail: { id, item_type, item_desc, instance_id } }
+    const isEntryReturnOrder = Boolean((entryToEdit as any).return_order_delivery_method);
+    const rawMappings: any[] = (entryToEdit as any).reorder_instances_material_mappings || [];
+    let returnOrderSelectedInstances: Option[] = [];
+    let returnOrderSelectedMaterials: Option[] = [];
+    pendingReturnMaterialIdsRef.current = []; // clear any stale pending IDs
+
+    if (isEntryReturnOrder) {
+      if (rawMappings.length > 0) {
+        const seenInstIds = new Set<number>();
+        const matIds: string[] = [];
+
+        rawMappings.forEach((m: any) => {
+          // instance_id lives inside the nested orderLoginDetail relation
+          const detail = m.orderLoginDetail ?? m.order_login_detail ?? m.orderLoginDetails ?? {};
+          const instId = Number(
+            detail.instance_id ??
+            m.instance_id ??
+            m.instanceId ??
+            detail.instanceId,
+          );
+
+          if (!isNaN(instId) && instId > 0 && !seenInstIds.has(instId)) {
+            seenInstIds.add(instId);
+            const instObj = instances.find((i: any) => i.id === instId);
+            const instTitle = instObj?.title || `Instance ${instObj?.quantity_index ?? instId}`;
+            returnOrderSelectedInstances.push({ value: String(instId), label: instTitle });
+          }
+
+          // Material ID = orderlogindetails_id (matches item.id in orderLoginSummary)
+          const matId =
+            m.orderlogindetails_id ??
+            m.order_login_detail_id ??
+            detail.id ??
+            m.id;
+
+          if (matId) {
+            matIds.push(String(matId));
+          }
+        });
+
+        // Store material IDs — useEffect will match them against returnOrderMaterialOptions
+        // once instances are set and options are recomputed
+        pendingReturnMaterialIdsRef.current = matIds;
+      } else {
+        // Fallback for old entries without mappings
+        const fallbackInstId = Number(
+          (entryToEdit as any).instance_id ??
+          (entryToEdit as any).selected_instance_id ??
+          matchedInstanceId,
+        );
+        if (!isNaN(fallbackInstId) && fallbackInstId > 0) {
+          const instObj = instances.find((i: any) => i.id === fallbackInstId);
+          const instTitle = instObj?.title || `Instance ${instObj?.quantity_index ?? fallbackInstId}`;
+          returnOrderSelectedInstances = [{ value: String(fallbackInstId), label: instTitle }];
+
+          const materialStr = entryToEdit.reorder_material_details || "";
+          if (materialStr) {
+            const parts = materialStr.split(",").map((s: string) => s.trim()).filter(Boolean);
+            returnOrderSelectedMaterials = parts.map((rawName: string, idx: number) => ({
+              value: `inst_${fallbackInstId}_${rawName.toLowerCase().replace(/\s+/g, "_")}_${idx}`,
+              label: rawName,
+              rawName,
+              instance: instTitle,
+              instanceId: String(fallbackInstId),
+            } as any));
+          }
+        }
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     form.reset({
       misc_type_id: entryToEdit.type?.id,
       selected_instance_id: matchedInstanceId,
@@ -889,8 +979,8 @@ export default function InstallationMiscellaneous({
         : undefined,
       return_order_delivery_method:
         ((entryToEdit as any).return_order_delivery_method as any) || undefined,
-      return_order_selected_instances: [],
-      return_order_selected_materials: [],
+      return_order_selected_instances: returnOrderSelectedInstances,
+      return_order_selected_materials: returnOrderSelectedMaterials,
     });
 
     setFiles([]);
@@ -920,7 +1010,9 @@ export default function InstallationMiscellaneous({
       if (!formData.return_order_delivery_method) {
         errors.return_order_delivery_method = "Please select delivery method";
       }
-      if (formData.return_order_date) {
+      if (!formData.return_order_date) {
+        errors.return_order_date = "Return order date is required";
+      } else {
         const selectedDate = new Date(formData.return_order_date);
         selectedDate.setHours(0, 0, 0, 0);
         const today = new Date();
@@ -1788,7 +1880,8 @@ export default function InstallationMiscellaneous({
           }
         }}
         title={editingEntry ? "Edit Miscellaneous Issue" : "Add Miscellaneous Issue"}
-        description="Log a miscellaneous issue with required details, supporting proofs, and material information."
+        description="
+        "
         size="lg"
       >
             <Form {...form}>
@@ -2184,7 +2277,7 @@ export default function InstallationMiscellaneous({
                     </div>
                     {/* Return Order Date */}
                     <div className={cn("flex flex-col gap-2", formErrors.return_order_date && "text-destructive [&_button]:border-destructive")} data-name="return_order_date">
-                      <label className="text-sm font-medium">Return Order Date</label>
+                      <label className="text-sm font-medium">Return Order Date *</label>
                       <CustomeDatePicker
                         value={formData.return_order_date}
                         restriction="futureOnly"
