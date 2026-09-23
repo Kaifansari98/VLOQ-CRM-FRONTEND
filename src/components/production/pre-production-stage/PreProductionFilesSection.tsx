@@ -27,6 +27,23 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -39,6 +56,8 @@ import {
 } from "@/hooks/designing-stage/designing-leads-hooks";
 import ClientRequiredDeliveryDateBanner from "@/components/shared/ClientRequiredDeliveryDateBanner";
 import TextAreaInput from "@/components/origin-text-area";
+import { PackingType } from "@/types/track-trace";
+import { useCreateTrackTraceProject } from "@/hooks/track-trace-hooks/useTrackTraceMasterHooks";
 
 interface PreProductionFilesSectionProps {
   leadId: number;
@@ -67,6 +86,14 @@ export default function PreProductionFilesSection({
   const customPrivilegeCodes = useAppSelector(
     (s) => s.customPrivileges.codes,
   );
+  const handlesLargeScaleProjects = useAppSelector(
+    (s) => s.auth.user?.vendor?.handlesLargeScaleProjects === true,
+  );
+  const isInventoryEnabled = useAppSelector(
+    (s) => s.auth.user?.vendor?.is_inventory_enabled === true,
+  );
+  const isTrackTraceUploadFlow =
+    handlesLargeScaleProjects && isInventoryEnabled;
 
   const queryClient = useQueryClient();
 
@@ -83,6 +110,9 @@ export default function PreProductionFilesSection({
 
   const { mutateAsync: markPreProdDone, isPending: markingDone } =
     useMarkPreProdDone(vendorId, leadId);
+
+  const { mutateAsync: createTrackTraceProject, isPending: isCreatingProject } =
+    useCreateTrackTraceProject();
 
   const { data: leadData } = useLeadStatus(leadId, vendorId);
   const { data } = useInstanceStage(vendorId, leadId, instanceId!);
@@ -108,8 +138,38 @@ export default function PreProductionFilesSection({
   const [confirmDelete, setConfirmDelete] = useState<null | number>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [remark, setRemark] = useState(normalizedRemark);
+  const [showPackingModal, setShowPackingModal] = useState(false);
+  const [packingType, setPackingType] = useState<PackingType>(
+    PackingType.DEFAULT,
+  );
+  const [noOfBoxes, setNoOfBoxes] = useState(0);
+  const [isMultiLocation, setIsMultiLocation] = useState(false);
+
+  const isCustomGroupPacking = packingType === PackingType.CUSTOM_GROUP;
+  const isDefaultPacking = packingType === PackingType.DEFAULT;
+  const isGroupwiseWithConfiguredBoxes =
+    packingType === PackingType.GROUPWISE && noOfBoxes > 0;
+  const showNoOfBoxes = !isCustomGroupPacking;
+  const showMultiLocation = !isGroupwiseWithConfiguredBoxes;
+
+  useEffect(() => {
+    if (isCustomGroupPacking && noOfBoxes !== 0) {
+      setNoOfBoxes(0);
+    }
+    if ((isDefaultPacking || isGroupwiseWithConfiguredBoxes) && isMultiLocation) {
+      setIsMultiLocation(false);
+    }
+  }, [
+    isCustomGroupPacking,
+    isDefaultPacking,
+    isGroupwiseWithConfiguredBoxes,
+    isMultiLocation,
+    noOfBoxes,
+  ]);
 
   const hasFiles = Array.isArray(files) && files.length > 0;
+  const isTrackTraceUploadBlockedByExistingFile =
+    isTrackTraceUploadFlow && hasFiles;
 
   const imageTypes = ["jpg", "jpeg", "png", "gif", "webp"];
 
@@ -179,18 +239,10 @@ export default function PreProductionFilesSection({
     }
   };
 
-  const handleUpload = async () => {
-    if (selectedFiles.length === 0) {
-      toastManager.add({
-        title: "Please select at least one file to upload.",
-        type: "error",
-      });
-      return;
-    }
-
+  const performUpload = async (filesToUpload: File[]) => {
     try {
       const formData = new FormData();
-      selectedFiles.forEach((file) => formData.append("files", file));
+      filesToUpload.forEach((file) => formData.append("files", file));
       formData.append("created_by", String(userId || 0));
       if (accountId) formData.append("account_id", String(accountId));
 
@@ -199,7 +251,6 @@ export default function PreProductionFilesSection({
         title: "Pre-production files uploaded successfully!",
         type: "success",
       });
-      setSelectedFiles([]);
 
       queryClient.invalidateQueries({
         queryKey: [
@@ -217,18 +268,99 @@ export default function PreProductionFilesSection({
           effectiveInstanceId ?? "all",
         ],
       });
+      return true;
     } catch (error: any) {
-  const errorMessage =
-    error?.response?.data?.error ||
-    error?.response?.data?.message ||
-    error?.message ||
-    "Failed to upload files.";
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to upload files.";
 
-  toastManager.add({
-    title: errorMessage,
-    type: "error",
-  });
-}
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
+      return false;
+    }
+  };
+
+  const handleUploadButtonClick = () => {
+    if (isTrackTraceUploadBlockedByExistingFile) {
+      toastManager.add({
+        title:
+          "A file has already been uploaded. Delete it before uploading another one.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (selectedFiles.length === 0) {
+      toastManager.add({
+        title: "Please select at least one file to upload.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (isTrackTraceUploadFlow) {
+      setShowPackingModal(true);
+      return;
+    }
+
+    void performUpload(selectedFiles).then((success) => {
+      if (success) setSelectedFiles([]);
+    });
+  };
+
+  const handleConfirmPackingAndUpload = async () => {
+    const filesToProcess = selectedFiles;
+    setShowPackingModal(false);
+
+    const uploaded = await performUpload(filesToProcess);
+    if (uploaded) setSelectedFiles([]);
+
+    const fileForImport = filesToProcess.find((file) =>
+      file.name.toLowerCase().endsWith(".xlsx"),
+    );
+
+    if (!fileForImport) {
+      toastManager.add({
+        title:
+          "Track & Trace project was not created: only .xlsx files can be imported for project creation right now. The file was still saved to Pre-Production Files.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (!vendorId) return;
+
+    try {
+      await createTrackTraceProject({
+        vendorId,
+        projectName: `Pre-Production Import - Lead #${leadId}`,
+        lead_id: leadId,
+        packing_type: packingType,
+        no_of_boxes: noOfBoxes,
+        is_multi_location: isMultiLocation,
+        box_info_fields: [],
+        file: fileForImport,
+      });
+      toastManager.add({
+        title: "Track & Trace project created successfully!",
+        type: "success",
+      });
+    } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to create Track & Trace project.";
+
+      toastManager.add({
+        title: errorMessage,
+        type: "error",
+      });
+    }
   };
 
   const handleRemarkUpdate = async () => {
@@ -358,33 +490,52 @@ export default function PreProductionFilesSection({
         {/* -------------------------------- UPLOAD AREA -------------------------------- */}
         {canUploadPreProductionFiles && (
           <div className="p-6 border-b space-y-4">
-            <FileUploadField
-              value={selectedFiles}
-              onChange={setSelectedFiles}
-              accept=".png,.jpg,.jpeg,.pdf,.pyo,.pytha,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip"
-              multiple
-            />
+            {isTrackTraceUploadBlockedByExistingFile ? (
+              <div className="rounded-lg border border-dashed bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+                A file has already been uploaded for this project. Delete it
+                from the list below before uploading another one.
+              </div>
+            ) : (
+              <>
+                <FileUploadField
+                  value={selectedFiles}
+                  onChange={setSelectedFiles}
+                  accept={
+                    isTrackTraceUploadFlow
+                      ? ".csv,.xlsx"
+                      : ".png,.jpg,.jpeg,.pdf,.pyo,.pytha,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.dwg,.dxf,.stl,.step,.stp,.iges,.igs,.3ds,.obj,.skp,.sldprt,.sldasm,.prt,.catpart,.catproduct,.zip"
+                  }
+                  multiple={!isTrackTraceUploadFlow}
+                />
 
-            <div className="flex sm:justify-end">
-              <Button
-                size="sm"
-                onClick={handleUpload}
-                disabled={isPending || selectedFiles.length === 0}
-                className="flex items-center justify-center gap-2 w-full sm:w-auto"
-              >
-                {isPending ? (
-                  <>
-                    <Loader2 className="animate-spin size-4" />
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <Upload size={16} />
-                    Upload Files
-                  </>
-                )}
-              </Button>
-            </div>
+                <div className="flex sm:justify-end">
+                  <Button
+                    size="sm"
+                    onClick={handleUploadButtonClick}
+                    disabled={
+                      isPending ||
+                      isCreatingProject ||
+                      selectedFiles.length === 0
+                    }
+                    className="flex items-center justify-center gap-2 w-full sm:w-auto"
+                  >
+                    {isPending || isCreatingProject ? (
+                      <>
+                        <Loader2 className="animate-spin size-4" />
+                        {isCreatingProject
+                          ? "Creating project..."
+                          : "Uploading..."}
+                      </>
+                    ) : (
+                      <>
+                        <Upload size={16} />
+                        Upload Files
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </>
+            )}
 
             <div className="space-y-2">
               <p className="text-sm font-semibold tracking-tight">Remark</p>
@@ -495,6 +646,114 @@ export default function PreProductionFilesSection({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* -------------------------------- PACKING & BOX CONFIGURATION -------------------------------- */}
+        <Dialog open={showPackingModal} onOpenChange={setShowPackingModal}>
+          <DialogContent className="sm:max-w-[480px]">
+            <DialogHeader>
+              <DialogTitle>Packing & Box Configuration</DialogTitle>
+              <DialogDescription>
+                Set up packing rules before this file is imported into a
+                Track &amp; Trace project.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label>
+                  Packing Type <span className="text-destructive">*</span>
+                </Label>
+                <Select
+                  value={packingType}
+                  onValueChange={(value) => setPackingType(value as PackingType)}
+                >
+                  <SelectTrigger className="h-10 w-full text-sm">
+                    <SelectValue placeholder="Select packing type..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={PackingType.DEFAULT}>Default</SelectItem>
+                    <SelectItem value={PackingType.GROUPWISE}>Groupwise</SelectItem>
+                    <SelectItem value={PackingType.CUSTOM_GROUP}>
+                      Custom Packing Group
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {showNoOfBoxes && (
+                <div className="space-y-2">
+                  <Label>
+                    No of Boxes{" "}
+                    <span className="text-xs font-normal text-muted-foreground">
+                      (optional)
+                    </span>
+                  </Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={1}
+                    placeholder="e.g., 10"
+                    value={String(noOfBoxes)}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setNoOfBoxes(value === "" ? 0 : Number(value));
+                    }}
+                    className="h-10 text-sm w-full"
+                  />
+                </div>
+              )}
+
+              {showMultiLocation && (
+                <div className="space-y-2">
+                  <Label>
+                    Multi Location{" "}
+                    {!isDefaultPacking && (
+                      <span className="text-xs font-normal text-muted-foreground">
+                        (optional)
+                      </span>
+                    )}
+                  </Label>
+                  <Select
+                    value={isMultiLocation ? "YES" : "NO"}
+                    onValueChange={(value) => setIsMultiLocation(value === "YES")}
+                    disabled={isDefaultPacking}
+                  >
+                    <SelectTrigger className="h-10 w-full text-sm">
+                      <SelectValue placeholder="Select an option..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="NO">No</SelectItem>
+                      <SelectItem value="YES">Yes</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowPackingModal(false)}
+                disabled={isPending || isCreatingProject}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmPackingAndUpload}
+                disabled={isPending || isCreatingProject}
+              >
+                {isPending || isCreatingProject ? (
+                  <>
+                    <Loader2 className="animate-spin size-4 mr-2" />
+                    {isCreatingProject ? "Creating project..." : "Uploading..."}
+                  </>
+                ) : (
+                  "Continue & Upload"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
