@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { toastManager } from "@/components/ui/toast";
 import {
   getBoxItems,
@@ -4149,7 +4150,20 @@ export default function ProjectDetailPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    asChild
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs gap-1.5 rounded-lg border-primary/30 hover:bg-primary/5 hover:text-primary"
+                  >
+                    <Link
+                      href={`/dashboard/track-trace/machines/20/dispatch?projectId=${data.project.id}`}
+                    >
+                      <TruckIcon size={12} className="text-primary" />
+                      Dispatch workstation scanner
+                    </Link>
+                  </Button>
                   <Badge variant="outline" className="text-[11px] font-medium">
                     Packed {data.stats.packed_boxes}/{data.stats.total_boxes}
                   </Badge>

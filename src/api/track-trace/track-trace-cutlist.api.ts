@@ -791,3 +791,26 @@ export const downloadDispatchDocument = async (
       "Dispatch_Document.pdf",
   };
 };
+
+export const markBoxFactoryOutApi = async ({
+  boxId,
+  projectId,
+  vendorId,
+  userId,
+}: {
+  boxId: number;
+  projectId: number;
+  vendorId: number;
+  userId: number;
+}) => {
+  const { data } = await apiClient.patch(
+    `/track-trace/boxes/${boxId}/factory-out`,
+    {
+      project_id: projectId,
+      vendor_id: vendorId,
+      user_id: userId,
+    },
+  );
+  return data;
+};
+
