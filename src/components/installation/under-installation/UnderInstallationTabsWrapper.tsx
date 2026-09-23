@@ -25,8 +25,10 @@ export default function UnderInstallationTabsWrapper({
   name?: string;
   instanceId?: number | null;
 }) {
-  const vendorId = useAppSelector((s) => s.auth.user?.vendor_id) || 0;
-  const userType = useAppSelector((s) => s.auth.user?.user_type?.user_type);
+  const user = useAppSelector((s) => s.auth.user);
+  const vendorId = user?.vendor_id || 0;
+  const userType = user?.user_type?.user_type;
+  const isMiscellaneousEnabled = user?.vendor?.is_miscellaneous_enabled === true;
   const customPrivilegeCodes = useAppSelector(
     (s) => s.customPrivileges.codes,
   );
@@ -106,6 +108,7 @@ export default function UnderInstallationTabsWrapper({
   }, [readyData, derivedPending]);
 
   const canViewMiscellaneousTab =
+    !isMiscellaneousEnabled ? false :
     userType === "custom"
       ? customPrivilegeCodes.includes(
           "installation.under_installation.miscellaneous_section.enable_disable_action",

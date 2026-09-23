@@ -491,6 +491,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const isCustomUserTypeOnlyVendor =
     user?.vendor?.is_this_vendor_is_custom_usertype_only === true;
   const isCrmEnabled = user?.vendor?.is_crm_enabled !== false;
+  const isMiscellaneousEnabled = user?.vendor?.is_miscellaneous_enabled === true;
   const isBroadcastEnabled = user?.vendor?.is_broadcast_enabled === true;
   const isInventoryEnabled = user?.vendor?.is_inventory_enabled === true;
   const isTrackTraceEnabled = user?.vendor?.is_tracktrace_enabled === true;
@@ -707,6 +708,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       }
 
       if (item.title === "Miscellaneous Module") {
+        if (!isMiscellaneousEnabled) return false;
         const canSeeMiscModule =
           userType === "admin" ||
           userType === "super-admin" ||
@@ -899,6 +901,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         );
         if (underInstallationIndex !== -1) {
           const shouldShowMisc =
+            isMiscellaneousEnabled &&
             userType !== "factory" &&
             canSeeMiscLeads &&
             (miscLeadsCount > 0 || userType === "miscellaneous");
@@ -972,7 +975,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           : finalNavItemsSource;
 
       let navItemsWithRoleAdditions: any[] = initialNavItems;
-      if (userType === "factory") {
+      if (userType === "factory" && isMiscellaneousEnabled) {
         const dashboardIndex = navItemsWithRoleAdditions.findIndex(
           (item) => item.title === "Dashboard",
         );
