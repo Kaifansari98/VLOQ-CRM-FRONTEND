@@ -13,6 +13,7 @@ import {
 import {
   CheckIcon,
   ChevronDown,
+  Download,
   EyeIcon,
   EyeOffIcon,
   ListFilter,
@@ -24,6 +25,8 @@ import {
   XIcon,
 } from "lucide-react";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
 
 import { cn } from "@/lib/utils";
 import {
@@ -35,6 +38,7 @@ import {
   useUserTypes,
 } from "@/hooks/useTypesMaster";
 import { useFranchisesByVendorId } from "@/api/franchise";
+import { useVendorById } from "@/api/vendors";
 import { useAppSelector } from "@/redux/store";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
@@ -63,7 +67,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import type { CreateUserMasterPayload, UpdateUserMasterPayload } from "@/api/typesMasterApi";
-import { PrivilegeMasterEntry } from "@/api/typesMasterApi";
+import { PrivilegeMasterEntry, fetchUsersForMaster } from "@/api/typesMasterApi";
 
 type UserMasterRow = {
   srNo: number;
@@ -309,6 +313,13 @@ export default function UserMastersTable({
   const vendorId =
     vendorIdOverride ?? useAppSelector((state) => state.auth.user?.vendor_id);
 
+  const loggedInUserType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type,
+  )
+    ?.trim()
+    .toLowerCase();
+  const isMasterAdmin = loggedInUserType === "master-admin";
+
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 20,
@@ -344,6 +355,7 @@ export default function UserMastersTable({
   >([]);
   const [privilegeSearch, setPrivilegeSearch] = React.useState("");
   const deferredPrivilegeSearch = React.useDeferredValue(privilegeSearch);
+  const [isExporting, setIsExporting] = React.useState(false);
 
   const { data, isLoading, isError, error } = useUsersForMaster(
     {
@@ -358,6 +370,7 @@ export default function UserMastersTable({
     vendorId,
     !!vendorId,
   );
+  const { data: vendorData } = useVendorById(isMasterAdmin ? vendorId : undefined);
   const { data: userTypesData } = useUserTypes();
   const {
     data: privilegeMastersData,
@@ -663,6 +676,82 @@ export default function UserMastersTable({
     );
   };
 
+  const handleExportData = async () => {
+    if (!vendorId || isExporting) return;
+
+    setIsExporting(true);
+    try {
+      const response = await fetchUsersForMaster(vendorId, {
+        page: 1,
+        limit: 1000000,
+        search: "",
+        franchise_id: franchiseFilter,
+      });
+
+      const exportRows = response.data.filter(
+        (item) =>
+          item.user_type?.user_type?.trim().toLowerCase() !== "master-admin",
+      );
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Users");
+
+      worksheet.columns = [
+        { header: "Sr No", key: "srNo", width: 8 },
+        { header: "Name", key: "name", width: 25 },
+        { header: "Contact No", key: "contact", width: 18 },
+        { header: "Email", key: "email", width: 30 },
+        { header: "User Type", key: "userType", width: 20 },
+        { header: "Franchise", key: "franchise", width: 25 },
+        { header: "Status", key: "status", width: 12 },
+        { header: "Created At", key: "createdAt", width: 20 },
+      ];
+
+      const headerRow = worksheet.getRow(1);
+      headerRow.font = { bold: true };
+      headerRow.alignment = { vertical: "middle", horizontal: "left" };
+      headerRow.height = 20;
+
+      exportRows.forEach((item, index) => {
+        worksheet.addRow({
+          srNo: index + 1,
+          name: item.user_name,
+          contact: item.user_contact,
+          email: item.user_email,
+          userType: formatUserTypeLabel(item.user_type?.user_type),
+          franchise:
+            item.franchises?.map((fr) => fr.franchise_name).join(", ") ||
+            item.franchise?.franchise_name ||
+            "—",
+          status: item.status,
+          createdAt: item.created_at
+            ? new Date(item.created_at).toLocaleString("en-IN")
+            : "—",
+        });
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      const sanitizedVendorName = (vendorData?.data?.vendor_name || `vendor_${vendorId}`)
+        .replace(/[\\/:*?"<>|]/g, "")
+        .trim()
+        .replace(/\s+/g, "_");
+
+      const now = new Date();
+      const pad = (value: number) => String(value).padStart(2, "0");
+      const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+
+      saveAs(blob, `${sanitizedVendorName}_usersdata_${timestamp}.xlsx`);
+    } catch (error) {
+      console.error("Failed to export users data", error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <>
       <AlertDialog
@@ -721,6 +810,17 @@ export default function UserMastersTable({
                   }}
                   franchises={franchisesData}
                 />
+                {isMasterAdmin && (
+                  <Button
+                    variant="outline"
+                    onClick={handleExportData}
+                    disabled={isExporting || !vendorId}
+                    className="sm:hidden"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    {isExporting ? "Exporting..." : "Export Data"}
+                  </Button>
+                )}
                 <Button
                   onClick={() => setOpenCreateModal(true)}
                   className="sm:hidden"
@@ -730,6 +830,17 @@ export default function UserMastersTable({
                 </Button>
               </div>
             </div>
+            {isMasterAdmin && (
+              <Button
+                variant="outline"
+                onClick={handleExportData}
+                disabled={isExporting || !vendorId}
+                className="hidden sm:flex"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                {isExporting ? "Exporting..." : "Export Data"}
+              </Button>
+            )}
             <Button
               onClick={() => setOpenCreateModal(true)}
               className="hidden sm:flex"

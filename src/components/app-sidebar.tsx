@@ -1109,14 +1109,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const activeFranchise = franchises.find(
       (franchise) => franchise.id === franchiseId,
     );
+    const normalizedUserType = (user?.user_type?.user_type || "")
+      .trim()
+      .toLowerCase();
+    const isSiteSupervisor = normalizedUserType === "site-supervisor";
     const userTypeLabel = sanitize(user?.user_type?.user_type || "");
 
     const fallbackTeam = {
       id: user.franchise_id ?? user.vendor_id,
-      name:
-        activeFranchise?.franchise_name ||
-        user.vendor?.vendor_name ||
-        "Default Vendor",
+      name: isSiteSupervisor
+        ? user.vendor?.vendor_name ||
+          activeFranchise?.franchise_name ||
+          "Default Vendor"
+        : activeFranchise?.franchise_name ||
+          user.vendor?.vendor_name ||
+          "Default Vendor",
       logo: GalleryVerticalEnd,
       plan: userTypeLabel,
     };
