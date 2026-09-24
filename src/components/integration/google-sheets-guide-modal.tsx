@@ -24,6 +24,7 @@ import {
   MousePointer,
   AlertTriangle,
   Info,
+  Loader2,
 } from "lucide-react";
 
 export interface GoogleSheetsGuideSectionProps {
@@ -69,15 +70,47 @@ export function GoogleSheetsGuideSection({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open, currentStep]);
 
-  const activeWebhookUrl =
-    webhookUrl || "https://staging-api.furnixcrm.com/webhook?vendor_token=<YOUR_VENDOR_TOKEN>";
+  // Dynamically resolve valid vendor token (never use hardcoded fallback tokens)
+  const resolvedToken = React.useMemo(() => {
+    if (vendorToken && vendorToken.trim() !== "" && !vendorToken.includes("<")) {
+      return vendorToken.trim();
+    }
+    if (webhookUrl) {
+      const match = webhookUrl.match(/[?&]vendor_token=([^&]+)/);
+      if (match && match[1] && !match[1].includes("<") && match[1].trim() !== "") {
+        return match[1].trim();
+      }
+    }
+    return null;
+  }, [vendorToken, webhookUrl]);
+
+  const activeWebhookUrl = React.useMemo(() => {
+    if (!resolvedToken) return "";
+
+    const isLocal =
+      typeof window !== "undefined" &&
+      (window.location.origin.includes("localhost") ||
+        window.location.origin.includes("127.0.0.1"));
+    const isStaging =
+      typeof window !== "undefined" &&
+      window.location.origin.includes("staging");
+
+    // Local dev uses ngrok public URL because Google Apps Script executes on Google cloud servers
+    const baseUrl = isLocal
+      ? "https://cameo-unhealthy-breezy.ngrok-free.dev"
+      : isStaging
+      ? "https://staging-api.furnixcrm.com"
+      : "https://api.furnixcrm.com";
+
+    return `${baseUrl}/webhook?vendor_token=${resolvedToken}`;
+  }, [resolvedToken]);
 
   const googleAppsScriptCode = `/**
  * Furnix CRM - Google Sheets Automated Lead Ingestion
- * Trigger: On edit (or On form submit)
+ * Trigger: On edit
  */
 function sendLeadToCRM(e) {
-  // 1. Webhook URL with dynamic vendor token
+  // 1. Webhook URL with dynamic vendor token & environment
   const WEBHOOK_URL = "${activeWebhookUrl}";
 
   try {
@@ -97,15 +130,15 @@ function sendLeadToCRM(e) {
       return;
     }
 
-    // 3. Header and row reading
+    // 3. Header and row reading via getDisplayValues()
     const lastCol = sheet.getLastColumn();
     if (lastCol === 0) {
       Logger.log("No columns found in the active sheet.");
       return;
     }
 
-    const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-    const rowValues = sheet.getRange(editedRow, 1, 1, lastCol).getValues()[0];
+    const headers = sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0];
+    const rowValues = sheet.getRange(editedRow, 1, 1, lastCol).getDisplayValues()[0];
 
     // 4. normalizeHeader() helper function
     function normalizeHeader(header) {
@@ -113,13 +146,23 @@ function sendLeadToCRM(e) {
       return header.toString().toLowerCase().replace(/[\\s_\\/|\\-?]+/g, "").trim();
     }
 
-    // 5. getValue() helper function for fuzzy header matching
+    // 5. Collect ALL sheet row columns dynamically
+    var rowData = {};
+    for (var i = 0; i < headers.length; i++) {
+      var headerKey = headers[i] ? headers[i].toString().trim() : "";
+      if (headerKey) {
+        var cellVal = rowValues[i];
+        rowData[headerKey] = cellVal !== null && cellVal !== undefined ? String(cellVal).trim() : "";
+      }
+    }
+
+    // 6. getValue() helper function (exact normalized matching)
     function getValue(possibleMatches) {
       for (var i = 0; i < headers.length; i++) {
         var normalizedColHeader = normalizeHeader(headers[i]);
         for (var j = 0; j < possibleMatches.length; j++) {
           var target = normalizeHeader(possibleMatches[j]);
-          if (normalizedColHeader.indexOf(target) !== -1) {
+          if (normalizedColHeader === target) {
             var cellValue = rowValues[i];
             return cellValue !== null && cellValue !== undefined ? String(cellValue).trim() : "";
           }
@@ -128,76 +171,32 @@ function sendLeadToCRM(e) {
       return "";
     }
 
-    // 6. Name, Phone, Email, City, Product, Remark detection
-    const name = getValue(["Customer Name", "Full Name", "Lead Name", "Name", "Client Name"]);
-    const phone = getValue(["Phone Number", "Mobile Number", "Contact Number", "Phone", "Mobile", "Contact"]);
+    // 7. Extract lead fields with fallbacks
+    const name = getValue(["Customer Name", "Full Name", "full_name", "Lead Name", "Name", "Client Name"]);
+    const phone = getValue(["Phone Number", "phone_number", "Mobile Number", "Contact Number", "Phone", "Mobile", "Contact"]);
     const email = getValue(["Email ID", "Email Address", "Email", "Mail"]);
     const city = getValue(["City", "Project City", "Location", "Town"]);
-    const product = getValue(["Product Type", "Modular Solution", "Product", "Requirement", "Category", "Service"]);
-    const remark = getValue(["Design Remarks", "Remarks", "Notes", "Comments", "Requirement Details", "Description"]);
+    const remark = getValue(["Design Remarks", "Remarks", "Remark", "Notes", "Comments", "Requirement Details", "Description"]);
 
-    // 7. All 4 Survey fields detection
-    const modularSolution = getValue([
-      "What modular solution are you looking for",
-      "Modular Solution",
-      "Solution Looking For",
-      "Modular"
-    ]);
+    const finalName = name || rowData["full_name"] || rowData["Full Name"] || rowData["name"] || rowData["Name"];
+    const finalPhone = phone || rowData["phone_number"] || rowData["Phone Number"] || rowData["contact"] || rowData["Contact"];
 
-    const whenNeedReady = getValue([
-      "When do you need your kitchen/wardrobe ready",
-      "When do you need",
-      "When need ready",
-      "Possession Date",
-      "Timeline"
-    ]);
-
-    const preferredShowroom = getValue([
-      "Which showroom would you prefer to visit",
-      "Preferred Showroom",
-      "Showroom Location",
-      "Showroom Visit",
-      "Showroom"
-    ]);
-
-    const projectLocation = getValue([
-      "Where is your project located",
-      "Project Location",
-      "Site Location",
-      "Project Address",
-      "Location"
-    ]);
-
-    // Validation: skip if neither name nor phone exists in this row
-    if (!phone && !name) {
-      Logger.log("Row " + editedRow + " has no contact or customer name. Skipping dispatch.");
+    // Validation: Name + Phone required
+    if (!finalName || !finalPhone) {
+      Logger.log("Row " + editedRow + " is missing required Name or Phone. Skipping dispatch.");
       return;
     }
 
-    // Map all raw columns for maximum compatibility
-    const rawData = {};
-    for (var k = 0; k < headers.length; k++) {
-      if (headers[k]) {
-        rawData[String(headers[k]).trim()] = rowValues[k];
-      }
-    }
-
-    // 8. Payload construction
-    const payload = {
-      name: name,
-      contact: phone,
-      email: email,
-      city: city || projectLocation,
+    // 8. Payload construction - dynamically sends all sheet columns
+    // CRM automatically excludes static columns from Design Remarks and stores all dynamic questions!
+    const payload = Object.assign({}, rowData, {
+      name: finalName,
+      contact: finalPhone,
+      email: email || rowData["email"] || rowData["Email"] || "",
+      city: city || rowData["city"] || rowData["where_is_your_project_located?"] || "",
       source: "Google Sheet",
-      remark: remark,
-      product_type: product || modularSolution,
-      product_types: (product || modularSolution) ? [product || modularSolution] : [],
-      modular_solution: modularSolution,
-      when_need_ready: whenNeedReady,
-      preferred_showroom: preferredShowroom,
-      project_location: projectLocation,
-      ...rawData
-    };
+      remark: remark || ""
+    });
 
     // 9. HTTP Options
     const options = {
@@ -223,6 +222,14 @@ function sendLeadToCRM(e) {
 }`;
 
   const copyScript = async () => {
+    if (!resolvedToken) {
+      toastManager.add({
+        title: "Vendor Token Loading",
+        description: "Please wait for your vendor token to finish loading.",
+        type: "error",
+      });
+      return;
+    }
     try {
       await navigator.clipboard.writeText(googleAppsScriptCode);
       setCopiedCode(true);
@@ -245,8 +252,10 @@ function sendLeadToCRM(e) {
     {
       stepNumber: 1,
       title: "Open Google Sheet",
-      shortTitle: "Open Sheet",
+      shortTitle: "1. Open Sheet",
       badge: "Step 1 of 10",
+      // 👇 Image placed directly above "Step 1 of 10 Open Google Sheet".
+      // Aap is URL ko apne custom image path (e.g. "/images/my-sheet.png" ya koi online URL) se replace kar sakte hain:
       image: "/images/google-sheets-step1.jpg",
       description:
         "Open the Google Sheet where your Meta / Lead Ads leads arrive or are stored. Ensure that the first row contains column headers such as Name, Phone, Email, City, and Requirement.",
@@ -258,8 +267,9 @@ function sendLeadToCRM(e) {
     {
       stepNumber: 2,
       title: "Extensions → Apps Script",
-      shortTitle: "Extensions",
+      shortTitle: "2. Extensions",
       badge: "Step 2 of 10",
+      // 👇 Circled Extensions image directly above "Step 2 of 10 Extensions → Apps Script"
       image: "/images/google-sheets-step2.jpg",
       description:
         "In the Google Sheet top navigation menu, click on 'Extensions' and select 'Apps Script' from the dropdown list.",
@@ -271,7 +281,7 @@ function sendLeadToCRM(e) {
     {
       stepNumber: 3,
       title: "Open Apps Script & Clear Default Code",
-      shortTitle: "Apps Script",
+      shortTitle: "3. Apps Script",
       badge: "Step 3 of 10",
       image: "/images/google-sheets-step3.jpg",
       description:
@@ -284,7 +294,7 @@ function sendLeadToCRM(e) {
     {
       stepNumber: 4,
       title: "Paste CRM Webhook Script",
-      shortTitle: "Paste Script",
+      shortTitle: "4. Paste Script",
       badge: "Step 4 of 10",
       image: "/images/google-sheets-step4.jpg",
       description:
@@ -294,35 +304,49 @@ function sendLeadToCRM(e) {
         "Paste the entire snippet into Code.gs",
       ],
       renderVisual: () => (
-        <div className="w-full rounded-xl border bg-card shadow-sm overflow-hidden flex flex-col font-sans">
-          <div className="bg-[#1E1E1E] text-slate-200 px-4 py-2 border-b border-slate-700 flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2">
-              <Code2 className="w-4 h-4 text-emerald-400" />
-              <span className="font-semibold text-slate-100">Code.gs — sendLeadToCRM</span>
+        !resolvedToken ? (
+          <div className="w-full rounded-xl border bg-card/60 p-8 flex flex-col items-center justify-center text-center space-y-3 font-sans">
+            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center animate-spin">
+              <Loader2 className="w-5 h-5 text-primary" />
             </div>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={copyScript}
-              className="h-7 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700 text-white border-0 shadow-xs"
-            >
-              {copiedCode ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-              {copiedCode ? "Copied!" : "Copy Script"}
-            </Button>
+            <div className="space-y-1 max-w-md">
+              <p className="font-semibold text-foreground text-sm">Loading Vendor Webhook Token...</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Fetching your authenticated vendor credentials. Once loaded, your customized Google Apps Script will appear here ready to copy.
+              </p>
+            </div>
           </div>
+        ) : (
+          <div className="w-full rounded-xl border bg-card shadow-sm overflow-hidden flex flex-col font-sans">
+            <div className="bg-[#1E1E1E] text-slate-200 px-4 py-2 border-b border-slate-700 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2">
+                <Code2 className="w-4 h-4 text-emerald-400" />
+                <span className="font-semibold text-slate-100">Code.gs — sendLeadToCRM</span>
+              </div>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={copyScript}
+                className="h-7 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700 text-white border-0 shadow-xs"
+              >
+                {copiedCode ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                {copiedCode ? "Copied!" : "Copy Script"}
+              </Button>
+            </div>
 
-          <div className="p-4 bg-[#141414] text-slate-200 font-mono text-xs overflow-x-auto overflow-y-auto max-h-[460px] border-t border-slate-800">
-            <pre className="text-slate-300 leading-relaxed whitespace-pre font-mono text-xs">
-              {googleAppsScriptCode}
-            </pre>
+            <div className="p-4 bg-[#141414] text-slate-200 font-mono text-xs overflow-x-auto overflow-y-auto max-h-[460px] border-t border-slate-800">
+              <pre className="text-slate-300 leading-relaxed whitespace-pre font-mono text-xs">
+                {googleAppsScriptCode}
+              </pre>
+            </div>
           </div>
-        </div>
+        )
       ),
     },
     {
       stepNumber: 5,
       title: "Save Project (Ctrl + S)",
-      shortTitle: "Save (Ctrl+S)",
+      shortTitle: "5. Save (Ctrl+S)",
       badge: "Step 5 of 10",
       image: "/images/google-sheets-step5.jpg",
       description:
@@ -335,7 +359,7 @@ function sendLeadToCRM(e) {
     {
       stepNumber: 6,
       title: "Apps Script → Triggers → Add Trigger",
-      shortTitle: "Triggers",
+      shortTitle: "6. Triggers",
       badge: "Step 6 of 10",
       image: "/images/google-sheets-step6.jpg",
       description:
@@ -348,7 +372,7 @@ function sendLeadToCRM(e) {
     {
       stepNumber: 7,
       title: "Configure Trigger Settings",
-      shortTitle: "Trigger Settings",
+      shortTitle: "7. Trigger Settings",
       badge: "Step 7 of 10",
       image: "/images/google-sheets-step7.jpg",
       description:
@@ -363,7 +387,7 @@ function sendLeadToCRM(e) {
     {
       stepNumber: 8,
       title: "Save Trigger & Allow Google Permissions",
-      shortTitle: "Permissions",
+      shortTitle: "8. Permissions",
       badge: "Step 8 of 10",
       image: "/images/google-sheets-step8.jpg",
       description:
@@ -377,7 +401,7 @@ function sendLeadToCRM(e) {
     {
       stepNumber: 9,
       title: "Add or Edit a Test Lead in Google Sheet",
-      shortTitle: "Test Lead",
+      shortTitle: "9. Test Lead",
       badge: "Step 9 of 10",
       image: "/images/google-sheets-step9.jpg",
       description:
@@ -390,7 +414,7 @@ function sendLeadToCRM(e) {
     {
       stepNumber: 10,
       title: "Verify in CRM Lead Pool",
-      shortTitle: "Verify CRM",
+      shortTitle: "10. Verify CRM",
       badge: "Step 10 of 10",
       image: "/images/google-sheets-step10.png",
       description:
@@ -462,11 +486,11 @@ function sendLeadToCRM(e) {
       {/* Main Body: Left Sidebar (Section-wise) + Right Content */}
       <div className="flex flex-col md:flex-row flex-1 divide-y md:divide-y-0 md:divide-x divide-border">
         {/* Left Sidebar: Section-wise Steps */}
-        <aside className="w-full md:w-48 lg:w-52 shrink-0 bg-muted/10 p-2.5 space-y-3 overflow-y-auto">
+        <aside className="w-full md:w-56 lg:w-60 shrink-0 bg-muted/10 p-3 sm:p-3.5 space-y-3.5 overflow-y-auto">
           {sections.map((section, sIdx) => {
             return (
-              <div key={sIdx} className="space-y-1">
-                <div className="px-2 text-[10px] font-bold tracking-wider uppercase text-muted-foreground/70">
+              <div key={sIdx} className="space-y-1.5">
+                <div className="px-1.5 text-[10px] font-bold tracking-wider uppercase text-muted-foreground/70">
                   <span>{section.title}</span>
                 </div>
 
@@ -474,6 +498,7 @@ function sendLeadToCRM(e) {
                   {section.stepIndices.map((idx) => {
                     const step = steps[idx];
                     const isActive = idx === currentStep;
+                    const cleanTitle = step.shortTitle.replace(/^\d+\.\s*/, "");
 
                     return (
                       <button
@@ -483,21 +508,21 @@ function sendLeadToCRM(e) {
                         className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 flex items-center gap-2 cursor-pointer border ${
                           isActive
                             ? "bg-black text-white dark:bg-white dark:text-black border-black dark:border-white shadow-xs font-semibold"
-                            : "bg-card/70 text-muted-foreground border-border/50 hover:bg-muted/70 hover:text-foreground"
+                            : "bg-card/70 hover:bg-muted/80 text-muted-foreground hover:text-foreground border-border/50"
                         }`}
                       >
                         <div
-                          className={`w-4.5 h-4.5 rounded-full flex items-center justify-center shrink-0 text-[10px] font-semibold ${
+                          className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[10px] ${
                             isActive
-                              ? "bg-white/20 dark:bg-black/20 text-white dark:text-black"
-                              : "bg-muted text-muted-foreground"
+                              ? "bg-white/20 dark:bg-black/20 text-white dark:text-black font-bold"
+                              : "bg-muted text-muted-foreground font-medium"
                           }`}
                         >
                           {step.stepNumber}
                         </div>
-                        <span className="truncate flex-1 leading-snug">{step.shortTitle}</span>
+                        <span className="truncate flex-1 leading-snug">{cleanTitle}</span>
                         {isActive && (
-                          <ChevronRight className="w-3 h-3 shrink-0 opacity-70" />
+                          <ChevronRight className="w-3.5 h-3.5 shrink-0 opacity-70" />
                         )}
                       </button>
                     );
@@ -506,6 +531,19 @@ function sendLeadToCRM(e) {
               </div>
             );
           })}
+
+          {/* Helper Note in Sidebar */}
+          <div className="pt-1">
+            <div className="p-2.5 rounded-lg bg-card/60 border border-border/60 text-[11px] space-y-1 text-muted-foreground">
+              <div className="font-semibold text-foreground flex items-center gap-1.5 text-[11px]">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <span>1-Time Setup</span>
+              </div>
+              <p className="leading-snug">
+                Once configured, Google Sheets triggers will automatically sync rows to CRM live.
+              </p>
+            </div>
+          </div>
         </aside>
 
         {/* Right Content Area */}
