@@ -5,6 +5,7 @@ export interface MachineScanStatus {
   machine_id: number;
   machine_name: string;
   sequence_no: number;
+  assigned?: number;
   total: number;
   scanned: number;
   pending: number;
@@ -12,6 +13,7 @@ export interface MachineScanStatus {
 }
 
 export interface ProjectScanStatus {
+  lead_id: number | null;
   project_id: number;
   project_name: string;
   project_status: string;
@@ -31,13 +33,15 @@ export interface TraceTraceDashboardResponse {
 
 export const getTraceTraceDashboard = async (
   vendorId: number,
-  status: string = "all"
+  status: string = "all",
+  scope: { lead_id?: number; project_id?: number } = {}
 ): Promise<TraceTraceDashboardResponse> => {
   const { data } = await apiClient.get(
     `/track-trace/dashboard/${vendorId}`,
     {
-      params: { status }
+      params: { status, ...scope }
     }
   );
+  if (!data.data) throw new Error(data.message || "Unable to load machine progress");
   return data.data;
 };
