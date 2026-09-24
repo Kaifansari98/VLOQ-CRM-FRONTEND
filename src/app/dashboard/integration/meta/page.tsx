@@ -33,16 +33,18 @@ export default function MetaIntegrationPage() {
 
   const [vendorToken, setVendorToken] = useState<string>("");
 
-  // Environment-aware Base URL (Google Apps Script runs in the cloud, so local dev uses public ngrok tunnel)
-  const apiBaseUrl =
-    typeof window !== "undefined"
-      ? window.location.origin.includes("localhost") ||
-        window.location.origin.includes("127.0.0.1")
-        ? "https://cameo-unhealthy-breezy.ngrok-free.dev"
-        : window.location.origin.includes("staging")
-        ? "https://staging-api.furnixcrm.com"
-        : "https://api.furnixcrm.com"
-      : "https://staging-api.furnixcrm.com";
+  // Environment-aware Base URL: staging uses staging-api, production continues using api
+  const env = (process.env.NEXT_PUBLIC_ENVIRONMENT ?? "").toUpperCase();
+  const isProduction =
+    env === "PRODUCTION" ||
+    (typeof window !== "undefined" &&
+      (window.location.hostname === "furnixcrm.com" ||
+       window.location.hostname === "app.furnixcrm.com" ||
+       window.location.origin.toLowerCase().includes("production")));
+
+  const apiBaseUrl = isProduction
+    ? "https://api.furnixcrm.com"
+    : "https://staging-api.furnixcrm.com";
 
   const genericWebhookUrl = vendorToken
     ? `${apiBaseUrl}/webhook?vendor_token=${vendorToken}`

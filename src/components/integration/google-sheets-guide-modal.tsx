@@ -87,23 +87,26 @@ export function GoogleSheetsGuideSection({
   const activeWebhookUrl = React.useMemo(() => {
     if (!resolvedToken) return "";
 
-    const isLocal =
-      typeof window !== "undefined" &&
-      (window.location.origin.includes("localhost") ||
-        window.location.origin.includes("127.0.0.1"));
-    const isStaging =
-      typeof window !== "undefined" &&
-      window.location.origin.includes("staging");
+    // Determine current environment: staging generates staging-api, production continues using api
+    const env = (process.env.NEXT_PUBLIC_ENVIRONMENT ?? "").toUpperCase();
+    const isProduction =
+      env === "PRODUCTION" ||
+      (typeof window !== "undefined" &&
+        (window.location.hostname === "furnixcrm.com" ||
+         window.location.hostname === "app.furnixcrm.com" ||
+         window.location.origin.toLowerCase().includes("production")));
 
-    // Local dev uses ngrok public URL because Google Apps Script executes on Google cloud servers
-    const baseUrl = isLocal
-      ? "https://cameo-unhealthy-breezy.ngrok-free.dev"
-      : isStaging
-      ? "https://staging-api.furnixcrm.com"
-      : "https://api.furnixcrm.com";
+    // Respect explicit staging-api url if provided in webhookUrl prop
+    if (webhookUrl && webhookUrl.includes("staging-api.furnixcrm.com")) {
+      return `https://staging-api.furnixcrm.com/webhook?vendor_token=${resolvedToken}`;
+    }
+
+    const baseUrl = isProduction
+      ? "https://api.furnixcrm.com"
+      : "https://staging-api.furnixcrm.com";
 
     return `${baseUrl}/webhook?vendor_token=${resolvedToken}`;
-  }, [resolvedToken]);
+  }, [resolvedToken, webhookUrl]);
 
   const googleAppsScriptCode = `/**
  * Furnix CRM - Google Sheets Automated Lead Ingestion
