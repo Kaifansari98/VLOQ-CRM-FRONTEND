@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, Factory, RefreshCw, Search } from "lucide-react";
+import { Activity, Factory, RefreshCw, Search, AlertTriangle, Clock, CheckCircle2 } from "lucide-react";
 import { getTraceTraceDashboard } from "@/api/track-trace/track-trace-dashboard.api";
 import { Button } from "@/components/ui/button";
+import DefectsTable from "@/components/track-trace/DefectsTable";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 
 export default function ProductionMachineMatrix({
@@ -15,6 +18,7 @@ export default function ProductionMachineMatrix({
   leadId: number;
 }) {
   const [search, setSearch] = useState("");
+  const [defectsOpen, setDefectsOpen] = useState(false);
   const { data, isPending, isError, isFetching, refetch, dataUpdatedAt } = useQuery({
     queryKey: ["production-machine-matrix", "lead-scoped", vendorId, leadId],
     queryFn: () => getTraceTraceDashboard(vendorId!, "all", { lead_id: leadId }),
@@ -82,7 +86,35 @@ export default function ProductionMachineMatrix({
               </div>
             ))}
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-3 p-5">
+          <div className="flex flex-wrap items-center gap-3 p-5">
+            <Button
+              type="button"
+              className="shrink-0 gap-2"
+              aria-haspopup="dialog"
+              aria-expanded={defectsOpen}
+              onClick={() => setDefectsOpen(true)}
+            >
+              <AlertTriangle className="size-4" />
+              View defects
+            </Button>
+            <Dialog open={defectsOpen} onOpenChange={setDefectsOpen}>
+              <DialogContent className="flex max-h-[90vh] flex-col sm:max-w-[95vw] lg:max-w-6xl">
+                <DialogHeader>
+                  <DialogTitle>Project defects</DialogTitle>
+                  <DialogDescription>Pending and resolved defects for this project, including defect and resolution photos.</DialogDescription>
+                </DialogHeader>
+                <div className="min-h-0 overflow-y-auto">
+                  <Tabs defaultValue="pending" className="space-y-4">
+                    <TabsList>
+                      <TabsTrigger value="pending"><Clock className="mr-2 size-4" />Pending</TabsTrigger>
+                      <TabsTrigger value="resolved"><CheckCircle2 className="mr-2 size-4" />Resolved</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="pending"><DefectsTable vendorId={vendorId} leadId={leadId} type="pending" /></TabsContent>
+                    <TabsContent value="resolved"><DefectsTable vendorId={vendorId} leadId={leadId} type="resolved" /></TabsContent>
+                  </Tabs>
+                </div>
+              </DialogContent>
+            </Dialog>
             <div className="relative w-full sm:max-w-xs">
               <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
               <Input aria-label="Search machines" placeholder="Search machines…" className="pl-9" value={search} onChange={(event) => setSearch(event.target.value)} />
