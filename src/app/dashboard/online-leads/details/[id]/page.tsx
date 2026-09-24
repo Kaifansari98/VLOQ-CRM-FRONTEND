@@ -791,7 +791,32 @@ export default function OnlineLeadDetailsPage() {
     }
 
     // Handle multiline text (\n\n separated blocks)
-    const blocks = cleanText.split(/\n\s*\n/);
+    const rawBlocks = cleanText.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
+
+    // Deduplicate questionnaire blocks so that questions are only shown once (latest update wins)
+    const deduplicatedBlocks: string[] = [];
+    const questionMap = new Map<string, string>();
+    const getQuestionKey = (header: string) => {
+      const norm = header.toLowerCase().replace(/[\s_\/|\-?.:*•]+/g, "");
+      if (norm.includes("whereisyourproject") || norm.includes("projectlocated")) return "project_location";
+      if (norm.includes("modularsolution") || norm.includes("whatmodular")) return "modular_solution";
+      if (norm.includes("whenneedready") || norm.includes("whendoyouneed") || norm.includes("kitchenwardrobe")) return "when_need_ready";
+      if (norm.includes("showroom") || norm.includes("shambhala")) return "preferred_showroom";
+      return norm;
+    };
+
+    for (const block of rawBlocks) {
+      const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
+      const headerLine = lines[0] || "";
+      const isQuestion = headerLine.includes("•") || headerLine.endsWith("?") || headerLine.startsWith("**");
+      if (isQuestion) {
+        const key = getQuestionKey(headerLine);
+        questionMap.set(key, block);
+      } else {
+        deduplicatedBlocks.push(block);
+      }
+    }
+    const blocks = [...deduplicatedBlocks, ...Array.from(questionMap.values())];
     return (
       <div className="space-y-4">
         {blocks.map((block, bIdx) => {

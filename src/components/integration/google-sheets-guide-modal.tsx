@@ -146,7 +146,17 @@ function sendLeadToCRM(e) {
       return header.toString().toLowerCase().replace(/[\\s_\\/|\\-?]+/g, "").trim();
     }
 
-    // 5. getValue() helper function (exact normalized matching)
+    // 5. Collect ALL sheet row columns dynamically
+    var rowData = {};
+    for (var i = 0; i < headers.length; i++) {
+      var headerKey = headers[i] ? headers[i].toString().trim() : "";
+      if (headerKey) {
+        var cellVal = rowValues[i];
+        rowData[headerKey] = cellVal !== null && cellVal !== undefined ? String(cellVal).trim() : "";
+      }
+    }
+
+    // 6. getValue() helper function (exact normalized matching)
     function getValue(possibleMatches) {
       for (var i = 0; i < headers.length; i++) {
         var normalizedColHeader = normalizeHeader(headers[i]);
@@ -161,70 +171,32 @@ function sendLeadToCRM(e) {
       return "";
     }
 
-    // 6. Extract lead fields
-    const name = getValue(["Customer Name", "Full Name", "Lead Name", "Name", "Client Name"]);
-    const phone = getValue(["Phone Number", "Mobile Number", "Contact Number", "Phone", "Mobile", "Contact"]);
+    // 7. Extract lead fields with fallbacks
+    const name = getValue(["Customer Name", "Full Name", "full_name", "Lead Name", "Name", "Client Name"]);
+    const phone = getValue(["Phone Number", "phone_number", "Mobile Number", "Contact Number", "Phone", "Mobile", "Contact"]);
     const email = getValue(["Email ID", "Email Address", "Email", "Mail"]);
     const city = getValue(["City", "Project City", "Location", "Town"]);
     const remark = getValue(["Design Remarks", "Remarks", "Remark", "Notes", "Comments", "Requirement Details", "Description"]);
 
-    // 7. Extract exact 4 survey fields
-    const modularSolution = getValue([
-      "what_modular_solution_are_you_interested_in?",
-      "what modular solution are you interested in?",
-      "what modular solution are you interested in",
-      "what_modular_solution_are_you_interested_in",
-      "What modular solution are you looking for",
-      "Modular Solution"
-    ]);
-
-    const whenNeedReady = getValue([
-      "when_do_you_need_your_modular_kitchen/wardrobe_ready?",
-      "when do you need your modular kitchen/wardrobe ready?",
-      "when do you need your modular kitchen/wardrobe ready",
-      "when_do_you_need_your_modular_kitchen_wardrobe_ready",
-      "When do you need your kitchen/wardrobe ready",
-      "When need ready"
-    ]);
-
-    const preferredShowroom = getValue([
-      "which_shambhala_showroom_would_you_prefer_to_visit?",
-      "which shambhala showroom would you prefer to visit?",
-      "which shambhala showroom would you prefer to visit",
-      "which_shambhala_showroom_would_you_prefer_to_visit",
-      "which showroom would you prefer to visit",
-      "Preferred Showroom"
-    ]);
-
-    const projectLocation = getValue([
-      "where_is_your_project_located?",
-      "where is your project located?",
-      "where is your project located",
-      "where_is_your_project_located",
-      "Project Location",
-      "Location"
-    ]);
+    const finalName = name || rowData["full_name"] || rowData["Full Name"] || rowData["name"] || rowData["Name"];
+    const finalPhone = phone || rowData["phone_number"] || rowData["Phone Number"] || rowData["contact"] || rowData["Contact"];
 
     // Validation: Name + Phone required
-    if (!name || !phone) {
+    if (!finalName || !finalPhone) {
       Logger.log("Row " + editedRow + " is missing required Name or Phone. Skipping dispatch.");
       return;
     }
 
-    // 8. Payload construction
-    const payload = {
-      name: name,
-      contact: phone,
-      email: email,
-      city: city || projectLocation,
+    // 8. Payload construction - dynamically sends all sheet columns
+    // CRM automatically excludes static columns from Design Remarks and stores all dynamic questions!
+    const payload = Object.assign({}, rowData, {
+      name: finalName,
+      contact: finalPhone,
+      email: email || rowData["email"] || rowData["Email"] || "",
+      city: city || rowData["city"] || rowData["where_is_your_project_located?"] || "",
       source: "Google Sheet",
-      product_types: modularSolution ? [modularSolution] : [],
-      remark: remark || "",
-      "what_modular_solution_are_you_interested_in?": modularSolution,
-      "when_do_you_need_your_modular_kitchen/wardrobe_ready?": whenNeedReady,
-      "which_shambhala_showroom_would_you_prefer_to_visit?": preferredShowroom,
-      "where_is_your_project_located?": projectLocation
-    };
+      remark: remark || ""
+    });
 
     // 9. HTTP Options
     const options = {
