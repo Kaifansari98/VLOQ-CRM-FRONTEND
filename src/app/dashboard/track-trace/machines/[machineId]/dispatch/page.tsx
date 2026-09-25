@@ -52,6 +52,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -178,6 +185,9 @@ export default function DispatchScannerPage() {
     refetch: refetchBoxes,
   } = usePackagingBoxes(vendorId, projectId, Boolean(hasValidProjectId));
 
+  const packagingLocations = packagingContext?.locations ?? [];
+  const locationSelectionRequired = packagingLocations.length > 0;
+
   // Local state
   const [scanValue, setScanValue] = useState("");
   const [feedItems, setFeedItems] = useState<DispatchFeedItem[]>([]);
@@ -185,6 +195,10 @@ export default function DispatchScannerPage() {
   const [manualScanValue, setManualScanValue] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
+  const [selectedLocationName, setSelectedLocationName] = useState<
+    string | null | undefined
+  >();
+  const [isLocationSelectorOpen, setIsLocationSelectorOpen] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const manualScanInputRef = useRef<HTMLInputElement>(null);
@@ -205,7 +219,7 @@ export default function DispatchScannerPage() {
 
   // Autofocus keep-alive for barcode guns
   useEffect(() => {
-    if (isManualScanOpen) return;
+    if (isManualScanOpen || isLocationSelectorOpen) return;
 
     const focusScannerInput = () => {
       const input = inputRef.current;
@@ -214,7 +228,8 @@ export default function DispatchScannerPage() {
         input &&
         !input.disabled &&
         document.activeElement !== input &&
-        !isManualScanOpen
+        !isManualScanOpen &&
+        !isLocationSelectorOpen
       ) {
         input.focus({ preventScroll: true });
       }
@@ -230,7 +245,7 @@ export default function DispatchScannerPage() {
       window.removeEventListener("focus", focusScannerInput);
       document.removeEventListener("visibilitychange", focusScannerInput);
     };
-  }, [isManualScanOpen]);
+  }, [isLocationSelectorOpen, isManualScanOpen]);
 
   const clearAutoSubmitTimer = useCallback(() => {
     if (autoSubmitTimerRef.current) {
@@ -246,6 +261,14 @@ export default function DispatchScannerPage() {
     async (code: string) => {
       const trimmed = code.trim();
       if (!trimmed || isProcessing) return;
+
+      if (locationSelectionRequired && !selectedLocationName) {
+        toastManager.add({
+          title: "Select a location before scanning",
+          type: "warning",
+        });
+        return;
+      }
 
       clearAutoSubmitTimer();
       setScanValue("");
@@ -395,11 +418,12 @@ export default function DispatchScannerPage() {
 
       try {
         setIsProcessing(true);
-        await markBoxFactoryOutApi({
+        const factoryOutResult = await markBoxFactoryOutApi({
           boxId: targetBox.id,
           projectId,
           vendorId,
           userId,
+          targetLocation: selectedLocationName,
         });
 
         // Mark as factory out in local box cache
@@ -410,18 +434,18 @@ export default function DispatchScannerPage() {
             id: `${Date.now()}-${Math.random()}`,
             boxId: targetBox!.id,
             boxName: targetBox!.box_name,
-            locationName: boxLocation,
+            locationName: selectedLocationName || boxLocation,
             barcodeValue: trimmed,
             boxDetails: boxDetailsStr,
             status: "success",
-            message: "Box marked as Factory Out",
+            message: factoryOutResult?.message || "Box marked as Factory Out",
             scannedAt: timeStr,
           },
           ...prev,
         ]);
 
         toastManager.add({
-          title: `Box "${targetBox.box_name}" dispatched successfully!`,
+          title: factoryOutResult?.message || `Box "${targetBox.box_name}" dispatched successfully!`,
           type: "success",
         });
 
@@ -430,6 +454,7 @@ export default function DispatchScannerPage() {
         const errMsg =
           error?.response?.data?.message ||
           error?.response?.data?.error ||
+          error?.message ||
           "Failed to dispatch box";
 
         setFeedItems((prev) => [
@@ -456,7 +481,17 @@ export default function DispatchScannerPage() {
         window.setTimeout(() => inputRef.current?.focus(), 0);
       }
     },
-    [clearAutoSubmitTimer, isProcessing, packagingBoxes, projectId, refetchBoxes, userId, vendorId],
+    [
+      clearAutoSubmitTimer,
+      isProcessing,
+      packagingBoxes,
+      projectId,
+      refetchBoxes,
+      selectedLocationName,
+      locationSelectionRequired,
+      userId,
+      vendorId,
+    ],
   );
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -556,6 +591,59 @@ export default function DispatchScannerPage() {
           </Button>
 
           {/* ── 1. Top HUD Card: Scan QR code (Matching user screenshot) ── */}
+          {packagingLocations.length > 0 && (
+            <div className="flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-2xs sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="rounded-lg bg-primary/10 p-2 text-primary">
+                  <MapPin className="size-4" />
+                </div>
+                <div>
+                  <Label htmlFor="dispatch-location" className="font-semibold text-foreground">
+                    Location Filter
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Optionally dispatch boxes from a specific project location.
+                  </p>
+                </div>
+              </div>
+              <Select
+                value={
+                  selectedLocationName === undefined
+                    ? undefined
+                    : `location:${selectedLocationName}`
+                }
+                onValueChange={(value) => {
+                  clearAutoSubmitTimer();
+                  setScanValue("");
+                  setSelectedLocationName(
+                    value.slice("location:".length),
+                  );
+                  window.setTimeout(() => inputRef.current?.focus(), 0);
+                }}
+                onOpenChange={(open) => {
+                  setIsLocationSelectorOpen(open);
+                  if (open && document.fullscreenElement) {
+                    void document.exitFullscreen().catch(() => undefined);
+                  }
+                }}
+              >
+                <SelectTrigger id="dispatch-location" className="h-10 w-full rounded-xl sm:w-72">
+                  <SelectValue placeholder="Select location or continue without" />
+                </SelectTrigger>
+                <SelectContent>
+                  {packagingLocations.map((location) => (
+                    <SelectItem
+                      key={location.location_name}
+                      value={`location:${location.location_name}`}
+                    >
+                      {location.location_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <section className="relative flex flex-col justify-between overflow-hidden rounded-2xl border bg-card p-4 sm:p-6 shadow-xs">
             <div>
               {/* Header */}
@@ -609,13 +697,17 @@ export default function DispatchScannerPage() {
                       ref={inputRef}
                       value={scanValue}
                       onChange={(event) => handleScanChange(event.target.value)}
-                      placeholder="Scan QR code or type barcode..."
+                      placeholder={
+                        locationSelectionRequired && !selectedLocationName
+                          ? "Select a location before scanning..."
+                          : "Scan QR code or type barcode..."
+                      }
                       className="flex h-12 sm:h-13 w-full min-w-0 rounded-xl border border-input bg-muted/20 py-2 pl-11 pr-10 font-mono text-sm sm:text-base font-semibold tracking-wide shadow-2xs outline-none transition-all placeholder:text-muted-foreground/60 placeholder:font-sans placeholder:text-xs sm:placeholder:text-sm placeholder:font-normal focus-visible:border-primary focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-primary/20 dark:bg-input/20"
                       autoComplete="off"
                       autoCapitalize="off"
                       spellCheck={false}
                       aria-label="Scanned QR code value"
-                      disabled={isProcessing}
+                      disabled={isProcessing || (locationSelectionRequired && !selectedLocationName)}
                     />
                     {scanValue && (
                       <button
@@ -636,7 +728,11 @@ export default function DispatchScannerPage() {
                     <Button
                       type="submit"
                       className="h-12 sm:h-13 flex-1 sm:flex-initial gap-2 px-5 sm:px-6 font-semibold shadow-xs"
-                      disabled={!scanValue.trim() || isProcessing}
+                      disabled={
+                        !scanValue.trim() ||
+                        isProcessing ||
+                        (locationSelectionRequired && !selectedLocationName)
+                      }
                     >
                       {isProcessing ? (
                         <Loader2 className="size-4 animate-spin" />
@@ -658,7 +754,7 @@ export default function DispatchScannerPage() {
                           0,
                         );
                       }}
-                      disabled={isProcessing}
+                      disabled={isProcessing || (locationSelectionRequired && !selectedLocationName)}
                     >
                       <Keyboard className="size-4 text-muted-foreground" />
                       <span>Manual Scan</span>

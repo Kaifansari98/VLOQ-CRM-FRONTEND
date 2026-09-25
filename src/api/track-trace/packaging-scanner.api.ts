@@ -47,6 +47,7 @@ export interface PackagingBox {
   box_position?: number | null;
   boxes_per_product?: number | null;
   is_auto_created?: boolean;
+  location_name?: string | null;
 }
 
 export interface CreatePackagingBoxPayload {
