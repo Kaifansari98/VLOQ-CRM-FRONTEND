@@ -86,7 +86,7 @@ import {
   usePostProductionCompleteness,
   useUpdateExpectedOrderLoginReadyDate,
 } from "@/api/production/production-api";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useCheckPostProductionReady } from "@/api/production/production-api";
@@ -102,7 +102,6 @@ import LeadTasksPopover from "@/components/tasks/LeadTasksPopover";
 import ProjectDocumentsTimeline from "@/components/installation/final-handover/ProjectDocumentsTimeline";
 import { useLeadAccessControl } from "@/hooks/useLeadAccessControl";
 import { useBlockLead, useUnblockLead } from "@/hooks/useLeadsQueries";
-import { fetchLeadLogs } from "@/api/leads";
 import BaseModal from "@/components/utils/baseModal";
 import TextAreaInput from "@/components/origin-text-area";
 export default function ProductionLeadDetails() {
@@ -144,7 +143,6 @@ export default function ProductionLeadDetails() {
     string | undefined
   >(undefined);
   const [masterErdRemark, setMasterErdRemark] = useState("");
-  const [factoryErdLocked, setFactoryErdLocked] = useState(false);
 
   const updateStatusMutation = useUpdateActivityStatus();
   const queryClient = useQueryClient();
@@ -182,22 +180,7 @@ export default function ProductionLeadDetails() {
     Number(leadIdNum),
     validInstanceId ?? undefined,
   );
-  const { data: masterErdChangeLogData } = useQuery({
-    queryKey: ["master-erd-change-log", vendorId, leadIdNum],
-    queryFn: () =>
-      fetchLeadLogs({
-        leadId: leadIdNum,
-        vendorId: vendorId!,
-        limit: 1,
-        historyType: "Lead",
-        search: validInstanceId
-          ? "Instance ERD changed to"
-          : "Expected Order Login ready date changed to",
-      }),
-    enabled: !!vendorId && !!leadIdNum,
-    staleTime: 60 * 1000,
-    refetchOnWindowFocus: false,
-  });
+
 
 
 
@@ -493,21 +476,7 @@ export default function ProductionLeadDetails() {
         : null;
     const isDisplayedErdChange =
       !!existingDisplayedErd && existingDisplayedErd !== newDate;
-    const isFactoryLockedForDisplayedErd =
-      normalizedUserType === "factory" &&
-      !!existingDisplayedErd &&
-      (factoryErdLocked || hasMasterErdBeenChangedOnce);
-
-    if (isFactoryLockedForDisplayedErd) {
-      toastManager.add({
-        title:
-          "Factory can change this Expected Ready Date only once after setting it.",
-        type: "error",
-      });
-      return;
-    }
-
-    if (isDisplayedErdChange && !isSuperAdmin) {
+    if (normalizedUserType === "factory" || (isDisplayedErdChange && !isSuperAdmin)) {
       setPendingMasterErdDate(newDate);
       setShowMasterErdRemarkModal(true);
       return;
@@ -541,9 +510,6 @@ export default function ProductionLeadDetails() {
           validInstanceId ?? undefined,
         ],
       });
-      if (normalizedUserType === "factory" && isDisplayedErdChange) {
-        setFactoryErdLocked(true);
-      }
     } catch (err: any) {
       toastManager.add({
         title: err?.message || "Failed to update expected order login date",
@@ -655,20 +621,11 @@ export default function ProductionLeadDetails() {
     userType,
   });
 
-  const hasMasterErdBeenChangedOnce =
-    (masterErdChangeLogData?.data?.length ?? 0) > 0;
   const displayedErdValue = validInstanceId
     ? currentInstance?.production_erd_date
     : lead?.expected_order_login_ready_date;
-  const isMasterErdLocked =
-    normalizedUserType === "factory" &&
-    !!displayedErdValue &&
-    (factoryErdLocked || hasMasterErdBeenChangedOnce);
-
   const disabledReason = shouldDisableBlockedActions
     ? blockedTooltip
-    : isMasterErdLocked
-      ? "Master ERD can only be changed once after setting. Please contact Super Admin for further changes."
     : !canUpdateExpectedDate
       ? "You do not have permission to update this date."
       : completeness?.any_exists
@@ -1469,12 +1426,6 @@ export default function ProductionLeadDetails() {
                       validInstanceId ?? undefined,
                     ],
                   });
-                  queryClient.invalidateQueries({
-                    queryKey: ["master-erd-change-log", vendorId, leadIdNum],
-                  });
-                  if (normalizedUserType === "factory") {
-                    setFactoryErdLocked(true);
-                  }
                   setShowMasterErdRemarkModal(false);
                   setPendingMasterErdDate(undefined);
                   setMasterErdRemark("");
