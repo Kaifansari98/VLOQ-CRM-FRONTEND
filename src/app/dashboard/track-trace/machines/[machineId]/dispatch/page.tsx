@@ -628,7 +628,7 @@ export default function DispatchScannerPage() {
                 }}
               >
                 <SelectTrigger id="dispatch-location" className="h-10 w-full rounded-xl sm:w-72">
-                  <SelectValue placeholder="Select location or continue without" />
+                  <SelectValue placeholder="Select location " />
                 </SelectTrigger>
                 <SelectContent>
                   {packagingLocations.map((location) => (
