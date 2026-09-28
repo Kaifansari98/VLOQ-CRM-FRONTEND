@@ -297,10 +297,14 @@ const defaultForm = {
 
 interface UserMastersTableProps {
   vendorIdOverride?: number;
+  userTypeFilter?: string;
+  entityName?: string;
 }
 
 export default function UserMastersTable({
   vendorIdOverride,
+  userTypeFilter,
+  entityName = "User",
 }: UserMastersTableProps) {
   const vendorId =
     vendorIdOverride ?? useAppSelector((state) => state.auth.user?.vendor_id);
@@ -343,6 +347,7 @@ export default function UserMastersTable({
       limit: pagination.pageSize,
       search: globalFilter,
       franchise_id: franchiseFilter,
+      user_type: userTypeFilter,
     },
     vendorId,
   );
@@ -377,10 +382,20 @@ export default function UserMastersTable({
   const tableData = React.useMemo<UserMasterRow[]>(
     () =>
       (data?.data ?? [])
-        .filter(
-          (item) =>
-            item.user_type?.user_type?.trim().toLowerCase() !== "master-admin",
-        )
+        .filter((item) => {
+          if (
+            item.user_type?.user_type?.trim().toLowerCase() === "master-admin"
+          ) {
+            return false;
+          }
+          if (userTypeFilter) {
+            return (
+              item.user_type?.user_type?.trim().toLowerCase() ===
+              userTypeFilter.trim().toLowerCase()
+            );
+          }
+          return true;
+        })
         .map((item, index) => ({
           srNo: pagination.pageIndex * pagination.pageSize + index + 1,
           id: item.id,
@@ -398,7 +413,7 @@ export default function UserMastersTable({
                 item.user_type?.user_type?.trim().toLowerCase(),
             )?.id ?? null,
         })),
-    [data, userTypesData, pagination.pageIndex, pagination.pageSize],
+    [data, userTypesData, pagination.pageIndex, pagination.pageSize, userTypeFilter],
   );
 
   const totalPages = data?.pagination?.totalPages ?? 1;
@@ -449,14 +464,21 @@ export default function UserMastersTable({
   const userTypeOptions = React.useMemo(
     () =>
       (userTypesData?.data ?? [])
-        .filter(
-          (ut) => ut.user_type?.trim().toLowerCase() !== "master-admin",
-        )
+        .filter((ut) => {
+          if (ut.user_type?.trim().toLowerCase() === "master-admin") return false;
+          if (userTypeFilter) {
+            return (
+              ut.user_type?.trim().toLowerCase() ===
+              userTypeFilter.trim().toLowerCase()
+            );
+          }
+          return true;
+        })
         .map((ut) => ({
           id: ut.id,
           label: formatUserTypeLabel(ut.user_type),
         })),
-    [userTypesData?.data],
+    [userTypesData?.data, userTypeFilter],
   );
   const serverSelectedPrivilegeIds = React.useMemo(
     () =>
@@ -503,8 +525,12 @@ export default function UserMastersTable({
   };
 
   const resetForm = () => {
-    setForm(defaultForm);
-    setOriginalForm(defaultForm);
+    const defaultUserTypeId =
+      userTypeFilter && userTypeOptions.length > 0
+        ? String(userTypeOptions[0].id)
+        : "";
+    setForm({ ...defaultForm, user_type_id: defaultUserTypeId });
+    setOriginalForm({ ...defaultForm, user_type_id: defaultUserTypeId });
     setShowPassword(false);
     setModalMode("create");
     setEditingUserId(null);
@@ -516,6 +542,12 @@ export default function UserMastersTable({
     setSelectedPrivilegeIds([]);
     setPrivilegeSearch("");
   };
+
+  React.useEffect(() => {
+    if (modalMode === "create" && userTypeFilter && userTypeOptions.length > 0 && !form.user_type_id) {
+      setForm((f) => ({ ...f, user_type_id: String(userTypeOptions[0].id) }));
+    }
+  }, [modalMode, userTypeFilter, userTypeOptions, form.user_type_id]);
 
   const isEditingCustomUser =
     modalMode === "edit" && editingUserType?.toLowerCase() === "custom";
@@ -651,7 +683,7 @@ export default function UserMastersTable({
                   setGlobalFilter(e.target.value);
                   setPagination((prev) => ({ ...prev, pageIndex: 0 }));
                 }}
-                placeholder="Search users..."
+                placeholder={`Search ${entityName.toLowerCase()}s...`}
                 className="h-9 w-full sm:max-w-md"
               />
               <div className="flex items-center justify-between gap-2 w-full sm:w-auto">
@@ -664,31 +696,37 @@ export default function UserMastersTable({
                   franchises={franchisesData}
                 />
                 <Button
-                  onClick={() => setOpenCreateModal(true)}
+                  onClick={() => {
+                    resetForm();
+                    setOpenCreateModal(true);
+                  }}
                   className="sm:hidden"
                 >
                   <Plus className="mr-2 h-4 w-4" />
-                  Create User
+                  Create {entityName}
                 </Button>
               </div>
             </div>
             <Button
-              onClick={() => setOpenCreateModal(true)}
+              onClick={() => {
+                resetForm();
+                setOpenCreateModal(true);
+              }}
               className="hidden sm:flex"
             >
               <Plus className="mr-2 h-4 w-4" />
-              Create User
+              Create {entityName}
             </Button>
           </div>
 
           {isLoading ? (
             <div className="rounded-lg border bg-background p-6 text-sm text-muted-foreground">
-              Loading users...
+              Loading {entityName.toLowerCase()}s...
             </div>
           ) : isError ? (
             <div className="rounded-lg border bg-background p-6 text-sm text-destructive">
               {(error as any)?.response?.data?.message ||
-                "Failed to load users."}
+                `Failed to load ${entityName.toLowerCase()}s.`}
             </div>
           ) : (
             <div className="select-none">
@@ -720,12 +758,12 @@ export default function UserMastersTable({
             </div>
             <div className="flex flex-col">
               <DialogTitle className="text-base font-semibold leading-tight">
-                {modalMode === "edit" ? "Edit User" : "Create User"}
+                {modalMode === "edit" ? `Edit ${entityName}` : `Create ${entityName}`}
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground leading-tight mt-0.5">
                 {modalMode === "edit"
-                  ? "Update the details for this user."
-                  : "Add a new user for this vendor."}
+                  ? `Update the details for this ${entityName.toLowerCase()}.`
+                  : `Add a new ${entityName.toLowerCase()} for this vendor.`}
               </DialogDescription>
             </div>
           </div>

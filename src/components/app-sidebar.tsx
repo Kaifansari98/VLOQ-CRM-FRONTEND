@@ -434,6 +434,23 @@ const data = {
       ],
     },
   ],
+  hrmsMastersNav: [
+    {
+      title: "HRMS Masters",
+      url: "#",
+      icon: Users,
+      items: [
+        {
+          title: "Field Masters",
+          url: "/dashboard/masters-management/hrms-masters/field-masters",
+        },
+        {
+          title: "Employee Master",
+          url: "/dashboard/masters-management/hrms-masters/employee-master",
+        },
+      ],
+    },
+  ],
   integrationNav: [
     {
       title: "Meta",
@@ -497,6 +514,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const isOnlineLeadFeatureEnabled =
     user?.vendor?.is_online_lead_feature_enabled === true;
   const isScanPackEnabled = user?.vendor?.is_scanpack_enabled === true;
+  const isHrmsMasterEnabled =
+    user?.vendor?.is_hrms_master_enabled === true ||
+    (user as any)?.vendorMaster?.is_hrms_master_enabled === true;
   const handlesLargeScaleProjects =
     user?.vendor?.handlesLargeScaleProjects === true;
   const canSeeOverallLeads =
@@ -1027,17 +1047,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       : [];
 
     const finalMastersItems = isSuperAdmin && isCrmEnabled
-      ? data.mastersNav.map((section) => ({
-        ...section,
-        items:
-          environment === "PRODUCTION"
-            ? section.items.filter((item) =>
-              item.title === "User Master"
-                ? isCustomUserTypeOnlyVendor
-                : true,
-            )
-            : section.items,
-      }))
+      ? [
+          ...data.mastersNav.map((section) => ({
+            ...section,
+            items:
+              environment === "PRODUCTION"
+                ? section.items.filter((item) =>
+                  item.title === "User Master"
+                    ? isCustomUserTypeOnlyVendor
+                    : true,
+                )
+                : section.items,
+          })),
+          ...(isHrmsMasterEnabled ? data.hrmsMastersNav : []),
+        ]
       : [];
 
     const finalIntegrationItems =
@@ -1086,6 +1109,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     isTrackTraceEnabled,
     isOnlineLeadFeatureEnabled,
     isScanPackEnabled,
+    isHrmsMasterEnabled,
     customPrivilegeCodes,
     isActiveFranchiseB2b,
     handlesLargeScaleProjects,

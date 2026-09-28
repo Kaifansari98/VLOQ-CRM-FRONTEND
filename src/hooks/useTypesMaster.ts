@@ -161,6 +161,7 @@ export const useUsersForMaster = (params: {
   limit: number;
   search?: string;
   franchise_id?: number;
+  user_type?: string;
 }, vendorIdOverride?: number) => {
   const vendorId = useResolvedVendorId(vendorIdOverride);
   return useQuery({
@@ -169,6 +170,7 @@ export const useUsersForMaster = (params: {
       params.limit,
       params.search ?? "",
       params.franchise_id ?? 0,
+      params.user_type ?? "",
     ]),
     queryFn: () => fetchUsersForMaster(vendorId!, params),
     enabled: !!vendorId,

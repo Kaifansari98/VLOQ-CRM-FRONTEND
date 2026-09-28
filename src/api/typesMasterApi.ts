@@ -1232,7 +1232,7 @@ export const fetchCompanyVendorsForMaster = async (vendorId: number, isInventory
 
 export const fetchUsersForMaster = async (
   vendorId: number,
-  params: { page: number; limit: number; search?: string; franchise_id?: number },
+  params: { page: number; limit: number; search?: string; franchise_id?: number; user_type?: string },
 ) => {
   const res = await apiClient.get<UserMasterResponse>(`/users/vendor/${vendorId}`, {
     params: {
@@ -1240,6 +1240,7 @@ export const fetchUsersForMaster = async (
       limit: params.limit,
       search: params.search ?? "",
       ...(params.franchise_id ? { franchise_id: params.franchise_id } : {}),
+      ...(params.user_type ? { user_type: params.user_type } : {}),
     },
   });
   return {
