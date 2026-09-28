@@ -564,6 +564,15 @@ export default function PreProductionFilesSection({
           </div>
         )}
 
+        {!canUploadPreProductionFiles && normalizedRemark.trim() && (
+          <div className="p-6 border-b space-y-2">
+            <p className="text-sm font-semibold tracking-tight">Remark</p>
+            <p className="text-sm whitespace-pre-wrap break-words rounded-lg bg-muted/20 p-3">
+              {normalizedRemark}
+            </p>
+          </div>
+        )}
+
         {/* -------------------------------- FILE LIST -------------------------------- */}
         <div className="p-6">
           <div className="flex items-center justify-between mb-3">
