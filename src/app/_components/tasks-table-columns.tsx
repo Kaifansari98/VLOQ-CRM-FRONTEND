@@ -9,7 +9,7 @@ import { parsePhoneNumberFromString } from "libphonenumber-js";
 import CustomeTooltip from "@/components/custom-tooltip";
 import { useRouter } from "next/navigation";
 import RemarkTooltip from "@/components/origin-tooltip";
-import { MapPin } from "lucide-react";
+import { MapPin, Zap, Ban } from "lucide-react";
 import {
   sanitizeRemark,
   siteMapLinkSort,
@@ -120,15 +120,44 @@ export function getVendorLeadsTableColumns({
     //   enableHiding: false,
     //   size: 40,
     // },
-    // Sr No
+    // Lead Code
     {
       accessorKey: "lead_code",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Lead Code" />
       ),
-      cell: ({ row }) => (
-        <div className=" font-medium">{row.getValue("lead_code")}</div>
-      ),
+      cell: ({ row }) => {
+        const isBlocked = row.original.is_blocked === true;
+        const isFastProduction =
+          row.original.isFastProductionRequestTask === true;
+
+        return (
+          <div className="flex items-center gap-2 font-medium">
+            {isBlocked ? (
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-red-300/90 bg-gradient-to-br from-red-200 via-red-300 to-red-500 text-red-950 shadow-[0_0_0_3px_rgba(239,68,68,0.18),0_10px_24px_-16px_rgba(220,38,38,0.55)] transition-transform duration-300 hover:scale-110 dark:border-red-400/60 dark:bg-gradient-to-br dark:from-red-500 dark:via-red-600 dark:to-rose-700 dark:text-white dark:shadow-[0_0_0_3px_rgba(239,68,68,0.18),0_14px_28px_-18px_rgba(239,68,68,0.7)]">
+                <Ban className="h-4 w-4 stroke-[2.5]" />
+              </span>
+            ) : isFastProduction ? (
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-orange-300/90 bg-gradient-to-br from-orange-200 via-orange-300 to-orange-500 text-orange-950 shadow-[0_0_0_3px_rgba(251,146,60,0.18),0_10px_24px_-16px_rgba(234,88,12,0.55)] transition-transform duration-300 hover:scale-110 dark:border-orange-400/60 dark:bg-gradient-to-br dark:from-orange-400 dark:via-orange-500 dark:to-red-500 dark:text-white dark:shadow-[0_0_0_3px_rgba(249,115,22,0.18),0_14px_28px_-18px_rgba(249,115,22,0.7)]">
+                <Zap className="h-4 w-4 fill-current animate-pulse motion-reduce:animate-none" />
+              </span>
+            ) : null}
+            <div className="flex flex-col">
+              <span>{row.getValue("lead_code")}</span>
+              {isBlocked && (
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-red-700 dark:text-red-400">
+                  Blocked
+                </span>
+              )}
+              {!isBlocked && isFastProduction && (
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-orange-700 dark:text-orange-300">
+                  Fast Production
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      },
       meta: {
         label: "Lead Code",
       },
@@ -371,7 +400,11 @@ export function getVendorLeadsTableColumns({
         return (
           <div className="space-x-1">
             {visible.map((name: string, index: number) => (
-              <Badge key={index} variant="secondary" className="text-xs px-2 capitalize">
+              <Badge
+                key={index}
+                variant="secondary"
+                className="text-xs px-2 capitalize"
+              >
                 {name}
               </Badge>
             ))}

@@ -38,9 +38,15 @@ import {
 } from "@/api/universalstage";
 import { useFranchisesByVendorId } from "@/api/franchise";
 
-import { getUniversalTableColumns, compareLeadCodesNumeric } from "../utils/column/Universal-column";
+import {
+  getUniversalTableColumns,
+  compareLeadCodesNumeric,
+} from "../utils/column/Universal-column";
 import { LeadColumn } from "../utils/column/column-type";
-import { formatSalesExecutiveName, mapTableFiltersToPayload } from "@/lib/utils";
+import {
+  formatSalesExecutiveName,
+  mapTableFiltersToPayload,
+} from "@/lib/utils";
 
 // -------------------------------------------------------
 // 🟣 COMPONENT PROPS
@@ -66,6 +72,7 @@ export interface UniversalTableProps {
   ignoreFranchiseScope?: boolean;
   materialIssueReadyOnly?: boolean;
   materialIssueCompletedOnly?: boolean;
+  defaultSelectFranchiseFromRedux?: boolean;
 }
 
 // -------------------------------------------------------
@@ -221,28 +228,39 @@ function extractLatestStatusLogCreatedAtForTag(lead: any, tag: string) {
     return getLeadStageSortFallbackTimestamp(lead);
   }
 
-  const latestMatchingLog = matchingLogs.reduce((latest: string | null, log: any) => {
-    const createdAt = log?.created_at ?? null;
-    if (!createdAt) return latest;
-    if (!latest) return createdAt;
-    return new Date(createdAt).getTime() > new Date(latest).getTime()
-      ? createdAt
-      : latest;
-  }, null);
+  const latestMatchingLog = matchingLogs.reduce(
+    (latest: string | null, log: any) => {
+      const createdAt = log?.created_at ?? null;
+      if (!createdAt) return latest;
+      if (!latest) return createdAt;
+      return new Date(createdAt).getTime() > new Date(latest).getTime()
+        ? createdAt
+        : latest;
+    },
+    null,
+  );
 
   return latestMatchingLog ?? getLeadStageSortFallbackTimestamp(lead);
 }
 
 function compareType8StatusLoggedAtDesc(aRow: any, bRow: any) {
   const getMostRecentTimestamp = (row: any) => {
-    const logTime = row?.type8StatusLoggedAt ? new Date(row.type8StatusLoggedAt).getTime() : 0;
-    const updateTime = row?.updatedAt || row?.updated_at ? new Date(row.updatedAt || row.updated_at).getTime() : 0;
-    const createTime = row?.createdAt || row?.created_at ? new Date(row.createdAt || row.created_at).getTime() : 0;
+    const logTime = row?.type8StatusLoggedAt
+      ? new Date(row.type8StatusLoggedAt).getTime()
+      : 0;
+    const updateTime =
+      row?.updatedAt || row?.updated_at
+        ? new Date(row.updatedAt || row.updated_at).getTime()
+        : 0;
+    const createTime =
+      row?.createdAt || row?.created_at
+        ? new Date(row.createdAt || row.created_at).getTime()
+        : 0;
     return Math.max(
       isNaN(logTime) ? 0 : logTime,
       isNaN(updateTime) ? 0 : updateTime,
       isNaN(createTime) ? 0 : createTime,
-      Number(row?.id || 0)
+      Number(row?.id || 0),
     );
   };
 
@@ -255,7 +273,10 @@ function compareType8StatusLoggedAtDesc(aRow: any, bRow: any) {
   return Number(bRow?.id || 0) - Number(aRow?.id || 0);
 }
 
-function compareCreatedAt(a?: string | number | null, b?: string | number | null) {
+function compareCreatedAt(
+  a?: string | number | null,
+  b?: string | number | null,
+) {
   const aTime =
     typeof a === "number"
       ? a
@@ -470,6 +491,7 @@ export function UniversalTable({
   ignoreFranchiseScope = false,
   materialIssueReadyOnly = false,
   materialIssueCompletedOnly = false,
+  defaultSelectFranchiseFromRedux = false,
 }: UniversalTableProps) {
   // -------------------- GLOBAL STATE --------------------
 
@@ -495,7 +517,9 @@ export function UniversalTable({
   );
   const isB2b = useMemo(() => {
     if (!franchiseId) return reduxModuledForB2b;
-    const activeFranchise = franchisesForB2b.find((f: any) => f.id === franchiseId);
+    const activeFranchise = franchisesForB2b.find(
+      (f: any) => f.id === franchiseId,
+    );
     return activeFranchise?.moduled_for_b2b ?? reduxModuledForB2b;
   }, [franchisesForB2b, franchiseId, reduxModuledForB2b]);
   const userId = useAppSelector((s) => s.auth.user?.id);
@@ -589,8 +613,60 @@ export function UniversalTable({
     useState<ColumnFiltersState>([]);
 
   // ✅ SEPARATE FRANCHISES FILTER FOR BOTH VIEWS
-  const [myFranchisesFilter, setMyFranchisesFilter] = useState<number[]>([]);
-  const [overallFranchisesFilter, setOverallFranchisesFilter] = useState<number[]>([]);
+  const [myFranchisesFilter, setMyFranchisesFilter] = useState<number[]>(() => {
+    if (
+      defaultSelectFranchiseFromRedux &&
+      normalizedUserType === "super-admin" &&
+      franchiseId != null &&
+      !Number.isNaN(Number(franchiseId))
+    ) {
+      return [Number(franchiseId)];
+    }
+    return [];
+  });
+  const [overallFranchisesFilter, setOverallFranchisesFilter] = useState<
+    number[]
+  >(() => {
+    if (
+      defaultSelectFranchiseFromRedux &&
+      normalizedUserType === "super-admin" &&
+      franchiseId != null &&
+      !Number.isNaN(Number(franchiseId))
+    ) {
+      return [Number(franchiseId)];
+    }
+    return [];
+  });
+
+  const hasAppliedDefaultFranchiseRef = React.useRef(
+    defaultSelectFranchiseFromRedux &&
+      normalizedUserType === "super-admin" &&
+      franchiseId != null &&
+      !Number.isNaN(Number(franchiseId)),
+  );
+  const prevFranchiseIdRef = React.useRef<number | null | undefined>(
+    franchiseId,
+  );
+
+  React.useEffect(() => {
+    if (
+      !defaultSelectFranchiseFromRedux ||
+      normalizedUserType !== "super-admin"
+    )
+      return;
+    if (franchiseId != null && !Number.isNaN(Number(franchiseId))) {
+      const numFranchiseId = Number(franchiseId);
+      if (
+        !hasAppliedDefaultFranchiseRef.current ||
+        prevFranchiseIdRef.current !== franchiseId
+      ) {
+        hasAppliedDefaultFranchiseRef.current = true;
+        prevFranchiseIdRef.current = franchiseId;
+        setOverallFranchisesFilter([numFranchiseId]);
+        setMyFranchisesFilter([numFranchiseId]);
+      }
+    }
+  }, [defaultSelectFranchiseFromRedux, normalizedUserType, franchiseId]);
 
   const resolvedInitialProductionStatusFilter = useMemo(() => {
     const requestedValue = String(
@@ -666,7 +742,6 @@ export function UniversalTable({
     ];
     return allowedRoles.includes(cleanRole);
   }, [ignoreFranchiseScope, isHOUser, userType]);
-
 
   const servicingDateRange = useMemo(() => {
     if (!showServicingColumn || !pendingServicesOnly || !servicingMonthFilter) {
@@ -1120,13 +1195,12 @@ export function UniversalTable({
       designerMapping?.user?.user_name ??
       designerMapping?.userMaster?.user_name ??
       "";
-    const siteSupervisorName =
-      stripTrailingRoleLabel(
-        siteSupervisorMapping?.user?.user_name ??
-          siteSupervisorMapping?.userMaster?.user_name ??
-          "",
-        "site-supervisor",
-      );
+    const siteSupervisorName = stripTrailingRoleLabel(
+      siteSupervisorMapping?.user?.user_name ??
+        siteSupervisorMapping?.userMaster?.user_name ??
+        "",
+      "site-supervisor",
+    );
 
     const requirementTypes = Array.from(
       new Set(
@@ -1154,10 +1228,10 @@ export function UniversalTable({
       name: toTitleCase(`${lead.firstname ?? ""} ${lead.lastname ?? ""}`),
       clientName: toTitleCase(
         lead.firstname ||
-        lead.clientMaster?.company_name ||
-        lead.clientMaster?.name ||
-        lead.client?.company_name ||
-        ""
+          lead.clientMaster?.company_name ||
+          lead.clientMaster?.name ||
+          lead.client?.company_name ||
+          "",
       ),
       projectName: toTitleCase(lead.lastname ?? ""),
       email: lead.email ?? "",
@@ -1168,37 +1242,39 @@ export function UniversalTable({
       designerRemark: lead.designer_remark ?? "",
       furnitureType: isB2b
         ? requirementTypes
-        : (Array.isArray(lead.productMappings)
-            ? Array.from(
-                new Set<string>(
-                  lead.productMappings
-                    .map((p: any) => {
-                      const raw = String(p.productType?.type ?? "").trim();
-                      return raw.includes("|") ? raw.split("|").pop()!.trim() : raw;
-                    })
-                    .filter(Boolean)
-                )
-              ).join(", ")
-            : ""),
+        : Array.isArray(lead.productMappings)
+          ? Array.from(
+              new Set<string>(
+                lead.productMappings
+                  .map((p: any) => {
+                    const raw = String(p.productType?.type ?? "").trim();
+                    return raw.includes("|")
+                      ? raw.split("|").pop()!.trim()
+                      : raw;
+                  })
+                  .filter(Boolean),
+              ),
+            ).join(", ")
+          : "",
       siteSupervisor: siteSupervisorName,
       furnitueStructures: isB2b
-        ? (Array.isArray(lead.leadProcessBriefs)
-            ? lead.leadProcessBriefs
-                .map((p: any) => {
-                  const reqType = p.b2bRequirementType?.type;
-                  const briefName = p.processBrief?.name;
-                  if (reqType && briefName) {
-                    return `${reqType} - ${briefName}`;
-                  }
-                  return briefName || reqType;
-                })
-                .filter(Boolean)
-            : [])
-        : (options?.furnitureStructureOverride
-            ? [options.furnitureStructureOverride]
-            : (lead.leadProductStructureMapping
-                ?.map((p: any) => p.productStructure?.type)
-                .filter(Boolean) ?? [])),
+        ? Array.isArray(lead.leadProcessBriefs)
+          ? lead.leadProcessBriefs
+              .map((p: any) => {
+                const reqType = p.b2bRequirementType?.type;
+                const briefName = p.processBrief?.name;
+                if (reqType && briefName) {
+                  return `${reqType} - ${briefName}`;
+                }
+                return briefName || reqType;
+              })
+              .filter(Boolean)
+          : []
+        : options?.furnitureStructureOverride
+          ? [options.furnitureStructureOverride]
+          : (lead.leadProductStructureMapping
+              ?.map((p: any) => p.productStructure?.type)
+              .filter(Boolean) ?? []),
       productionStatus: options?.productionStatus,
       type8StatusLoggedAt: options?.type8StatusLoggedAt,
       techCheckCompletedAt: options?.techCheckCompletedAt,
@@ -1217,6 +1293,7 @@ export function UniversalTable({
       assignedToId: lead.assignedTo?.id ?? "",
       isDraft: lead.is_draft === true,
       isFastProduction: lead.is_fast_production === true,
+      isBlocked: lead.is_blocked === true || (lead as any).isBlocked === true,
       accountId: lead.account?.id ?? lead.account_id ?? 0,
       priority: lead.priority ?? "",
       servicing: getPendingServicingLabel(lead),
@@ -1274,17 +1351,29 @@ export function UniversalTable({
         if (normalizedType === "type 1" && isOnlineLeadFeatureEnabled) {
           const codeA = a?.lead_code || "";
           const codeB = b?.lead_code || "";
-          const cmp = compareLeadCodesNumeric(codeA, codeB, isDesc ? "desc" : "asc");
+          const cmp = compareLeadCodesNumeric(
+            codeA,
+            codeB,
+            isDesc ? "desc" : "asc",
+          );
           if (cmp !== 0) return cmp;
-          return isDesc ? Number(b?.id || 0) - Number(a?.id || 0) : Number(a?.id || 0) - Number(b?.id || 0);
+          return isDesc
+            ? Number(b?.id || 0) - Number(a?.id || 0)
+            : Number(a?.id || 0) - Number(b?.id || 0);
         }
         const getLeadActivityTime = (lead: any) => {
-          const uTime = lead?.updated_at || lead?.updatedAt ? new Date(lead.updated_at || lead.updatedAt).getTime() : 0;
-          const cTime = lead?.created_at || lead?.createdAt ? new Date(lead.created_at || lead.createdAt).getTime() : 0;
+          const uTime =
+            lead?.updated_at || lead?.updatedAt
+              ? new Date(lead.updated_at || lead.updatedAt).getTime()
+              : 0;
+          const cTime =
+            lead?.created_at || lead?.createdAt
+              ? new Date(lead.created_at || lead.createdAt).getTime()
+              : 0;
           return Math.max(
             isNaN(uTime) ? 0 : uTime,
             isNaN(cTime) ? 0 : cTime,
-            Number(lead?.id || 0)
+            Number(lead?.id || 0),
           );
         };
         const aTime = getLeadActivityTime(a);
@@ -1292,7 +1381,9 @@ export function UniversalTable({
         if (bTime !== aTime) {
           return isDesc ? bTime - aTime : aTime - bTime;
         }
-        return isDesc ? Number(b?.id || 0) - Number(a?.id || 0) : Number(a?.id || 0) - Number(b?.id || 0);
+        return isDesc
+          ? Number(b?.id || 0) - Number(a?.id || 0)
+          : Number(a?.id || 0) - Number(b?.id || 0);
       });
 
       rows = baseData.map((item, idx) => {
@@ -1313,7 +1404,8 @@ export function UniversalTable({
       filteredActiveData.forEach((lead) => {
         const handlesLargeScaleProjects =
           handlesLargeScaleProjectsFromAuth ||
-          (lead as any)?.createdBy?.vendor?.handlesLargeScaleProjects === true ||
+          (lead as any)?.createdBy?.vendor?.handlesLargeScaleProjects ===
+            true ||
           (lead as any)?.assignedTo?.vendor?.handlesLargeScaleProjects === true;
 
         const type8StatusLoggedAt = STATUS_LOG_SORTED_STAGE_TYPES.has(
@@ -1325,7 +1417,10 @@ export function UniversalTable({
           ? lead.productStructureInstances
           : [];
 
-        if (handlesLargeScaleProjects && (!isType9 || materialIssueReadyOnly || materialIssueCompletedOnly)) {
+        if (
+          handlesLargeScaleProjects &&
+          (!isType9 || materialIssueReadyOnly || materialIssueCompletedOnly)
+        ) {
           const structureTypes = Array.from(
             new Set(
               instances
@@ -1334,10 +1429,10 @@ export function UniversalTable({
                     inst?.title ||
                     inst?.productType?.type ||
                     inst?.product_type?.name ||
-                    inst?.productStructure?.type
+                    inst?.productStructure?.type,
                 )
-                .filter(Boolean)
-            )
+                .filter(Boolean),
+            ),
           ).join(", ");
 
           expanded.push(
@@ -1346,7 +1441,7 @@ export function UniversalTable({
               leadCodeSuffix: "",
               furnitureStructureOverride: structureTypes || undefined,
               type8StatusLoggedAt,
-            })
+            }),
           );
           return;
         }
@@ -1536,8 +1631,7 @@ export function UniversalTable({
         showSiteSupervisorColumn: !handlesLargeScaleProjectsFromAuth,
         showDesignerColumn: isCustomUserTypeOnlyVendor,
         hideFurnitureTypeColumn: handlesLargeScaleProjectsFromAuth,
-        renameFurnitureStructureToItemGroup:
-          handlesLargeScaleProjectsFromAuth,
+        renameFurnitureStructureToItemGroup: handlesLargeScaleProjectsFromAuth,
         isB2b,
       }),
     [
@@ -1687,7 +1781,11 @@ export function UniversalTable({
                 onClick={() => handleViewSwitch("my")}
                 className="flex-1 md:flex-none"
               >
-                My Leads{isOnlineLeadFeatureEnabled && (myCount === 0 || Number(myCount) === 0) ? "" : ` (${myCount})`}
+                My Leads
+                {isOnlineLeadFeatureEnabled &&
+                (myCount === 0 || Number(myCount) === 0)
+                  ? ""
+                  : ` (${myCount})`}
               </Button>
 
               <Button
@@ -1698,7 +1796,11 @@ export function UniversalTable({
                 onClick={() => handleViewSwitch("overall")}
                 className="flex-1 md:flex-none"
               >
-                Overall Leads{isOnlineLeadFeatureEnabled && (overallCount === 0 || Number(overallCount) === 0) ? "" : ` (${overallCount})`}
+                Overall Leads
+                {isOnlineLeadFeatureEnabled &&
+                (overallCount === 0 || Number(overallCount) === 0)
+                  ? ""
+                  : ` (${overallCount})`}
               </Button>
             </div>
           )}
@@ -1755,12 +1857,14 @@ export function UniversalTable({
         </div>
       </div>
 
-        <DataTable
-          table={table}
-          onRowDoubleClick={handleRowClick}
-          rowClassName={(row) =>
-            row.isFastProduction
-              ? "relative border-l-4 border-l-orange-500 bg-[linear-gradient(90deg,rgba(255,237,213,0.96)_0%,rgba(255,244,230,0.92)_38%,rgba(255,255,255,1)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_14px_34px_-24px_rgba(234,88,12,0.58)] hover:bg-[linear-gradient(90deg,rgba(255,224,178,0.72)_0%,rgba(255,237,213,0.78)_42%,rgba(255,255,255,1)_100%)] dark:border-l-orange-400 dark:bg-[linear-gradient(90deg,rgba(124,45,18,0.5)_0%,rgba(67,20,7,0.28)_36%,rgba(15,23,42,0.96)_100%)] dark:shadow-[inset_0_1px_0_rgba(251,146,60,0.08),0_18px_38px_-24px_rgba(249,115,22,0.45)] dark:hover:bg-[linear-gradient(90deg,rgba(154,52,18,0.62)_0%,rgba(88,28,12,0.34)_38%,rgba(15,23,42,0.98)_100%)]"
+      <DataTable
+        table={table}
+        onRowDoubleClick={handleRowClick}
+        rowClassName={(row) =>
+          row.isBlocked
+            ? "relative !border-l-4 !border-l-red-500 bg-[linear-gradient(90deg,rgba(254,202,202,0.72)_0%,rgba(254,226,226,0.78)_42%,rgba(254,242,242,0.85)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_14px_34px_-24px_rgba(239,68,68,0.58)] hover:bg-[linear-gradient(90deg,rgba(254,226,226,0.96)_0%,rgba(254,242,242,0.92)_38%,rgba(255,255,255,1)_100%)] dark:!border-l-red-500 dark:bg-[linear-gradient(90deg,rgba(153,27,27,0.62)_0%,rgba(88,14,14,0.34)_38%,rgba(127,29,29,0.4)_100%)] dark:shadow-[inset_0_1px_0_rgba(248,113,113,0.08),0_18px_38px_-24px_rgba(239,68,68,0.45)] dark:hover:bg-[linear-gradient(90deg,rgba(127,29,29,0.5)_0%,rgba(69,10,10,0.28)_36%,rgba(15,23,42,0.96)_100%)]"
+            : row.isFastProduction
+              ? "relative !border-l-4 !border-l-orange-500 bg-[linear-gradient(90deg,rgba(255,237,213,0.96)_0%,rgba(255,244,230,0.92)_38%,rgba(255,255,255,1)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_14px_34px_-24px_rgba(234,88,12,0.58)] hover:bg-[linear-gradient(90deg,rgba(255,224,178,0.72)_0%,rgba(255,237,213,0.78)_42%,rgba(255,255,255,1)_100%)] dark:!border-l-orange-400 dark:bg-[linear-gradient(90deg,rgba(124,45,18,0.5)_0%,rgba(67,20,7,0.28)_36%,rgba(15,23,42,0.96)_100%)] dark:shadow-[inset_0_1px_0_rgba(251,146,60,0.08),0_18px_38px_-24px_rgba(249,115,22,0.45)] dark:hover:bg-[linear-gradient(90deg,rgba(154,52,18,0.62)_0%,rgba(88,28,12,0.34)_38%,rgba(15,23,42,0.98)_100%)]"
               : undefined
         }
         className="pt-3 px-4"

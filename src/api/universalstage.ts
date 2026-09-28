@@ -105,6 +105,8 @@ export interface UniversalStageLead {
   lead_code: string;
   is_small_order_request?: boolean;
   is_draft?: boolean;
+  is_fast_production?: boolean;
+  is_blocked?: boolean;
 
   firstname: string;
   lastname: string;
