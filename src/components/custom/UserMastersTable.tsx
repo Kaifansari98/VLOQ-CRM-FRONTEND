@@ -1068,22 +1068,29 @@ export default function UserMastersTable({
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Franchise</Label>
-                    <AssignToPicker
-                      data={franchisesData.map((fr) => ({
-                        id: fr.id,
+                    <Label htmlFor="employee-franchise-search">Franchise</Label>
+                    <MultipleSelector
+                      inputProps={{
+                        id: "employee-franchise-search",
+                        name: "employee-franchise-search",
+                        autoComplete: "off",
+                        autoCapitalize: "none",
+                        spellCheck: false,
+                      }}
+                      options={franchisesData.map((fr) => ({
+                        value: String(fr.id),
                         label: fr.franchise_name,
                       }))}
-                      value={
-                        form.franchise_id ? Number(form.franchise_id) : undefined
+                      value={form.franchise_ids.map((id) => ({
+                        value: String(id),
+                        label: franchisesData.find((fr) => fr.id === id)?.franchise_name ?? String(id),
+                      }))}
+                      onChange={(selected) =>
+                        setForm((f) => ({ ...f, franchise_ids: selected.map((option) => Number(option.value)) }))
                       }
-                      onChange={(selectedId) =>
-                        setForm((f) => ({
-                          ...f,
-                          franchise_id: selectedId ? String(selectedId) : "",
-                        }))
-                      }
-                      placeholder="Select franchise..."
+                      placeholder="Select franchises..."
+                      hidePlaceholderWhenSelected
+                      showSelectedOptionsInDropdown
                     />
                   </div>
                 </>
@@ -1161,32 +1168,63 @@ export default function UserMastersTable({
                     </div>
                   )}
 
-              <div className="space-y-2">
-                <Label htmlFor="user-franchise-search">Franchise</Label>
-                <MultipleSelector
-                  inputProps={{
-                    id: "user-franchise-search",
-                    name: "franchise-search",
-                    autoComplete: "off",
-                    autoCapitalize: "none",
-                    spellCheck: false,
-                  }}
-                  options={franchisesData.map((fr) => ({
-                    value: String(fr.id),
-                    label: fr.franchise_name,
-                  }))}
-                  value={form.franchise_ids.map((id) => ({
-                    value: String(id),
-                    label: franchisesData.find((fr) => fr.id === id)?.franchise_name ?? String(id),
-                  }))}
-                  onChange={(selected) =>
-                    setForm((f) => ({ ...f, franchise_ids: selected.map((option) => Number(option.value)) }))
-                  }
-                  placeholder="Select franchises..."
-                  hidePlaceholderWhenSelected
-                  showSelectedOptionsInDropdown
-                />
-              </div>
+                  <div
+                    className={cn(
+                      "space-y-2",
+                      isEditingCustomUser && "col-span-2",
+                    )}
+                  >
+                    <Label htmlFor="user-franchise-search">Franchise</Label>
+                    <MultipleSelector
+                      inputProps={{
+                        id: "user-franchise-search",
+                        name: "franchise-search",
+                        autoComplete: "off",
+                        autoCapitalize: "none",
+                        spellCheck: false,
+                      }}
+                      options={franchisesData.map((fr) => ({
+                        value: String(fr.id),
+                        label: fr.franchise_name,
+                      }))}
+                      value={form.franchise_ids.map((id) => ({
+                        value: String(id),
+                        label: franchisesData.find((fr) => fr.id === id)?.franchise_name ?? String(id),
+                      }))}
+                      onChange={(selected) =>
+                        setForm((f) => ({ ...f, franchise_ids: selected.map((option) => Number(option.value)) }))
+                      }
+                      placeholder="Select franchises..."
+                      hidePlaceholderWhenSelected
+                      showSelectedOptionsInDropdown
+                    />
+                  </div>
+
+                  {/* Row 4: Status */}
+                  <div className="col-span-2 space-y-2">
+                    <Label>Status</Label>
+                    <div className="flex h-9 items-center gap-4 rounded-md border px-3">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <Checkbox
+                          checked={form.status === "active"}
+                          onCheckedChange={(checked) =>
+                            setForm((f) => ({
+                              ...f,
+                              status: checked ? "active" : "inactive",
+                            }))
+                          }
+                        />
+                        <span className="text-sm">Active</span>
+                      </label>
+                      <span className="text-xs text-muted-foreground">
+                        {form.status === "active"
+                          ? "User will be active"
+                          : "User will be inactive"}
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Row 4: Password (full width) */}
               <div className="col-span-2 space-y-2">
