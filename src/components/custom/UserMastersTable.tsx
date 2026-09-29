@@ -66,6 +66,7 @@ type UserMasterRow = {
   srNo: number;
   id: number;
   user_name: string;
+  designation?: string;
   user_contact: string;
   user_email: string;
   user_type: string;
@@ -95,93 +96,114 @@ function normalizeNumberArray(values: number[]) {
   return Array.from(new Set(values)).sort((left, right) => left - right);
 }
 
-const columns: ColumnDef<UserMasterRow>[] = [
-  {
-    accessorKey: "srNo",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Sr. No." />
-    ),
-    cell: ({ row }) => (
-      <span className="font-medium">{row.getValue("srNo")}</span>
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "user_name",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="User Name" />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "user_contact",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Contact No." />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "user_email",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Email" />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "user_type",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="User Type" />
-    ),
-    cell: ({ row }) => (
-      <span>{formatUserTypeLabel(row.getValue("user_type") as string)}</span>
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "franchise_name",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Franchise" />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "status",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Status" />
-    ),
-    cell: ({ row }) => {
-      const status = ((row.getValue("status") as string) || "").toLowerCase();
-      const isActive = status === "active";
+function getUserMasterColumns(
+  isEmployeeMaster: boolean,
+): ColumnDef<UserMasterRow>[] {
+  const baseColumns: ColumnDef<UserMasterRow>[] = [
+    {
+      accessorKey: "srNo",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Sr. No." />
+      ),
+      cell: ({ row }) => (
+        <span className="font-medium">{row.getValue("srNo")}</span>
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      accessorKey: "user_name",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="User Name" />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      accessorKey: "user_contact",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Contact No." />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      accessorKey: "user_email",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Email" />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      accessorKey: "designation",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Designation" />
+      ),
+      cell: ({ row }) => <span>{row.getValue("designation") || "—"}</span>,
+      enableSorting: false,
+      enableHiding: false,
+    },
+  ];
 
-      return (
-        <span
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize",
-            isActive
-              ? "border-emerald-200 bg-emerald-500/10 text-emerald-600"
-              : "border-zinc-200 bg-zinc-100 text-zinc-600",
-          )}
-        >
+  if (!isEmployeeMaster) {
+    baseColumns.push({
+      accessorKey: "user_type",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="User Type" />
+      ),
+      cell: ({ row }) => (
+        <span>{formatUserTypeLabel(row.getValue("user_type") as string)}</span>
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    });
+  }
+
+  baseColumns.push(
+    {
+      accessorKey: "franchise_name",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Franchise" />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      accessorKey: "status",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Status" />
+      ),
+      cell: ({ row }) => {
+        const status = ((row.getValue("status") as string) || "").toLowerCase();
+        const isActive = status === "active";
+
+        return (
           <span
             className={cn(
-              "h-1.5 w-1.5 rounded-full",
-              isActive ? "bg-emerald-500" : "bg-zinc-400",
+              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize",
+              isActive
+                ? "border-emerald-200 bg-emerald-500/10 text-emerald-600"
+                : "border-zinc-200 bg-zinc-100 text-zinc-600",
             )}
-          />
-          {status || "—"}
-        </span>
-      );
+          >
+            <span
+              className={cn(
+                "h-1.5 w-1.5 rounded-full",
+                isActive ? "bg-emerald-500" : "bg-zinc-400",
+              )}
+            />
+            {status || "—"}
+          </span>
+        );
+      },
+      enableSorting: false,
+      enableHiding: false,
     },
-    enableSorting: false,
-    enableHiding: false,
-  },
-];
+  );
+
+  return baseColumns;
+}
 
 function FilterByStores({
   value,
@@ -287,6 +309,7 @@ function getStrengthText(score: number) {
 
 const defaultForm = {
   user_name: "",
+  designation: "",
   user_contact: "",
   user_email: "",
   password: "",
@@ -308,6 +331,8 @@ export default function UserMastersTable({
 }: UserMastersTableProps) {
   const vendorId =
     vendorIdOverride ?? useAppSelector((state) => state.auth.user?.vendor_id);
+
+  const isEmployeeMaster = userTypeFilter?.trim().toLowerCase() === "employee";
 
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -348,6 +373,7 @@ export default function UserMastersTable({
       search: globalFilter,
       franchise_id: franchiseFilter,
       user_type: userTypeFilter,
+      exclude_user_type: !userTypeFilter ? "employee" : undefined,
     },
     vendorId,
   );
@@ -356,6 +382,16 @@ export default function UserMastersTable({
     !!vendorId,
   );
   const { data: userTypesData } = useUserTypes();
+  const employeeUserType = React.useMemo(
+    () =>
+      userTypesData?.data?.find(
+        (ut) => ut.user_type?.trim().toLowerCase() === "employee",
+      ),
+    [userTypesData?.data],
+  );
+  const employeeUserTypeId = employeeUserType?.id
+    ? String(employeeUserType.id)
+    : "";
   const {
     data: privilegeMastersData,
     isLoading: isLoadingPrivilegeMasters,
@@ -383,16 +419,17 @@ export default function UserMastersTable({
     () =>
       (data?.data ?? [])
         .filter((item) => {
-          if (
-            item.user_type?.user_type?.trim().toLowerCase() === "master-admin"
-          ) {
+          const itemUserType = item.user_type?.user_type?.trim().toLowerCase();
+          if (itemUserType === "master-admin") {
             return false;
           }
           if (userTypeFilter) {
             return (
-              item.user_type?.user_type?.trim().toLowerCase() ===
-              userTypeFilter.trim().toLowerCase()
+              itemUserType === userTypeFilter.trim().toLowerCase()
             );
+          }
+          if (itemUserType === "employee") {
+            return false;
           }
           return true;
         })
@@ -400,6 +437,7 @@ export default function UserMastersTable({
           srNo: pagination.pageIndex * pagination.pageSize + index + 1,
           id: item.id,
           user_name: item.user_name,
+          designation: item.designation ?? "",
           user_contact: item.user_contact,
           user_email: item.user_email,
           user_type: item.user_type?.user_type ?? "—",
@@ -417,6 +455,11 @@ export default function UserMastersTable({
   );
 
   const totalPages = data?.pagination?.totalPages ?? 1;
+
+  const columns = React.useMemo(
+    () => getUserMasterColumns(isEmployeeMaster),
+    [isEmployeeMaster],
+  );
 
   const table = useReactTable({
     data: tableData,
@@ -465,13 +508,14 @@ export default function UserMastersTable({
     () =>
       (userTypesData?.data ?? [])
         .filter((ut) => {
-          if (ut.user_type?.trim().toLowerCase() === "master-admin") return false;
+          const typeName = ut.user_type?.trim().toLowerCase();
+          if (typeName === "master-admin") return false;
           if (userTypeFilter) {
             return (
-              ut.user_type?.trim().toLowerCase() ===
-              userTypeFilter.trim().toLowerCase()
+              typeName === userTypeFilter.trim().toLowerCase()
             );
           }
+          if (typeName === "employee") return false;
           return true;
         })
         .map((ut) => ({
@@ -526,7 +570,9 @@ export default function UserMastersTable({
 
   const resetForm = () => {
     const defaultUserTypeId =
-      userTypeFilter && userTypeOptions.length > 0
+      isEmployeeMaster && employeeUserTypeId
+        ? employeeUserTypeId
+        : userTypeFilter && userTypeOptions.length > 0
         ? String(userTypeOptions[0].id)
         : "";
     setForm({ ...defaultForm, user_type_id: defaultUserTypeId });
@@ -544,10 +590,26 @@ export default function UserMastersTable({
   };
 
   React.useEffect(() => {
-    if (modalMode === "create" && userTypeFilter && userTypeOptions.length > 0 && !form.user_type_id) {
+    if (isEmployeeMaster && employeeUserTypeId) {
+      if (!form.user_type_id || form.user_type_id !== employeeUserTypeId) {
+        setForm((f) => ({ ...f, user_type_id: employeeUserTypeId }));
+      }
+    } else if (
+      modalMode === "create" &&
+      userTypeFilter &&
+      userTypeOptions.length > 0 &&
+      !form.user_type_id
+    ) {
       setForm((f) => ({ ...f, user_type_id: String(userTypeOptions[0].id) }));
     }
-  }, [modalMode, userTypeFilter, userTypeOptions, form.user_type_id]);
+  }, [
+    isEmployeeMaster,
+    employeeUserTypeId,
+    modalMode,
+    userTypeFilter,
+    userTypeOptions,
+    form.user_type_id,
+  ]);
 
   const isEditingCustomUser =
     modalMode === "edit" && editingUserType?.toLowerCase() === "custom";
@@ -557,13 +619,17 @@ export default function UserMastersTable({
       ? !form.password || passwordStrengthScore === 5
       : passwordStrengthScore === 5;
 
+  const effectiveUserTypeId = isEmployeeMaster
+    ? form.user_type_id || employeeUserTypeId
+    : form.user_type_id;
+
   const isFormValid =
     form.user_name.trim() &&
     form.user_contact.trim() &&
     form.user_email.trim() &&
     isPasswordValid &&
     form.franchise_id &&
-    form.user_type_id;
+    effectiveUserTypeId;
 
   const handleRowDoubleClick = (row: UserMasterRow) => {
     const fallbackUserTypeId =
@@ -573,10 +639,11 @@ export default function UserMastersTable({
           ut.user_type?.trim().toLowerCase() ===
           row.user_type?.trim().toLowerCase(),
       )?.id ??
-      null;
+      (isEmployeeMaster && employeeUserType?.id ? employeeUserType.id : null);
 
     const prefilled = {
       user_name: row.user_name,
+      designation: row.designation || "",
       user_contact: row.user_contact,
       user_email: row.user_email,
       password: "",
@@ -608,6 +675,9 @@ export default function UserMastersTable({
     if (form.user_name.trim() !== originalForm.user_name.trim())
       payload.user_name = form.user_name.trim();
 
+    if (form.designation.trim() !== (originalForm.designation || "").trim())
+      payload.designation = form.designation.trim() || null;
+
     const currContact = extractNational(form.user_contact);
     const origContact = extractNational(originalForm.user_contact);
     if (currContact !== origContact) payload.user_contact = currContact;
@@ -618,7 +688,7 @@ export default function UserMastersTable({
     if (form.franchise_id !== originalForm.franchise_id)
       payload.franchise_id = Number(form.franchise_id);
 
-    if (form.user_type_id !== originalForm.user_type_id)
+    if (!isEmployeeMaster && form.user_type_id !== originalForm.user_type_id)
       payload.user_type_id = Number(form.user_type_id);
 
     if (form.status !== originalForm.status) payload.status = form.status;
@@ -655,11 +725,12 @@ export default function UserMastersTable({
         vendor_id: vendorId,
         franchise_id: Number(form.franchise_id),
         user_name: form.user_name.trim(),
+        designation: form.designation.trim() || undefined,
         user_contact: contactNumber,
         user_email: form.user_email.trim(),
         user_timezone: "Asia/Kolkata",
         password: form.password,
-        user_type_id: Number(form.user_type_id),
+        user_type_id: Number(effectiveUserTypeId),
         status: form.status,
       },
       {
@@ -771,108 +842,228 @@ export default function UserMastersTable({
 
           <div className="px-6 pb-5 space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              {/* Row 1: User Name | Contact No. */}
-              <div className="space-y-2">
-                <Label htmlFor="user-name">User Name</Label>
-                <Input
-                  id="user-name"
-                  value={form.user_name}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, user_name: e.target.value }))
-                  }
-                  placeholder="Enter user name"
-                />
-              </div>
+              {isEmployeeMaster ? (
+                <>
+                  {/* Row 1: User Name | Contact No. */}
+                  <div className="space-y-2">
+                    <Label htmlFor="user-name">User Name</Label>
+                    <Input
+                      id="user-name"
+                      value={form.user_name}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, user_name: e.target.value }))
+                      }
+                      placeholder="Enter user name"
+                    />
+                  </div>
 
-              <div className="space-y-2">
-                <Label>Contact No.</Label>
-                <PhoneInput
-                  defaultCountry="IN"
-                  placeholder="Enter contact number"
-                  value={form.user_contact}
-                  onChange={(val) =>
-                    setForm((f) => ({ ...f, user_contact: val }))
-                  }
-                  validateIndianNumber={true}
-                />
-              </div>
+                  <div className="space-y-2">
+                    <Label>Contact No.</Label>
+                    <PhoneInput
+                      defaultCountry="IN"
+                      placeholder="Enter contact number"
+                      value={form.user_contact}
+                      onChange={(val) =>
+                        setForm((f) => ({ ...f, user_contact: val }))
+                      }
+                      validateIndianNumber={true}
+                    />
+                  </div>
 
-              {/* Row 2: Email | Status */}
-              <div className="space-y-2">
-                <Label htmlFor="user-email">Email</Label>
-                <Input
-                  id="user-email"
-                  type="email"
-                  value={form.user_email}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, user_email: e.target.value }))
-                  }
-                  placeholder="Enter email"
-                />
-              </div>
+                  {/* Row 2: Email | Status */}
+                  <div className="space-y-2">
+                    <Label htmlFor="user-email">Email</Label>
+                    <Input
+                      id="user-email"
+                      type="email"
+                      value={form.user_email}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, user_email: e.target.value }))
+                      }
+                      placeholder="Enter email"
+                    />
+                  </div>
 
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <div className="flex h-9 items-center gap-4 rounded-md border px-3">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <Checkbox
-                      checked={form.status === "active"}
-                      onCheckedChange={(checked) =>
+                  <div className="space-y-2">
+                    <Label>Status</Label>
+                    <div className="flex h-9 items-center gap-4 rounded-md border px-3">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <Checkbox
+                          checked={form.status === "active"}
+                          onCheckedChange={(checked) =>
+                            setForm((f) => ({
+                              ...f,
+                              status: checked ? "active" : "inactive",
+                            }))
+                          }
+                        />
+                        <span className="text-sm">Active</span>
+                      </label>
+                      <span className="text-xs text-muted-foreground">
+                        {form.status === "active"
+                          ? "User will be active"
+                          : "User will be inactive"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Row 3: Designation (in place of User Type) | Franchise */}
+                  <div className="space-y-2">
+                    <Label htmlFor="user-designation">Designation</Label>
+                    <Input
+                      id="user-designation"
+                      value={form.designation}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, designation: e.target.value }))
+                      }
+                      placeholder="Enter designation"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Franchise</Label>
+                    <AssignToPicker
+                      data={franchisesData.map((fr) => ({
+                        id: fr.id,
+                        label: fr.franchise_name,
+                      }))}
+                      value={
+                        form.franchise_id ? Number(form.franchise_id) : undefined
+                      }
+                      onChange={(selectedId) =>
                         setForm((f) => ({
                           ...f,
-                          status: checked ? "active" : "inactive",
+                          franchise_id: selectedId ? String(selectedId) : "",
                         }))
                       }
+                      placeholder="Select franchise..."
                     />
-                    <span className="text-sm">Active</span>
-                  </label>
-                  <span className="text-xs text-muted-foreground">
-                    {form.status === "active"
-                      ? "User will be active"
-                      : "User will be inactive"}
-                  </span>
-                </div>
-              </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Row 1: User Name | Designation */}
+                  <div className="space-y-2">
+                    <Label htmlFor="user-name">User Name</Label>
+                    <Input
+                      id="user-name"
+                      value={form.user_name}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, user_name: e.target.value }))
+                      }
+                      placeholder="Enter user name"
+                    />
+                  </div>
 
-              {/* Row 3: User Type | Franchise */}
-              {!isEditingCustomUser && (
-                <div className="space-y-2">
-                  <Label>User Type</Label>
-                  <AssignToPicker
-                    data={userTypeOptions}
-                    value={
-                      form.user_type_id ? Number(form.user_type_id) : undefined
-                    }
-                    onChange={(selectedId) =>
-                      setForm((f) => ({
-                        ...f,
-                        user_type_id: selectedId ? String(selectedId) : "",
-                      }))
-                    }
-                    placeholder="Select user type..."
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="user-designation">Designation</Label>
+                    <Input
+                      id="user-designation"
+                      value={form.designation}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, designation: e.target.value }))
+                      }
+                      placeholder="Enter designation"
+                    />
+                  </div>
+
+                  {/* Row 2: Contact No. | Email */}
+                  <div className="space-y-2">
+                    <Label>Contact No.</Label>
+                    <PhoneInput
+                      defaultCountry="IN"
+                      placeholder="Enter contact number"
+                      value={form.user_contact}
+                      onChange={(val) =>
+                        setForm((f) => ({ ...f, user_contact: val }))
+                      }
+                      validateIndianNumber={true}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="user-email">Email</Label>
+                    <Input
+                      id="user-email"
+                      type="email"
+                      value={form.user_email}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, user_email: e.target.value }))
+                      }
+                      placeholder="Enter email"
+                    />
+                  </div>
+
+                  {/* Row 3: User Type | Franchise */}
+                  {!isEditingCustomUser && (
+                    <div className="space-y-2">
+                      <Label>User Type</Label>
+                      <AssignToPicker
+                        data={userTypeOptions}
+                        value={
+                          form.user_type_id ? Number(form.user_type_id) : undefined
+                        }
+                        onChange={(selectedId) =>
+                          setForm((f) => ({
+                            ...f,
+                            user_type_id: selectedId ? String(selectedId) : "",
+                          }))
+                        }
+                        placeholder="Select user type..."
+                      />
+                    </div>
+                  )}
+
+                  <div
+                    className={cn(
+                      "space-y-2",
+                      isEditingCustomUser && "col-span-2",
+                    )}
+                  >
+                    <Label>Franchise</Label>
+                    <AssignToPicker
+                      data={franchisesData.map((fr) => ({
+                        id: fr.id,
+                        label: fr.franchise_name,
+                      }))}
+                      value={
+                        form.franchise_id ? Number(form.franchise_id) : undefined
+                      }
+                      onChange={(selectedId) =>
+                        setForm((f) => ({
+                          ...f,
+                          franchise_id: selectedId ? String(selectedId) : "",
+                        }))
+                      }
+                      placeholder="Select franchise..."
+                    />
+                  </div>
+
+                  {/* Row 4: Status */}
+                  <div className="col-span-2 space-y-2">
+                    <Label>Status</Label>
+                    <div className="flex h-9 items-center gap-4 rounded-md border px-3">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <Checkbox
+                          checked={form.status === "active"}
+                          onCheckedChange={(checked) =>
+                            setForm((f) => ({
+                              ...f,
+                              status: checked ? "active" : "inactive",
+                            }))
+                          }
+                        />
+                        <span className="text-sm">Active</span>
+                      </label>
+                      <span className="text-xs text-muted-foreground">
+                        {form.status === "active"
+                          ? "User will be active"
+                          : "User will be inactive"}
+                      </span>
+                    </div>
+                  </div>
+                </>
               )}
-
-              <div className="space-y-2">
-                <Label>Franchise</Label>
-                <AssignToPicker
-                  data={franchisesData.map((fr) => ({
-                    id: fr.id,
-                    label: fr.franchise_name,
-                  }))}
-                  value={
-                    form.franchise_id ? Number(form.franchise_id) : undefined
-                  }
-                  onChange={(selectedId) =>
-                    setForm((f) => ({
-                      ...f,
-                      franchise_id: selectedId ? String(selectedId) : "",
-                    }))
-                  }
-                  placeholder="Select franchise..."
-                />
-              </div>
 
               {/* Row 4: Password (full width) */}
               <div className="col-span-2 space-y-2">
@@ -1012,7 +1203,7 @@ export default function UserMastersTable({
                   ) : createUserMutation.isPending ? (
                     "Creating..."
                   ) : (
-                    "Create User"
+                    `Create ${entityName}`
                   )}
                 </Button>
               </div>
