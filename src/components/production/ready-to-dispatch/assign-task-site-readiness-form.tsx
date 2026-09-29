@@ -248,6 +248,7 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   });
 
   const taskType = form.watch("task_type");
+  const selectedAssigneeId = form.watch("assign_lead_to");
   const [approvalFiles, setApprovalFiles] = React.useState<File[]>([]);
   const isApprovalRequestTask = taskType === "Approval Request";
   const canShowApprovalRequestOption = canUserShowApprovalRequest({
@@ -374,7 +375,24 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
   const shouldUseCustomSiteReadinessUsers =
     isCustomUsertypeOnlyVendor && taskType === "Site Readiness";
 
-  const mappedData = isApprovalRequestTask
+  const assignedSupervisorId =
+    assignedSiteSupervisor?.supervisor?.id ??
+    assignedSiteSupervisor?.user_id ??
+    undefined;
+  const isSiteReadinessTask = taskType === "Site Readiness";
+  const shouldLockAssignee = isSiteReadinessTask && !!assignedSupervisorId;
+
+  const mappedData = shouldLockAssignee
+    ? [{
+        id: assignedSupervisorId!,
+        label:
+          assignedSiteSupervisor?.supervisor?.user_name ??
+          siteSupervisorList.find(
+            (user: { id: number; label: string }) => user.id === assignedSupervisorId,
+          )?.label ??
+          "Assigned Site Supervisor",
+      }]
+    : isApprovalRequestTask
     ? approvalRequestUsers.map((user) => ({
         id: user.id,
         label: user.user_name,
@@ -412,18 +430,6 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
           }))
         : siteSupervisorList;
 
-  const assignedSupervisorId =
-    assignedSiteSupervisor?.supervisor?.id ??
-    assignedSiteSupervisor?.user_id ??
-    undefined;
-  const matchedSupervisorId = siteSupervisorList.find(
-    (user: { id: number; label: string }) => user.id === assignedSupervisorId,
-  )?.id;
-  const isSiteReadinessTask = taskType === "Site Readiness";
-  const shouldLockAssignee =
-    normalizedUserType !== "custom" &&
-    isSiteReadinessTask &&
-    !!matchedSupervisorId;
   const isSiteReadinessSelectionDisabled =
     isLoadingSiteReadinessTaskConflicts ||
     isSiteReadinessConflictLocked ||
@@ -485,19 +491,19 @@ const AssignTaskSiteReadinessForm: React.FC<Props> = ({
 
   React.useEffect(() => {
     if (
-      normalizedUserType !== "custom" &&
-      isSiteReadinessTask &&
       shouldLockAssignee &&
-      form.getValues("assign_lead_to") !== matchedSupervisorId
+      assignedSupervisorId &&
+      selectedAssigneeId !== assignedSupervisorId
     ) {
-      form.setValue("assign_lead_to", matchedSupervisorId);
+      form.setValue("assign_lead_to", assignedSupervisorId, {
+        shouldValidate: true,
+      });
     }
   }, [
-    isSiteReadinessTask,
     shouldLockAssignee,
-    matchedSupervisorId,
+    assignedSupervisorId,
+    selectedAssigneeId,
     form,
-    normalizedUserType,
   ]);
 
   React.useEffect(() => {

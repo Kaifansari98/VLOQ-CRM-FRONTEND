@@ -93,6 +93,8 @@ export interface CompanyVendorMasterResponse {
 }
 
 export interface UserMasterEntry {
+  franchise_ids?: number[];
+  franchises?: { id: number; franchise_name: string }[];
   id: number;
   vendor_id: number;
   franchise_id?: number | null;
@@ -1472,6 +1474,8 @@ export interface UserTypeMasterResponse {
 }
 
 export interface CreateUserMasterPayload {
+  confirm_additional_supervisor?: boolean;
+  franchise_ids?: number[];
   vendor_id: number;
   franchise_id: number;
   user_name: string;
@@ -1528,6 +1532,8 @@ export const createUser = async (payload: CreateUserMasterPayload) => {
 }
 
 export interface UpdateUserMasterPayload {
+  confirm_additional_supervisor?: boolean;
+  franchise_ids?: number[];
   user_name?: string;
   designation?: string | null;
   user_contact?: string;

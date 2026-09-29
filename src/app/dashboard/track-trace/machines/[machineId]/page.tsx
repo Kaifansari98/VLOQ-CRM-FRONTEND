@@ -65,6 +65,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -250,6 +251,9 @@ export default function MachineScannerPage() {
   );
   const [boxFormError, setBoxFormError] = useState("");
   const [boxAction, setBoxAction] = useState<BoxAction | null>(null);
+  const [unpackModalOpen, setUnpackModalOpen] = useState(false);
+  const [unpackReason, setUnpackReason] = useState("");
+  const [unpacking, setUnpacking] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const manualScanInputRef = useRef<HTMLInputElement>(null);
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
@@ -563,6 +567,7 @@ export default function MachineScannerPage() {
       box.id,
       packagingProjectId,
       vendorId,
+      selectedLocationName,
     );
     const printHtml = response.data?.print_html;
 
@@ -585,12 +590,13 @@ export default function MachineScannerPage() {
         boxId,
         packagingProjectId,
         vendorId,
+        selectedLocationName,
       );
-      const printHtml = response.data?.print_html;
+    const printHtml = response.data?.print_html;
 
-      if (!response.success || !printHtml) {
-        throw new Error(response.message || "Failed to generate box label");
-      }
+    if (!response.success || !printHtml) {
+      throw new Error(response.message || "Failed to generate box label");
+    }
 
       // The backend HTML contains its own delayed window.print(). Automatic
       // printing is more reliable when this page controls the iframe load and
@@ -717,15 +723,18 @@ export default function MachineScannerPage() {
   const handleToggleBoxStatus = async () => {
     if (!selectedBox || !userId || boxAction) return;
 
-    const nextStatus: PackagingBoxStatus =
-      selectedBox.box_status === "packed" ? "unpacked" : "packed";
+    if (selectedBox.box_status === "packed") {
+      setUnpackReason("");
+      setUnpackModalOpen(true);
+      return;
+    }
 
     try {
-      setBoxAction(nextStatus === "packed" ? "pack" : "unpack");
-      await updatePackagingBoxStatus(selectedBox.id, nextStatus, userId);
+      setBoxAction("pack");
+      await updatePackagingBoxStatus(selectedBox.id, "packed", userId);
       await refetchBoxes();
       toastManager.add({
-        title: `Box marked as ${nextStatus}`,
+        title: "Box marked as packed",
         type: "success",
       });
     } catch (error: unknown) {
@@ -734,6 +743,32 @@ export default function MachineScannerPage() {
         type: "error",
       });
     } finally {
+      setBoxAction(null);
+      window.setTimeout(() => inputRef.current?.focus(), 0);
+    }
+  };
+
+  const handleConfirmUnpack = async () => {
+    if (!selectedBox || !userId || !unpackReason.trim() || unpacking) return;
+
+    try {
+      setUnpacking(true);
+      setBoxAction("unpack");
+      await updatePackagingBoxStatus(selectedBox.id, "unpacked", userId, unpackReason.trim());
+      await refetchBoxes();
+      toastManager.add({
+        title: "Box marked as unpacked",
+        type: "success",
+      });
+      setUnpackModalOpen(false);
+      setUnpackReason("");
+    } catch (error: unknown) {
+      toastManager.add({
+        title: getBoxActionError(error),
+        type: "error",
+      });
+    } finally {
+      setUnpacking(false);
       setBoxAction(null);
       window.setTimeout(() => inputRef.current?.focus(), 0);
     }
@@ -1661,7 +1696,7 @@ export default function MachineScannerPage() {
 
                               <Button
                                 type="button"
-                                className="h-11 sm:h-12 gap-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white dark:text-black font-semibold px-2.5 text-xs sm:text-sm shadow-xs transition-all active:scale-95 disabled:opacity-50"
+                                className="h-11 sm:h-12 gap-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-black dark:text-white font-semibold px-2.5 text-xs sm:text-sm shadow-xs transition-all active:scale-95 disabled:opacity-50"
                                 disabled={boxAction !== null}
                                 onClick={() => void handlePrintBox()}
                               >
@@ -1675,7 +1710,7 @@ export default function MachineScannerPage() {
 
                               <Button
                                 type="button"
-                                className="col-span-2 sm:col-span-1 h-11 sm:h-12 gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-400 dark:to-indigo-400 px-2.5 text-xs sm:text-sm font-semibold text-white dark:text-black shadow-xs hover:from-violet-700 hover:to-indigo-700 transition-all active:scale-95 disabled:opacity-50"
+                                className="col-span-2 sm:col-span-1 h-11 sm:h-12 gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-600 dark:to-indigo-600 px-2.5 text-xs sm:text-sm font-semibold text-black dark:text-white shadow-xs hover:from-violet-700 hover:to-indigo-700 dark:hover:from-violet-500 dark:hover:to-indigo-500 transition-all active:scale-95 disabled:opacity-50"
                                 disabled={
                                   boxAction !== null ||
                                   selectedBox.box_status === "packed"
@@ -2106,6 +2141,77 @@ export default function MachineScannerPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Packaging Unpack Dialog ── */}
+      <Dialog
+        open={unpackModalOpen}
+        onOpenChange={(val) => !unpacking && setUnpackModalOpen(val)}
+      >
+        <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-2xl border shadow-xl">
+          <DialogHeader className="border-b bg-amber-500/5 px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                <PackageOpen className="size-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold text-foreground">
+                  Unpack Box {selectedBox?.box_name}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  Provide a mandatory reason to unpack this box. Previous packing info will be archived in the audit log.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="p-6 space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-foreground flex items-center gap-1">
+                Reason for Unpacking <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                value={unpackReason}
+                onChange={(e) => setUnpackReason(e.target.value)}
+                placeholder="Explain why this box is being unpacked (e.g. piece replacement, damaged item)..."
+                className="text-xs min-h-[90px] rounded-lg resize-none"
+                disabled={unpacking}
+              />
+            </div>
+
+            <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3 text-[11px] text-amber-800 dark:text-amber-300 flex items-start gap-2">
+              <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+              <span>
+                Unpacking resets packing status so items can be scanned/modified. Previous packing details and this reason are logged.
+              </span>
+            </div>
+          </div>
+
+          <DialogFooter className="border-t bg-muted/20 px-6 py-3 flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={unpacking}
+              onClick={() => {
+                setUnpackModalOpen(false);
+                setUnpackReason("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={!unpackReason.trim() || unpacking}
+              onClick={handleConfirmUnpack}
+              className="gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              {unpacking && <Loader2 className="size-3.5 animate-spin" />}
+              Confirm Unpack
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

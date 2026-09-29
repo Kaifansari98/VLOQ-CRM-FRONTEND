@@ -60,6 +60,7 @@ interface TrackTraceWorkstationTableProps {
   onEditClick: (machine: MachineData) => void;
   onAssignUsersClick: (machineId: number) => void;
   onManageRulesClick?: (machine: MachineData) => void;
+  cutlistConfiguration?: string;
   className?: string;
 }
 
@@ -289,6 +290,7 @@ export default function TrackTraceWorkstationTable({
   onEditClick,
   onAssignUsersClick,
   onManageRulesClick,
+  cutlistConfiguration = "default",
   className,
 }: TrackTraceWorkstationTableProps) {
   const router = useRouter();
@@ -302,7 +304,6 @@ export default function TrackTraceWorkstationTable({
   const [localSearch, setLocalSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [scanTypeFilter, setScanTypeFilter] = useState("all");
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   const debouncedSearch = useDebouncedCallback((val: string) => {
     setGlobalFilter(val.trim());
@@ -312,12 +313,6 @@ export default function TrackTraceWorkstationTable({
     const val = e.target.value;
     setLocalSearch(val);
     debouncedSearch(val);
-  };
-
-  const handleCopyCode = (code: string) => {
-    navigator.clipboard.writeText(code);
-    setCopiedCode(code);
-    setTimeout(() => setCopiedCode(null), 2000);
   };
 
   // Filtered dataset
@@ -596,40 +591,28 @@ export default function TrackTraceWorkstationTable({
                   Assign Users
                 </DropdownMenuItem>
 
-                <DropdownMenuItem
-                  className="cursor-pointer gap-2"
-                  onClick={() => {
-                    if (onManageRulesClick) {
-                      onManageRulesClick(row.original);
-                    } else {
-                      router.push(`/dashboard/track-trace/master/workstation/rules/create?machine_id=${row.original.id}`);
-                    }
-                  }}
-                >
-                  <SlidersHorizontal size={14} />
-                  Manage Rules
-                </DropdownMenuItem>
-
-                <DropdownMenuSeparator />
-
-                <DropdownMenuItem
-                  className="cursor-pointer gap-2 text-xs"
-                  onClick={() => handleCopyCode(row.original.machine_code)}
-                >
-                  {copiedCode === row.original.machine_code ? (
-                    <Check size={14} className="text-emerald-500" />
-                  ) : (
-                    <Copy size={14} />
-                  )}
-                  Copy Machine Code
-                </DropdownMenuItem>
+                {(cutlistConfiguration === "rule manage" || cutlistConfiguration === "rule_manage") && (
+                  <DropdownMenuItem
+                    className="cursor-pointer gap-2"
+                    onClick={() => {
+                      if (onManageRulesClick) {
+                        onManageRulesClick(row.original);
+                      } else {
+                        router.push(`/dashboard/track-trace/master/workstation/rules/create?machine_id=${row.original.id}`);
+                      }
+                    }}
+                  >
+                    <SlidersHorizontal size={14} />
+                    CutList Rules
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         ),
       },
     ],
-    [onEditClick, onAssignUsersClick, copiedCode]
+    [onEditClick, onAssignUsersClick, onManageRulesClick, cutlistConfiguration, router]
   );
 
   const tableInstance = useReactTable({

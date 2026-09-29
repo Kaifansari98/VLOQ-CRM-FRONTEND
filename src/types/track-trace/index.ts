@@ -406,6 +406,7 @@ export type ProjectBoxInfoField = {
 
 export type ProjectLocationRow = {
   location_name: string;
+  contact_no?: string;
   quantities: Record<string, number>;
 };
 

@@ -68,6 +68,7 @@ export default function UnderInstallationStagePage() {
             type="Type 15"
             enableAdminTabs={true}
             onRowNavigate={navigateUnderInstallation}
+            defaultSelectFranchiseFromRedux={true}
           />
         </Suspense>
       </main>

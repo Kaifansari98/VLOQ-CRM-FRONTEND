@@ -53,6 +53,12 @@ export interface MiscellaneousItem {
   expected_ready_date: string | null;
   solution: string | null;
   required_delivery_date: string | null;
+  return_order_date?: string | null;
+  return_order_delivery_method?: "SELF_DELIVERY" | "PICKUP_SCHEDULE" | string | null;
+  is_returned?: boolean;
+  returned_at?: string | null;
+  returned_by?: number | null;
+  return_handover_remark?: string | null;
   is_resolved: boolean;
   resolved_at: string | null;
   misc_approved: boolean | null;

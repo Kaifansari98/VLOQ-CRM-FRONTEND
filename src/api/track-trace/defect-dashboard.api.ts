@@ -48,16 +48,20 @@ export const getDefectSummary = async (vendorId: number) => {
   return data.data as DefectSummaryData;
 };
 
-export const getPendingDefects = async (vendorId: number, page = 1) => {
+export const getPendingDefects = async (vendorId: number, page = 1, scope: { lead_id?: number; page_size?: number } = {}) => {
   const { data } = await apiClient.get(
-    `/track-trace/defect-dashboard/${vendorId}/pending?page=${page}`
+    `/track-trace/defect-dashboard/${vendorId}/pending`,
+    { params: { page, ...scope } }
   );
+  if (!data.data) throw new Error(data.message || "Unable to load defects");
   return data.data as PaginatedDefects;
 };
 
-export const getResolvedDefects = async (vendorId: number, page = 1) => {
+export const getResolvedDefects = async (vendorId: number, page = 1, scope: { lead_id?: number; page_size?: number } = {}) => {
   const { data } = await apiClient.get(
-    `/track-trace/defect-dashboard/${vendorId}/resolved?page=${page}`
+    `/track-trace/defect-dashboard/${vendorId}/resolved`,
+    { params: { page, ...scope } }
   );
+  if (!data.data) throw new Error(data.message || "Unable to load defects");
   return data.data as PaginatedDefects;
 };

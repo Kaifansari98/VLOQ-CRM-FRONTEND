@@ -694,7 +694,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
   }, [form, mappedData, open, taskType, vendorCustomUserTypeMode]);
 
   React.useEffect(() => {
-    if (isCustomUser || vendorCustomUserTypeMode !== null && vendorCustomUserTypeMode !== undefined) {
+    if (isCustomUser || vendorCustomUserTypeMode === true) {
       return;
     }
 
@@ -1317,7 +1317,7 @@ const AssignTaskFinalMeasurementForm: React.FC<Props> = ({
                           isSelfAssignTask ||
                           (taskType === "Final Measurements" &&
                             !!assignedSiteSupervisorId &&
-                            vendorCustomUserTypeMode == null)
+                            vendorCustomUserTypeMode !== true)
                         }
                       />
                     </FormControl>

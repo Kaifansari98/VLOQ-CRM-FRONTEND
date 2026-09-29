@@ -13,6 +13,7 @@ import {
 import {
   CheckIcon,
   ChevronDown,
+  Download,
   EyeIcon,
   EyeOffIcon,
   ListFilter,
@@ -24,6 +25,8 @@ import {
   XIcon,
 } from "lucide-react";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
 
 import { cn } from "@/lib/utils";
 import {
@@ -35,6 +38,7 @@ import {
   useUserTypes,
 } from "@/hooks/useTypesMaster";
 import { useFranchisesByVendorId } from "@/api/franchise";
+import { useVendorById } from "@/api/vendors";
 import { useAppSelector } from "@/redux/store";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
@@ -50,6 +54,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PhoneInput } from "@/components/ui/phone-input";
+import MultipleSelector from "@/components/ui/multiselect";
 import AssignToPicker from "@/components/assign-to-picker";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -60,7 +65,9 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PrivilegeMasterEntry } from "@/api/typesMasterApi";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
+import type { CreateUserMasterPayload, UpdateUserMasterPayload } from "@/api/typesMasterApi";
+import { PrivilegeMasterEntry, fetchUsersForMaster } from "@/api/typesMasterApi";
 
 type UserMasterRow = {
   srNo: number;
@@ -73,6 +80,7 @@ type UserMasterRow = {
   franchise_name: string;
   status: string;
   franchise_id: number | null;
+  franchise_ids: number[];
   user_type_id: number | null;
 };
 
@@ -313,7 +321,7 @@ const defaultForm = {
   user_contact: "",
   user_email: "",
   password: "",
-  franchise_id: "",
+  franchise_ids: [] as number[],
   user_type_id: "",
   status: "active" as "active" | "inactive",
 };
@@ -334,12 +342,23 @@ export default function UserMastersTable({
 
   const isEmployeeMaster = userTypeFilter?.trim().toLowerCase() === "employee";
 
+  const loggedInUserType = useAppSelector(
+    (state) => state.auth.user?.user_type?.user_type,
+  )
+    ?.trim()
+    .toLowerCase();
+  const isMasterAdmin = loggedInUserType === "master-admin";
+
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 20,
   });
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = React.useState("");
+  const [supervisorConfirmation, setSupervisorConfirmation] = React.useState<{
+    franchises: { id: number; franchise_name: string }[];
+    confirm: () => void;
+  } | null>(null);
   const [openCreateModal, setOpenCreateModal] = React.useState(false);
   const [modalMode, setModalMode] = React.useState<"create" | "edit">("create");
   const [editingUserId, setEditingUserId] = React.useState<number | null>(null);
@@ -365,6 +384,7 @@ export default function UserMastersTable({
   >([]);
   const [privilegeSearch, setPrivilegeSearch] = React.useState("");
   const deferredPrivilegeSearch = React.useDeferredValue(privilegeSearch);
+  const [isExporting, setIsExporting] = React.useState(false);
 
   const { data, isLoading, isError, error } = useUsersForMaster(
     {
@@ -381,6 +401,7 @@ export default function UserMastersTable({
     vendorId,
     !!vendorId,
   );
+  const { data: vendorData } = useVendorById(isMasterAdmin ? vendorId : undefined);
   const { data: userTypesData } = useUserTypes();
   const employeeUserType = React.useMemo(
     () =>
@@ -441,7 +462,8 @@ export default function UserMastersTable({
           user_contact: item.user_contact,
           user_email: item.user_email,
           user_type: item.user_type?.user_type ?? "—",
-          franchise_name: item.franchise?.franchise_name ?? "—",
+          franchise_name: item.franchises?.map((fr) => fr.franchise_name).join(", ") || item.franchise?.franchise_name || "—",
+          franchise_ids: item.franchise_ids ?? (item.franchise_id ? [item.franchise_id] : []),
           status: item.status,
           franchise_id: item.franchise_id ?? null,
           user_type_id:
@@ -569,6 +591,7 @@ export default function UserMastersTable({
   };
 
   const resetForm = () => {
+    setSupervisorConfirmation(null);
     const defaultUserTypeId =
       isEmployeeMaster && employeeUserTypeId
         ? employeeUserTypeId
@@ -628,7 +651,7 @@ export default function UserMastersTable({
     form.user_contact.trim() &&
     form.user_email.trim() &&
     isPasswordValid &&
-    form.franchise_id &&
+    form.franchise_ids.length > 0 &&
     effectiveUserTypeId;
 
   const handleRowDoubleClick = (row: UserMasterRow) => {
@@ -647,7 +670,7 @@ export default function UserMastersTable({
       user_contact: row.user_contact,
       user_email: row.user_email,
       password: "",
-      franchise_id: row.franchise_id ? String(row.franchise_id) : "",
+      franchise_ids: [...row.franchise_ids],
       user_type_id: fallbackUserTypeId ? String(fallbackUserTypeId) : "",
       status: (row.status === "active" || row.status === "inactive"
         ? row.status
@@ -661,8 +684,35 @@ export default function UserMastersTable({
     setOpenCreateModal(true);
   };
 
+  const handleSubmitError = (error: unknown, confirm: () => void) => {
+    const response = (error as { response?: { data?: {
+      code?: string; franchises?: { id: number; franchise_name: string }[];
+    } } }).response?.data;
+    if (response?.code === "SUPERVISOR_CONFIRMATION_REQUIRED" && response.franchises?.length) {
+      setSupervisorConfirmation({ franchises: response.franchises, confirm });
+    } else {
+      setSupervisorConfirmation(null);
+    }
+  };
+
+  const submitCreate = (payload: CreateUserMasterPayload) => {
+    createUserMutation.mutate(payload, {
+      onSuccess: () => { resetForm(); setOpenCreateModal(false); },
+      onError: (error) => handleSubmitError(error, () =>
+        submitCreate({ ...payload, confirm_additional_supervisor: true })),
+    });
+  };
+
+  const submitUpdate = (userId: number, payload: UpdateUserMasterPayload) => {
+    updateUserMutation.mutate({ userId, payload }, {
+      onSuccess: () => { resetForm(); setOpenCreateModal(false); },
+      onError: (error) => handleSubmitError(error, () =>
+        submitUpdate(userId, { ...payload, confirm_additional_supervisor: true })),
+    });
+  };
+
   const handleSave = () => {
-    if (!editingUserId || !vendorId) return;
+    if (!editingUserId || !vendorId || !isFormValid) return;
 
     // Normalize phone to national number for comparison
     const extractNational = (val: string) => {
@@ -685,8 +735,8 @@ export default function UserMastersTable({
     if (form.user_email.trim() !== originalForm.user_email.trim())
       payload.user_email = form.user_email.trim();
 
-    if (form.franchise_id !== originalForm.franchise_id)
-      payload.franchise_id = Number(form.franchise_id);
+    if (JSON.stringify(form.franchise_ids) !== JSON.stringify(originalForm.franchise_ids))
+      payload.franchise_ids = form.franchise_ids;
 
     if (!isEmployeeMaster && form.user_type_id !== originalForm.user_type_id)
       payload.user_type_id = Number(form.user_type_id);
@@ -702,15 +752,7 @@ export default function UserMastersTable({
       return;
     }
 
-    updateUserMutation.mutate(
-      { userId: editingUserId, payload },
-      {
-        onSuccess: () => {
-          resetForm();
-          setOpenCreateModal(false);
-        },
-      },
-    );
+    submitUpdate(editingUserId, payload);
   };
 
   const handleCreate = () => {
@@ -720,10 +762,11 @@ export default function UserMastersTable({
     const contactNumber =
       parsed?.nationalNumber || form.user_contact.replace(/\D/g, "");
 
-    createUserMutation.mutate(
+    submitCreate(
       {
         vendor_id: vendorId,
-        franchise_id: Number(form.franchise_id),
+        franchise_id: form.franchise_ids[0],
+        franchise_ids: form.franchise_ids,
         user_name: form.user_name.trim(),
         designation: form.designation.trim() || undefined,
         user_contact: contactNumber,
@@ -732,18 +775,122 @@ export default function UserMastersTable({
         password: form.password,
         user_type_id: Number(effectiveUserTypeId),
         status: form.status,
-      },
-      {
-        onSuccess: () => {
-          resetForm();
-          setOpenCreateModal(false);
-        },
-      },
+      }
     );
+  };
+
+  const handleExportData = async () => {
+    if (!vendorId || isExporting) return;
+
+    setIsExporting(true);
+    try {
+      const response = await fetchUsersForMaster(vendorId, {
+        page: 1,
+        limit: 1000000,
+        search: "",
+        franchise_id: franchiseFilter,
+      });
+
+      const exportRows = response.data.filter(
+        (item) =>
+          item.user_type?.user_type?.trim().toLowerCase() !== "master-admin",
+      );
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Users");
+
+      worksheet.columns = [
+        { header: "Sr No", key: "srNo", width: 8 },
+        { header: "Name", key: "name", width: 25 },
+        { header: "Contact No", key: "contact", width: 18 },
+        { header: "Email", key: "email", width: 30 },
+        { header: "User Type", key: "userType", width: 20 },
+        { header: "Franchise", key: "franchise", width: 25 },
+        { header: "Status", key: "status", width: 12 },
+        { header: "Created At", key: "createdAt", width: 20 },
+      ];
+
+      const headerRow = worksheet.getRow(1);
+      headerRow.font = { bold: true };
+      headerRow.alignment = { vertical: "middle", horizontal: "left" };
+      headerRow.height = 20;
+
+      exportRows.forEach((item, index) => {
+        worksheet.addRow({
+          srNo: index + 1,
+          name: item.user_name,
+          contact: item.user_contact,
+          email: item.user_email,
+          userType: formatUserTypeLabel(item.user_type?.user_type),
+          franchise:
+            item.franchises?.map((fr) => fr.franchise_name).join(", ") ||
+            item.franchise?.franchise_name ||
+            "—",
+          status: item.status,
+          createdAt: item.created_at
+            ? new Date(item.created_at).toLocaleString("en-IN")
+            : "—",
+        });
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      const sanitizedVendorName = (vendorData?.data?.vendor_name || `vendor_${vendorId}`)
+        .replace(/[\\/:*?"<>|]/g, "")
+        .trim()
+        .replace(/\s+/g, "_");
+
+      const now = new Date();
+      const pad = (value: number) => String(value).padStart(2, "0");
+      const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+
+      saveAs(blob, `${sanitizedVendorName}_usersdata_${timestamp}.xlsx`);
+    } catch (error) {
+      console.error("Failed to export users data", error);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
     <>
+      <AlertDialog
+        open={supervisorConfirmation !== null}
+        onOpenChange={(open) => {
+          if (!open && !createUserMutation.isPending && !updateUserMutation.isPending)
+            setSupervisorConfirmation(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Add another site supervisor?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {supervisorConfirmation?.franchises.map((fr) => fr.franchise_name).join(", ")}
+              {supervisorConfirmation?.franchises.length === 1
+                ? " already has a site supervisor."
+                : " already have site supervisors."}
+              {" Are you sure you want to assign this user as an additional site supervisor?"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={createUserMutation.isPending || updateUserMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={createUserMutation.isPending || updateUserMutation.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                supervisorConfirmation?.confirm();
+              }}
+            >
+              {createUserMutation.isPending || updateUserMutation.isPending ? "Saving..." : "Confirm and save"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <Card className="rounded-2xl p-0 border-0">
         <CardContent className="space-y-4 p-0">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -1014,56 +1161,32 @@ export default function UserMastersTable({
                     </div>
                   )}
 
-                  <div
-                    className={cn(
-                      "space-y-2",
-                      isEditingCustomUser && "col-span-2",
-                    )}
-                  >
-                    <Label>Franchise</Label>
-                    <AssignToPicker
-                      data={franchisesData.map((fr) => ({
-                        id: fr.id,
-                        label: fr.franchise_name,
-                      }))}
-                      value={
-                        form.franchise_id ? Number(form.franchise_id) : undefined
-                      }
-                      onChange={(selectedId) =>
-                        setForm((f) => ({
-                          ...f,
-                          franchise_id: selectedId ? String(selectedId) : "",
-                        }))
-                      }
-                      placeholder="Select franchise..."
-                    />
-                  </div>
-
-                  {/* Row 4: Status */}
-                  <div className="col-span-2 space-y-2">
-                    <Label>Status</Label>
-                    <div className="flex h-9 items-center gap-4 rounded-md border px-3">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <Checkbox
-                          checked={form.status === "active"}
-                          onCheckedChange={(checked) =>
-                            setForm((f) => ({
-                              ...f,
-                              status: checked ? "active" : "inactive",
-                            }))
-                          }
-                        />
-                        <span className="text-sm">Active</span>
-                      </label>
-                      <span className="text-xs text-muted-foreground">
-                        {form.status === "active"
-                          ? "User will be active"
-                          : "User will be inactive"}
-                      </span>
-                    </div>
-                  </div>
-                </>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="user-franchise-search">Franchise</Label>
+                <MultipleSelector
+                  inputProps={{
+                    id: "user-franchise-search",
+                    name: "franchise-search",
+                    autoComplete: "off",
+                    autoCapitalize: "none",
+                    spellCheck: false,
+                  }}
+                  options={franchisesData.map((fr) => ({
+                    value: String(fr.id),
+                    label: fr.franchise_name,
+                  }))}
+                  value={form.franchise_ids.map((id) => ({
+                    value: String(id),
+                    label: franchisesData.find((fr) => fr.id === id)?.franchise_name ?? String(id),
+                  }))}
+                  onChange={(selected) =>
+                    setForm((f) => ({ ...f, franchise_ids: selected.map((option) => Number(option.value)) }))
+                  }
+                  placeholder="Select franchises..."
+                  hidePlaceholderWhenSelected
+                  showSelectedOptionsInDropdown
+                />
+              </div>
 
               {/* Row 4: Password (full width) */}
               <div className="col-span-2 space-y-2">
@@ -1078,6 +1201,8 @@ export default function UserMastersTable({
                 <div className="relative">
                   <Input
                     id="user-password"
+                    name="new-password"
+                    autoComplete="new-password"
                     type={showPassword ? "text" : "password"}
                     value={form.password}
                     onChange={(e) =>
