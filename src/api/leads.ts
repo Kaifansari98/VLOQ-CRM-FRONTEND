@@ -58,6 +58,7 @@ export interface Lead {
   id: number;
   lead_code?: string;
   is_draft?: boolean;
+  draft_in_open_leads?: boolean;
   is_small_order_request?: boolean;
   is_so_value_received?: boolean;
   so_value_received_at?: string | null;
@@ -227,6 +228,7 @@ export interface AssignToPayload {
 }
 
 export interface EditLeadPayload {
+  convert_to_lead?: boolean;
   firstname?: string;
   lastname?: string;
   country_code?: string;

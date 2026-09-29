@@ -373,6 +373,7 @@ export default function LeadsGenerationPage() {
                 </Button>
 
                 <GenerateLeadFormModal
+                  draftInOpenLeads
                   open={openCreateLead}
                   onOpenChange={setOpenCreateLead}
                 />

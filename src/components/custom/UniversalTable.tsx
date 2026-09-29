@@ -1311,7 +1311,11 @@ export function UniversalTable({
     const shouldSortByCreatedAt = primarySort?.id === "createdAt";
     const createdAtDirection = primarySort?.desc ? "desc" : "asc";
     const filteredActiveData = activeData.filter((lead: any) => {
-      if (normalizedType === "type 1" && lead?.is_draft === true) {
+      if (
+        normalizedType === "type 1" &&
+        lead?.is_draft === true &&
+        lead?.draft_in_open_leads !== true
+      ) {
         return false;
       }
 
