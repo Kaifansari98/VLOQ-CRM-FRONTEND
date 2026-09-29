@@ -154,6 +154,11 @@ interface OnlineLead {
     id: number;
     franchise_name: string;
   } | null;
+  vendor?: {
+    id: number;
+    vendor_name: string;
+    is_online_lead_feature_enabled?: boolean;
+  } | null;
   followupStatus?: {
     id: number;
     status_name: string;
@@ -218,10 +223,13 @@ export default function OnlineLeadDetailsPage() {
   const isAdmin = userType === "super-admin" || userType === "admin" || userType === "sales admin" || userType === "sales-admin";
   const isCaller = userType === "telecaller" || userType === "telecaller-team-lead" || userType === "telecaller team lead" || userType === "caller";
   const isSalesExecutive = userType === "sales-executive" || userType === "sales executive" || userType === "salesexecutive";
-  const isOnlineLeadFeatureEnabled = user?.vendor?.is_online_lead_feature_enabled === true;
   const isSuperAdmin = userType === "super-admin";
   const [lead, setLead] = useState<OnlineLead | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
+  const isOnlineLeadFeatureEnabled =
+    lead?.vendor?.is_online_lead_feature_enabled !== undefined
+      ? Boolean(lead.vendor.is_online_lead_feature_enabled)
+      : Boolean(user?.vendor?.is_online_lead_feature_enabled === true);
   const userFranchiseId = useAppSelector((state) => state.auth.franchise_id ?? state.auth.user?.franchise_id);
 
   const reduxModuledForB2b = useAppSelector(
@@ -717,17 +725,42 @@ export default function OnlineLeadDetailsPage() {
     // Handle multiline text (\n\n separated blocks)
     const rawBlocks = cleanText.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
 
+    const getCleanHeader = (h: string) => {
+      return h.replace(/^\*\*|\*\*$/g, "").replace(/^(?:•|ΓÇó)\s*/, "").trim();
+    };
+
+    const getQuestionKey = (header: string) => {
+      const norm = header.toLowerCase().replace(/[\s_\/|\-?.:*•]+/g, "");
+      if (
+        norm.includes("whenneedready") ||
+        norm.includes("whendoyouneed") ||
+        norm.includes("needready") ||
+        norm.includes("readyby")
+      ) return "when_need_ready";
+      if (
+        norm.includes("whereisyourproject") ||
+        norm.includes("projectlocated") ||
+        norm.includes("projectlocation") ||
+        norm.includes("siteaddress")
+      ) return "project_location";
+      if (
+        norm.includes("whatmodular") ||
+        norm.includes("modularsolution") ||
+        (norm.includes("modular") && norm.includes("solution"))
+      ) return "modular_solution";
+      if (
+        norm.includes("showroom") ||
+        norm.includes("shambhala") ||
+        norm.includes("preferredshowroom")
+      ) return "preferred_showroom";
+      if (norm.includes("budget") || norm.includes("leadbudget")) return "budget";
+      if (norm.includes("propertytype") || norm.includes("property")) return "property_type";
+      return norm;
+    };
+
     // Deduplicate questionnaire blocks so that questions are only shown once (latest update wins)
     const deduplicatedBlocks: string[] = [];
     const questionMap = new Map<string, string>();
-    const getQuestionKey = (header: string) => {
-      const norm = header.toLowerCase().replace(/[\s_\/|\-?.:*•]+/g, "");
-      if (norm.includes("whereisyourproject") || norm.includes("projectlocated")) return "project_location";
-      if (norm.includes("modularsolution") || norm.includes("whatmodular")) return "modular_solution";
-      if (norm.includes("whenneedready") || norm.includes("whendoyouneed") || norm.includes("kitchenwardrobe")) return "when_need_ready";
-      if (norm.includes("showroom") || norm.includes("shambhala")) return "preferred_showroom";
-      return norm;
-    };
 
     for (const block of rawBlocks) {
       const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
@@ -735,7 +768,23 @@ export default function OnlineLeadDetailsPage() {
       const isQuestion = headerLine.includes("•") || headerLine.endsWith("?") || headerLine.startsWith("**");
       if (isQuestion) {
         const key = getQuestionKey(headerLine);
-        questionMap.set(key, block);
+        const existingBlock = questionMap.get(key);
+        if (existingBlock) {
+          const existingLines = existingBlock.split("\n").map((l) => l.trim()).filter(Boolean);
+          const existingHeader = existingLines[0] || "";
+          const cleanHeader = getCleanHeader(headerLine);
+          const cleanExisting = getCleanHeader(existingHeader);
+          const isCurrentBetterHeader =
+            (cleanHeader.includes(" ") || cleanHeader.endsWith("?")) &&
+            (!cleanExisting.includes(" ") && !cleanExisting.endsWith("?"));
+          const currentAnswer = lines.slice(1).join("\n").trim();
+          const existingAnswer = existingLines.slice(1).join("\n").trim();
+          const chosenAnswer = currentAnswer || existingAnswer;
+          const chosenHeader = isCurrentBetterHeader ? headerLine : existingHeader;
+          questionMap.set(key, chosenAnswer ? `${chosenHeader}\n${chosenAnswer}` : chosenHeader);
+        } else {
+          questionMap.set(key, block);
+        }
       } else {
         deduplicatedBlocks.push(block);
       }
@@ -783,15 +832,62 @@ export default function OnlineLeadDetailsPage() {
       remaining = cleanText.substring(firstStarIdx);
     }
 
+    const getCleanHeader = (h: string) => {
+      return h.replace(/^\*\*|\*\*$/g, "").replace(/^(?:•|ΓÇó)\s*/, "").trim();
+    };
+
+    const getQuestionKey = (header: string) => {
+      const norm = header.toLowerCase().replace(/[\s_\/|\-?.:*•]+/g, "");
+      if (
+        norm.includes("whenneedready") ||
+        norm.includes("whendoyouneed") ||
+        norm.includes("needready") ||
+        norm.includes("readyby")
+      ) return "when_need_ready";
+      if (
+        norm.includes("whereisyourproject") ||
+        norm.includes("projectlocated") ||
+        norm.includes("projectlocation") ||
+        norm.includes("siteaddress")
+      ) return "project_location";
+      if (
+        norm.includes("whatmodular") ||
+        norm.includes("modularsolution") ||
+        (norm.includes("modular") && norm.includes("solution"))
+      ) return "modular_solution";
+      if (
+        norm.includes("showroom") ||
+        norm.includes("shambhala") ||
+        norm.includes("preferredshowroom")
+      ) return "preferred_showroom";
+      if (norm.includes("budget") || norm.includes("leadbudget")) return "budget";
+      if (norm.includes("propertytype") || norm.includes("property")) return "property_type";
+      return norm;
+    };
+
     const regex = /\*\*\s*•?\s*([^*]+?)\s*\*\*\s*([^*]+)/g;
-    const items: { question: string; answer: string }[] = [];
+    const itemMap = new Map<string, { question: string; answer: string }>();
     let match;
     while ((match = regex.exec(remaining)) !== null) {
-      items.push({
-        question: match[1].trim().replace(/^•\s*/, ""),
-        answer: match[2].trim(),
-      });
+      const q = match[1].trim().replace(/^•\s*/, "");
+      const a = match[2].trim();
+      const key = getQuestionKey(q);
+      const existing = itemMap.get(key);
+      if (!existing) {
+        itemMap.set(key, { question: q, answer: a });
+      } else {
+        const cleanQ = getCleanHeader(q);
+        const cleanExisting = getCleanHeader(existing.question);
+        const preferCurrentQ =
+          (cleanQ.includes(" ") || cleanQ.endsWith("?")) &&
+          (!cleanExisting.includes(" ") && !cleanExisting.endsWith("?"));
+        itemMap.set(key, {
+          question: preferCurrentQ ? q : existing.question,
+          answer: a || existing.answer,
+        });
+      }
     }
+    const items = Array.from(itemMap.values());
     return items.length > 0 ? { prefix, items } : null;
   };
 
@@ -1157,10 +1253,10 @@ export default function OnlineLeadDetailsPage() {
       let finalRemarkToSend = remarkOnlyText;
       if (parsedQuestionnaire && parsedQuestionnaire.items.length > 0) {
         const formattedItems = parsedQuestionnaire.items
-          .map((i) => `**• ${i.question}** ${i.answer}`)
-          .join(" ");
+          .map((i) => `**• ${i.question}**\n${i.answer}`)
+          .join("\n\n");
         finalRemarkToSend = parsedQuestionnaire.prefix
-          ? `${parsedQuestionnaire.prefix} ${formattedItems}`
+          ? `${parsedQuestionnaire.prefix}\n\n${formattedItems}`
           : formattedItems;
       }
 
@@ -2191,6 +2287,9 @@ export default function OnlineLeadDetailsPage() {
                       <TableRow>
                         <TableHead className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Outcome Status</TableHead>
                         <TableHead className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Caller</TableHead>
+                        {isOnlineLeadFeatureEnabled && (
+                          <TableHead className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Call Log Remark</TableHead>
+                        )}
                         <TableHead className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Date</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -2203,8 +2302,17 @@ export default function OnlineLeadDetailsPage() {
                             </span>
                           </TableCell>
                           <TableCell className="px-4 py-3 text-xs text-muted-foreground">
-                            {call.telecaller.user_name}
+                            {call.telecaller?.user_name || "N/A"}
                           </TableCell>
+                          {isOnlineLeadFeatureEnabled && (
+                            <TableCell className="px-4 py-3 text-xs text-foreground font-normal max-w-xs md:max-w-md whitespace-pre-wrap break-words">
+                              {call.remark ? (
+                                <span>{call.remark}</span>
+                              ) : (
+                                <span className="text-muted-foreground italic">No remark</span>
+                              )}
+                            </TableCell>
+                          )}
                           <TableCell className="px-4 py-3 text-xs text-muted-foreground">
                             {new Date(call.created_at).toLocaleDateString()}
                           </TableCell>
