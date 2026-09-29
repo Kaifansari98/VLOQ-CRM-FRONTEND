@@ -1,5 +1,7 @@
 "use client";
 
+import { CadbidHeaderGroup } from "@/components/cadbid/CadbidHeaderGroup";
+
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -21,7 +23,7 @@ import { Kbd } from "@/components/ui/kbd";
 
 export default function Page() {
   const userType = useAppSelector(
-    (state) => state.auth.user?.user_type?.user_type
+    (state) => state.auth.user?.user_type?.user_type,
   );
 
   const [openSearchModal, setOpenSearchModal] = useState(false);
@@ -30,7 +32,7 @@ export default function Page() {
   // Runs only in the browser → safe
   useEffect(() => {
     setIsMac(
-      typeof navigator !== "undefined" && navigator.platform.includes("Mac")
+      typeof navigator !== "undefined" && navigator.platform.includes("Mac"),
     );
 
     const handleKey = (e: KeyboardEvent) => {
@@ -75,7 +77,7 @@ export default function Page() {
             className="sm:hidden flex"
             aria-label="Search"
           >
-            <Search  />
+            <Search />
           </button>
 
           {/* 🔍 Desktop Search Input */}
@@ -91,6 +93,7 @@ export default function Page() {
             </div>
           </div>
 
+          <CadbidHeaderGroup />
           <NotificationBell />
           <AnimatedThemeToggler />
         </div>

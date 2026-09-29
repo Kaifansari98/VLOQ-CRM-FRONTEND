@@ -3,12 +3,16 @@
 import {
   ChevronsUpDown,
   LogOut,
+  KeyRound,
+  DraftingCompass,
+  Loader2,
 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -20,6 +24,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Badge } from "@/components/ui/badge";
 
 import {
   AlertDialog,
@@ -36,6 +41,8 @@ import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
 import { logout } from "@/redux/slices/authSlice";
+import { CadbidConnectionModal } from "@/components/cadbid/CadbidConnectionModal";
+import { useCadbidStatus, useLaunchStudio } from "@/hooks/useCadbid";
 
 export function NavUser({
   user,
@@ -50,22 +57,26 @@ export function NavUser({
   const dispatch = useDispatch();
   const [open, setOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [cadbidModalOpen, setCadbidModalOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const { data: cadbidStatus } = useCadbidStatus();
+  const { launchStudio, isLaunching: isLaunchingStudio } = useLaunchStudio();
 
   const handleLogout = () => {
     setIsLoggingOut(true);
     setMenuOpen(false);
     setOpen(false);
 
-    // ✅ Notify user first
+    // Notify user first
     toast.success("You have been logged out 👋");
 
-    // ✅ Clear Redux + LocalStorage (ProtectedLayout will redirect)
+    // Clear Redux + LocalStorage (ProtectedLayout will redirect)
     setTimeout(() => {
       dispatch(logout());
       localStorage.removeItem("token");
 
-      // ✅ Just refresh the current page
+      // Just refresh the current page
       window.location.reload();
 
       setIsLoggingOut(false);
@@ -115,42 +126,68 @@ export function NavUser({
 
               <DropdownMenuSeparator />
 
-              {/* <DropdownMenuGroup>
-                <DropdownMenuItem>
-                  <Sparkles />
-                  Upgrade to Pro
+              <DropdownMenuGroup>
+                {/* CADX Studio SSO Launcher */}
+                {cadbidStatus?.connected && cadbidStatus?.studioAccess && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setMenuOpen(false);
+                      launchStudio();
+                    }}
+                    disabled={isLaunchingStudio}
+                    className="cursor-pointer"
+                  >
+                    {isLaunchingStudio ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin text-primary" />
+                    ) : (
+                      <DraftingCompass className="mr-2 h-4 w-4 text-primary" />
+                    )}
+                    <span>CADX Studio</span>
+                  </DropdownMenuItem>
+                )}
+
+                {/* Cadbid Connection Settings */}
+                <DropdownMenuItem
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setCadbidModalOpen(true);
+                  }}
+                  className="cursor-pointer justify-between"
+                >
+                  <div className="flex items-center gap-2">
+                    <KeyRound className="h-4 w-4 text-muted-foreground" />
+                    <span>Cadbid Account</span>
+                  </div>
+                  {cadbidStatus?.connected ? (
+                    <Badge
+                      variant="outline"
+                      className="border-emerald-500/30 text-emerald-600 text-[10px] px-1 py-0 h-4"
+                    >
+                      Connected
+                    </Badge>
+                  ) : (
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] px-1 py-0 h-4 text-muted-foreground"
+                    >
+                      Connect
+                    </Badge>
+                  )}
                 </DropdownMenuItem>
-              </DropdownMenuGroup> */}
+              </DropdownMenuGroup>
 
-              {/* <DropdownMenuSeparator /> */}
+              <DropdownMenuSeparator />
 
-              {/* <DropdownMenuGroup> */}
-              {/* <DropdownMenuItem>
-                  <BadgeCheck />
-                  Account
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <CreditCard />
-                  Payment
-                </DropdownMenuItem> */}
-              {/* <DropdownMenuItem>
-                  <Bell />
-                  Notifications
-                </DropdownMenuItem> */}
-              {/* </DropdownMenuGroup> */}
-
-              {/* <DropdownMenuSeparator /> */}
-
-              {/* 🔹 Open logout confirmation */}
+              {/* Open logout confirmation */}
               <DropdownMenuItem
                 onSelect={(e) => {
                   e.preventDefault();
                   setMenuOpen(false);
                   setTimeout(() => setOpen(true), 0);
                 }}
-                className="cursor-pointer"
+                className="cursor-pointer text-destructive focus:text-destructive"
               >
-                <LogOut />
+                <LogOut className="mr-2 h-4 w-4" />
                 Log out
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -158,7 +195,13 @@ export function NavUser({
         </SidebarMenuItem>
       </SidebarMenu>
 
-      {/* 🔹 Logout confirmation dialog */}
+      {/* Cadbid Connection Modal */}
+      <CadbidConnectionModal
+        open={cadbidModalOpen}
+        onOpenChange={setCadbidModalOpen}
+      />
+
+      {/* Logout confirmation dialog */}
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
